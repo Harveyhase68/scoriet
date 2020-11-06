@@ -1,7 +1,3 @@
 //MO001-002.TXT ANA00001 TO ANA00002
-DataItemsTypeDetails		TAR	181	new record size: 181
-DataItemsTypeDetails	Width	RUB+		Width is a new item
-DataItemsTypeDetails	Height	RUB+		Height is a new item
-DataItemsTypeDetails	ItemGroup	RUB+		ItemGroup is a new item
-DataItemsTypeDetails	ItemPlaceholder	RUB+		ItemPlaceholder is a new item
-DataItems	ControlType	RRM		
+ForeignKey		TAR	1449	new record size: 1449
+ForeignKey	MeshData	RUB+		MeshData is a new item

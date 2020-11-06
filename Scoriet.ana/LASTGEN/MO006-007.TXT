@@ -1,3 +1,5 @@
 //MO006-007.TXT ANA00006 TO ANA00007
-Project		TAR	1331	new record size: 1331
-Project	TemplateRootPath	RUB-		item TemplateRootPath deleted
+DataItems		TAR	974	new record size: 974
+DataItems	Data_Type	NNR	sDataType	CAUTION: item sDataType renamed as Data_Type
+DataItems	Data_Type	TAI-	38	new size of item Data_Type: 13 instead of 51
+DataItems	DB_Data_Type	RUB+		DB_Data_Type is a new item

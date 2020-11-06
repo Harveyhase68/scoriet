@@ -1,2 +1,9 @@
 //MO009-010.TXT ANA00009 TO ANA00010
-Schriftarten		FIC-	Schriftarten	Schriftarten file deleted
+DataFile		TAR	1616	new record size: 1616
+DataFile	MySQL_Engine	RUB+		MySQL_Engine is a new item
+DataFile	MySQL_CharSet	RUB+		MySQL_CharSet is a new item
+DataFile	MySQL_Collate	RUB+		MySQL_Collate is a new item
+DataFile	MySQL_Comment	RUB+		MySQL_Comment is a new item
+DataItems		TAR	1061	new record size: 1061
+DataItems	DB_Collate	RUB+		DB_Collate is a new item
+DataFile	MySQL_Engine	RRN		

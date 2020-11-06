@@ -1,2 +1,4 @@
 //MO007-008.TXT ANA00007 TO ANA00008
-DBConnection	Description	CLEU*		Description item is now key
+DataItems		TAR	1010	new record size: 1010
+DataItems	Data_Type	TAI+	18	new size of item Data_Type: 31 instead of 13
+DataItems	DB_Data_Type	TAI+	18	new size of item DB_Data_Type: 31 instead of 13

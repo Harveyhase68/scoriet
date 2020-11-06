@@ -2,31 +2,33 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define ApplicationName 'Scoriet Generator'
-#define ApplicationVersion GetFileVersion('D:\WdTemp22\ScorietGit\scoriet\Exe\64-bit Windows executable\Scoriet.exe')
+#define ApplicationVersion GetFileVersion('D:\WdTemp25\Scoriet\Exe\64-bit Windows executable\Scoriet.exe')
 
 [Setup]
 SignTool=signtool
-AppId={{A7907C3E-0D23-4EBD-9320-7566C40FD935}
+AppId={{9AB1988F-A78B-43C3-97A6-2527DB290684}
 AppName=Scoriet Generator
 AppVerName={#ApplicationName} {#ApplicationVersion}
 AppVersion={#ApplicationVersion}
-VersionInfoVersion={#ApplicationVersion}
 AppPublisher=Systemhaus Predl IT-GmbH
 AppPublisherURL=http://www.scoriet.com
 AppSupportURL=http://www.scoriet.com
 AppUpdatesURL=http://www.scoriet.com
-AppCopyright=Systemhaus Predl IT-GmbH
+AppCopyright=(c) 2020 Systemhaus Predl IT-GmbH
 DefaultDirName={pf}\Scoriet
 DefaultGroupName=Scoriet
-LicenseFile=D:\WdTemp22\ScorietGit\scoriet\Exe\Scoriet_EULA_EN.txt
 AppendDefaultDirName=no
-SetupIconFile=D:\WdTemp22\ScorietGit\scoriet\code.ico
+SetupIconFile=D:\WdTemp25\Scoriet\code.ico
 Compression=lzma
 SolidCompression=yes
 ShowLanguageDialog=true
-ArchitecturesAllowed=x64 ia64
-ArchitecturesInstallIn64BitMode=ia64
-OutputDir=D:\WdTemp22\ScorietGit\scoriet\InnoSetup\Output64
+VersionInfoCompany=Systemhaus Predl IT GesmbH
+VersionInfoDescription={#ApplicationName}
+VersionInfoTextVersion={#ApplicationName}
+VersionInfoVersion={#ApplicationVersion}
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+OutputDir=D:\WdTemp25\Scoriet\InnoSetup\Output64
 OutputBaseFilename=Scoriet_Setup_64_{#ApplicationVersion}
 
 [Components]
@@ -35,8 +37,8 @@ Name: "data";         Description: "{cm:DemoData}";         Types: full custom; 
 Name: "templates";    Description: "{cm:Templates}";        Types: full custom;         Flags: checkablealone disablenouninstallwarning
 
 [Languages]
-Name: de; MessagesFile: "compiler:Languages\German.isl"; LicenseFile: "D:\WdTemp22\ScorietGit\scoriet\Exe\Scoriet_EULA_DE.txt"
-Name: en; MessagesFile: "compiler:Languages\English.isl"; LicenseFile: "D:\WdTemp22\ScorietGit\scoriet\Exe\Scoriet_EULA_EN.txt"
+Name: de; MessagesFile: "compiler:Languages\German.isl"; LicenseFile: "D:\WdTemp25\Scoriet\Exe\Scoriet_EULA_DE.txt"
+Name: en; MessagesFile: "compiler:Languages\English.isl"; LicenseFile: "D:\WdTemp25\Scoriet\Exe\Scoriet_EULA_EN.txt"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -44,18 +46,13 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Dirs]
 Name: "{userdocs}\Scoriet"; Permissions: everyone-full
-Name: "{app}"; Permissions: everyone-full
 
 [Files]
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\64-bit Windows executable\Scoriet.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\Scoriet_EN.chm"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\Scoriet_DE.chm"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\64-bit Windows executable\libmySQL.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\64-bit Windows executable\libmariadb.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\sakila-db.zip"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\en.txt"; DestDir: "{app}"; DestName: "language.txt"; Flags: ignoreversion; Languages: en
-Source: "D:\WdTemp22\ScorietGit\scoriet\Exe\de.txt"; DestDir: "{app}"; DestName: "language.txt"; Flags: ignoreversion; Languages: de
-Source: "D:\WdTemp22\ScorietGit\scoriet\Scoriet.ana\Scoriet.wdd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\WdTemp25\Scoriet\Exe\64-bit Windows executable\Scoriet.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\WdTemp25\Scoriet\Exe\Scoriet_EN.chm"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\WdTemp25\Scoriet\Exe\Scoriet_DE.chm"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\WdTemp25\Scoriet\Scoriet.ana\Scoriet.wdd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\WdTemp25\Scoriet\Exe\libmySQL.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\Eigene Dateien\Scoriet\Data\Language.dat"; DestDir: "{userdocs}\Scoriet\data"; Components: data; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall
 Source: "D:\Eigene Dateien\Scoriet\Data\Language.ndx"; DestDir: "{userdocs}\Scoriet\data"; Components: data; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall
 Source: "D:\Eigene Dateien\Scoriet\Data\Country.dat"; DestDir: "{userdocs}\Scoriet\data"; Components: data; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall
@@ -68,79 +65,72 @@ Source: "D:\Eigene Dateien\Scoriet\Data\TemplateVars.dat"; DestDir: "{userdocs}\
 Source: "D:\Eigene Dateien\Scoriet\Data\TemplateVars.ndx"; DestDir: "{userdocs}\Scoriet\data"; Components: data; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall
 Source: "D:\Eigene Dateien\Scoriet\Data\TemplateVars.mmo"; DestDir: "{userdocs}\Scoriet\data"; Components: data; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall
 Source: "D:\Eigene Dateien\Scoriet\Templates\*"; DestDir: "{userdocs}\Scoriet\Templates"; Components: templates; Flags: ignoreversion onlyifdoesntexist uninsneveruninstall recursesubdirs
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250ACTION.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250BARC.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250COD.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250COM.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250CPL.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250DB.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250GRF.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250GPU.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250HF.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250HTML.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250MAT.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250MESS.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250MSQL.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250OBJ.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250OLDB.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250OLE.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250PDF.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250PNT.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250PRN.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250RTF.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250SQL.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250STD.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250TEST.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250TRS.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250UNI.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250VM.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250XLS.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250XML.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win32x86\WD250ZIP.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\WDOutil.wdk"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\WDMod250.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\WDMAP.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\WDModFic.EXE"; DestDir: "{app}"; Flags: ignoreversion
 
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220action.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220com.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220cpl.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220gpu.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220grf.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220hf.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220html.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220maria.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220mat.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220mdl.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220msql.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220obj.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220ole.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220pdf.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220pnt.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220prn.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220rtf.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220sql.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220std.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220uni.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220vm.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220wk.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220xls.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220xml.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win32x86\wd220zip.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\WDOutil.wdk"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\WDMod220.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\WDMAP.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\WDModFic.EXE"; DestDir: "{app}"; Flags: ignoreversion
-
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220action64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220com64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220cpl64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220gpu64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220grf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220hf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220html64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220maria64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220mat64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220mdl64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220msql64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220obj64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220ole64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220pdf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220pnt64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220prn64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220rtf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220sql64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220std64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220uni64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220vm64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220wk64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220xls64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220xml64.DLL"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\WinDev 22\Programs\Framework\Win64x86\wd220zip64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250action64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250com64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250cpl64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250gpu64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250grf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250hf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250html64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250mat64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250MSQL64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250obj64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250oldb64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250ole64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250pdf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250pnt64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250prn64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250rtf64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250sql64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250std64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250test64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250uni64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250vm64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250xls64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250xml64.DLL"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\WinDev 25\Programs\Framework\Win64x86\WD250zip64.DLL"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Scoriet64"; Filename: "{app}\Scoriet.exe"
+Name: "{group}\Scoriet"; Filename: "{app}\Scoriet.exe"
 Name: "{group}\{cm:ProgramOnTheWeb,Scoriet}"; Filename: "http://www.scoriet.com"
 Name: "{group}\{cm:UninstallProgram,Scoriet}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\Scoriet64"; Filename: "{app}\Scoriet.exe"; Tasks: desktopicon
+Name: "{commondesktop}\Scoriet"; Filename: "{app}\Scoriet.exe"; Tasks: desktopicon
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\Scoriet"; Filename: "{app}\Scoriet.exe"; Tasks: quicklaunchicon
 
 [Run]
 Filename: "{app}\WDModFic.EXE"; WorkingDir: "{app}"; Parameters: "-subdir -nobackup /WDD=""{app}\Scoriet.wdd"" /DIR=""{userdocs}\Scoriet\data"""
 Filename: "{app}\Scoriet.exe"; Description: Start the application; Flags: postinstall skipifsilent unchecked
-
-[UninstallRun]
-Filename: "http://www.scoriet.com/en/uninstall"; Flags: shellexec
-
-[Registry]
-Root: HKCR; Subkey: ".dat"; ValueType: string; ValueName: ""; ValueData: "WinDev.FichierHF.22.0"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "WinDev.FichierHF.22.0"; ValueType: string; ValueName: ""; ValueData: "Hyper File Data File"; Flags: uninsdeletekey
-Root: HKCR; Subkey: "WinDev.FichierHF.22.0\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\WDMAP.EXE,0"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "WinDev.FichierHF.22.0\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\WDMAP.EXE"" ""%1"""; Flags: uninsdeletevalue

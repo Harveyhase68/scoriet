@@ -1,14 +1,1 @@
 //MO003-004.TXT ANA00003 TO ANA00004
-Project		TAR	1460	new record size: 1460
-Project	SiteDefinitionID	RUB+		SiteDefinitionID is a new key
-SiteDefinition		NFI		new file
-SiteDefinition		NWL	SiteDefinition (SiteDefinitionID) and Project (SiteDefinitionID)	New link between SiteDefinition (SiteDefinitionID) and Project (SiteDefinitionID) files
-SiteDefinition	SiteDefinitionID	RRN		
-SiteDefinition	ServerName	RRN		
-SiteDefinition	FTPAddress	RRN		
-SiteDefinition	FTPPort	RRN		
-SiteDefinition	Username	RRN		
-SiteDefinition	Password	RRN		
-SiteDefinition	RootDirectory	RRN		
-SiteDefinition	SecureFTP	RRN		
-Project	SiteDefinitionID	RRN		

@@ -1,4 +1,1 @@
 //MO004-005.TXT ANA00004 TO ANA00005
-ProjectVars		TAR	178	new record size: 178
-ProjectVars	DefaultValue	RUB+		DefaultValue is a new item
-ProjectVars	DefaultValue	RRN		

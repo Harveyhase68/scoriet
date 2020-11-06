@@ -1,4 +1,3 @@
 //MO010-011.TXT ANA00010 TO ANA00011
-Version		TAR	183	new record size: 183
-Version	AnalyseWidth	RUB+		AnalyseWidth is a new item
-Version	AnalyseHeight	RUB+		AnalyseHeight is a new item
+DataFile		TAR	1624	new record size: 1624
+DataFile	AdditionalSearchFields	RUB+		AdditionalSearchFields is a new item

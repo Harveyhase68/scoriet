@@ -1,0 +1,213 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_JSON2WINDEV
+ major_version : 25
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_JSON2WINDEV
+ identifier : 0x2f818529020e24b7
+ internal_properties : BQAAAAUAAAB8okMtALADvLltY+C4CRnRVRU0Jrh3RKcAebPu7qZSW/vfI619pHwLPTqPRakKWzA9N99ZGMioNExgPaiF8pitZVU8oWNs+723jpn1pOwm9TNel9rKvcP8ujajkCp/34BjtjzObQBf00A4pS0ofgr1i/uqidbX1oxSigovEAVYF+WD95RxUFbYioKXyWPZtZWnweH4Z5ldAriCfkitAbO6eZ2fa0JOkCSXzKzXJxFDYeiXlBpuzSmjwqEx5TjoeUM/rgB22TdQj3z4lDWBFo29kVc0RDHXBM1M7hh9Eyp9HBUXx4woEWz2yH3JtYrhppjKWCgRxsWQw+x+cjTp0Ro9Fzr5GezZ0MnylLSWJ3Xi8UPSgVJOlDNv64qDawmxLZ6Ywokknl9emuMO7d5SFpZtuQNkQTMoFZaQK5N9EXoZ5jlEdgMyyw0eNPcl6IWGUy0NuDtIgqYYjtv9N689IGLRD/qUrimnrFRxmTwUg1u3RX2/hBOKOr8FViNZM3Ypi4owH3tRCxEFKbz7SNTEopZkix+Ykvpa4sOqzi/L12AKSE3ghetZAXyImFXBIhmZSJFBh+KCk4yxxcW5ceD0is2fm8IKlntncZcB++ksOcZJJSdj5DXF5bviswn0UcDyOIqfM/qcTPXk8ycylmTbyc/9VCGcKIbUaFN1TCuZtssJpcqFn4fYRgGrb1IFpd1UzTIhv9BAwDx6ClmxojhhAPzI/UwddVSb+DDwgMCol176jhNJ5vxqEcOQuo/p2lGaBEUiJnhL88BEq6U03cDFYE4hlW00ciU4FynaIfeXlwgXCZtmpOB1CjMA5Y5UMpafUywZcAg6JhnZU3pErWEy8e0zLgJ2jY/9IMZuJS0Gy0IwMRegUzCWh77M+3ZIS8PhFei9SEQUQ90M2Q9NjMRhhn0tfK8O/XVxtaeUvCjfeLlHIlk894HZubb+wMYp6w6ApNss0eVQbU5ySOVLCUqHMulHtENYfUhJa0F1vwRafgOjgTqkhKK3+nzFI2ll3A0/CzJbGdDNo1rQwOWdgPK+ONkUyNRWyKbn5l8Nqc17yRwOKN0xrGWiIBSH8TttwNhkT6qaFti5nFWK1SYr8Mj8ZjlUzxZYJC63uUKZYoWyhm4SPBI+FAhTrEjPxmn0bcrASl6sfjdy0xuwgGKbO7K32YONGalNw1U50VTLqh4if1XI+ilo1QxUmO1ybKEDe0hzFRH5HULawetyfybaU4/dxg==
+ controls :
+  -
+    name : SPLIT_NoName1
+    identifier : 0x2f818529020f24b7
+    internal_properties : BQAAAAUAAABgpzoQ1hjzVncgNCzASuI3hoClxRq8XIijSt91H5xTDb+fW8ZVhguvq5fMAPE2J/Mpk1PkFX3ec81ryySGtEgPcLI+UvnbU79ysv3n4+7iz5nhA2zDjGlRYxSp9D5J+h2p0g/KHWXsQnSl9rnjxWgp++EccXqxxuKNNsxPQhcv1frmCXugXjxxoMn/Ac2QDgCy5s4kQS+9AtoG1qOBtpBX5UED829LDL0LseOnXJ6ES9gDgW2y/N03DZWeRE6ujjRMrgv2VgxQ9g8LuD/AZ0STAne2lLXiIxH5ZeEgUrHp+R4BlCp9dxxf9nDgkN1LQZ6A/Jz3A4a/zC0Ilwjn4cQSfhmpqoySWh/HKOvTVrB0bajx+liovyxA2XbfX9cOe+h4zV6p8HZMxUt/sL1g0V7E4KZjfZ+0PhT2P4QRCWFuLlpP/u6Nxv3IDqVt9YM+vy1uzj45lQrmFluyFlzyjTzZVS3PSoB8aVQ/2ws10Gv+JrMJ6Z6hQ5dg0i75V7gEg3MVY8aUzXBSiX41E7DPcblR2qoSlkFk60Rn9DBLy92xfroVhF15FdIA4VwxswB90o/3lLZCxR9NTgpusv3iXJ72D3HisR2ElMcu9+N8HFuHfuU3e3zDAOs/4cmj55slK61u4+yo4Isf3alaYdxxvYbRkDhuX9v9UlE07r53iHbfVbx0qOcEXkomR0gcZD4LROsLMh7WqauSYGCboowD7jbEQz9U0+Ik3i/oaeE=
+    type : 28
+    code_elements :
+     type_code : 61
+     p_codes : []
+  -
+    name : EDT_JSON
+    identifier : 0x2f818529021024b7
+    internal_properties : BQAAAAUAAAAvbU7p8UXTiq+aqkhktVfMm4lxFRtaBahntrnXHPa/PFZ2xmcaKT/xU+aFYm0bomC3erEqoeGx7TnAZCos4E5pUrsJcUoKvQdQU/GFDVafYbgd3uDhv/HGDfJIgxvg+W5ImoQFFWZnUE58ZCU97VsSDU9qA9MyZV0UlcxAhK/yIKKJYMLoHepvvpEvfEq8Rv+0Owj1STJiZ8JsYmyRnFerjqRfUUsfXqiZAXJLwg8q811Xs7P3Ec9E6fonpfnH1R6Qw3022kVMVyM8eDJKbj9rUVR7kpgXC2zYoyP9fa87FDULLAl1quWwAftUZPr4rPBGQKjLwP7A9i7h3Bu7ENT4wS/L1Sjy2k2ZhM6B7JeukJ3YJ4UP7TF/shxH9aNwGI2w3zxj63WZfvCUpe3jPyl3i3zKvA48dPFoPyq/FRNViR3ZsJS4jy3WSC1SvCT7clT9XlciETtA90RmI68r1l2dhUJtpLomuhUGWk7nX2HjzBPBGg2ffFCsK+M3r99CfP6mzIRF7qIXCmyddRM50M8KxuhYW9dVb4fCPNtga07ynr6+B55dRAYTldISKXykitiocYYrXEUyH3m3OUeghDfGfvStBj4qHUY8YoHZ3iGNgkFzYmzu27W/6/HHOyhR1pO6o6gWduy3b9qRo4YjyQ3pxanrDFXaI2q0TFgDXhYbEwzT6mt4eEJupinyeJHNr94rZOuhCdGS1C8FgiMhVKmGOQ++46bxp6IWO+sAXOz5yWtYu+9lnLbeqP5XQu8kbT1nUc67/kCoVNKv+i3BdRHmFC6TU2gkbG3xG2s7pNIhYKMpCB8hy5B0cgyfs+Tr2Vr0y/MBNEtrMKG4iiQE2o5dn7sr9WIZuYMCC60tZ8NKOHckQ0M8izp43oNBnBrFFQLrxaPaCELeDy2A4FUyFm0YYmW5CSDc2naoDCPw5rESxWr511/q0YCOw5bRknY6Pzt2feCYq3u9239nsyADufWMGt0pB/H6n95//MKQ3cfafGsZ/xuF6Draug+eyRBbtIROXeOB+Bzzryo0bCX/CsM8sWunSI2I6o9/TD3He2TNfO5k7gSGniasiIa8fHOTBG95xgAmd11hKuVxBQstNNjclis9kSjVOEX+UZCjde7ivQ2tirS2aDjjN3ZEiyXGARzXMcP3CPC71YVtUfOKZhEXI6vWkdPE6si8tjHmHaRIn1TRzLe6LoaD/CRCB1vFz/lWGOEcKjYLxO3vrSFiKYAu51ZKHUgUtdCMKyyZ64k5goQ79c3HA2rDX9oxF4IShZM3qL78XkWIQQGY59Udn7eP6+bwKMIsKJhz56xXxxy0JEvt0tdKmFsFoU/AbBGIwkMDr4tgpORCEllz/QLdU9FduK4g+ZpO2gRyk/fJUdqg6KldvWRkqFsc8wZBT3amseH53Rlza8Uyxy9sY6cdqCgJkaUBofy/w8kTBng+nFvxZhiYPWIDBmYKe4zPbkwENGeiw1gGiE8pq5K93pscUxo6UG8teEonDm6QWNoC2k6IH6xVPZVmc3WHhyc059iyqTk6ZnycCtqS5uSjArf2Gis0hb+PYNSQw3d00n98BEpGSZVpTLvaJNJYCwMb4mf03LKY5N4HOjATkCANQ6tKWQtCOcw0BMaK+PA2pk0FDzqZtTwJdMpVL1+ceCfxHykVeU+KK1N20e2ZUWxKsMYVr8NJcl7p14aIERbdWdk9NAWzHiYy
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+      -
+        code : |1+
+         
+         local
+         	vContent is variant
+         	sResult is string
+         	arrEmpty is dynamic array of 0 stArrIdent
+         	n is int
+         	
+         WHEN EXCEPTION in
+         	vContent=JSONToVariant(EDT_JSON)
+         do
+         	EDT_PHP="//error"
+         	return
+         END
+         
+         sResult="data is Variant"+crlf
+         sResult+=MakePHPAssociative(vContent, arrEmpty)	
+         
+         EDT_PHP=sResult
+         
+         INTERNAL PROCEDURE MakePHPAssociative(LOCAL vData, arrIdent is array of stArrIdent)
+         	
+         	sOutput is string
+         	
+         	if vData..Count>0 then
+         		for i=1 to vData..occurrence
+         			n					= ArrayAddLine(arrIdent)
+         			arrIdent[n].sName	= "["+NumToString(i,"d")+"]"
+         			arrIdent[n].bNoDot	= True
+         			sOutput+=MakePHPAssociative(vData[i], arrIdent)
+         			ArrayDelete(arrIdent,Dimension(arrIdent))
+         		end
+         	else
+         		sOutput+=MakePHPAssociativeArray(vData, arrEmpty)
+         	END
+         	
+         	result sOutput
+         	
+         END
+         
+         internal procedure MakePHPAssociativeArray(LOCAL vData is variantMember, arrIdent is array of stArrIdent)
+         
+         private
+         	sBuffer is string
+         	vSub is variantmember
+         	zz is int
+         	
+         	zz=0
+         	for EACH vSub OF vData..Member
+         		zz++
+         		//if vSub..Name="TransactionId" then stop
+         		switch vSub..Type
+         			case wlVariantArray //142
+         				//array
+         				n=ArrayAddLine(arrIdent)
+         				arrIdent[n].sName=""""+vSub..Name+""""
+         				FOR i=1 TO vSub..Occurrence
+         					n=ArrayAddLine(arrIdent)
+         					arrIdent[n].sName="["+NumToString(i,"d")+"]"
+         					arrIdent[n].bNoDot=true
+         					sBuffer+=MakePHPAssociativeArray(vSub[i], arrIdent)
+         					ArrayDelete(arrIdent,Dimension(arrIdent))
+         				END
+         				ArrayDelete(arrIdent,Dimension(arrIdent))
+         			case wlVariantObject //143
+         				//Object
+         				n					= ArrayAddLine(arrIdent)
+         				arrIdent[n].sName	= """"+vSub..Name+""""
+         				sBuffer+=MakePHPAssociativeArray(vSub, arrIdent)
+         				ArrayDelete(arrIdent,Dimension(arrIdent))
+         			case wlBoolean //Boolean
+         				//Simple type
+         				sBuffer+="data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					IF arrIdent[i].bNoDot THEN
+         						sBuffer+=arrIdent[i].sName
+         					ELSE
+         						sBuffer+="."+arrIdent[i].sName
+         					END
+         				END
+         				if vSub..Value then
+         					sBuffer+="."+""""+vSub..Name+""""+"=true"+CRLF
+         				else
+         					sBuffer+="."+""""+vSub..Name+""""+"=false"+CRLF
+         				end
+         			case wlInt,wlInt_1,wlInt_2,wlInt_4,wlInt_8,wlReal,wlCurrency,wlNumeric //Integer
+         				//Simple type
+         				sBuffer+="data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					if arrIdent[i].bNoDot THEN
+         						sBuffer+=arrIdent[i].sName
+         					else
+         						sBuffer+="."+arrIdent[i].sName
+         					END
+         				END
+         				sBuffer+="."+""""+vSub..Name+""""+"="+vSub..Value+CRLF
+         			case 16,19,wlCharacter,wlDate,wlDateTime,wlTime,wlSQLQuery,wlUUID,wlUUID_128,wlUUID_256 //String = wlString but be careful!!
+         				//Simple type
+         				sBuffer+="data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					IF arrIdent[i].bNoDot THEN
+         						sBuffer+=arrIdent[i].sName
+         					ELSE
+         						sBuffer+="."+arrIdent[i].sName
+         					END
+         				END
+         				sBuffer+="."+""""+vSub..Name+""""+"="""+vSub..Value+""""+CRLF
+         			case wlEmpty
+         				sBuffer+="data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					IF arrIdent[i].bNoDot THEN
+         						sBuffer+=arrIdent[i].sName
+         					ELSE
+         						sBuffer+="."+arrIdent[i].sName
+         					END
+         				END
+         				sBuffer+="."+""""+vSub..Name+""""+"=NULL"+CRLF
+         			OTHER CASE
+         				info("ERROR SUB TYPE " + vSub..Type)
+         		end
+         	end
+         	
+         	result sBuffer
+         end
+        type : 17
+  -
+    name : EDT_PHP
+    identifier : 0x2f818529021124b7
+    internal_properties : BQAAAAUAAABeZiJnctMegIDroV3mLU9YPMLz1r9lXPBuxoAXLKe7bXTf22fEB2hQifM/ZKiAKOa37hMMzYiN20btdcq7YpTNcG0G5GpfsmH8Nv+9AI5BlW+/d/p2OAboDZIn/Nd7YMwFwWemSw1SzqNcIHq0eOeW0KSvTVlmQK9an/lUHyRlDdDZ5pKTCGGz602+FevZYjle+bSkJn002fDnbdTUKQSXjeDjRbT5wkrEded2+Sy1ZC5IZqkEvVH80WLjNMbjSWbAac3AOxyByYjXthFdO+fTt818qwFhoso31JRB2CbAYDEmiiGMuD7gc+M3VD1Y5YSoyBI/AZV4a7vTXT9Ys7ct3ClPiWRt6+l3LI7vRF6sSll7eLYHXkVHj3pTyvtta4AdQUnyvj5Nvm9tYxygT6CRy+jQdwwVInRNOAxryMF0PRMogRkK2AoIoFmFsskiEc58Se3pRtaEgcXyY8MhIePBUAdYVXHGh6IDVdXl/cm+O4/5ItNLd4HPNb99NC/triJUPwMh3UV2BELBK5L7jq7eTzKYrjvliu1ZB8W8G0cotHz+RxrAoUYG7MBDpeKp+jdnv9OtDcgg1K88JPjYPNxPkWvrga4uroKACOEGZpnKHw9A0UXYNKwvhtwyUZhxEiJ3EEhGDA62JLvbfJHNo/DGoMv3sCWX29cwK+yK1VOi4yS4bZ9dWoUHlkqhA2tQx2uu+qoPh9/eLflwoNftBWPd6C4m3W5dZJf7tegzqYLPY4gjM5bcaJXANouu9bVZ+inSMchDUopKQD+mshNAoWxz1lmwuPXt0s/ti3mnrkeOCGhoX1UTGHDK9N6ZUOE1CeByGbjLmsDcEbgUdCuKXaFGvpKEi0LGBRFaJE/59zbJxY6cVmzxjaQ2p5gFvEIMBGo4OfLkvrlL6qHq9S0sHO7q6YenR9RwaK6afhk2p7pO8OGKrcxoKqFVidul0Ptg9h+4wYtRXdert0AeXHSbwtMHxgtSB0w+ht/bLoVAx/ffd5g9xsAvkp7VymSY1FAy3mSA9CrSnTuSdrYH2BRuW3l7a6uLWlrmbuSQO/YsI/UQyIPAa/RVS9gCTZJNSDm7Zs9kBpgUpi60n3eFF4VWEa/ZZUXJ2efIeQO35tpC9Kt/cld4s/aWBEW6fj8f2rpFWLtVYxMhiL0onKzMFOMXke+Ib1af4JsmammOH7x9nQZBjJF/T4xrGSmAugwJPh2meleZJyCq3Du4YNc4qxaTnjXPh7jt4d6E0C7otTm/jnZwCdr+snb49hKGqai9INuBb41LsOJS6S2azP8Gl3DLh2sTDBj///XwfzxW6lbPgyarxf53XGO/rah02CKDVa4zEU2mOz3SzmaBVaMRGPiMN6wglJ2lCG/aFidFntIoo0ahNw2Y3F0cdL/XS7L+SaiQkkYmmXPPm5MswXShl7w5cBZwXirsoFeV7oUvNH0yY7jP6/Pd7PavToE+4X/8rBpXwoaKkaoEvrVHteeVZ7KN7+6/Jb8RAJkgBvGPRhlTtFTfyKWzcZ0p3p8Vsk0GkAofCDGreo315xfWZYWue+VtoN85c77+XhWnh9HEU+uqsJGiQAr29V0pBYrjqZXjb6QKtD71hn0wtLoiy0KoRJLDWJGmNOHj0qkDFgPpw2/90yzj4lFKDs0iLaA/AyUYtFZeAC4cPlRUIo5JTG8rKnlw0CSdciI8Ztl9SZeZsw==
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BQAAAAUAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BQAAAAUAAABqPQh6HC8RxAVkp2SqPYLuZrfVhd+1KX4lx22hIT8uqEpE6yP7Sbc2rmVqdmL816EWzXOkEe9ijOtYwchZKAfpy3B1cNqhpJgsnbUs
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      PROCEDURE MyWindow()
+   -
+     type : 230
+     enabled : false
+ code_parameters :
+  internal_properties : BQAAAAUAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x1f81901d009eee44
+  internal_properties : BQAAAAUAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+custom_note :
+ internal_properties : BQAAAAUAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BQAAAAUAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe
