@@ -1,2 +1,3 @@
-//MO011-012.TXT ANA00011 TO ANA00012
-TemplatePage	GenerationType	NNR	GenerationTypeID	CAUTION: key GenerationTypeID renamed GenerationType
+version https://git-lfs.github.com/spec/v1
+oid sha256:e7d9a3c6a610bf064839a0f692227368919e220c1882622c606b173437d886e4
+size 139

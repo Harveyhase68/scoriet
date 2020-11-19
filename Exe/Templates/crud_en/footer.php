@@ -1,10 +1,3 @@
-    <script src="js/jquery.js"></script>
-    <script src="js/jquery.redirect.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/ie10-viewport-bug-workaround.js"></script>
-    <footer class="footer">
-      <hr>
-      <p>&copy; {copyright}</p>
-    </footer>
-  </body>
-</html>
+version https://git-lfs.github.com/spec/v1
+oid sha256:62ed147267f6eedeb5607f7960b85748fe6aaa965c687d872dd823af221a8d72
+size 315

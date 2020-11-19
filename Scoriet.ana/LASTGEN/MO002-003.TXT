@@ -1,4 +1,3 @@
-//MO002-003.TXT ANA00002 TO ANA00003
-DataFile		TAR	1257	new record size: 1257
-DataFile	ProjectID	RUB+		ProjectID is a new key
-DataFile	ProjectID	RRN		
+version https://git-lfs.github.com/spec/v1
+oid sha256:4efb2749c15f54bee54fa08916dbc9bc4158f5ba4b8fe4c5facefbb3e2275a22
+size 155

@@ -1,4 +1,3 @@
-//MO007-008.TXT ANA00007 TO ANA00008
-DataItems		TAR	1010	new record size: 1010
-DataItems	Data_Type	TAI+	18	new size of item Data_Type: 31 instead of 13
-DataItems	DB_Data_Type	TAI+	18	new size of item DB_Data_Type: 31 instead of 13
+version https://git-lfs.github.com/spec/v1
+oid sha256:bdacb0014403203f967b266d99f120dd3f2211902dc27a2eed597460bcb03fc7
+size 235

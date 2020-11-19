@@ -1,3 +1,3 @@
-//MO008-009.TXT ANA00008 TO ANA00009
-DataKeys		TAR	544	new record size: 544
-DataKeys	VersionID	RUB-		item VersionID deleted
+version https://git-lfs.github.com/spec/v1
+oid sha256:554416d226901114538549d80193d1266bc38807d0c72a5a7624864f31900eea
+size 127

@@ -1,1 +1,3 @@
-//MO002-001.TXT ANA00002 TO ANA00001
+version https://git-lfs.github.com/spec/v1
+oid sha256:8af6ca54bf8e5c1be19c81ffffe27120f9e42dc16a361cde616a2304f432c42f
+size 38

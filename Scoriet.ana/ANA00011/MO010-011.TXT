@@ -1,3 +1,3 @@
-//MO010-011.TXT ANA00010 TO ANA00011
-DataFile		TAR	1624	new record size: 1624
-DataFile	AdditionalSearchFields	RUB+		AdditionalSearchFields is a new item
+version https://git-lfs.github.com/spec/v1
+oid sha256:42273da4cf1308a8dabe8a20d56a44530826f3cd32aa42f5852478d3f6499458
+size 156
