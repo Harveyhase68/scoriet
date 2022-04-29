@@ -1,0 +1,1961 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Designer
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Designer
+ identifier : 0x2b29f7c819412063
+ internal_properties : BgAAAAYAAAClVCLHs0QHm0todz+/x26O65d6Tvxmj5qftM0YGzyjEQzRLymUZpjWlJlpBVcPRvpFkipnDrJR5GolUhDzNck1+KGstyxmNT9t/lt2u1kzdS0BUDGqmkRiTH1/YE2nFTRQERGEqufHUP/13yY3lLPdp9JJKQUKFPwY1qu+QaH3DkqrjEkqWEQSer8VC3GWYKip6d7C/o2TCyo00kNPuHs0F2aF9ap3hlg0VQFZDy27u5YXEA6zIQljfXt9XhBICjtnC9UMG/9NWSsyH+bWGHAUEhRYwxkgWDunLGZf/eqMntP0r72sRlhxCaEqZA4JFD1srBFn0rjMjKcpplL3m+bNGX2JrOLOqNJhjyp+HQvtZr6c9H+pDtR6B/hkeikszJjuf4YM/1LD4rQQ/GJtC0IpSAchX7ApGJ0VXcRbRELwjwQrZxehbAXzpdDXML/L2sbW0ClvkixHW2tjcQOHn/ns+D1qHc/gQmXgilaXAI2FHQOzn8Cj+vtrnbR9qXHh1ixo3eHDBHhR4JLdi6UlSngpZXXrTEazKs+ukAkYeMLoFfAkoDK8J6bd9aCMxSTAp2JHmMb81hrhgbN7RgpTuxtNGkC3Ef6EmKFn6CV4NZLNdbZIt90pvgpSLoCr9dygMAubC1A/GxZdDFDqExfNDjdBWdWmHkAUzAWyR3lQRmN7mIH5CBEZ/h7jOHdITSQb1AUEvrkVGyXDMkhysi5FlGirL2iWEO52JloT4gZj2aueyMRwownlOCDiS4d+rNrLTTcP5XxnzVSHkHXcV0QOaQbqFWZZ6T58gG94pJ3cGjuKFMj6/nxicxSpCRFmzkyVPKSAxi9eudITQp57xK9FC1axb7EykdS0t7ke/89AXIWIWHa7ECDkc/g/Wiu49bT5WI4ACH+AkeQIDKuStYyBk+fDijQunbU6YtM00jXLvFSPCq3PLjfLnLgxO6Xn3l06z5l1fyajhqXx0fWxDnzIsavcMxPDTHgq5hIytDsO9tRhQtiuUISaJ84SbruvAGrRQO2SZKcSBVPOa2ZMAUXHCCxEBBaCoWvLYaManWuI29mcEl2HOJGFQ9E5AqIXA3NntasPRXJUMbKhZPhabhZ9D+/RNdqUGF9PoV18dgn+NkylKxOdfgGlyGaPksGfS83PRRkHYWAZ1a/3E3fivHpvfp7ilH7Se5DFYShCAHs0bBePFyaEGR710WgqgNJwvYgcq3qvSO4J4pyRV39BbkVYJxDgFdIDgS5+GSCR/885c4To2qZLPiby
+ controls :
+  -
+    name : IW_InternalWindow1
+    identifier : 0x29037d1a373e96d1
+    internal_properties : BgAAAAYAAAA4Adb/vJqBhpEmuEzo9tpP3B+CIbxXur5Kt/n/zXOb3IuGvkfE3ovLTtZg0D16NSvT7M0PCX/Pp31ww0w0XZ0aRZ7yITC3+ZpcpnwqHmrfbfDjG+nAIEGjrUyN3h6AeqFhTqvyCSsDPYGcqsTaOL957WSdmVpTYDk8F34Cs4L8DG3vSFCJ8jVeQblzsIKhi6ho1LvKXaOzNipse/uXFc6o/YdMQVRREbPfs1Sq4JBNbo/140bZvaV2uRU0LBP9b1r9bPvMtdS4RgcPfDw33ya0g2OS4HU4RjGFJj8bnyUhkQSAQb/DLucTby6J+LbwUD8OX4NyVKWQRMVmaNizEObrloonqUaTlpnH0Bif2g7uZXn3zROZKGi/jozBq81YZGjRB2Kdh5zmrxQnAEgRBxql5IAKAl9EMByjwdztXWxFXjv//fQxOydbF8mIKlxM/LL7X6bg/yH8kJJIATtXzJa1n6GxTNNBtTyNCCd5sS9ymwA6dc/DLAfTjZ1XgNzbv8J9PEblTg5lB7qkxpPaSdVmhKj+7kayDqjZQSChIbtzdTwrxhrXTR0BHgAUsUGzr8o4vxItfFTvDymMYPLKblx5VZQjpbPkeYMy5TqHPUh2PF/SuxbQpLD+CaBsIEZGH5MTkjqqiEmcAvd8i1w+/Ug3jimMBXLnrtCnKQhhLd0JsvNWjH1itInjgPo2r7bZ9odEb+rQR03MGmWgGAmMOdnNBQkD6vA4Tz4Gz3h8ffCk8hMbp14VE4RFV0LCc0zgubvQ14j2Mi9Qbsyr7Xualffljhve9UNs0scznMVnDsqdB8KX1HS2M0Plob+741P4mDY4uq4nE3gY46motuHbkRPejaqKeRoGDx0Pp+04+306BP2QNcI=
+    controls : []
+    type : 31
+    code_elements :
+     type_code : 73
+     p_codes :
+      -
+        type : 33
+        enabled : false
+  -
+    name : IMG_Image1
+    identifier : 0x29037d1b37909bc3
+    internal_properties : BgAAAAYAAABYbwVX73CgnnpFh4sURVYs0N/8vI5fVd/GC4El9ZRuLgkj5LtpWGWZuHsUZFk8Z68h9uNHHUp4XsU9zYtaB73WNq9Kf4nfUfV0EVFHtG0s4T3Z8obKPW5+rqBGhlXsxltl2zXPmKvg766KMravNS+O/pS/6p7dQ67gQKjsYsZ3ddilsZ1XlC3pdy0SXclBxCgUTAFlyEQhr1ZbusVHbfpaNv+MJTZlohggAgNpY21NOiTkZ03P1JJISD1/R6EnUq6eMx+yUs8LM/l9q4tyRnRq+PkA10d0lfxSXacM3yEqNMjNX/q3Wkh7/P3r/TCz0F+93Wi9MlLCKt7XcZF+qvyzz9+H2FTF8E12QcSI1fB5yyCYz4RViDpDLv1rH7OLlhSlWYTYXsb2wqHnTFpirCPz+JaV4Wj0dl/VufNejvOBccXeqBsjRgqsplhPLY98Ils9yVMDbgmyta8s02syGoyx25tV8TALvgTq9qXAqvWjGB64KvApODpEg05xqqD+FcrwoyQD+XQqj1vlU14JPW9GwcHzY70x4uEdTehkElidUVc1/5S4ShT1w03FzX1IRriWm3hCtEd3Wt+zQE/49QO8GLcDY+N6wI9ex+DD4dY9GjZFszMnxmAiT5CDrWXuLJ5KWlnFnLfqQQRqmjL0O+yL+7YMAnXX/ge1oKxwL8MmfxJ+ciJTz+zdVUWl2A54HOqPq8tMUiKp2i/UsOTFocNQn1pdRsjqBi7oErtG0SgSMHhu0C3h01u1br55AMffKp4JrUFrOWPZHbip5T80+bfhde7mOI8v1utUltNh16r/IeZtTRIuALe/DWjEc5cNEz50E9+/TlA3+HXgesb2YcqaS7G6jw8/+wxPosliTFSBvY86nZn4zyY1Zi4g3JfN7quMqGZw/UuDJEeBvbCdckoj0lLsb95Se0KD0HpxLDjcHGVEzsTf7TPGtZCFKl7NAAyife9q14fw/mmonNhQpckDjMXwVIva+soYv5cxTuI7FE5Uw13TKMMtIIf4LMEl295gYLOyxsSIq08qKQzQfiijJd15GpWMq7/FnKGN8i1zVCWcC99k/tlgx8/h/06GetWitDWifvdZk7Hd0Vi0L6O2fjzdvOMutKTjyXdnJkKwF+C4c1O7WUsRwwA9GNdgTUcK+MtsVJykXpQz7E0wWah2IWZWa2XeE41pbUD6DLnhuaIyH9YEn3c2RaF9URb9kZiZUVWO62MijqUhxZLdLHe0
+    type : 8
+    code_elements :
+     type_code : 8
+     p_codes : []
+  -
+    name : STC_Static1
+    identifier : 0x29037d1b37949bc3
+    internal_properties : BgAAAAYAAABN/DiDR/I2aZUKdaOPm/5olrml6dMoPFbEwrmHizwmv89qs6KPuSK78vQhclMubgaEUviZ0QxbZ0VLDkRLVOdll+Vw+1Wc/8A7YFH8nMFzziwSFyEJZWLuUb2rdauxbJJ1w5eNy3fFCzDzvRalkP26cEtGDrXQi/Vr2gBLPUOSpTlkt5uxsKJtbIPjPK/2KkvKSxafTTVzPmWTAuSPIKalkuWjRewOAZs3O7+LVOPIElIUGw7cysvGViaEHB27qAR5/YqgVa+P1cE+1uNAOjW8KOZM/o1jc37K7z+lxk/CXX3r4vWmYvphxylCBgPKwQ1IvBzpfHh7GXHrvfSLWowH6AM72dOaVEQvm2rpkZRTUa2n/+vCgag4GqN1ELkz11BJUjKLtBZkr9XQDRKrgxg5dvr79jAiD7oO6Ann8wmhB3g4GLuSTC4MTHh5qUCpQjaQSxYfFPtxyMIGXo7g9TSCO6KbDTDdtBXDwyTokP5nZ76eFt8+jcUmh083tEyejid8V7+i1QvWQao6LZ3xltvicYXIokxLj0GNx/duaEd6jAWwQ0znt26XH7HWKKlI2tIADzOb2FDRvjQVsl9OAJEv2SwTpH0YhcVKu3THzyQOOd9RJE5bZN28uQyGHSD/glLH
+    type : 3
+    code_elements :
+     type_code : 2
+     p_codes : []
+  -
+    name : RIBBON_Designer
+    identifier : 0x29037d1f37fba9ec
+    internal_properties : BgAAAAYAAAAeM+8I/Rzu/2xQf4SRjHvQ7tmhlSTLGmkjONuKWdVISIU2IZMgGEX3ZPLppZ9iKywYRa6MnE2c0TT6nwGp1hMa2xIX6h1pKVoOv17DuGjnvHt3T8tRBnOTp2wP9oFcfvusuabGRCossj2sq2qOJlCzoimhCgXyhtJkhDFsne+kYs9GTcV4bgPteoOUI/pJIQhNuBNoQiibwga5t1t6sWVV8qzstxZnlJQf3DJ8PPTVAV/9n/2KflW3aSfBESsTikWKR1PEzt9wS+dT1heVEvV2iDfUVpvwqmpN2C/zRde6p/Pps834BwatWhFWO4mpcHmViUqdmxDeY/ZTUmmwLBNkdTbxrfR2E3MBsiFrNyZ3nG3czkBYIHB8IgfftmU6EBxwHgPvq0WAIGJHdm9jfI22iBefn2KslcHjMqfu5yP2p1tIlmXrspVTVbra8FqXMm5KtV2cEPcKp0YB1u8cuik/bR1gVF0fbU176YyyP/5rMc/w43/E6SICz5w2Is+QOxe20e8VNMUN1fWW/qU3z0I+5ARGJi0u8wtFfDBwHuj7DfbHvEU7mR5+oVw5zuHHuFNrjM4qGiYnRlHNfCH4vQhGxMYI4u/XGWGLzxAqXgMZCCKfHtuZcFNNWrH9SBLRMUBbXX3KA/1ptiiP5CHxHAt3UaCophEzi+rEW/Mv2c55+xlFQcCZCDt6JCrzBfBZhb7xd/poIfS+VFzseUAmGx254ZBEuC9xd7xMrIBFAeQe55XagkkzgDjdleibRx2AoKrooCg2/XXXDEWxMMpoB8O435rZIgODS3hkGvEqFMftjhFqb8bnYQjCBlCnofvZwRzU1JiTjRv1C9D33vZGf4VYKF1QAL/4081VxSdrBT94Xfrzus8HNk+PQzCXD2UmXnuRBhxVUs/eHoVf+MKss2XoI42bxs3N/EuHOHJCp7IPg68mdeQXvYk2QgKGlzJSLfQbpCI29yUSE2g57e5zdPX7FnX13be/3BTKHSdDD6auOIJqZFsON58sHXnDO53xSZwnZGlNM2qwV8B2nSngyoFbGevvJUHsJi11syipKvv8T2XPmCce1SADneM4920kpX6WtEItzZZokSviPoc2PIelG7Ry+epOU3ql3GFOSq5Vny8JXFF58iRANZbpvYYgaXdV/YQr6yxdUHK2F8wAvJP8g8OwU1U+53SA/ymE0s5oYsd1GIPEKGPccSOhSH/+pFWMCNFhCk/LT0F3muqAI9SIn4yuxeUaXCzRDRT+mLyChX3oEaRn+Q8rBSBy2cBUrRQR9+1uuFYDhD/wq/+0lLsT6w+WtYnHF6BU+xe6/mIIqPEp8DYj+T4H1Hs14mV0ojORrJXnj4VOqz8/JrqPdsW5huJsaDDyOCY9BXOuAb2dtASyWRHpc5VJ1yx+qytBP6aVzz2OKT9EbGLrc76MyHEcGQj7BuZaaT626SB9qteonP739lFkWRPCHVZFxQ3e+jnPY/p4INSQMv8ipB2nuW9oToURIQl0wHYTyIjAiCKdtkFk5acxrx35DjEG9nAgW3ldgBPasAxVd8rebpMLvIooys391I5g+rDcY6ZzVTFmD3qOmjz07sPevdKiJMElK1toFE56zs6/4R8VlDiInQ97hsWjYzehCa8VjlnuyOCOj5ANPFsqb8M4xhOhSOrnsgQ6H8TsDNWviFTLY3EQZHelp568AaxNhXiIfU0l2QGb/Xtf/7deJN+l3yz5686Qxcm6dElCalNaomH/jgBIc4ECbQDvsl/mTAry1FLU01ai1SzuGr1GgCphYEstET6x7f7VhubpQJnte4tWpC0RV4iK0QWPfN+Pz6vuUks4Zd8GwEF2E+Q=
+    tabs :
+     -
+       internal_properties : BgAAAAYAAAAoNV01mCf0e7YezQbGeOsp7dppzlYGNLXaUoiPirw39jjy/9cUidGy/c6v6krcTU6nm1XWSAk2fXJlGUbfiWbna9PrrsvuF/lC98iMmIz72zADeQYunPEjPWoDH387ERhd1w3rUEFGkQ2H+u96AO6A+udbPLyFri5pYMmAQYxTjBP9LaIIddW3xmTy7Q==
+       ribbon_groups :
+        -
+          name : RIBGRP_Font
+          identifier : 0x29037d1f37fda9ec
+          internal_properties : BgAAAAYAAAAHghKNRIvZ1cEbA4l8zab23kYfp4x9swJ+4CTeBpXvc5oRhqmkndWp7FDnbnLZOc1FkSbrH/0q9FmlpFExnbFcnX+dCQXhjxaF2LEMmvNDUjP8f+pl4XlwpaDnAsJnGwmUVSAYveYHAnyXtom+WhA2LndY8zpGUekqy+Maoh3r9y8QGKvE1LgjUhO5xkShs2/4demA/BEx/xEctJ9L3A/zlUFNf9ijTfvpgQrUb4O3uirvvTDnYi3RTnJPmV4iYJQPjiN6OQ5fdoKh6HQICpelB+qFQop24u2naFo1SoLcB718ga00F4B9n2kLR/2akju3pvGrZxHPXAjYfC+LkHRx9rcKr5wvAe2jQhLwVbuj/oYv+ATstC4wackawEc6M1pcnfmPaKzNuzNn73BBacrN0BvmiJGT0xZNy8bp9+YJyxqfeh0mj6KhSHT8Vfzp0BKDmw6FkgJo5eVXQzyVkBmBqqVgFQS6RmfpfoSguYrg9K/hERlsZA5pxTHixR5pi1uAGQ5t/CSlIMLsz2TbnRl9WNoLW0odRofsDMU7ocO2gtz4OI2A8Sy0Ia/tr54FxL40ur+iJ7fSMqs7lmxBdr3AbgGq4SV0DnXRiJmKVeORWaAYMjIGBkuFge3UuqDqhOo94SMPBBMKuLi9pVkhEs1BV+eI27/pe/LkT+uLo06O8T9G9a9Xse0A2e5u9CfeyMrWuGnD6zn7LScRfNjO9MMleYGElwK3IX80zm9QulU/6h2mZnguKjhhy5Eg1q06kPpeI3t6KZMDvuTukLV85jYy4w==
+          controls :
+           -
+             name : COMBO_Schriftarten
+             identifier : 0x29037d1f37fea9ec
+             internal_properties : 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
+             input :
+              internal_properties : BgAAAAYAAABU0TLEFSizKacI9RqGmBxaDvVg6lcW03uc+RSJw+BxbZGQFHbV1CJzD0C3Botg2wZWcFW5kBRLL5P+B8//2OwWnW7sD2sx/kFUeMOpiN7ELVVpA3MxygJZ+yuyNbgwAG0xygFvoVAYKgGo/tCU/ery18NysWfJUHuwo46Pngv8d8ul3LXwj+WM2gqnDfd28hrxyDQV1kn9f6grjnZ+VEtEhmvAuKZMWl4ri5lfMqSQev/hEbul8iPAy9WNcvEAZJrKFULpukqJYnkDxRKW7IMweknpiXC8h5I8j/3TYQuQPon0XLYLMpwkeSh6qD4kWT1y/ZWB4YT+hVZGtYb1edQY6kB5Sl9alHX+0yNJAhNqMNJ43SpDlDWQ6yCGQ+92SJfTYz3xvdCr8fF1BTkNgXKhaECVKS6jfyJ7MvWy6m2W317kJOc2TyMO6B5CxWnH6gsF9zzHQbfBtio0DGosaei8gBFldb4tLLaC4IsNuybqtkSU5Rkd8yr2kX0jojVRCiEq6Ggb5YOlXyL+erlCt4sNGdns8HDWnmkcmQBTEHU+LA/0X5OA37A9W43dAW9+ulgW781aAOBeFma3hf6yNT5QFCyH/azlVkcFf5lyS2alwL8X+nv1dJG6t/r1ILLNLPOUq+H8sMA6pSdLbDHLACd3kJcAenfxkdVQ28QKZOvBbds6ou00FT0ZS4Z7omnZ+1SISogoLwaILogiqJgJPkv5ccVR2aJLZOSadn4zYRRbltAu/JFpFvCsKxsLgO0asXalGGzzZ8Tr/0lsUmRNuxa2ebFoLEXH4DRbkbzQUm1r9Xlwtg79K+Po75vPVDKZ0nxTvD9N20XUNaIHZiZDWfRh+P2quUkFTRk19C0M/IiU3O0KREKPoAAzP81QCSUNrB9KLhLCOdWGR1c8joQo4eymVB/2Gz5Tmh0SkRwS2SQ2m+qkBVNRUqioZnr+IWJfQbW6F2UOLsK7SCCd7qZ2mtqW2NundwjhIGXEbegV5E6nYbA=
+              type : 2
+             dropdown :
+              internal_properties : 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
+              columns :
+               -
+                 name : COL_Schriftart
+                 identifier : 0x29037d1f37ffa9ec
+                 internal_properties : BgAAAAYAAACw41dLWxT2kluRgpqxFXoTe50k05bCmAiVj5VfeXsSyHQnVHQyzAxOxcr3XJd0bpdGPjOaU4ellp5s+7VLyT17Y3MXPSzSZ+g8O9pxZd330JrtSAnV0r36lxE3CJAiHwtQic226k70RDlY1Dm5Zus8V9vyDqXDu6sppTAbO8JRg5sFWJlzxkyB13fKNfsRSl+xc2ABuP31iooc6CxSElptE8Z6mc6i9xsE8Eagq3HAqzvIAC5dIUryMbphNcj0SRD1+CIZgKdQAMzXlIATJhxqXxKgL870IGvUugNvMzW/
+                 type : 2
+                 content :
+                  internal_properties : BgAAAAYAAACMmjHjicPjjW29hVhNztF8qY9P6lWTGKl7n79pclTP4xnQSdjXDM8Ph122UhQY5ZZTB/ik9ktxLtoe1iGQUXR6I3HdgrqWKtK+9iSfylvB6oenresB79Ye7NXt3EK/nM0nkUz8VJQnHIWR4LCK3JZu8My+TGRICa45aCBp6HHDkAR8BSqwhAKHiuQNGdseGcY+RfH3ejr8awm+WjbpMiKR/izX3bH2FSRPKJZNoeCbbmVyYMQh1sdr7q1qbmmO6GhTm1E6NTkkKqyjJmw85dPU1U6Iji7UYvtVrLNuv/D9zrqKZ0XlNO64cP2dH1tatnMc4hB2JfW4JSu2cwQobnzTGH+lL3HoOpsRJwqbJ9FMftogtgRzlHKOfjmwz9J2KtkTAEl68L+P/6pVMxTZz7GcHnnikeWaAd8BQB5ZxxnRccyYvKQLSy1bYVDQcQShStd9rM6zbbNj/rncDAdgGS9MPhwy3fSti4p7/JSNrkZK2hAdsosMvtQU/6ecId/ChBEX+2Vjp1j62inXTS7bL1+p0Ux+HPHAnge2uki5kw6QRMNknDFUsJwxQQPrJfBcRPzipYHBw/alMVIjp73mxHRMifIqIQAIxY98Mo/1ohmbD31GS2Co8YGBqPrS6NsgOWdNXPthl0FS48RFwXQoil4khSsb6ZuQEcAFmj9Pok4F/8qrvu+J/JfgutbAhNnjg9ZKj2Vf81tU7C6uBZr6OX27Y3hZXYzmx1CMztesqYhmSKdlFE9BegzOhZoKbHgTehHZevOo93/hydEyJy20uGrNXc+YfB+3f2bX1yFOCAOHuKrxhT7w2dTJiAeXb0OGuOkX1TGlb2o4+VNa7pYlol7sZEyr4ThtDbzGfuDrZBRbUYJmG71HwTOC34nIiJb746n8DGUgCwXjSNpS8aRK2vnjOt+c0YjYSub6TR1bI6YaWtMzAdAJfzdPOTn8ZsMZkD2BlQ==
+                  type : 2
+               -
+                 name : COL_Bild
+                 identifier : 0x29037d1f3800a9ec
+                 internal_properties : BgAAAAYAAACSMPHk6Ltu+hNXkAPvpi6mOtbgNUXQYOv0+TpHnE+Q4/R+F9npH87ZNpsGfLLZc/HfJBbmcZN+28ZTcYPmoPvk3OjXi4beyueDK0YcxowUotxX+FwaPkhEnjqzj8lZ+5hoUkqbxTlkNcGYwf/pdkvEDWyA1mWw0u7SOux4bnquWs8xnCZj/lyfIzbqg2oUz3F8fPs3AHEWFEFGyA5Ox5+bhO/Hq2oSGmYavUjGPkCq20+3dUy7WmikJEnhaAaDLHSKHetBuVd4xQca/wwCKF4HFg==
+                 type : 8
+                 content :
+                  internal_properties : BgAAAAYAAAABpOb71Uj9ckafQv8O6XpcKgNhxi10+x9kSLRZjZbO/wGrTY1n55aGMiJjMN6wzazMYAOa84B72TNO1jXeK4Lyk9GrjFoiC3Tgaj1/i/uz66VibY9N8ryGl/aH7Cw/U9tqIHRloT6XMmKJW25znisdvbO6Wfg3B0D977KzQlLjVmsFcpQdCBFJ3KGcpjTZocvgQgfJtL/ZianfwodjSIoUlBKLXqWRYgPj6qqObHN5VzrXCo+7NpbKKPr2kn7Vf3DnR+LOi9MaT0ul/pNdKDzaiIq/rj+tQufdkZpYuxkAcR5R/OLwKzVGTX0z2R10QKSzJx4D6H8VnDYo8hvUmBVLoQRrJbFgsMu5bODisOnWt7M4ADht9qm6P2wkERltid1IcCivomljtUAqXmfM2Wm4zBvrHI6tI6YpSdTdoum8rKHrIrah8JWExtD0clsovGQq5KWHchTTMiOMvQC9iXt9XHHK2Humn+Ip/ZP8n5FVkWsPC+NySiufheZCbcKA81zK2Hzxt0pKan1AEEGvY8/KfqMaQOQYifTLP2PFPV7lrHYdCQ/9UpG8riBTvGU/MPfJDKiAf92o+YsvaArLnQqtMhTYK4WWL706NGdrJhj3wXZnkQSEsSTjMbCU14WvDoyxooBoHhye0XvuW33yHA1SXFrBY/yiSKxpjs4PQznqU4tIL/7iiL0dJwTlD4uYqdqZks1XJ0a28kHBDZzm7FY=
+                  type : 8
+              type : 9
+             type : 70
+             controls : []
+             code_elements :
+              type_code : 23
+              p_codes :
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	gaaHistoryNachher["Schriftart"]=COMBO_Schriftarten
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  ELSE
+                  	COMBO_Schriftarten=""
+                  END
+                 type : 33
+           -
+             name : EDT_FONTSIZE
+             identifier : 0x29037d1f3801a9ec
+             internal_properties : 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
+             input :
+              internal_properties : BgAAAAYAAACeUTW4g3JKU/eyKk+wm2Kl3GUgfCPN+gaaHMkjWcA6RBjEbkJ/XVrehJ/ennr0f9ysvU0nrx4IoXW5tu8W70S0pua59BJrMlncfvoXDMUUNY8GomsV6VwdSMYZMdeBlJMMdzvWuRMKhF9zEcXy14BgRrO6ZUB9wgNeesaJDJmkjphbQErfgpVx3w5Kqe5dir411N8FZDqLW0hb9IIHG+YWLLeb4cwt+Skuvwt6/dIBrhYf6bYQ/3Rt9R7f/qFicQVW2WLRZAfiCYWAqMS8ZVCDTfUqpvnL8/P0SG+CGk44reQGYKw6jSMBxH1VW7D+2RMPoOhQscMxK1s6iVTyMicbbLRWtaTORHx2s9w8jTCEv7tSR+/QkXttcphWZqmJ2c5Ed+St3Rd8I8r3WA29SxqKXzWt1QHxOlWSqELuLG1leDjVQrXUfklH2FgRmS1pmjNJZ5OOw6s7uoA0eea+ssMSkOl3L1H7Ai38T7UGHcK6lKG4O2ZUXkpL4kqru4N7X8wpvMc9ZVtI6b7Psytqq1glJgqyW8defam5cHxqPcpYckXLUwXDYxH1O00QyXc3oLlGY9vS7N0cWMlUCG8Ij5lX12XKDKB61WTDCxwdrUcWbfow1TF4nucjikVMrJhn4RFG+7A+YXVDWAv00JzOoAF3qFF7f8dP2WO/M6XtaDVTxuqBdRrqfTGAzRnyVo3rzbsaDCPEh5CuzE/VLJIzBOyZFv11yJC787kxzypvgjRveHu80uofsOekWdTJ4JUcWxKtNf0FYB8B/HWcl07D+TGbRy0YCPzsv4lVCQnDWK9X10uTlCjw2z4F0RAJJUxTB49S3x/C59FX0NTffyAqqeXRkaOjxYKdSQLRft0QYThtQXR/b10ur5A4+aIVy9ghNkxkMjPN7CexmzmXIStKCMxfpOs91oHjO/Npg+R73SDVTqScWpt6GeZ2cDzIMWd1OrIB0/FQ2Zmk6viDuda3eIjLEzhPzERDrfnbdbjdlyrpIx0WE7vYpS47NOw=
+              type : 2
+             dropdown :
+              internal_properties : BgAAAAYAAAAHoME3clT3PZmCf+tFhL3wkWR7w8fLmltZ6yGsoBvMxXos6f7QbKtdIwK2lOBu/O68rS9iN4ubY0+t7hWfp9Z5I8qFqXqtUnPqnou+qtPmd4vV4ac6sXaHX2cuZPs4ogcDBAd6U7zF1Fs72haXCt37U0i1I8EeWHARet3ZTIVWijWrCT9mrErjtgxFZjQx12WjXKrioDJD503j10/bgVTYhCWqY3RGdTXM8ctCw9pqTOaC4uoKZXFJqDue/erd+u1NOUho51p1FH8VTDzJQzSyXlnDp6iWPS3VEWYGGKu/Fl7+fhjnhfU+rIG3V7GxJahYAmzAdP92DeVMb2lkaJTAABGHc1i3G36KZCpENqmcvxpyFMvy24anVu65JZTrVSLpViNoohnENGgj50oh/tqv63lnF/+Ob3b9F5/doBQZsqrcj+oufN8z9lz/OZFJZqxVTUd5iX1Etm4MaxW+7PYIqvmpTocR6MBn6JvYr3oIXxW5Pw4dl6LeFJyC0nxAO4j8gCZGQCjkL6QflPeuGZbDwkNriJF6lpyxGyH4U3cPsfYO2xGSCJ07i4O1a0/o4XWYsLqd9ry5rVP9+GJRhzmNufKguQ/aBi0HvrqwZx3P0aRevt7UhQRrs1E3NC9K4HQlTDHSpaNg3BGHD1XET3oG7byXvq4/P9PL8E2zfDG6akiTxQZwhXsX+ILBDndKdTfAzRZpaCg90T6WiX3+edvxXTzx0GNUqdYLqZoD0sJivMYMdg7ErBql+QInivHs3d9QYcVen6uSesl1VPInqjIW/DN80hu1UR/SxYNdhLJMqxy1joMov+XNzG76CJLnG+GybtL1nRyB63IxoTJGBYgGEwC5G6d1RkV6cX7wFHYuyHWUZ6GxGkzrdUK5RJfJpJyjT6D+C8Gw3LT6xrtq3tm3z922INUPmWCVNhKjTVtAHTF2jTBneuV6XxXBdL413JT+qHaEGk7/+rwQWKw576P7GQ5U3ZZ4pHkQFLbSiZ8LBPYtLMSpizEl2L+L20WgQkzmyK/EPDsEVa6I7vluizYSun+XiaVt/tAeMDGN1p7BwnZxtKLYcMBqG6LU0M7+G5UO53pd5j15w+x03PL3s3UDY/zU8kDQutEuA4OHt1uA4GKwH3yDIp9XBbudgK2C8k5wK/xTPmbs2rPukTvJFVCl22cQoU5Z8ldZoxAEnQEkZ4ZUpGtezy9jNO73U8gRSJvTLwFv4V9/C91FGBNtV0hoBcN003JXQaa3Q+4f0oMFUXrrnvXizQtCumbITtIX+FCCK6tRIP1wpYNNjnWd4SJOOZB8KjMoR9RViFCq3GTYqaNZtNE0xy7wIaiKk5Qz
+              type : 7
+             type : 14
+             code_elements :
+              type_code : 23
+              p_codes :
+               -
+                 type : 35
+                 enabled : false
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	IF IsNumeric(EDT_FONTSIZE) THEN
+                  		gaaHistoryNachher["SchriftPunkt"]=EDT_FONTSIZE
+                  		gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  		HistoryAdd(2)
+                  		Display(DataFile.DataFileID)
+                  	END
+                  END
+                 type : 33
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	IF IsNumeric(EDT_FONTSIZE) THEN
+                  		IF Val(EDT_FONTSIZE)>2 THEN
+                  			gaaHistoryNachher["SchriftPunkt"]=EDT_FONTSIZE
+                  			gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  			HistoryAdd(2)
+                  			Display(DataFile.DataFileID)
+                  		END
+                  	END
+                  END
+                 type : 17
+           -
+             name : SPIN_FONTSIZE
+             identifier : 0x29037d1f3802a9ec
+             internal_properties : BgAAAAYAAABfpiejryO9/HiyaE5iFDogBmIxC4FczlnWfrTEtbWimB47rcbI0ico0W/Ku5DOEkbLO6mcx4ukO/dTGGO9T11fV7i1Q8yYy9A7nF+oxczjXo4sn7WftovTps3eJLPOdHED+VNAvRxHekOKkZRC7zARB8tXGIbKD8hxHHSFXB5bXiFkaft3/ms8qWwp5OHVq0+ov8H9Ahhy8bh2NM94aZEEsJZ2r+0tWvFYhzuVTPzsTo5qaPQqMROt/h4WHRN6xqmsU1S0MKrr0WE48CHk3N2kk+IuuA3HWeAoxZYfoh2MY4tDbzz2OYcSR2L1VUw2ibOepU83UM0V0+SvMX7/OFI8CEfT4WoMFxabNmlOK7UOrhTItETyP8QLSkFz5gLZS35C6t4xXKSb7KHNbzklSvelbmZbYSZhjEk+ARy4mriL+xlRkJxDDcqg+qEd9bRbLyM5y/PRrK2z4ZePAntcm2Htv6NtP8CH3AR8FN/1ybjH91a1OEfjzZIQLvIlmyBYyY70VQ9tblMRTKD+8wpwT0f8RppWip2UdTNhvosWp6F7KNDN2WGYMw==
+             type : 11
+             code_elements :
+              type_code : 18
+              p_codes :
+               -
+                 code : |1-
+                  
+                  IF gsTargetControl<>"" THEN
+                  	if IsNumeric(EDT_FontSize) then
+                  		if val(EDT_FontSize)<255 then
+                  			EDT_FontSize=val(EDT_FontSize)+1
+                  			gaaHistoryNachher["SchriftPunkt"]=EDT_FONTSIZE
+                  			gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  			HistoryAdd(2)
+                  			Display(DataFile.DataFileID)
+                  		end
+                  	END
+                  end
+                 type : 26
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	IF IsNumeric(EDT_FontSize) THEN
+                  		if val(EDT_FontSize)>2 then
+                  			EDT_FontSize=Val(EDT_FontSize)-1
+                  			gaaHistoryNachher["SchriftPunkt"]=EDT_FONTSIZE
+                  			gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  			HistoryAdd(2)
+                  			Display(DataFile.DataFileID)
+                  		end
+                  	END
+                  end
+                 type : 27
+           -
+             name : Combo_TextColor
+             identifier : 0x29037d1f3803a9ec
+             internal_properties : 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
+             dropdown :
+              internal_properties : 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
+              columns :
+               -
+                 name : Column1
+                 identifier : 0x29037d1f3804a9ec
+                 internal_properties : BgAAAAYAAADksOIN9DKxdx35IoHT+qa5pX8RO8R/Lta3tnEtra2W+EIxekWVhAPxiM8phtHE6J7TWRimOORKTujRvV/hMRiyqp4AIBFiLycnglOgnI1FTNEtKFMCzMRh+4THyzFc8SsOpoAy4opyxD+nLKs2t7t/kavKTfXP0WZibxSkO/utJpRV3lzPFsHbVYNHML2gMQKcj53EfIop4PO+FUjhyIRjpTIwYTFrE6CAaURNR66C1ZYTnDcD
+                 type : 2
+                 content :
+                  internal_properties : BgAAAAYAAABIk/ZJX1p3iLIRNQ1eK9QEI2QiXAfw+wLqxHJ75rsluybwS9Tgx89boCRhJ1EeRSDHDUH0QK/u45hF5eXZKDPsV7hrrM6fe4BMuAwLDb+dlmCjnNkohEWOX2s/NwxujwyDYPqky940ZsFNywBX44aEJ0uuVHO+1hTCez6KgkKugMQI6brhLYgePxpeYOzHOeZDHmQM3bgB3ro959SHhLooU6S13JFCbc6YJzofFhx9N7ToUGzmdk8m5UaBlv8pdfbulN2buAa6pZ4Hk7m9ML2u+kcGPRX3xD9rrzSr34eyk670aOJLGE9gUngWqx2LhWgLI7Hd4jWeajuxdIO81iSPgKpy4cisnGqI8tfgHnreaLk7SSYS1We4YSaTeHFj3sdVp29Tp0F4M67hT4p2hJzwuCyK7ZC4D42vlYhvaTwGQ4znrKUAXmFshFTeSYDc6xfp9pOFK18fuITgBG7AdeXXnJ2nrYUKvXw4i3hXU6gu8Q8nul9l+hpPb0kagcewMSnJLTL89zXdCT6ZnQZYOv22AwDd1QwlzOd1EwKJe+RSDZpO38ZY7F5/1rS+KbcOP5TQR7h0ECHJCGt5SBCGEoYg1y357jQeE/SphkeZLykt96t5UwnpkFrHzDNIAU1b8wwRT6Bq9yNqaeZXyDT224n1MPyBY2gy3+1SXuxb6K1u55/bJpto+b8NTk8bXNxjia0ueXUpyrxO4KWBiJrV7zyqqtY7gqPf/izexodngHueL+pdfrAmIuxnN+KT9LDlZDKqbrnj6jWr9i4y9Tx4tM5uRfGLmskCxMHgvINajRmH2ZEdAUVU7L5WO7u1dTa+44/3m3NDfse12VGPYMMD/2IcVhS4Ef8Q+dkW/xxJLVUhBTPgjXrFporAfgeT/nBQ20taQGIELbDcBl6c1vjhwpGmzUbZCwzjBc69+FW1pQRHgpEDsTyzjRjrkfOlKsPJiyG1Wn/bbw==
+                  type : 2
+               -
+                 name : Column2
+                 identifier : 0x29037d1f3805a9ec
+                 internal_properties : BgAAAAYAAAClcyHMLZlo2PYiPZ72AybSKA3oV+7CdRM4+1CCXhpbpWcYcQgCy7bm6fwAzzL5qd8MLOsRiT/hR5XCwMQmZ1RxmxVrG1o5UgRQ3xrxJfpqWf58x159brgnNbBq6ipx4ihtBcdXu5V3x3KKIzyDnlIMHL7l/sJsga2tfsdBxCY4L5/gac28DTpGwD6W6RJfsO/r5gRJvRU+847JhCGmFzdEiSVDrXPP4HOZcl10rldbLE9UXfZC
+                 type : 2
+                 content :
+                  internal_properties : BgAAAAYAAABIk/ZJX1p3iLIRNQ1eK9QEI2QiXAfw+wLqxHJ75rsluybwS9Tgx89boCRhJ1EeRSDHDUH0QK/u45hF5eXZKDPsV7hrrM6fe4BMuAwLDb+dlmCjnNkohEWOX2s/NwxujwyDYPqky940ZsFNywBX44aEJ0uuVHO+1hTCez6KgkKugMQI6brhLYgePxpeYOzHOeZDHmQM3bgB3ro959SHhLooU6S13JFCbc6YJzofFhx9N7ToUGzmdk8m5UaBlv8pdfbulN2buAa6pZ4Hk7m9ML2u+kcGPRX3xD9rrzSr34eyk670aOJLGE9gUngWqx2LhWgLI7Hd4jWeajuxdIO81iSPgKpy4cisnGqI8tfgHnreaLk7SSYS1We4YSaTeHFj3sdVp29Tp0F4M67hT4p2hJzwuCyK7ZC4D42vlYhvaTwGQ4znrKUAXmFshFTeSYDc6xfp9pOFK18fuITgBG7AdeXXnJ2nrYUKvXw4i3hXU6gu8Q8nul9l+hpPb0kagcewMSnJLTL89zXdCT6ZnQZYOv22AwDd1QwlzOd1EwKJe+RSDZpO38ZY7F5/1rS+KbcOP5TQR7h0ECHJCGt5SBCGEoYg1y357jQeE/SphkeZLykt96t5UwnpkFrHzDNIAU1b8wwRT6Bq9yNqaeZXyDT224n1MPyBY2gy3+1SXuxb6K1u55/bJpto+b8NTk8bXNxjia0ueXUpyrxO4KWBiJrV7zyqqtY7gqPf/izexodngHueL+pdfrAmIuxnN+KT9LDlZDKqbrnj6jWr9i4y9Tx4tM5uRfGLmskCxMHgvINajRmH2ZEdAUVU7L5WO7u1dTa+44/3m3NDfse12VGPYMMD/2IcVhS4Ef8Q+dkW/xxJLVUhBTPgjXrFporAfgeT/nBQ20taQGIELbDcBl6c1vjhwpGmzUbZCwzjBc69+FW1pQRHgpEDsTyzjRjrkfOlKsPJiyG1Wn/bbw==
+                  type : 2
+              type : 9
+             type : 70
+             controls : []
+             code_elements :
+              type_code : 23
+              p_codes :
+               -
+                 type : 35
+                 enabled : false
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	gaaHistoryNachher["TextFarbe"]=NumToString(Combo_TextColor.Column2,"06X")
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  ELSE
+                  	BTN_Underline..Pushed=False
+                  END
+                 type : 33
+               -
+                 type : 17
+                 enabled : false
+           -
+             name : BTN_TextColorSelect
+             identifier : 0x29037d1f3806a9ec
+             internal_properties : BgAAAAYAAAD1rfuwMrh4v/E8aOQbWDFdNs0G6cqNNlKRLMLE5a61+l7Sxc1W9CS7s5ozfGWcA/ba3bzkD3cnsXcsbyGdJ5lmMHxgz9sUuy4xN8npmbOBbTJv5MU1j62CCz+xpefhguh0uB/6766Jr3FQTMkVKkUys/dWrY5FRPku44HK2XL/j10iN8CvfGaiAjdjMYd209oNoQWd8AORjCTH3xxhq3oUw41AyHkatteKDN31HEORh5OZNLZrBtSZrGQgwSCj7JyfSgIFdKtnen19/qrfFZIITko9B3jGSvl8hH2COecYVccT8RJ31MhmdEBQHWVj/iuBra8P5zIHjC1IAXzen03lQRUI7p2qK1E9c2MlMbwP6bPBuMefKQJRlQQl/vdK1lm5t37UCgjMrUYyHWSvk4zw5W9ODfbNDoQ+PAV6DaJ7Ce4gW366s/O8538zIiCYsdmnUufjCbtwA3SoduRRp7VoOLSMhS/ceuzXQ4RWubDwlNvxuhu6o2qqNAF6pgF1iR9jfYjZ4c+El5isYG2UBoWTMomzVxSWlkMcLir1dfEIeqsvW0hvuqFKom3fNhB8ohrBR0SCZj2kC+6LrETxunr0F3bn38fKYTKFK3L8hcCyFsUJ2ht2ZIyC/re6+RIKAKQqUbJm5U4ZK760QEMBBQRli5wveAutFXxowuSLrw3dvOAhjoWQF3topP1zKSRiTprq/IqdlXbIlqZEo5nvwHk5Up7CmD5LBm9c41dBDjiFcyBF3+xGf4ISm2DsVYswYvLnxrXS7Hfj32Qj4EmrrWcIpwzdkXcMG6H1YVhsrV24dJtcahaaHb1SvKAm0dHCXSywIm4MuI6uDm883modrPo+J0PBgrTx5bui2C0yBYXDA7aGrYxil1KGROFcG84Z1TQh6LzBav/09C7xwqJJr6jv+5LzIpuDFv8Eff4gg4iu3Ve5hNjdlKDVEVhWfZFRrjvpN9Nx1QyAPNXJCbghJJTogqBvFQ+3/Hdxtc2jd3DJIxVLhDUFiXO5SKbq5BuO8aTRcX6T/QUZ4zBsyu+esKTlN6MzRDKGEcBn3B3PEXUl4lpJrUSBxlhCeYnp3ysIvW4dQCPEYSpvyRqWislp5Zdg91dPLdZZrDehNHQrl1PY6tnLl7JXeASkGSixslLf/3wAu+x1jOQVHNHtHtbSmnwqWyc8bA3lGIhlDWgS5GrDUZVQ2jWzfKsCeXasEDwEyo6x1K1vJXF99txIY20oN8zGbcwPsqMkr9vU/tKDEb33f09ZiHOREXtmpAOrEk9jK/Wwjxc3BopDnBKMdr46UFMpP85eVAiUuANYnUHJKCyEhYFkWldZEVHVFSp5PTrI8Ao3HCCseir8I86dMkO87Qk0RyTblSJduzIeOhrsNK3de/DlnGI7VHP2NZep7WVA
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  LOCAL
+                  	colorwert is int
+                  	i is int
+                  	bFound is boolean
+                  
+                  IF gsTargetControl<>"" THEN
+                  		
+                  	colorwert=Val(Combo_TextColor.Column2,"x")
+                  	
+                  	IF SelectColor(colorwert,scInit+scPersoColor+scAnyColor,&CustomColor) THEN
+                  	
+                  		gaaHistoryNachher["TextFarbe"]=NumToString(colorwert,"06X")
+                  		gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  		HistoryAdd(2)
+                  		
+                  		bFound=False
+                  		FOR i=1 to ListCount(WIN_Designer.Combo_TextColor)
+                  			IF NumToString(WIN_Designer.Combo_TextColor.Column2[i],"06X")=DataFile.VD_FontColor THEN
+                  				ListSelectPlus(WIN_Designer.Combo_TextColor,i)
+                  				bFound=True
+                  				BREAK
+                  			END
+                  		END
+                  		
+                  		IF NOT bFound THEN
+                  			ListDeleteAll(Combo_TextColor)
+                  			FOR i=1 TO Dimension(iFarbe)
+                  				ListAdd(Combo_TextColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+                  			END
+                  			ListAdd(WIN_Designer.Combo_TextColor,gBackground(Val(DataFile.VD_FontColor,"x"))+Left(<§$0000§>+RepeatString(" ",96),96)+TAB+DataFile.VD_FontColor)
+                  			ListSelectPlus(WIN_Designer.Combo_TextColor,ListCount(WIN_Designer.Combo_TextColor))
+                  		END
+                  
+                  	END
+                  
+                  	Display(DataFile.DataFileID)
+                  
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : Combo_BackgroundColor
+             identifier : 0x29037d1f3807a9ec
+             internal_properties : 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
+             dropdown :
+              internal_properties : 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
+              columns :
+               -
+                 name : Column1
+                 identifier : 0x29037d1f3808a9ec
+                 internal_properties : BgAAAAYAAADtq+kkheEAIE7K1fbEK3fqPoaoIs1yEftUC1R2AvZ/EWsgaVSO85p+FUykA15NdQtQ9KPFZQeV/xmiZKTKSQy2vJbuVHsUj7F9roMSKpUBgON1wgu4fswPIRAcmMRroIbb9a9zubGb7VwkRUiJ3pLiQmZ9DjyGGi87iD1zykzSyTnyY8dSizxU0gDEszglqvmVgI7TY+OAuZgT+qMEtZFurjvJ2MicQlFxmnUcFv8zBKcspT4K
+                 type : 2
+                 content :
+                  internal_properties : BgAAAAYAAABIk/ZJX1p3iLIRNQ1eK9QEI2QiXAfw+wLqxHJ75rsluybwS9Tgx89boCRhJ1EeRSDHDUH0QK/u45hF5eXZKDPsV7hrrM6fe4BMuAwLDb+dlmCjnNkohEWOX2s/NwxujwyDYPqky940ZsFNywBX44aEJ0uuVHO+1hTCez6KgkKugMQI6brhLYgePxpeYOzHOeZDHmQM3bgB3ro959SHhLooU6S13JFCbc6YJzofFhx9N7ToUGzmdk8m5UaBlv8pdfbulN2buAa6pZ4Hk7m9ML2u+kcGPRX3xD9rrzSr34eyk670aOJLGE9gUngWqx2LhWgLI7Hd4jWeajuxdIO81iSPgKpy4cisnGqI8tfgHnreaLk7SSYS1We4YSaTeHFj3sdVp29Tp0F4M67hT4p2hJzwuCyK7ZC4D42vlYhvaTwGQ4znrKUAXmFshFTeSYDc6xfp9pOFK18fuITgBG7AdeXXnJ2nrYUKvXw4i3hXU6gu8Q8nul9l+hpPb0kagcewMSnJLTL89zXdCT6ZnQZYOv22AwDd1QwlzOd1EwKJe+RSDZpO38ZY7F5/1rS+KbcOP5TQR7h0ECHJCGt5SBCGEoYg1y357jQeE/SphkeZLykt96t5UwnpkFrHzDNIAU1b8wwRT6Bq9yNqaeZXyDT224n1MPyBY2gy3+1SXuxb6K1u55/bJpto+b8NTk8bXNxjia0ueXUpyrxO4KWBiJrV7zyqqtY7gqPf/izexodngHueL+pdfrAmIuxnN+KT9LDlZDKqbrnj6jWr9i4y9Tx4tM5uRfGLmskCxMHgvINajRmH2ZEdAUVU7L5WO7u1dTa+44/3m3NDfse12VGPYMMD/2IcVhS4Ef8Q+dkW/xxJLVUhBTPgjXrFporAfgeT/nBQ20taQGIELbDcBl6c1vjhwpGmzUbZCwzjBc69+FW1pQRHgpEDsTyzjRjrkfOlKsPJiyG1Wn/bbw==
+                  type : 2
+               -
+                 name : Column2
+                 identifier : 0x29037d1f3809a9ec
+                 internal_properties : BgAAAAYAAADyTvTbGoBntdNPWHuDLEOvnaB7wntJBBg1CEcns48s3uCzeAN7zknr3oH/SL+WRgQZM+YUjj7gQJbLO83/SzidjQVZ51TPTp5e25pbQzYOlQBMob7TPGxhm8Rj72UwrXfK5CaIisyghD9XbIk21aVbzWkYz/GTGsK2d8BIwyc5LpzlZsDPMmVzPbsTdOVsrerk3w2wRI61aDMueTSxHCi7HrLQEB5ke4zmD/qXiWxMI0RBsiEV
+                 type : 2
+                 content :
+                  internal_properties : BgAAAAYAAABIk/ZJX1p3iLIRNQ1eK9QEI2QiXAfw+wLqxHJ75rsluybwS9Tgx89boCRhJ1EeRSDHDUH0QK/u45hF5eXZKDPsV7hrrM6fe4BMuAwLDb+dlmCjnNkohEWOX2s/NwxujwyDYPqky940ZsFNywBX44aEJ0uuVHO+1hTCez6KgkKugMQI6brhLYgePxpeYOzHOeZDHmQM3bgB3ro959SHhLooU6S13JFCbc6YJzofFhx9N7ToUGzmdk8m5UaBlv8pdfbulN2buAa6pZ4Hk7m9ML2u+kcGPRX3xD9rrzSr34eyk670aOJLGE9gUngWqx2LhWgLI7Hd4jWeajuxdIO81iSPgKpy4cisnGqI8tfgHnreaLk7SSYS1We4YSaTeHFj3sdVp29Tp0F4M67hT4p2hJzwuCyK7ZC4D42vlYhvaTwGQ4znrKUAXmFshFTeSYDc6xfp9pOFK18fuITgBG7AdeXXnJ2nrYUKvXw4i3hXU6gu8Q8nul9l+hpPb0kagcewMSnJLTL89zXdCT6ZnQZYOv22AwDd1QwlzOd1EwKJe+RSDZpO38ZY7F5/1rS+KbcOP5TQR7h0ECHJCGt5SBCGEoYg1y357jQeE/SphkeZLykt96t5UwnpkFrHzDNIAU1b8wwRT6Bq9yNqaeZXyDT224n1MPyBY2gy3+1SXuxb6K1u55/bJpto+b8NTk8bXNxjia0ueXUpyrxO4KWBiJrV7zyqqtY7gqPf/izexodngHueL+pdfrAmIuxnN+KT9LDlZDKqbrnj6jWr9i4y9Tx4tM5uRfGLmskCxMHgvINajRmH2ZEdAUVU7L5WO7u1dTa+44/3m3NDfse12VGPYMMD/2IcVhS4Ef8Q+dkW/xxJLVUhBTPgjXrFporAfgeT/nBQ20taQGIELbDcBl6c1vjhwpGmzUbZCwzjBc69+FW1pQRHgpEDsTyzjRjrkfOlKsPJiyG1Wn/bbw==
+                  type : 2
+              type : 9
+             type : 70
+             controls : []
+             code_elements :
+              type_code : 23
+              p_codes :
+               -
+                 type : 35
+                 enabled : false
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  
+                  	IF Combo_BackgroundColor.Column2="-1" THEN
+                  		gaaHistoryNachher["HintergrundFarbe"]=-1
+                  	else
+                  		gaaHistoryNachher["HintergrundFarbe"]=NumToString(Combo_BackgroundColor.Column2,"06X")
+                  	end
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  
+                  ELSE
+                  	BTN_Underline..Pushed=False
+                  END
+                 type : 33
+               -
+                 type : 17
+                 enabled : false
+           -
+             name : BTN_BackgroundColorSelect
+             identifier : 0x29037d1f380aa9ec
+             internal_properties : BgAAAAYAAAATim4ZdMKI2YOG2OMnkD1GlyJEuVJWRAOd+V8C7M5F0uAIG1JKsA5wtFeLeK786vpNoLfo0YPN0SqNdtPdIhfsORoqV+acP5aw+MP+mDsRTyQwsw31uRnp6dwTOzfpG6kpTTBG1bb4Mc59LnJl5/FaAtaJkggTGKEpXaS2Q12X0xMgPWGn9YVVVHVwn0W176jOggeJEqxWQL3XnbxO4zik+BwSYf1UhGK9IBKaOOYD/HwjcF7HRR02pDZ+2qNKBnvH/+GT8TvJEbjn0H6yimiVB9veQrurYjyPa/aY0b1P4oSV5UIdYKHBks3gqtPs9u6a+JBa365Xi7OS/y+XWuSOOiFehYylPLiGEpHhMCtmvIB5o9QNyiEeQqnSlmawjDLU29vBXlhOs2lQ3mFVQxCDq9VpYf2khpdO7qh62cY89H+sR/gUg28jP2RIMmZBangJlUzvdsInmTyYUEMxCWY1RWD6w45YPZ0LN1JvYdi+dhSj9ZsSZ2y06PQSivOV9q0KKxLh7gmODTrnlOUhAf+plQhS8ACwqbCXYpnZU45J7kSNJkbUcJaeQ4maEe7pATI14V4XXUhq0Icntk5O7+TWDKuS4kJeWfF2/YtOJ+uPCeRM0I5HmzDwTgLj9jaubnQXF1eegSpkkS+dEBVxvoffu8AkrSgwtRMb1Us6MEtM2x4J7ehezE2nTKxJg0E6qUPM1nBukbBX818qbnYGa2NgLRLW9WYbB52Tb4ngbeQTNJCWoZvVwBNl0Qx+pF1pvQ/gOJ2ZyUa27y6J+cjeIp6wH1i8Yv8kTAR8SLQ1yi9GLCxzhmWZ29FVn1Rs8UHkAZsxY78n222QXewFJu9FJmWnJHi5tGA7ab61X6HIeTHJcNKSsk5eJGusyXvjjfky8pyY+RTNJNWAUGoOWeptkS13DlMDOhwHXBSMdVC/GiNcu3WKtLEUhGbSQ0e0Fm+bFOjImOZKtY7SKGkPCe9axDBIlXcRRnOeq4mkeOQJdr63PESY9XyOYiQbcCPFkpqX9Sv1GRmJYzbc2Et9LBXgxqihKptW3lnSS1aaUqmNHJ+ycJPC0jPuxa3d/7urYT1Ag9cyaDtm7zAVN4Le52xpZQPMLA/3/lS1QVaFwYsMKjPoFFPN7U4WfFYjAHjJI7SBVekfsJxXjrS9IQS2fR+i+Uw5LLiuV26oBtJOyo9XN+I1g+vnE9J7ymy0qROPMTwtgoJ05rL91U10PohdEYk0D0d3m9ZDwBKwdXkQrGZqdSSV/9PWTxM0vFmzGIaPXzpzF/1ICoB5zqNd1bnQOqb6acL32nGbaf+tlxTsEoBBqGpqX4bh927ueC3zSfKXvswYwe//Mz6LFSM4lTZqmND3TSgo6K1KVU1Z2/uTB3IcXmZ5YwHiwbaYv2ALgkB+ROmHbiw7NCSCyShxVMGHDnGQFw==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  LOCAL
+                  	colorwert is int
+                  	i is int
+                  	bFound is boolean
+                  
+                  IF gsTargetControl<>"" THEN
+                  	
+                  	if Combo_BackgroundColor.Column2="-1" then
+                  		colorwert=Val(Combo_BackgroundColor.Column2,"x")
+                  	else
+                  		colorwert=Val(Combo_BackgroundColor.Column2,"x")
+                  	END
+                  	
+                  	IF SelectColor(colorwert,scInit+scPersoColor+scAnyColor,&CustomColor) THEN
+                  		
+                  		gaaHistoryNachher["HintergrundFarbe"]=colorwert
+                  		gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  		HistoryAdd(2)
+                  	
+                  		bFound=False
+                  		FOR i=1 to ListCount(WIN_Designer.Combo_BackgroundColor)
+                  			IF NumToString(WIN_Designer.Combo_BackgroundColor.Column2[i],"06X")=DataFile.VD_BackgroundColor THEN
+                  				ListSelectPlus(WIN_Designer.Combo_BackgroundColor,i)
+                  				bFound=True
+                  				BREAK
+                  			END
+                  		END
+                  		
+                  		IF NOT bFound THEN
+                  			ListDeleteAll(Combo_BackgroundColor)
+                  			ListAdd(Combo_BackgroundColor,Left("Transparent"+RepeatString(" ",96),96)+TAB+"-1")
+                  			FOR i=1 TO Dimension(iFarbe)
+                  				ListAdd(Combo_BackgroundColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+                  			END
+                  			ListAdd(WIN_Designer.Combo_BackgroundColor,gBackground(Val(DataFile.VD_BackgroundColor,"x"))+Left(<§$0000§>+RepeatString(" ",96),96)+TAB+DataFile.VD_BackgroundColor)
+                  			ListSelectPlus(WIN_Designer.Combo_BackgroundColor,ListCount(WIN_Designer.Combo_BackgroundColor))
+                  		END
+                  
+                  	END
+                  
+                  	Display(DataFile.DataFileID)
+                  
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Bold
+             identifier : 0x29037d1f380ba9ec
+             internal_properties : BgAAAAYAAADNlvynOOHFyvhLi9V1ZmWOC3Ol0MRbCaHv3UecADbtyclPbLx1PaeQVL4b2tKDjrK8tOLp/eRgIAsK7Ea5D+cC0BiU2Qh1i/6D1BCY3Oxb1L3P2NgEuU0Y4apSipNSZfgyMUnbzbmN3RbSnsqzZd/R/URfdo2LZLU+a5V+9xV6vpTT3Zt1KFPcjcriFqGrqaZcCTzZdFHaqS7r3lCbR1AtKEOMn+lEwvZtStfgetRpydcyTrDHVDffIFlfuj4CRhD8S+7bd5YCqw5TrRtIr8FjjzuDj2zvvJGAn9Lh5785HJojMXS2jfqDUIrwD5h/Q0kmJldR1Ao8BZd6UTC4m8UZIf28Rgwh9y+DO/oAc5N4hBk+c8c2YJvTZMbC9hTF4ankY8zz2QYlfx8+Q4Uk5FOgtQnTPUqbCFxeweI6vZxUabA9eYfHNHNlCPnXsRV1i0mwmMMsulFdtTfUeXJ7dEAwS3tEasYHNZ9ftyh8UGrK/0lSnmU4Yuvp0gXhr09Sh5SDEkCUgeLHLME0o2TgIfTEA1ip7IX73Z6x/Aj8IjeDLUzqsujBU1LD/8L+HNd6Kh6yXK7CAYo8OhwdrGslEPAPPTRSlFC66p5M6uZoRpUskKwFkA9am7h6D9s/bx0DL3413Zk4e6tJ9y0+SZyjK8rIxjN8Hwo5AvkGdvWpWRxr+6jesTfU5rY+Ptxq369LvZsoTYZki+yfp1bqykhNRRpxBZ2iYIONabB+d5TGdG8c3oolbuP/U9YPqhdh+v5A1q3iNW/U3s4G+uJwcOcPdxuBZmtmmF1v5KAFJ5vjf0G4UekxVBZEWph034EHGMqHMIkbmR+wgFKZ6bVmD0/Ux/bA+TvVqMTx8G4WN76bTXgnl8q3uXHKRQxwMaYDLWxmlrwQwhAgkWJmMdmNQYb9cYslTR+bVEGEbkx7YosUdYZZ8ZEe8xkyqQ==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  if gsTargetControl<>"" then
+                  	gaaHistoryNachher["Fett"]=BTN_Bold..Pushed
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  else
+                  	BTN_Bold..Pushed=false
+                  end
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Italic
+             identifier : 0x29037d1f380ca9ec
+             internal_properties : BgAAAAYAAABSupnMDSsP4szMQ7hyJH2txoSZf218DMnB1W078CQZHP6Z/3DdSEqZILAGqxXrWqOEqhbRuIc9zcs7t9jnj42B/cHBO7RoJukkCZnQVMPhV+NtBHQYlN+t3NyysnMSqUVgog8SoH7bU+6wJwG0Cpvwyd6OH7u8v5iXHKBbWQtBKzsNNK+zvvaf0EICkEfR/HukS0ne6OHFjS947zC5WlIqIOt9TizzBzDMg4WwaKZF8TIB+aOjFbXPHpJZOkl5xlfrm4ykd6Um8SKyxRU/YK4/46Rfum/RgcIY1Se5xb0Gu1j09QkUj5NGBSJmj3mBp3fsqmjBmLuHTG/nxrWKF3mcs9aDNNcEqPbbJgI7e8UIaAFRoAAVODF7M45XPDT8vktwqtACyzHPIzZdYnLxTDRhWi/8zR8nWFdOFQSLGSHv7zf9roLWecG7YOM3tb9W2fvyBNLIIQWtXGKb3ug5qY4jwiff2kWmecs/AHFgg4WVzy2l+j527cvPIphAYWgwrppvqPJlnokXcQryoMm4SFmj6Ph7ffJJYnxsrGCODg/i6WF/Lr+aj3pD2KYy/sUZAB27EbLVD8bk49E+FsV6SBd65c6JiRLGxKYX//8I/G+Cy1rOyvgoVdKw0iIAqrWLx7Oq9cTQzQbe2ZA2a2rvnggj0WnX4EkFidTWcHZ1BKURtj1OtbSf+/5wPIjgSHWN9rNjj4ZXD7O3LP2Fo3G1GUV5Tt3+svDiHvZPoUpC0ZZL7PqfSTAwWh981U4aAKv3LnY/5PevbU9uS0Mfxik7TsB72JcztpxEBJ5jLNCzNGmg2L6fcz+ZFYw0lY/Hz8EXAm6yBMJ+O+1blV8lbhtJu0Naxean6Qt4vM1BpczYyjilxxXe3+Ef4KxhtmBt2v0ulAQ1c7rXD/5nkKipRencNhzYj9ZLSmUr7soQNwRzJn03YIYm+lnoFjTw2g==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	gaaHistoryNachher["Kursiv"]=BTN_Italic..Pushed
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  ELSE
+                  	BTN_Italic..Pushed=False
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Underline
+             identifier : 0x29037d1f380da9ec
+             internal_properties : BgAAAAYAAACAujkALQ5BXawuxTMKWi3VqMKi3YZjI91S2fOUY0FcfVEB2oOEUu2G42EKnL1iKKxR3iRamwlZGpYQYNmAR2HVtmuA5qKxnAr8hI9edSWGuoznL72rl2QHThaXn8NlxUBLhLzGKoo5C3Y7W/cHlZiAK3R35TDE2JGs67ZK/dnDnXSOQk+JtOov/vOkjdhJWIMZrlr0eWileheZk/pH6CGo4XMS4BeOeOcUecFH3awyfvh1T8tJRyh2sBwE/0fvCxNfLdIytUNQUW2cM1RtidNGEEV7vP9kQKs/oQue/UI3lPq+rSnVEFO9WcQeMoikTqQAbZUIzvLY5yz4ZD2KowBezb4a37Q7r6yr99cs6fCzSm1Mr/TMijB+U/3f/os9CaALGwuvLfyC9xmxlvyS/t/U6o3z5U4sDqP+RicFy5B1/5T+PeQq7GtMt+24vZmBtVQLDp/fwI/vVz9647QtXGwljDzGLPMvT8W1a4s6Be6zSxiJ8fOnkGN+4BKGeRuE7rRCCZoVPJyLOPXdrsurTuxkBgXAe38SX/sa4z5TsxcDaOEtFzrbiwBYcq0S2hoC3hO1c4xzlukSi5cHa8akLyAjUr0zGWMwfQMVUwf+dpTtXT9mIvR8xSSskQCzktytNk0GIIhgm+i7pmyevVcSwxE8IiAqBwMXhBqlNgRwNVMvnlNeQM/ExHAUDBh1AM51VHVEFiTzXExPmt7g3RSdo9UepSfAKwtDJV700VzYNdxYyjSA3T5yqe0lY620z9muJndfFMtY0aYgWVFfsz++ZnXZW2SaZlgMd8KBJz1FaExnMhkViJVz5Nr2cZyBZVgY6dWslcbBcjPURpyWAJUqd1G+SVYL/T7m48fVgKVFyQ4U0DecvkkNc2JWBHPRYZxgsv0dAXZVRlsXOqojZo16WhHE+PI8o8etnfshNBEjESbYDpf/DG3BFabbInN9NKNipdQOomj7D21csftVlD8=
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	gaaHistoryNachher["Unterstrichen"]=BTN_Underline..Pushed
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  ELSE
+                  	BTN_Underline..Pushed=False
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Strikethrough
+             identifier : 0x29037d1f380ea9ec
+             internal_properties : BgAAAAYAAAAzD/YbANlNlxePTMUmK8TtFoqcCdlvuofiuKusbjPimMCtpStk0zuTmxfwMcJJdK6tRXSmbNh2DZJIZGiIgwOgjUugKTktFljZ3oBsNaUoBALlFeNbpybdbKK9450hC2aUGKmTkS6rNHhr4M8VHkUGBgzDfejIC2Tox+BKx+oMpMXJcKsEEsM+1ueV9Z/59dd7HRbOr1gXtLkGg0exa+vy1QMmn9kviQbdQbWlwtCzcqoX/v5S0w7gjzT8rnSPIZuPY6XY20qazbOsN20myW2KBKMNvo/cHtiOd0XZj4ELqusgZC9evAFfqvHu7dwQ2Z+F+tdwzJ3gHsN/FjKxuu7LLm4+k+GPUGWyG48CqS00PA0c1ub+Hk5JWBNPySLXrOCWWJmxJAvdVeW6S+gDFutrJ4taDZwvO5lm235bBYzT+CGwbwP+b7j1QPD6+bRSpG9TLvxq146NHg3FQo2My3NAzLr4rZL7NbIYXzO2rI7AjVBVTeVL4ju/NJoKD2BKoe7jjRvgmI4edLxBvAfqmsOWQsXDkQQINkxiUZLqM49d/lt+OwAxJDgApOwLMn+PEeknBGL5XmAW+lQmfReFMzCYSEHH5JPeX9MXhML/LXRq6Gh7c54Vg7qfICuWHOUY2IA0hrXGirufdNq6VNOhU5EMCR8E4HI8tTr7C71iM7caMfXSiriuUvCOntKviJx3VPwSfnrNiLjeo19eZbSdgXvVAwnyqFQQWO75xxR6m5vzvijWFTXSsq0noHK1TJrnSLtUQb9oVR72n9v73rT1gMeWoATcMsdqsVXOwAmohr0V3GlpnslOAMTeO5gf3vcAmvIh8YSDfeJ1MrO0hhJLqIpxyu8a0knbULLeWcJeaB9raV72jHLc7C9YFWC6w/MpMTK9QYIxmzmKrCiJoTZ5zQvNrNbwZd60MQXVDSoBpP+t3BWxx7Q2bfbU4U6eZURKrp+DMH/XATMPBgwo5+w=
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  IF gsTargetControl<>"" THEN
+                  	gaaHistoryNachher["Durchgestrichen"]=BTN_Strikethrough..Pushed
+                  	gaaHistoryNachher["FeldID"]=Val(Middle(gsTargetControl,7))
+                  	HistoryAdd(2)
+                  	Display(DataFile.DataFileID)
+                  ELSE
+                  	BTN_Underline..Pushed=False
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_BACK
+             identifier : 0x29037d1f380fa9ec
+             internal_properties : BgAAAAYAAADvug6oh1iFf1ViTAHIBrVV4XVc67USaaLhv775iau0RxCFI2aUPwaQ4f1TpemZPkUH9jGUBwscdI1YQKlRPukswkfxOiFbZZAl9sru1C/zDC0fDvMtEJhdyMekE7pe7/0LTk2q6OiogDXniupvGqRj6SVUeOjgej0ieph6BjAfjMIXFeSSF5i6Egu/BJmXkwNAd/wVSke9pu6nPhoQOXwnf5lMy7O8LgI08E+JghKsdocx7NRmMOzNxFDq3W1t3nEWYnbXghmPEp6yCxiBc/ErDcSPz0d0VmukMbveW4Nul01N5/8wNcC2E5+0khBC4rv/BTKaUbqts0kWpAMvm8/f5lsjtTn8oKR24WxgycaY3K+yQj0G9o4KcN8f2ggS+AhjjLd6sJVtaS3bwJtf46A2mmQ57hA/wEtPQQBGvgAAQ13eAN7gr6ayqgJrNjEjxcpfHV+j0WRlXbN1G7/+jB1/W9tOeQRSz8M7CocmDMw99RaA2K8eS8KQAHL6c7LgbLCm1dQx973gQbGERtofymB2kU2etVHGLNOi0WFXOr0pe+TrMAlpkIPJ6D+E5RgVpTolf1NWg0GOzL1bbJ19kqSx6/SHeD6ulyYIart2x16bN3zLXbC+XkNEX6HDRMd4BX0UKg3trLKqbB9ion+6bTZRUwlnQfwRWomaHRdZC1n8uvivksIv4cBI97sokSb6dt1PJJrIfLM9GUus4IhjSMygRNmpS9x8zDkS2zedwMQisqODbrOHgp1gYlhP06jMQzzYoLomHW5v4CMlaGPpUEzeiMy0lfv5jjpX3YROK4w52eWlqN1TQrTakOjeYG607p6fg30apM6+K1zEZRHpx4527jevFYIHgKLf58ZtCDs4ntwWMUW2H0SOKipkSEMCvk4WQ+DbiFAm8Nl1TCpMy5TIDrnWnLIU3kjU7a0AzqHK1O9WhOFvKZAppLk+iZ6M+GLDCp8h2XcNBX1TEXWx5pPMts9mEK65GUCMl0PLnz6DESwrCeGr+StyVn+oEAOuShzjT+qN
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  if gnAktuelleHistoryNr>0 then
+                  	HistoryTakeBack()
+                  end
+                  DisplayObjects()
+                  IW_InternalWindow1.ResizeHandleEinstellen()
+                  WIN_Designer.BTN_BACK..State=Grayed
+                  WIN_Designer.BTN_FORWARD..State=Grayed
+                  IF gnAktuelleHistoryNr>0 THEN
+                  	WIN_Designer.BTN_BACK..State=Active
+                  	gbEtiketteChanged=true
+                  else
+                  	gbEtiketteChanged=false
+                  END
+                  IF Dimension(garrHistory)>gnAktuelleHistoryNr THEN
+                  	WIN_Designer.BTN_FORWARD..State=Active
+                  END
+                  
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_FORWARD
+             identifier : 0x29037d1f3810a9ec
+             internal_properties : BgAAAAYAAADfDnXDMLPutsOxwYV8XaF80P3lJ4v1h3OWfy4CGXX9G2DST1FDGRX15za0uRjHL21pgvgXW0mssK46qh/6W+YHtZ80fB/pdzjCHnkdCFywI6m6i0BKtrmwttMWlQPiQN2wSR9Sw5FV9zVsDkjsFQ+aUHUF39CK2Vvkw5dF59ogNXB6yCdLxE9aFvCOrYXVsRflg2VF2IFMR81LGB28SD7mHHf7GoPZ44vklOaXqytxRX/gAHJwTurUnA1sfe/RP0pT5zlRTwuXQ6onxb8+0KltmKkRXu9s2Qe3eYgiqNKDII+dKKeNDs1Kqez0nTUjMC79HFQTRvXlk/Vd3hdKYqvNKquO9lsc8O/EdokPEKFrWLqDtRN0WI2axPZsO9hdAREyNyBBItQlFcbvUBUtD66Efbt9lENT46YJEgrz9qrd/L70y16fWSuvCFM/76C7WChYQsGzL3Bn8Zxy6nBipK9KZOhirjU/7cOvSEHy+M7VMkSrZV6iNHODXdPdKxuOYi6yjfGWd88bjx/QOTf/KPCT8Mw1QdulUClpzpHZfR4552R4hvysvM9lT8wuu8r8ZyeIamFXFAdVqZM+vDyhKQ599AfqQbtcZPJ0aXk5Aa+Qse9uKBTjo7sP+E4SZmiIpcFKOn/YjOA1covSOGGksFwDMt9PGaedp4oi7i++vRnbmwp7sRzZ/iC8SoCVx3Mpspvqle8A8XGDTye2dpyCcbEHstdz8ePOF9Mkkc90SDJVorNDtAMXjIeppAk0md3pUkZO/5uE8H5EydLmRnbqQG3QmTOCo8H+zP2DysF9s9Ji0vBhTnsOBqa0/oHJytByXbrtCUydHFIfd0T45SVCr7oWXNaR9wSpJX0oJpS+f6Kj7CGatMXgug5HLKbJwzCQegxkgdMRv1WSmCC1vFgOuAQG2eramOHXBc73WehGTcRQ8R4VbnCMqCpJRjSu4pldNoMDD33T+OiV/rTGTsX7Aci/DYcIGs61wzh0v3nWIS+3l9VMJkDSvuhiP6oVcHiXLRJtY8gMrnzQVQ==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  IF gnAktuelleHistoryNr<Dimension(garrHistory) THEN
+                  	HistoryTakeForward()
+                  END
+                  DisplayObjects()
+                  IW_InternalWindow1.ResizeHandleEinstellen()
+                  WIN_Designer.BTN_BACK..State=Grayed
+                  WIN_Designer.BTN_FORWARD..State=Grayed
+                  IF gnAktuelleHistoryNr>0 THEN
+                  	WIN_Designer.BTN_BACK..State=Active
+                  END
+                  IF Dimension(garrHistory)>gnAktuelleHistoryNr THEN
+                  	WIN_Designer.BTN_FORWARD..State=Active
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_COPY
+             identifier : 0x29037d1f3811a9ec
+             internal_properties : BgAAAAYAAAB1pT/YWkvWt8afdw/5E/ae1Yu/noFjNnXxY803SSUrEO/zu3y2J/PSU9XkZnG3u3MguS6ljsMBRfPyMJJCRdiU1WZVDcPQfBCmcVw0J41OtnVslHIjhGFvwqLTihHQYCSSQ1Dtselj8mwB7vN4a//w4+27TYG6myG0+Ja0aTKBEeWmM5iDU+5H1hx9RT8pXjO90R3gwpgRLGXL1wxklSTyPQi15fUR7R3AAlFeUPpT6iQQ7hR6012gcHKO73J25GIBBGvE345JJXzkrDpDt/kxG3yyYTdOYOmmL6+kqlGr21gfHSeTtWl1BxyWpASKXcvVvX31zM9budOSyAaN9IwabbsVlt/PGccbaizvBXeqGoEr5hzj8xMf7EDnDgsOfMGfXhkagu4wumwz2ds0ttHfeI7t4dfBWFs4Rx/SkQiuFH7OXwat6yaUAiuOG0SAcncAE42rMYTYidlPV6WUOwcmSeXP1DH7kQmUQycIFlVmOVpFJI15NyyWusMgx37P5CDuO+5c+QjABy9d1dlLBWX4NNYbHLyq4XwoYTM82O75uGlyp0gjO0i+8q5BuQpyhLH4sovgi91fD0MYsMDqpdPTd/c6iPavsBMfOAABar675rLxCxDa/aLxG2+hfG4uwsfMb/xCNT7t6uaf8Ty51H+mS/AoYWrqyKGUa7czzNiSgTG62R/H2yOG89LOwW0MK180gs67fasRGqdt2StH4rPqXQAOXt+04fJAiPnFYymHif3oBj6PdZZZ+360bLYEKQFmeRkVVFRGkQmpQux1VFTMrsN3xYWoGkj8tgijJXZOjvswe6o6qvxowpX5L22y3TJpkCg4jrU8XQ4sI6UiarT4Py1wOHo50wZ8Jfq7AjGp1dYOLD1vc3cNVuR0+s7ockSW2EotIwKmqkm9xN3Os8/35jumz3PwBhMJqCeHF9IAy1xraBnnHM7GOx3mmzsXt7kVV53FupgTm7w1prxqs7MjMKOG5z4g7VPtOtAkFIBewwtK6k18mVYGtIKN/ztX6JZa9PHcubCcJFQGVbBSprrPw0n/+eJGOlRDiV/Zl0q0zVTuRGr0+zsZ0fO2r+jcJlzBGVIUNVOQ41xDD2f6MVncV3qYNJIqFEg2RpTS5DWyvTI5TVt0GfjGx/pC2PaksOGeSQ5jssI1+zWaB4izSM38Ayy06xeCnl9Y5Ku9t5Oy8ykuON4siap9PvdMuF67On6oWEjZOAIvQrfsNh7X0eJh6PII+oBeDoL32bqBxBZ8B+dolF2OR0eycMmWs+Y5y7zwVq9ZiRA=
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  
+                  //CopyFeldToClipboard(gnEtikettID)
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_INSERT
+             identifier : 0x29037d1f3812a9ec
+             internal_properties : BgAAAAYAAABS9C8hhuJEOZf59PzhwtNDQHntfh+bB9OFHF2vpoSlwKcra5uaKZc92ttZ/GiqumxArjmmrqKbpvqdo1h4J7CBAvS1nD1ld2SBA2eq7BBqcoexlqmkF4FBznO9T6jiECAxXL/fnQAgMs7PVz+rdKUGaden2TDPZjC3HcQLKjeuYFxClzmjz6eO7vjYg3FuHE41CwrM6AbxFskhWX4NFLU3CA+5blry/D7sOJtNWP0iryzLtJq3FBkm8UAiGe0OUCFzvZGFGva93yMiYm8992pOm3TwqOEL/kFtIVINuvFOT8IrznwGgGfELhNvy5M7rTIfv/mh3PWAjbM+iDSsgormycJecmpiOFUFAQ5xTtAwYFM+Ytb5pHmeN2OV5XJoaXIBXPwoRoNIT/lCXM1/d/gTtckp4QtK9ZyAsvVSA3sr/9nn3FnArJgQJv77pTB7to08cETfemvvkEE6bp/44G8f+1Y/wvJCA+wSwGLnDgnuiz9qOhXC0W7oc2GdgQA37SC+meMfxojfN+7IdTLEwJlRtFKWRb2rLjYn2GHaOAoMMpjFcMK25h1RhIwT5Fw6V/0oUa7pm3Nd/6AxBedF3Z25tFXlzLXhJehXQEFXU90AkWw2H3zIGQMbX7nk6d1b7Bto604+XJCHXhjwdwW1KQecek12q1Oe11j/DLvwdb3s+6O2hx6R8taaDaIBxcG3lah5bMHUkEKQVMWeq0IevXOKTzPFotImMexKywDhppaOkDUs8sqQIa0E3mY5kUbCYdh00DDlnHfjdfp+bMJ750CPwMgZ0uu3N59JRyrnKapTG7/5tn9N9a2F2Nbi8OPok0uU3SG8Xzene4t0AZzNJ4DXfnFkGulDaJG9QRCOncea+sQxAMGR2ELonuP65qb5OfZxZ8ZpQB8A5Oxb8VNA42wgggS4+ejCKRnyLQucltpLwDq3Bgf8ih9XdI7T5t344UGopNSgDIlbDfNA1f4AtsJQdUQ/worsjimzuR/kn5oPo4Aw9MhkhufuE7viaRtKQvZDivesGJ/mfDXpRqR3ytPKrD4TJ5yJjen4R1iHVKQ3QhHSjwFtIuX8KLoN6dovW8S85ONChaWkWJLKdrm/KxIy5HLtviy5SEVPj6uOBJRXQSDVxI4SWquUfT91HR+D7RbGlPgZxMqo/kQeRFdhn6H9VrfJrhR4MmyqbPXnAlsFV6dG37Jw3BaM1owdd4m+u8+xOfYKv0RxUiCDKO95XDVFFsH6/tN5pgjy
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  
+                  //CopyClipboardToFeld(gnEtikettID)
+                  DisplayObjects()
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+          type : 88
+          code_elements :
+           type_code : 123
+           p_codes :
+            -
+              code : |1-
+               
+               if gsTargetControl<>"" then
+               	HReadSeek(DataFile,DataFileID,Middle(gsTargetControl,7),hIdentical)
+               	IF HFound(DataFile) THEN
+               //		IF Open(WIN_Property,DataFile.DataFileID) THEN
+               //			WIN_Designer.DisplayObjects()
+               //			WIN_Designer.IW_InternalWindow1.AnzeigenControl(gsTargetControl)
+               //			WIN_Designer.IW_InternalWindow1.ResizeHandleEinstellen()
+               //		END
+               	END
+               end
+              type : 18
+        -
+          name : RIBGRP_Objekt
+          identifier : 0x29037d1f3823a9ec
+          internal_properties : BgAAAAYAAAAPT2v0TSM83NJwTanAsbWx1M6UfxkJKZTSIqwCgAX7AH1JAdRR0ahNH1azM0xgoUWCjDipPMBISyEANJB5dDNpPdHApup16tqBxRz3EbrPH9ZqQnLEhATQ4VYeyQzkNfxkTNc5+Bnb/nFqYusYZm84HWINIOknDKaJu2luNhERsVSP/Mu00PNAiP2RCObT1Xqth+qcJYpIOxRJO9F7RaseCTqTv7LJcmm3lt2apCW+/TSVgRb5NdtHb0308c74GXvCgUMfcvfhjgsF6a3SaErXYrB1EZe0dGyhAHSLC+BMPeleCF/gfziGL9FsRTObj8o5tPV/awJ5jAme3I7ST0Fn3LaQXDMXtfWDeVDPeXcuIxqAUhlHYkBnJkZGiHhfwchBtlWJlhchWRFYjHV6NcCodpBoJn70Wo7cTW8jXxBkUPAULt5/+94qX/G+xHGJFPz2Ge+i4WKNaqaMlNEWzG9Y8Ywz4qUMiQnLsCK7ZC/DlghYVQaxqPYhE4bJcv7Qhwj5IpkCHHUSHhWPVrCdZzd0j1wfFj1GASgSiOVFXj1zITnNdXCAcdItDyKFE3c3aq+Kam0VmnfoS8H1y1leRLV8fvxP7QCrTzHwn4N7j5qQcU2RT2QGof8kYerZt+nvTCBEo4KHpl6sBCACV3S6celNBcfhXsQpJm7f2yIyPIjdCgi0+xmc+aVn5o1NNQT3UhTNCFonKsojdbGuOFovBa+aU4BE5YbGqo7u+c2e1Wsu+gPeEZ7GE4pvDrm2RBvdO6rAtC35T0bnTSc=
+          controls :
+           -
+             name : BTN_Delete
+             identifier : 0x29037d1f3824a9ec
+             internal_properties : BgAAAAYAAACLUsjqqmKBI9z26l6nWq1pnVW/B/zX6hecYeQ7DOeX13eU9hdIoqoW1KSq7DRJRx1QX6WqEwqylRIgNMFYpBZEYNFA2I6XQqsRPk1NDhXSRBL28uPSByw1uKUsxa+BXGZoKkXJGHfWn0wFo2zREt31A0MXFk6N3pdKnA3BUCrDX9OCpn6OfAULN0WfAygUn0bRpGQfTOeMsprCxSqFGhkvXxGWnj8JT8baleFgskenzRGcjuCykINQtQFtZyWig04AIeMkTG7cpBKDlElAkXGU6quJJaKDgmfNGLFEU6w7uZGbxt8NqrbgrnBj6Rp3xDhHqFF9Vq2UC6+zHaNPM0KxroFBXgJwqDeRz/5D9UN6okqw5lfssbmhkbpm3evZtFWVlQlv6wiljgFiM7fgS1acDC2vJwXutl/Qk1VlnR8r7SKjwVy0R5cdwdLTHG8BCN8YLO+EsiqKeWI5+UuEdx74X908ffcx2NVWLLekjyPeh8VSUtCBpSzgpvwPvmQ0cmykZSsosmxE91O85ioH+0POFQC49pXWHGUpEBd3vNVVzhprH849Lz3wsZ2WtZvaNbwWUOgBe3YeAPkY+huuYDQ5UJjkn1gmYFng0We4Z6jlwUdidwDwX/lor1eR2/dSUTQhth45IKfYaD0bD49HEhwnqXs3XkfAKb9ZEVJtYKBuhAA48l/aSEZ8KXzv7gOlq2PKngVPrmoC+mQKNa1s5i2BGiIuiSzkFWGZ8YMmZYOki7ioMPhJYePFuiluO19sdCj4LkXkwgzIJzM0I1wwsaHeY9FIpK1Do7jsNJIuzeiWqauKFKlIC06KJwBx+hHCmfJx31NHfs8a56bOOo5wXHM2+ADehzxwY3j3jdkYvbs70R42fv0189vk0UGhKwl/pBu9e4wSlMeyIZl8MMQXFbTcCJMNFb4BbNZoJhZwPHcOXy9xdr41j6F2pUV3a1PzpD594JArzXhtz2lZxOVkvtw/GJvmzAsl+ENBl93cfYZeQ7DmdoARVVzzz8+Ckrric/SF5qgErO4HI75CnH4/SF7GnpkNft4JDwnvAzV+4ltqlId8+u+JglLYaDnjLeWpeUqyk2ATmUQYK8azjuqaKZfXRGsbDN8dLQbxEbwdAU000QQkvmr+/W7WeFQOYN91fTS9k2eNQniUF3+VNFGyGkPGpMehFJ4Hm1fiZxj9Abp29mFb4vGvKC9r4jJ6X6cOcdCMMCMN/gdxoPAPhhjLK4qg/M1/PYGYqkaCvrz0B8kHpWawAeNl666pgw==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1+
+                  
+                  local
+                  	sTargetControl is string
+                  	
+                  sTargetControl=gsTargetControl
+                  	
+                  IF gsTargetControl<>"" THEN
+                  	IF YesNo("Wollen Sie wirklich das Feld löschen?")=Yes THEN
+                  		IF gsTargetControl="" THEN
+                  			gsTargetControl=sTargetControl
+                  		END
+                  		WHEN EXCEPTION IN
+                  			gaaHistoryNachher["FeldID"]=Val({gsTargetControl,indControl}..Note)	
+                  		DO
+                  			RETURN
+                  		END
+                  		HistoryAdd(3)
+                  		DisplayObjects()
+                  		gsTargetControl=""
+                  		WHEN EXCEPTION IN
+                  			WIN_Designer.IW_InternalWindow1.ResizeHandleEinstellen()
+                  		DO
+                  		END
+                  	END
+                  end
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Change
+             identifier : 0x29037d1f3825a9ec
+             internal_properties : BgAAAAYAAAAAkREhsQSyQ408CEVjoRAYMeHUZrJgMw+SoQW5G2q0QjmJrINRCIhroNMbEMYtxCcZXbuOtWoBwMWGlBQMnZSlKYNb+hzzcs4JqtJ93bGdQRHwxsftiwtdZmSYqBR1ORl47HvaQaciaPATYbyNKY8mXots505FyaYNtfIalRi3sVfbUbEXyabl0m65CbbZAJqqcEs/HB3izm/V0nk4nSh8lapl9WUpQYMARCeJUZ0NjxaRkv33O9kuk2QYeh4z1gaiPzciS4zNHkS1XCiZVNRxJY2hZTQE1cbRI6L5tznfLkiKq+jWhNPhjqqIZsDQ+JAhKLOYXqscyBJasCoqOxEVawEFOzJuC5tdiPOTU7H8Ey7IZ87O5MqYfzCPHgx9FmQpOmRZY/Eb5jXyDiF2xhJ9cO+ezQ9wUFdE0A6XLF6ugRxloqUgiV0NHhw4BDkCD9yriVb/BqZzT47YX4PACc4Iy1LOJkZ/j5F5xGAckgMhCxidjBXgLE7EjbNF13NuR5tosS4dnXBV/1xSKNtlkSy5BC41DNT+Kx2SHyDHSezcnpt9x5jdGk8+NGad+4Wl3tJTtjYAnq5sM6ivVpxhHr6cdaMQkG0DvhGRbUSffGghFU6GoLblzxJKxvRxfdFhVzWVU61nPfkbAQ9lg9zABdpuH1UAq8CP1TZNpjA9t0dfhYZaHTC9hbPQ9S7FEaIOhQaAjbPdwAaRqsQPuzGtsa9WBIhgIfrg3iwx/8pCTG6LHujewbRcQwH+ekoLVUfbLTpE16fua8NmAR7gKx0QFXqo/iOReXCqi20Dzzl+RQ2HZLxUlHh2ho22rb+FV+box44NxKqi16VVAqn1m96RUZE6sdAEhoN7y29x4sJaG+4Surel9QYbxV94UZ5L7TqC9PkoNOML/YdxPHIljl1PiSoGASkub8/j+P8iV4wN9Na5lt17R4tz9pr40+wJV0e2LqTSr3qV8+OrNc/KId48sbriQok/Y7bGZnDArl/xhiRABsk+5tmC2+tpvl0LXsIVkJ/dBPLjBT9nts9jJQQl0O2RblfP0tQ3xkmLB3sVIkrd1EA5sFBr29++ROAnKAh1MCV88f2f58J8kjRsFHh5JXS8gMocXUFRoq56SFNt/SODxfHSCNm+CG7xEq0JiKw4N3YZmTRZzhOL5W2WoKBwRooPG+o/8pX5697x/+KdfhefJLXF8nv6LC8E1zt9Al6a5SLgIov43PN/RPnSm6C4XhFX8p7Et9I/c491Ajrz1V/qgdTO3GmJiwxwZfKbcRwhhS/fMnDRRz+IZ0jRZjNz/ybllLij5v4ENVmFw9nuAwjY9Q0uVT4cW5o=
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  
+                  LOCAL
+                  	xmlRecord is string
+                  	sXMLDoc is string="XML"
+                  	
+                  IF gsTargetControl<>"" THEN
+                  	when exception in
+                  		HReadSeek(DataFile,DataFileID,Val({gsTargetControl,indControl}..Note),hIdentical)
+                  	do
+                  		return
+                  	end
+                  
+                  	IF HFound(DataFile) THEN
+                  		xmlRecord=HRecordToXML(DataFile,"",charsetAnsi)
+                  		xmlRecord=StringToUTF8(xmlRecord)
+                  		XMLDocument("XMLDoc", xmlRecord)
+                  		XMLFirst("XMLDoc")
+                  		XMLChild("XMLDoc")
+                  		XMLFirst("XMLDoc")
+                  		WHILE NOT XMLOut("XMLDoc")
+                  			gaaHistoryVorher[XMLElementName("XMLDoc")]=XMLData("XMLDoc")
+                  			XMLNext("XMLDoc")
+                  		END
+                  		XMLClose("XMLDoc")
+                  //		if open(WIN_Property,DataFile.DataFileID) then
+                  //			xmlRecord=HRecordToXML(Felder,"",charsetAnsi)
+                  //			xmlRecord=StringToUTF8(xmlRecord)
+                  //			XMLDocument("XMLDoc", xmlRecord)
+                  //			XMLFirst("XMLDoc")
+                  //			XMLChild("XMLDoc")
+                  //			XMLFirst("XMLDoc")
+                  //			WHILE NOT XMLOut("XMLDoc")
+                  //				gaaHistoryNachher[XMLElementName("XMLDoc")]=XMLData("XMLDoc")
+                  //				XMLNext("XMLDoc")
+                  //			END
+                  //			XMLClose("XMLDoc")
+                  //			HistoryAdd(2,True)
+                  //			ResizeBlatt()
+                  //			DisplayObjects()
+                  //			WHEN EXCEPTION IN
+                  //				WIN_Designer.IW_InternalWindow1.ResizeHandleEinstellen()
+                  //			DO
+                  //			END
+                  //		end
+                  	END		
+                  END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+          type : 88
+          code_elements :
+           type_code : 123
+           p_codes : []
+        -
+          name : RIBGRP_Label
+          identifier : 0x29037d1f3827a9ec
+          internal_properties : BgAAAAYAAABdzsHVVrxhys+SvYb2WGymZoKx2WTssT4VVAPaICA8X4EaYxplHugxWNQYEWLKH86xXZEFVCFdynQpwFqqBjOMhvFoQfBs6lTWjeF0qZ86YB5redyOa5pKQ5KUl3QROM716VzLc+kcjczYAx6JcLL3KKTXcAfO5CpItyxBlsFn5UeAZ+tFoDhrd1wJUYs5ee3wcYSIW+5n6st6GeMENc4RbaaUp6I/vUZqNs4O49KX3c6gcIe7yrsFbm0GqCQAcZoBsovdZAcXIkVJEajR4lmZHs1eiGktcGwudik52iEIud5Cmri4oxsH1tP54wpRCSIKB0fzdhAuX/rRlBlCc2F2YKo9kAOC/mvuFx7o8dw2yLff2Oeh8+Dw7Tb69BRJjUMHOx36AXt6hnlsQP7UaA/6gzCzz/mwsX2L9eYy/4hAvuRz70JIwqruxvkSO5k53a/pbea8mDrFaUnuVFRca8BsChLDZYblnmy0MK8/OPE6oB8MpU6RonUv0dhaCpQbodiXqygGGzi2UEqnccrbtZxqMF0MTr7hm5MDLMy/h/CsCvSlA1Lvw1DFBfE1OgChwo40KGXJv7IRjwCh+YT+N224P+IzvbFcSUEQfzgOd4dw2L6i/NiM9DMESO6q4uiosCbknsH1/Cys1quMq5Oc5sosAynPTjkDOCSwYtgLRtxwnIb3JGRScHErSI/FvVzgxf7L8NhmlPE7AhZqYZ6tBGBR6z7t6MDtM9p2OgU/bLcNVoVTdgGUJaFhrtocNV5Tv4HLYOgI2AYlCGzu9w3O6Q==
+          controls :
+           -
+             name : BTN_TextField3
+             identifier : 0x29037d1f3828a9ec
+             internal_properties : BgAAAAYAAADmKkEoREeqb5af1eMGzD0+05xYDz5nrqjw2FMFFkqxuPiiSKI67h733bS7G3oHzN7rX3llanBt1w5J5OqEKPOnbkCvepFf7RcMCUTj+ZdFRdgfxB65VBghF2rrnRuh0X7Y0G17ygnQYA/x4tGoBlZA5x+KkNYjFJZZqrXZx4V5vnGTSpfvrJisCMt5bL6kQI/zTkyCmb5RCEKd2daBDs6DiEeRbpUfEBlndVPwiBdQwMJjv4pk7Jv3mcL5sM3tHcO+03oIoBqSSiYrMU4Ls2nTUksJqpOMzXwy8AiwYDnU3ndUuNgD6+zx2xeeWFRijUsVlgSjVnT630mRqtYSYibz6cv9o+8ncSqRS2cGjYrT4rmoNBT54pUfMpeQ92vg+4zkl8FjXTqddvKUZyN5+l2iM1gOUi2croPDArfRu7XJ9bgA2aDrmlYkMZ+pX2M+zV2JHtQvNh0jd5qAXvMxGcULkp99WcOnOv45tPEIDR7lQsiOQhYkwB1OJ0lurUElSmci77tDvpzxl4Mhp5xwEwM3ofxqk16AsHvfHfQ/Ekpvj/LSikK1IUf97qe3UbUP7jNqOJXRi/F03StNQHgcEOjNcY8l4riokVguKq5M1EJrfkkRQFwuSn1FG/LMCnFODv0Kqu5G1iCo/Mt86DJyRNO20hY+qYLJU/kr5MVqcJox9VDEFg4GFTCQnrnEbYJ/g43qrUMhSTqtHoD6/wMJoMKbFfX/xR5YxWmOHObIJXuFRXB2gZvdiwCOeXcTrzfbTdVirBwAjrfM1vB/THIUAARMDKFpN5vzS4xQTRo12qw19oVtnw1vMD3tBdGxLL/lJ/ESKjgsAJK1M0Nccs+FofnLA1dU2RMdlaBk2JlB8LlxqNfqq8YbYS3t1GkwDW8sfAUg1Xh4NbFeZ3BbOEpRVRGbmws1kH3nR0jTGXRraTGn7AInuRtRQmeBYki7FZoqkPhjXNV8/tzxUH3fxQ5aNRjcbZCmzzjEyV9MK5MVvURrD9MOoJ4rgqoIfiB5n0rYcFQc9Bf+ckG9Vl4y/tmxS2Y/KH7SE6UcX5+URMgM0n42GECeWvN8PkqKYWni33wCWPE9W9kpJ1xcM16/bKAEmdFi
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  
+                  //if YesNo("Wollen Sie wirklich diese Etikette löschen? Diese Aktion kann nicht rückgängig gemacht werden und alle Änderungen werden permanent!")=yes THEN
+                  //	hreadseek(Etiketten,EtikettID,gnEtikettID,hIdentical)
+                  //	if hfound(Etiketten) then
+                  //		hfilter(Felder,EtikettID,Etiketten.EtikettID,Etiketten.EtikettID)
+                  //		HReadFirst(Felder,EtikettID)
+                  //		while not hout(Felder)
+                  //			hdelete(Felder)
+                  //			hreadnext(Felder,EtikettID)
+                  //		END
+                  //		HDeactivateFilter(Felder)
+                  //		hdelete(Etiketten)
+                  //		
+                  //		HReadFirst(Etiketten,EtikettNummer)
+                  //		gnEtikettID=Etiketten.EtikettID
+                  //		HReadSeek(StandardEtiketten,StandardEtikettenID,Etiketten.StandardEtikettenID,hIdentical)
+                  //		
+                  //		ArrayDeleteAll(garrHistory)
+                  //		
+                  //		gbEtiketteChanged=False
+                  //		gnAktuelleHistoryNr=0
+                  //		
+                  //		CalcZoom()
+                  //		ResizeBlatt()
+                  //		DisplayObjects()
+                  //		
+                  //	END
+                  //END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_TextField4
+             identifier : 0x29037d1f3829a9ec
+             internal_properties : BgAAAAYAAABUou73HCUhAd+ifu+agZlMmXqGsB7yP6GmasWAmiCrMitjMuQAn3J6M3dkqZUFsv5qbdUCRl8mEIzjTAEwT7qaAti72ht1KRhHUDQomndTdob05bFX6Ytt5lGGozONAb4rzLnnXs1SX9Zi1/2Z45Yyat1ThVTgQZIQ8frTH7K2GpU4Ugcsfp+wPlWXwNbTx/VIN92RIGb8QQ0XlsUCyM44VWL2XPmY/ARcDfKhB2mm88Y/IB8eG8wmuIluuN9MinkSpBwqq9GgEvytqnNMbibX9vL/KN0XYxqYM+hjUc7UT5OV8QNzR9wT4x7Kqa5rAfxvDUJmaZZO+vQMFbggdRis0t7iR4/MvRKWdHU/0k3aL92/iCZf4UoN4uZxf44UQbYxJ2NVv3E3oGVwfTvjTqW/aJ0DL7M2LUk2wGzVLx4QrSQlwGeocJHCVKH19ugIAlFf4ZfjOjPcp0ejsEJTQpm4xb3AdzVA5cf0AkXpEf1097cpuPyBJ1c0fBjjWDBClrebO+9nLcALZ0xfcHybl6V+MryFLoeosfkUV9XiftIu4VHg259HY42oyQzsRDiTfGbDHtWt3hfiU1md4sE/QEFYnCptTNaU6Q5CMeSatQaFF3SasiW98PmqTTQ3ome969JOig3G0s9E82W+U1genR6JnNO3pEI+MedeI7cFQ+xFqdIT8sgLzvtQAW1JmqRDgdHgBgFtoKRUtewbmRS1ucsMK/AHMdZeB7JBHdYWpQ9fEk9FXbHpBUwoz8Ch0kMUc3k5eNTTg+TlvBhUNl4Qr/SftsKLhv9LhQljcm/jzigJLfm/6Z+Z2ZDh5MKAqNeL1cn4DKzxTtmCSdoommA+96WHi0dPRHKSvLGgTViNjXRWGdec/a2BQC5hPWiVeEHlYQrzJ+Q6wuQmSgD/XfiwTkhoqxJ7IJxCEZTS3AxYoB9aY+6uHZRyQspeEJLU/0YrH4tntQuIB+BybY2BHoqRrH+98xvryB7GWuXrpsf2YcOormyhDAQ8LGayk7eX9VwbmVPSLek+ILnCXeZuwUs3aFzjtwhngFl/zyvlhk0G3PzgMSoFJiFBjhVNj5tzEZ47N4ZpkqRpJmQIdZs9HdAlW1b2VB4qz2s=
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  //
+                  //local
+                  //	NeuesEtikett is stEtikettKopieren
+                  //	bUpdate is boolean
+                  //	
+                  //NeuesEtikett.nOriginalEtikettenNr=gnEtikettID
+                  //
+                  //IF gbEtiketteChanged THEN
+                  //	IF Stammdaten.AbfrageAenderungen THEN
+                  //		SWITCH Dialog(<§?189751C802BB83DB§>)
+                  //			CASE 1
+                  //			CASE 2
+                  //				IF gnAktuelleHistoryNr>0 THEN
+                  //					WHILE gnAktuelleHistoryNr>0
+                  //						HistoryTakeBack()
+                  //					END
+                  //				END
+                  //			CASE 3
+                  //				ReturnToCapture(EDT_FONTSIZE)
+                  //		END
+                  //	END
+                  //END
+                  //
+                  //gbEtiketteChanged=False
+                  //ArrayDeleteAll(garrHistory)
+                  //gnAktuelleHistoryNr=0
+                  //WIN_Designer.BTN_BACK..State=Grayed
+                  //WIN_Designer.BTN_FORWARD..State=Grayed
+                  //
+                  //if open(WIN_Etikett_Kopieren,NeuesEtikett) THEN
+                  //
+                  //	switch NeuesEtikett.nKopierArt
+                  //		case 1
+                  //			HReadSeek(Etiketten,EtikettID,NeuesEtikett.nOriginalEtikettenNr,hIdentical)
+                  //			
+                  //			Etiketten.EtikettNummer=NeuesEtikett.nEtikettenNr
+                  //			Etiketten.ArtikelNummer=NeuesEtikett.nArtikelNummer
+                  //			Etiketten.Bezeichnung=NeuesEtikett.sBeschreibung
+                  //			Etiketten.StandardEtikettenID=NeuesEtikett.nStandardEtikettenID
+                  //			Etiketten.TageHaltbarkeit=NeuesEtikett.nTageHaltbarkeit
+                  //			Etiketten.ChargenNummerFuehren=NeuesEtikett.bChargenNr
+                  //			WHEN EXCEPTION IN
+                  //				HAdd(Etiketten)
+                  //			DO
+                  //				Info(HErrorInfo(hErrFullDetails))
+                  //				RETURN
+                  //			END
+                  //			
+                  //			HFilter(Felder,EtikettID,NeuesEtikett.nOriginalEtikettenNr,NeuesEtikett.nOriginalEtikettenNr)
+                  //			HReadFirst(Felder,EtikettID)
+                  //			WHILE NOT HOut(Felder)
+                  //				Felder.EtikettID=Etiketten.EtikettID
+                  //				HAdd(Felder)
+                  //				felder.FeldName="OBJEKT"+NumToString(DataFile.DataFileID,"d")
+                  //				HModify(Felder)
+                  //				HReadNext(Felder,EtikettID)
+                  //			END
+                  //			HDeactivateFilter(Felder)
+                  //			
+                  //			HReadSeek(Etiketten,EtikettNummer,NeuesEtikett.nEtikettenNr,hIdentical)
+                  //			IF HFound(Etiketten) THEN
+                  //				gnEtikettID=Etiketten.EtikettID
+                  //				HReadSeek(StandardEtiketten,StandardEtikettenID,Etiketten.StandardEtikettenID,hIdentical)
+                  //				CalcZoom()
+                  //				ResizeBlatt()
+                  //				DisplayObjects()	
+                  //			ELSE
+                  //				Info("Es konnte die gewünschte Etikette nicht angelegt werden!")
+                  //			END	
+                  //		case 2
+                  //			//Standard Etikette füllen
+                  //			HReadSeek(StandardEtiketten,StandardEtikettenID,NeuesEtikett.nStandardEtikettenID,hIdentical)
+                  //			IF HFound(StandardEtiketten) THEN
+                  //				if YesNo("Wollen Sie die Standard Etikette zuerst leeren?"+crlf+crlf+"Wenn Sie die Standard Etikette nicht leeren, werden alle neuen Felder dazukopiert, alte Felder nicht gelöscht und die bestehenden geändert")=yes then
+                  //					hfilter(StandardFelder,StandardEtikettenID,StandardEtiketten.StandardEtikettenID,StandardEtiketten.StandardEtikettenID)
+                  //					HReadFirst(StandardFelder,StandardEtikettenID)
+                  //					while not hout(StandardFelder)
+                  //						hdelete(StandardFelder)
+                  //						hreadnext(StandardFelder,StandardEtikettenID)
+                  //					END
+                  //				END
+                  //				hfilter(Felder,EtikettID,gnEtikettID,gnEtikettID)
+                  //				HReadFirst(Felder,EtikettID)
+                  //				while not hout(Felder)
+                  //					hreadseek(StandardFelder,FeldKey,HBuildKeyValue(StandardFelder,FeldKey,StandardEtiketten.StandardEtikettenID,felder.FeldName),hIdentical)
+                  //					if hfound(StandardFelder) then
+                  //						//Update
+                  //					else
+                  //						//Insert
+                  //						HReset(StandardFelder)
+                  //					END
+                  //					StandardFelder.BarcodeTextSichtbar=Felder.BarcodeTextSichtbar
+                  //					StandardFelder.Bild=Felder.Bild
+                  //					StandardFelder.Breite=Felder.Breite
+                  //					StandardFelder.Durchgestrichen=Felder.Durchgestrichen
+                  //					StandardFelder.EingabeMaske=Felder.EingabeMaske
+                  //					StandardFelder.FeldArt=Felder.FeldArt
+                  //					StandardFelder.FeldName=GetGUID(guidRough)
+                  //					standardFelder.FeldTyp=Felder.FeldTyp
+                  //					StandardFelder.Fett=Felder.Fett
+                  //					StandardFelder.HintergrundFarbe=Felder.HintergrundFarbe
+                  //					StandardFelder.Hoehe=Felder.Hoehe
+                  //					StandardFelder.Kursiv=Felder.Kursiv
+                  //					StandardFelder.OrientierungH=Felder.OrientierungH
+                  //					StandardFelder.OrientierungV=Felder.OrientierungV
+                  //					StandardFelder.Schriftart=Felder.Schriftart
+                  //					StandardFelder.SchriftPunkt=Felder.SchriftPunkt
+                  //					StandardFelder.TextFarbe=Felder.TextFarbe
+                  //					StandardFelder.Unterstrichen=Felder.Unterstrichen
+                  //					StandardFelder.Wert=Felder.Wert
+                  //					StandardFelder.Winkel=Felder.Winkel
+                  //					StandardFelder.x=Felder.x
+                  //					StandardFelder.y=Felder.y
+                  //					StandardFelder.StandardEtikettenID=StandardEtiketten.StandardEtikettenID
+                  //					if bUpdate then
+                  //						HModify(StandardFelder)
+                  //					else
+                  //						hadd(StandardFelder)
+                  //						StandardFelder.FeldName="OBJEKT"+NumToString(StandardDataFile.DataFileID,"d")
+                  //						HModify(StandardFelder)
+                  //					END
+                  //					hreadnext(Felder,EtikettID)
+                  //				END
+                  //				info("Fertig!")
+                  //			else
+                  //				info("Die gewünschte Standard Etikette konnte nicht gefunden werden!")
+                  //			END
+                  //		OTHER CASE
+                  //			Info("Es ist ein falscher Wert vom Fenster zurückgegeben worden, es wurden keine Etiketten kopiert!")
+                  //	END
+                  //END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+           -
+             name : BTN_Neu
+             identifier : 0x29037d1f382aa9ec
+             internal_properties : BgAAAAYAAAB4R1Xc7TDca5C7qjJXIfX9Q0NPtimQeqXbRMlivHUU1yTQyAu1qSqVTtTgd7QNm60pLkInhOEXoMcbckAxddEHCkaH2guKZ2ra8qA4BoniCNONTR0CJqH5pDyTbTVxRPHJtAuiMtONibiq2laZptlKhtpdtOfkPqPJUcr/MMRlPMdNMw5rdvm090pkqgosvkexee0RFNpd+cFhdkPhxJyLFhEoWyBOMhZDg4jx7iA38795MEjimMlNa/WRZDw79zfijbhAcaomYMVTMPsJm62Voys1dAJAkl/l1dyUQGrnZpFSmhpiPaR476tfjGV+5rArSHWjxCa/J7FKnD88lap9HS5RSGGda33nIbbuIvMzMEdEjrCEJR88nYUhFepfDs2/v1mO9rwQMYqUYdLMX7RbOh9ml7BgbV9WaolsMeUGhBlqUCalLmnJXjSaIDQxyUf0X2hr8M2NPB8DryE6ClggFsyp70/Obkd7mXBK2n1tviBLi/JKUYrGFORIvTm3ai333KJppR+3sa5nDbkF929zZSH/JboLx3V6f7ZtRlZqDmB/EY1dRIxArpZV7Kp26p8otSNBBKAZH1p1EKTuPOKU5ugykbl+f1suYD6vXASmfVzsY1JigueVA/dxofpV1Ay+xkbl11GP5qw4IBuvh8c57WBckjvtU6Q22uPhw4sFPsufKWtaD2gwfDAfTiTGQq7xIfBLauRlptgWZ1x/DackkH3SRX5S2Z+w/nwhcuQw3lK6AkJsqd/CAzJWUlcHZH/svvymFHJNo9UGjTauNfaSfquAy0dG1pCFy/YTxqTI+WIt/CuW2xzolyD7uaJObJ3SoXPZmEfNmac+6ks1Df8jZjAl6f7unMu9mXGH2qgPXav/hN+ekgzGWiT03aMCu+Vhr2XOKRJ/SvSldNs4ekVYtWr+WH2PHGKUrGIJATCfdgXlaFDR8mrACxydn7MHGvFn4gtpFYYMMAHiHH/AcZaUM6qpuiZzzcLeyZmOpJ7uRgn/LLgdFxLEpJZmIPb3sAj01BIl22rvC2H55zBaJWQnx9J36+48lJPpKkKmeOtPMOizzfVYPShBvxR3ZhghuPYNyQ==
+             type : 4
+             code_elements :
+              type_code : 4
+              p_codes :
+               -
+                 code : |1-
+                  //
+                  //local
+                  //	NeuesEtikett is stNeuesEtikett
+                  //	
+                  //IF gbEtiketteChanged THEN
+                  //	SWITCH Dialog(<§?189751C802BB83DB§>)
+                  //		CASE 1
+                  //		CASE 2
+                  //			IF gnAktuelleHistoryNr>0 THEN
+                  //				WHILE gnAktuelleHistoryNr>0
+                  //					HistoryTakeBack()
+                  //				END
+                  //			END
+                  //		CASE 3
+                  //			ReturnToCapture(EDT_FONTSIZE)
+                  //	END
+                  //END
+                  //
+                  //gbEtiketteChanged=False
+                  //ArrayDeleteAll(garrHistory)
+                  //gnAktuelleHistoryNr=0
+                  //WIN_Designer.BTN_BACK..State=Grayed
+                  //WIN_Designer.BTN_FORWARD..State=Grayed
+                  //
+                  //if open(WIN_Neues_Etikett,NeuesEtikett) then
+                  //	
+                  //	HReset(Etiketten)
+                  //	
+                  //	Etiketten.EtikettNummer=NeuesEtikett.nEtikettenNr
+                  //	Etiketten.ArtikelNummer=NeuesEtikett.nArtikelNummer
+                  //	Etiketten.Bezeichnung=NeuesEtikett.sBeschreibung
+                  //	Etiketten.StandardEtikettenID=NeuesEtikett.nStandardEtikettenID
+                  //	Etiketten.TageHaltbarkeit=NeuesEtikett.nTageHaltbarkeit
+                  //	Etiketten.ChargenNummerFuehren=NeuesEtikett.bChargenNr
+                  //	WHEN EXCEPTION IN
+                  //		HAdd(Etiketten)
+                  //	DO
+                  //		info(HErrorInfo(hErrFullDetails))
+                  //		return
+                  //	END
+                  //	
+                  //	if NeuesEtikett.bFelderKopieren then
+                  //		hfilter(StandardFelder,StandardEtikettenID,NeuesEtikett.nStandardEtikettenID,NeuesEtikett.nStandardEtikettenID)
+                  //		HReadFirst(StandardFelder,StandardEtikettenID)
+                  //		while not hout(StandardFelder)
+                  //			HReset(Felder)
+                  //			Felder.BarcodeTextSichtbar=StandardFelder.BarcodeTextSichtbar
+                  //			felder.Bild=StandardFelder.Bild
+                  //			felder.Breite=StandardFelder.Breite
+                  //			felder.Durchgestrichen=StandardFelder.Durchgestrichen
+                  //			felder.EingabeMaske=StandardFelder.EingabeMaske
+                  //			felder.EtikettID=Etiketten.EtikettID
+                  //			felder.FeldArt=StandardFelder.FeldArt
+                  //			felder.FeldName=getGUID(guidRough)
+                  //			felder.FeldTyp=StandardFelder.FeldTyp
+                  //			felder.Fett=StandardFelder.Fett
+                  //			felder.HintergrundFarbe=StandardFelder.HintergrundFarbe
+                  //			felder.Hoehe=StandardFelder.Hoehe
+                  //			felder.Kursiv=StandardFelder.Kursiv
+                  //			felder.OrientierungH=StandardFelder.OrientierungH
+                  //			Felder.Orientierungv=StandardFelder.Orientierungv
+                  //			felder.Schriftart=StandardFelder.Schriftart
+                  //			felder.SchriftPunkt=StandardFelder.SchriftPunkt
+                  //			felder.TextFarbe=StandardFelder.TextFarbe
+                  //			felder.Unterstrichen=StandardFelder.Unterstrichen
+                  //			felder.Wert=StandardFelder.Wert
+                  //			felder.Winkel=StandardFelder.Winkel
+                  //			felder.x=StandardFelder.x
+                  //			felder.y=StandardFelder.y
+                  //			hadd(Felder)
+                  //			Felder.FeldName="OBJEKT"+NumToString(DataFile.DataFileID,"d")
+                  //			HModify(Felder)
+                  //			hreadnext(StandardFelder,StandardEtikettenID)
+                  //		END
+                  //	end
+                  //		
+                  //	HReadSeek(Etiketten,EtikettNummer,NeuesEtikett.nEtikettenNr,hIdentical)
+                  //	if hfound(Etiketten) then
+                  //		gnEtikettID=Etiketten.EtikettID
+                  //		HReadSeek(StandardEtiketten,StandardEtikettenID,Etiketten.StandardEtikettenID,hIdentical)
+                  //		CalcZoom()
+                  //		ResizeBlatt()
+                  //		DisplayObjects()	
+                  //	else
+                  //		info("Es konnte die gewünschte Etikette nicht angelegt werden!")
+                  //	end
+                  //	
+                  //END
+                 type : 18
+               -
+                 type : 161
+                 enabled : false
+          type : 88
+          code_elements :
+           type_code : 123
+           p_codes : []
+       controls : []
+     -
+       internal_properties : BgAAAAYAAABBjWdfoH4sWKk4yhPkk7uu2GpefvM0pImuVsGfY6cR0lqek5VtJtLKWdTCutz9XNrbuUEn+TjhhjZz4i+AKXCukxmtoRK4pFBtNgR/nCuikGJzhAp81+56TJ2Uvz4fwfRkZfN40L4t6gqCWgTP6bralDF0BARN85MeY9gg7fxKncpHrMMnd7hExSfkCrrt
+       ribbon_groups :
+        -
+          name : RIBGRP_Ansicht
+          identifier : 0x29037d1f383da9ec
+          internal_properties : BgAAAAYAAAARRcvRO5Htzxvb00l9UA61T0rPxp3sai33/Iaitr6twqA8A8AoFyI6x2yA5jr4YY7rUaLwRYhACljeO7FxsDKZ/GcCLq5oQ25JD+LXpylwEODpNN0Iizft3i9xgHy409jt5Hp10fLpiy3cKbJz+31obs5Y8F1Py22D/k7UwkOMXrhdUbHhN+iDRjp/3dJbybugimJ5KcdLsLOP2Tr8O7x3a+EizU+ROczABB3BxmbrBKHwKNLL0gYwxU4jvFsPc6VrxFxSVL7PwafDfXUofGhjkCQAcycizRYeZ/8yG0WAegJQFd6HObQVsGtzpKBKHiqc2Jvm/rsiIPrHhiRM4/H7OoXBibmQkGN8kyj5yKR7qGG3PkyXS9Qm9qCYdWN1IQ+TkleRlwwkQgiCFu0yLSy0ajLC8oJuaIwY19eRxCvzged1t7GqkEFLvryZN/TGXUP/h51iObwMPBgcJEPAtC8YJ7w/7eBPzHwai44PbFSO6iOs8Qi7DobABnWsJ+vzyNnuR3e8bYQyYqNO4aQ/eroNETDTQww1Arv2CO0TbH9KOa02HY+oThedmdNW8CllymngFXEbEkcOZozjKSDnHBmDs0yAkLeg6Pfhtoh4+yK3SqG7J4ouXpkibbtxRBVS8RzhZf5WlYReSwiP+zMw9bgOtad0VNR5HT/8A+CYorYCaGmefegDXBr0lZDBckfEcF+kpji5ZBycsBxp0x2fkR2x5RRfWrOWkl7J7bblNC8Y4W7xBJ0u9fiEbc+qDElKw1xcuBNS+DLtUzk=
+          controls :
+           -
+             name : COMBO_Zoom
+             identifier : 0x29037d1f383ea9ec
+             internal_properties : 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
+             input :
+              internal_properties : BgAAAAYAAAAEEnMVus2nUz8houj85ufe/hf78TUBcCZS1K2mRMnQ2yzKAy+uBEBbIm6j8Qyc5Oig3TmlLm1w9P2UDYijXmMNTk3OmITXHL49rPLzS8904CE2tv0HswA+Bi3fB31wfeBChp5VivWLM8dTxL1fn7DCNa0N4Q5MyMtmt18CZy1OwCLIGbnNmXtXX5sckwby5m3r7qFFj8EUoGb5dCVcGZo1VHiVAKqw6w+naXo/vj5C5erMS6PQ6xujMX34dxuOPUHlHm4+CQEpp7lLw5UE1tnkhFuKLqD+us2VYtjU+VJ4g1lTAFgMkuCVd49QjbqBD5SWhETpIYFuaszRFuP4IKF8/Grh7IDZC+Gc8LLh9Kd7jfpdgP1btdz2seyGx59Y2cRc89dXAlUUl9DMUFl7ct7vR1suecW/vseMxO0FwLpSSQZEcL7mE8ATyROzt7W9ffOpiYwTFKRTafhuyTuxxAnHH8JByDa+YdSalnB+ACkOeAWpr2FtBNQizfm/SzEfKbjIdOLWRXZWR0vnVi7WQHFtDyLitv2366AmAp6Uv9ZUYIV9rhmVnOYZzbEP95nBD7LrqnaUFpTqYguPMKevi0SI9AAV9FKCNW85FtKN6RAapy0LwVdDCUnF4hKEXoFZZ8oVPLt7Csmy3/jHi63gDNEBt64oNIj7pnL1+XQa6B+ESLyzHr7HHCu3j4IB8GqTvvHpu2HA0LxD/19dxlWr5WuadPWayhxIshmFfkRwFpVWgO9ti8eRVKp2XGCXck6TUeS4hUDiTXkiSvQhXIfS+yEnXs/oE9C1P3KjS4gkX3GEjGlJvyDw1604eci0pw0KxaiQAUj5mEzwYu2XBl6+kq3TY53TsZu5rHekVNxR546B2gEN/lb0I9xMNSXXznXGzq7OHHXfipsEtWUNvaRlx7C1fd5Go6BFoIQXC4KccqGo2r0AbO2wx2/kZtYvAcBxuhX5DQ==
+              type : 2
+             dropdown :
+              internal_properties : BgAAAAYAAAAIPavwRtyu4Pd6YCkcX0Y6KUnE7EGd5gw/4FXH2ueuykv/FFNuDCk2SYRQbF5RY3UxZOwXXFw4PuPkfeq6XZeD5/SCpjFvG8xa9XVPI+93hf9zXKcE1uMALszfuPUVBDfwK47f6JD2uddkw7fOaBk0gIwju3t2OA5DXIh4A00he270yfLutsB2fLi4KnuM+BhrnrH0yAHF3UN8uNSrTftyOkenIouZAAy+zWL2DmOiXdzVyySEKvnigqWZIaGSRCAd8Eocosm1aJ61rTjsjsQ73x2f8f0FGBGvnvEOSahwABzEAAyoBS2e60k0dc24VydOZ9JOjsHXBsXphunTjaohtlLIwk3JRmxH89E7wzwZJ4UF9BtVqZuggvMGfR9Jc/IIzNm8Y8pNKZyljijaB0hbUN5iRDf00sSe/ezsvWiT8YJF7lFmBmZSx1PsmCbSDQOeSAE792UTiiDwtT7f7Tkba0f5yQoVv3yakep2LoBA4cdKsbtVviAXNEsh/hLLum6F0JQm8qAyYHiZMYnTgrKGMxVGY+/oc+LqKN7IqwhKhAvqhqdDbiwe9wUX1FAJsePMFu5c2t4EQZ95YpxdG47NMKOYgVE50d/dgGkRYd9n/mR0wK2dtUkrE6d8Nt6a6cB2e3cQKLIX0ClzBFn/9WbswbNtMSJansdyUd9FyihL1qx+MG9+w+wUV0iryRqpFd5WTxsBNf/ynEssLbEMveRh4LXTH2aNAKPOTQytJddgHxotaKg/onycJEcO9FCnwGZMa0VV84zyPfkC+u8Rx9xNopgKbhHH1Wc6BCvqU5m3xWeuo8k6CV8UFRwax1JYysSFGIh6bGzZ9pUld6IHuccjEfknzMZpZ5IOk10cpIPDbjHN7fNRRWZsJxzIjU/PQkJprbuO0lXnyfwyc/rdel8cwDQgXiSK2/0pR7/xX7DopL1ibOAP9Qqd/7BJbutzJpusf03ETvnGPGn/+32aS4LLm2zZDoxfT1Ih1GwmPdmISqmhivBJ/Rn2S+/goPjyarys7yTRRaeK3h8a4xDUqj0CjeghbufG3W4qMXrWa7aG+4olfiDdTrIFCTr6WjroLgAfeFp/1eAvWDpzuPB1gqDtRU7l06gi2aeqn9E1C50NQRBX2WizD+1NtxQXRnRcN1jFUufkwEp1D05+tDR8b1pz4kJipO3jKpukWybivYIgy9O4ZdKCjfAIvjbdgMHmXB28VnmCIGf+L5HAPPafVEKK9NUewVcaTEyL/stFl3PIGt67WYoOosrqgK/QmTjvq6mq1pKoWnwwiFGK5SIleIIXCBj/4/CQYsnxls/fmyrHpJJJJ53/9m/FE51j/zVsaeQXwabb2dt1RIfIemdFwuuDPE6Dwnj7iyVBiHYD9cC99Quw7FjthxR7ymI=
+              type : 7
+             type : 14
+             code_elements :
+              type_code : 23
+              p_codes :
+               -
+                 type : 35
+                 enabled : false
+               -
+                 code : |1+
+                  
+                  SWITCH COMBO_Zoom
+                  	CASE "10%"
+                  		gnZoom=10
+                  	CASE "20%"
+                  		gnZoom=20
+                  	CASE "35%"
+                  		gnZoom=35
+                  	CASE "50%"
+                  		gnZoom=50
+                  	CASE "75%"
+                  		gnZoom=75
+                  	CASE "100%"
+                  		gnZoom=100
+                  	CASE "200%"
+                  		gnZoom=200
+                  	CASE "300%"
+                  		gnZoom=300
+                  	CASE "500%"
+                  		gnZoom=500
+                  	CASE "800%"
+                  		gnZoom=800
+                  	CASE "1000%"
+                  		gnZoom=1000
+                  	OTHER CASE
+                  		switch ListSelect(COMBO_Zoom)
+                  			case 12
+                  				//Breite
+                  				gnZoom=(WIN_Designer.IW_InternalWindow1..Width)/25.4
+                  				COMBO_Zoom=NumToString(gnZoom,"d")+"%"
+                  			case 13
+                  				CalcZoom()
+                  			other case
+                  				gnZoom=val(COMBO_Zoom)
+                  				if gnZoom<10 then
+                  					gnZoom=10
+                  				else if gnZoom>3000 then
+                  					gnZoom=3000
+                  				END
+                  		END
+                  END
+                  CalcAnalyseWidthHeight()
+                  ResizeBlatt()
+                  DisplayObjects()
+                 type : 33
+               -
+                 code : |1-
+                  
+                  if IsNumeric(COMBO_Zoom..Value) then
+                  	if COMBO_Zoom..Value>=10 then
+                  		gnZoom=val(COMBO_Zoom..Value)
+                  		ResizeBlatt()
+                  		DisplayObjects()
+                  	END
+                  end
+                 type : 17
+          type : 88
+          code_elements :
+           type_code : 123
+           p_codes : []
+       controls : []
+    type : 87
+    controls : []
+    code_elements :
+     type_code : 119
+     p_codes :
+      -
+        type : 292
+        enabled : false
+      -
+        type : 293
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x2b29f7c819492073
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+  controls :
+   -
+     name : SBC_Cell1
+     identifier : 0x2b4c6c601af1ace2
+     internal_properties : BgAAAAYAAACiijMcQFpDw4sPm4exUGG6/yX0ABkQLa6fHR8QKkB9ONvAj3S+VNwiQY+a++7t5j8IkEA42tExGmyOd5EC3dgm4nc8gYzOKQ==
+     code_elements :
+      type_code : 62
+      p_codes :
+       -
+         type : 15
+         enabled : false
+       -
+         type : 16
+         enabled : false
+       -
+         type : 39
+         enabled : false
+       -
+         type : 17
+         enabled : false
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      
+      Procedure WIN_Designer(nProjectID is int)
+      
+      GLOBAL
+      	gnRecNum is int = 0					// current file record
+      	gsModifiedWindow is boolean = False		// Was a record modified? 
+      	nPageOffsetTop is real on 8 bytes=58
+      	nPageOffsetleft is real on 8 bytes=9
+      	gbFirstLoad is boolean
+      	
+      // Management of database access errors
+      // Error messages returned by the database are displayed
+      // Database error reviews can be processed here
+      //WHEN EXCEPTION
+      //	Error(<§$000d§>,ExceptionInfo(errMessage))
+      ////	// Re-enable the exceptions
+      //	ExceptionEnable()
+      ////	// Resume the process
+      //	ReturnToCapture()
+      //END
+   -
+     code : |1-
+      
+      //Event("LocalEventTest", "*.*", null)
+      //Event("MSG","IW_InternalWindow1",276)
+      //Event("MSG","IW_InternalWindow1",277)
+      gbFirstLoad=true
+      gnPageOffsetTop=IW_InternalWindow1..y
+      gnPageOffsetleft=IW_InternalWindow1..x
+      
+      if ontestmode() THEN
+      	nProjectID=3
+      	gnProjectID=3
+      END
+      
+      HReadSeek(Project,ProjectID,nProjectID,hIdentical)
+      if not hfound(Project) then
+      	error(<§$000f§>)
+      	close()
+      END
+      
+      HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,project.LastVersionNo),hIdentical)
+      if hfound(Version) then
+      else
+      	error(<§$0011§>)
+      	close()
+      END
+      
+      gnZoom=version.LastZoom
+      
+      FillFonts()
+      COMBO_Schriftarten=""
+      EDT_FontSize=""
+      CalcZoom()
+      CalcAnalyseWidthHeight()
+      ResizeBlatt()
+      DisplayObjects()
+      gbFirstLoad=false
+     type : 34
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1-
+      
+      IF gbEtiketteChanged THEN
+      	SWITCH Dialog(<§?189751C802BB83DB§>)
+      		CASE 1
+      		CASE 2
+      			IF gnAktuelleHistoryNr>0 THEN
+      				while gnAktuelleHistoryNr>0
+      					HistoryTakeBack()
+      				end
+      			END
+      		CASE 3
+      			ReturnToCapture(EDT_FONTSIZE)
+      	END
+      END
+     type : 2
+   -
+     code : |1+
+      
+      
+     type : 11
+   -
+     code : |1+
+      
+      
+     type : 12
+   -
+     code : |1+
+      
+      
+     type : 17
+   -
+     code : |1-
+      
+      //CalcZoom()
+      //ResizeBlatt()
+      //DisplayObjects()
+      //MultitaskRedraw()
+     type : 13
+   -
+     type : 65792
+  procedures :
+   -
+     name : ResizeBlatt
+     procedure_id : 1957367951438258275
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //ResizeBlatt ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE ResizeBlatt()
+      
+      LOCAL
+      	rBreite is 8-byte real
+      	rHoehe is 8-byte real
+      	i is 8-byte real
+      	n is int
+      	
+      CallDLL32("User32","LockWindowUpdate",Handle(MyWindow))
+      
+      ListDeleteAll(Combo_TextColor)
+      
+      n=Dimension(iFarbe)
+      FOR i=1 TO n
+      	ListAdd(Combo_TextColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+      END
+      
+      ListDeleteAll(Combo_BackgroundColor)
+      ListAdd(Combo_BackgroundColor,Left("Transparent"+RepeatString(" ",96),96)+TAB+"-1")
+      n=Dimension(iFarbe)
+      FOR i=1 TO n
+      	ListAdd(Combo_BackgroundColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+      END
+      
+      SetScrollValueH("WIN_Designer.IW_InternalWindow1",0)
+      SetScrollValueV("WIN_Designer.IW_InternalWindow1",0)
+      
+      rBreite=Version.AnalyseWidth
+      rHoehe=version.AnalyseHeight
+      	
+      WinUsefulSize(IW_InternalWindow1, rBreite+1, rHoehe+1)
+      
+      gnInternalWindowWidth=(rBreite+1)
+      gnInternalWindowHeight=(rHoehe+1)
+      
+      IW_InternalWindow1.IMG_Blatt..Width=rBreite
+      IW_InternalWindow1.IMG_Blatt..Height=rHoehe
+      
+      IW_InternalWindow1.IMG_Blatt..X=gnPageOffsetleft
+      IW_InternalWindow1.IMG_Blatt..Y=gnPageOffsetTop
+      
+      IW_InternalWindow1.IMG_Blatt=""
+      IW_InternalWindow1.IMG_Blatt..ZOrder=0
+      
+      CallDLL32("User32","LockWindowUpdate",Null)
+     type : 458752
+   -
+     name : DisplayObjects
+     procedure_id : 1968187055666005647
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] DisplayObjects ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE DisplayObjects()
+      
+      LOCAL
+      	i is int
+      	sControlName is string, useful
+      	n is int
+      	nID is dynamic array of 0 int on 8 bytes
+      
+      CallDLL32("User32","LockWindowUpdate",Handle(MyWindow))
+      
+      i=1
+      sControlName = EnumControl(IW_InternalWindow1, i) 
+      WHILE sControlName<>""
+      	IF Left(sControlName,6)="OBJEKT" or left(sControlName,4)="WIRE" THEN
+      		ControlDelete(sControlName)
+      		i=1
+      	END
+      	i++
+      	sControlName = EnumControl(IW_InternalWindow1, i)
+      END
+      
+      HReadSeek(Project,ProjectID,nProjectID,hIdentical)
+      IF HFound(Project) THEN
+      	
+      	HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+      	IF HFound(Version) THEN
+      	ELSE
+      		Error(<§$0011§>)
+      		Close()
+      	END
+      	
+      	HFilter(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMinVal),HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMaxVal))
+      	HReadFirst(DataFile,DataFileKey)
+      	WHILE NOT HOut(DataFile)
+      
+      		n++
+      		Dimension(nID,n)
+      		nID[n]=DataFile.DataFileID
+      
+      		HReadNext(DataFile,DataFileKey)
+      	END
+      	HDeactivateFilter(DataFile)
+      	
+      END
+      
+      for i=1 to n
+      	Display(nID[i])
+      END
+      
+      //VersionID+Child_Table+Child_Item
+      hfilter(ForeignKey,ForeignChildKey,HBuildKeyValue(ForeignKey,ForeignChildKey,version.VersionID,hMinVal,hMinVal),HBuildKeyValue(ForeignKey,ForeignChildKey,Version.VersionID,hMaxVal,hMaxVal))
+      HReadFirst(ForeignKey,ForeignChildKey)
+      while not hout(ForeignKey)
+      	//ControlClone("Win_Designer_Container.WIRE_NoName1","Win_Designer_Container.WIRE"+NumToString(ForeignKey.ForeignKeyID,"d"))
+      	sControlName="Win_Designer_Container.WIRE"+NumToString(ForeignKey.ForeignKeyID,"d")
+      	ControlCreate(sControlName,typWire)
+      	HReadSeek(DataFile,datafilekey,HBuildKeyValue(DataFile,datafilekey,Version.VersionID,ForeignKey.Parent_Table),hIdentical)
+      	if hfound(DataFile) then
+      		WHEN EXCEPTION in
+      			{sControlName,indControl}..StartControl="OBJEKT"+DataFile.DataFileID	
+      		do
+      			trace("Objekt "+"OBJEKT"+DataFile.DataFileID+" möglicherweise nicht gefunden?!")
+      			stop
+      		END
+      	end
+      	HReadSeek(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,ForeignKey.Child_Table),hIdentical)
+      	IF HFound(DataFile) THEN
+      		WHEN EXCEPTION IN
+      			{sControlName,indControl}..EndControl="OBJEKT"+DataFile.DataFileID
+      		do
+      			Trace("Objekt "+"OBJEKT"+DataFile.DataFileID+" möglicherweise nicht gefunden?!")
+      		end
+      	end
+      	{sControlName,indControl}..MaxNbSegment=25
+      	{sControlName,indControl}..ZOrder=2
+      	hreadnext(ForeignKey,ForeignChildKey)
+      END
+      HDeactivateFilter(ForeignKey)
+      
+      CallDLL32("User32","LockWindowUpdate",Null)
+      
+      result true
+     type : 458752
+   -
+     name : LocalEventTest
+     procedure_id : 1969889881349699208
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //LocalEventTest ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      Procedure LocalEventTest()
+      
+      switch _EVE.wMessage
+      	case 32,512,160,132,133,1735,2035,2036,2037,15
+      	
+      	OTHER CASE
+      		if _EVE.name="IW_InternalWindow1" THEN //_EVE.lParam<>0 or _EVE.wParam<>0 then
+      			Trace(_EVE.wMessage+", "+_EVE.name+", "+_EVE.hWnd+", "+_EVE.lParam+"("+LoWord(_EVE.lParam)+"/"+HiWord(_EVE.lParam)+"), "+_EVE.wParam+"("+LoWord(_EVE.wParam)+"/"+HiWord(_EVE.wParam)+")")
+      		end
+      END
+     type : 458752
+   -
+     name : CreateNewObject
+     procedure_id : 2049033664617557481
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] CreateNewObject (<nFormular> is 8-byte int, <nObjectType> is int, <nObjectArt> is int [, <sValue> is string [, <sMask> is string]])
+      //
+      // Parameters:
+      //	nFormular (8-byte int): <specify the role of nFormular>
+      //	nObjectType (int): <specify the role of nObjectType>
+      //	nObjectArt (int): <specify the role of nObjectArt>
+      //	sValue (ANSI string - default value=""): <specify the role of sValue>
+      //	sMask (ANSI string - default value=""): <specify the role of sMask>
+      // Return Value:
+      // 	ANSI string: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE CreateNewObject(nFormular is int on 8 bytes, nObjectType is int, nObjectArt is int, sValue is string="", sMask is string="")
+      
+      gaaHistoryNachher["X"]=1
+      gaaHistoryNachher["Y"]=1
+      gaaHistoryNachher["Hoehe"]=6
+      gaaHistoryNachher["Breite"]=50
+      gaaHistoryNachher["FeldTyp"]=nObjectType
+      gaaHistoryNachher["FeldArt"]=nObjectArt
+      gaaHistoryNachher["EtikettID"]=nFormular
+      gaaHistoryNachher["Schriftart"]="Arial"
+      gaaHistoryNachher["SchriftPunkt"]=10
+      gaaHistoryNachher["Fett"]=False
+      gaaHistoryNachher["Kursiv"]=False
+      gaaHistoryNachher["Unterstrichen"]=False
+      gaaHistoryNachher["FeldName"]=DateSys()+TimeSys()+Random(1,1000)
+      gaaHistoryNachher["Wert"]=sValue
+      gaaHistoryNachher["EingabeMaske"]=sMask
+      gaaHistoryNachher["HintergrundFarbe"]=-1
+      gaaHistoryNachher["TextFarbe"]="000000"
+      SWITCH nObjectType
+      	CASE 6,7,8 //EAN
+      		//Center
+      		gaaHistoryNachher["OrientierungH"]=2
+      		gaaHistoryNachher["OrientierungV"]=2
+      	OTHER CASE
+      		//TOP, Left
+      		gaaHistoryNachher["OrientierungH"]=1
+      		gaaHistoryNachher["OrientierungV"]=1
+      END
+      result HistoryAdd(1)
+      
+      result "OBJEKT"+NumToString(DataFile.DataFileID,"d")
+     type : 458752
+   -
+     name : Display
+     procedure_id : 2049473318940797503
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //Display (<gnObjektID>)
+      //
+      // Parameters:
+      //	gnObjektID:<specify the role of gnObjektID>
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE Display(gnObjektID)
+      
+      LOCAL
+      	x is 8-byte real
+      	y is 8-byte real
+      	wd is 8-byte real
+      	hg is 8-byte real
+      	bFound is boolean
+      	sControlName is string
+      	i is int
+      	nHdc is system int
+      	nHdc2 is system int, useful
+      	
+      HReadSeek(DataFile,DataFileID,gnObjektID,hIdentical)
+      if hfound(DataFile) then
+      	if DataFile.VD_X=0 and DataFile.VD_Y=0 then
+      		DataFile.VD_X=Random(0,800)
+      		DataFile.VD_Y=Random(0,800)
+      		HModify(DataFile)
+      	END
+      	IF DataFile.VD_W=0 AND DataFile.VD_H=0 THEN
+      		DataFile.VD_X=100
+      		DataFile.VD_Y=100
+      		HModify(DataFile)
+      	END
+      end
+      
+      i=1
+      bFound=False
+      sControlName = EnumControl(IW_InternalWindow1, i) 
+      WHILE sControlName<>""
+      	IF sControlName="OBJEKT"+DataFile.DataFileID THEN
+      		bFound=True
+      		break
+      	END
+      	i++
+      	sControlName = EnumControl(IW_InternalWindow1, i)
+      END
+      
+      x=((DataFile.VD_X/100)*gnZoom)+gnPageOffsetleft
+      y=((DataFile.VD_Y/100)*gnZoom)+gnPageOffsetTop
+      
+      wd=(DataFile.VD_W/100)*gnZoom
+      hg=(DataFile.VD_H/100)*gnZoom
+      if wd<=0 then
+      	wd=50
+      END
+      if hg<=0 then
+      	hg=50
+      END
+      
+      if bFound then
+      	ControlDelete(sControlName)
+      	bFound=false
+      END
+      
+      WHEN EXCEPTION IN
+      	ControlClone(IW_InternalWindow1.CLONE_BILD,"OBJEKT"+DataFile.DataFileID,x,y)
+      	{"OBJEKT"+DataFile.DataFileID,indControl}..Width=wd
+      	{"OBJEKT"+DataFile.DataFileID,indControl}..Height=hg
+      DO
+      END
+      
+      WHEN EXCEPTION IN
+      	nHdc=dStartDrawing({"OBJEKT"+DataFile.DataFileID,indControl},dErase)
+      	{"OBJEKT"+DataFile.DataFileID,indControl}..ZOrder=9999
+      	dRectangle(1,1,{"OBJEKT"+DataFile.DataFileID,indControl}..Width-1,{"OBJEKT"+DataFile.DataFileID,indControl}..Height-1,White,Black)
+      	dRectangle(1,1,{"OBJEKT"+DataFile.DataFileID,indControl}..Width-1,22,DarkRed,DarkRed)
+      	MaleText(nHdc,DataFile.FileName,IntegerPart(1),IntegerPart(1),IntegerPart(wd),IntegerPart(22),0,DataFile.VD_Font,IntegerPart(DataFile.VD_FontSize),"FFFFFF",Val(ExtractString(DataFile.VD_FontProperties,1,";")),Val(ExtractString(DataFile.VD_FontProperties,2,";")),Val(ExtractString(DataFile.VD_FontProperties,3,";")),Val(ExtractString(DataFile.VD_FontProperties,4,";")),2,2,0,gnZoom)
+      DO
+      	error("Fehler beim Zeichnen des Objektes: OBJEKT"+DataFile.DataFileID+crlf+crlf+ErrorInfo(errFullDetails))
+      END
+      
+      MultitaskRedraw()
+      
+      WHEN EXCEPTION IN
+      	{"OBJEKT"+DataFile.DataFileID,indControl}..Note=DataFile.DataFileID
+      	{"OBJEKT"+DataFile.DataFileID,indControl}..Visible=True
+      do
+      end
+     type : 458752
+   -
+     name : FillFonts
+     procedure_id : 2049478717714831519
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //FillFonts ( [<bRefreshAll>])
+      //
+      // Parameters:
+      // 	bRefreshAll (default value=0): <specify the role of bRefreshAll>
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE FillFonts(bRefreshAll=false)
+      
+      LOCAL
+      	s is string
+      	h is int
+      	//sImage is string
+      	sFontName is string
+      	sFileName is string
+      	w is int
+      	sFontText is string
+      	
+      if not fDirectoryExist(CompleteDir(SysDir(srMyDocuments))+"Scoriet\Cache\") then
+      	fMakeDir(CompleteDir(SysDir(srMyDocuments))+"Scoriet\Cache")
+      END
+      
+      s=FontList(fontDefault)
+      dStartDrawing(IMG_Image1,dErase)
+      
+      FOR i=1 TO StringCount(s,CR)+1
+      	sFontName=replace(ExtractString(s,i,CR),"?","")
+      	hreadseek(Fonts,FontName,sFontName)
+      	if not hfound(Fonts) or bRefreshAll then
+      		sFileName=CompleteDir(SysDir(srMyDocuments))+"Scoriet\Cache\"+sFontName+".png"
+      		sFontText="öäüÖÄÜß ABC123"
+      		//sFontText=sFontName
+      		STC_Static1..FontName=sFontName
+      		STC_Static1..FontSize=12
+      		STC_Static1..FontBold=True
+      		h=TextHeight(STC_Static1,sFontText)
+      		if h=0 then
+      			h=16
+      		END
+      		w=TextWidth(STC_Static1,sFontText)
+      		if w=0 then
+      			w=115
+      		END
+      		dFont(sFontName,12,iBold)
+      		IMG_Image1..Height=h
+      		IMG_Image1..Width=w
+      		dRectangle(0,0,IMG_Image1..Width,IMG_Image1..Height,RGB(255,255,255))
+      		dText(0,0,sFontText,RGB(0, 0, 0))
+      		dSaveImagePNG(IMG_Image1,sFileName)
+      		//sImage=dSaveImagePNG(IMG_Image1,inMemory)
+      		IMG_Image1=sFileName
+      		Fonts.FontName=sFontName
+      		HAttacheMémo(Fonts,Picture,sFileName,hMemoImg)
+      		if not hfound(Fonts) then
+      			hadd(Fonts)
+      		else
+      			HModify(Fonts)
+      		END
+      	end
+      END
+      
+      ListDisplay(COMBO_Schriftarten,taInit)
+     type : 458752
+   -
+     name : MSG
+     procedure_id : 1403815983462686663
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Description of in/out parameters for 'MSG' :
+      //
+      // Syntax:
+      //MSG ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE MSG()
+      
+      DisplayObjects()
+      MultitaskRedraw()
+     type : 458752
+   -
+     name : CalcZoom
+     procedure_id : 1421168557579801389
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Description of in/out parameters for 'CalcZoom' :
+      //
+      // Syntax:
+      //[ <Result> = ] CalcZoom ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE CalcZoom()
+      
+      if gnZoom=0 then
+      	gnZoom=100
+      END
+      
+      COMBO_Zoom=NumToString(gnZoom,"d")+"%"
+      
+      result true
+     type : 458752
+   -
+     name : Menu_Create
+     procedure_id : 1421227969873291475
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Description of in/out parameters for 'Menu_Create' :
+      //
+      // Syntax:
+      //[ <Result> = ] Menu_Create (<nEtikettID>, <nTyp>, <nArt> [, <sWert> is string [, <sFormat> is string [, <bDisplayObject> is boolean]]])
+      //
+      // Parameters:
+      //	nEtikettID: <specify the role of nEtikettID>
+      //	nTyp: <specify the role of nTyp>
+      //	nArt: <specify the role of nArt>
+      //	sWert (ANSI string - default value=""): <specify the role of sWert>
+      //	sFormat (ANSI string - default value=""): <specify the role of sFormat>
+      //	bDisplayObject (boolean - default value=1): <specify the role of bDisplayObject>
+      // Return Value:
+      // 	ANSI string: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE Menu_Create(nEtikettID, nTyp, nArt, sWert is string="", sFormat is string="", bDisplayObject is boolean=true)
+      
+      local
+      	sObject is string
+      	
+      sObject=CreateNewObject(nEtikettID,nTyp,nArt,sWert,sFormat)
+      WIN_Designer.IW_InternalWindow1.MoveActive=True
+      gsTargetControl=sObject
+      CursorPos(cpWindow,80,200)
+      
+      if bDisplayObject then
+      	Display(Val(Middle(sObject,7)))
+      	WIN_Designer.IW_InternalWindow1.AnzeigenControl(gsTargetControl)	
+      	WIN_Designer.IW_InternalWindow1.ResizeHandleEinstellen()
+      end
+      
+      result sObject
+     type : 458752
+   -
+     name : CalcAnalyseWidthHeight
+     procedure_id : 1802897227875842536
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //CalcAnalyseWidthHeight ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE CalcAnalyseWidthHeight()
+      
+      local
+      	nMaxWidth is int
+      	nMaxHeight is int
+      	
+      HReadSeek(Project,ProjectID,nProjectID,hIdentical)
+      IF HFound(Project) THEN
+      	
+      	HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+      	IF HFound(Version) THEN
+      	ELSE
+      		Error(<§$0011§>)
+      		Close()
+      	END
+      	
+      	HFilter(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMinVal),HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMaxVal))
+      	HReadFirst(DataFile,DataFileKey)
+      	WHILE NOT HOut(DataFile)
+      		
+      		if nMaxWidth<(((DataFile.VD_X+DataFile.VD_W)/100)*gnZoom)+gnPageOffsetleft then
+      			nMaxWidth=(((DataFile.VD_X+DataFile.VD_W)/100)*gnZoom)+gnPageOffsetleft
+      		END
+      		if nMaxHeight<(((DataFile.VD_Y+DataFile.VD_H)/100)*gnZoom)+gnPageOffsetTop then
+      			nMaxHeight=(((DataFile.VD_Y+DataFile.VD_H)/100)*gnZoom)+gnPageOffsetTop
+      		END
+      		HReadNext(DataFile,DataFileKey)
+      	END
+      	HDeactivateFilter(DataFile)
+      	
+      END
+      
+      HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+      IF HFound(Version) THEN
+      	Version.AnalyseWidth=nMaxWidth
+      	Version.AnalyseHeight=nMaxHeight
+      	Version.LastZoom=gnZoom
+      	HModify(Version)
+      ELSE
+      	Error(<§$0011§>)
+      	Close()
+      END
+     type : 458752
+   -
+     name : MeshUpdate
+     procedure_id : 2147981688307851131
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] MeshUpdate ()
+      //
+      // Parameters:
+      //	None
+      
+      // Return value:
+      PROCEDURE MeshUpdate()
+      
+      Trace(dbgInfo(dbgProcess)+ " - "+MySelf..Name)
+      
+      result false
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x1b29f7c8003e20c1
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      de-DE : Benutzer...
+      en-GB : Custom...
+     index : 0
+   -
+     text :
+      de-DE : Transparent
+      en-GB : Transparent
+     index : 1
+   -
+     text :
+      de-DE : "Drucke Etiketten - "
+      en-GB : "Print label - "
+     index : 2
+   -
+     text :
+      de-DE : AN_CalcCRC(
+      en-GB : AN_CalcCRC(
+     index : 3
+   -
+     text :
+      de-DE : Möchten Sie diesen Datensatz löschen?
+      en-GB : Do you want to delete the record?
+     index : 4
+   -
+     text :
+      de-DE : Datensatz konnte nicht gelöscht werden.
+      en-GB : Unable TO delete record.
+     index : 5
+   -
+     text :
+      de-DE : Die Datei ist leer
+      en-GB : The file is empty
+     index : 6
+   -
+     text :
+      de-DE : Datensatz konnte nicht hinzugefügt werden
+      en-GB : Unable to add record
+     index : 7
+   -
+     text :
+      de-DE : Datensatz konnte nicht geändert werden
+      en-GB : Unable to modify record
+     index : 8
+   -
+     text :
+      de-DE : Anfang der Datei erreicht
+      en-GB : Start of file reached
+     index : 9
+   -
+     text :
+      de-DE : Ende der Datei erreicht
+      en-GB : End of file reached
+     index : 10
+   -
+     text :
+      de-DE : New_Etiketten
+      en-GB : New_Etiketten
+     index : 11
+   -
+     text :
+      de-DE : "Neuer Datensatz: Etiketten"
+      en-GB : "New record: Etiketten"
+     index : 12
+   -
+     text :
+      de-DE : Ein Fehler ist in diesem Fenster aufgetreten
+      en-GB : Kein Datensatz in dieser Datei gefunden
+     index : 13
+   -
+     text :
+      de-DE : Wählen Sie ein Bild zum Einfügen aus...
+      en-GB : Select a file...
+     index : 14
+   -
+     text :
+      de-DE : Projekt nicht gefunden!
+      en-GB : Project not found!
+     index : 15
+   -
+     text :
+      de-DE : Version not found!
+      en-GB : Version not found!
+     index : 16
+   -
+     text :
+      de-DE : Version nicht gefunden!
+      en-GB : Version not found!
+     index : 17
+ dialogs :
+  -
+    identifier : 0x189751c802bb83db
+    internal_properties : BgAAAAYAAABC2b+ZsUFkr84ekWQ+a1KR5NYorljnUnP5dJYl7ZYwzMn4RKOnQDPxJNXIJSNfFHQ4XTzihmEkbG7y41t+E6InYkrA
+    label :
+     en-GB : Wollen Sie die Änderungen speichern?
+     de-DE : Wollen Sie die Änderungen speichern?
+    image : {}
+    cancel_button : 2
+    buttons :
+     -
+       label :
+        en-GB : "&Ja"
+        de-DE : "&Ja"
+       image : {}
+       value : 1
+     -
+       label :
+        en-GB : "&Nein"
+        de-DE : "&Nein"
+       image : {}
+       value : 2
+     -
+       label :
+        en-GB : "&Abbrechen"
+        de-DE : "&Abbrechen"
+       image : {}
+       value : 3
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

@@ -1,0 +1,753 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Lizenz
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Lizenz
+ identifier : 0x29f0dbd71b3c0a82
+ internal_properties : BgAAAAYAAAAGSiVvg4igrBGYdGBg3ws+1jDpDGoDTLqDq5+DfKUDD2R8ewnNbW1EbRsouf6qqk1KaWKL+IZr3o2KCJsoVhrULfRIzYmyI7KwPCazQNguIwfhOz2n8x3jitfKd64uIQhIlLSao9+k1vZo3MV/l5u9nqyqbShFmAPEkF/7Sz7BfEGEHeseG7YICRPSCR3MC4BL41gY7X+7G/ZJnpIQO9phhEZlDesf8NIsb9cVNg9nF2OA8zeDIqr8CTDyR+sSv8J8QXO9gK6XMTuyveoHv9XRpd29rUzgxPiJ4VJnV00+cMwuPeMVCty9fhSTvORfcu9UDUnYN618NfP4ryoWbWJZ4qfXqCGvLWKvuO/x+Xy6R+6Wkwc23uRUdKaJ8WhWs3Wx3BfiHIJDoSq2zHvgR/HtfWzvZ9rixafVFYIgEx1g6d7sFEWhkY+Kt15kOuYkFbOz/gq+S2n2xxnvydF0gfFJQnfhOQDUpWTFLOSpd2/GePVJ1ApSJ+5gjxV/ReeFAKB4RCcAJhMQZ39avAEhM9i9jLpc0G/qLfaZSphUE6Dg/BlFA0/Qc3yIVmAuLslQrUxkb5T1XkthK38BeBZ3+ZaVXRU8WZzp5zEiIgEwh5tMBfqU86kLq+EvA3GgVcp/mFYD1KZwzRp8q+ZI+w87AUbK/S25/bbWzvgQAp/7woQnHJWWzVoaFjkCyYXa+U34YkphfXrciEQq8Xfnr/RRMI3pS7NN/T1knZm4VzaqQXlz0tiajtNY1MhKjTCEAPIhwETdUHH4yKEhvcsQ0FgqX8QCzFqxOMoCWp33klGzozlYr03CLXLjRaqaIC2fbzHmWLA8wyGvwWkvj0WDlIqZr4x1WqZM892mN1VFNovLtvgCSfHlFQnplhS2KQ8daZ3c0ehIvfywhCbLW0svVHdopV8Jt3AxPKycey3Arbq/mo7Zg/kd+2+gpWMoPjpM17uU+eUYMnAybtCmqkYRi7r3EkLCEJ9iUhAzGDO4Nd/aoIjah10a4Hj+NXw6v153jmWAy0pg53mCVkNlu/FEhqdp30LjkkYn98mNLCQO
+ controls :
+  -
+    name : STC_NewProject1
+    identifier : 0x29f0dbd71b4e0a82
+    internal_properties : BgAAAAYAAACbAT8mkW71Vb5VXbOBmYuE712V9iOekNTlZmBG9r9Kioj/0l+S7Yq+/imhPPEp89bUPgRPDO/rXYQeqTLVEnvsFQEVRraWgmsKO50D9bPkYEXZLSoofG+K7MDrHoS9AMaDgCHxeAapOuPFbZJWnYo1gIcHB2HVfGGB0FP7XPAAbtfaIFpMZHFss+5O2euKKey4lGilmKF44Uf6Lcw2MHT98jHgzslO6/ZXY9YsqADAdrq7G68YJFnRyOoHoZvq/tWL8VTzRWfQWeQt+MmQ7P3TnYyHKo7yIJMi74ARzoGHoxqvfMRJC9mONNBfxq3BC4AT7zQ/O7iwvU2foU+NMrkxKLdw9g3j4YwcvMjycKY1z5rexLqqxv0gMY1jBDPHq3GHGreWyMbfe79xOQgkrxzbr4QB6Mddzc+DdrMX1riz6enqZxQyGTyatMJtqeOPyKJW72RY/x00McdSEZnl7F6TpW4Qb3ooOsC4GyCBwRz5Xxtq2lIzYHPGvbzWagJWhwOkf9Kps5YPhfnK9QWS8jMv9k5OHQwXsIL6FTi26r/Z85f4wUyr++C3IA+sfiQNzfrxhH7IiT+GQxXsR2+IMy5Hta5RDbM9MRQf0Z0jOZR6C9sCe9nP2II9q+Z1IQRr2jYY1YKlwHA3dKtMwCgARP50K6qxi60tqiXrm9lgrYBFcm0q4m/111fJKz4/1jJQj28UshxwuSbMgUFKktuJjlx8IA9tbdP7PtOia+jymq+ebNcJ16EhsWgS35fDRldNdp6iRQKcEU+o9RORThYhlF7dRmvWouFw2K9FujGHOkM+QJKqe4fS/51GsVc0fLjw1fRIWZFTArGI+zSqvltaf1Fr6wk3vGJ9
+    type : 3
+    code_elements :
+     type_code : 2
+     p_codes : []
+  -
+    name : EDT_Username
+    identifier : 0x29f0dbd71b4f0a82
+    internal_properties : BgAAAAYAAACsYYq5oIX5CtEuhwbOjQaCqf/sem6KWaeuti3tmbLkTlWBUpZJ84USkMZF8cqZkueZmir8Oim7ug6RSsEYCrg85cKOJx1RgwraN3mSfgYsuZbfiWi+F4QIZDsmGP4BCXmY3fFk+4oSyWwATcKemS9dKLL5FfeSzuwgGhrj8+SNgvk1foNNuMeeg6xrF/Ep6ScFKj91I4c+oNZe+hZiWkBMytnaI02By5mvmC0QAZxycK+TUQKEf/rark4XfluSpBL61S1oHhcPwnLkx9j6cUoXd2mYjnoaxCWQcFR0HHzhRnIbxpn9ffynG+4MjTu5QvRSDDZBQOHue58bgB28w7z5iPG7lWoH6H9f0kDPdRjc6ILKQR1Nzk4e8EuCp78M2qo1df9AbdGoYw31DYeAz+iJPn/pLp62fL0jHwPvm05NIAz3ChEOpRthKvKt4vkrhsBkKbnVGC/XJPOk6ZS3NvUTj4TG5y6DmSdBhPMnzrWEG6mwFDtXkcB3mduo+Z0uPEOcapKLasrO2tCuCBIwW+z85NtXbzytTrJ3PArz2IsRMwEJL/8npIrrrwkSC6S+6TZfPKRCTuZkAQ9OtTk3IXHfm/TzZP4BG/ulVM7z61tkAB3Lt1pKyODU06x0Aj5VQZ4y6lMQqhF9ixEZwicIHmPpNGR6sWPS4ukYKloUMoOIzVBF+789sopwr0/m+sKCE3LA6iqOTup9BM2J22nDBllXNaflkjZIDQWzAmMSXe+TJuO1VOtveTz/h4Jvlv83h8bCfXyD8r1uCqiEknm1xgQg+iACEP3V8VFHXDqZpFflik88q5v1AK5L2dSk/7+vQW0/RU4fSnjRGGPzBOK4NqkKrOyt/2FdqwktSaLlm7iTxJybij2skVT9OXkFnnMT31HlI5cUMMUO0T9ZhUH64fNTY/RL24Fyam1ZyBizqYNoUdhgOT/kmw0PUIDiQMRPrIeYaN/mXxYfTX6Y5Xqksle5HvzoVsk7q9jZYU+/wOyeZ0vmTPnNEJ8dY9MreUgYOrPAb6lm/jPq1PoHjV2DrSSkcJ3gbpfgo2BEf2gAUM751z9vZNX4jO9MtMvXYxIUh5Ldm8KCzBU7kyeodDxlBmcV3MRJsiWZLeRtxbW09vHqEH63Y5lrgIHBzTNnWkJBz8mC1tpKBTmxY4hmVNlzNKMEGzbRe7DMd9FOcjhUW61lQZRgsVDFPwjKEc2ybPpkS4B2X7MLA5fKFekZx6s8jMeO/3uTU+xqj1t1TQnba0tOm0foSALWVmpswmkqTTyyOthcKtQBSI02Cj6S/wEYiYRH8NuWwDVpMxfXLW75yqARFSaivCRZOwOgZ+hUkL9tQdUjZZtBbr9LNvfYWogEKiPKxC+empU+9Jm7miK5dp2vL1DkDpcqtvN+6Jo9OSZQ88k2EhraHDXKrXGSnjYoSEQ47J4CxRE/uM3EBCOlKudIjBBZMoU2FWfvCfkC3Kdv9p0j1UamleBZirrdjr89wvDVAlLiEc6WHccMRvpWK82g52R5PE7bXq8tM24kAYCPrHmaanBYzjJDJiiXWv4N8+aUJMjgi6t/2r/W3VDyL4ZOF1kyqNXrSK2w3ufurwQ1P9iAV4euDoyV6JXiqzaLfpMLfkyyNTvJH6hrEdRSuNalzLFW5yJXHONzgtOQrOzoI9gr1XPc0kRVL/ohup3S35C2H5V7J0jjpDPxmZ5gqvzVE4Hfo6OqKWdV6TFgifv5cclH+p7Es9HQ0EtNo/R5qxCs7O2ZnwXw8T1RPnZ1ONatLx+O+ORxxSBEYmwAf4y0FRre18GYizEdZRpizS+Kw6qsPq9bQtcGFSgsN9yQozxUlq+iHxoN704ClrAEP5b6PLv7L19euta5Ob1jMx2RDGb4LL3VLUYlj7FEzjWP10GwH/CEc3zXvkP65CX7AOc4Tgf10i1QliyI3rc5TZmX1HBy2/dfphCxiCeK3pXxGMs/z2mEZUngGcLe4LAdBeLCc5A=
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : EDT_Email
+    identifier : 0x29f0dbd71b500a82
+    internal_properties : BgAAAAYAAAA0d/2E2FToVuChFCjTmum5rQsu8A3Fs12RHbLInLdlESm1OKYtKiXoEnr/BxUhuRKi8IAd7IIQ100T6BFVRP66fqYu3d4+hmJ83uUxUj4hU4t+52nsDA9Z4cSAptD1SuZtZNUTM4lEnWsKvG+bAuPYrU8bBFKVy/1vVNjKiZY4ZagXXJUZgavvaL3je97y8H9Scu6bFlbV2m0WN5ARNSJCmwUc3PgRoZSBs7GAlE/kGtCyEYOWUzrwaGRNaQkySYmQLmxvUEF6Maqe3YO+Qi99wpYZk7OCLimSpkHms3diLZqTXWVfMdvFKm6lVH1gnkwH5V7FaBoibXp12J7X/nHcPD3Fi78bPVjGJ067kZKS1QMJoHlOzq9E7o7oCOfx6UwPKvtLjJBcffx5U5kUBnpq0VFRRFzlr1m23+lVMCbUXBn6oQvFwg5aWmb/4au0SJWpTd304N1TlHQjIPgru8D0wdCZz6BTYb0nfBqud4e2f/cf4r76uJ/KOYf0By4Yk6V/BjiiEVHCN/Be60CHYafRQ1IOh5dttj40wlOhzmOIj3k3QL7g3mswPObPoLFf+o39iUPO6SQ0icWk9EJRk4iMUlZH1nI9i9hmqc5JRzz+80HnUBRXzHtep4tme8iWBGu2F1Kz2s3ptXUaKdi/OvQIT3L3O+YQHyE04HHRIEJP2F6jOdFETbBoCtQ18dyeeMv6g2u7dl6Qis38QGfN74bIhljiD8LaxNFAacmCcJCCCnzCJfW1szGzU8gUGq7mQ/hQxFJlqhNQAaLXtOTGfpOYyhm4U4YrSoRlVBJbdex9onbanzX1BiUAzSnCz2MYCGqw1ViUiyd7oIRQjFfFce8c7ex7ieMfneEStdmRw6cOYvkPyEGkkKYYrcDmoaCtwarDTxDbwCf3Ji07/YLrFIGLvap6J4PMYOA1PlI2NqjxTzKcUaoG7N7qNeKYe7qymnl2Qw4XDbsHY4w+tZEaRCktynsqr36N99m67IfU+D013wWT90Uiva6rvZbwPgxyn8ifrCo8cpxWMjXlmz99C8S3oXjlU03AL00f/3u01IYdP0FkBpzjoIbrwArd4XwQtY2QdAlW4CjWcdsmOELIyE9cl4GysoEr2ODG1xe1FUOz1aa8yT5P7euMBtlazUuDUQh9QpqO5Wip7QRR1WnCLkvtkLdlSaiVkihLuw/rhlhmhU8uef30KvBjXI6/zn5khGbejpaDVpnS2fUMOZ9gFtACr1pl9uP0DyhihzB4mR4c12UJa5HYJgYW8XZM+icp4MDAadhL1J597RtUoEEZ7s8oJ66S5bn7ypAVO4Su6YoYQ/oRqqB4g7ZDpjcFJ3bOag0bZ/N0nMw31Q6bm5CLE75HCoJmBBQFmMzao05Rf9Nu4KJepMsoyNF4hyGXqvN4WTx8Mpa3TjMjuG2ROfBvnqZbFouQVyC3lOUm54P3S/knbGkwOVm9ed4kQ2sx6QcB7SdU5HLLiYNWek3LkmhCmpwohZL3QvHKMMZDwTqKL581W7GxKbEXY+MU3DIN7lFJXgFWG/loymS000AJgNmyo2iw78NWYQdAdAS83Bhaf+vyOgFqu5VqmPWYAcqLFVfQlmw7zpw/kfn+sCz/o3UYAoJZhhRwsDXzFRpLUbo4FAjFm/NS+1/YtHxShM8hYko+BbAleN/DTrGMnxRdrDPMmdZjhf8HlfkslwjNFZfOhNSaxScPFvbY+dsjHcII3N9orM9ipY13sw1+eTnerWBw0LotlsUgltVtKfuzP0EMOfTi5JbpjKl3ANVBXM+LmfutB+lPVzbotb4aZ8QDVWQW084YFzDGpPOAFL0Sta6yaXct2QwMaRUprJ2rOzAGsG+AqUd/aj8e1XPg7MQtEojLJorOhf0w0dwKmZ8UikpXo8hSxi5j6IM3kv7TczLdL2FF7YMBUHEfw7XrGKNTq0L/SLBQJsh6u1KJVT7jO6FILhwMSRslwV0hi0+qxUTg6w==
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : EDT_Password
+    identifier : 0x29f0dbd71b510a82
+    internal_properties : BgAAAAYAAADqRsNpRpBG2/jvMG9xcBbVVHyrZUTRFlfEEv9bFgM42Fha+fc8nHJIcOtk8jDgNTsE40MuC8+1e3PlcSRIgRXwyDO4ma+Jc7JrcCwGirn8NycGSgiZQzO/flbdN8g2zjnjhcg1BXbQ+ZahwFRQBPzknWM/gCwX/u8WzgRc4CyYKqo34K2ILQiPKmB1wRT6FvmW5DH+LkpwfYsfABCkFX3FjujFkQiw0f7tWdw8Q/B1VDZPrNAnIX6x1XWSV/vd/4P7gzRVwwrUI1fLBz4O+i5JOZMaepTraH/O2G6M5lCs3WEVH1jghGqihDAubn8GWMZC4EPK3Ipc95QLTKGiZewjclxOInufXAdIwojgPYp+yQf7+QOrE3GDVSACelaAWA4fAh5HtfAdoBvQmSubk6bJNwdeVeHInMjXA61Iq8YB269vg6QsZAWE/Pzj7ymd4lNCMqHdrJbE1BTV852dv9O/Y8b/20VVsU0GFkkpcYf8ssloggGjV2AyWHgfvyrn4rUYqkO9Gakux9xkr97LlN9JDe7Z0DNI2G0clE6+DTny3Xq1Jc2+CdhKOZcxZd2ZWGpbhKg0JbCon/xvzKTXAGkj1KOBsMmWL/dSvLYUxa0M7G7xwergl8b6v7RKBGdAKLW0sHot3Wya4ceB618OVSXdBzLmz9USfovl8aCqEjYJwpob+a4D/WBYQvXQg0gBqhQKkfQl2+LydQxrMQCQ9TzZ/mq/JuY5qEOVrjKAoXwjY9wkpK+AuGMxxWbv4b/fyv7bkU+Dr21yzEVs+OEPsfDHrnmAL8ab/GAtGGv6U2UEKecOYckqEyLnKOOMNBZqf8WWIW0B5tKVQgi2yYUMYtzDYfQU98/mudbpAWjn5bKMih1ri/Gmi4WHCRtyYzeI5kHlmArRn96ZySk4XqIFNnXU7o/sEZ8GAMKhPezTD6KmD59JkONCc936K8L0bRk5st6gqDjDeTLAq4AGg+MKgNpHmZYNkknGgN2sBI/ocBJwdJbWWqUYFJ/p1KPNQh64mFV0nJHNnncYuPhC+nHVNU4HPyMATuuJh1ISHom36OJ3Tbl5ZGGfe3zezFWaPFpi9H/30HxHTKUKtWnPL08CXvLruLEDgv3tGoxIW9zxwEAcAX72vWKDsdWBPBekyTajU+j5AcpZKbHj34GswO+it+HTdHrtTCCZ6aLW5Rfw+veshKMZIrV9GKFbfot72NNEilKPc9LneF/zwcNvPt+YvRt/WJIrPqnMBD9HrFuAUcHpSfEqd3BAzAW8SHkd7gz+rWhOEKqGwPjCyDRpNzG31vvGCEaIXdUB9EzJT1eHYBtc7BOjsrI2LLh4lXuXtrcxzTl8qPd0fVT5GNkzQW/UnKp9M8TeWMXnkpgT1nYhaSzuzrNDIKmW/aUecUrNNvZULYQL4xYRV9IkoJjACRpR/CM8GKxrhovvpfzRKqRlPh3VihfLoLMPfR9BpibzAwKzMudrbWkzHBPkSvOv2x0PUdj4Ywu0lP/6LNa85Ckyu30m0I/iFtaGlaEVg7L0RPr0dB7Toe1NG3HE8ZSNZgXZXE5kSRHiVmytCREiMBZH/mSQkw8y/CLWDCc1/XFbyfZB1TjCApihmmVUHDe4L26HW37Jvk3cm4HMltUlgATolNAlcfzNMsL893lB8sIOq1u2DF2jycD0AB0HjhhTiXvSAYlWrhguZ5/ucgaTkP6Df1Fpce90pLu0uIvlaXbP4auMNhUY5/otXQO9uw29kF0Y2wpEyLAKEuTnAJN9Xct4Ijs2HtNaLzo/mLoWp5uoLgJXPHOSXS/WPoLfWkU3Q0nOFqfXpjZ9jOlYMRHlzz7i1iqB5sybZhkrlykLNlaMZ1hrQsu+DqwgQ+YFCwabg12qwWBI6PKnEoxZcQ8Mk64f18gmGMqGDTD6n7fcdJelW/ARFlyqCrp6/KZVASeQoZwh5z/oqCWcwtCw6xutuMRRm2m2TM5l4nK5XcgIIg==
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : EDT_Password1
+    identifier : 0x29f0dbd71b520a82
+    internal_properties : BgAAAAYAAACVwlMv5l+El5Fo48WCAQA32k8qcW0idHzQHpcweO/KlNm3rcb07/kBA4UCPtx6I6X95uMmWTwUq7Lz+FHzk+bqZP14fzurRmFHkaockxy+ql4BuPcSs+vqkl0lu6d7JTskb+stKOTbozHqbWA8cwx47EEJEm1HQ6ez30ZR4UN65gesEWiGycNiPWouSEda7pDK9MkojFnKcxL20L/RH0kBp7C7CARWHv2A1qIl1psg6BXHuUQbuZSWyOfCrKlsFT/zIvUJffYW3ljldyEcqouJHqm20zAj2z23v2IprA1QR6WbBvdZ7yY9rjfWZ97B8xF6l7tTIF/A7yO9eqb5Fc2Stezoty4q5v3XenMbC9bLkaIkdpslM/JCH47XfvDFyiemQDaPi8v270KzY/RAa3mL2GvDFxK6B+g/qt/YFzzPSmLr+NPlfYipss1lwbsPrIPszDZlG8WJwDtb8DrUCOYcANRzxERQ3TLvllBMhUJ++K+Sg94Nirspv05bP/9hqBprwq0l7caMHv/9ifed+nAmhdL3WLu/i3IJhqg8eHSUpjCyjCt5qa7rh9yyVCwKSOGYFF39pWj4Wd21CUkCxwn5uRiUCaqnnbU6SVgFH9wPogiIwjOci462cW6WAs8FiNuRwRlYCl4a/4i9Hq0YW8vSIhnz8bwn0/pyxwYoZjHesutRHZNwAuxOux+Je7EiAs261fKWVFdMnUZ67roqSOFIRiR9zbTrc9YD+YGcihtHyuG6CaiG6PwQTKCEvi1PMvM1odI3bPHESUEGAJ//NQiXlXkv2di453+RDzmEQ7RUoKTKk1ndfBxLFLN/lCgqKFgop04QOJA+TLbA3fZ7BP3J0Z/mEJd79pA0i65JfNzO4yUL74FczMRihka5+OttF//mfQq7TsXQUqes9jJpgI5yzFfB8qwqs/jgFzMgRUowrzh34w//sngqgO9/zvc6x6Eq7VY2iUY5m51pAC9BchaV13+DwzcBg/yMbTgWHkEPsfOrhs7tXmkI9TlNatxqsYNB87UdVS37Q/U6rLuNemiPfjwyJa7xHE0KA51cNugNoJHKbZc4FzXHpfp4xs7Eyy9GTxF+0sipclFwlowQ+Fl0/MaIEZxWIgbb9O6CaEzSAj3af2WS2xhamyvg8zW86xbhTsMZYYW2uqsLHJ/rhsgfsLvmlnUn/hzwyjwjI7RHtPYi2NXSW26r4rAukByRRoGYMf2qgs5DD1STlZTGmCC75c5L0mbIPE3+i3Qau0w/fr1VKMiI0+dV9A/GpA7Kwpr+NMhGY3TbcrlEEwdSFqR/YBsY3QJzCB7CddeCy9FXr2SI2G/6Nk7jnS+IM4jMRE4g/Q/zGWZFaDUydg1tz1h6oag/lILLcDPAashvAL43ZBvvpsnX4QKMF4e4BHVJPyRPqClq1OT/01LpyGHjfiZP8QDmSe6hPqpR3W5sig3ITwNuKNJnOvLjHyXX/0H7r4IhCx0k41z1YUip/zU251n8dVZvxW8qho4fXSWSfcVdc0ShugrD0TGKF3RR03PWF1ztyOLdrvOcs4azR6geQ2kkj+OawqyTIlh/2WLEOjM/qe6jLqjC70GO7bsyL3VMPbAy5WWs8pY4oAiMlK6OtNFFrMBdZdAbadzzF5Yd6hqGjEdYRughh7BxLt2p1OGtZAVs7wmhD1m2dXFpCzUEJrnK3evzREpDvwBUygV1fXg024LV5rPuF4JV7Rd7N/sU0+RVVjXfDMQ87TT47qTXSMbbyCk9mHoWLnI/P6E0DiMgx8zj6xYEXiZZpOz0zocgSEqGIz94DD55NEzifwv92OqJGHxMtGoU4ZEmwjqQag261Oc6JMPTQz52lsFjbhxO+P1BkKyNPUOWNsodASSK01pTbHQzVWSWivwNVjNWSvIuFqYAoitg0Hk9w5RUto7JdpzkREIJl/+tEecfCI9XjBw6Sxt+m0S1QR9VvBTIo+Iip13t+j5ws24VVQd2NqFHMFhxr3hP
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : STC_NoName2
+    identifier : 0x29f0dbd71b540a82
+    internal_properties : BgAAAAYAAAAdcg2CIroG5/JI5oppjVp6rqkNZB41S1IMpFakiOQ9WJwJsHfqb3qkondRU5l6CrPbYGFW2c5hzp5Yv240KJ9++2V3+6ODzcfP3W3lJWYUx0FrdNuuBfZ2kCYEMrJbfzA+IiQrsdne6k8lnfT7chyjOZLpm0YPVw6OfecxkXU+JXJjxY76jbav8e/sqqtoAWV8JqYndPsYFJS1/mzYGeY/Whwz/vsf8N9rdJkZqAIK+SwH1NusBgqYHHpOrpoezj17LgD4lWE+LXEO42XgQaqkNsgxRd04S/45uYJyN8mF040MHTGC2Od9nlSOT0bsxqWEG8YFQZQC+1vU/LBU6yAon5o66eHfJjZgVwyffNw/j8sgKUdjExj3rYqcv87kqbAdB4mw94QfRX1jbsWoQnWzdlsuKMj+rWqAOY0Ilyt664AcvVJLaMFZgB7mxTzSmKuhNr38plvrySMpJQbnLqfaxuBf8V9Cu1Z/fGfaJVDLyYNblaoV8cyfQWKUzi9kJi3Ny5dyBO9cWZlzZ8BwD/u3UdRW2COQQgFCkysNqWHAgPJcJKnkt1SemVqNKCpFEgJbzwueA9LAyFubPK6mH53iNGMTpEo8IRpobpzumCXKrLy/2SxlyZMPcNWAV6IdhEC4h+h+7bhwJ+ll+fN4l4S8WQE/HQuEXQ5blKOYS1opwYtntrX2OikFh6AWRMVpZGNG/NtOGYflrEoe+2iY6PeHivcpwyjTWMy6ZLKXGllIjdS8RaTdEBBIAXcvNJ393wkOUeNIE9b+Azqo4yV8UN2AthYJB1qOCa2GcJPfndtXuOIz4VOmEoVk4VakOpmI2Gs0oBT5kxeecSH1DtQTNf0XUkh8KV25Cu3YFkolK13QOZjgUO772AtOYCBzDC5CGo2vXa5wpiKnX9yV68JMLss+STvJ4scxE47CppcjwRQ0HRGCzyqPoTR+oxQc
+    type : 3
+    code_elements :
+     type_code : 2
+     p_codes : []
+  -
+    name : BTN_Register1
+    identifier : 0x29f0dbd71b550a82
+    internal_properties : BgAAAAYAAACI04DHUIp8v/dRZIDFJC88H8l2Vq/857OESGbFjd8/GYrySRXhqNBLTV2NgCTsHaY6C7KITZKR0qRfEHtRrYRg/kFzrveCMXhpolQlMwxZBAB9VcO6c6SLdxpink295lDJiTJBUZROwMbLjWdK0gfHay8Gmrlhwfde35WoeN+xNrIzylNG6aQZGjBvJMLXe6hKcrVQ0c/zut7xUysj5yVS5zkuEkkP+Y3CnGCPf398llCUXnDwxjWWKt1bjem3CxGUETRUQo18N4p3i8KdKY1+wpAdyKPEVGxVxEEDd6Q02o/2820T8ZYmvgKVNMJGoNfgp9ZN/87VJjUL66YVWBQ5c7mgfDBqnnzii8NRnss7isSRUy27lEhgRaRzmAazXU3VgPI8cZqZjXsRfahjbIrf12a2MVowCh2Kj/WjxYs+ue5wwRKHkyIp9CvssEKpLR3fxDPsQII6ml45aPqeNW96HeD7+AJOZfzZOyQZfirXwYYTZC6cOQdZFxk6QHx4dZeUGxvm+9m7oDqEprhxq09eiGjKpMG4jpzKcrD/wBiIdqEgYZqyJFGcKY+4LTzYWYSK1wU1a4ATqN7zUslgV69AUr8rZs0aVNMfQ4INA90a6YiW6RxM4GF5AvkDcCp874kH2LRHxiKMj6rpTdTibe5XtAjq81M2dwdp43/UyUVFqHIiKA3g+PkrF1DfvojAMoblQqD5tnhrCwfvFM78Fm1j5N1pkoEieTxA0g0Ei1GL/29pwktp34P0tdiVlvS17l/wts9TeOU2uMmoV5PGG0y6qZIkK7VW2lkzV2IaLFRxcawc5Tjp0X6k4Br0WfPIqiR3SNLO7dEDTnIzMMaOw5ETvjCX131/6ug1NSRd+tQVNtR5VSGEK0UDexumKtCGEfcSj8GEPkLajoS12UjieXkUsz8sPtsfolIs027wdcZhf0O+q49iP+kmhGPVMslNVfhAZwe9r7UXpXsrMfSiisYu6hMNCzhC3HozhOiUiDV/aISX0DfkuHbd5MXGGziW6k4gUaMTjoZ4bZyWeqji6A8DGIvIIW+cf/hB+Qiw4rWWlzWCSIMBfAjmaSOc6Z9eEbshImx437SeMcDBm749jECTa+NQo3ZYFUZWJWmo1yXUTadKML1q03lfR8MM4NyIvNUiBht44F/RvCjWXNtS93BAA7dufNnMmZtXy9trYN7pFD42tyP6fcEzcO51aliHRHWAaC8j5bGIkdy59qAFUK+uRUEiolkeFE4+ozJgY7dvtGqIdPGkEtmE+qBMRw==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         
+         SaveParameter("Username",EDT_Username)
+         SaveParameter("Email",EDT_Email)
+         
+         gsUserName=LoadParameter("Username")
+         
+         use(WIN_Main)
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Register
+    identifier : 0x29f0dbd71b560a82
+    internal_properties : BgAAAAYAAACnzjPEz8eFUhC+OvA8Q0K/HMrq6DTTI8yoJtiCXWPIsc2lzJLl1ui5ni/5wWowPeQOBllsikoeFIgZJRD/GpjBdSkrJmfJLTngg3r7lK9XXvbExiLe8zslxWzuaIdl5XNhFzgJ0ySb5Cjxz2EFYrQi1Lh2Ino4gFH/IcftpjoG2+jXJqaxUQvwSK2aEvH1mERp6d4mMhOnpkoGLI52xpvnMSm77B79rC8LF7KLC5ETM7klNQIoeWEFmepImo6Gvcajj30FQW7/8JJlVfk4gxqN2SEb7m1eK8skRlT+wGRYQ7IBQR6bjBTj/oSg0Lq4B4pi3DrOKHxBoYYf6Vl1rV4sSMZVRmVkjTlL6MfHbuqUaPZ6IdxK15ZZg8H9uAXh52piPPvndEtfu+F0DIDQvDTdisu21n2J+E3fRlN9ak3fMOLdr7/n+MunYGuxIpgrghvDZjrTPuBoKlXGArKesCxCLo7hr9CEoVxWLr7n6IqQKdQ2wZCRh/o2njR6NcFQrnpXcKxAxBaeAbt0N18LAcV5kbLsy/QSMV/iLFnF4m2MFg3IHc+I/botQU3mdo+TTgy3AOf5syIsxiTO4NG7tQfxGrsCcx1kr1HlZa8kPPjBDBDqYox6hQV2dvopSzaK0epmWMU9KGgcq/LGuajdmNvtKTa5JdFddxnSptreAKgVGzDLTxCQkGRYV2R4SgwYR43KnJaYPteCLAF6kkKG4Ka1n911MSqthASXvos9lAxY+P3GAkTARBp5BKT45zMhwFZRzWil/JUFuGbD8Qt95C1vsZgFZMY/XGoRTHlJNprQ6PDeyF0idwfs/rUrv79JZWQ37aJm6SJlar69LxBost/DbAr9pcWJ8FTMGDscm5oYwE/d6RGJIwJZMqQJBucx/myvd0PcRgfbAzZGfBka9msEcKyIhvnbTjcSYUDPhKkH6fbrBdYy6uYaFaeZF1fzkpNVANxVZix6F7b9167GtVqGe84D+ETNVlM1VTrMs7k4igXDmDLH2u8WCU/xUaKI5So3UhY325B6I/AG7BVjxACUPBTZxCAfiEgkRIPbEEMtuPeVkBTLwFlgopzoRjhe6qVIubaRxwyE9jwWPUVXen9Xb8XVO009+Orxi4OgDroEKe4bsjJYlQvKjVunP3wEEEg6RTyCAF3vFwRws8t5UxYhgLDsoXjHnJQMPMHov1aM/qL6dpUaV7uhHRxa4q5TT13ppDcidvhPtNq/eMyvwuOOD2mq8c0Jh5xUOd6rUl/i2rLExK2mYEI74/qUnjHJFpQMPmijP9Drll/L
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         
+         local
+         	sHeader is string
+         	n is int
+         	t is int
+         	gsCookie is string
+         	sResult is string
+         	sPOST is string
+         	sPassword is string
+         	sHashPassword is string
+         	m is int
+         
+         SaveParameter("Username",EDT_Username)
+         SaveParameter("Email",EDT_Email)
+         gsUserName=LoadParameter("Username")
+         
+         if EDT_Password<>EDT_Password1 then
+         	info(<§$000a§>)
+         	ReturnToCapture(EDT_Password1)
+         END
+         if Length(EDT_Password)<8 then
+         	Info(<§$000b§>)
+         	ReturnToCapture(EDT_Password)
+         eND
+         if emailCheckAddress(EDT_Email,emailValidateSyntax)<>emailAddressValid then
+         	info(<§$0003§>)
+         	ReturnToCapture(EDT_Email)
+         END
+         
+         HTTPRequest("https://www.scoriet.com/register/index.php",gsAgent,"","","application/x-www-form-urlencoded","scoriet","remove_this_password")
+         sHeader=HTTPGetResult(httpHeader)
+         n=Position(sHeader,"Set-Cookie: ")
+         IF n>0 THEN
+         	t=Position(sHeader,";",n)
+         	gsCookie="Cookie: "+Middle(sHeader,n+12,t-(n+12))
+         END
+         
+         //Check email
+         HTTPRequest("https://www.scoriet.com/register/read_user.php",gsAgent,gsCookie,"email="+EDT_Email,"application/x-www-form-urlencoded","scoriet","remove_this_password")
+         sHeader=HTTPGetResult(httpHeader)
+         sResult=HTTPGetResult(httpResult)
+         
+         if not IsNumeric(sResult) then
+         	//Fehler ausgeben...
+         	info(sResult)
+         	return
+         END
+         
+         if not val(sResult)=1 then
+         	//Nicht für diese Email registriert, das machen wir jetzt!
+         	sPassword=HashString(HA_MD5_128,EDT_Password)
+         	m=Length(sPassword)
+         	for i=1 to m
+         		sHashPassword+=NumToString(asc(middle(sPassword,i,1)),"x")
+         	END
+         	sHashPassword=lower(sHashPassword)
+         	sPOST+="&username="+EDT_Username
+         	sPOST+="&password="+sHashPassword
+         	sPOST+="&email="+EDT_Email
+         	sPOST+="&language="+NumToString(nation(),"d")
+         	HTTPRequest("https://www.scoriet.com/register/create_users.php",gsAgent,gsCookie,sPOST,"application/x-www-form-urlencoded","scoriet","remove_this_password")
+         	sResult=HTTPGetResult(httpResult)
+         	if not sResult="OK" then
+         		info(sResult)
+         	else
+         		info("Vielen Dank!")
+         	END
+         else
+         	info("Vielen Dank!!")
+         end
+         
+         close()
+        type : 18
+      -
+        type : 161
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      PROCEDURE WIN_Lizenz()
+   -
+     code : |1+
+      
+      local
+      	sHeader is string
+      	t is int
+      	n is int
+      	gsCookie is string
+      	sLicense is string
+      	
+      EDT_Username=LoadParameter("Username")
+      EDT_Email=LoadParameter("Email")
+      
+      IF OnTestMode() THEN
+      	EDT_Password="prcode68"
+      	EDT_Password1=EDT_Password
+      END
+      
+      HTTPRequest("http://www.scoriet.com/register/index.php",gsAgent,"","","application/x-www-form-urlencoded","scoriet","remove_this_password")
+      sHeader=HTTPGetResult(httpHeader)
+      n=Position(sHeader,"Set-Cookie: ")
+      IF n>0 THEN
+      	t=Position(sHeader,";",n)
+      	gsCookie="Cookie: "+Middle(sHeader,n+12,t-(n+12))
+      END
+      
+      switch nation()
+      	case 1
+      		sLicense+="{\rtf1\ansi\ansicpg1252\deff0\deflang1031{\fonttbl{\f0\fswiss\fprq2\fcharset0 Verdana;}}"
+      		sLicense+="{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\b\f0\fs17 COPYRIGHTS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="Copyright 2015 Alexander Predl, Systemhaus Predl IT GesmbH.All Rechte Vorbehalten.\par"
+      		sLicense+="\par"
+      		sLicense+="Diese Software darf nicht im Ganzen oder Teilen, kopiert, reproduziert, \'fcbermittelt, \'fcbersetzt (egal ob Sprache, Computer Systeme oder Nat\'fcrliche Sprache), gespeichert in Download Server oder anderen Speichermedien oder in anderen Worten oder durch eine andere Form oder Mittel ohne vorherige schriftliche Genehmigung von Alexander Predl, Systemhaus Predl IT-GesmbH, verwendet werden.\par"
+      		sLicense+="\par"
+      		sLicense+="Sie erhalten die beschr\'e4nkte Lizenz, diese Software zu benutzen. Diese Software darf in laut dem Endbenutzer Lizenzvertrag verwendet werden. Sollte ein oder mehrere Vertragsklauseln ung\'fcltig werden, betrifft dies nicht die anderen Vertragsklauseln.\par"
+      		sLicense+="\par"
+      		sLicense+="\b TRADEMARKS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="WinDev, WinDev mobile und PcSoft sind ges. gesch\'fctzte Marken von PC SOFT Montpellier Cedex, Frankreich. Scoriet Generator ist eine ges. gesch\'fctzte Marke vom Systemhaus Predl IT-GesmbH, \'d6sterreich.\par"
+      		sLicense+="\par"
+      		sLicense+="ENDBENUTZER-LIZENZVERTRAG f\'fcr Scoriet Generator (bezeichnet als ""SOFTWAREPRODUKT"" oder ""SOFTWARE"" im weiteren) WICHTIG BITTE LESEN SIE DIE BEDINGUNGEN DIESER Lizenzvereinbarung sorgf\'e4ltig, bevor sie die Installation des Programms fortsetzen: Alexander Predl, Systemhaus Predl IT-GesmbH End-User License Agreement (EULA)\par"
+      		sLicense+=" ist ein rechtsg\'fcltiger Vertrag zwischen Ihnen (entweder eine nat\'fcrliche oder eine juristische Person) und Alexander Predl, Systemhaus Predl IT-GesmbH f\'fcr die Alexander Predl, Systemhaus Predl IT-GesmbH Software-Produkt(e) und m\'f6glicherweise dazugeh\'f6rige Software-Komponenten, Medien, gedruckte Materialien und online oder elektronische Dokumentationen. \par"
+      		sLicense+="Durch Installation, Kopieren oder anderweitige Nutzung des Softwareprodukts erkl\'e4ren Sie sich mit den Bedingungen dieses EULAs gebunden zu sein. Dieser Lizenzvertrag stellt die gesamte Vereinbarung \'fcber das Programm zwischen Ihnen und Alexander Predl, Systemhaus Predl IT-GesmbH (bezeichnet als ""Lizenzgeber"" im weiteren), und ersetzt alle fr\'fcheren Vertr\'e4ge, Vertretung, oder das Verst\'e4ndnis zwischen den Parteien. \par"
+      		sLicense+="Wenn Sie nicht mit den Bedingungen dieser EULA einverstanden sind, installieren oder verwenden Sie nicht das SOFTWAREPRODUKT.\par"
+      		sLicense+="\par"
+      		sLicense+="Das SOFTWAREPRODUKT ist durch Urheberrechtsgesetze und internationale Copyright-Vertr\'e4ge sowie andere Gesetze zum geistigen Eigentum und Vertr\'e4ge gesch\'fctzt. Das SOFTWAREPRODUKT wird lizenziert, nicht verkauft.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 1. LIZENZGEW\'c4HRUNG.\par"
+      		sLicense+="\par"
+      		sLicense+="\b0 Das SOFTWAREPRODUKT wird lizenziert wie folgt:\par"
+      		sLicense+="(A) Installation und Verwendung.\par"
+      		sLicense+="Alexander Predl, Systemhaus Predl IT-GesmbH gew\'e4hrt Ihnen das Recht zur Installation und Nutzung von Kopien der SOFTWARE auf Ihrem Ger\'e4t auf dem eine ordnungsgem\'e4\'df lizenzierte Kopie des Betriebssystems, f\'fcr die das SOFTWAREPRODUKT [Android OS] entwickelt wurde.\par"
+      		sLicense+="(B) Sicherungskopien.\par"
+      		sLicense+="Sie d\'fcrfen Kopien der SOFTWARE, die erforderlich sind f\'fcr die private Sicherung und Archivierung, anfertigen.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 2. BESCHREIBUNG ANDERER RECHTE UND EINSCHR\'c4NKUNGEN.\b0\par"
+      		sLicense+="\par"
+      		sLicense+="(A) Aufrechterhaltung der Hinweise zum Urheberrecht.\par"
+      		sLicense+="Sie d\'fcrfen nicht entfernen oder ver\'e4ndern Urheberrechtsvermerke auf s\'e4mtliche Kopien der SOFTWARE.\par"
+      		sLicense+="(B) Verteilung.\par"
+      		sLicense+="Sie sind nicht berechtigt Kopien des SOFTWAREPRODUKTS an Dritte weitergegeben.\par"
+      		sLicense+="(C) Verbot von Reverse Engineering, Dekompilierung und Disassemblierung.\par"
+      		sLicense+="Sie d\'fcrfen nicht zur\'fcckentwickeln, dekompilieren oder disassemblieren, au\'dfer und nur in dem Umfang, der ausdr\'fccklich durch geltendes Recht ungeachtet dieser Einschr\'e4nkung zul\'e4ssig.\par"
+      		sLicense+="(D) Vermietung.\par"
+      		sLicense+="Sie k\'f6nnen nicht vermieten, verpachten oder verleihen dieses SOFTWAREPRODUKT.\par"
+      		sLicense+="(E) Support Service.\par"
+      		sLicense+="Alexander Predl, Systemhaus Predl IT-GesmbH k\'f6nnte Ihnen Dienstleistungen (""Supportleistungen"") im Zusammenhang mit dem SOFTWAREPRODUKT bereitstellen. Jeder erg\'e4nzende Software-Code, der Ihnen als Supportleistungen dieses SOFTWAREPRODUKTS angeboten wird, unterliegt den Bestimmungen und Bedingungen dieses EULAs.\par"
+      		sLicense+="(F) Einhaltung der geltenden Gesetze.\par"
+      		sLicense+="Sie m\'fcssen alle geltenden Gesetze bez\'fcglich der Nutzung der SOFTWARE nachzukommen.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 3. K\'dcNDIGUNG\par"
+      		sLicense+="\b0\par"
+      		sLicense+="Ungeachtet aller sonstigen Rechte kann Alexander Predl, Systemhaus Predl IT-GesmbH diesen Lizenzvertrag k\'fcndigen, wenn Sie gegen die Bedingungen dieses EULAs versto\'dfen. In einem solchen Fall m\'fcssen Sie alle Kopien des Softwareprodukts in Ihrem Besitz l\'f6schen.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 4. COPYRIGHT\par"
+      		sLicense+="\b0\par"
+      		sLicense+="Alle Titel, einschlie\'dflich derer die nicht dem Urheberrecht unterliegen, in und an dem SOFTWAREPRODUKT sowie alle Kopien davon geh\'f6ren Alexander Predl, Systemhaus Predl IT-GesmbH oder dessen Lieferanten. Alle Titel und Rechte an dem geistigen Eigentum in und an den Inhalten, die durch die Nutzung der SOFTWARE geschaffen werden k\'f6nnen, ist das Eigentum des jeweiligen Besitzers und k\'f6nnen durch anwendbare Urheberrechtsgesetze und andere Gesetze zum geistigen Eigentum werden und durch Vertr\'e4ge gesch\'fctzt werden. \par"
+      		sLicense+="Dieses EULA gew\'e4hrt Ihnen keine Rechte zur Nutzung solcher Inhalte. Alle nicht ausdr\'fccklich einger\'e4umten Rechte sind durch Alexander Predl, Systemhaus Predl IT-GesmbH reserviert.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 5. KEINE GARANTIE\par"
+      		sLicense+="\b0\par"
+      		sLicense+="Alexander Predl, Systemhaus Predl IT-GesmbH lehnt ausdr\'fccklich jede Gew\'e4hrleistung f\'fcr das SOFTWAREPRODUKT ab. Das SOFTWAREPRODUKT wird ""wie bereitgestellt"", ohne jegliche ausdr\'fcckliche oder stillschweigende Gew\'e4hrleistung jeglicher Art. Alexander Predl, Systemhaus Predl IT-GesmbH \'fcbernimmt keine Gew\'e4hr oder Haftung f\'fcr die Korrektheit oder Vollst\'e4ndigkeit der Informationen, Texte, Grafiken, Links oder anderer Inhalte die in dem SOFTWAREPRODUKT enthalten sind. \par"
+      		sLicense+="Alexander Predl, Systemhaus Predl IT-GesmbH \'fcbernimmt keine Garantie hinsichtlich irgendwelcher Sch\'e4den, die durch die \'dcbertragung eines Computervirus, Wurm, Zeitbombe, Logik Bombe oder andere solche Computerprogramm verursacht werden k\'f6nnen. Alexander Predl, Systemhaus Predl IT-GesmbH lehnt es weiter ausdr\'fccklich ab jegliche Gew\'e4hrleistung oder Zusicherung an Benutzer oder Dritte weiterzugegeben.\par"
+      		sLicense+="\par"
+      		sLicense+="\b 6. HAFTUNGSBESCHR\'c4NKUNG\par"
+      		sLicense+="\b0\par"
+      		sLicense+="In keinem Fall haftet Alexander Predl, Systemhaus Predl IT-GesmbH f\'fcr Sch\'e4den (einschlie\'dflich, ohne Einschr\'e4nkung, entgangenen Gewinn, Betriebsunterbrechung, oder verlorene Daten). In keinem Fall nimmt Alexander Predl, Systemhaus Predl IT-GesmbH Haftung f\'fcr Verlust von Daten oder f\'fcr indirekte, spezielle, zuf\'e4llige Sch\'e4den, Folgesch\'e4den (einschlie\'dflich entgangenen Gewinns), oder sonstige Sch\'e4den aus Vertr\'e4gen, unerlaubter Handlung oder anderweitiger Folgen. \par"
+      		sLicense+="Alexander Predl, Systemhaus Predl IT-GesmbH \'fcbernimmt keine Haftung in Bezug auf den Inhalt des SOFTWAREPRODUKTS, einschlie\'dflich darin enthaltenen, Verleumdung, Verletzung der Rechte der \'d6ffentlichkeit, der Privatsph\'e4re, Markenrechte, Betriebsunterbrechung, pers\'f6nliche K\'f6rperverletzung, Verlust von Privatsph\'e4re, moralische Rechte oder der Weitergabe von vertraulichen Informationen.\par"
+      		sLicense+="}"
+      		sLicense+=""
+      	OTHER CASE
+      		sLicense+="{\rtf1\ansi\ansicpg1252\deff0\deflang1031{\fonttbl{\f0\fswiss\fprq2\fcharset0 Verdana;}}"
+      		sLicense+="{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\b\f0\fs17 COPYRIGHTS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="Scoriet Generator, Copyright 2015 Alexander Predl, Systemhaus Predl IT GesmbH, Lagerstrasse 1-5, A-2103 Langenzersdorf, Austria. All Rights Reserved.\par"
+      		sLicense+="\par"
+      		sLicense+="This software may not, in whole or in any part, be copied, reproduced, transmitted, translated (into any language, natural or computer), stored in a retrieval system, reduced to any electronic medium or machine readable format, or by any other form or means without prior consent, in writing, from Alexander Predl, Systemhaus Predl IT-GesmbH.\par"
+      		sLicense+="\par"
+      		sLicense+="You are granted a limited license to use this software. The software may be used or copied only in accordance with the terms of that license, which is described in the following paragraphs.\par"
+      		sLicense+="\par"
+      		sLicense+="\b TRADEMARKS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="WinDev, WinDev mobile and PcSoft are trademarks of PC SOFT Montpellier Cedex, France. Scoriet GeneratorCOPYRIGHTS:\par"
+      		sLicense+="\par"
+      		sLicense+="Copyright 2013 Alexander Predl, Systemhaus Predl IT GesmbH. All Rights Reserved.\par"
+      		sLicense+="\par"
+      		sLicense+="The Scoriet Generator software is Copyright 2015 Alexander Predl Systemhaus Predl IT-GesmbH. All rights reserved. This software may not, in whole or in any part, be copied, reproduced, transmitted, translated (into any language, natural or computer), stored in a retrieval system, reduced to any electronic medium or machine readable format, or by any other form or means without prior consent, in writing, from Alexander Predl, Systemhaus Predl IT-GesmbH.\par"
+      		sLicense+="\par"
+      		sLicense+="You are granted a limited license to use this software. The software may be used or copied only in accordance with the terms of that license, which is described in the following paragraphs.\par"
+      		sLicense+="\par"
+      		sLicense+="\b TRADEMARKS:\b0\par"
+      		sLicense+="\par"
+      		sLicense+="WinDev, WinDev mobile and PcSoft are trademarks of PC SOFT Montpellier Cedex, France. Scoriet is a trademark of Systemhaus Predl IT-GesmbH, Austria.\par"
+      		sLicense+="\par"
+      		sLicense+="\b LICENSE:\b0\par"
+      		sLicense+="\par"
+      		sLicense+="""""THE SOFTWARE"""" SHALL BE TAKEN TO MEAN THE SOFTWARE CONTAINED IN THIS PACKAGE AND ANY SUBEQUENT VERSIONS OR UPGRADES RECEIVED AS A RESULT OF HAVING PURCHASED THIS PACKAGE. """"BUYER"""" SHALL BE TAKEN AS THE ORIGINAL PURCHASER OF THE SOFTWARE.\par"
+      		sLicense+="\par"
+      		sLicense+="BUYER HAS THE NON-EXCLUSIVE RIGHT TO USE THE SOFTWARE ONLY ON A SINGLE COMPUTER. BUYER MAY NOT ELECTRONICALLY TRANSFER THE PROGRAM FROM ONE COMPUTER TO ANOTHER OVER ANY TYPE OF NETWORK. BUYER MAY NOT DISTRIBUTE COPIES OF THE SOFTWARE OR THE ACCOMPANYING DOCUMENTATION TO OTHERS EITHER FOR A FEE OR WITHOUT CHARGE. BUYER MAY NOT MODIFY OR TRANSLATE THE PROGRAM OR DOCUMENTATION. USER MAY NOT DISASSEMBLE THE PROGRAM OR ALLOW IT TO BE DISASSEMBLED INTO ITS CONTITUENT SOURCE CODE. BUYER'S USE OF THE SOFTWARE INDICATES HIS/HER ACCEPTANCE OF THESE TERMS AND CONDITIONS. IF BUYER DOES NOT AGREE TO THESE CONDITIONS, RETURN THE DISTRIBUTION MEDIA, DOCUMENTATION, AND ASSOCIATED MATERIALS TO THE VENDOR FROM WHOM THE SOFTWARE WAS PURCHASED, AND ERASE THE SOFTWARE FROM ANY AND ALL STORAGE DEVICES UPON WHICH IT MAY HAVE BEEN INSTALLED. THIS LICENSE AGREEMENT SHALL BE GOVERNED BY THE LAWS OF AUSTRIA AND SHALL INURE TO THE BENEFIT OF SYSTEMHAUS PREDL IT-GESMBH OR ITS ASSIGNS.\par"
+      		sLicense+="\par"
+      		sLicense+="\b DISCLAIMER / LIMITATION OF LIABILITY:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="BUYER ACKNOWLEDGES THAT THE SOFTWARE MAY NOT BE FREE FROM DEFECTS AND MAY NOT SATISFY ALL OF BUYER'S NEEDS. SYSTEMHAUS PREDL IT-GESMBH WARRANTS ALL MEDIA ON WHICH THE SOFTWARE IS DISTRIBUTED FOR 60 DAYS TO BE FREE FROM DEFECTS IN MATERIALS AND WORKMANSHIP UNDER NORMAL USE. THE SOFTWARE AND ANY ACCOMPANYING WRITTEN MATERIALS ARE LICENSED """"AS IS"""". BUYER'S EXCLUSIVE REMEDY DURING THE WARRANTY PERIOD SHALL CONSIST OF REPLACEMENT OF DISTRIBUTION MEDIA IF DETERMINED TO BE FAULTY. IN NO EVENT WILL SYSTEMHAUS PREDL IT-GESMBH BE LIABLE FOR DIRECT, INDIRECT, INCIDENTAL OR CONSEQUENTIAL DAMAGE OR DAMAGES RESULTING FROM LOSS OF USE, OR LOSS OF ANTICIPATED PROFITS RESULTING FROM ANY DEFECT IN THE PROGRAM, EVEN IF IT HAS BEEN DVISED OF THE POSSIBILITY OF SUCH DAMAGE. SOME LAWS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF IMPLIED WARRANTIES OR LIABILITIES FOR INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATIONS OR EXCLUSION MAY NOT APPLY.\par"
+      		sLicense+="\par"
+      		sLicense+="\b SPECIFIC RESTRICTIONS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="IN ACCORDANCE WITH THE COMPUTER SOFTWARE RENTAL ACT OF 1990, THIS SOFTWARE MAY NOT BE RENTED, LENT OR LEASED.\par"
+      		sLicense+="\par"
+      		sLicense+="THE SOFTWARE AND ACCOMPANYING DOCUMENTATION MAY NOT BE PROVIDED BY A """"BACKUP SERVICE"""" OR ANY OTHER VENDOR WHICH DOES NOT PROVIDE AN ORIGINAL PACKAGE AS COMPOSED BY SYSTEMHAUS PREDL IT-GESMBH, INCLUDING BUT NOT LIMITED TO ALL ORIGINAL DISTRIBUTION MEDIA, DOCUMENTATION, REGISTRATION CARDS, AND INSERTIONS. Scoriet is a trademark of Systemhaus Predl IT-GesmbH, Austria.\par"
+      		sLicense+="\par"
+      		sLicense+="\b LICENSE:\b0\par"
+      		sLicense+="\par"
+      		sLicense+="""""THE SOFTWARE"""" SHALL BE TAKEN TO MEAN THE SOFTWARE CONTAINED IN THIS PACKAGE AND ANY SUBEQUENT VERSIONS OR UPGRADES RECEIVED AS A RESULT OF HAVING PURCHASED THIS PACKAGE. """"BUYER"""" SHALL BE TAKEN AS THE ORIGINAL PURCHASER OF THE SOFTWARE.\par"
+      		sLicense+="\par"
+      		sLicense+="BUYER HAS THE NON-EXCLUSIVE RIGHT TO USE THE SOFTWARE ONLY ON A SINGLE COMPUTER. BUYER MAY NOT ELECTRONICALLY TRANSFER THE PROGRAM FROM ONE COMPUTER TO ANOTHER OVER ANY TYPE OF NETWORK. BUYER MAY NOT DISTRIBUTE COPIES OF THE SOFTWARE OR THE ACCOMPANYING DOCUMENTATION TO OTHERS EITHER FOR A FEE OR WITHOUT CHARGE. BUYER MAY NOT MODIFY OR TRANSLATE THE PROGRAM OR DOCUMENTATION. USER MAY NOT DISASSEMBLE THE PROGRAM OR ALLOW IT TO BE DISASSEMBLED INTO ITS CONTITUENT SOURCE CODE. BUYER'S USE OF THE SOFTWARE INDICATES HIS/HER ACCEPTANCE OF THESE TERMS AND CONDITIONS. IF BUYER DOES NOT AGREE TO THESE CONDITIONS, RETURN THE DISTRIBUTION MEDIA, DOCUMENTATION, AND ASSOCIATED MATERIALS TO THE VENDOR FROM WHOM THE SOFTWARE WAS PURCHASED, AND ERASE THE SOFTWARE FROM ANY AND ALL STORAGE DEVICES UPON WHICH IT MAY HAVE BEEN INSTALLED. THIS LICENSE AGREEMENT SHALL BE GOVERNED BY THE LAWS OF AUSTRIA AND SHALL INURE TO THE BENEFIT OF SYSTEMHAUS PREDL IT-GESMBH OR ITS ASSIGNS.\par"
+      		sLicense+="\par"
+      		sLicense+="\b DISCLAIMER / LIMITATION OF LIABILITY:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="BUYER ACKNOWLEDGES THAT THE SOFTWARE MAY NOT BE FREE FROM DEFECTS AND MAY NOT SATISFY ALL OF BUYER'S NEEDS. SYSTEMHAUS PREDL IT-GESMBH WARRANTS ALL MEDIA ON WHICH THE SOFTWARE IS DISTRIBUTED FOR 60 DAYS TO BE FREE FROM DEFECTS IN MATERIALS AND WORKMANSHIP UNDER NORMAL USE. THE SOFTWARE AND ANY ACCOMPANYING WRITTEN MATERIALS ARE LICENSED """"AS IS"""". BUYER'S EXCLUSIVE REMEDY DURING THE WARRANTY PERIOD SHALL CONSIST OF REPLACEMENT OF DISTRIBUTION MEDIA IF DETERMINED TO BE FAULTY. IN NO EVENT WILL SYSTEMHAUS PREDL IT-GESMBH BE LIABLE FOR DIRECT, INDIRECT, INCIDENTAL OR CONSEQUENTIAL DAMAGE OR DAMAGES RESULTING FROM LOSS OF USE, OR LOSS OF ANTICIPATED PROFITS RESULTING FROM ANY DEFECT IN THE PROGRAM, EVEN IF IT HAS BEEN DVISED OF THE POSSIBILITY OF SUCH DAMAGE. SOME LAWS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF IMPLIED WARRANTIES OR LIABILITIES FOR INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATIONS OR EXCLUSION MAY NOT APPLY.\par"
+      		sLicense+="\par"
+      		sLicense+="\b SPECIFIC RESTRICTIONS:\par"
+      		sLicense+="\b0\par"
+      		sLicense+="IN ACCORDANCE WITH THE COMPUTER SOFTWARE RENTAL ACT OF 1990, THIS SOFTWARE MAY NOT BE RENTED, LENT OR LEASED.\par"
+      		sLicense+="\par"
+      		sLicense+="THE SOFTWARE AND ACCOMPANYING DOCUMENTATION MAY NOT BE PROVIDED BY A """"BACKUP SERVICE"""" OR ANY OTHER VENDOR WHICH DOES NOT PROVIDE AN ORIGINAL PACKAGE AS COMPOSED BY SYSTEMHAUS PREDL IT-GESMBH, INCLUDING BUT NOT LIMITED TO ALL ORIGINAL DISTRIBUTION MEDIA, DOCUMENTATION, REGISTRATION CARDS, AND INSERTIONS. \par"
+      		sLicense+="}"
+      		sLicense+=""		
+      END
+      
+      MyWindow..Caption=<§$0002§>
+      MyWindow..Plane=1
+     type : 34
+   -
+     code : |1+
+      
+      
+     type : 165
+   -
+     code : |1+
+      
+      
+     type : 177
+   -
+     code : |1+
+      
+      
+     type : 180
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1+
+      
+      saveParameter("Username",EDT_Username)
+      SaveParameter("Email",EDT_Email)
+      
+      Use(WIN_Main)
+     type : 2
+   -
+     code : |1+
+      
+      
+     type : 11
+   -
+     code : |1+
+      
+      
+     type : 12
+   -
+     code : |1+
+      
+      
+     type : 17
+   -
+     code : |1+
+      
+      
+     type : 13
+  procedures :
+   -
+     name : NoRegistrierung
+     procedure_id : 1869235562050685570
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //NoRegistrierung ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE NoRegistrierung()
+      
+      Info(<§$001b§>)
+      Use(WIN_Main)
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x19f0dbd70d900a92
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      de-DE : Bitte bestätigen Sie ob Sie die Lizenzart gelesen und zugestimmt haben!
+      en-GB : Please check "I have read the license and confirm"!
+     index : 0
+   -
+     text :
+      de-DE : Bitte wählen Sie eine Lizenz!
+      en-GB : Please select a license!
+     index : 1
+   -
+     text :
+      de-DE : Lizenz - Wählen Sie Ihre Lizenz-Art
+      en-GB : License - choose your license type
+     index : 2
+   -
+     text :
+      de-DE : Bitte geben Sie eine gültige Email Adresse ein!
+      en-GB : Please enter a valid email address!
+     index : 3
+   -
+     text :
+      de-DE : Bitte wählen Sie ein Land aus!
+      en-GB : Please choose a country!
+     index : 4
+   -
+     text :
+      de-DE : Bitte geben Sie den Ort ein!
+      en-GB : Please enter a city!
+     index : 5
+   -
+     text :
+      de-DE : Bitte geben Sie die Postleitzahl ein!
+      en-GB : Please enter your PO-Box!
+     index : 6
+   -
+     text :
+      de-DE : Bitte geben Sie die Straße ein!
+      en-GB : Please enter the street name!
+     index : 7
+   -
+     text :
+      de-DE : Bitte geben Sie Ihren Nachnamen ein!
+      en-GB : Please enter your surname!
+     index : 8
+   -
+     text :
+      de-DE : Bitte geben Sie Ihren Vornamen ein!
+      en-GB : Please enter your first name!
+     index : 9
+   -
+     text :
+      de-DE : "Die beiden Passwörter stimmen nicht überein, bitte bestätigen Sie das Passwort!"
+      en-GB : The both passwords don't match. Please confirm the password!
+     index : 10
+   -
+     text :
+      de-DE : Das Passwort muss mindestens 8 Zeichen lang sein! Verwenden Sie auch Großbuchstaben und Zahlen.
+      en-GB : The length of the password needs to be at least 8 chars! Use uppercase letters and numbers too!
+     index : 11
+   -
+     text :
+      de-DE : "Diese Email ist noch nicht registriert, bitte versuchen Sie es erneut!"
+      en-GB : "This email address was not registered yet, please try again!"
+     index : 12
+   -
+     text :
+      de-DE : "Diese Email wurde noch nicht bestätigt, öffnen Sie Ihr Email Programm und drücken Sie auf den Link!"
+      en-GB : "This email address was not confirmed yet, open your email program and click on the link provided in the email!"
+     index : 13
+   -
+     text :
+      de-DE : "Sie müssen sich für Scoriet registrieren um eine Lizenz zu erhalten, wollen Sie wirklich die Registrierung (Bestätigung der Email) abbrechen?"
+      en-GB : You need to register with Scoriet to receive a license. Do you really want to cancel the registration?
+     index : 14
+   -
+     text :
+      de-DE : "Ohne Registrierung kann Scoriet nicht benutzt werden, bitte versuchen Sie es bald wieder, Auf Wiedersehen"
+      en-GB : "Without registration Scoriet cannot be used, please try register again soon. Good bye"
+     index : 15
+   -
+     text :
+      de-DE : Bitte füllen Sie nun die Registrierung aus.
+      en-GB : Bitte füllen Sie nun die Registrierung aus.
+     index : 16
+   -
+     text :
+      de-DE : Bitte füllen Sie nun die Registrierung aus.
+      en-GB : Please fill out the registration now.
+     index : 17
+   -
+     text :
+      de-DE : "Sie müssen sich für Scoriet registrieren um eine Lizenz zu erhalten, wollen Sie wirklich die Registrierung (Bestätigung der Email) abbrechen?"
+      en-GB : You need to register (confirm your email) with Scoriet to receive a license. Do you really want to cancel the registration (confirmation of the email)?
+     index : 18
+   -
+     text :
+      de-DE : "Ohne Registrierung (Bestätigung der Email) kann Scoriet nicht benutzt werden, bitte versuchen Sie es bald wieder, Auf Wiedersehen"
+      en-GB : "Without registration Scoriet cannot be used, please try register (confirm your email) again soon. Good bye"
+     index : 19
+   -
+     text :
+      de-DE : Bitte bestätigen Sie nun Ihre Email Adresse.
+      en-GB : Please confirm your email address now.
+     index : 20
+   -
+     text :
+      de-DE : Die Lizenz konnte nicht erstellt werden!
+      en-GB : The license could not be created!
+     index : 21
+   -
+     text :
+      de-DE : Bitte wenden Sie sich an office@scoriet.com um eine Lizenz zu erhalten!
+      en-GB : "Please send a email to office@scoriet.com, we create a license for you!"
+     index : 22
+   -
+     text :
+      de-DE : Vielen Dank für die Regstrierung von Scoriet
+      en-GB : Thank you for registering Scoriet
+     index : 23
+   -
+     text :
+      de-DE : Wir wünschen viel Erfolg mit diesem Programm!
+      en-GB : We wish you every success with this program!
+     index : 24
+   -
+     text :
+      de-DE : Erfolg!
+      en-GB : Success!
+     index : 25
+   -
+     text :
+      de-DE : "Die Lizenz wird durch uns überprüft. Sie haben von uns eine Email erhalten, alle Zahlungsrelevanten Daten sind in dieser Email enthalten. Sobald die Zahlung bei uns eingegangen ist, schalten wir die Lizenz frei!"
+      en-GB : "The license will be confirmed by us. You got mail from us. In this mail, you find your payment details. If we receive your payment, then we unlock your license!"
+     index : 26
+   -
+     text :
+      de-DE : "Sie können dieses Fenster später wieder aufrufen, gehen Sie dazu in das Fenster 'Über' und drücken Sie dort auf 'Lizenz'."
+      en-GB : "You can open this window again, goto 'about' and click on the 'license' button."
+     index : 27
+   -
+     text :
+      de-DE : "Wenn Sie sich jetzt nicht registrieren, dann können Sie Scoriet nicht mehr benutzen, da die Demo Lizenz ohne Registrierung nur 30 Tage gültig ist. Wollen Sie sich jetzt registrieren?"
+      en-GB : "If you don't register now, then you cannot use Scoriet, because the demo license is only 30 days valid. Do you want to register now?"
+     index : 28
+   -
+     text :
+      de-DE : "Sie können eine andere Lizenz verwenden, dann können Sie Scoriet weiter benutzen. Wollen Sie sich jetzt registrieren?"
+      en-GB : "You can use a other license type, then you can use Scoriet. Do you want to register now?"
+     index : 29
+   -
+     text :
+      de-DE : Bitte wählen Sie eine andere Lizenzart als Demoversion aus. Die Demoversion und die erweiterte Demoversion sind abgelaufen! Sie können aus 3 anderen Lizenzarten auswählen. Wollen Sie sich jetzt für eine andere Lizenzart entscheiden?
+      en-GB : Please choose a different license type than a demo version. The demo version and the extended demo version license time is over. You can choose now out of 3 other license types. Do you wan to select a different license type now?
+     index : 30
+   -
+     text :
+      de-DE : "Ohne gültige Lizenz muss Scoriet jetzt beenden, Sie können aber jederzeit Scoriet starten und eine andere Lizenzart wählen! Ihr Systemhaus Predl Team"
+      en-GB : "Without a valid license, Soriet cannot work. You can restart Scoriet and select another license type! With best regards, Systemhaus Predl team"
+     index : 31
+   -
+     text :
+      de-DE : Sie müssen jetzt eine andere Lizenzart auswählen. Die Open-Source Lizenz ist für Sie nicht mehr gültig. Wollen Sie sich jetzt für eine andere Lizenzart registrieren?
+      en-GB : You need to choose a different license type. For you the open-source license is no longer valid. Do you wand to choose another license?
+     index : 32
+   -
+     text :
+      de-DE : "Registrieren Sie Ihre Scoriet Installation - "
+      en-GB : "Register your copy of Scoriet - "
+     index : 33
+   -
+     text :
+      de-DE : "&Activate license"
+      en-GB : "&Activate license"
+     index : 34
+   -
+     text :
+      de-DE : "&Lizenz Aktivieren"
+      en-GB : "&Activate license"
+     index : 35
+   -
+     text :
+      de-DE : Jetzt Kostenpflichtig bestellen
+      en-GB : Jetzt Kostenpflichtig bestellen
+     index : 36
+   -
+     text :
+      de-DE : Jetzt Kostenpflichtig bestellen
+      en-GB : "Order now  with costs "
+     index : 37
+   -
+     text :
+      de-DE : Bitte stimmen Sie den Lizenzvereinbarung zu!
+      en-GB : Please click on 'I have read the license agreement and confirm the license agreement'
+     index : 38
+   -
+     text :
+      de-DE : Bitte wählen Sie 'Ich möchte die Professionelle Lizenz für Scoriet kaufen'
+      en-GB : Please check 'I want to buy a professional license for Scoriet'
+     index : 39
+   -
+     text :
+      de-DE : "Diese Email ist noch nicht registriert, bitte versuchen Sie es erneut!"
+      en-GB : "This email was not registered, please try it again!"
+     index : 40
+   -
+     text :
+      de-DE : "Vielen Dank für Ihre Bestellung, wir überprüfen nun die Zahlung und schalten Ihre Lizenz frei. Sie erhalten von uns eine Email innerhalb von 12-24 Stunden."
+      en-GB : "Thank you for ordering, we check your payment, unlock your license. You'll receive a email in 12-24 hours."
+     index : 41
+   -
+     text :
+      de-DE : "Ihre Lizenz wurde erfolgreich aktiviert, viel Erfolg mit Scoriet!"
+      en-GB : Your license was successful activated! Have fun with Scoriet!
+     index : 42
+   -
+     text :
+      de-DE : Die Lizenz konnte nicht aktiviert werden!
+      en-GB : The license could not be activated!
+     index : 43
+   -
+     text :
+      de-DE : Bitte wenden Sie sich an office@scoriet.com um eine Lizenz zu erhalten!
+      en-GB : Please send a email to office@scoriet.com to get a license!
+     index : 44
+   -
+     text :
+      de-DE : "Diese Email wurde noch nicht bestätigt, öffnen Sie Ihr Email Programm und drücken Sie auf den Link!"
+      en-GB : "This email was not activated, open your email program, click on the confirmation email to activate your email!"
+     index : 45
+   -
+     text :
+      de-DE : Bitte stimmen Sie der Lizenzvereinbarung zu!
+      en-GB : Please check 'I have read the license agreement and confirm the license agreement'
+     index : 46
+   -
+     text :
+      de-DE : Die Lizenz konnte nicht erstellt werden!
+      en-GB : The license could not be created!
+     index : 47
+   -
+     text :
+      de-DE : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+      en-GB : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+     index : 48
+   -
+     text :
+      de-DE : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+      en-GB : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+     index : 49
+   -
+     text :
+      de-DE : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+      en-GB : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+     index : 50
+   -
+     text :
+      de-DE : Die Lizenz konnte nicht erstellt werden!
+      en-GB : The license could not be created!
+     index : 51
+   -
+     text :
+      de-DE : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+      en-GB : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+     index : 52
+   -
+     text :
+      de-DE : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+      en-GB : " nicht erstellt werden!\"+CRLF+CRLF+\"Bitte wenden Sie sich an office@scori"
+     index : 53
+   -
+     text :
+      de-DE : Info("Die Lizenz konnte nicht erstellt werden!"+CRLF+CRLF+"Bitte wenden Sie sich an office@scoriet.com um eine Lizenz zu erhalten!")
+      en-GB : Info("Die Lizenz konnte nicht erstellt werden!"+CRLF+CRLF+"Bitte wenden Sie sich an office@scoriet.com um eine Lizenz zu erhalten!")
+     index : 54
+   -
+     text :
+      de-DE : Bitte wenden Sie sich an office@scoriet.com um eine Lizenz zu erhalten!
+      en-GB : Please contact office@scoriet.com for a license!
+     index : 55
+   -
+     text :
+      de-DE : Die Lizenz konnte nicht erstellt werden!
+      en-GB : The license could not be created!
+     index : 56
+   -
+     text :
+      de-DE : Email versendet!
+      en-GB : Email send!
+     index : 57
+   -
+     text :
+      de-DE : "Es ist leider ein Fehler beim Versenden Ihrer Email aufgetreten, bitte kontaktieren Sie office@scoriet.com"
+      en-GB : "Error while sending email, please contact office@scoriet.com"
+     index : 58
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

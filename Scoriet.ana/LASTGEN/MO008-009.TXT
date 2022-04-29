@@ -1,0 +1,3 @@
+//MO008-009.TXT ANA00008 TO ANA00009
+DataKeys		TAR	544	new record size: 544
+DataKeys	VersionID	RUB-		item VersionID deleted

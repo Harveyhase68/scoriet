@@ -1,0 +1,235 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : Connector
+ major_version : 26
+ minor_version : 0
+ type : 4
+ description : ""
+ subtype : 0
+class :
+ identifier : 0x1fae334f0144c045
+ internal_properties : BgAAAAYAAAB2/vstTMCJbS/hlxjFxirSqKvCUuv8YxgpWyl7S3iA
+ code_elements :
+  type_code : 10
+  p_codes :
+   -
+     code : |1-
+      Connector is class
+      	ctCdn is connection
+      	dsDATA is data Source
+      	dsDATA2 is data Source
+      	bConnected is boolean
+      	sErrorString is string
+      End
+     type : 131072
+  procedures :
+   -
+     name : Constructor
+     procedure_id : 2282818475540201541
+     type_code : 27
+     code : |1-
+      PROCEDURE Constructor()
+      
+      Connector:bConnected=false
+     type : 589824
+   -
+     name : Destructor
+     procedure_id : 2282818475540267077
+     type_code : 28
+     code : |1+
+      PROCEDURE Destructor()
+      
+      if bConnected then
+      	HCloseConnection(ctCdn)
+      	Connector:bConnected=false
+      END
+     type : 655360
+   -
+     name : Connect
+     procedure_id : 2282826180711620266
+     type_code : 12
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] Connect (<sServer> is string, <nDatabaseType> is int, <sUsername> is string, <sPassword> is string [, <sDatabase> is string])
+      //
+      // Parameters:
+      //	sServer (ANSI string): <specify the role of sServer>
+      //	nDatabaseType (int): <specify the role of nDatabaseType>
+      //	sUsername (ANSI string): <specify the role of sUsername>
+      //	sPassword (ANSI string): <specify the role of sPassword>
+      //	sDatabase (ANSI string - default value=""): <specify the role of sDatabase>
+      // Return value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE PUBLIC Connect(sServer is string, nDatabaseType is int, sUsername is String, sPassword is string, sDatabase is string="")
+      
+      LOCAL
+      	bRes is boolean
+      	
+      switch nDatabaseType
+      	case 1,2
+      		Connector.ctCdn..Server		= sServer
+      		Connector.ctCdn..User		= sUsername
+      		Connector.ctCdn..Password	= sPassword
+      		IF NOT sDatabase="" THEN
+      			Connector.ctCdn..Database=sDatabase
+      		END
+      		Connector.ctCdn..Provider		= hNativeAccessMySQL
+      		Connector.ctCdn..CursorOptions	= hClientCursor
+      		Connector.ctCdn..Access			= hOReadWrite
+      	case 3
+      		Connector.ctCdn..Server		= sServer
+      		Connector.ctCdn..User		= sUsername
+      		Connector.ctCdn..Password	= sPassword
+      		IF NOT sDatabase="" THEN
+      			Connector.ctCdn..Database=sDatabase
+      		END
+      		Connector.ctCdn..Provider		= hNativeAccessPostgreSQL
+      		Connector.ctCdn..CursorOptions	= hClientCursor
+      		Connector.ctCdn..Access			= hOReadWrite
+      	OTHER CASE
+      END
+      
+      if not bConnected then
+      	bRes=HOpenConnection(Connector.ctCdn)
+      	IF NOT bRes THEN
+      		Connector.sErrorString=HErrorInfo(hErrFullDetails)
+      		Connector.bConnected=False
+      		RESULT False
+      	ELSE
+      		Connector.bConnected=True
+      		RESULT True
+      	END
+      else
+      	result true
+      end
+     type : 458752
+   -
+     name : cnExecute
+     procedure_id : 2282826996755465443
+     type_code : 12
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] cnExecute (<sSQL>)
+      //
+      // Parameters:
+      //	sSQL: <specify the role of sSQL>
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE PUBLIC cnExecute(sSQL)
+      
+      if HExecuteSQLQuery(Connector.dsDATA,Connector.ctCdn,hQueryWithoutHFCorrection+hQueryWithoutCorrection+hNoBind,sSQL) then
+      	result true
+      else
+      	Connector:sErrorString=HErrorInfo(hErrFullDetails)
+      	result false
+      END
+     type : 458752
+   -
+     name : cnExecute2
+     procedure_id : 2286344815477514462
+     type_code : 12
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] cnExecute2 (<sSQL>)
+      //
+      // Parameters:
+      // 	sSQL: <specify the role of sSQL>
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE cnExecute2(sSQL)
+      
+      IF HExecuteSQLQuery(Connector.dsDATA2,Connector.ctCdn,hQueryWithoutHFCorrection+hQueryWithoutCorrection+hNoBind,sSQL) THEN
+      	RESULT True
+      ELSE
+      	Connector:sErrorString=HErrorInfo(hErrFullDetails)
+      	RESULT False
+      END
+      
+     type : 458752
+  properties :
+   -
+     name : p_bPg_bP_bConnected
+     identifier : 0x1fae3bcc0149e514
+     type_code : 103
+     p_codes :
+      -
+        code : |1-
+         PROCEDURE Public p_bPg_bP_bConnected()
+         
+         result Connector.bConnected
+        type : 1966080
+      -
+        code : |1-
+         PROCEDURE PUBLIC p_bPg_bP_bConnected(bValue is boolean)
+         
+         Connector:bConnected=bValue
+        type : 2031616
+     template_refs : []
+   -
+     name : p_s_sError
+     identifier : 0x1fae3c79014a8a29
+     type_code : 103
+     p_codes :
+      -
+        code : |1-
+         PROCEDURE public p_s_sError()
+         
+         result Connector:sErrorString
+        type : 1966080
+      -
+        code : |1-
+         PROCEDURE PUBLIC p_s_sError(sValue is string)
+         
+         Connector:sErrorString=sValue
+        type : 2031616
+     template_refs : []
+   -
+     name : p_ctPg_ctP_Connection
+     identifier : 0x1fae3ddb0353f1c1
+     type_code : 103
+     p_codes :
+      -
+        code : |1-
+         PROCEDURE PUBLIC p_ctPg_ctP_Connection()
+         
+         result Connector.ctCdn
+        type : 1966080
+      -
+        code : |1-
+         PROCEDURE PUBLIC p_ctPg_ctP_Connection(Value is connection)
+         
+         ctCdn=Value
+        type : 2031616
+     template_refs : []
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAA6ih3UbgNXHwTtiPSFUEj+2fi/m7v4QV2rqidAupM=
+  original_name : CClass1
+resources :
+ string_res :
+  identifier : 0x1fae334f0141c045
+  internal_properties : BgAAAAYAAAAnMYFQ1bL/vz9ehh7L22SNNSlIzGTOI8h5F/WtgDNP
+  strings :
+   -
+     text :
+      en-GB : The connection to the server could not be established!
+     index : 0
+custom_note :
+ internal_properties : BgAAAAYAAABtB9HWVzrXO2+4NDRVK0vmzaNKrCKqH1DBX30lMmGZ

@@ -1,0 +1,847 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Form_Template
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Form_Template
+ identifier : 0x200159d4cd68e398
+ internal_properties : BgAAAAYAAACrMeC9RrjBPmcRuXLfxzkPD/x8TCX0TdJWnnzZvLncTyl9XtjxV0l0RJSbpF1WoNsU05DPCxNXDgv2CrOsTeWiVRa6XV9oKeLMEcehY8vxMXTlPsStQbExZv1Z1mhT8HMzCeAcUi/hUxF3TMCl1gb2RdIWWQXxsR35GHDqoHrcpEQTvO2esR9DpvHgWfBIXAg2zAzdDs2JgR49Z1VcJaS4hwVAw6cx/yLFHMAn+xOREpxtVJt9uzoY7/jEkFaCsfwApgRwrMXHJAo4QH2+MZuft0DYmD/2IDptFXqjccmiTUsX9xx4y1CE8++hfEbD79WBMxbX9OpX8KaK+bVZbFwCQGTzdDNHfzB48CKoUwzR4ATAmBFbf3uFGQSGv7DlVoNehbjgP1VF83nCJ5EOgbVoZC0v/ZbGKfPVUhl0JsRXaYSPeGJEvey7/lnRmRDq4pEqwDwSMagKpQJuT/HutR/t4JxnckMPv2U8LT6dCjb/a3Fk4T4oeYwuHXLqnbiU9j4yVUOa7egaDtR+Fdufq0dgkeUb0tGFxKNuIAdetoalGkB3Cnyacb65GmIcgZPn0uZf9HLtH/Yj0fYOyr28dk6uImiW1WwJHJLSzTf9U8vclRrNI8Jee5+Suh2usMZhl93TY1hZVFXG/8WLOYVAAGDaXfcRf1bJ4LmFHvyQPeAQslVv4XPyCGlzu/zQ8C7BMsXWz4X5YmTJOWqkFSMuJJsLpFdjUraNzmN8A35k0QHQ1EuVTotiGNw0iP1AGwtiqKvNJv602YThK0JJdaaEuLY4Dtc/eFORjNc2x8vhmdg4XqkiJ0HO+eUZPRWj9FmUmHnh2SGlvoUzYQvovbggFLDs79qut2QhuIOi1QrVZ54Ie3n2e9Nk4vPvscAgLRMLZ1EnHZ37/bxhTtwHlTThOGACaHSgDH+OA+fz+nxy7kEfO+2leY9r61LBW5vnZfNQPxdOUMa7fyoCGIkJgMMNHuMzjpF9+IEK6Lt8h3StxsG5SejsPAwbsxfdocW5h2RN6fwfFL4AcPBZPZFNMjG7OWsE9pyuTRl/88dW3UufW2fzqmjP8+3norvfDIP9MrTb8qgGKVQrQzm3ZicN52GeUpWZxz/PstotPzTz6M5zEk+NDUawR19q+dFKt44vTgxjcKBOW1J/ASNA0VLiNS4l86GgMMnhDtJTj9pNcSbX8hi3E9MDEepMRw==
+ controls :
+  -
+    name : TemplateID
+    identifier : 0x200159d4cd70e3a8
+    internal_properties : BgAAAAYAAADJgJm8MvMCNSos+viXtRFx9jfHXznCvEBHd3CgMniqUm+8WsArUMxUxluuTrY73PN5iOzp1qomLvUr9LyUjC8r1Dpze+2U1mf8bpSTKF1ykHF+1TvN2DygmeRZgLIkAqmu+EmRwmPFQ2z6Evikx1dob+jzcn/K6HwRivj1/r11pyBew9fsutMCd+CD48GKOoIi0uWxFvulzNUYZjxjG1SCr4YPGZiDOWyEihQCM2fTkd5SkX0IbfsydqNC0KG7qZkZz6jGMTcln/UXqoTj2WbreptBPAHS8QlqKehTEaEVj9xc3VPoxcRIv1evVpeaxIyVEAzYiy61Iq4kMxJuK91fnTKN92lpLN7SM9Y1FN8oGZyrLjAdGRdmb4td/SU6o9KWEF/l+VhEOE4K+BGQ0hJZZmxU6QCrGis+YkkaUQC3HsQAx0Rc7SFt/j4V63Pp9o6rgRVHkJCgNOKNcvx1W0NME8/op8q/aBxsOAwMMUIaeWcPlHYUTLD6o28zbLHdsecGHSCfydYY2CV6X4XYLtzDR2PA6fITJl2O0lZfOyYRw3bYqj/HJyMnrhuNH3oKzrKH7cR3T0gFEenDku7jhXlJBFLGQ4SO2Os1dai1IY34iE+WRoUeyoX4Lvl1HC9cINOjZHkpRDKH8ySozLw8xHy5DB0u+7pSm6sqHgq59olYsdFUSL9WNE92trt2NshV4ivXPOHR6Etco1k=
+    type : 3
+    code_elements :
+     type_code : 2
+     p_codes : []
+  -
+    name : TemplateName
+    identifier : 0x200159d4cd99e3b8
+    internal_properties : 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
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : TemplateFolder
+    identifier : 0x200159d4cda5e3e6
+    internal_properties : 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
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : BTN_OK
+    identifier : 0x200159d4cda7e3e6
+    internal_properties : BgAAAAYAAACDZVBPji1yFOV+/qS/hoNQNO/8SNCmyPdA+mSAYZgnojCU2JlZpJi0pwAgOS0bjQ8nkR7sMGdk4PrxNDo0aGI5KntzsRx0pqMeLBK18erguwD2/S8ZuR2jO5yqltyhTzFzG7W6VkWWBvyNR2YViTfq2GL9Bnouommk+fTF1thi9Dk84LQv2ctoe5pSfzTlLFzuXIFHAseKMndTKJbI0iqSo5uRPddDcz8c/TbEqU2c8VpP4rZMlYK3sgVfdwyS/7SFLY/FuIHI427w7GV/3ae8taZTipQ+XFkZUW7EONgATC+g6QFnCmBYdAuy6Ey5L27y1Qn8G51V2WNgpjs6HFq8zBsW200fTuSra3+TWaw0+gpHNWy1RVCsKTPQarwru5tyMauqgx2kbnta94hQLCb6UbrGotQ+LAhStjFF3PVijOWBT+uhp/tVVjaR5a7y5vwdrCGvUcSsn5V91GUgf4ng1UkCwHYfmwiZXj+OvyzThZmxwijq+fgCUvrCX6PITV06cgas6BR3ZVCCER6Uk/KA9F3Tzboor+AlT4hEr1HdyXG5+DEMesWQxu7XQMm5s+yLM7i5Fs6K+wscZ0f/aHjJzshY4G847o5QrDQdx7vAdBMgSncNNh6nsFP4IgQEAlImuq8mz+yogIlRYt790JuI7tks7pnQpuaTsmJYnLswcRXW0LtUHRiIC92JBQL7SkfV2rKFhzfG2HXevqAzLhLn/a5/dwoNT8Ih3CLNyQOAoED/oncT9xod1F8KcJG6HGe5kfRW9HP47FhSCTQ52JUOkrIcz3dVD5OGP4lnlAznBP0IhDDfxumlFqIzSEVFL1v55uF6dSSd2AVZki1AhM4YAJVi5ncdJw9/37FsSlxZW5fJqnLXZQGuexwwGSW0mn5Y3i1qWcMVByjk/XLwk3HoGRgqfoDPUX1GXHYAjHB+h0HADY7LhTFx4RWIe4HRJBqg/Je4GXnkMPCHGQxnL9zBn9S61dXyoxn6iNbF3SU756W+jdSFEkafvD2W+woMg6FcPCGFZXqJE0aAD1Xy3OMsvUT16nGeFLFKMYK9eXCb/cD1NXirPADuATeAhe3RfWYmNe7+ZawDPV0FG+JfpoplzbQitycVBAe0RaSZqsmfUYNOkDg7osnFKWzSyBLrm7Cvr/kCyOr/r2YOR+aJuwxZlo9Uki1G0zv4FSBdx247UbZGKJhOJLaQchd8txbq9sBq6JFVMpcNrGOpl0yQ5O/0giD/AsmH3icT/nD9MRAmuyb4kA7iOVR99UpBG8faAD1f6HQ=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1+
+         // According to the window mode
+         SWITCH Left(ExtractString(gsWindowMode,1,"="),8)
+         	// 'Creation' mode
+         	CASE "Creation"
+         		// Setup the record and save
+         		IF RADSave() THEN
+         			// Add the record
+         			HAdd(Template)
+         			IF ErrorOccurred THEN
+         				Info("Unable to add record"+CR+HErrorInfo())
+         				RETURN
+         			END
+         
+         			// Indicates that the form is no longer modified
+         			gsModifiedWindow = gsModifiedWindow OR MyWindow..Modified
+         			MyWindow..Modified=False
+         
+         		END
+         	// 'Modif' mode
+         	CASE "Modif"
+         		// Setup the record and save
+         		IF RADSave() THEN
+         			// modify the record
+         			HModify(Template)
+         			IF ErrorOccurred THEN
+         				Info("Unable to modify record"+CR+HErrorInfo())
+         				RETURN
+         			END
+         
+         			// Indicates that the form is no longer modified
+         			gsModifiedWindow = gsModifiedWindow OR MyWindow..Modified
+         			MyWindow..Modified=False
+         
+         		END
+         END
+         
+         // if the window was opened in 'Browse' mode
+         IF OpeningMode="Browse" OR OpeningMode~="LinkedBrowse" OR gsCallMode~="Browse" THEN
+         	// the new record becomes the current record
+         	gnRecNum = HRecNum(Template)
+         
+         	// Was the window opening mode changed?
+         	IF gsCallMode ~= "Browse" THEN
+         		// Go to the record in order to reinitialize the browse
+         		IF gnRecNum<>0 THEN
+         			HReadFirst(Template)
+         		ELSE
+         			HReadFirst(Template,TemplateID)
+         		END
+         
+         		// Restore the expected opening mode
+         		OpeningMode = gsCallMode
+         	END
+         
+         	// back to source mode
+         	ModifyWindowMode(OpeningMode)
+         	// in other cases
+         ELSE
+         	// close the window
+         	Close("",gsModifiedWindow)
+         END
+         
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Cancel
+    identifier : 0x200159d5cdabe4d0
+    internal_properties : BgAAAAYAAAAYYRFtmRF2d2/FYZYIhpeLxgyO3ku9WiLTYgr9AHSPL0eIFbeARGPJhUHHJ68duEsqLVTbKwifh4e+3UpScK4SDwdacutQS/lhLhj5YglhpbmrE9o7IbCFZm9g2XLQO4QdA8GaIBPcoYSbIuOxdnmX6sD5p5RC1yzjzBnB0oBGlLPkRE2FjBZVWIbZTK+qtywdDdIa7F8Xlir4pBa2/PSoIn4L8HfoWdFxa0cYGA05StF+VQPm3LN5lNmcwRYFNGkrRcXbo+aBpsOBl846vaFFVcJtbO21Y+/wOzqFLuQx4WC4gD4qSM3zqz72rRXDSY3/c6COAN7WxAX3xUCIwmB6xjYg8N0iGX1nZ5AFFPrX7OiU8RnCWH9CFvP7geXVgHAAHgmhhzUZy5MRpjJXoPqy+1nuxlOxPEViLQkYAGygNXVlpruorKfQjcLTpbh1KoXFYsznX1d5GADB+6OrerVL+MabcpDnd3ZIQdYUjBbllRgDXgz4mxHklACmgbRHp+ITf49xt1vEYNyd8V/XOWQKuD2P0cuHVS7fJMEbxI+MVhVUWIL20fRBrGIfmFM1anuZC364gAh2PvLedIicRESewECFIKM7M8kqhMjy1KGkmUevnILH3trashqQIvcwjtpvOQaU+1lXbUpjSGcWhhzT924dAi0/cfFw0Xu62x/xZsdco3ogV7xZIreywoI6Nlep8gdaivfE7v70VI0x1XsdkfTT5wXKI2m9IjsWG1F348yg95QInPIG7Okb1BJbKzmRCkTARQy8wV+DUUVUcY0d2VMb53X5O9f86sLPu1y3F3D7mFqOYT7VjBJmF22ooda3yaZjB13GmCnAVWxpaJPrpNtKVZCHVMk4926S08B5KSr/klNusHSNadtf+ug87lSLeWKkHKuK60g3z+wDlIV4fs5tljgh0zpL207a2eHprxT/nWatr4GvjTukRZrqkB1y2PUWGa3twun7d0hl3+ZposPGEHqDwwl95rC7/HBk/g67WlcE1DPAlt0OV2JgQEM9AWR5/0l16xhMEz95gGb0VrfRWjbQb1hAdiXO9U/tKsjzspoH2wXvHFptH8b42YYptG8dH2sDwqSs5n+4D+N7o8JSQgkFT2AvVbcvuJ7/hUOfdrdBcLquyKbb1ZJd38tDPsu4kwpOFGFcQIh666gMo6brkK9r365d2u9y07gFtO053oqK8ok093tqWZS0/z14JADECaLML7vS4g0EbWG4UlIarTVJ11zXUNsQ8JfK7cvH4vYXMOT5W76vw3VfOrGoFuS4PvjeQyhaskCrxxsTRTAV4g==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // indicates that the form is no longer modified
+         MyWindow..Modified=False
+         
+         // if the window was opened in 'Browse' mode
+         IF OpeningMode="Browse" OR OpeningMode~="LinkedBrowse" THEN
+         	
+         	// back to 'Browse' or 'LinkedBrowse' mode
+         	ModifyWindowMode(OpeningMode)
+         	
+         	// if there was a current record
+         	IF gnRecNum<>0 THEN
+         		// point to the modified record
+         		HRead(Template,gnRecNum)
+         
+         		// and display items in controls
+         		RADDisplay()
+         	END
+         	// otherwise, close the window
+         ELSE
+         	Close("",gsModifiedWindow)
+         END
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_First
+    identifier : 0x200159d5cdafe5ba
+    internal_properties : BgAAAAYAAABwpVC6aWWUcKmrLxiphyDWptgzsYBZfPxTdyE0BkDqqPJgUfuoDhs8lLlNC0XoXGMBsK3QN0ABfYAr4FfXzzZz40JCWqsbsoTbTtJLBY/wFDlqc1ElZRS5JHtBtzmR2ZcyQSKIKnMPw0syyYqnItkiKQD78+zP9JCMmsHPK27LqtDE9xiK3yxRSmc5Sy7PnxFJNXevauc5k8/thvabQLrRzF5SbH4m/N66Qd108CELWkt4gIcQ+ELJxJDuBcCv5/zZA6P+jW8FgtmzeYnGouvTrBOB1ZaF9j40c5Mc4DssdiQIXZsvy7XuQ11otMKhM4JewNtxDG4aGOCKwufi5T5Cz+VaYKL1SyAbVyCvY0A1ZIumD1lzdo/dC+QbXMaZIodQKS4Otp6st5Tj3TEnAldlV4HkqURAaphxtVdOYKlsDqrdWoZHlGOVuRFquFAn8lzi7NG0MFLJsLGOpdJydvIQBVmeijlRAsKWrIwPDJ1dGwPu8jg/jyuXJUDodDETjPfyuiROsjLFAv4wMNdDu085P2Ui7FJ0mvMIdZsC3y2cZ6D8jJgZYfe6Y5FaQ+Vtt77SG7LIvtI8IHFDpvuFXV3Kcn5bYvDAOx+qgr/Bmz/HG6NdkAmgrk25C7MWXCzetwnNWQoRPrh/eI5tcUta3GyS9HU9YcxO7AaJUn/HHHbZ9vEsVplRYSfb+caHFwV7eBofS1E3QPO62SogAHzEYhvgv7PT05g+v9kMGm6iEIwFpDNTsJRBD6YNwOX18oCNHkAgYtWf+ef5NFqmCTN49c0H05rdNOBU9dJwfOZvELn0f6ZuTO59incjJ+wE4k7pQOClG+BfPba8NOrGaKHmCmimOVJQda2DLTSoY3wJFP9TLkfMKSeZr5wuHVKRI3Lb7bdjJfgHOBA4g5t6Gj07pOZttgXe3E0anbzftSlw5CjCcxQuazp7idY7iJFX0J+FfsQEmdksVe04WfqwexJoI6LOYat7fILkZsd7TdsHICofMCtc7ZUY560t0qEKwq6k2aF69Q3ZR54MYNWRfv6M2E8OkBjlajC54jzAcLzkC52NFoNY7pvhaR4STVNf5rcE37Xf2ScI/saqkt7TZbkidfoaqLjlC/f4hn/+YdGST/tYcbaTAuK9R9f9ZXXBJAKCEBM36Sy3Gf4iUPugQdeTLH7luxtaQiVcw9XCk/HmKfHlooDpVE095KUZwvnW8AZTmk1ydm9rFOHPcOG4Z/EkTX8GK3a3K1nXg4DleRtW+1u03P7rj0qnpnNC2OSC44aowScxQC9kuwOhMGMdh47LUfS1Fq91MddEhqlUIMINj49LvafrEkdyrlrzspo=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // check the form modifications
+         CheckModification()
+         
+         // read the first record
+         HReadFirst(Template,TemplateID)
+         
+         // no record
+         IF HOut() THEN
+         	Info("The file is empty")
+         	// otherwise, transfer the file buffer to controls
+         ELSE
+         	RADDisplay()
+         END	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Previous
+    identifier : 0x200159d5cdb3e5ca
+    internal_properties : BgAAAAYAAAC2VTctbwXSafiacpcAmO4Yy0X53sj57mBFW73tRQyw9tHshrRJ7zhbJYqsK24hJSLHMkxcmrFhqg4NVc95ilClfhmnaX2I/X4pQruHv8CFMgN/zMRj4MBZy77Hr+Ekh1cM1i7URg3i/I72UrMqYRurIyGMBxwZtdakRo2dm90zaGR0spuRpDd8xJ07JTXIQ24B2J933L9rT0Yr1K0y/Z8Yi6LfJAaHYROeAl0QCud6PRJrLBd4m52or3zDq7aoXr1ks9a4wvzyn9GXINsjvWBqY8XrxHaeN2D/NJys3FHs7Ze3p0EnvaRfNrcBMdLPyYTw+NYcGf++vPDOwEu5/aZz2oZ0wdVejSChbXhxT1sSBsoZrn/1CD/nH4YKHV22DaftbxVli7ijWHoRZKXl6UrBkg9fdLmRCWyQei8QFrVBMdGY1TZ5Ko2GkHyUhHybaSv9BY2F6gcOlsC2G/RnwGGUwUpFpe0bP8NaTuIpFtyi1sU4FrK0NXHe89Er8sYc5xzhD8AEE4ACqh1toBVhPEPMtyvmGxrM2NjITC3x4jdSrnvXymj8bjBbVCaEzEcIgTVfte6t2gChdLZG/wQPF93b46pthAl7VyQ0OdwxGRPn5us8NYxZQnw+/dhB0+3HSRpf4VlcQeZWedCnhfM/mN+pI9E/1pL0ovCF5f0T51BegtNcXIJIrDFFKBNEa1tYOhUpY//eaFaEwgo27CpqP9jR8r1ZfbFaqX5XLkN/VZ7cMcIzaEJU0+4dKhqpcanlCwrgDGNz3Pbclq8lBI0myjsr1j6rXj11W0oOn9Y08Scf4893r3A9tk3+CYzjTcAWE/3Okbwu0by/JGp8IBPxhQ11WgijMLHO6M4/joEeq3XgqyUOflErgobAfEV43lcwY5hBoJ84C08unQDAegaXg/KQHjtmrZ58KN19+8dt6EWxkfeIMLtWZd5XNHIDm6QW04/FZ8eU62Fls0lr1BqHvKAzcPO1cShNlJYnhHmahJ4AUpNZJQPz+gxbq7XB7FhnmES1vPYORyyCFP5Ee8L6Ketj0LVFcVkduJeOJmgQoM9qABcXKZJuS2t09J/A1uZols7u6vuXFvg/M5YlbOxjwVoc2v3YML/WWyxAJ0sjCarxiyjkRfRCARUXNsp8IHML688hGo1vOynorf5Cb9gq0J4sjCs7YoATzQ/qrDm9mQR3jmPhFAPSbocukc3jepQ3mP/TKvUBEhgpvzZMcIduUtTxGZMlfMom7rGPMXsI1Qk3FNJXq7asfbuWFcWMZG/8/wOPmZRluail7cNnaGJotoTUGYQLopODX/BDtZUvR1iaZPMsB8HBiyFQex9K5hC5pdKweBeMR1A=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // check the form modifications
+         CheckModification()
+         
+         // read the previous record
+         HReadPrevious(Template,TemplateID)
+         
+         // no record
+         IF HOut() THEN
+         	Info("Start of file reached")
+         	// otherwise, transfer the file buffer to controls
+         ELSE
+         	RADDisplay()
+         END	
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Next
+    identifier : 0x200159d5cdb7e5da
+    internal_properties : BgAAAAYAAADk5MnDYBOUmBEHd+YyiJ0n8iwgxPI3mZ9c6rCACMrHLatxxl9azXFzPhCQFtDkDcinBCvMMKh0EXGbA/USohvOh0w8g9sIJxlQKkTPmzVWs/bTXb68CybicESDweIc5YUosGDjrAa59DLmIr1SxmzP5zfdX2RH52+6/+rIgMqQWEJA/n1fGKFNnMbHzg5hrsGzVBUx+fFADdJhltI98w30UPfsMokJoph+L7ypQ3r3gJDGp3loykdq8L5kt6XHKmOLK3Sb5DDCE06fSNf3VqTbgHZhZhHG0yDor2kPAR90K7UxScrL45QIs6qb47Zf2Mo3crpCRhjInTJNSCqLYt3wAUBS6xCoTisJRqGi+v+TTx3vdZMWeLG8VaA0Ja4xKSMAG+6clUzva8kZPBf26kCx92Y4mjX/LghopZzpELw85RzGAXo6r64ExbmKEoNl0+szIiRFGdqYPErpoD5dlXp5el3cMaCb9rGG55ErcP7qyMTXHKJnT836PXDYOzQKe5TF8FIxhlf58VV+TMSlqhtwwdMUt/HHBXnnFhCRaFJPLqW/9nUG9EUraUL/e5biNqjPHJ4B98j6k/1CVO6T8aIJMfhhaLFM2YRq44OX4vW/teQikdb7Swfj0I1TkfJ4tZjCBlQa3qJCBpzdz4FdSB3voVwHKd/WKr5kwflbgWkh7gdLp6sCOyOyY0r6xDvHpRNlO7c6X1GEVLCIr91IcIu15rXHE9yuFLbzZiyEHW1ODjOALUoli2kXNUkJ6/D1IbU1zaYcKnlW08x5x7r6DJEy3xuMiVuun8WcWdyIMBfpWgjMfKcr75t94nj3++63ulEOzVqC16vYNmzgQOBvZPh6eJVXGSGRUFLkCIA4W2moX3NmqR3qLokzb3u594+udJfHWpjaUaNo4sjOxkWV0PEIB8Rtwi2eT2cPkcr8rNpAkpRxVSOelObAp5C6gu7eFIEv/Wk/ITKz3niEQ5V4OLhFTj6K4Z9L3N0eHyCrX868trbJwpSKDRau6N0kCvh5y8Q3RfV8OxIZHKXCzd4DcDNa6g37TL0dxy+eX6KU3owZm1czoLNmbnM3hMbbFr8xHPcSu+zb9+QHHwJPqDblPuaBzsJ1R7IxeCIINz78+hyzagEtZb94oMl5Sy0j0td6lKxugJu9Tiq9QA1qpHl4bOCe1Xy/2BsS+I8a9tfdfjR3VybXwP87Bsh/Jnrn/PMKMzlGVCWhsuziePoEj5c/BGBdIDBhRVxaH82j5E3YYIBkbX2ucuNtohGqMNFrNH29IJykUoNcWyfi3Ih/+9mj3Eb9NPxZ15/5ITgUAzvYGy7WHyoCViaQRtVk
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // check the form modifications
+         CheckModification()
+         
+         // reading the next record
+         HReadNext(Template,TemplateID)
+         
+         // no record
+         IF HOut() THEN
+         	Info("End of file reached")
+         ELSE
+         	// Otherwise, transfer the file buffer to controls
+         	RADDisplay()
+         END	
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Last
+    identifier : 0x200159d5cdbbe5da
+    internal_properties : BgAAAAYAAADU5rSNNBiTj1mxooBWaY2M8QK8HSuYUuB0sIYp6cBL6+Bmxerep7ZXBRCdlyIeQ6myVLjNFJXqRTfgA7mqyRCZUiPiUTuRK69c+oN32sOiKwUeW+m5sYlpq+RXlqhm1+fqUn8vuNv5fqQqqIqk5NyHt7/g9rWghznubalIRsOoQAlVoghiyl/VyqZmtRK07DptZErGhZXivlEML0/mUFzpNARy6sDxeT2y7LPGIAwEDlvKl+03bvgo5E4Txd3KwekxQDWUSGuef4uViFDGWqiqapLJYeSNh48P5dM1GyHAuuabmjKUdmv0JCdipFWxzr3pW1rqrPU4a2WcMbac+DGHPJowI9paVThF70iJVdc3WvQAKaI8n4QUfXQf36Omx4eiNDi3bE3fs7Km1Ji4EuVylEMzhkdrM3iuq3FVusayLw0CiW59XJStwLjZ2Vy0Sd1mvW8oGL9bc6vPUKRmsFO4lytkG5scb/xTYvOsPrn5LnZc9t5NKHKqPuojfJ2PPVLrnpfWJ1NLzONfYhQyP6eFXMFW3aC05BPrNhcb+zvW8PXHsFkR7LhTsZ0pXSvAr/GYsSOX5sv5t3A9fkvIiKRU6Sy4FkgnlnC/2w82g+/lsIu7xzQXVgMmdRMH5c/IctyLKI6ExwOyQWhYOwzhDVJnio3qIasqVgs81pbDeC/hTTZaqCNnRxtA4mE521xdqdpLKfIrnyex0S454nMa9942bqeMeGe6qi6tvokC1zPPE3f2f7/v2EBoGKA/f+/7ChcmRs/ROpoztkGQQ+C+7PTjRHQZ0UJZFbjWnJ4EGHs1KCilZubg+EQm7mf3nPOhRiScQPj54dLKdIVo4Xnu82DZE23MsUXCQtjam3+tOHB/rfSqZq0M8Hzcxxf6W6/Y9lmSSx4i1NPzW7MGqoGyj4dBrgfrUTwvzYngLugI/IMUk1AuuFxuXKQy+y2xR1g5XPvYrO4nIHEaENMOO26/83snO1NNsxPsUWUvOBU0k/kAqGjkFUozzeadqQoGKBbpzIfQqEgenbS/w5Q08jmquexP/ONi9N14aoNDnAtjJ4LQwsaF8CgvUg6O4ky26lpqdQhTwQBmbShpOJCdVwHQltvgxAK56Msv3fal9E40VPGSrFvBLGEfhitN8U3Upnv8yQyfMEUV+v68VpVgMRH6ahSGu6hzKLR67gK3vBHcIMBggAokhwJIGwTJR5mHHb92MlxcF0CG7EHOcaov95LSjjXasjA1hpDsJ1DxC1UP27zAI0WwskugrkdyLJIM1pADr/F+omXhXooJMUVkvDJIoGJjnW8JBvNmQWc2i0cXAwBrG7bbVw==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // check the form modifications
+         CheckModification()
+         
+         // read the last record
+         HReadLast(Template,TemplateID)
+         
+         // no record
+         IF HOut() THEN
+         	Info("The file is empty")
+         	// otherwise, transfer the file buffer to controls
+         ELSE
+         	RADDisplay()
+         END	
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_NewLine
+    identifier : 0x200159d5cdbfe5e9
+    internal_properties : BgAAAAYAAAD9KVNDHzXT/1NUrfgQNu0UA+mTJOfso6yU+yrV61kkJQDeWz2R74qaJUAVvrcMlbkh19J9zrN7YuqTI6/3FlYGUyROD3g9PuxLKunisev9w99b2hhhOJ3rCT32Z17bSkRCzpN6Ry2rqnw1bo7MsdJpZOXMNL+o/F80YTw206g6J3J7GvVBQbB7t0N5FLUNPJNeXCmoIb6Yw8wMK8d8opxWVqkuZ9ZxpJfdBtMzbo1R4LucXf3m8542gQMzlA6WMps3JhIRDlDpgDatDwo5pn8iD4bC90fdikLZu+2K2kUf6LDNRxhLUr9ebf+lsGehPrIlOtLq+ILr//6uVNzvEXcLdvOJY87xn/ebNe619ewKCbjHmVx1ZLcdFsj408fLjSsLq7W3sBPiaIxw1TeAM/GGxEbmijo1FET/LXHT++RBjswjgDnQ3falpNlvwNqNJQXPDtCOWWrLsSgBmnD+bBM3VDZs5xJH7bN/WEa73TlMByMrPEFVyEYDwaHBTBLJGCGsevgTfcm0HyuNT1be2QE77fh3ft4jffESBQPtdwiFjR1OmiJBY+ru9vmC7+/7xAa1t/bYuJ6rKb8+EMBS+OeIeQQpG+Ob7NBhH17w4UJbTSeo+Qvf+SLBYW2USyzSLeYq0vaW3AS7dbUCT1z4oAGGAgTRZftZn5HMiOAx+ng01i7v8HqWjMQPxPF7xR4yL5Ln+ZgKRysI+TCHLDPamqlwLCjdjMOrkvPmNvNxTtZioXpVb5E6Zz1mmAjP07XrXjdokBSdfef/VxumXxpOudPQ77pwFSTO26/o4ST98vynRY3bSpcwEs3joslsicCK2l/2LDAwmDmiYtfkIouG+6Rpc4r4ZNWduJh3FQFr7rJWHS0LBMSjMDthJqmdTL7Xyq10Rj3OWTeXR5RoY4HYsvT8vzhEzJQDxYEm2f/xJQRWTg1pR1j5yx7AFzGboVspm9YAi+WJv1+UvG9obctyM8efie43XHD3fTrs5pz8OF0lf9TrAQWfUtE1kGRwUR/5XFzVHIjxeugiDL/xCSHKElBlUhqWAIrgr6Q7nFwf0xI66Dk8oZL7rNXLITRZxvjPrC7Sxvlep1wmKWmeve47JpY9ZhgVT8CeiRg1hh3+BJkjxo/Toz9/zlyVSdbkRvsrqZATYCuLneWupaVYkIvRHU44GIIGmNHdN0hCJE5zziQJNojzM/6m7C7DsWC6xOUc+azatu5hx5rD09sg5ebAc+1jfeBDI/8CiCW5GdayKsQXFaR1MPUTrLxEY036/s9nFtbPJpack49otTgkI6VHUOo=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // check the form modifications
+         CheckModification()
+         
+         // switch to 'Creation' mode
+         ModifyWindowMode("Creation")
+         		
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_DeleteLine
+    identifier : 0x200159d5cdc3e5f9
+    internal_properties : BgAAAAYAAADGr/YWoKEQg6uRHP6T+EDyEdOpemcsVLqA4eI0ZbkBT/mrx7eVIvJKmnTD7H8xRDTRVZUJLxhFH/Q8uUXh7WK9NIgzRQcFb99fdseP+kS5kjIagakD4rPC6Djwe2yGcq6SSsjxCf9UTGEPq17ugchWmfKSFIGCx+ibka0GXQUHydHmh638qvULCptugr2/TNp9i6YG2AkiJBYghswdJQpjb2XI3vs2sZ8xiE/9ZrekOIIaKerrIYrI5CBdsjNgvVw3Su3OBXARueVHdOql+kiCxXhTQTOg+ne9hklrfEV2hQZNfpViBEFhA3cku9J64P11cpA/LnY/ctyBOCraSh/sQPZ8taA2agNuQ/2xHWSsQgSOOHoqb9kNzG31W6FKz1SXbhtuOLPW6BRL8qzAAVtqIT/01MIA0R5jO0mNlgV2ds7/xm489Df8n5y/kWBURLOncE5QpvC8VtzGTzdBT1iPRLEkAPIwGYitWxEZgl5utcUNSIPErgpC+tEZ3J6l45wQ6cQ+7ZhlO47YMyUs0cUy8NaMtqn/ajxOxV+jrWGX8zNAL+N35Fzw+5gqtbvSf3IKwJCMxRaqxHYoIPwrS2LKqiCbhYezS7ZG8J7JLnorKrOJNI25ip15K9Wol0MQhDpypA+S6yCcHhC7zbe5iPVM3uRM2CNnPs/6tyoVyal2WSi3iqkz7P9it+cepANnlHbUaZuq8JqP3l1xGJ/GKuY0hOglhXe8l8ixsWobwKvN0b3X6621YCNjkLFokk5KHrWKwCDwmQpoOmas1hpBtOciQBTUucR8zvSxHWLp45wq7S6aWdqngm/qwMIx1JvIOuggyTkjgypnDif6RDE1mbEYzEHYyuZNKLZz5ygkitkNVyO8DVWXzfoYJ/viYjO7qyxRu1alU4fmKMJAoDSn0iY7bq2QHlY/sm2iwzv1CcXELktsM2tyXC6KmVBSq0HMh6N5gDCjd4NrewcxdOVfvc50gJsvuMc5qFso3Y4zaJdycwGzy3frNCTYG58tFev9uD67NLUVa8ySPc1DcvK2MQ3kmSZjKrjahTi9tUuK5lIBtbPo0Ttt+Go4I/b+NqJLmUB6WRR1BCHUoaf45YW/hjTtiaYQzJBaqbfGMWC4Nu6VovEq79TLLM0S2qYQUP3ng5yDsNNCmLIwQ+QstFLVCn9JIsreTNZo1ZldrzlZLmSp+COHgs14zBMnxT3yBU20K4cQQ93jL2OKaPPOxX27ME4CBaIsMYiymsx6GOtjD0X4W9vp5CBLNSEjYsp/uUZMxySPXMSbXCCZtA1mZvm/4hDfIhS6lxriyE5BbDMPG8sx
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // Ask for confirmation
+         IF YesNo(No,"Do you want to delete the record?") THEN
+         	// deletion
+         	HDelete(Template)
+         	IF ErrorOccurred THEN
+         		Error("Unable TO delete record."+CR+HErrorInfo())
+         		RETURN
+         	END
+         	
+         	// Indicate that a record was modified (data refresh required)
+         	gsModifiedWindow = True
+         	
+         	// reading the next record
+         	HReadNext(Template,TemplateID)
+         	
+         	// if the deleted record was the last record
+         	IF HOut() THEN
+         		// read the last record
+         		HReadLast(Template,TemplateID)
+         		// no other record found in file
+         		IF HOut() THEN
+         			// clear the controls
+         			RADClear()
+         			// tell the user that the file is empty
+         			Info("The file is empty")
+         			// done
+         			RETURN
+         		END
+         	END
+         	
+         	// transfer the file buffer to controls
+         	RADDisplay()
+         END
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Print
+    identifier : 0x200159d5cdc7e6a4
+    internal_properties : BgAAAAYAAAA5eriDBQmTQ/IFyl2Dl/bvJxvrc5Fns6dsrfe0ld3G7qKwhJa1lQRI78ac79kcsAIOag2gG8cOmisp0zx+b0iSUI4GyWFpY1pxetH0wamDf2MiFNxvOIgd5lFSae2QHYji/SVi5MrVo3+At/k9J/FLR4IVlK78KQlcmIf20OF+z+wZ8V5lh2109D9CX9hZyMQyFoKY43FhS0ASCdsPVw6TQ6rn4Xh+eSa98rRaaIwNP0vzkLaqBjXj/A0PYHmLrV/m8mMiDzlB1sF+VQ3/pF5obJzStRmetqOx+i0jNWYwZKEA9e0mffKLaopK72mZbMvOyPr99i9yBnymNaDBHm84wx+kblz3HO9iwvjr5ydPw114IXTV5s8JmvJcIoQBcOs4ufJjqjrjNHEkCSLMrC+GAKPhQY7eHgwGDsJCH7vPoXeT5dIS6m7kJzDnzvPbHi5nLJEaAJIC1vH/ACDIsIZtVmXPA+ss47T92BhmlwaBGXzYtFYr30Ok/hQLIX96AsACXY2qso/dJ+jmxYcDZ0E5fSjSg4/PApvvQqUFQD8yc13NLN4uCJ6g8NkCdwqTuWX2eprPhSn5fyToRxafAAXFBfC7oej32/xng/1v8J+j9+sV7xJHhEgJIm7bpi51rcjZvj8+/FfFhhhjkxt7+HNRqZ/s5A7ZbPx4kjsuuZF3q0yiJO+wkIzmKgpiS/SoAd4jftQxQe+UKqYpERQQQgRLSb4EWenvJLiAuvYt6fI6Ldk8Ne4Zp30paZLzs/hgwOCFEpsAeKKWYQLIeJ3OHWwS4TwdrsTWQucEQfS/sz0kuiD7Ac0kWEo4U9JoL6g+Zpeh+haVx26FUN6nAO30hNfc782Stm2JxqxEq62CQQ1P5InePTQGGkfizY7Xy9TnGcCV72Sonm0wLr15oI74RrUbYNyiKUjMJou2YP+Bn0D+qOytnH+Irql+P0LCOf1tw3UI/cMANab0imN1/zi0kn9kOhYVcyS0UoWAKIbzKVgMTZG1KB31tdoHsRFbhB6Ao92z2SPlJvzQoP4sUkRCqIbjPVBONZG+64JdriNc6lEec0dpwiTlncWlN1OEBhstUNdTTZdwBpRLvAm33uEnTuS2o4CrzOmbdOvxrLA91Q+rA1lKlMn7/7aiO6/NWSf0yozdWZuImm+XlylAnCrCz5IPGLh2S7ozsgQrOPxgQN/isOPo2KuwxbI9NCOwbhkcitVnpqUBhdfXLHEuP/n88TAuHW0Ikip4FA/354a2mROcDtTh4TOAeJpXN8f+CFhKDbJPVwz3wYkVDCK1u1SfbV0vreKdStxEgXapTOT9
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // preview the form report
+         iPreview(100)	
+         iInitReportQuery("RPT_Form_Template",Template.TemplateID)
+         iPrintReport("RPT_Form_Template")
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Apply
+    identifier : 0x200159d5cdcbe6d3
+    internal_properties : BgAAAAYAAACLMVbsh1a1enzozcpaZEEB3fQAXyvzspsbeD3b7RyyZgsRZt9ELqW0ru5PeNUA7rBOcFSPrgw0Im/CM3/NfyYKEPQHvuVFQlaxACGbk5vJq3w7Vz5an69pOSVd9DI8pDih0Ci9ryldqJT6vh/BFE0ewWEjqnXOxjYmS4fzKGm1Be/ml4OsIEFzsdx3Ze4BDK7h8q+t/LuwT0Ov3Nno5OAYxTfnMwSNqNL5LDvmZFLeNftlhNo1ORSavULtTtZN/YPm8+Hnk557/wBG7ANF0hnAW9fU/Fb6xPXg3b3hD47gJYILpGBoTWmIHe4tOqJe8IpDDIAUp4ON0OEj8iYgjB5b3Qs6FXa89R4HHfCbmxuDv6dq3YyO3G8Ma/WZ8kyslQsRhvW9M8ofaYRYSEgXX0N5KVqXcUAL9ib6AzdaHwpzCqotvWqPtA4BMfhJu4oD1tbAdzudVV/KMi6yKGtJL0fkL3GOxa96cW0kweLZyifKxQL9FRW2ccqt6K2UbO0ek41J1+0p+ApRAGA10SBMjxqybQLJwBEYN6Puuv/Yt/E8fbNmRbfMH0711blyUvz85V7X7eVp9Pa3x7Fu0OpTZ/zkiDExWFBUJVE2pXWpHOt1RMHHTNtP84idlQfrLmW+S/dwu8QfG3zh5SRLiT6qH7RUW+GJvBzYjTp3zxAkRSjH9y2Jr5CiXyv9CC/c4M1AbqRYIjELxvt/57gKFOGIR/zM8u/9VZqpY9npeBs0IXxQqnh3qKUxlmmlh4ftQXyRlO3s/AQFCAYfhncOSn5m7ORJZdOQeu9H+rca1ECc6lBLbsgRF7WaL8d/JyvKV57rVj6QAdSzjeUsqE6+UjM+zg4LZTc9QQKNMQFP7b2nzQnQdGQcoO9IeC7Y7MIg861LTgr75asmVdX4sLcZj48SwcCAthMB94rIVEYdwO3Epz1d4jhKslZ3wUZtezvfPbvb4uVEbE2fFLkMj6uXS0m7uXm6ypYlCeIso3BC3KnfQ7Ou+nlZL8r8icpPZ+l2kn4ZDCP51tptzHdipJU7fbGiHLkUDcK554fF3Vto5cZ+mh5DZ48phjZi98b0sQCU01/i+7UORau0QvFzpcOCaFltBSKJuGptUpIJ03gnNqnbyd5owXSQ8hrF2c56jx3kPC0lqsDJUo3nmmAfdxqEqnbZy7ZUOhOVLDzELMEPpgHgMlwdN5g3HIR5glbafyRViE5GpuHuVl1gAEZcvW/j0Gef+zZZ8fceWDWfFJ+3zadv4ztupTlq8ueEI67rRF9tR4skHmm+YguvHir8qrsyp0oMQsPHTldMgSeAnsnEPfGj3iJNu9eEiA==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // Apply the modification
+         CheckModification()
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Close
+    identifier : 0x200159d5cdcfe6e3
+    internal_properties : BgAAAAYAAABZMnXjGYKMQtrJWJFtNmorbXlyGb8nR2bhL4J0HSHwusckV1sdqeNJDcWAMTmpl+K6cMpnTonb5ZDyCSXosHRWLMkbBpdVH8PhAHGzXZVN/hi8wJzn8/c0WsdhhHg6L6meLwEdesX2zrmyg66xDsAQqGbwnijcZAm2FaG+i3TZhVAnZ/XFctEqV0ebFVJYfM1jWfdLuzigUph0dSz8zZc9lAd8w5kowbi8WfwNhhXSja8ngPlzGtnahIM6bUKZkLHKuGo7qQn/BNSLywXmE0yhLhesLH0YUoSnuwtAxMZCJpU+FHAOxDVDava6fiQ45mW+dzu6EaoMgojLuCeWnWvRZm3EuKkOdr+dnc1xJNEgwq1xWQ86JIrYuIlzYcgvUen/GG/o2MY17235Qe0rIIFsQPsXkCWwKUZ7jUV9nwGR2BIwM08NJfroXzRPEM7iM05v0XhCqabZkJ3yl+04Iqs+bzU537vx9hYSBI6CKzyiqmy2VDtSNG8MmIsaGallCuVjTCAoj73QjiFAdYoRO9eWe9cmiMzyiNv0rI9yDDEhzPVLDaqBHNHCNVPDpGzgFRVWM4Zym8lQEIRhxV0AXGFofG8XipvdSPMZ6A9vaD934TxlHYctcXk8sLEZuC+/mXjMkQawvoxYc/WT/r0ItwAjzwzxOk/Bu0g15vj8l7gE6/9odbbpkz4LqI5FHY5KJlS9/rsUbBetlrGNR5GdTLNLPXALGADbjbR4+r5oNJ7V63OcvPPiAxwnTs4BUBuIS8YXeQ8w9bLxjYMi4EZtiblOSc7GITFE/+PPnWY4jPsl3sBbKMAwn7FEUniY5qSWOBBjoRUQH4An/GobSWNRViGKCnugBPEZDGlgUwy6Z9fOLvdzSB3vfZrWF2tW19qOaJvVyRBPOWWCZwmer5p2Xv9kFKqsctlRMkeEmaDsJII9gmrZ99IjMJ/qISQQoFHOQikQqlcaOnDVgMvmo7QSvsw9Byxk+Us0H5d+rYbg9xOVwO6GIeqk/pSt5B7pMsWhVEsmXp1uec+KvzFBS+sBCDGkTrMxzNdtZRGQz91/BmBDvmpisHXyvj/QqduHbzMIFALhi9onMjaHh0VbFG2zYT6i+5IWabHPN1q3gecZ18K7ItqLxnL3ARD3iSTem395Oi8YnrcETBDhABzVd+wf3gcdWq2CxlJQdTTu50BjszZkk4hbIkw4d5Uup8M2HC0HoxmP2797sXM3MeknanZbQZjdFiJq/9py7ZvGz51OiT1opWAg+40RyuNbT3zUvXHiyNKormo/tFfkH5phJSz/BucuhHel/Ky9H1Ybs43OOg==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // close the window (no action)
+         Close("",gsModifiedWindow)	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_TableLink_WIN_Table_TemplatePage
+    identifier : 0x200159d5ce05e7ec
+    internal_properties : BgAAAAYAAABDRiHJE6Prg89hBYu4ioSIjxO8mzEWraYyF5NGWDuafNF8mEUUoyAhY+Tn9vjODXZAzUnC2UiCKcfRy26sycEKzlIRMdScgNsfJNCktyLFWV69hs7qH8zf1dotk3p+tYDGQ9TP2arcPyUvVjzcwV+si5fmQta7VGquz6ia/6dbU3c9gX22PwlFkeQ2F/hg2wVOjO2lNHw/mxBVT3BXJQQfK8f5Lk9T11hBZmGlB5LTC+cDt2HAN1Oa0S+CWvZA3qNezkyAoJkF+cvmDYfpXlegG7iiJALjk1LGpmyAbZ3g5BKU6rpPCOEMN91xbpYMe6pFnzgNuSk4xx592w1e34iFNOCNfXPHB1vyQPwkIZBZ5krIl/ufUVXlW5p25lLrBu/YmovIJWyKojas41wN0f964xTRJmB5m40RfNHQPXOzlwlNzgmphyTuQL9LIMNTbWEf9jsLG28gRtrtd6i56BY9laAk4yEbqjr/gFzOsXD+HhLZ2LiMcak4hgqTN48VvLBsTzHvoLkPAP+sxU+NgIA1dGPT+1hBv6YhqtQSNtojODRpZyhoWV0eKAanKTzhZsP8J8/jxQEokmfQmTSKyvLiQVQBAFpGU0sPwbhVOQfh0ynAoAupZ9W5ibx2Ie7yDk0J9g17T8VuWQI/CXfnU62/Az8r7Wl/Sr97qpirMcKi+MK2FLtQ+6ZfQ27Y+D4Kqscsu5kUIMVIdr1dlmvXi3EwLSoAdJVuE7WMomglVGSOyMbtf2LCxr7ZdSApXQrNfwxx1ApS1uriFr4H82pMVEGScyA7lQkaFgyjUwk2zq4Bw40Yk6exQfUTihxOZALlFWrnAemKOLAMRIiktomBf7TFGOolJiM3zST3u0XUzGpvVOpqzIEhD5nGxOwaSpcVKhbS2XDltfSqs4bR4V7etnGq2NLY2j8LhXG3miFAMEggLSxHwlpK1nJolp5Oj4Dl9D2pgQXF7BovA5CauZ8o4RUf4nf/CdK+HGAFDGqRNxg8xhTchO0GxQR9uyXXCGDUIcQ/2131F0N5bT/BfaGXew28yf7SbqVsvNAEd4c6Uv5uC6EX56pp6SuU+aWyhC/JfeBF2szQ6Cu3H/RChypxsvvpbFNKUlaVglnLKmS7ExKM3zgQEo07H50huuEmN5Mwlzzqm3x/qBmY630MfCa7TE6nQBYrgJu1YssJpfXcVEY3xpYMBe3f93mIwY2/5A==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1+
+         
+         
+         // open the window "WIN_Table_TemplatePage"
+         sAliasName is string = "Link_TemplateID_"+Template.TemplateID
+         sWindowTitle is string = "File Link TemplateID: "+Template.TemplateID
+         IF WinStatus(sAliasName)<>NotFound THEN
+         	WinStatus(sAliasName,TopActive)
+         ELSE
+         	MDIOpen(WIN_Table_TemplatePage,sAliasName ,sWindowTitle ,"TemplateID="+Template.TemplateID)
+         END
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : TemplateComment
+    identifier : 0x231302aa1cad24a3
+    internal_properties : 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
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : BTN_Vision_DBConnectionID1
+    identifier : 0x233fde6c1dce0ab6
+    internal_properties : BgAAAAYAAABzXAzQyWDSOPx3FgtlemGyAqrh2qIeQyBmqpgupAxcaHJPz9Cfs72wVskEBnulmGLNOQOx48F7W4Ky/5kDGOP7nBm1YB3tWR/FwP4I2OJGpqf8tbGuMDFic7PL8w8QFRPajsrCDC/iHsFZEL0VCnh5zwtfLEuI4jvM90Fj0iH4yFK1eSwjPBtPgnzROJQmvSaX+E5050u68J8euAQpHkgL5byIYnkVSMpHyjdxXSGijUCIjV3LN4eL1ZtnbVTACB05KBL1ngbVj2zEJoK0yNpb1VaN8Hqg1z97vzDDH6fzy1EcNmfxPLv+/eTeoXCXXYJvD3lxuwDxks2y+O7yO3GJ3jGhKPD1GsW9NLFCTyyWidmdw81u5kXfY55VbnTW2A+tENhiFfdRLEUIMDaC0/9+3ZyvkbmBlji8MxPf93G7n2FBrZE7tbbXwYmajh2AwmMuPcgya+yiAUuXY+eS5m42Y9Nq2XLvNpw3Gzj9R+SjpqG5vZq22E9/lX0A7IlkNGPBXHYjTPxfbODEKrkdcaO6x1nMhXcWczvbSEzhaQMqvROolXLmIj6THVJRndLK9KD0fmfSDlfCqt5EsT2QCcdzLkwcDBlN4D910zlppL09ZlATn3/0BXmFU+1X9rQosgNwTWW53ZPESeSh4MVXGer9hjpV0IIezsgbW7cCKhrlbJzkd4RvKTzQJdeL0N5PrloNavtSpNRC4/PEu1Ep/lTuF8bNgLNfVcTJimJoqygP+gzJUH/fcm15lnLJKAxx6OyLKDXfKHjDVkz7NeVK5OS1bvX1DSsdCRIbi21BFDPCrf5j/Fy2bNn5gPwAsOobxbFKK1zsrn0ZChc3xP3o7dhkOxKppFjyrX8Y2O1AXcrLauTa1yiJ/GiaB2+rpV/o7let+TyL5OXYI+JeKh9Dfkxe0AgCCTd404MA7i+nFb55RFB3wucDgOJG/dgXohb4HqzlX1HOI7pKdyN8NL6nX5OEt2UrB1mrUJ0blY5oXTNd/jtTuQ5d8ixigbpejXj/9ojt875AvyXsxXujFvWcKKQ76E02L1XJ4cbFmoW1bjKe978fvgMELvK3C7yD5luAjuUHJOU9f5pspa3lFmuiqGk+RHNjri2feSPWra1ngHiMscs3skTOxt+EolTYc2RF1kp1nm8OyLdq8vU/2Zy83Bo7COBHpoN5WIxMJN25slxtW6fZbVHcpStAc1CI+AvlPbpR7PYLuN6hq3f2arvmZq2eXBCosTiPyL7VXRf0eUwAPS4b+OBR/aTA4y1+oxpf5efcWhQwMpccS7hLZyjJ7X9IGEtlVMA9m4bL5Kf0YA==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         
+         LOCAL
+         	sDir is string
+         	
+         if ListSelect(WIN_Main.COMBO_Project)>0 then
+         	hreadseek(Project,ProjectID,WIN_Main.COMBO_Project,hIdentical)
+         else
+         	info(<§$0000§>)
+         	return
+         end
+         	
+         if fDirectoryExist(CompleteDir(gsTemplatePath)+TemplateFolder) then
+         	sDir=CompleteDir(gsTemplatePath)+TemplateFolder
+         else
+         	sDir=CompleteDir(gsTemplatePath)
+         end
+         
+         sDir = fSelectDir("", "Select a directory", sDir, CompleteDir(gsTemplatePath))
+         
+         TemplateFolder=Replace(sDir,CompleteDir(gsTemplatePath),"")
+        type : 18
+      -
+        type : 161
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      // Open the Form window
+      // In:CallMode=window opening mode:
+      //				- "Browse"	Browse all records
+      //								with navigation buttons
+      //				- "Modif"		Modify the current record
+      //				- "Creation"	Create a new record
+      //				- "LinkedBrowse"	Browse the file in relation with the parent window
+      //							(with deletion and creation)
+      
+      PROCEDURE RADForm(OpeningMode="Browse")
+      
+      GLOBAL
+      	gnRecNum is int = 0					// current file record
+      	gsWindowMode is string					// Window Mode
+      	gsModifiedWindow is boolean = False		// Was a record modified? 
+      	gsCallMode is string = OpeningMode	//  Call mode of the window
+      
+      // Management of database access errors
+      // Error messages returned by the database are displayed
+      // Database error reviews can be processed here
+      WHEN EXCEPTION
+      	Error("An error occurred in the window",ExceptionInfo(errMessage))
+      	// Re-enable the exceptions
+      	ExceptionEnable()
+      	// Resume the process
+      	ReturnToCapture()
+      END
+      	
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+   -
+     code : |1+
+      	
+      
+      // If the form is opened in 'Browse' mode
+      // but the file is empty
+      // automatically switch to 'Creation' mode
+      IF (OpeningMode="Browse" OR OpeningMode~="LinkedBrowse") AND HNbRec(Template)=0 THEN
+      	// opens a dialog box to inform the user
+      	Info("No record found in file.","The form will switch to 'Creation' mode.")
+      	// change the opening mode
+      	OpeningMode="Creation"
+      END
+      
+      // enable the controls according to the window mode
+      ModifyWindowMode(OpeningMode)
+     type : 34
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1-
+      
+      // check the form modifications
+      CheckModification()
+      Close("",gsModifiedWindow)
+      	
+     type : 2
+   -
+     code : |1+
+      
+      
+     type : 11
+   -
+     code : |1+
+      
+      
+     type : 12
+   -
+     code : |1-
+      // If a control was modified, activate the group for modification validation
+      IF ControlExist("GP_APPLY") THEN GP_APPLY..State = Active
+      	
+      	
+     type : 17
+   -
+     code : |1+
+      
+      
+     type : 13
+  procedures :
+   -
+     name : RADFindControl
+     procedure_id : 1153301755304143046
+     type_code : 14
+     code : |1+
+      PROCEDURE RADFindControl(sItemName)
+      
+      WHEN EXCEPTION
+      	RESULT ""
+      END
+      
+      // Name of the control corresponding to the specified item
+      sControlName is string
+      nSubscript is int
+      
+      
+      // Browse the window controls
+      nSubscript = 1
+      sControlName = EnumControl(WinInput(),nSubscript)
+      WHILE NOT sControlName~="" 
+      	// Is this control linked to the item specified in parameter
+      	IF {sControlName,indControl}..FileLink<>"" THEN
+      		IF {{sControlName,indControl}..FileLink}..InitialItem~=sItemName THEN
+      			// Return the name of the control linked to the specified item		
+      			RESULT sControlName
+      		END
+      	END
+      	
+      	// Continue to browse the window controls
+      	nSubscript++
+      	sControlName = EnumControl(WinInput(),nSubscript)
+      END
+      
+      
+      // Return an empty string if no control is linked to this item
+      RESULT ""
+     type : 458752
+   -
+     name : RADDisplay
+     procedure_id : 1153301755304208582
+     type_code : 14
+     code : |1-
+      	
+      PROCEDURE RADDisplay()
+      // Called when displaying the form or when going to to the next form
+      FileToScreen()
+      	
+      	
+     type : 458752
+   -
+     name : RADClear
+     procedure_id : 1153301755304274118
+     type_code : 14
+     code : |1-
+      PROCEDURE RADClear()
+      // Called by the 'New' button or in form creation
+      Reset
+      
+      	
+      	
+     type : 458752
+   -
+     name : RADSave
+     procedure_id : 1153301755304339654
+     type_code : 14
+     code : |1-
+      PROCEDURE RADSave()
+      // Function called when clicking the 'OK' button
+      // Returns 'True' if the record is validated, 'False' otherwise
+      // Transfer controls to file buffer
+      ScreenToFile()
+      
+      // The record is valid
+      RESULT True
+      	
+      	
+     type : 458752
+   -
+     name : CheckModification
+     procedure_id : 1153301755304405206
+     type_code : 14
+     code : |1-
+      // check the form modifications
+      // If the form was modified, ask the user
+      // for confirmation
+      // Modifies the record if user confirmation
+      PROCEDURE CheckModification()
+      
+      // if a control was modified in the form
+      IF MyWindow..Modified THEN
+      
+      	IF YesNo("Form Template modified. Do you want to save these modifications?") THEN
+      		// Setup the record and save
+      		IF RADSave() THEN
+      
+      			// Modify the record
+      			HModify(Template)
+      			IF ErrorOccurred THEN
+      				Info("Unable to modify record"+CR+HErrorInfo())
+      				RETURN
+      			END
+      
+      			// Indicate that a record was modified (data refresh required)
+      			gsModifiedWindow = True
+      
+      			// indicates that the form is no longer modified
+      			MyWindow..Modified=False
+      
+      
+      			// Gray the controls for modification validation
+      			IF ControlExist("GP_APPLY") THEN GP_APPLY..State = Grayed
+      		END
+      	ELSE
+      		// Modifications must not be taken into account
+      		MyWindow..Modified = False
+      
+      		// Gray the controls for modification validation
+      		IF ControlExist("GP_APPLY") THEN GP_APPLY..State = Grayed
+      		
+      	END
+      END
+     type : 458752
+   -
+     name : ModifyWindowMode
+     procedure_id : 1153301755304470773
+     type_code : 14
+     code : |1+
+      // Modify the window mode
+      // In:	ModeAppliedWindow=window opening mode:
+      //				- "Browse"	Browse all records
+      //								with navigation buttons
+      //				- "Modif"		Modify the current record
+      //				- "Creation"	Create a new record
+      PROCEDURE ModifyWindowMode(sModeAppliedWindow)
+      
+      // local variables
+      sRelationKey is string
+      sNameLinkedKey is string
+      sValRelationKey is string
+      
+      // Saves the window mode
+      gsWindowMode=sModeAppliedWindow
+      
+      // Link buttons (if any) are accessible by default
+      IF ControlExist("GP_LINK") THEN {"GP_LINK"}..State=Active
+      
+      // Buttons for modification validation (if any) are invisible and grayed by default
+      IF ControlExist("GP_APPLY") THEN 
+      	GP_APPLY..Visible = False		
+      	GP_APPLY..State = Grayed
+      END
+      
+      // switch to 'Browse' mode
+      IF sModeAppliedWindow="Browse" OR sModeAppliedWindow~="LinkedBrowse" THEN
+      	// buttons of 'browse' mode are visible
+      	GP_BROWSE..Visible=True
+      	// Invisible mode modification buttons
+      	GP_MODIF..Visible=False
+      		// buttons for modification validation are visible
+      	IF ControlExist("GP_APPLY") THEN GP_APPLY..Visible=True		
+      
+      		// In 'LinkedBrowse' mode, the current record is retained
+      		IF gsWindowMode~="LinkedBrowse" THEN
+      		gnRecNum = HRecNum(Template)
+      	END
+      
+      	// point to the current record
+      	IF gnRecNum<>0 THEN
+      		HRead(Template,gnRecNum)
+      		gnRecNum = 0
+      	// or go to first record
+      	ELSE
+      		HReadFirst(Template,TemplateID)
+      	END
+      
+      	// transfer the file buffer to window controls
+      	RADDisplay()
+      
+      // otherwise, switch to 'Creation' or 'Modif' mode
+      ELSE
+      	// Buttons of 'Browse' mode are invisible
+      	GP_BROWSE..Visible=False
+      	// buttons of 'modif' mode are visible
+      	GP_MODIF..Visible=True
+      	
+      	// Management of parameter passing for relation links
+      	sRelationKey = ExtractString(gsWindowMode,2,"=")
+      	sNameLinkedKey = ExtractString(gsWindowMode,2,".")
+      	IF NOT sNameLinkedKey~="" AND NOT sNameLinkedKey~=EOT THEN
+      		// Store the value of the relation parameter
+      		WHEN EXCEPTION IN
+      			sValRelationKey = {sRelationKey}
+      		DO
+      			sValRelationKey = ""
+      		END
+      	END
+      
+      	// If switch to 'Creation' mode
+      	IF Left(sModeAppliedWindow,8)~="Creation" THEN
+      		IF ControlExist("GP_APPLY") THEN GP_APPLY..Visible=False	// buttons for modification validation are invisible
+      			// clear the controls
+      			HReset(Template)
+      			RADClear()
+      			// In 'Creation' mode, link buttons (if any) are inaccessible
+      			IF ControlExist("GP_LINK") THEN GP_LINK..State=Grayed
+      		ELSE
+      			// buttons for modification validation are visible
+      			IF ControlExist("GP_APPLY") THEN GP_APPLY..Visible=True	
+      			// stores the current record number
+      				gnRecNum = HRecNum(Template)
+      		
+      		END
+      	// transfer the file buffer to window controls
+      	RADDisplay()
+      
+      	// Check whether this is a link for forms on relation file 
+      	// (parameter such as Creation=XXX or Modif=XXX)		
+      	IF NOT sNameLinkedKey~~"" THEN
+      		sControlName is string = RADFindControl(sNameLinkedKey)
+      		IF NOT sControlName~="" THEN
+      			{sControlName,indControl}..State = Grayed
+      			// In 'Creation' mode, use the current value of the linked file
+      			IF Left(sModeAppliedWindow,8)~="Creation" THEN {sControlName,indControl} = sValRelationKey
+      	
+      			// Is a Vision control associated with this control
+      			IF ControlExist("Vision_"+sControlName) THEN
+      				{"Vision_"+sControlName,indControl}..State = Grayed
+      			END			
+      		END	
+      	END
+      
+      END
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x100159d403bbe398
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      de-DE : Bitte wählen Sie ein Projekt aus!
+      en-GB : Please choose a project first!
+     index : 0
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

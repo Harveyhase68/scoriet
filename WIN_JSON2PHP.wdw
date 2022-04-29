@@ -1,0 +1,187 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_JSON2PHP
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_JSON2PHP
+ identifier : 0x2f7eef0b0188b277
+ internal_properties : BgAAAAYAAAB1kjGUS5kauzuC1BvSxz7Iz2lfQjqLXsdvmKde1UGCG28AI5npW2f981xRgXLLGdk3RdkQ3QhNibS6dvLeOxu1ckPhMcFwYinsPcwaB425cglMaOTzJJjuudtU5HU5dTzXTFi+0TwZ5mqVEmgKFbpEuDW2APfnxhevfENJTbg/bTHynWLSmNs3zK5Gsj8JOOpPG4+B4AZ71T2TRFc+W4a+UUjHSiZMpNihxX7HjRbkIXu8x2IE61zMM6pOV1vllBkqzVpWicDCL/hQ89QocS+zFaP+8uLUxecmurzXchaW0TsmcjisayzSHrOLt3aWdRb9blWnxuBP/uKFA43yFUenOq1+X8DtTZZW5bKIPcZQwxkPMIwwWAowrLPf89JndtB3Rqlc+c1R1zOUHHdrzNLNWdVJJ/MEasgumHDH+FX5LYiO1/2quOMOwzbncXNgEeCLEE1szvCPOOg4aO8UlCWuOi21NnsL1S7m/Ucbg/k59pfcdQuDXXGSRsCy1x8IyNyWWLolE3MfvuOT+wVF6XWTi99IjbSIlb222KkoOFoZdP8HXgg6GEvqgKg3N5bw4QgO0SlzoGqcR5ihWKyjQVBADC2T5zV4bK1li6+X1qoeCWPN2MIpQLGoX0PD6Yyc3tim1kq1dReR8RdHE2xU9Y489aRoEtyr5nQlS9HUFlDVGrZugOzRG5gwS26IeLUqV3HebIW6+3MLKh1OWVXT3lMvMYlwXAacN+naRljcNGAEso9RUohUyG38Ijxq23mfkIqIyEjgyPYqBk7NClODJ2T8ko9HHbRVW5GQYMvQeubq+f7eirFaCXhp+5z2Q2Vhhpp+F4Z6CBqR6NND56KAHOMsMm5UzB7of++lPnLnFodukwYLFUZCSWqKUqoo5e5PUDLri0P9mWX9DcgU6PQsjhZ8TQCZ9Y6rC4slxVV6R34FxynoEhkyddpz1mcW8PybIrABcdoguce+pouocvSJQXryyvdTdmiXo/y0fxKsc+uuKNVtdMS0kXTxGsnfh6Is6jwLLtbAAodMUwugciERnr4Fz4f2W/kjrwu9AO5pKsJrSg+QAF3fFTclLtwQlu1e3k2E+KCRAvNdL9C/vuOEHY3gNgwnmJz15TDVm2PiSViZtVR37owJY4UiQxVxWNM/sbVtKFlXvQ5i8yl2b3Kb/0Um4TK2Uphb8KX8Af4zK2ieduPJkXp+ppL535nbIwXEryI6X7K8jKi+38CayVnw7hZp1F6Y/ZUkvQCXfw==
+ controls :
+  -
+    name : SPLIT_NoName1
+    identifier : 0x2f7eef6402a11004
+    internal_properties : BgAAAAYAAADjF3mXw9h67qb/KQo+vQbDkhUl0jGFXL33CHK9tdQpJjOfZtDvV8P56gL77WJp/+PDCGS3fOpHjELucpRSczxqgiK1tcz/eqbUcPhrcndc579rv7DV7YWGic67qP+jrhkNEOVm1i13Ms6B7AiCcQrjgwifT5o5IyRGJ0jdzwQT/9OsVWry1mFuicLaznwetHKqPLrzaKKuIWW+Qff8tguNpinwZ966hr0XKZWbPltGu1ccF46kfixJE+JehuwBen3b95iEDMVgOIX543OyHzyWwtMgo1ycAGmClmfoIBpx13zlx8OZZNPlIuk6c/CfjAqwPGpRSvLsdwA1LjzAaWbrhJI00ikxxOlhoOBJcwmmBJMShXwiTws9sGNpkGwr+/X8BCZPzQQPk6Vy6c4SoLfzUf4RYnZYEUxJxhnEQzqyVry7lVxo+FaOJbKJq27pqz3gcQ0yN52hZNiQF30RRfJmFqc/bgh95PQ0TXP3ufnf4WtAPuw4uqUL1sxS8pyfTfXv6oXf/wdQmoxNKJ+FbBpWMzDSdJbGDEKRwN/GsbSN/rgCHdhzxEI3QTp+9I6MtClre/un9/jVi9aoWenTCNdZXndcM1RIcU8vQvFs2e+BYOf0tscnjwN6V53wVDHAf59abJlXjOCHEO061CkzDKTnrGf7LJP8ksuvLnMcjbD65o20Ki872vDv1fgdsrd5V6xV9QeVM+bm++Shud/Tvk3nLxjA3rrq+Wlx6jWi
+    type : 28
+    code_elements :
+     type_code : 61
+     p_codes : []
+  -
+    name : EDT_JSON
+    identifier : 0x2f7eef7d02d46e21
+    internal_properties : BgAAAAYAAABfPrcQbxVbmzH99fgHuZgQP7a9KnoU1w+7FRThxQwfQaEJOd4+gYcUk2iZWggDLh7qlZrspSSnNvgIyO+hfhwesX2Xjs08Mf/KYjV6V01QB+kcJRtax48TKCPShC62Wu8hS1NyyU44CklC+kDDnRB6sctA5sjvN6Cvw3iZR4tyANHNnJDBGXbRFlQeqSVp7niQsOw4GOcoqgn3nqXDu6LvXbt9sdM/YrL4aFbTjXkekEXwDkgbaCW7PFUdiz5i1qrUUFJJfHaHfPi1TXGV9n59Q8OC8fLoMYVnfxwIQrsaDEGVThUvS5lYkbfszoZG0E8ICuMCb1/Fbnt7qziZuFfeHZQd8iE9MFVsp2c8K/HzLO0q0uW+3tyP3AaM2WL1yx1B6Nelc8Fm7lOxhru45W3XBJuDTS+zhTXnBWEsKoOvvWW9eteHdQfPESuBbdTfDPnX5SMaWcsg+CbvTTAm9njYqHHlTmV3/iGycc7RblI98CbnUcx2R7kMFZsJi1QG2b/O2vkEXKtJpmDKfNUssx/+gySWo8Fon1RHGQEQmKjMahXM36Y3ckI91bsZLZaYp6nkdNbEvL6admU318dqJw065s7r7QBnc2G+3zh4EuH7VkrIMgNlKzbp+Lt4xi5VuuOdSGgnAMZ5dmTuPXtGnfxkRfG7WhlOLT5CEPTqjK11V2wObh7/kN7WgyDTHUpnLCjV2zIbRxs2hBOF9DGCYs3AWZHG9jeG5G8JScGUkPoJYwNvsfHhg4r72BFtPhaATDFhRXae/NriYhcOTPaB3vO8QuOvQOSncojQpedPN6ajedHQENycl2Wr7kdPcFOeNEBpoI6iOQHFWiQorN412q0nOQCqGGTzlmu1avgirj7wOvYAsQi+GtME1/AiRMLVX6k3aBXgkFvGzHCdevwc7hq8xCYLlSJne/IIklC8DFy0LoVT1golVDNMw/na7av9ipyTpVaqsuE9tp1e7vrCRA70Sta7CHbUROaEtfF0MwiC4XVWf+TsAaRqLsV2fyDUX76YY5k13uoJNHqZdx09x9raPnHaqRC3DR5JGnmqjaEBPvI9qqLMTQt9YZCbH6hL0JzhZUUfwtSV6sCVJU+w7rsNEAItd0TElBSKhUEINOgLBJXZBlVINXRWxf6AiZohQLSuKvhQ6j7+v/dW8FjZpaUMzw56cDLAEqaeNXsl+r7joaxaJrCzMTiqsRQOWcg9Sh7UsAGuUO9Xof5OwzxWQ2UeNcEaoEMiRUTSTU73gCqfDxhHoR9KyO4enukKjcYEJrEiwA00k3bTB5Mq6rQWX2CZNQcCXoJhv1tN7iQ2pWOjNuW97Z9+1wlnh2oXWYjnnfHILBeQmntkv5pRynGavXMe/ukl4LgAgZRUYMT6iRpI9rhPzlV1xZX06pzPrlYRcNO2jYA/T2l8FzQDqHjv4g176TnWU/Z7h8mwjiLX2nqInBVSlFg6X7TrAC3pwLdNVtIwjP3DYI4U1PvDsB2aiEk2fKPda5/ngOSdoZNDn6u1vASZWFrT6auhpO99iLV461l7Nq3F9AJc+ZYlKDxpB740LEWp8u+LLDgXO+Wbq2TxXbdstEfb0aBqeHuahDT1UWBL+/5XE5QuatM2oSQfrU6ICDKYsLDFslTtIsjQDvNlaXwJV5/BVKONVSv8HEkFgMocnaOACIFnJulPxK53b1wo0TZUyiY30IDtOdGoFwuZuH1zfd2BE11o2DI7Y50upGC/Rqw2sArU+muj8vVnPSgg1h+Q1c9dcb7siRTYj5LD0Tuw3Ja2Z7mzteQvK6Ir72N1yY6mscK1diCKz1cSya1WQj7QRdtvDLRIqJsCWur1CJSUog6o6MgOHhRwN8yngqPmLHuCOGiY4PwnmT6vjFsFqlq4vIIpRWM3rIbBW5sw8Ml3TWX1/FDV
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+      -
+        code : |1-
+         
+         local
+         	vContent is variant
+         	sResult is string
+         	
+         WHEN EXCEPTION in
+         	vContent=JSONToVariant(EDT_JSON)
+         do
+         	EDT_PHP="//error"
+         	return
+         END
+         
+         sResult="$data = [];"+crlf
+         sResult+=MakePHPAssociativeArray((vContent)) //, arrEmpty)
+         EDT_PHP=sResult
+         
+         internal procedure MakePHPAssociativeArray(vData is variantMember, arrIdent is array of string=null)
+         
+         private
+         	sBuffer is string
+         	vSub is variantmember
+         	zz is int
+         	if arrIdent=null then
+         		arrIdent = new dynamic array of 0 string
+         	END
+         	zz=0
+         	for EACH vSub OF vData..Member
+         		zz++
+         		if vSub..Name="status" then stop
+         		switch vSub..Type
+         			case wlVariantArray //142
+         				//array
+         				sBuffer+="$data"
+         				for i=1 to Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				sBuffer+=" += ["""+vSub..Name+"""=>[]];"+CRLF
+         				ArrayAddLine(arrIdent,vSub..Name)
+         				for i=1 to vSub..Occurrence
+         					ArrayAddLine(arrIdent,NumToString(i-1,"d"))
+         					sBuffer+="$data"
+         					FOR t=1 TO Dimension(arrIdent)
+         						sBuffer+="["""+arrIdent[t]+"""]"
+         					END
+         					sBuffer+=" = [];"+CRLF
+         					sBuffer+=MakePHPAssociativeArray((vSub[i]),arrIdent)
+         					ArrayDelete(arrIdent,Dimension(arrIdent))
+         				END
+         				ArrayDelete(arrIdent,Dimension(arrIdent))
+         			case wlVariantObject //143
+         				//Object
+         				sBuffer+="$data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				sBuffer+=" += ["""+vSub..Name+"""=>[]];"+CRLF
+         				ArrayAddLine(arrIdent,vSub..Name)
+         				sBuffer+=MakePHPAssociativeArray((vSub),arrIdent)
+         				ArrayDelete(arrIdent,Dimension(arrIdent))
+         			case wlBoolean
+         				//Simple type, boolean
+         				sBuffer+="$data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				IF vSub..Value THEN
+         					sBuffer+=" += ["""+vSub..Name+"""=>true];"+CRLF
+         				else
+         					sBuffer+=" += ["""+vSub..Name+"""=>false];"+CRLF
+         				end
+         			CASE wlInt,wlInt_1,wlInt_2,wlInt_4,wlInt_8,wlReal,wlCurrency,wlNumeric //Integer
+         				//Simple type, numeric
+         				sBuffer+="$data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				sBuffer+=" += ["""+vSub..Name+"""=>"+vSub..Value+"];"+CRLF
+         			case 16,19,wlCharacter,wlDate,wlDateTime,wlTime,wlSQLQuery,wlUUID,wlUUID_128,wlUUID_256 //String = wlString but be careful!!
+         				//Simple type, char, string
+         				sBuffer+="$data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				sBuffer+=" += ["""+vSub..Name+"""=>"""+vSub..Value+"""];"+CRLF
+         			case wlEmpty
+         				sBuffer+="$data"
+         				FOR i=1 TO Dimension(arrIdent)
+         					sBuffer+="["""+arrIdent[i]+"""]"
+         				END
+         				sBuffer+=" += ["""+vSub..Name+"""=>NULL];"+CRLF
+         			OTHER CASE
+         				info("ERROR ")
+         		end
+         	end
+         
+         	result sBuffer
+         end
+        type : 17
+  -
+    name : EDT_PHP
+    identifier : 0x2f7eef9602e5d056
+    internal_properties : BgAAAAYAAADM4+0Iini+zxj2Bu06SiTNPUO2Ldvp4YivUBDlHq9f9KJNHAKBj2lC1PgVDH40TamhKAcagqYi2jsljv4sF9zNuUJ26JzAfr6c1fa0i+8P2K5aalxBQ2KwDHMFL/RmSDHwMfic43ZAVNftMWSWrFDjINz4XyARlncK2TUvbwfL4vhMkbNjp398hwIEI7t5XnhLqfSKgp82/k7W0QZ3fGFUXivaJvCjdcmZ9+3JSOtd5kUi4ubsU8d6/CJn2meIfmcCFqtThFUHK77qdsyeyo6I+KdYO14OVb968qMPWDoOQTVtYdsRLdUf2D3h2kjU0/OLKcY5+txvHou4aka2bFSLxfXL0NNW/x4ikYQ0KuDSnALWWzEg5Tl+Xg1h4cyiz00fBLNj68FgXeJqTYg69Dpa6DM9DHzsmpfuBRNlu/dh2uH6+XBTLDdyNhV89ChgimsPMAKK+mMxj4s2iLoSqQ668RqPl6Ds31AoBN2xh9eTGMbEPkBjW5qzq4yv4TdHRBnpvhXBW2xqXw4orXHcgIgvT0v9QXxGgnzVBmlIlb6Ujf/024F3DlB3wjcr+/tstQDwxRP449gacw8tzHps7ANHD/QgkRoM40GXvcw1iZ7irtHo77gHO6zCSeT1rGsETBjnhl4VkYUptcEC4dnZxMs12f0jnHKCGGkv+5FrWm6S7ODJXpEnkv1DWf3tbxD7u3HYoyJH4eN2mSvVaQQEwNoMMOf0KxsY2QvgkT9qaCcVkINExuQxMnQpQ1mo0NIWZjfZy1FIMpppJqNTVyQ1Oab6NekmegFa7opZJKMC1tdlgGDMhV7hHHkZvz1u/8ezTyiHGRkuzrEkis6T+9ryh3phKiGY8yfaZLnR4A5Ef7/6hTHMMrDGpkOuHAI4mxDffAOAvXA36XNoXC3r5hdsThpiWwbZ354+qYRvyH9f2mx9jvu0zJppk4Tf2Tr0gEkEctLktZErcSDErUTALbq5oFh08v5bBY7Wf18YBF/Zzc5x9H8PKIUuYotbg65aec44g++wEzodYTBLYzs0ZFQJKhu91Br1Yc136IvNHLNinYF1bg2hV3tsxajMxv6e9G7VeOUgP2QUzDK4vfv8ElXca5FCda7v5TfSUETzh1mUaJq1bnjvLmDxzKFuflc6vZhMtfXyWvUIG2fZjsv3mvv+PODBCmgjXl8Qai/fQKXWM+tNN3NbHqXpV799hEbBcpUSjbIX6WlJSzE7zg86q5+l6rJH8bCUy/i+VK+7KlEmwNUllXztruJgOyNvdag3Nzl5EwYGvEH7WxwfuEohNkpNY2JA/5M6SwOTrpU/6rCx/OXqJZs8Msf6aZwvUlQQ+s81mvY5ifVjTHVrDJ8CzJKpa/N3D73R03WIFcdPsNlomlQU/daYAJt4rqf2YjeFykm23Nzja6JYTtT4CzR3V1ai8GGFN3FlqrHDR8APRrjFTGt/bGPV64v8fv4OJGWX9sLdJohV0tn8ysVdDsAtu5sVr0XldeCutWRCZSaW4P+qpSNPLjjW95bNkZ/zwOAzXPLF+2v69sOe9Aka64XQVQJ3GotgRX2Dl2flM+xovEP8u9kwwyBNobrN5EHbGu8jW0wQ7hQzU1WLDwrhqgydaINoTAj0aEY1YkhcpBweTAgQx1CyPH+I0ZSCMEZZMsmRLlk0/pZR3za+fP0xLtwOEw1ONDayGavCEbQWe/+z3G04oYRYd+2UPdU588Atia7G7WIrV+6hUt8ynGhewq76+ufQkXNDK6e8HugNK/AAIbxhU0lUtsYz5N/Q6KCRyb8RjEV5NnIxmfxRIKbLtpVDTi9rg0BIFqCEPptwC63yMAP1LQJHX0r5rAZs8ftTDme4cP97C7mMhgSUfZWM2CYJ0ZalRx9/0aHRH8za/0sUkvV0M1YFHTw=
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      PROCEDURE MyWindow()
+   -
+     type : 230
+     enabled : false
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x1f7eef05000e9c30
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

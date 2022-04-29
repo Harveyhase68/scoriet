@@ -1,0 +1,15 @@
+;PCSoft - Hyper File V7.00 - REP V7.00
+;Do not edit. Please use specific tools.
+ANALYSISGUID=E	;Analysis GUID
+LOCALIZATION_UTF8=5D5E98BEC29A4143A645ACDB2E46A02F	Project	D:\Eigene Dateien\NabooGenerator\Data\Project.FIC
+LOCALIZATION_UTF8=3DDF0F5D314A453FA0B5CF194E73FC46	DBConnection	D:\Eigene Dateien\NabooGenerator\Data\DBConnection.FIC
+LOCALIZATION_UTF8=6F5200EBD9BD434E90EF4BB10BDD29C1	Template	D:\Eigene Dateien\NabooGenerator\Data\Template.FIC
+LOCALIZATION_UTF8=A23C7404961C4571891ED53B982CC6A6	TemplatePage	D:\Eigene Dateien\NabooGenerator\Data\TemplatePage.FIC
+LOCALIZATION_UTF8=0CBE729AC34243BBAFC54059CDE4D7D4	GenerationType	D:\Eigene Dateien\NabooGenerator\Data\GenerationType.fic
+LOCALIZATION_UTF8=60B6C61E59D441178E25B644C0A17ADF	DataFile	D:\Eigene Dateien\NabooGenerator\Data\DataFile.FIC
+LOCALIZATION_UTF8=D523D467B7E04320AE134CCF66C950AA	DataItems	D:\Eigene Dateien\NabooGenerator\Data\DataItems.FIC
+LOCALIZATION_UTF8=5DBCDEA6EF7C4ED8952747F45CAACD94	DataKeys	D:\Eigene Dateien\NabooGenerator\Data\DataKeys.FIC
+LOCALIZATION_UTF8=31B3A97DC0A94DE680F7665CF0C0AE12	ForeignKey	D:\Eigene Dateien\NabooGenerator\Data\ForeignKey.FIC
+LOCALIZATION_UTF8=7EADDFAB9E154CC480E372A2F36F2133	DataItemsTypeDetails	D:\Eigene Dateien\NabooGenerator\Data\DataItemsTypeDetails.fic
+LOCALIZATION_UTF8=CE21AAC3B394403FBABCA627A44D3C66	DataItemsTranslation	D:\Eigene Dateien\NabooGenerator\Data\DataItemsTranslation.fic
+LOCALIZATION_UTF8=D2ECF1E240A442628F183EA5D150CB6F	Language	D:\Eigene Dateien\NabooGenerator\Data\Language.fic

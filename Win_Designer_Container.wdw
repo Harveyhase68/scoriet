@@ -1,0 +1,902 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : Win_Designer_Container
+ major_version : 26
+ minor_version : 0
+ type : 8
+ description : ""
+ subtype : 0
+window :
+ name : Win_Designer_Container
+ identifier : 0x2b29f89413493c3d
+ internal_properties : BgAAAAYAAACc69OuYzKW207aMU54AKfzxvsZhseo8LO8WrsQ+/pLcEscUafxO/Lj4gdQIwjvYbvbOz8OZ2YkUv/V+5gGTrwe6Q2eo50a5j6oe6u2HJfAK3jiCSAlc11+nda40Mi8kaST38Si78AxU9fP9HC0ZvoVPFurNdpTtkRKrRjSrmstzMcD3lC63XD95298lQLnF/sYgJ1FS1oxwnAQqvGy94yuUn16xYdCW1stoF6M54KL6zXp23nHkqdcS/ie4RhKdH8Y1cYHwYogTnHMdakYyIX6ag1t4RXMUVVbl3RlboZrq4zbR1dfZ/ELGxzif3d5AEPxoaEttP318qiepH0yAuAan8uU8uQYdpNJzSVC/SPTmtbBCznrsijqWtDJdaSVZl2NlUjykA0NAVL4NpQFCTjb/6bxSoOMzvAAx8O+7H1TW+O77tT2654DMtmOlD0P7r9KqFcIsc4lwAZ/MUVUl1zVIRdcxpl0mto6+bCGkt9d33QJL6Efx/HN0qUG3p0ECggNlWLaQqC9nDy0qCKHdR2gl4TID/v8Y5pJyLBIa3bOgh6rJM0xVy/TANVJXB7EiD6eklLZSJYAw9zkwyOAXuPpT9jNd0yjW0u1/jlRd0Chn4YE1oE9ezamlLhTzGTSs+meKgT5MOxlg0Q37tkQ0I6vEkvBmYoumPQ7kJAubuZQV12Ic2oN7TSO3y2CD5OBVyqEm6y649+VDnde5ZE2BN7LN7xTAF6EP3n+JRae5g4PqiCCRCm0LFhlVv9NHowM9FS1iyMW0e+K5YOwzKzM0Uqz4i+LIMke1CQ94hkkXlq7lwEUFY7o3ipqJKKa+oc/iiIANEs0106n8YWlqHldVzOCqN0OwE9hwG098Qj+l6gNW94IeU3nEfMe3BlUx78I7Mj2cihbG0M9GufPlhjlzADUnZvus0InKY+YF2o7gq0E6uqcoqDtehS6lLWwgK1Tz9lXzNQv/WTe6hJCd8Or1T4rK6vNtruhrJR2oRWDScZ2NJzdd2KxRM9JCfe+P8pmd8q+fple
+ controls :
+  -
+    name : Win_Designer_Container
+    identifier : 0x2b29f894134b3c3d
+    internal_properties : BgAAAAYAAADfgbIzk73JXO1cy1A5iFgkuT+ZSsr77YnBmZAifiSZaj5a6Dx16e2eKSepf9klSiV5aQ1K9f766RXka/O7PPZck6C58Scc+K6jFXOPaP8bN5JlkhpF73OohVaG37oWSGnQdNBL/dyR6ElUQpe/eINPqT89lsEBi3JHDEBeTtLxTbxjCjQcDY62s5L+u96bX7YWCPOXrwC4pa008O8eWHU6SzfqWoutYYaUbHNoHogeZPQypm2+uUS5/NVtpYxF5o00yVpgSC7eO1l+DOazyMUKBpM30YHqBlKBNqN38fgFbp6silziWb/ZI01QXZFP8Z1N5TFbMtmmg9Aqex2uG3eh5Ijf291DOvdHORTp27uZO4+LayojD79KmXTJK1HqiEpcMOjsnUkMMhA8iqraeWh6RLqYBOnC1XYnQ06QsYLVf4OJdMSp57rH6zvcJDBnSMGN6BpdYyQ/ifJ3R8a1FA92eVv6I9pSzAcgZcMcgX1/CQfT+zgyaJlLo4BDlYehQazI5i4Mne+eoRK82YYjr06VFW8Jy2LDhu5zgVw+SJIBlZs7G+LH9GPV9VEvclUYam+M5zd5Bv5DZ/lZNRY3YdsiDGZtlutjqLk9hMrsYtiLEGq4PQ0buz437hh7c/3hWONH+Q9rKNppJY6Zx5s4PvymI2LIC+h9DSDlE3fCHFg2MgQd+80ESwR1sj1fqftN8+LjGGcPE3h0keJeeZA9scw9v5QzLL+Bwg==
+    controls :
+     -
+       name : IMG_Blatt
+       identifier : 0x2b29f92413bc7057
+       internal_properties : BgAAAAYAAAC+5O53I1asiFlpqasXmhdAYSlhaWDG4mr4FOyTai0Z+wWHkCf6JRK+d/m5xEljJ586ADe8/azIYaFzrRtePptKpst2cw1HrJFE6XNMm2JhDicT9PnrSkAvKJeS9StHiYlMGC79KX7oXozBbnWK4OOrxUaCtNaTNs4W/hrRu4TZxJSe/+dQBxmUflJaM8ASNakzbxMlN1BB7ZWsTsnUhLTzlTIsL6l/SR439+G1kP241JkobWMVf9PYP9sEZOE7PoliZyTkNtdlxeBsgqz3Q+kW0q4fXOUhGMU/0swGuvPX19TR3i4F9+seCza7EA2S+znHs414Dl88TD/eV9YrsZ+8IgJsnzT5lcC4FQPF9wwu9OyLH+5BZJkQel9+m8w/YSki15qRJDXTAz4UvTf7fwuFrXcBZ4bHwB8GbowJiaGARI5siMOIkwzje1Vxw2i/+gdzJVjAWWdajBgcCflXVhQW5sBIcB3x3BRI3Xxu2IrYUF/djVz0PeU3hxo2pFb+6Wy3HNLZyO4VDVdF/vbS6JE8wLDs8FjyBM/QVFsI/uVWNtqQGCD9ftXVXeqbwD1ZkWHCbAsTJdmReE0DICrNPXb2zj6xMk4QKatTsdiRd5XxHxHCa+fQfRLcXUDpBcv7CuoL29o1gXexiuDPfsiaR59JVImaGeJvruaCIQ9NV7MmzQTTiSMsjihFg6wXO2ErEBicn38gs1idWw97J/PmEUOGQz5dHCYnfkwnfbvkNnAPoopItfRkq0WgM4PEXWS+IxyFsYlGBPC1+nUbVw5JFrBHJpuWUDE5+suWAbLsaizrEj+vIcRNVegm9+q3ZWrGHPg3N0sDG3cwchtsC+zWdjbpUKIWr1+K7FmhOsaO9IJDcwGyENhIcIMxQkr6ggUwCNMvMlCIJBBQRSahSVF/AOW3psAeBxuZi8eE6H+F0VSZuhXsIEuc7FRVwJLFZEqqkUc0paIJ82prbD0IC+H2MPTRACJaj9bw3AcNxBHvMpOMcpMXyDHkJMRrfedzeHaxtBX3j63Xw9EbLNTHE4jZFds903orlGe7Ji2FuO4McJQLLXbm8KqSomvEoroSTeZJpDG3WOE2OrCgPk9UYzoYpd2sDblIMh6LSPDtnSkPojnfnCU9jICUkKvpspNGX4N1LMOxFyfAPf5M60TkBS7/kU/4HI/hEd/UTB//BUBp2CIAAgktBK2LgXztaFNfNjXgwEEEsjMgpQzW7GN5Dc61zP+eLGbgU2lWqIogzUJTyPKwsQ==
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes :
+         -
+           type : 18
+           enabled : false
+     -
+       name : Resize5
+       identifier : 0x2b2dd8600a4a7517
+       internal_properties : BgAAAAYAAAAAkrNr3cyAMsdOwDKFfXYUQFnukEeTAT2nb26vzNcqRIGbsspftqTnPAR9Z0RIkbAiXYf/I+LlUrL9Im6eQDubKtO4K42unLAdG8CLXs4lV29ZYyaNPE26oSuNiddUgzKivzgZx9+8Q/Eiqvmr/K7irQI0DS3aekCU0FHCgsqwcPugeSPcOATUEO01tLnsjELR6Cu6RmuODfmtRds5RvXg35HGIu5Wh0KuThphqBj+lO4iiV77KFIrStLeqwkfPGKGQfVg2utYKGvUbpo5ZqCkfRjxAQ+8tzqC0EZMswCvjGdFrF8u7zqXeeEThvjfygJbPoH/PrmCeRE7tXoPsv+2dxiw1eiMYdqGm+wID/75vDH3bx4iBI4YKjWjtdjoWB79w4ulIX6eqIG8xQhARaJt6afhRkfWLPoW3/VfCqgMvhsbHMwhjWuuU6Ckd9iWqw37UPWv4qbd4M9EhOgijeZ2cHdzEd9BD7xPFwQV8NcKIp4GivkuBvLIYcs9erO7ngFdGDcIbqtYyJnpwSbG9xtZZchPn2yfjIGyedLCHjdaDdc8ZGsfZE1Ezw2valVkp6Egsr6AG/1BfnSkTxVWJ6djJXqF27V0KK4aJPcMlPqdUMdiLUL8ff9Sz4dReTMV0CcX1zWuSYP2JNJiswm0onO1wQpkdogJWLRUFZ/aJBSf4bSAc2MAwaQil5a3AEbWPVWeRdoP8qQPHn1PsNX+k7WZ9kFMW10L6jwfSQq1OJzdhxU104RumW2UbxvqcvT/rSQUZ/kHJEadqX9h+Q==
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize6
+       identifier : 0x2b2dd8600a4e7527
+       internal_properties : BgAAAAYAAADvhkBpL2ZMSQB29MVMpCzf6lPtB+UBPPxuLd+jCL9Fo92Nv5IAhDCTdkLTBDgngrWLLShjrQtwkMhALBqAJKaBlWPppChexLYXrZq7itnsjPAsyszEuxqzKMdgjoaZCsmJjKyhfeR1/bFXYmcr/jZCQ29YletLOBuSsVGtgJC55VG3SNeFBhwZSQ4tLobzaCbd9zUvBlUBY4Te5tZ7vazO0mXl2vSa3OU+RXEnmDjdyIVI4RLIhHDwCB7xpM2pPjKNjPDk8LqrUYtoTkk1HQmW2rHF5NexPALY5MHOE+VuNSG+zj2EjJc8bEV4WGV76OrQWHyopf8qXMbzFtCY/U0djAoJd2sKXBuj2UpyvYJnqtTBsgnhUHbglKREPFc2dREyw2BqDpEwSawNNEBs2u1XVldQfC33yGRbX5lN0lwrMUMh+WemQcqteqCoRC5sIY26qnZleCSc3aBUyhuBaZ5GfTiMgd9X+uiXYaMKCyzzu7N7kZU7kyJoKYdkPZFivxDJRDHu3Mr9nR9nmaui/5Unbn1XCBiOml+hbbKLYIDjhnWIHpRTGSuthke77YPHZixCvLgXVaq5UV2wtULEbEzs0WC5/IkZcNGD3NuPUNkQGCaJyPyTwYiaXXCu40qPdcAxUYOX00TwAegpNjFf4YWVTjnNIN+tLxs9A4P7ewAfK2OSQ3xwABOmHRqoLS95S+bnKTBRpKSkQturjvqKe+hTAxu8M/NKdzPaE8ryfoz8H+bwuj4/Ao9jPs9R+Y3/qa1f55L8ds6xLicD
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize4
+       identifier : 0x2b2dd8600a527527
+       internal_properties : BgAAAAYAAACTBhAScDIZiwH9lY250vHHEbBHcrjH+PFw8wQFxey0ExFkIGYvGPnSIntuVPgWHBtjT7I507M4cB9MOAM0yvRJNtjch1dl1W728kQY829cSUjlgScJeW0MXexaOD8xFGG9r2bJrNK/ZqoHg5SG04DrlyhOUDK8x+SfrIUOTGebX4ixWRekuKopOT16qF12oaJVeYkZq+zIeSvaVk94+MCs3Z93Yp8y5XIaxRyLdTT4c/7M47Kxru/8Usfi9GDhME6eXoWfcZngJVw9f5cumoH6pY1CRtOdmZlKeFOQcsbxVnuWBBh338fHtyaZBVgsaaF+B95n1WHSv70RgjDyxziTLn5NfMkNGctfGo7NCfu51I0hEV96f65Mdd07nWk5YcSADIqTYCB9TtDOn8JfvQcuFjsEXXD9/mjpICk4+YjTkh91Fo6YWTdMgjizlGJNyf4Uaru6AuUb1x18MeikeZAeusm4zFqfVME6zAUM0P2CzgJeGnrdfP6J3o0/wBQ2nbNjUNXh5IECrtu1Htt8W0fEWM1t/pa/TANI8x2dzoCl5ZFmGxXsDaTpbspah6wfzQHgCsUQUqKdBjetSj+qSAcdZ5nmAda0Fv/H4HEA7YuRG0DU7vSbHp2+S0OUZ9UC4ck3yWwsAdAhGrIz5H5lFs+m04KHfqijryDTfiPcmbaVapXpI6mvOlxEdrPOFJeTpmxxqncdKH57rD3YWt4Y9bcUVY+VGsrSgm2unty2cNxgHK8Q91rJNEKek1nMFB0r2BkJrA4CMg==
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize7
+       identifier : 0x2b2dd8600a567527
+       internal_properties : BgAAAAYAAABhp2bdUJak83U4OtzAzmP85aFgWylxO/ttA8ogSloNyl+pxl7E14dsTy1OH0QfgC/rks08KYqXZSebq4sdADeuenHwCPL3lxcWgwrdugh0FtweeDBa9JS/YuZN+RfEsXsarfxGmM4OIzaqevFMTWWxCFINnhuxkyPYJtsEAkb8d+XhmyNtmn2AFaqwwYyK3etgMmbGPWVhCWaUmjr+OMo5kGkyPsc6wfbNTtxFVGpu0jRxVtMHsKojBcsy7OD5VzIADSfLkV+ME7F3diafzqcwlQftejpnD3ICgoh0tg79ifNxezfc36JuQGoYC5QL9y2xc0S4+BHD4OG14p11PgXKaD7nhKgCbxfT691G/dB3SaaR9QDXQuUwu7e1LSysH95O91s7eTuN7VJtJ+72GNf5IwuDYT9FR8f/dEXrLyH33Ru1DR6AM9jevSVm1cAJ/Devm5tQcoaLNVwfFKEO+VOeg4Ze1kbfUYe7tZz6mkjspOjjP0jwZIg8mMHBiPtelqXPebMhd+3V/LmqL4gv3qSYHOYuSZM/7HXd9jA+jCJiCZBzLQRUONdJL0DhMK2U1WzQCBNv2RKIl8MaY5/njKnTMfCcF1dHTvv62NTfDnH5A/WW2U0Jd+MJjnj5Il5m6aQuptaScyd0hjAMrdTUvmgky+Mj3zCsOW2agbKxcsRYkvnqRDksHcVlN4KG2YdVBJ7LJtiCiWD3e+dHts+RR0TI9HFcHEP2qFv5K7EHZsp0b5qX5Eb8QCIh2UdfmiwbOktMDeVnVXbTfFqoXQY=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize8
+       identifier : 0x2b2dd8600a5a7536
+       internal_properties : BgAAAAYAAADc6LXg57m/Vo5lzxeJj66/IOK3nmw0fsZ+kH+707ugffLKJXHn6prP6NITsg3oWC4K26DVSEkkFiSUjjaoG8d28/hFO5dg5i61Dp/Ch71JC11pbaPP/TOOsUGO8gDlnsj3SOWNxb/FFtVF+zZ5Wl46oXX6NSRmpjI/cbBxH4s9SBZwVM6GL6hTiKX50j1DEnAMPW9TksoyTv2vOXex6xee+QC3x3Bzlk/UBYcuS4mzv9UQyyRYUd8EfMIN1X+ppdDWC5UL77G0B/dhDrB7qlHSa2V/RiS9k1LU+IhSkirf+xFPRWMCnRbu0rhk0eyzNSsfidYcLgffGIcXqg9ZWgsAMsipoJYMxy8pXdVcncgdd4DzL5Q5BF3A5VVR30iIXSRErARjA/F0It0HVNe9ITJWDm5cBqYWpELkyd4QCsZOvur0Sn978AGpziZD9udye+g+/pS94Q8YsE3gXS6RRopXesmX2y3w7iKEtlXvnaUPSY8aABX31Q2jOdqy7UbjESI6mPgKuqqWLxa/EC2Kw7+1G4nB2khClawMDYOXIQ0Ftq8GIDUxG7iY5tcEIbrnbP3DbwIEcsG9Wgbt1ilPNH9l497QQXtT2AX2hETt0o3rcZMEzUdFa23zJoDhAJrKE5LcNIIEL2tW6FQoZUJggjI6oQFbLSB0j8MuVVqPVuBCuO+MAIuwWXen/9JSGy2vkGqn2iYSgza/k8mBJBdPivsBj5R/eeARzX7cTlSk+yWTCDUqdzMBe2fknJoi32ne+YQHQJDM8pHoEy37IHs=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize1
+       identifier : 0x2b2dd8600a5e7536
+       internal_properties : BgAAAAYAAACBR0b98LaEU5VY2vzgLgMcxQEAOwlR25vN46oAKvptqv/JJn7k9+fM781uv2R/vZMv9g0i0faB4zM/rcOXEsgfTeKHe9Xq6hLDsF/gp0XLLTuHg7e1N7fKL7s2xNSZaNohCn9Fc3XF4v+TQ+ixQlhci9cQcXII2tLZp8jLCzfzjtRuuhKgLTDbvlfNhDnfgLYrk30hqPCsNEO5130H0REQR771Nc4BaB0VRipRXmReWmC9glmGJ4maCsSDg30VvSDeO5U775HEb59ZhnirilGK+523zozFK8LEaBjiCjLXO1n/9QPCHbaWynAs6QyTRYM/MU7E1k8XSOenSt/hspPw6viJIJZst8ehpb3ULehtT4A7JwzBnDXQdfXRj0DwtSSM7ITT07EgTrFjeIuppUZiOvoIgsI6oL7otQJkpqpyGjbQlotXJG0lwmJ3qpO2v3R6+nBpXZMUrMF8sYLNis7jhtUTp1mUug440rnzmVnD9VtWrOEj6Ykvjbb2EQJXtU721DSWJj6y+zoLlBHWF+Nh96HpdpgqQTgep3nvfy9ZAptqHjVFT4CQ5tcIKYarPJVbM6b8LsVl0o51kqjoGxhEIL/rUECWn1qNQ/fcY5zkoDCxdBpWGrBUXV/Ic+/1aC2pEUHfOGKZnYO3wImB4V8lSmoy2EFLquyN/NVGb9e/M6jxWyolLLZkvhE9ckS4iWG898v9lttaLFYeQTKiJ2TolJF8fOMWyHvZS1GnxmrUz3r3ROZcIAIB+Se/esx7WmtsLYXH9ZbzHDrIfSY=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize2
+       identifier : 0x2b2dd8600a627536
+       internal_properties : BgAAAAYAAAAYLMkky23DijIB8wuNg5Lj9E7TypjAqhJKdNsXX7ecGU5uiRVrfh5TbE6XxuH8PBKud4yhVHUAYrC4KkIUlzPSnRLPTZka1HCPZEkMsX8PoUc7141R/xGA8+dA/ALvDDYpWj/nd3nr4D+zRRA73EzAY4cEj46ALMwBv2Kbsd1rtiDappAYYVbtamuTLNctsCbG/yldNLx4gB9dk8nj/R3M85LJ+ZKx77iASaOiNzUL/4nMI2AwDXd4SJZJ4es1nSjSxy1Hl918y8Ml4sTnpklyV4mXCtSh625wnLx+tgb3W8UbHR8iMf769tSIdYgH/esLXbboNkOfzIPrnvMVnjvwZsTRpLYoR3MNmZnwIRS9X5ynL9gZ0OVEycElYzwErQzYyIRva5VePKNNLjHTi2QE3Kge4NyYBiSa1yAy0BCINKBevOmhynN7HOT1UGV0Dcb8SM6vF9nagpO2V9AfWOz1mOuxPcMaEMR6ZPdxc++x5y20qud1l8ftT+D8f5QlWzCYGvp0QCzosZTVGodItUkDiSsLDP6U5w66c32J91e33OWoelcxU4yMYgN0depHiKEXxzJgKgEJBvI5pmVHvPupB6ZA3dM7rHlieAzhCsU/BSdsnVNtw9l/inSZbCIiv8awbMq4n7PqDIjk5e4oesaO9ekzIRCEey9a+SLjjqh+bDNUWC8ACQvLq17yv4lDBN47dkp+F1rbr9WdwLMjpudtGxj7/WyNQfJA4vj4FzmHfImG21/Vr5OQSPaOqz3q9YADRKwgrt085/E/5L8=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : Resize3
+       identifier : 0x2b2dd8600a667536
+       internal_properties : BgAAAAYAAAALwdxH7oC2XYdOrG6yFrVIrQ9iGnjHsLJ6HXf+HM6B4UAzs+K/8u3vmFx6zqJupDEErbcS9KMZHaAM1FybNQUEvj2pTaKoXEPdNdDO/3N/vqKN8TOKnz+6q52SpizBvsaI2Qt9YqiiEWaQxmTbwFjTMkfE3nixoFaFJPZnJeFGbsAwc37WH/gD+BVJAk2zIoCUzPlvCKxakj/99dm9Z/0kN8b156qbB6husx8Eq1lVyfse7SxaU1u4erThFyM9uxaUibMXPZv4b60LIkKr+vOsUYtRbj4783aGrtw4+kJBPacNF4Oof99vshCMCbzrEc8f2SJEuIH/DIMrvhP1vpuQxiSxRDao5/NNWXnQAfRdv7zHT3gZkEVESUGFA9xkTUz4qGTP65WOzDP9nmHDOzRULNhucOzI1lTK5/ACAEDYhLBOjLnxekNrDPRFINVkHRbMeB4/p0nulucKy9RbjMDJnMe1kX+rVfsvqbCehsxQSFwvEwQ02HR4RM2ttO/6AhGLbV+VIzmpwH3e48yrIsiEKJp0kYUF1G1D9Iq6JrjiiYDDn7Dc6KWHawQ9vt1098pOwts5QSoiwbsCHvnfBC9VM+5gMUtDSPVGX3lGmVGr8eu4sFJSfDGRN22ubvWV4O27HmHQkukdiCZaNKDEOuqqcQnbl7Zy97oB+K2ZSbUfy2bmEcKQ9Q0Gwkvk3o9cZELuzisSE2oqDdUlBx/vIT8V+lVbknYD9vy+TcsuNl6seeLyD9K7gmA8zc+DkKDjML3en3fV+4jhCtRS96w=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes : []
+     -
+       name : CLONE_BILD
+       identifier : 0x2b2ddb3e1866a7ab
+       internal_properties : BgAAAAYAAAC4odwTgICy2NwYL4XgZIjQdB8mP0n2RruOrp4+3Z+CpyuPPy0WQchcMFyll0apMCmzLy4GBNyif8CMMuB5JGGBvF9rX3R2r+tIKH4uulSdBM11aHA65futzMIDcuGoshH4QNpO3R8qpThau2AQQNZbxpuwEqVE4seTvMyUpbHzlkmbntyXIpNF6+C6+xMhuX1GlyqQOiuM4I6Jd/hs/cUMv80EQMTfCXeBQj9jLx07GvccGtQysm4rJ7MVbWiMQTjiMO/I4kN5L3BnYSG8KjyOqadW1CcGiZ5w9iGCnPoO/WLZZ/9pu6+NBmEYScQhAR/LU9DnGH5aa9ahTulOYhHWXDBA3xwFcRDXaF7c8Cr1jkqqX2U/YYFS3oUWNITXYRaS7WFzd8QCZWQXs4/8g3tg5jPQSEnMmueSWHsHz7WrtMcJUqG0/7ur5crVXHc5KyAZoI3M475EwvuBoU5227DxtAUalPYD4uOullZGJNE/uSyzHopgU5BByxcsC0ijlVkvRCBfIopAVp6DDVJO/zWJHarAIB11/4PKR+uvuJDedQyAy8BH/gX//GE/593lq17FeEBbJv4s091IgcZoloDVI5xIsMVl3Mrz6KfcqmWmOWymW40pecuRFDqkL+VE4k0bOSTXC6Xln8le5ZleV6o+y9eS10rCJCAxpuVBEGk1NuIGXPk5MUEVLjmT+3mON5CnWTZ/YpgsWtU712zPVET29ZTg+OUPF3rXHGq+BwIwp3yQy7SEz+vizIG0uHsZ6xdbbKAaAhzwPFDfPs7+XNdXnmSzOjIvLAhXMIbbMxVk0usVXij9tVvnSk76iLbb6g4QHY3L9qtVCOfEOgB2Jq0CHVWkLAoTGgZZeNX3WaxiTHekXYEFiGUdQs1H8TFlr1Lqmnry6CalZ8Fzi6HWeAejZIXiNsOZbWNUp9A+lWF7rgBEiPPZx0+WrZngaiYteoSgcLcOPMaT//MuWd7sxvc0/7OaecM0FJU+6CxV0EOnGre3PVeYKsjFXQ2fGsnpvzoIOE0nidTnMlikDEhnhsZ9D6oGrB6W+qVdu4TJi2cib+CDO5coJLt/OtgGdKL8l9lbaaUwcihHPkCby39xgFwf+aLbcWxh0oRmqzCMrDzP9sL1mtlUXW4iVMcJBXKQV+j0yaTiI6pBxRYWMZSfXht7GeR4Oj1QPH3jOxdnB/vkfqDNgLT9ENjrUiOFFj7FEoXwaFvU7cp3ZmWulNCWYQ9dFgiZApSviEI0ZToHh08t1CoIKB3fCAfnnQ+rtFtVapKsOkULPdZgFCqRkqYtefE6pL185mbVsbA=
+       type : 8
+       code_elements :
+        type_code : 8
+        p_codes :
+         -
+           code : |1-
+            
+            //trace("CLONE-BILD "+MySelf..Name+"..Z-Order: "+MySelf..ZOrder)
+           type : 66048
+     -
+       name : WIRE_NoName1
+       identifier : 0x2dcf330b010594e0
+       internal_properties : BgAAAAYAAADWchzdFGcF1l9HFpiWDoIQxOfrLb4a3AiXzoK2UUAOBUvIDDDYyQg+MXiQQ2LbjC1Rai1kztGiUHAiBjB5m5J9Bb/esjxWQceRGNkLZCU0OceH1pV3DuH5kRRo/WHhkPDp0yuSqds+jzFD2DvSg6S377r4nURjyvXiY+kQcLZ4iy5XsiHNFmfwdWatgoBjRTTFHYoUTuQKmiBBa082+a2pMSKzbzB04+dBAS7fnu5C9HZTOafi7e6um4FQqqjW3yPydQMycBP9V3d9WxpKkhR4NQfRFdQPh0mLJc8z43geaoEAPYEKocU7eblYNoj19yW3Q8KWPIBnGYgbb2C1dbwRgYpT6uoCWKfMmEeYS1F+BbewjJnzmSe0EkXgbicxQmNqecPUX0VFSdprcU/eDanBuWhIfD6C6GcpiFqgmZZStl3TQxEDeISrO8OyWnovqTH3iYSZmN5lsegACGWBjqqQhk2xBw6o2BpWjxqyqlizjU5FpzZ3Z1tUhzedkJBYZvyZOFZTIZesA94IQnkrEQqnMePGq8Nh/tMpgWmfnMoOPeMn
+       type : 118
+       code_elements :
+        type_code : 142
+        p_codes :
+         -
+           code : |1-
+            
+            trace("UPS1")
+           type : 66049
+         -
+           code : |1-
+            
+            Trace("UPS2")
+           type : 66050
+         -
+           code : |1-
+            
+            Trace("UPS3")
+           type : 65539
+         -
+           code : |1+
+            
+            Trace("UPS4")
+           type : 65541
+    type : 32
+    code_elements :
+     type_code : 70
+     p_codes :
+      -
+        code : |1-
+         
+         GLOBAL
+         	OffsetX is int
+         	OffsetY is int
+         	MoveActive is boolean
+         	ResizeAcive is boolean
+         	ResizeRichtung is int
+         	ResizePossible is boolean=True
+         	ShowRaum is boolean=false
+         	gnMouseMove is int
+      -
+        code : |1-
+         
+         if WinStatus(WIN_Designer)=NotFound then
+         	open(WIN_Designer,6)
+         	close()
+         END
+         
+         FillEventConstant()
+         Event("EventTest2", ".*", 0)
+         Event("MOUSE_DOWN", ".*", WM_LBUTTONDOWN)
+         Event("MOUSE_UP", ".*", WM_LBUTTONUP)
+         Event("MOUSE_DOWN", "*.", WM_LBUTTONDOWN)
+         Event("KEY_UP", ".*", WM_KEYUP)
+        type : 14
+      -
+        code : |1-
+         
+        type : 2
+      -
+        type : 15
+      -
+        type : 16
+ menu :
+  name : _Menu
+  identifier : 0x2b29f894134c3c3d
+  internal_properties : BgAAAAYAAAAlp3iFii3yM+7V4M5EGQA6dOHTcu0kyexEGNsTcVhFGPIsPFDp15+fB1EfrRp4HLmA6CeE9Eck3RIl5Kjw6S19Aslw+pfPfyDopi5GZ6HxrirICmbD//h7jvWL55WQ3qtpLc458dDZJlQlXXS5OW0wtUChrlN8OYbJGaChI2OsOhOsSbBnRs8apK60QzHt3h4lWT7gmVegPgAIxmvB3n79EBaw2OhTyd+gsSfwH2Epb+v0qvXOUYcntZwErxAexC8g
+  options : []
+ popup_menus :
+  -
+    name : MENU_PopupMenu1
+    identifier : 0x2c7045cb2de66350
+    internal_properties : BgAAAAYAAAAuW3xIspcKb/p7S6mOaV9R8pvmSg7IJaJOShDtpyT0bMehCV6UtElYbq78qy0OTyo3/ffj4iQD+bNhmPXv3YIvHgY6H/78N7aVOpANPwDeklEvaBmtEhu9McjgqEzjybjyhOB3d21Zr6OODbnZ04r8kB1QXRLPL+w2hYBTfxv3Oc48BR3k8bN1o7494SMVvpT5mvonM+HZ1Fn9surD3/Qv//xK7hZfB9XyZqNgpo12/Cw82p6k79yzlTwNCKem/6RljRxuJzn/sjWUdCm24FOXKSmiAIkkL7DW3hva3iDehBDomgQBR6/FNRLLzqdo5MoLLw==
+    options :
+     -
+       name : OPT_Option1
+       identifier : 0x2c7045cb2de76350
+       internal_properties : BgAAAAYAAABcyjFMVPgZgEiaNKnvIK1n4K9Fs7iVneOk2KkrmI50GWso+pG60NK9VS6f+dJ5jLShjMy+Pc2SuJyppRemfTxZYl68nzvoPLyK3Q51FQC760MPeXa7qNJqUCaDo9mJ3Ps7A9InMaWndhHMo++OiDyFXKLmMVokH7VdC5/Dl9R0nUBPabseOvCi4DZIXRK+nmzraG6Z/7G+4JvggLc2EELKPxzDOwnIY7dEYFI5Nuy8hsDW/7Pwj/6zenmO93zlgXbHLmAbLztskVCtBvoDg5XYSzLYaVNfMQx1H1fb6c224p2w+W6Vls4o54s2ZV2IruAL5rPxFiPKG8I4EWZiiAb3lgRXRbkyDMOYrXgT
+       code_elements :
+        type_code : 26
+        p_codes :
+         -
+           code : |1-
+            	
+            ExecuteProcess(WIN_Designer.BTN_Change,trtClick)
+           type : 32
+    controls : []
+    code_elements :
+     type_code : 26
+     p_codes : []
+ languages :
+  - en-GB
+  - de-DE
+ message_bar : {}
+ code_elements :
+  type_code : 71
+  p_codes : []
+  procedures :
+   -
+     name : MOUSE_DOWN
+     procedure_id : 1958459796546857382
+     type_code : 14
+     code : |1-
+      // Syntax:
+      //MOUSE_DOWN ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      
+      PROCEDURE MOUSE_DOWN()
+      
+      LOCAL
+      	CtlName is string=_EVE.name
+      	pnt is POINTAPI
+      	nX is real
+      	nY is real
+      	nW is real
+      	nH is real
+      
+      CallDLL32("user32","GetCursorPos",&pnt) //Holen der X/Y Maus-Zeiger Werte
+      CallDLL32("user32", "ScreenToClient" , Handle(CtlName), &pnt) //Jetzt haben wir auch den richtigen Offset ohne Rechnen!
+      
+      OffsetX=pnt:x+1 //+GetScrollValueH(WIN_Designer_Container)
+      OffsetY=pnt:y+1 //+GetScrollValueV(Win_Designer_Container)
+      
+      SWITCH CtlName
+      	CASE "Resize1"
+      		IF ResizePossible THEN
+       			ResizeAcive=True
+       			ResizeRichtung=1
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize2"
+      		IF ResizePossible THEN
+       			ResizeAcive=True
+       			ResizeRichtung=2
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize3"
+      		IF ResizePossible THEN
+       			ResizeAcive=True
+       			ResizeRichtung=3
+      		END
+      	CASE "Resize4"
+      		IF ResizePossible THEN
+       			ResizeAcive=True
+       			ResizeRichtung=4
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize5"
+      		IF ResizePossible THEN
+      			ResizeAcive=True
+      			ResizeRichtung=5
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize6"
+      		IF ResizePossible THEN
+      			ResizeAcive=True
+      			ResizeRichtung=6
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize7"
+      		IF ResizePossible THEN
+      			ResizeAcive=True
+      			ResizeRichtung=7
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	CASE "Resize8"
+      		IF ResizePossible THEN
+      			ResizeAcive=True
+      			ResizeRichtung=8
+      
+      		END
+      		gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      	OTHER CASE
+      		IF Upper(Left(CtlName,6))="OBJEKT" THEN
+      
+      				
+      			gsTargetControl=CtlName
+      			
+      			CalcObject(gsTargetControl,nX,nY,nW,nH)
+      			
+      			Message("("+nX+","+nY+") B:"+nW+" H:"+nH)
+      			
+      			{gsTargetControl,indControl}..MouseCursor=curHand //Hand anzeigen
+      			{gsTargetControl,indControl}..ZOrder=9999 //Z-Order bestimmen
+      			
+      			MoveActive=True
+      
+      			ResizeHandleEinstellen()
+      			AnzeigenControl(gsTargetControl)
+      			gnMouseMove=Event("MOUSE_MOVE", ".*", WM_MOUSEMOVE)
+      			
+      		ELSE
+      			SWITCH CtlName
+      				CASE "RIBBON_Designer","BTN_Bold","BTN_Italic","BTN_Underline","BTN_Strikethrough","Combo_TextColor","BTN_TextColorSelect","Combo_BackgroundColor","BTN_BackgroundColorSelect","COMBO_Schriftarten","EDT_FONTSIZE","SPIN_FONTSIZE","BTN_LEFT","BTN_CENTER","BTN_RIGHT","BTN_TOP","BTN_CENTERV","BTN_BOTTOM","COMBO_ANGEL","SPIN_ANGEL","BTN_Delete","CBOX_Ruler","CBOX_Grid","RIBGRP_Font","RIBGRP_Orientation","RIBGRP_Display","RIBGRP_Actions","RIBGRP_FixedValues","RIBGRP_DatabaseFields","RIBGRP_PageLayout","BTN_Change","BTN_Werte","BTN_BACK","BTN_FORWARD","BTN_INSERT","BTN_COPY","BTN_MARKALL","BTN_MARKNONE","BTN_COPY1","BTN_INSERT1","BTN_DELETE1","BTN_Change1"
+      					return
+      				OTHER CASE
+      					WIN_Designer.COMBO_Schriftarten=""
+      					WIN_Designer.EDT_FontSize=""
+      					WIN_Designer.BTN_Bold..Pushed=false
+      					WIN_Designer.BTN_Italic..Pushed=false
+      					WIN_Designer.BTN_Underline..Pushed=false
+      					WIN_Designer.Combo_TextColor=""
+      					WIN_Designer.Combo_BackgroundColor=""
+      					gsTargetControl=""
+      					MoveActive=False
+      					ResizeRichtung=False
+      					if gnMouseMove<>0 then
+      						EndEvent(gnMouseMove)
+      					end
+      					WHEN EXCEPTION IN
+      						Resize1..Visible=False
+      						Resize2..Visible=False
+      						Resize3..Visible=False
+      						Resize4..Visible=False
+      						Resize5..Visible=False
+      						Resize6..Visible=False
+      						Resize7..Visible=False
+      						Resize8..Visible=False
+      					DO
+      					END
+      					Message("")
+      			END
+      		end
+      END
+     type : 458752
+   -
+     name : MOUSE_MOVE
+     procedure_id : 1958459800841890355
+     type_code : 14
+     code : |1+
+      // Syntax:
+      //MOUSE_MOVE ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      
+      Procedure MOUSE_MOVE()
+      
+      LOCAL
+      	pnt is POINTAPI
+      	i is int
+      	sCtlName is string=_EVE.name
+      	nMess is int=_EVE.wMessage
+      	nX is real on 8 bytes
+      	nY is real on 8 bytes
+      	nW is real on 8 bytes
+      	nH is real on 8 bytes
+      	x is int on 8 bytes
+      	y is int on 8 bytes
+      	nOffx is int
+      	nOffy is int
+      	
+      CallDLL32("user32","GetCursorPos",&pnt) //Holen der X/Y Maus-Zeiger Werte
+      //Trace(pnt.x+" - "+pnt.y)
+      CallDLL32("user32", "ScreenToClient" , Handle(Mywindow), &pnt) //Jetzt haben wir auch den richtigen Offset!
+      
+      nOffx=GetScrollValueH("WIN_Designer.IW_InternalWindow1")
+      nOffy=GetScrollValueV("WIN_Designer.IW_InternalWindow1")
+      
+      if gsTargetControl="" then
+      	MoveActive=false
+      	ResizeAcive=false
+      	resize1..Visible=False
+      	resize2..Visible=False
+      	resize3..Visible=False
+      	resize4..Visible=False
+      	resize5..Visible=False
+      	resize6..Visible=False
+      	resize7..Visible=False
+      	resize8..Visible=False
+      	return
+      END
+      
+      if MoveActive then
+      	
+      	x=pnt:x-OffsetX-Win_Designer_Container..X+nOffx
+      	y=pnt:y-OffsetY-Win_Designer_Container..Y+nOffy
+      		
+      	resize1..Visible=false
+      	resize2..Visible=False
+      	resize3..Visible=False
+      	resize4..Visible=False
+      	resize5..Visible=False
+      	resize6..Visible=False
+      	resize7..Visible=False
+      	resize8..Visible=False
+      	{gsTargetControl,indControl}..X=pnt:x-OffsetX
+      	{gsTargetControl,indControl}..Y=pnt:y-OffsetY
+      	
+      	CalcObject(gsTargetControl,nX,nY,nW,nH)
+      	
+      	Message("("+nX+","+nY+") B:"+nW+" H:"+nH)
+      	
+      	AnzeigenControl(gsTargetControl,2)
+      	MultitaskRedraw()
+      
+      	return
+      END
+      
+      if ResizeAcive and ResizePossible then
+      	
+      	FOR i=1 TO 8
+      		if i<>ResizeRichtung then
+      			{"Resize"+NumToString(i,"d"),indControl}..Visible=false	
+      		END
+      	END
+      	
+      	x=pnt:x-OffsetX-Win_Designer_Container..X+nOffx
+      	y=pnt:y-OffsetY-Win_Designer_Container..Y+nOffy
+      	
+      	SWITCH ResizeRichtung
+      		case 1
+      			//Links oben
+      			{gsTargetControl,indControl}..Width={gsTargetControl,indControl}..Width+({gsTargetControl,indControl}..X-(pnt:x-OffsetX))
+      			{gsTargetControl,indControl}..X=(pnt:x-OffsetX)
+      			{gsTargetControl,indControl}..Height={gsTargetControl,indControl}..Height+({gsTargetControl,indControl}..Y-(pnt:y-OffsetY))
+      			{gsTargetControl,indControl}..Y=(pnt:y-OffsetY)
+      			Resize1..X={gsTargetControl,indControl}..X-4
+      			Resize1..Y={gsTargetControl,indControl}..Y-4
+      		CASE 2
+      			//Oben
+      			IF pnt:Y-OffsetY-4<({gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height)-5 THEN
+      				{gsTargetControl,indControl}..Height={gsTargetControl,indControl}..Height+({gsTargetControl,indControl}..Y-(pnt:y-OffsetY))
+      				{gsTargetControl,indControl}..Y=(pnt:y-OffsetY)
+      				Resize2..X={gsTargetControl,indControl}..X+IntegerPart({gsTargetControl,indControl}..Width/2)-3
+      				Resize2..Y={gsTargetControl,indControl}..Y-4
+      			end
+      		CASE 3
+      			//Rechts oben
+      			{gsTargetControl,indControl}..Width=(pnt:x-OffsetX)-{gsTargetControl,indControl}..X
+      			{gsTargetControl,indControl}..Height={gsTargetControl,indControl}..Height+({gsTargetControl,indControl}..Y-(pnt:y-OffsetY))
+      			{gsTargetControl,indControl}..Y=(pnt:y-OffsetY)
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..Y={gsTargetControl,indControl}..Y-4
+      		CASE 4
+      			//rechts
+      			{gsTargetControl,indControl}..Width=(pnt:x-OffsetX)-{gsTargetControl,indControl}..X
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..Y={gsTargetControl,indControl}..Y+IntegerPart({gsTargetControl,indControl}..Height/2)-3
+      		CASE 5
+      			//rechts unten
+      			{gsTargetControl,indControl}..Width=(pnt:x-OffsetX)-{gsTargetControl,indControl}..X
+      			{gsTargetControl,indControl}..Height=(pnt:y-Offsety)-{gsTargetControl,indControl}..Y
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..X=pnt:x-OffsetX
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..Y=pnt:y-OffsetY
+      		CASE 6
+      			//Unten
+      			{gsTargetControl,indControl}..Height=(pnt:y-OffsetY)-{gsTargetControl,indControl}..Y
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..Y=pnt:y-OffsetY
+      		CASE 7
+      			//Nach links unten
+      			{gsTargetControl,indControl}..Width={gsTargetControl,indControl}..Width+({gsTargetControl,indControl}..X-(pnt:x-OffsetX))
+      			{gsTargetControl,indControl}..X=(pnt:x-OffsetX)
+      			{gsTargetControl,indControl}..Height=(pnt:y-Offsety)-{gsTargetControl,indControl}..Y
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..X=pnt:x-OffsetX-4
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..Y=pnt:y-OffsetY
+      		CASE 8
+      			//Links
+      			{gsTargetControl,indControl}..Width={gsTargetControl,indControl}..Width+({gsTargetControl,indControl}..X-(pnt:x-OffsetX))
+      			{gsTargetControl,indControl}..X=(pnt:x-OffsetX)
+      			{"Resize"+NumToString(ResizeRichtung,"d"),indControl}..X=pnt:x-OffsetX-4
+      	END
+      	
+      	Resize1..X={gsTargetControl,indControl}..X-4
+      	Resize1..Y={gsTargetControl,indControl}..Y-4
+      	Resize2..X={gsTargetControl,indControl}..X+IntegerPart({gsTargetControl,indControl}..Width/2)-3
+      	Resize2..Y={gsTargetControl,indControl}..Y-4
+      	Resize3..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	Resize3..Y={gsTargetControl,indControl}..Y-4
+      	Resize4..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	Resize4..Y={gsTargetControl,indControl}..Y+IntegerPart({gsTargetControl,indControl}..Height/2)-3
+      	Resize5..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	Resize5..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	Resize6..X={gsTargetControl,indControl}..X+IntegerPart({gsTargetControl,indControl}..Width/2)-3
+      	Resize6..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	Resize7..X={gsTargetControl,indControl}..X-4
+      	Resize7..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	Resize8..X={gsTargetControl,indControl}..X-4
+      	Resize8..Y={gsTargetControl,indControl}..Y+IntegerPart({gsTargetControl,indControl}..Height/2)-3
+      	
+      	AnzeigenControl(gsTargetControl,2)
+      	
+      	CalcObject(gsTargetControl,nX,nY,nW,nH)
+      	
+      	Message("("+nX+","+nY+") B:"+nW+" H:"+nH)
+      
+      END
+     type : 458752
+   -
+     name : MOUSE_UP
+     procedure_id : 1958459800841956000
+     type_code : 14
+     code : |1+
+      // Syntax:
+      //MOUSE_UP ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      
+      PROCEDURE MOUSE_UP()
+      
+      LOCAL
+      	pnt is POINTAPI
+      	x is real on 8 bytes
+      	y is real on 8 bytes
+      	wd is real on 8 bytes
+      	hg is real on 8 bytes
+      	nOffx is int, useful
+      	nOffy is int, useful
+      		
+      CallDLL32("user32","GetCursorPos",&pnt) //Holen der X/Y Maus-Zeiger Werte
+      CallDLL32("user32", "ScreenToClient" , Handle(WIN_Designer_Container), &pnt) //Jetzt haben wir auch den richtigen Offset!
+      
+      if gnMouseMove<>0 then
+      	EndEvent(gnMouseMove)
+      END
+      
+      IF MoveActive THEN
+      	{gsTargetControl,indControl}..MouseCursor=curArrow
+      	MoveActive=False
+      	HReadSeek(DataFile,DataFileID,Val({gsTargetControl,indControl}..Note),hIdentical)
+      	IF HFound(DataFile) THEN
+      		x=(((({gsTargetControl,indControl}..X)-IMG_Blatt..X)/gnZoom)*100)
+      		y=(((({gsTargetControl,indControl}..Y)-IMG_Blatt..Y)/gnZoom)*100)
+      		if DataFile.VD_X<>x or DataFile.VD_Y<>y then
+      			gaaHistoryNachher["DataFileID"]=DataFile.DataFileID
+      			gaaHistoryNachher["VD_X"]=x
+      			gaaHistoryNachher["VD_Y"]=y
+      			HistoryAdd(2)
+      		end
+      		WIN_Designer.CalcAnalyseWidthHeight()
+      		WIN_Designer.ResizeBlatt()
+      		AnzeigenControl(gsTargetControl,false)
+      		ResizeHandleEinstellen()
+      	END
+      END
+      
+      IF ResizeAcive THEN
+      	ResizeAcive=False
+      	IF ResizePossible THEN
+      		ResizeHandleEinstellen()
+      	END
+      	HReadSeek(DataFile,DataFileID,Val({gsTargetControl,indControl}..Note),hIdentical)
+      	IF HFound(DataFile) THEN
+      		wd=(({gsTargetControl,indControl}..Width/gnZoom)*100)
+      		hg=(({gsTargetControl,indControl}..Height/gnZoom)*100)
+      		x=((({gsTargetControl,indControl}..X-gnPageOffsetleft+GetScrollValueH(Win_Designer_Container))/gnZoom)*100)
+      		y=((({gsTargetControl,indControl}..Y-gnPageOffsetTop+GetScrollValueV(Win_Designer_Container))/gnZoom)*100)
+      		if DataFile.VD_W<>wd or DataFile.VD_H<>hg or DataFile.VD_X<>x or DataFile.VD_Y<>y then
+      			gaaHistoryNachher["DataFileID"]=DataFile.DataFileID
+      			gaaHistoryNachher["VD_X"]=x
+      			gaaHistoryNachher["VD_Y"]=y
+      			gaaHistoryNachher["VD_W"]=wd
+      			gaaHistoryNachher["VD_H"]=hg
+      			HistoryAdd(2)
+      		end
+      		AnzeigenControl(gsTargetControl,False)
+      	END
+      END
+      
+     type : 458752
+   -
+     name : ResizeHandleEinstellen
+     procedure_id : 1958459800842021629
+     type_code : 14
+     code : |1-
+      // Syntax:
+      //ResizeHandleEinstellen ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      
+      Procedure ResizeHandleEinstellen()
+      
+      local
+      	i is int
+      	
+      if ResizePossible and gsTargetControl<>"" then
+      	i=1
+      
+      	resize1..X={gsTargetControl,indControl}..X-4
+      	resize1..Y={gsTargetControl,indControl}..Y-4
+      	resize2..X={gsTargetControl,indControl}..X+IntegerPart({gsTargetControl,indControl}..Width/2)-3
+      	resize2..Y={gsTargetControl,indControl}..Y-4
+      	resize3..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	resize3..Y={gsTargetControl,indControl}..Y-4
+      	resize4..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	resize4..Y={gsTargetControl,indControl}..Y+IntegerPart({gsTargetControl,indControl}..Height/2)-3
+      	resize5..X={gsTargetControl,indControl}..X+{gsTargetControl,indControl}..Width-1
+      	resize5..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	resize6..X={gsTargetControl,indControl}..X+IntegerPart({gsTargetControl,indControl}..Width/2)-3
+      	resize6..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	resize7..X={gsTargetControl,indControl}..X-4
+      	resize7..Y={gsTargetControl,indControl}..Y+{gsTargetControl,indControl}..Height-1
+      	resize8..X={gsTargetControl,indControl}..X-4
+      	resize8..Y={gsTargetControl,indControl}..Y+IntegerPart({gsTargetControl,indControl}..Height/2)-3
+      	
+      	Resize1..ZOrder=9999
+      	Resize2..ZOrder=9999
+      	Resize3..ZOrder=9999
+      	Resize4..ZOrder=9999
+      	Resize5..ZOrder=9999
+      	Resize6..ZOrder=9999
+      	Resize7..ZOrder=9999
+      	Resize8..ZOrder=9999
+      
+      	resize1..Visible=True
+      	resize2..Visible=True
+      	resize3..Visible=True
+      	resize4..Visible=True
+      	resize5..Visible=True
+      	resize6..Visible=True
+      	resize7..Visible=True
+      	resize8..Visible=True
+      else
+      	Resize1..Visible=false
+      	Resize2..Visible=false
+      	Resize3..Visible=false
+      	Resize4..Visible=false
+      	Resize5..Visible=false
+      	Resize6..Visible=false
+      	Resize7..Visible=false
+      	Resize8..Visible=false	
+      end
+     type : 458752
+   -
+     name : AnzeigenControl
+     procedure_id : 1958463412910555112
+     type_code : 14
+     code : |1+
+      // Syntax:
+      //AnzeigenControl (<CtlName> [, <bFinal>])
+      //
+      // Parameters:
+      //	CtlName: <specify the role of CtlName>
+      // 	bFinal (default value=0): 0,1,2 0=none, 1=final, 2=controlvalue
+      // Return Value:
+      // 	None
+      
+      PROCEDURE AnzeigenControl(CtlName, bFinal=0)
+      
+      LOCAL
+      	s is string
+      	x is int
+      	y is int
+      	wd is int
+      	hg is int
+      	nHdc is system int
+      	bFound is boolean
+      
+      WIN_Designer.BTN_BACK..State=Grayed
+      WIN_Designer.BTN_FORWARD..State=Grayed
+      IF gnAktuelleHistoryNr>0 THEN
+      	WIN_Designer.BTN_BACK..State=Active
+      END
+      IF Dimension(garrHistory)>gnAktuelleHistoryNr THEN
+      	WIN_Designer.BTN_FORWARD..State=Active
+      END
+      
+      if CtlName<>"" then
+      	
+      	HReadSeek(DataFile,DataFileID,Val({CtlName,indControl}..Note),hIdentical)
+      	IF HFound(DataFile) THEN
+      		s="OBJEKT"+DataFile.DataFileID
+      	ELSE
+      		s=CtlName
+      	END
+      	
+      	WIN_Designer.BTN_BACK..State=Grayed
+      	WIN_Designer.BTN_FORWARD..State=Grayed
+      	
+      	if Dimension(garrHistory)>0 then
+      		WIN_Designer.BTN_BACK..State=Active
+      	END
+      	
+      	if Dimension(garrHistory)>gnAktuelleHistoryNr then
+      		WIN_Designer.BTN_FORWARD..State=Active
+      	END
+      	
+      	WIN_Designer.BTN_Bold..Pushed=val(ExtractString(DataFile.VD_FontProperties,1,";"))
+      	WIN_Designer.BTN_Italic..Pushed=Val(ExtractString(DataFile.VD_FontProperties,2,";"))
+      	WIN_Designer.BTN_Underline..Pushed=Val(ExtractString(DataFile.VD_FontProperties,3,";"))
+      	WIN_Designer.BTN_Strikethrough..Pushed=Val(ExtractString(DataFile.VD_FontProperties,4,";"))
+      	
+      	bFound=False
+      	FOR i=1 to ListCount(WIN_Designer.Combo_TextColor)
+      		IF WIN_Designer.Combo_TextColor.Column2[i]=DataFile.VD_FontColor THEN
+      			ListSelectPlus(WIN_Designer.Combo_TextColor,i)
+      			bFound=True
+      			BREAK
+      		END
+      	END
+      	
+      	IF NOT bFound THEN
+      		ListDeleteAll(WIN_Designer.Combo_TextColor)
+      		FOR i=1 TO Dimension(iFarbe)
+      			ListAdd(WIN_Designer.Combo_TextColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+      		END
+      		ListAdd(WIN_Designer.Combo_TextColor,gBackground(Val(DataFile.VD_FontColor,"x"))+Left(<§$0001§>+RepeatString(" ",96),96)+TAB+DataFile.VD_FontColor)
+      		ListSelectPlus(WIN_Designer.Combo_TextColor,ListCount(WIN_Designer.Combo_TextColor))
+      	END
+      	
+      	bFound=False
+      	IF DataFile.VD_BackgroundColor="-1" THEN
+      		ListSelectPlus(WIN_Designer.Combo_BackgroundColor,1)
+      		bFound=True
+      	ELSE
+      		FOR i=1 TO ListCount(WIN_Designer.Combo_BackgroundColor)
+      			IF NumToString(WIN_Designer.Combo_BackgroundColor.Column2[i],"06X")=DataFile.VD_BackgroundColor THEN
+      				ListSelectPlus(WIN_Designer.Combo_BackgroundColor,i)
+      				bFound=True
+      				BREAK
+      			END
+      		END
+      	END
+      	
+      	IF NOT bFound THEN
+      		ListDeleteAll(WIN_Designer.Combo_BackgroundColor)
+      		ListAdd(WIN_Designer.Combo_BackgroundColor,Left("Transparent"+RepeatString(" ",96),96)+TAB+"-1")
+      		FOR i=1 TO Dimension(iFarbe)
+      			ListAdd(WIN_Designer.Combo_BackgroundColor,gBackground(iFarbe[i])+Left(sFarbeName[i]+RepeatString(" ",96),96)+TAB+NumToString(iFarbe[i],"06X"))
+      		END
+      		ListAdd(WIN_Designer.Combo_BackgroundColor,gBackground(Val(DataFile.VD_BackgroundColor,"x"))+Left(<§$0002§>+RepeatString(" ",96),96)+TAB+DataFile.VD_BackgroundColor)
+      		ListSelectPlus(WIN_Designer.Combo_BackgroundColor,ListCount(WIN_Designer.Combo_BackgroundColor))
+      	END
+      	
+      	WIN_Designer.COMBO_Schriftarten=DataFile.VD_Font
+      	WIN_Designer.EDT_FONTSIZE=DataFile.VD_FontSize
+      	
+      END
+      
+      
+      if bFinal=1 then
+      	x=((DataFile.VD_X/100)*gnZoom)+gnPageOffsetleft-GetScrollValueH(Win_Designer.IW_InternalWindow1)
+      	y=((DataFile.VD_Y/100)*gnZoom)+gnPageOffsetTop-GetScrollValueV(Win_Designer.IW_InternalWindow1)
+      	
+      	wd=(DataFile.VD_W/100)*gnZoom
+      	hg=(DataFile.VD_H/100)*gnZoom
+      	
+      	{CtlName,indControl}..x=x
+      	{CtlName,indControl}..Y=y
+      	{CtlName,indControl}..Width=wd
+      	{CtlName,indControl}..Height=hg
+      end
+      
+      {"OBJEKT"+DataFile.DataFileID,indControl}..ZOrder=9999
+      
+      nHdc=dStartDrawing({"OBJEKT"+DataFile.DataFileID,indControl},dErase)
+      {"OBJEKT"+DataFile.DataFileID,indControl}..ZOrder=9999
+      dRectangle(1,1,{"OBJEKT"+DataFile.DataFileID,indControl}..Width-1,{"OBJEKT"+DataFile.DataFileID,indControl}..Height-1,White,Black)
+      dRectangle(1,1,{"OBJEKT"+DataFile.DataFileID,indControl}..Width-1,22,DarkRed,DarkRed)
+      MaleText(nHdc,DataFile.FileName,IntegerPart(1),IntegerPart(1),IntegerPart({"OBJEKT"+DataFile.DataFileID,indControl}..Width),IntegerPart(22),0,DataFile.VD_Font,IntegerPart(DataFile.VD_FontSize),"FFFFFF",Val(ExtractString(DataFile.VD_FontProperties,1,";")),Val(ExtractString(DataFile.VD_FontProperties,2,";")),Val(ExtractString(DataFile.VD_FontProperties,3,";")),Val(ExtractString(DataFile.VD_FontProperties,4,";")),2,2,0,gnZoom)
+      
+     type : 458752
+   -
+     name : CalcObject
+     procedure_id : 1403341346628896171
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Description of in/out parameters for 'CalcObject' :
+      //
+      // Syntax:
+      //[ <Result> = ] CalcObject (<sTargetControl> is string, <nX> is real, <nY> is real, <nW> is real, <nH> is real)
+      //
+      // Parameters:
+      //	sTargetControl (ANSI string): <specify the role of sTargetControl>
+      //	nX (real): <specify the role of nX>
+      //	nY (real): <specify the role of nY>
+      //	nW (real): <specify the role of nW>
+      //	nH (real): <specify the role of nH>
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE CalcObject(sTargetControl is string, nX is real, nY is real, nW is real, nH is real)
+      
+      //rBreite=(((Formular.Breite*72)/25.4)/100)*gnZoom
+      if sTargetControl<>"" then
+      	nX=round(((((({sTargetControl,indControl}..X-WIN_Designer.IW_InternalWindow1.IMG_Blatt..X)/gnZoom)*100)*25.4)/72),2)
+      	nY=round(((((({sTargetControl,indControl}..Y-WIN_Designer.IW_InternalWindow1.IMG_Blatt..Y)/gnZoom)*100)*25.4)/72),2)
+      	nW=round((((({sTargetControl,indControl}..Width/gnZoom)*100)*25.4)/72),2)
+      	nH=round((((({sTargetControl,indControl}..Height/gnZoom)*100)*25.4)/72),2)
+      end
+      
+      result true
+     type : 458752
+   -
+     name : KEY_UP
+     procedure_id : 1456997904908014955
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //KEY_UP ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE KEY_UP()
+      
+      //trace(LoWord(_EVE.lParam)+"/"+HiWord(_EVE.lParam)+" - "+LoWord(_EVE.wParam)+"/"+HiWord(_EVE.wParam))
+      
+      switch LoWord(_EVE.wParam)
+      	case 46
+      		//Del
+      		IF gsTargetControl<>"" THEN
+      			ExecuteProcess(WIN_Designer.BTN_Delete,trtClick)
+      		END
+      	OTHER CASE
+      		//Trace(LoWord(_EVE.wParam)+" / "+HiWord(_EVE.wParam)+ " - "+LoWord(_EVE.lParam)+" / "+HiWord(_EVE.lParam))
+      END
+     type : 458752
+   -
+     name : PaintResizeMore
+     procedure_id : 1493908192549601875
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //PaintResizeMore (<sControlName> [, <bErase>])
+      //
+      // Parameters:
+      //	sControlName: <specify the role of sControlName>
+      // 	bErase (default value=0): <specify the role of bErase>
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE PaintResizeMore(sControlName, bErase=false)
+      
+      if not bErase then
+      	dRectangle(0,0,4,4,Black,Black)
+      	dRectangle({sControlName,indControl}..Width-6,0,{sControlName,indControl}..Width-2,4,black,Black)
+      	dRectangle(0,{sControlName,indControl}..Height-2,4,{sControlName,indControl}..Height-7,black,Black)
+      	dRectangle({sControlName,indControl}..Width-6,{sControlName,indControl}..Height-2,{sControlName,indControl}..Width-2,{sControlName,indControl}..Height-7,black,Black)
+      else
+      	dRectangle(0,0,4,4,White,White)
+      	dRectangle({sControlName,indControl}..Width-6,0,{sControlName,indControl}..Width-1,4,White,White)
+      	dRectangle(0,{sControlName,indControl}..Height-2,4,{sControlName,indControl}..Height-7,White,White)
+      	dRectangle({sControlName,indControl}..Width-6,{sControlName,indControl}..Height-2,{sControlName,indControl}..Width-2,{sControlName,indControl}..Height-7,White,White)
+      end
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAA6ih3UbgNXHwTtiPSFUEj+2fi/m7v4QV2rqidAupM=
+  original_name : IW_InternalWindow1
+resources :
+ string_res :
+  identifier : 0x1b29f89400233c8b
+  internal_properties : BgAAAAYAAAAnMYFQ1bL/vz9ehh7L22SNNSlIzGTOI8h5F/WtgDNP
+  strings :
+   -
+     text : {}
+     index : 0
+   -
+     text :
+      de-DE : Benutzer...
+      en-GB : Custom...
+     index : 1
+   -
+     text :
+      de-DE : Benutzer...
+      en-GB : Custom...
+     index : 2
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+associated_test :
+ name : TEST_Win_Designer_Container.wxt
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

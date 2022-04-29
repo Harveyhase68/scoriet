@@ -1,0 +1,368 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Import_Template
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Import_Template
+ identifier : 0x234287db00ca2bb4
+ internal_properties : BgAAAAYAAAAKfxiau3Vn5c2X+4QV+midRvQn+KbfUq1F2hisNxCgYqliSQsNbC9ApEq9TU8uQPAdn6a5X8ktLSHFiFvrXxjmFaqXEwkUDibia6K3ER7aIlBTbjuNHQj/E8chQ/JbC0kUNKvuqzBykA9L/5bWX78yoItmDnjzp4NO0Xg2DzMnwkBBaLh3cY5KzuYznnsDhrWNK33Ldg1BqjFzHTXZUi6We3UywrEIBSniiyaFt2EHoo/2knBgDvHgHaj8cJIA/dd6aeHSYzpLV3lWli/FBsz0FSos4Bss1D9KOW1jkR0YJYsaCS03VVBlqcU5US1K/M9hTsNsX+4Yu+aE9dg0NZzjzbgv8UBGzQ7OPniHvE7VismkVXeT4nQ2h3fMbVwxjelRsgD57JDeXlWQ6IBkqhiF+0g4Oi7QHHT0sQjYSr8d54Acs0/csPcbz/c5J1SKu15GhU25rppyrAm8eWMyXdYvg5yzb/ApxliWum9VVO0mXd2zBD5365JYuE2pdvOxs3tYM871RflMkyS2UXAANemvNLO1KcBdwDR+IS/ii2TZu0bbW8K+fLcbRoN47f+vZ9NgWr+5DQ7oGCHE9z+agyxua09UZUQfa/9a7cs8GC+0TjyJFTQifEMGa/WKmVE0aGi2uUGIVIW6bARfL7rDH2U+agR7eLechZ76SSJyPQ4g0E6b0uOL3ZCUtNdx9W+jEg6QGxkiGTD4mujPXkCYsNmRmNPgHYl1AF4LKuCj+g3elGNAl18IaJMuFEts2d0axw2TfLfD0fkQUQkU7qwhODwuTXaBw3QzWOooKC7s/n2WalvwFkZFZ+65V8y2OivTKY3Ej4FXqRnI8Aa1Dxp5Y0lsyW+Qy6upmYLEGI9tvzyBIUkQpfANu7XyV4icGdquZf3xQJYBUy5mDZkc7rHU6EO4w5Oerz6J3+sUxiv6bP2nYvMQigi8cKV6J3WxXzjW2M/YCzu7CHVEMuNLEpi5PAWNMaGTycdrQrAS0UwCMVKy2BPJJjFRXMmoqiK+K/Lav9fXWx0+KVmA+kNXKg+vyyRGy5h6JF+6jN5p/DoO7Lbkk+zcdyjhERX9s70UI7RwuzMkzwk6aIicC7zFPbwiMYnXZ+VIDyVrP8dpchPlh0a3wui90DJwDNd4lTaOiA3pa6ESxkjfDvNrgeVndacYFRKFh950zAKL8lqVGbQO3U/ysBFy2PNQ1W2FeFT2rQ==
+ controls :
+  -
+    name : EDT_ZIP
+    identifier : 0x234287db00cb2bb4
+    internal_properties : BgAAAAYAAAAYTRSQwlZCitovEXKXTrnPgp08fsjVaSYLz0FXhIg6dkIQYS5e53vUDQALZLTtPgl2OzOt48Q8zFyhWFGAVviqyqiIUs0ogbuBLGY7Lh/kfVimZTfkZqN0jgDigths7QggLLIzPAkXV1qY7sstt8XzLOz9FpXBG/4xkmLqqJEpjamo737tiri3pEyNfOXWaFJHvzYrjaOt1nH//YnG7ekFqjphCyrUNiRkiOTliLO4patvmhu78/z7h1SozrfRR+YAUI2tBeVqHJYLkBZi3Fv6H3Tin+gRzKDNXe5Qlp8idUsQKHx1xeUFXCgrX1hbMay0bf1LRy2B2VbKe+JqgBmcGqEFXgV4PvzxYXb/uqPhNRoN+dtod03apUEIYOwuRHXsns2MIkx3E4jPDcKGMTwqJNjjYiW8RcEEBSFaaWLTHA6jVQC8WEYX83DD9+lxqL3ofSV9cT+kI3A/3BXVr9K2vMEfNLoeKRj8TOuLYlkw84sNM9/M371R4ZbKeKLdmmh6pPNWQmub1dlgdm18QcvVQKy+XIdcT3/eo4SNIRGeevNjaAVUaD1OM1KmxmLUiiL8NrGLBdWSGfLyMGjgICwrFIr95FFYn+eHKJK9m8VOTdY+F6xMNbwvn1a715H050Rm4HKUcyAMA+epaQiL0YMNyRZ+J4C++rIaogHPN8fYR13lINPjKpDe3NRnf79UNP92Kc2FOTjMLwRgXA3IG0zU1q6kR2mjgb6aAaM5hCOTPAST2Pxlwg9pua4eg2lkr4vOj6EvjSfsEs+6+R7Yf3stEDfbcUqj2MhSv4iM8wdfv70YLAmkENiLrA8MxxVFR6zYIAR6wLNQPvdHTHC4aKYULw/vp76+W0Y06e2j4reINjSKQkTU3WeZzNqcoTTsI2UKqrCLsk0uyueuF3s4QR78SgdTTyAO2Z+y2ZU+NkWWnDrQFB9lKhRasIWyOjWUUAz/oIUL5JQtjgFlqI2zerjRXm2WOJSHDCcfxs772MqsfxMeRTcO9FIVaryyKp0Two3uiOWTe/plSgiRL5o7ppSoDOhECUuRz6h5xGwTyyaWyGXjR6NvAa1XcqFDJua13fgeEg5KderBDxIXPqP+9kvV+0UYfrIn+yC/0Uw+scJkQyn8zbBCOBNtliRcyw9czhy4YSXyIpMqUsshwQJdWlR2A/DSgACS95MOwJwv0hmuhDCg1VtwXI4wqm2gofHWbvJzuazmmXf5xmTl1elSw/L4O2Qr4JfW5tkKKmjsCBb/KQ7PEWUSDf0bJ4IFyXNfO+z66UpDaaD88+rUCCc6AOSM1BQTlSS0jAvmn+88EHNn/v/9nMDzYl754eQSV4pISxu+m9K2GFaK0aBzNE6YZxRZiAT/0l5xS6Jax4t6EBJhfpc0BPpCGAERdbxM9BuypRs4AWvsW5oJBSl7oqGgdkPv8IOu/J+kjq35C4Ws8DCr5gJADsI8gR07KlXDSUdknJqgOzHO0sR5bqJKL44vvduHg/ENGcQwVzDvhKBEXuBL5Xoc+B0unm7vINbbYoNAWGa9cF+ScUuY6UWSlbZJGs6F/M5YnTDGMCcLO/iKR2g1EtZrjnAOD0ohIFMULaypdkwWxWh5aFbP/JuuemuBVKgIRFtO2S+XH2InMVcwWLA5MDSVz5lM4BjtZSqnW9l6V5V6dW3cBgO1QnLmgTH3DFw3U9jVFFHT1k7tKBiJbl9RXQn3Hn8NlmBdrQmoRftUghW1gVmdUNbg2oA3xMRmeOyI/a5bdVrW51txmkpqtOESbVdS385E4WCE6USFLu48uoHGYJsG66UQ6gVmHou1GpjR5YFVrK7pE5ZeH0pHx/Gp4dTtFgJMdGuNtv9xTmig9F/bnhs/59NylcWz19BfgJFMM6ugG/yafxAtv5cXcLp9UR8dSHwMqI949yFMAZc1OsmFTAdD4Pkx8A==
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : BTN_Choose_ZIP
+    identifier : 0x234287db00cf2bb4
+    internal_properties : BgAAAAYAAAAhyribtHcMGlkwWD7+v3ycb1tRg/cp3G3E2wIvBmxqywMJHzYm/G4uMeVV2ExkOC2etwlAsiQdMpVvnzGYM8ZXPkh3WMmLrh+s9kCj/Qmums0mmz9dUE4rEFcem/IZekni/+o3bo1/HMXZFgdaHdJqvcoqozqWCE8T5iJX7LGHjmtPo/wFZ67h60OWFfQ4fBDQDyOxQWgdzZA3O69LSet7Pzm2NbAQPyb56rGsbrl8kGDe6iAvnOriIA8H0u9GyPmdcOlUfsFwGcQfqil4Rq61JWbcxsfAdYpUMsgeRwXGyyGu7Y5BP+cQW+JWxNt8xmC7D8uaM7BoKUqR9Oe77u32V/pPBb1r0jyg0aBxeNL8Dx/D3d3nGFvcSaz0N6xg/RJHnMZ9PHomPQuHK142E+VfinBRgyhn4sTsh7NA3PWfRTBtGBckiWx4czuDu5VI2/J0WTCOtVo/pVXEutG1XHbP8NvoxlGyrFVspNX1vm9h+vAAysb9BzhVaumDAAYBZpmgrGpwlxiS1Kj31s5xai/mk9xwrTUA4/gcwjeNuI6MtYRyR/9N0X4Lj6i304XaZi8cjEk4h9oMEHaWq6A7rHSVQr7tijz+WKndEHuK0NiZ6AEwX5eDlxu/1BN1J8SNR0s7m90h9qlRRAsJH3rhY1UxnCONwCenBPZSkBmORDHm4WvJuvvInOjMQBAiC3P6YsEelRCUm/NpRKqkBYAr41M/0J/noXZ0Bi1lvIAerywqiIlopO2Wc1c/cwkPm3aT90VOf4t5NgpIl4UBWR7sgDsVTHG0Zp5CTGxTHXbs20ty2schCu5luXfpzUZiPzfmlI2FoXSOw3mxtUqUBSK0dTTzzes49majirIRxpb2myOZizGbg0M0vJcVLYsn+arrydSO0N4IW0vlPhoeNjVH6Vbsjosoiz4rcezbrLPdgC4R3VmZb7Fo/rVxqs3mE4aPVDmOo2nspiB745W+bYQA8N7K5YKTP5GGV6ijxYOuteeHsdNTvz5bk7PrDaT0fYtEBQ1CXkQPKcujKmEA7HQbBCvrxwNxMr4X28NPtdUS9T2xUtdV1n/y9+8Tf3kfZi8IpdZS/2jXitYFrWKigVPevMA7kIg0+pQdO1+B/ICA4JO7Rs2kCjty8+wiKEOSCrixojQl
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1+
+         
+         local
+         	sFile is string
+         	sTemplateFile is string
+         
+         sFile = fSelect(fExtractPath(sTemplateFile,fDirectory+fDrive), sTemplateFile, "Select a file...", "*.zip" + TAB + "*.zip", "*.zip",fselExist)
+         if fFileExist(sFile) then
+         	EDT_ZIP=sFile
+         end
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Import
+    identifier : 0x234287db00d02bc4
+    internal_properties : BgAAAAYAAACt7/J8ElmKN1Y9I7hjwMd2z2oUikTNAszIum0MMztkqP0FGRZ3DguRxeeHZk+RaKZQOmRW4yUAevcfplJ9tKHM0Rw7zbZUsANZYuzp6+FFws4G4I/zdxcpnhJrXgtgIUP0kS17EfLa+/25M/4uL9kB8LygIGGUDGSy6wegfaViYFpV3mEURM/fUh50N4MeD5SFpOKIL5fWWtsO/sntIx8n+HXfsJCNzVyXeZGGMR7ZygFM6PhdJV+NDThJyfZ1+0oVy3ubRKtNVUFRedCg99TYo0h4701c5D4Ow4/AeDoLdCKS7qLroyuERyzeY4xkzre9fdoNSVO/XraviThfSXiHY7O55BUTFZLJNheNaW3Sx7LUmAebR0LBw3VoR5i/NAkJp9maKpiCSDwcr4wSIzLz7r+XPZOpGEqPRrfUF7/bGjBo0uaYjNCjQqbaxaHQ+S/JDKFO8lGRxt7fYBR3gL/ebOYbask5fM8DOkGLAazJVzsWvxvFbcSQAH1RpX1kj/vmUn6MpuHA9yzRbMEHXFAHj9E8Cdz4KjxNMQ21YMONPHVZx4k5k9OGFFaBFiiTbSjGDt3qZ6SASc/yfRoJeWn7gbz3gsSMCRwdN8Uzbueimr0mteQ+6KAPL8PUF63plK/UTw6uAZypfLNKy5S9a+wXI5IlOE/PjYglg3HpsjdInyedWpfeOeUAqax9dC4zs24/wHHsmvZSs8IT7Ajuu12A8OvSDRkN+55AJr/0ooArnPavkphK6S4rUVvWpxaIKGtF3bO+PHeJWrmgmGhwwraFUUWKxGacbCahtVrmqBOSDkV/WyoQ0axczj+/lUvqR0MllSz4vOuznuzAfB8JkO4jOZxFBgNQ7BHtyVjBUVX0BA7E3t/m6ld8piaZDhM5lvZHxwazeIXAdcrsVHEMijswqa+zSo68lH9Dc0DogiayY7q/e/atYkg0T+8wzdpERwt5vH0OLywYT2l6W2FmsZWcjBBtoe/fRTiwXNa9QbZlKrdjiX+BfngsklpGBLWTevgmHHf4QUuQNab3v9aLzYGgLyP8u2v3yUxxl9Upk7MAgihIPQNy/MxlbC0EDh7POJa3eomlMFYmlzk5ILDjpWgC7Y+sTOfwNPw001puzZPnzctvGgtOu1cb0NDneF6kyo1BV+P2UaPOIEpPCaZjfFgE46B/st154SH7yK4WtHsjsg7Mg4trhmRp3e/jBy5IECff/SrF8VGrQg5jLNI2
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1+
+         
+         local
+         	xml is a xmlDocument, description="template.xml"
+         	sTemplateName is string
+         	sTemplateFolder is string
+         	sTemplateCommentChar is string
+         	sDirTemplate is string
+         	sXMLFileName is string
+         	sBuffer is string
+         	nCRC is int on 8 bytes
+         	sFileError is string
+         	nError is int
+         	
+         HReadSeek(Project,ProjectID,gnProjectID,hIdentical)
+         IF NOT HFound(Project) THEN
+         	Info(<§$0001§>)
+         	RETURN
+         END
+         
+         sDirTemplate=CompleteDir(CompleteDir(gsTemplatePath)+Template.TemplateFolder)
+         sXMLFileName=sDirTemplate+"template.xml"
+         
+         zipOpen("ZIP",EDT_ZIP,zipRead)
+         zipExtractFile("ZIP","template.xml",sDirTemplate)
+         xml=XMLOpen(sXMLFileName,fromFile)
+         
+         sTemplateName=xml.Template.Name
+         sTemplateFolder=xml.Template.Folder
+         sTemplateCommentChar=xml.Template.CommentChar
+         
+         zipExtractAll("ZIP",completedir(sDirTemplate)+sTemplateFolder,zipOverwrite)
+         
+         hreadseek(Template,TemplateName,sTemplateName,hIdentical)
+         if hfound(Template) then
+         	//Found!
+         	Template.TemplateFolder=sTemplateFolder
+         	HModify(Template)
+         else
+         	//Not found!
+         	Template.TemplateFolder=sTemplateFolder
+         	Template.TemplateName=sTemplateName
+         	template.TemplateCommentChar=sTemplateCommentChar
+         	hadd(Template)
+         END
+         
+         FOR EACH ARootNode of xml.Template
+         	SWITCH ARootNode..Name
+         		CASE "TemplatePage"
+         			hreadseek(TemplatePage,TemplatePageKey,HBuildKeyValue(TemplatePage,TemplatePageKey,template.TemplateID,ARootNode.Name),hIdentical)
+         			if hfound(TemplatePage) then
+         				TemplatePage.GenerationType=ARootNode.GenerationID
+         				TemplatePage.PersistentFile=ARootNode.Persistent
+         				TemplatePage.TemplateExecuteProgramAfter=ARootNode.Execute
+         				TemplatePage.TemplatePageConstruct=ARootNode.Construct
+         				TemplatePage.TemplatePageFilename=ARootNode.FileName
+         				TemplatePage.TemplatePageFolder=ARootNode.Folder
+         				TemplatePage.TemplatePageGenerate=ARootNode.Generate
+         				TemplatePage.TemplatePageName=ARootNode.Name
+         				HModify(TemplatePage)
+         			else
+         				TemplatePage.GenerationType=ARootNode.GenerationID
+         				TemplatePage.PersistentFile=ARootNode.Persistent
+         				TemplatePage.TemplateExecuteProgramAfter=ARootNode.Execute
+         				TemplatePage.TemplateID=template.TemplateID
+         				TemplatePage.TemplatePageConstruct=ARootNode.Construct
+         				TemplatePage.TemplatePageFilename=ARootNode.FileName
+         				TemplatePage.TemplatePageFolder=ARootNode.Folder
+         				TemplatePage.TemplatePageGenerate=ARootNode.Generate
+         				TemplatePage.TemplatePageName=ARootNode.Name
+         				hadd(TemplatePage)
+         			END
+         			
+         			switch ARootNode.GenerationID
+         				case 2
+         					//We have a directory...
+         					for each aDirectory of ARootNode on TemplatePageFileName
+         						//info(aDirectory.FileNameFull)
+         						sBuffer=fLoadText(completedir(completedir(sDirTemplate)+sTemplateFolder)+aDirectory.FileNameFull,foAnsi)
+         						nCRC=sComputeCrc32(sBuffer)
+         						if aDirectory.CRC<>nCRC then
+         							sFileError+=CompleteDir(CompleteDir(sDirTemplate)+sTemplateFolder)+aDirectory.FileNameFull+<§$0003§>+crlf
+         							nError++
+         						END
+         					END
+         				OTHER CASE
+         					sBuffer=fLoadText(CompleteDir(CompleteDir(sDirTemplate)+sTemplateFolder)+ARootNode.FileName,foAnsi)
+         					nCRC=sComputeCrc32(sBuffer)
+         					IF ARootNode.CRC<>nCRC THEN
+         						sFileError+=CompleteDir(CompleteDir(sDirTemplate)+sTemplateFolder)+ARootNode.FileName+<§$0003§>+crlf
+         						nError++
+         					END
+         			END
+         		case "TemplateVars"
+         			//TemplateID+VarName
+         			hreadseek(TemplateVars,TemplateVarsKey,HBuildKeyValue(TemplateVars,TemplateVarsKey,Template.TemplateID,ARootNode.VarName),hIdentical)
+         			if hfound(TemplateVars) then
+         				TemplateVars.Caption=ARootNode.Name
+         				HModify(TemplateVars)
+         			else
+         				TemplateVars.TemplateID=template.TemplateID
+         				TemplateVars.Caption=ARootNode.Name
+         				TemplateVars.VarName=ARootNode.VarName
+         				hadd(TemplateVars)
+         			END
+         	END
+         END
+         
+         fDelete(sXMLFileName)
+         zipClose("ZIP")
+         
+         if nError<>0 then
+         	error(sFileError)
+         else
+         	Info(<§$0002§>)
+         END
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Close
+    identifier : 0x25a8ba8b318eee17
+    internal_properties : BgAAAAYAAAB242k2QQ953CV4ufXp+xbJccQix45ADgzXw3A+ssZwSe0/mk4ER0+xIAlhJNwqljTB9FDG4SIOzUe5h6GbFnzeAfVm7kRktUe555JpEm2QIx/FVMPzlQE45Jn6J3porees58VGxnBVrz+XHYKwfh9CVCjJl/1S/FKxtHsp0zWJb6byemU5hB+gYhY6gBF79Km/kxFQ/lfZWncInFNV4jmChQDwnajP9D3ILOuKDYLIFY8Ere56EhW3XxBDmq3+0BwmbMZ8IoaXTVvaxqLkLYzVbbUXWjuqoFxXheagQJZlym3/WLJqekGgVxCNOtb90LuabdwiGLj5hFbWsJNx5IBJQexlKxYL3dv6naCiJDKjqY6pmOO/BOlqlIwSYSCrfQgjCh22I8fXuUSgOIgPty6B618S+qGwtoONyOS36is0VDUu/PXML/8KjM/0JZZ7qKwXRcDKiWCaKVzxR3KrCl8KvsUvEEfvy+Q8+tuvz36jzKEqnFU+6XoXNBkrQhJOL1lwBc/csXicaeXSGyEKEhHGXbHjeLxso0favdal9ALq73QF0QJQr5jyFT1fJD9sbgs4eZ7BkKb0U9qOdADFPfFNB4iZ+gWtyS2gFmNhddyr6dY0tRSbxsqrQJnvjUZgklJf/Br6YTkzzGi1/jH0GpxUZIZOBFb1OBN/nJcpHBdvQhYWsAAQ+trmqpDQEYMF54j6mvIg7Wo3wUn7ZmsDz4ZED29W+UNTHZqWmm4CAZ0atpp6VUtEHPlYHiFGV3HLqnt+H8M05qhQcjMKAAovqQHaIgLYKF/vdCjO6Tn3RQOrN36lVxHgJEZy2subi987cJlayaEt7dy2FaIRle26xgU9GV8gpDz4ULm4Xs7CR1CTXzVNBiOrDmRuirwKsyKgy9NPR5oucu/fG5MVyDzQG3fJ0RGJZd/ScsZrdUs4I012NKLJ5MUgHCnvFvUJJd/1reZpFsdLtIRsCByP1KQ9VJn5rITQ2XMnHtr+TAjZlzkvtDpoJvi5KUJ5HXAHRz/tNESMMD4LS1rdppU8txPZJcd4jwuRRmQ7yZ7n1A1VyA4/QUEbu9BrxLTt/r9m1CwCQ+r4UNU0PpSmU4Awzvzx1szEG9V9AocRUJk6sWV0NYkJl2F735BsCg9+kcelT3fMDXGMBjO01Dht3f1FyD5hpqabe1L8kpzJG6BD71LeR2vK2zBWtVkd2jMIKNnxrKS2R8bURyQZGP8efQqpMy63nvEAbQpPt6HIFYWrbuOCg+iCWY2o0MWKcQBLtb1D+KAko7vwo6bIPL65XjTNOgPgG96KS98=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // close the window (no action)
+         Close()
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+  controls :
+   -
+     name : SBC_NoName
+     identifier : 0x234287db00d22bd3
+     internal_properties : BgAAAAYAAAALcHZdrICKmdPRZq3IjewysWZxAud7yaQ66v6Mw/T2CuAut5AV44qsALsjLvdRunOPJEdeIDAULlA56+mMyyiuTRATuS20IuM=
+     code_elements :
+      type_code : 62
+      p_codes :
+       -
+         type : 15
+         enabled : false
+       -
+         type : 16
+         enabled : false
+       -
+         type : 39
+         enabled : false
+       -
+         type : 17
+         enabled : false
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1-
+      
+      global
+      	gnFileCount is int
+      	gnMaxFiles is int
+   -
+     code : |1+
+      
+      LOCAL
+      	nProjectID is int
+      	
+      IF WinStatus(WIN_Main)<>NotFound THEN
+      	IF ListSelect(WIN_Main.COMBO_Project)>1 THEN
+      		gnProjectID=WIN_Main.COMBO_Project
+      	ELSE
+      		Info("Bitte wählen Sie ein Projekt aus!")
+      		Close()
+      	END	
+      ELSE
+      	IF Open(WIN_Vision_Project,nProjectID) THEN
+      		gnProjectID=nProjectID
+      	ELSE
+      		Close()
+      	END
+      END
+      
+      HReadSeek(Project,ProjectID,gnProjectID,hIdentical)
+      IF NOT HFound(Project) THEN
+      	Info(<§$0001§>)
+      	Close()
+      END
+     type : 34
+   -
+     code : |1+
+      
+      
+     type : 165
+   -
+     code : |1+
+      
+      
+     type : 177
+   -
+     code : |1+
+      
+      
+     type : 180
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1+
+      
+      
+     type : 2
+   -
+     code : |1+
+      
+      
+     type : 11
+   -
+     code : |1+
+      
+      
+     type : 12
+   -
+     code : |1+
+      
+      
+     type : 17
+   -
+     code : |1+
+      
+      
+     type : 13
+  procedures :
+   -
+     name : ZIP_ADD
+     procedure_id : 1387821009853098932
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //ZIP_ADD (<sFileName>)
+      //
+      // Parameters:
+      // 	sFileName: <specify the role of sFileName>
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE ZIP_ADD(sFileName)
+      
+      gnFileCount++
+      Gauge(gnFileCount,gnMaxFiles,"Copy file: "+fExtractPath(sFileName,fExtension+fFileName))
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x134287db001f2bd3
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      de-DE : Fertig!
+      en-GB : Ready!
+     index : 0
+   -
+     text :
+      de-DE : Projekt nicht gefunden!
+      en-GB : Project not found!
+     index : 1
+   -
+     text :
+      de-DE : Template erfolgreich importiert. Keine Fehler aufgetreten!
+      en-GB : Template successful imported. No errors occurred!
+     index : 2
+   -
+     text :
+      de-DE : " hat nicht die korrekte CRC!"
+      en-GB : " does not have the correct CRC!!!"
+     index : 3
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

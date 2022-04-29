@@ -1,0 +1,119 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_DataDesigner
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_DataDesigner
+ identifier : 0x290259c80c4b9b06
+ internal_properties : BgAAAAYAAAD9NHZr2B4ajnOoGuboDCbkhTSMnDAP0wPqZVzUOO5yefdwgg2nSLszdLDmwJdj5LzTRc4RQrUi24mX0Vsg7UUi6cS3kvb09wGV0gS7n1eot9mEyDqbq9ycyUUztclqnRanxFCi02Xlqwmxh+dVJd+vRB+Y5EAXIOpr1JrBRvQ39WUOCQxuTDfS4hvhqQMiRkH7oSuTl3J6/WyE3nvbDxIdYDCOrLFiTcgAWVmeAD8NOiJTFwNzVy0ZlvyzpRFhm35OW96Hy0uAywj3GLxhK4yNQjf/kgfZGvypjVVZWgUCDxI5eGL1XkDYvn8Gvbtq1Vl8QCOa8qWr9x8xgyaaCQMZBRy1H9fGIFoasWhj966WKXWlFZIn8KCkDSx+I78m36DlAUagygWT71WLx92nrcJvw0aoDxm+MRyTAuFDpck0XtwKwCGatT3KYAxhdqPK3jdIINUw0QdsulNgb0vDUNgbM78dH6K2P41RsW4EeucMObnkXq5WMvkjMEonBy3UC/Xm4oiVE0h72FCqY7lKlCvx09NuEzJcRIivjA5+OAfCm+Y69FCIo6QC6oskrYbuVcF9f8HbvncHpAyN4A1nJSbnZUaECfGZvAGDCFcnRWCG6gl0C6+HE1wtxQ2O+4u1y4ap6asAoyMLTGX7FQfYeGUYEe+Rb06KlrWqPb+s50OefLELsF42mscLr6EiDMR4w1ALWP8e+s5oCr6ebsgajQZFHjZSosCN8w7zrWBIHFODR9K/sRwlL1TcyImJmfcxGcu//u93tus68wV9cAz1sUdzckjFbMeiWae5had0ENgwpaJU3NBzC6/qOjQcJyuPe0vrjJO0KrcLBgGk3ZMaxK6BVickanB0kouAUTU3kZihpKjThnCOVMPRVeqnF2sw2fQJcA9HyAM2pCobmYE4iHBDm1tpoFBpZ0rfXizRuhG5Q4/G8Y9M+q1a9oi7JXBzqUWulvJ7zebb1VkOU61ZgoIaQmPDGPb1g+m8oTUqsJ0bYqBBJ6KFQrCOyOb+MikIgkd6iYiE2KSgfR7+ikPXPl7z/UaWbmVgOLtmSBv+CPfycQ==
+ controls : []
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      PROCEDURE MyWindow()
+   -
+     code : |1+
+      
+      local
+      	arrBilder is dynamic array of 0 control
+      	
+      gnProjectID=1
+      
+      //VersionID+FileName
+      hreadseek(Project,ProjectID,gnProjectID,hIdentical)
+      if hfound(Project) then
+      
+      	HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+      	IF HFound(Version) THEN
+      	ELSE
+      		Error(<§$0000§>)
+      		Close()
+      	END
+      	
+      	hfilter(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMinVal),HBuildKeyValue(DataFile,DataFileKey,Version.VersionID,hMaxVal))
+      	hreadfirst(DataFile,DataFileKey)
+      	while not hout(DataFile)
+      		Dimension(arrBilder,Dimension(arrBilder)+1)
+      		if DataFile.VD_X<>0 and DataFile.VD_Y<>0 then
+      			arrBilder[Dimension(arrBilder)] <- ControlCreate(DataFile.FileName,typImage,DataFile.VD_X,DataFile.VD_Y,DataFile.VD_W,DataFile.VD_H,True)
+      		else
+      			DataFile.VD_X=random(1,300)
+      			DataFile.VD_Y=Random(1,300)
+      			HModify(DataFile)
+      			arrBilder[Dimension(arrBilder)] <- ControlCreate(DataFile.FileName,typImage,DataFile.VD_X,DataFile.VD_Y,DataFile.VD_W,DataFile.VD_H,True)
+      		end
+      		dStartDrawing(arrBilder[Dimension(arrBilder)])
+      		dRectangle(1,1,100,100,White,Black)
+      		
+      		dtext(1,1,DataFile.FileName,Black,false)
+      		hreadnext(DataFile,DataFileKey)
+      	END
+      	HDeactivateFilter(DataFile)
+      
+      end
+      
+      //Event("MOUSE_DOWN", ".*", WM_LBUTTONDOWN)
+     type : 34
+   -
+     code : |1+
+      
+      
+     type : 234
+   -
+     code : |1+
+      
+      
+     type : 165
+   -
+     code : |1+
+      
+      
+     type : 177
+   -
+     code : |1+
+      
+      
+     type : 180
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1+
+      
+      
+     type : 2
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x190259270178267c
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      de-DE : Version nicht gefunden!
+      en-GB : Version not found!
+     index : 0
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

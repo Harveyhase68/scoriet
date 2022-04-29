@@ -1,0 +1,32 @@
+﻿{\rtf1\ansi\ansicpg1252\uc1\deff0\deflang3079\deflangfe3079\ltrdoc{\fonttbl
+{\f0\fnil\fcharset0 \fnil Arial;;}
+{\f1\fnil\fcharset0 Arial;}
+}
+{\colortbl;
+\red0\green0\blue255;
+}
+\uc0{\info
+{\title K}
+{\author \u169  2011 Enter your company name}
+}
+\portrait
+\widowctrl
+\paperw11906
+\paperh16838
+\margl720
+\margr720
+\margt720
+\margb720
+{\footer \par\pard\plain \widctlpar\tqr\tx10466 {}{\tab} {}\par }
+{\stylesheet
+{\s1\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 1;}
+{\s2\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 2;}
+{\s3\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 3;}
+{\s4\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 4;}
+{\s5\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 5;}
+{\s6\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 6;}
+{\s7\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 7;}
+{\s8\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 8;}
+{\s9\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 9;}
+{\s10\keepn\tx1200\f0\lang1252\fs24\cf0\b\ul \sbasedon0\snext0 heading 10;}
+}

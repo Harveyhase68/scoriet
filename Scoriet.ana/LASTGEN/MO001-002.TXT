@@ -1,0 +1,3 @@
+//MO001-002.TXT ANA00001 TO ANA00002
+ForeignKey		TAR	1449	new record size: 1449
+ForeignKey	MeshData	RUB+		MeshData is a new item

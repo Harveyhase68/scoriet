@@ -1,0 +1,3 @@
+//MO010-011.TXT ANA00010 TO ANA00011
+DataFile		TAR	1624	new record size: 1624
+DataFile	AdditionalSearchFields	RUB+		AdditionalSearchFields is a new item

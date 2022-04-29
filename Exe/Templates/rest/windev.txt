@@ -1,0 +1,338 @@
+PROCEDURE read_all_{filename}()
+
+LOCAL
+	restReq	is httpRequest
+	restRes	is httpResponse
+	n is int
+	vResult is Variant
+	t is int
+	bufImgBuffer is Buffer
+	
+restReq.URL			= gsURL+"/{filename}.php"
+restReq.Method		= httpGet
+restReq.User		= "admin"
+restReq.Password	= "admin"
+restRes				= restReq.Send()
+
+vResult	= JSONToVariant(UTF8ToAnsi(restRes.Content))
+
+t		= vResult..Count
+FOR i=1 TO t
+	n = ArrayAdd(garr{filename})
+	{for {nmaxitemsnokey}}
+	{switch {item.type}}
+	{case 21,22,23,24,25,26,27,28,29}
+	bufImgBuffer=Decode(vResult[i].{item.name}, encodeBASE64URL)
+	garr{filename}[n].{item.name} = bufImgBuffer
+	{othercase}
+	garr{filename}[n].{item.name} = vResult[i].{item.name}
+	{endswitch}
+	{endfor}
+END
+
+PROCEDURE save_all_{filename}(gn{filekeyname})
+
+LOCAL
+	restReq	is httpRequest
+	restRes	is httpResponse
+	data is Variant
+	sJson	is string
+
+{for {nmaxitemsnokey}}
+{switch {item.type}}
+{case 21,22,23,24,25,26,27,28,29}
+data[1].{item.name}=encode(garr{filename}[gn{filekeyname}].{item.name}, encodeBASE64URL)
+{othercase}
+data[1].{item.name} = garr{filename}[gn{filekeyname}].{item.name}
+{endswitch}
+{endfor}
+
+sJson=VariantToJSON(data)
+
+restReq.URL			= gsURL+"/{filename}.php?{filekeyname}="+garr{filename}[gn{filekeyname}].{filekeyname}
+restReq.Method		= httpPatch
+restReq.Content		= sJson
+restReq.User		= "admin"
+restReq.Password	= "admin"
+restRes				= restReq.Send()
+
+result UTF8ToAnsi(restRes.Content)
+
+PROCEDURE read_all_{filename}()
+
+LOCAL
+	restReq	is httpRequest
+	restRes	is httpResponse
+	n is int
+	vResult is Variant
+	t is int
+	bufImgBuffer is Buffer
+	
+restReq.URL			= gsURL+"/{filename}.php"
+restReq.Method		= httpGet
+restReq.User		= "admin"
+restReq.Password	= "admin"
+restRes				= restReq.Send()
+
+vResult	= JSONToVariant(UTF8ToAnsi(restRes.Content))
+
+t		= vResult..Count
+FOR i=1 TO t
+	n = ArrayAdd(garr{filename})
+	{for {nmaxitemsnokey}}
+	{switch {item.type}}
+	{case 21,22,23,24,25,26,27,28,29}
+	bufImgBuffer=Decode(vResult[i].{item.name}, encodeBASE64URL)
+	garr{filename}[n].{item.name} = bufImgBuffer
+	{othercase}
+	garr{filename}[n].{item.name} = vResult[i].{item.name}
+	{endswitch}
+	{endfor}
+END
+
+PROCEDURE UpdateTable()
+
+LOCAL
+	sResult	is string
+	sPost	is ANSI string
+	vRecord is Variant
+	vOriginal is Variant
+
+{for {nmaxitemsnokey}}
+{switch {item.type}}
+{case 21,22,23}
+vRecord[1].{item.name}={item.name}
+{case 24,25,26,27,28,29}
+vRecord[1].{item.name}=dSaveImagePNG({item.name},inMemory)
+{case 18,19,20}
+vRecord[1].{item.name}={item.name}
+{case 13}
+IF DateValid({item.name}) THEN
+	vRecord[1].{item.name}=GetDBDate({item.name})
+ELSE
+	vRecord[1].{item.name}=NULL
+END
+{case 14,15}
+IF DateTimeValid({item.name}) THEN
+	vRecord[1].{item.name}=GetDBDateTime({item.name})
+ELSE
+	vRecord[1].{item.name}=NULL
+END
+{case 16}
+IF TimeValid({item.name}) THEN
+	vRecord[1].{item.name}=GetDBTime({item.name})
+ELSE
+	vRecord[1].{item.name}=NULL
+END
+{case 1,2,3,4,5,10,11,12}
+vRecord[1].{item.name}=NumToString({item.name},"d")
+{othercase}vRecord[1].{item.name}=NumToString({item.name},"f")
+{endswitch}
+{endfor}
+
+vOriginal=vRecord
+
+{for {nmaxitemsnokey}}
+{switch {item.type}}
+{case 21,22,23}
+vRecord[1].{item.name}=Replace(Encrypt(StringToUTF8(vRecord[1].{item.name}),"",cryptNone,encodeBASE64),CRLF,"")
+{case 24,25,26,27,28,29}
+vRecord[1].{item.name}=Replace(Encrypt(vRecord[1].{item.name},"",cryptNone,encodeBASE64),CRLF,"")
+{endswitch}
+{endfor}
+
+sPost=VariantToJSON(vRecord,psdMinified)
+
+IF gsWindowMode="Creation" THEN
+	HTTPRequest(gsServer+"{filename}.php?insert","","",sPost,"application/x-www-form-urlencoded")
+	sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+	vOriginal[1].{fileprimarykey}=Val(ExtractString(sResult,2,";"))
+	id=Val(ExtractString(sResult,2,";"))
+	LoggingInsert("{filename}", id, vOriginal)
+ELSE
+	LoggingUpdate("{filename}", id, vOriginal)
+	HTTPRequest(gsServer+"{filename}.php?update","","",sPost,"application/x-www-form-urlencoded")
+	sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+END
+
+IF ExtractString(sResult,1,";")="ok" THEN
+	RESULT True
+ELSE
+	Error("Wir konnten den Datensatz nicht speichern: "+sResult)
+	RESULT False
+END
+
+PROCEDURE Display()
+
+LOCAL
+	sResult	is string
+	vResult	is Variant
+	n		is int
+	nLastRow is int
+
+nLastRow=TableSelect(Table)
+
+TableDeleteAll(Table)
+
+HTTPRequest(gsServer+"{filename}.php?getall")
+sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+
+vResult	= GetJsonToVariant(sResult)
+
+FOR i=1 TO vResult..Count
+	n						= TableAddLine(Table)
+{for {nmaxitems}}
+	IF vResult[i].{item.name}..Exist THEN
+{switch {item.type}}
+{case 21,22,23}
+		Table[n].{item.name} = UTF8ToUnicode(Decrypt(vResult[i].{item.name},"",cryptNone,encodeBASE64))
+{case 24,25,26,27,28,29}
+		Table[n].{item.name} = Decrypt(vResult[i].{item.name},"",cryptNone,encodeBASE64)
+{case 18,19,20}
+		Table[n].{item.name} = vResult[i].{item.name}
+{othercase}
+		Table[n].{item.name} = Val(vResult[i].{item.name})
+{endswitch}
+	END
+{endfor}
+END
+
+TableSelectPlus(Table,nLastRow)
+
+	//STRUCTURE for {filename}
+	st{filename} is Structure
+{for {nmaxitems}}
+		{item.name}			is {item.windevtypeplain}
+{endfor}
+	END
+
+garr{filename} is dynamic array of 0 st{filename}
+
+PROCEDURE Get{filename}()
+
+LOCAL
+	sResult	is string
+	vResult	is Variant
+	n		is int
+	t 		is int
+
+ArrayDeleteAll(garr{filename})
+	
+HTTPRequest(gsServer+"{filename}.php?getall")
+sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+
+IF sResult<>"" _AND_ Left(sResult,1)="[" _AND_ Right(sResult,1)="]" THEN
+	
+	vResult	= GetJsonToVariant(sResult)
+	
+	t=vResult..Count
+	FOR i=1 TO t
+		n = ArrayAdd(garr{filename})
+{for {nmaxitems}}
+		garr{filename}[n].{item.name}					= vResult[i].{item.name}
+{endfor}
+	END
+ELSE
+	Error("Fehler bei den Kassen "+sResult)
+END
+
+//********
+//BTN_COPY
+//********
+
+LOCAL
+	nResult is int
+	sResult	is string
+	vResult	is Variant
+	sPost	is string
+	nID		is int
+	sPost	is ANSI string
+	sBuffer is string
+
+IF TableSelect(Table)<=0 THEN
+	Info("Bitte wählen Sie eine Zeile aus")
+	RETURN
+END
+
+nID=Table[TableSelect(Table)].{filename}
+
+SWITCH Input("{filename}-Nr. angeben",nResult)
+	// OK
+	CASE 1
+		sPost="{""{filename}"":"""+NumToString(nID,"d")+"""}"
+		HTTPRequest(gsServer+"{filename}.php?get","","",UnicodeToAnsi(sPost),"application/x-www-form-urlencoded")
+		sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+		vResult	= GetJsonToVariant(sResult)
+		sPost="[{"
+{for {nmaxitemsnokey}}
+		IF vResult[1].{item.name}<>"" THEN
+{switch {item.type}}
+{case 24,25,26,27,28,29}
+			sPost+="""{item.name}"":"""+vResult[1].{item.name}+"""{if nCountItemsNoKey<{nmaxitemsnokey}},{endif}"
+{case 18,19,20,21,22,23}
+			sPost+="""{item.name}"":"""+StringToUTF8(vResult[1].{item.name})+"""{if nCountItemsNoKey<{nmaxitemsnokey}},{endif}"
+{othercase}			sPost+="""{item.name}"":"""+NumToString(val(vResult[1].{item.name}),"d")+"""{if nCountItemsNoKey<{nmaxitemsnokey}},{endif}"
+{endswitch}
+		ELSE
+			sPost+="""{item.name}"":""""{if nCountItemsNoKey<{nmaxitemsnokey}},{endif}"
+		END
+{endfor}
+		sPost+="}]"
+
+		IF gsWindowMode="Creation" THEN
+			HTTPRequest(gsServer+"{filename}.php?insert","","",sPost,"application/x-www-form-urlencoded")
+			sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+		ELSE
+			HTTPRequest(gsServer+"{filename}.php?update","","",sPost,"application/x-www-form-urlencoded")
+			sResult	= UTF8ToUnicode(HTTPGetResult(httpResult))
+		END
+
+		IF sResult="ok" THEN
+			RESULT True
+		ELSE
+			Error("Wir konnten den Datensatz nicht speichern: "+sResult)
+			RESULT False
+		END
+	// Cancel
+	CASE 2
+END
+
+//**************
+//BTN_DeleteLine
+//**************
+
+LOCAL
+	sResult	is string
+	n		is int
+	sPost	is ANSI string
+	vResult is Variant
+	
+// no action if no record is selected in the table
+IF TableSelect(Table)=-1 THEN RETURN
+
+// if the deletion is confirmed, delete the table row and
+// the matching record from {filename} file
+IF YesNo("Wollen Sie diese(n) {filename} löschen?")=Yes THEN
+	
+	n		= Table[TableSelect(Table)].{filekeyname}
+	
+	sPost					= "{""{filekeyname}"":"""+NumToString(n,"d")+"""}"
+	HTTPRequest(gsServer+"{filename}.php?get","","",sPost,"application/x-www-form-urlencoded")
+	sResult					= UTF8ToUnicode(HTTPGetResult(httpResult))
+	vResult					= GetJsonToVariant(sResult)
+	
+	LoggingDelete("{filename}",n,vResult)	
+
+	sPost					= "[{""{filekeyname}"":"""+NumToString(n,"d")+"""}]"
+	HTTPRequest(gsServer+"{filename}.php?delete","","",sPost,"application/x-www-form-urlencoded")
+	sResult					= UTF8ToUnicode(HTTPGetResult(httpResult))
+	
+	IF sResult="ok" THEN
+		Display()
+	ELSE
+		Error("Ein Fehler"+CRLF+CRLF+sResult)
+	END
+	
+	
+END
+

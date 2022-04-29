@@ -1,0 +1,4 @@
+//MO002-003.TXT ANA00002 TO ANA00003
+DataFile		TAR	1257	new record size: 1257
+DataFile	ProjectID	RUB+		ProjectID is a new key
+DataFile	ProjectID	RRN		

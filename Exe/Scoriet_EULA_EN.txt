@@ -1,0 +1,167 @@
+End-User License Agreement (EULA)
+
+Software license terms and conditions
+
+BY INSTALLING OR USING THE LICENSED SOFTWARE FROM SYSTEMHAUS PREDL IT-GESMBH (“SYSTEMHAUS PREDL”), THE INDIVIDUAL IF ACTING ON BEHALF OF HIMSELF OR HERSELF (“INDIVIDUAL CUSTOMER“) OR THE INDIVIDUAL WHO IS ACTING ON BEHALF OF AN EDUCATIONAL OR NONPROFIT INSTITUTION, GOVERNMENTAL AGENCY, OR OTHER (“ENTITY CUSTOMER”, THE INDIVIDUAL CUSTOMER AND ENTITIY CUSTOMER TOGETHER ARE ”CUSTOMER”) IS AGREEING TO BE BOUND BY THIS SOFTWARE LICENSE AGREEMENT (“AGREEMENT”). 
+
+IF CUSTOMER DOES NOT AGREE TO THIS AGREEMENT, CUSTOMER MAY NOT INSTALL, COPY, OR USE THE LICENSED SOFTWARE. 
+
+THE “EFFECTIVE DATE” FOR THIS AGREEMENT IS THE DAY CUSTOMER INSTALLS THE SOFTWARE. 
+
+1. DEFINITIONS. 
+
+“Activation Key” means, collectively, the specific Serial Number, code, and authorization for each copy of the Licensed Software issued by Systemhaus Predl to Customer. 
+
+“Affiliates” or “Affiliate” means an entity, institution, or organization that controls, is controlled by, or is under common control with another entity, institution, or organization, with at least majority ownership. 
+
+“Authorized Reseller” means an authorized distributor, authorized reseller, or dealer of the Licensed Software. 
+
+“Authorized User” means an employee, contractor, registered student, research assistant, or agent of Entity Customer authorized by Entity Customer to use the Licensed Software. 
+
+“Concurrent Authorized Users” means Authorized Users who use the software at the same time in accordance with the terms of this Agreement. 
+
+“Confidential Information” has the meaning set forth in Section 7 of this Agreement. 
+
+“Customer Enhancements” means enhancements to Stata Special Files in which the copyright is owned by Customer and which are derivative works of the Systemhaus Predl Enhancements. 
+
+“Documentation” means the user manuals and supporting documentation in electronic form provided with the Licensed Software under this Agreement. 
+
+“License Fee” means the applicable fee for which Customer licenses the Licensed Software. 
+
+“License Period” means a perpetual term unless (a) terminated as provided below or (b) a specific fixed term is otherwise set forth in the License and Activation Key 
+
+“Licensed Software” means the specific software licensed to Customer under the terms of this Agreement (as specified in the License and Activation Key issued to Customer), including any Updates and Upgrades thereto. 
+
+“Serial Number” means a set of unique characters associated with a specific copy of the Licensed Software issued by Systemhaus Predl to Customer (based on the specific configuration and release of the Licensed Software and the license type, license term, and/or number of Concurrent Authorized Users). 
+
+“Systemhaus Predl Enhancements” means Stata Special Files or enhancements to Stata Special Files in which the copyright is owned by Systemhaus Predl or distributed by Systemhaus Predl from time to time. Systemhaus Predl Enhancements are not defined as Software. 
+
+“Systemhaus Predl Website” means www.syspredl.at. 
+
+“Stata Special Files” are files with file extensions of .ado, .class, .dlg, .idlg, .hlp., .ihlp, .mata, .mnu, .scheme, .sthlp, or .style. These files may be modified and distributed by the Customer pursuant to the terms and conditions of this license. 
+
+“Third-Party Software” means certain software supplied by third parties that Systemhaus Predl provides access to as part of the Licensed Software. 
+
+“Update” means a revision to the Licensed Software or patch that improves the functionality of the Licensed Software, and may contain new features or enhancements, which is not an Upgrade. 
+
+“Upgrade” means a subsequent version of the Licensed Software that Systemhaus Predl designates as a new release and makes generally commercially available or a different flavor of the Licensed Software that Systemhaus Predl makes generally commercially available. 
+
+2. LICENSE AND ACTIVATION KEY, LICENSE GRANTS, THIRD-PARTY RESTRICTIONS AND OWNERSHIP. 
+
+
+2.1 License and Activation Key.
+ Systemhaus Predl shall issue Customer a “License and Activation Key” via email, fax, postal mail, or courier (e.g., FedEx, UPS, DHL) that sets forth the specific Licensed Software, the specific number of Concurrent Authorized Users for Entity Customers, and the Activation Key associated with the Licensed Software (the License and Activation Key). The License and Activation Key is hereby incorporated by reference into this Agreement. Certain of the licenses in Section 2.2(b) permit use by Authorized Users of Entity Customer and the Entity Customer is responsible for compliance of all such Authorized Users with the Agreement and shall be liable for the breach of the terms of this Agreement by such Authorized Users. 
+
+2.2 Licenses. 
+
+
+(a) Single-User License Grant.
+ This Section 2.2(a) applies only to an Individual Customer whose License and Activation Key issued by Systemhaus Predl specifies the “License Type” as “Single User”. A Single-User license is for a named individual who is identified as the only Authorized User. Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable license, without the right to sublicense, to use the Licensed Software, in object-code form only, solely for Customer’s internal business, research, or educational purposes, and solely by the Individual Customer. The Individual Customer may install up to three (3) copies of the Licensed Software, provided that the Individual Customer is the sole user of each copy. 
+
+(b) Concurrent Authorized-User Grant.
+
+
+
+(i) Network License Grant — Licensed Software.
+ This Section 2.2(b) (i) applies only to a Customer whose License and Activation Key issued by Systemhaus Predl specifies the “License Type” as “Network”. Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable license, without the right to sublicense, to use the Licensed Software, in object-code form only, within a single local geographic location or physical site solely for Customer’s internal business, research, or educational purposes. Customer is authorized by Systemhaus Predl to install the Licensed Software on an unlimited number of machines as long as the specific number of Concurrent Authorized Users for which Customer has paid the applicable License Fee is not exceeded. 
+
+
+(ii) Compute-Server License Grant — Licensed Software.
+ This Section 2.2(b) (ii) applies only to a Customer whose License and Activation Key issued by Systemhaus Predl specifies the “License Type” as “Compute Server”. Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable license, without the right to sublicense, to use and execute the Licensed Software, in object-code form only, installed on a single compute server solely for Customer’s internal business, research, or educational purposes. Customer is authorized by Systemhaus Predl to install the Licensed Software on only one compute server or one node of a cluster solely for the use of the specific number of Concurrent Authorized Users for which Customer has paid the applicable License Fee. 
+
+(iii) Student Lab License Grant — Licensed Software.
+ This Section 2.2(b) (iii) applies only to a Customer whose License and Activation Key issued by Systemhaus Predl specifies the “License Type” as “Student Lab”. Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable license, without the right to sublicense, to use the Licensed Software, in object-code form only, solely in an educational student lab environment for teaching purposes (but not for research purposes) within a degree-granting institution. Customer is authorized to install the Licensed Software on an unlimited number of machines as long as the specific number of Concurrent Authorized Users for which Customer has paid the applicable License Fee is not exceeded. 
+
+(iv) Customer Obligations.
+ This Section 2.2(b) (iv) applies to a Customer whose License and Activation Key issued by Systemhaus Predl specifies the “License Type” as “Network”, “Compute Server”, or “Student Lab”. Customer is responsible for managing the usage of the Licensed Software to ensure that such usage does not exceed the specific number of Concurrent Authorized Users for which Customer has paid the applicable License Fee. Customer may add additional Concurrent Authorized Users to Customer’s account for the Licensed Software by placing an order with Systemhaus Predl or an Authorized Reseller. One copy of the Licensed Software may be made for backup purposes only. 
+
+2.3 Third-Party Software.
+ The Third-Party Software is subject to various other terms and conditions imposed by the licensors of such Third-Party Software. A list of the applicable Third-Party Software license terms is provided on the Systemhaus Predl Website. Customer’s use of the Third-Party Software is subject to, and governed by, the specified Third-Party license terms, except that this Section 2.3 (Third-Party Software) and Section 4.4 (No Warranty) and Section 8 (Limitation of Liability) of this Agreement also govern Customer’s use of the Third-Party Software. Customer agrees to comply with such Third-Party license terms. 
+
+2.4 Documentation License.
+ Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable license, without the right to sublicense, to use the Documentation in connection with Customer’s authorized use of the Licensed Software. Customer may not reproduce or distribute the Documentation in any manner, whether physically or electronically, without the express written permission of Systemhaus Predl. Entity Customer may make the Documentation available on any website or private network administered by the Entity Customer. 
+
+2.5 Activation Key.
+ Systemhaus Predl shall issue to Customer a License and Activation Key for each copy of the Licensed Software. Customer is entirely responsible for any and all activities that occur under Customer's account and all charges incurred from use of the copy of the Licensed Software assigned by Serial Number to Customer (e.g., maintenance, support, or license or subscription fee charges). The Licensed Software shall be deemed accepted upon the delivery of the Activation Key to Customer by Systemhaus Predl or an Authorized Reseller. 
+
+2.6 License to Systemhaus Predl Enhancements.
+ Subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable, royalty-free license, without the right to sublicense, to use the Systemhaus Predl Enhancements solely with the Software for Customer’s internal business, research, or educational purposes. In addition, subject to the terms and conditions of this Agreement, Systemhaus Predl grants to Customer a non-assignable, nontransferable, royalty-free license to modify, reproduce, and distribute the Systemhaus Predl Enhancements to create Customer Enhancements solely for use with the Software. Customer may distribute the Customer Enhancements to third parties either at no charge or for a fee. THE SYSTEMHAUS PREDL ENHANCEMENTS ARE PROVIDED TO CUSTOMER ON AN ‘AS IS’ AND ‘WHERE IS’ BASIS AND WITHOUT WARRANTY OF ANY TYPE OR KIND. SYSTEMHAUS PREDL AND ITS THIRD-PARTY LICENSORS HEREBY EXPRESSLY DISCLAIM AND EXCLUDE ALL WARRANTIES AND CONDITIONS, WHETHER STATUTORY, EXPRESS, IMPLIED. OR OTHERWISE, WITH RESPECT TO THE SYSTEMHAUS PREDL ENHANCEMENTS, INCLUDING, BUT NOT LIMITED TO, ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF THIRD-PARTY RIGHTS. 
+
+2.7 License to Customer Enhancements.
+ If Customer submits Customer Enhancements to Systemhaus Predl or makes Customer Enhancements generally available for modification, use, or distribution without charge by third parties, Customer grants to Systemhaus Predl a perpetual, irrevocable, transferable, royalty-free license to modify, reproduce, and distribute the Customer Enhancements, with the right to sublicense through multiple tiers of distribution. THE CUSTOMER ENHANCEMENTS ARE PROVIDED TO SYSTEMHAUS PREDL ON AN ‘AS IS’ AND ‘WHERE IS’ BASIS AND WITHOUT WARRANTY OF ANY TYPE OR KIND. CUSTOMER HEREBY EXPRESSLY DISCLAIMS AND EXCLUDES ALL WARRANTIES AND CONDITIONS, WHETHER STATUTORY, EXPRESS, IMPLIED OR OTHERWISE, WITH RESPECT TO THE CUSTOMER ENHANCEMENTS, INCLUDING, BUT NOT LIMITED TO, ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF THIRD-PARTY RIGHTS. 
+
+2.8 Restrictions.
+ Customer shall not, nor permit any person (including any Authorized User) to: (i) reverse engineer, reverse compile, decrypt, disassemble, or otherwise attempt to derive the source code of the Licensed Software (except to the extent that this restriction is expressly prohibited by law); (ii) modify, translate, or create derivative works of the Licensed Software; (iii) sublicense, resell, rent, lease, distribute, market, commercialize, or otherwise transfer rights or usage to the Licensed Software (except as expressly permitted under this Agreement); (iv) remove, modify, or obscure any copyright notices or other proprietary notices or legends appearing on or in the Licensed Software, or any portion thereof; (v) transfer, use, or export the Licensed Software in violation of any applicable laws, rules, or regulations of any government or governmental agency; (vi) use the Licensed Software or any system services accessed through the Licensed Software to disrupt, disable, or otherwise harm the operations, software, hardware, equipment, and/or systems of a business, institution, or other entity, including, without limitation, exposing the business, institution, or other entity to any computer virus, trojan horse, or other harmful, disruptive, or unauthorized component; or (vii) embed the Licensed Software in any third-party applications, unless otherwise authorized in writing in advance by an officer of Systemhaus Predl. 
+
+2.9 Ownership.
+ The Licensed Software, Systemhaus Predl Enhancements, and Documentation contain copyrighted material and other proprietary material and information of Systemhaus Predl and/or its licensors. Systemhaus Predl and/or its licensors shall retain all right, title, and interest, including all intellectual property rights, in and to the Licensed Software, Systemhaus Predl Enhancements, and Documentation. Customer will not remove, alter, or destroy any form of copyright notice, proprietary markings, or confidential legends placed upon or contained within the Licensed Software, Systemhaus Predl Enhancements, or Documentation, or any component thereof. 
+
+3. TECHNICAL SUPPORT AND UPGRADES AND UPDATES.
+
+
+
+3.1 Technical Support.
+ Systemhaus Predl agrees to provide Customer with technical support services which include periodic distribution of bug fixes and minor enhancements as Updates scheduled by Systemhaus Predl. All registered users of the then-current release of Stata and the previous release of Stata are eligible for free limited technical support. Installation support inquiries by telephone will be accepted by Systemhaus Predl during normal business hours. Technical support email inquiries are accepted at any time and will be answered during normal Systemhaus Predl business hours. Systemhaus Predl will attempt to respond to inquiries within the same business day. 
+
+3.2 Updates and Upgrades.
+ To receive and use an Upgrade, Customer must pay the applicable fees for that Upgrade and agree to Systemhaus Predl’s standard terms and conditions governing the use of that Upgrade. If no such standard terms and conditions are stated by Systemhaus Predl, the terms of this Agreement shall apply and the Upgrade shall be deemed Licensed Software. Systemhaus Predl will issue a new Activation Key for the Upgrade. For a Single-User license, once Systemhaus Predl issues the new Activation Key for an Upgrade version, Customer shall be able to continue to use the prior version of the Licensed Software. For Network, Compute Server, and Student Lab licenses, once Systemhaus Predl issues the new Activation Key for an Upgrade, Customer shall be able to continue to use the prior version of the Licensed Software on the condition that the total, combined number of Concurrent Authorized Users who are using the Licensed Software (either the prior version, Upgrade, or both) does not exceed the specific number of Concurrent Authorized Users for which Customer has paid the applicable fee. For a Single-User license, technical support services are provided only for the Customer of the then-current version of the Licensed Software. For any other type of license selected by Customer (i.e., Network, Compute Server, or Student Lab), technical support services are provided only for the Authorized Users of the then-current version of the Licensed Software. 
+
+4. LIMITED WARRANTY; WARRANTY DISCLAIMER. 
+
+
+4.1 Limited Media Warranty.
+ For thirty (30) days from the date of purchase, Systemhaus Predl warrants that the media on which the Licensed Software, Systemhaus Predl Enhancements, and Documentation is furnished shall be free from defects in material and faulty workmanship. Customer may return for replacement, without charge, any media that fails to meet this limited media warranty to Systemhaus Predl or the dealer from whom the Licensed Software (and Systemhaus Predl Enhancements) was purchased, as applicable, within the 30-day period. Systemhaus Predl or the applicable dealer will not be responsible for replacing any media that contains defects due to Customer’s misuse. THE FOREGOING IS CUSTOMER'S SOLE REMEDY, AND SYSTEMHAUS PREDL'S SOLE OBLIGATION, WITH RESPECT TO A BREACH OF THE LIMITED MEDIA WARRANTY. 
+
+4.2 Performance Warranty.
+ Systemhaus Predl represents and warrants for a period of 90 days from the date of the order that the Licensed Software substantially conforms to the functional specifications in the Stata 13 Reference Manual. Systemhaus Predl will repair or replace the Licensed Software if this warranty is breached unless it cannot do so within a reasonable period of time, then Systemhaus Predl will refund the fee paid for that license under the order (this Agreement will then terminate). Customer must notify Systemhaus Predl during the warranty period or 30 days after it ends of any alleged breach of the warranty. THIS SECTION CONTAINS CUSTOMER'S EXCLUSIVE REMEDY AND SYSTEMHAUS PREDL'S SOLE LIABILITY FOR BREACH OF THIS WARRANTY. 
+
+4.3 No Disabling Code.
+ With respect to the Licensed Software (including any Updates or Upgrades) and as of the date of delivery, Systemhaus Predl represents and warrants that (i) it has used commercially reasonable efforts consistent with industry standards to scan for and remove any software viruses, and (ii) it has not inserted any Disabling Code. “Disabling Code” means computer code inserted by Systemhaus Predl that is not addressed in the Documentation and that is designed to delete, interfere with, or disable the normal operation of the Products. This Disabling Code warranty does not apply to Systemhaus Predl passwords necessary for the operation of the Licensed Software, to the Licensed Software’s Activation Key requirement, or for any use by Customer outside the scope of the license. 
+
+4.4 No Warranty.
+ EXCEPT FOR THE WARRANTIES ABOVE, THE LICENSED SOFTWARE, DOCUMENTATION, AND SUPPORT SERVICES ARE PROVIDED TO CUSTOMER ON AN ‘AS IS’ AND ‘WHERE IS’ BASIS AND WITHOUT WARRANTY OF ANY TYPE OR KIND. SYSTEMHAUS PREDL HEREBY EXPRESSLY DISCLAIMS AND EXCLUDES ON BEHALF OF ITSELF AND ITS LICENSORS ALL WARRANTIES AND CONDITIONS, WHETHER STATUTORY, EXPRESS, IMPLIED, OR OTHERWISE, WITH RESPECT TO THE LICENSED SOFTWARE AND SUPPORT SERVICES, INCLUDING, BUT NOT LIMITED TO, ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF THIRD PARTY RIGHTS. 
+
+5. TERM AND TERMINATION. 
+
+
+5.1 Term.
+ Except for Customers with a fixed-term License Period, this Agreement shall commence on the Effective Date and shall continue in effect until terminated as set forth below. If the License Period is for a fixed term, this Agreement will commence on the Effective Date and shall continue until the earlier to occur of the expiration of the License Period or the termination of this Agreement as set forth below. In the case of additional Concurrent Authorized Users who are authorized and added after the initial License Fee payment, the term of their usage of the Licensed Software shall be coterminous with the preexisting then-current term. If Customer purchases an Upgrade, the term of the Agreement shall be the specific term set forth in the new License and Activation Key issued for the Upgrade. 
+
+5.2 Termination.
+ Customer may terminate this Agreement at any time upon thirty (30) days’ prior written notice to Systemhaus Predl. Systemhaus Predl may terminate this Agreement immediately without notice if Customer breaches any term of this Agreement, including, without limitation, breaching the scope of the license granted or confidentiality obligations under this Agreement. 
+
+5.3 Effect of Expiration or Termination.
+ Upon expiration or termination of this Agreement, (i) the rights and licenses granted to Customer pursuant to this Agreement shall automatically and immediately terminate and (ii) Customer shall immediately cease using the Licensed Software. In addition, for a fixed-term License Period, upon expiration of the License Period, the Activation Key will expire and the Licensed Software will cease to function. Sections 2.3, 2.6, 2.7, 2.8, 2.9, 4.4, 5.3, 7, 8, 9, and 10 of this Agreement shall survive any expiration or termination of this Agreement. 
+
+6. FEES AND PAYMENT. 
+
+
+6.1 Fees and Payment Terms.
+ Customer licenses the Licensed Software from Systemhaus Predl. This Agreement is between Customer and Systemhaus Predl solely. The applicable License Fee is specified on the Systemhaus Predl Website or in the specific price proposal provided by Systemhaus Predl or an Authorized Reseller. The payment terms and conditions for the License Fee payable to Systemhaus Predl are specified on the Systemhaus Predl invoice or in the specific price proposal provided by Systemhaus Predl. The payment terms and conditions for the License Fee payable to an Authorized Reseller are as specified by the specific Authorized Reseller. All fees paid to Systemhaus Predl are non-refundable except as explicitly permitted from time to time on the Systemhaus Predl Website. Systemhaus Predl may terminate this Agreement and invalidate Customer’s Activation Key if the billing or contact information is false, fraudulent, or invalid. Customer will pay all taxes, including sales, use, personal property, value-added, excise, customs fees, import duties, stamp duties, and any other similar taxes and duties, including penalties and interest, imposed by any United States federal, state, provincial, or local government entity or any non-U.S. government entity on the transactions contemplated by this Agreement, excluding taxes based upon Systemhaus Predl’s net income. 
+
+6.2 Additional Concurrent Authorized Users Fee.
+ During the License Period, Customer shall pay to Systemhaus Predl or the specific Authorized Reseller the then-current rate for any licenses for additional Concurrent Authorized Users. This fee shall be charged or invoiced to Customer on the date such additional Concurrent Authorized Users are added to Customer’s account. 
+
+6.3 Concurrent Authorized User Accounting.
+ Customer shall maintain business practices and records necessary to manage the number of Concurrent Authorized Users and compliance with the terms of this Agreement. Systemhaus Predl has the right to request usage reports during the License Period and Customer will provide such a report within 30 days of request. If Systemhaus Predl determines that Customer has more Concurrent Authorized Users than Customer has paid for, Customer shall immediately pay Systemhaus Predl the applicable additional fees. 
+
+7. CONFIDENTIALITY.
+ Customer and Systemhaus Predl agree to maintain the confidentiality of any confidential or proprietary information of one party (the “disclosing party”) received by the other party (the “receiving party”) during the term of, or prior to entering into, this Agreement that the receiving party should know is considered confidential or proprietary by the disclosing party based on the circumstances surrounding the disclosure, including, without limitation, non-public technical and business information (“Confidential Information”). The Licensed Software is copyrighted and shall be deemed Systemhaus Predl’s Confidential Information. The Documentation is copyrighted material of Systemhaus Predl. This section shall not apply to any information that is or becomes publicly available through no breach of this Agreement by the receiving party or is independently developed by the receiving party without access to or use of the Confidential Information of the disclosing party. The foregoing confidentiality obligations will not restrict either party from disclosing Confidential Information of the other party pursuant to the order or requirement of a court, administrative agency, or other governmental body, provided that the party required to make such a disclosure gives reasonable notice to the other party to enable the other party to seek a protective order or otherwise limit such disclosure. The receiving party of any Confidential Information of the disclosing party agrees not to use the disclosing party’s Confidential Information for any purpose except as necessary to fulfill its obligations and exercise its rights under this Agreement. The receiving party shall protect the secrecy of and avoid disclosure and unauthorized use of the disclosing party’s Confidential Information with no less than reasonable care. All the disclosing party’s information remains the property of the disclosing party. 
+
+8. LIMITATION OF LIABILITY. 
+
+
+8.1 Consequential Damages Waiver.
+ IN NO EVENT SHALL SYSTEMHAUS PREDL OR ITS LICENSORS HAVE ANY LIABILITY FOR ANY INCIDENTAL, CONSEQUENTIAL, INDIRECT, SPECIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT, REGARDLESS OF THE FORM OF THE ACTION, WHETHER IN CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT PRODUCT LIABILITY, OR OTHERWISE, EVEN IF ANY REPRESENTATIVE OF SYSTEMHAUS PREDL HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES AND NOTWITHSTANDING THE FAILURE OF THE ESSENTIAL PURPOSE OF THIS AGREEMENT OR ANY LIMITED REMEDY HEREUNDER. 
+
+8.2 Limitation of Liability.
+ IN NO EVENT SHALL SYSTEMHAUS PREDL’S LIABILITY ARISING OUT OF OR RELATED TO THIS AGREEMENT EXCEED: (I) IF THE LICENSED SOFTWARE IS LICENSED FROM SYSTEMHAUS PREDL DIRECTLY, THE LICENSE FEES PAID BY CUSTOMER TO SYSTEMHAUS PREDL FOR THE LICENSED SOFTWARE, OR (II) IF THE LICENSED SOFTWARE IS LICENSED THROUGH AN AUTHORIZED RESELLER, THE LICENSE FEES PAID BY CUSTOMER TO THE APPLICABLE AUTHORIZED RESELLER, AS APPLICABLE. IN NO EVENT WILL SYSTEMHAUS PREDL’S LICENSORS HAVE ANY LIABILITY FOR ANY CLAIM ARISING IN CONNECTION WITH THIS AGREEMENT. 
+
+8.3 Limitation of Remedies.
+ THE PARTIES AGREEE THAT THESE LIMITATIONS SHALL APPLY NOTWITHSTANDING THE FAILURE OF THE ESSENTIAL PURPOSE OF THIS AGREEMENT OR ANY LIMITED REMEDY HEREUNDER. 
+
+9. U.S. GOVERNMENT END USERS.
+ The Licensed Software under this Agreement is “commercial computer software” as that term is described in DFAR 252.227-7014(a)(1). If acquired by or on behalf of a civilian agency, the U.S. Government acquires this commercial computer software and/or commercial computer software documentation subject to the terms and this Agreement as specified in 48 C.F.R. 12.212 (Computer Software) and 12.111(Technical Data) of the Federal Acquisition Regulations (“FAR”) and its successors. If acquired by or on behalf of any agency within the Department of Defense (“DOD”), the U.S. Government acquires this commercial computer software and/or commercial computer software documentation subject to the terms of this Agreement as specified in 48 C.F.R. 227.7202 of the DOD FAR Supplement and its successors. 
+
+10. GENERAL.
+ Except as expressly provided herein, Customer may not assign or transfer any of its rights under this Agreement (including its licenses with respect to the Licensed Software and Documentation) without the prior written consent of Systemhaus Predl. Unless the Customer is required by statute or regulation to apply the law of a state other than Texas, this Agreement will be governed by and construed in accordance with the laws of the State of Texas and the federal U.S. laws applicable therein, excluding any conflicts of law provisions, and the Customer and Systemhaus Predl agree to submit to the personal and exclusive jurisdiction of the courts located in Harris County, Texas. If the statute or regulation applying to the Customer requires the application of a law of a state other than Texas, the parties agree that the terms of this Agreement shall be governed and construed in accordance with the law specified in such statute or regulation, and the Customer shall give written notice of such requirement to Systemhaus Predl. The application of such different law shall be effective upon the receipt of such written notice by Systemhaus Predl. The parties agree that the United Nations Convention on Contracts for the International Sale of Goods will not apply to this Agreement. The failure of either party to require performance by the other party of any provision hereof shall not affect the full right to require such performance at any time thereafter, nor shall the waiver by either party of a breach of any provision hereof be taken or held to be a waiver of the provision itself. If any provision of this Agreement is found void and unenforceable, it will be replaced to the extent possible by Systemhaus Predl with a provision that comes closest to the meaning of the original provision. This Agreement and the documents referenced in this Agreement constitute the entire agreement between Customer and Systemhaus Predl relating to its subject matter and all terms herein and supersede all prior or contemporaneous agreements or understandings. This Agreement may be modified or changed only in writing signed by authorized representatives of Customer and Systemhaus Predl. Notices hereunder shall be in writing and addressed to Customer at the address provided when purchasing this license or, in the case of Systemhaus Predl, when addressed to Systemhaus Predl LP, Attn: Director of Operations, 4905 Lakeway Drive, College Station, Texas 77845, USA. 

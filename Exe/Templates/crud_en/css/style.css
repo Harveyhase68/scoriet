@@ -1,0 +1,329 @@
+@charset "utf-8";
+/* CSS Document */
+
+body {
+    background: #f1f9f9;
+}
+
+.form-signin {
+    max-width: 500px;
+    padding: 2px 5px 2px;
+    margin: 0 auto;
+    background-color: #fff;
+    border: 1px solid #e5e5e5;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+}
+.form-signin-breit {
+    max-width: 800px;
+    padding: 2px 5px 2px;
+    margin: 0 auto;
+    background-color: #fff;
+    border: 1px solid #e5e5e5;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+}
+.form-info-breit {
+    max-width: 800px;
+    padding: 2px 5px 2px;
+    margin: 0 auto;
+    background-color: #fff;
+    border: 1px solid #e5e5e5;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+}
+.form-inner-container {
+    padding: 10px 14px 14px;
+}
+
+.form-signin .form-signin-heading {
+    color: #00A2D1;
+}
+
+.form-signin input[type="text"],
+.form-signin input[type="password"],
+.form-signin input[type="email"] {
+    font-size: 16px;
+    height: 45px;
+    padding: 7px 9px;
+}
+
+.form-signin label {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: #990000;
+    font-weight: bolder;
+}
+
+.form-signin .register {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: limegreen;
+    font-weight: bolder;
+}
+
+.signin-form, .body-container, .info-form {
+/ / border: solid red 1 px;
+    margin-top: 30px;
+}
+
+.table {
+    margin-bottom: 0px !important;
+    background-color: transparent !important;
+}
+
+.table thead {
+    font-weight: bold !important;
+    background-color: white !important;
+}
+
+.table tfoot {
+    font-weight: bold !important;
+    background-color: white !important;
+}
+
+@media screen and (min-width: 600px) {
+    .table td {
+        border-top: none !important;
+        border-bottom: 1px solid #ddd;
+    }
+}
+.table-bordered thead tr th {
+    border-bottom-width: 1px !important;
+}
+
+.warengruppen_bezeichnung {
+    font-weight: bold;
+}
+
+.warengruppen_kopf {
+    font-weight: bold;
+}
+
+.warengruppen_fuss {
+    font-weight: bold;
+}
+
+.table .test tr:hover {
+    background-color: #ffff99 !important;
+}
+
+@media screen and (max-width: 600px) {
+    .table {
+        border: 0;
+        margin-bottom: 0px !important;
+        background-color: transparent !important;
+    }
+    .table caption {
+        font-size: 1.3em;
+    }
+    .table tr {
+        display: block;
+        margin-bottom: .625em;
+    }
+    .table td {
+        border-top: 1px solid #ddd !important;
+        border-bottom: 1px solid #ddd;
+        display: block;
+        font-size: .8em;
+        text-align: left;
+    }
+    .table thead {
+        display: none;
+    }
+    .table thead tr {
+        display: none;
+    }
+    .table thead td {
+        display: none;
+    }
+    .table .td:before {
+        /*
+        * aria-label has no advantage, it won't be read inside a table
+        content: attr(aria-label);
+        */
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .table .td:last-child {
+        border-bottom: none;
+    }
+    .menge {
+        height: 120px;
+        font-weight: bold;
+    }
+    .artikelnr {
+        font-weight: bold;
+    }
+    .bezeichnung {
+        font-weight: bold;
+        font-size: 14px !important;
+    }
+    .preis {
+        font-weight: bold;
+    }
+    .preismalmenge {
+        font-weight: bold;
+    }
+    .warengruppenbild {
+        height: 130px !important;
+    }
+    .warengruppennr {
+        font-weight: bold;
+        font-size: 14px !important;
+    }
+}
+.navbar-brand {
+    font-family: "Lucida Handwriting";
+}
+
+.navbar-brand-center {
+    font-family: "Lucida Handwriting";
+    text-align: center;
+}
+
+#btn-submit {
+    height: 45px;
+}
+
+#btn-change-password {
+    height: 45px;
+}
+
+.h5 {
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+h1 {
+    font-family: Verdana, Geneva, sans-serif;
+}
+.footer {
+    background-color: white;
+    border-top: 1px solid #aaa;
+}
+.copyright {
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: x-small;
+    color: steelblue;
+}
+#wrap
+{
+    min-height: 100%;
+}
+
+#main
+{
+    overflow:auto;
+    padding-bottom:150px; /* this needs to be bigger than footer height*/
+}
+@media ( max-width: 600px ) {
+    .input-group span.input-group-btn,.input-group input,.input-group button{
+        display: block;
+        width: 100%;
+        border-radius: 0;
+        margin: 0;
+    }
+    .input-group {
+        position: relative;
+    }
+    .input-group span.data-up{
+        position: absolute;
+        top: 0;
+    }
+    .input-group span.data-dwn{
+        position: absolute;
+        bottom: 0;
+    }
+    .form-control.text-center {
+        margin: 34px 0;
+    }
+    .input-group-btn:last-child>.btn, .input-group-btn:last-child>.btn-group{
+        margin-left:0;
+    }
+
+}
+.blink {
+    -webkit-animation: blink .75s linear infinite;
+    -moz-animation: blink .75s linear infinite;
+    -ms-animation: blink .75s linear infinite;
+    -o-animation: blink .75s linear infinite;
+    animation: blink .75s linear infinite;
+}
+@-webkit-keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    50.01% { opacity: 0; }
+    100% { opacity: 0; }
+}
+@-moz-keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    50.01% { opacity: 0; }
+    100% { opacity: 0; }
+}
+@-ms-keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    50.01% { opacity: 0; }
+    100% { opacity: 0; }
+}
+@-o-keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    50.01% { opacity: 0; }
+    100% { opacity: 0; }
+}
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    50.01% { opacity: 0; }
+    100% { opacity: 0; }
+}
+[data-notify="progressbar"] {
+    margin-bottom: 0px;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    width: 100%;
+    height: 5px;
+}
+dl {
+    margin-bottom:50px;
+}
+dl dt {
+    background:#5f9be3;
+    color:#fff;
+    float:left; 
+    font-weight:bold; 
+    margin-right:10px; 
+    padding:4px;  
+    width:300px; 
+}
+dl dd {
+    margin:0px 0; 
+    padding:4px 0;
+	border-top: 1px solid #5f9be3;
+	border-right: 1px solid #5f9be3;
+	border-bottom: 1px solid #5f9be3;
+}
+.check, .radio{
+    height: 16px;
+    width: 16px;
+    position: relative;
+}
+.row, .scrollable {
+	overflow-x: auto;
+	white-space: nowrap;
+}

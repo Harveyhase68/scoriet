@@ -1,0 +1,964 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Import
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Import
+ identifier : 0x2fae19711ab1b28d
+ internal_properties : BgAAAAYAAACSm5JODdbuDsR/KwQTLHO2RRuRE7w7ggpFGm1Nw5rukKsVG6ZKrfPzZ0y5pGpuk9Hox68sQgXuRfdiUCHrr4sfv1N2GZLHyIeZCw3m586e9qXlD/3KdSoxZWL+wfTEQSOka4fmBbEeabv3qar2l6VLSKWeFN6NuKTy5D4nPYtQgBHEOR1jCsRg/hESDkQTTxVUrGvTUd4mY/P13kTluzGbhHQwTiyO08NO7PwkB4eD6rtEhzhhaA/4IkU/G1b5iSiXZZTrFpaokURzgh1daUkG2KKbuIZIq4kMbwUfWOfynl8dnXmjalhBjFufMiMV0KDrCvfbx1eSuhfJHbdtL8/PwEikOXEkP8P2XTf2+icBruZCgxwuOGXCZGri4G4GIqwHDYMvi6hXv2EmNcolwennnWjcGKMDt/vtyVHacphEfFU0gJr6WTzv2uOhvgc9nSMhRzNoz8x2QXTpAu4i7KMsaBn3L+F5AC2sYAZjAo3WKUCKEGUhcijVS1XOnxPWU14dKFT3yjBCRIDNwdhDmslxySlC71vBoELRvih3ycp4bV68bAtkUPpp1kjdTBM6bro7L7/HapEhSh5V8paXHID4VPbPLYv3sOo2wYugqCtfbMpcyydIT31OKLku6u67lidPTUgxk3DiDRPi4Zo0+P/xw7OuNsPLCz414+wkKqGLeA0NNThFiKZhqlkxjt8ktUZ1vrkN3afHFmwglzxMd0cK6pvhjcZYZOaGwgDTkj2qsc18gOxqfXPlubygN0vYM6XdopMkBEv6FSIR5Px+lSYrKYivW4YeDyeKgcxI4QVrnFkh1tfxDXcj+ylLTEL6+EbwAWpALFYdBk3STJ+9JSiT4yu6PB8a5e4Kcjhug7QXZDsGv7oGXhI7v4yEdcf4gmFCrsQYX+H8YTVKcfp6IbaM3bLdVd//EoslsBQKu8ZIQdJOolOuBlSz19Amptr5tzs3dll6CEXqUqYmTZO+Dxk0IDca+7ikyGpkWXo1CO5nvhj1j+t5JpeFZ2z993gqQCe75omgiQThgnj6TN6oZIrUm167gfLsyWjQjo5Yw0slG8tdemrFUaMTSvrK2r77/X1KfSg7AcFPK0+wfbjuLLtDkl9jeJMHbJwHbFlmZc5toAJF7nrRQb18T7X58hE1RK+pYsWx1AEW5Zp1u1ETTswC3QGLyRAuCZaBYQiHPvcnMAGdJ28I5sqA/2BIK540s9OYSzMJLQ==
+ controls :
+  -
+    name : TABLE_Tables
+    identifier : 0x2fae19711ab2b28d
+    internal_properties : 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
+    columns :
+     -
+       name : COL_TableName
+       identifier : 0x2fae19711ab3b28d
+       internal_properties : BgAAAAYAAACM8CMK6NdGFyODRo7bPOL3UqZqfWDNUaylR4YtYVN3XBHL7QErWssjFMxiXTw0iFJw5qY6lG7/7vZQsboBPBWggkTC4nDzLjTw+Ho3HdIXET5DSKiYH+ANp1Ew1gABEreDOeNigWI4nwwYMJDsyeDReczXKXCvu4Q78BZCkmBYcqIiQERzp1w2geesxcYXd6SPbIBZM50vsfM9U8gaTorrFoGfloAHwpKTvF1GguVUChemL+Y634CD
+       type : 2
+       content :
+        internal_properties : BgAAAAYAAACCI0w1fe5++AR7DJDmjBk66RcnfCJrw/A6ig0b0kjIs8F8RvVXF4MiwtwYZvXIW3IpQZ5YK+q3mqOB9o3upBA+4wW8gxrAb5DAyYUjdDW2W0P5osiRwFqnDAjKF/jxqZuFQZdKt+PqRpQjBJZB5HhlicVsjf2NkgHHRKTp73jbOb3XIlptNy0A6M4C3UeAgUMlHVDW9SayjNKC5OncOpCtBHfYquj0sr/QS5V8ApVNfBPgn0EqC8wCWUiqthxYm1XGttNvxVSUiOcsU7IGHMgAeJ2OuzmgsnfKhweCzYAdwJ7BxZgTlm+4yDJ8cN16fOwDoLLRmo+LewuFVZSiQlYucLJzOpDlgd9jfloSTJPFeLcOJQAptftmAZPK4Dz1Jq2hMG5erDpo80N1rxXhfb4w46umGLc4KXU8pcnwodDR1JKDmpXvDJaULl68z2d5EEW2w+0NFwhuikORJceE0065h37JMHSz6sJEgwR1ze/2A/b0ppRd5Z/fMgm46SlZA+o4Ylg3KiVaV9/b5C1IK7ubAQqFZ0F3LPIubEMuDBuiZzPhYLccnDyhboNDyN8TxBKDK8kw1+fHCMbd3X869NSs17k9rE4Qyk9mojsIV8M0XK5ogQ3Day8lTROfXJyhNSmsf4Qek687SHNLxlX1bnkenvNa31k32LhuoqGssIEdIjaP4VMfOlf4ELejCS41yAuO86SqidN+/BYhmCXTcRpXOY6CnDyb4T2Ae2yhjU0elsaPiuGJawt4XdRuCBeprsh76NXfYpl4/l6o9U+tM19sfyPP7ElK8yefLIu0Y5RGGFcwsfqFiP/mPero8hSSF0vdifrL/Ph2Td1KVHba4iC/57w2O7LpdnDnkG/Wbt0rXuYk1E8q8lMiwBVky3gfRTOb02SFH5RQZmFkj366sB3fuW/F7rBn07U6Bt3BcSWXGgiyDI+anYBXMA/TW1QoanaKHvKIb8iBOIjudhEOUYAwOZUkJ5H/q8ewKcY0/WR448Tt/m6EV/IFYOT67Z94YKd2dGH1EiOXnxwJ3rMAWxNiQOxEtQvN28TmKpUp19tEP83c5l+CAHPdiKperbKBmVfMI9FUUEjR0hse70hY1sqtvyrqtH17ukE1UYFXZTaTTJNTKr1o8+U9UPOov8T+uH/350c12x8aWVhNAAXrqGRdBcud4furiFJWCWBgCAz9HLk7Dobm8G1FWdskNnJP/sg0LFJCoN/ptM/0Qrchomf5qmDxl7tF8PVTcRS5AuN1UKdSuY5ZBhqx1ePC5MPYOpjpg4Ydb1o39V2nerHOAGyJKgfkPhA2tkxta1hkirAIy+8SyL58OBBVxbAFGBG2
+        type : 2
+       code_elements :
+        internal_properties : BgAAAAYAAAD2Rkbx+OjeaV6cz3eLdX7jB0Jgs6WDDXWz15HdSBZm9oeZQ2BKnjRAOa1wH4EQ9d5x
+        type_code : 3
+        p_codes :
+         -
+           type : 276
+           enabled : false
+         -
+           type : 277
+           enabled : false
+         -
+           type : 278
+           enabled : false
+     -
+       name : COL_check
+       identifier : 0x2fae19711ab4b28d
+       internal_properties : BgAAAAYAAACPmqDziiuAM43TBmnarwKK5qXev1WHPF6GU7Ij6nfrkYVDEcKoCmI8xt1rR72e/ol+s3/iDJRVdlGaqcK53r6/Xf1jlAcPTtKU9qiVDFEdyRyucHlOZGGQPhsJcX15u4mvoZNKSlNA4scX1mVQRx5+nUrJpjlmL01g4XYeatE1HKv9r2pTfzP+I8Xjp79cdPSrinDaCpnYbrSOwQqIhAEpShOkL0x3lsjbxvuAA+i/sxwO6ptQqPbNa1GDOA==
+       type : 5
+       content :
+        internal_properties : BgAAAAYAAAADRehN2vrZKcAWw4Q3WFbtvvn86Sq+RmhBynvX0MOycT5760Iqa7sl79fuZUMsjNwVrSwI26/kno4gSSh7y3n95H7x4QzvT+0/O3olNzFNn5OpCW0sBL7Y6pEUl28l8zOQKN8mNPQu1KPW+pXVjkFccIQU34LpiXMgkolOcOLXtXkGAn25PPav0yBwAtolM3jVCYOpexJTkEfHfTeBS0Zlu4GVVj9ZVpCJO7c6GaRcXdl+DpnurngZ/E8EugZwSV013WYutnMUn08h2EGldxV5xIgBR4J4eOykOzXCFRoMjHXriisUTrzTYlIS+nrLVei2qLmtILbt3zjAqXx0X7YvA8dznMI1EBNhXozL7zshEhvLGtYv0PJzWWhfroQdaSbptZlGotaFo1FbIaQXWAES6gVdWOgXRXLvvyMUHpQ+x3zgGyZvCqf3h34n5+DbZyxeEgm9f67sayskNjETthcdG73tuz+R51Vg4qCg9RHLUsvEz0umW27a0A7I3cjrKwA5M5zCXpHyATSQLTbFrPzd/+1GNo1FMNXWMfqjVBM8OHqzRHm2tkVVxOsQ91KvDgwivLmF1ZsfjEIbsPqxqBtlEqD4lHPMDA/+1GPL4IFfqdSFJigeKMPMuM6FQRLb53am1kDjW2Z46zgEdBBAkZ+sJ11bVxNVDTrYR7ApJbRPV1PbcjUiGoU/gPggEvbnNVz9CQnPY6vBUnQhxvo7XQ0vkqFCd9RZYp6FUYTDjEeeTIbw/VbiBiMgpf08aFvA2ypI1lNugg7MqdGbJhcldQilVcd0DPiTs+cY32eciy1+ULjJ4R4XqlR1BLBE9+LhG/mOCN3kACb+obckdxAC96gNzDMA/+ga5jepVxe0Ymjgb9Nlt1Il7Ob0iZvmV3NUa2YgapkH4dn5EiXjl6vdcghPWfQCQsxcL+3bTIni0xUHosg99VyJqCkuhO4yNuUtHyVnX9b2aQVAospBL31VPC7lURUw+PvtkCqRX+MfIvICsdFm4I/m3fzqL3cc4aVU33qBFGNQIPauYGV3rk2tZFU8VXjnZTtNlg==
+        options :
+         -
+           internal_properties : BgAAAAYAAADg4I1X43Zi++shMWKzFwQrngyYnL64e34yiL1bp2C5E3EuZrbioBbzuFK/QrNknaarzXOl3MCH1quO5p4UXYUna4iJ5RtV/UczQ/oLnQfA87Wx
+        type : 5
+       code_elements :
+        internal_properties : BgAAAAYAAAD2Rkbx+OjeaV6cz3eLdX7jB0Jgs6WDDXWz15HdSBZm9oeZQ2BKnjRAOa1wH4EQ9d5x
+        type_code : 5
+        p_codes : []
+    type : 9
+    controls : []
+    code_elements :
+     type_code : 9
+     p_codes :
+      -
+        type : 35
+        enabled : false
+      -
+        type : 22
+        enabled : false
+      -
+        type : 24
+        enabled : false
+      -
+        type : 23
+        enabled : false
+      -
+        type : 25
+        enabled : false
+      -
+        type : 230
+        enabled : false
+      -
+        type : 241
+        enabled : false
+      -
+        type : 263
+        enabled : false
+      -
+        type : 262
+        enabled : false
+      -
+        type : 222
+        enabled : false
+      -
+        type : 223
+        enabled : false
+      -
+        type : 224
+        enabled : false
+  -
+    name : COMBO_Databases
+    identifier : 0x2fae19711ab9b28d
+    internal_properties : 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
+    dropdown :
+     internal_properties : BgAAAAYAAADkvnNPirz12uodXIvWLYfKTI7Vu/mvNfdpU0RyhtRVtoCxYWnwWl6z4m5H+J+qRv5vW5LaE4y9NYBmNqahuN9auxJR/sC+dmguFdcSeREDY2AYT5jhqieR24vjTxfDIbb8LwFOG2U46Z+m9I3GMsL1AWxy/tbIc8FGNtRKHGASQyY19G4uLrvhTRiVSN0h39AxiMJbLXtTlkyxvM/3lZOKFRJ54WnJzdpUjrmpzAeYJWYDXA8KIdFsoNviE0gX83X8spXlXRR8xAm2dzjugCbveXYgM8gICGJc0UmTrxZlH6CN5CzmFADegArE89aWsBU9DMI3PpDWxc4oF5t4QIuqalMQ1i1xq2xvbT5EMHQ5+I3+d14jTvD3MBB9JpEL7nnUsdOVU1qzP55AIFvA5kYM7zyraQ5sTBi0yFmH0p49iKrzBQGPiVAxyxttxAAmtotgjrkA/K5iFTqhin7sj0geIX3wkrg6UgCP2OTQHlM/+p0vZIO35wAING9lCuMObv4ONimMUv84frUJWY/+Kr0EVD023rm+8biFzPK4bglpUp4jbOUo/qbYuftq9tMjgEXujJ/FnxzMCDJKamKG6VnV4B4V1DpraT55XwdwGdYaHyTGdlOr2u5KHgYMXNdSk7tjZoz5Bqq8CE3JSqyM7E+vh1wh7UAnZKRr8ye1Mul4OS5qbFRnvWv2HvXTmIF+hunsHyYPH21Jrj6GNcOlZZ5bhXc1+os9gQgrP0eSDkv7POQlNaNaJgb7Nl7e56j0ROtJKNM+84EY+gNbYGZPuzfJorFfV2SNEuP9JSY3LEqOjq3pii2SuSxnKbdd45S60fJCKSiDxtfzTXUWUHcxMwU3MeBZ4D0cW8IBjfv91N+t72wkZzjKUF8fUQj2NuNIDqW4tlv/di5WX07jVB4SvujQBNrQk0a6INP15ilhyaZrCS0uYVCRovoQWK0DlXEYjjFQt6X8NAqTmZDL7CLBgJO4GuZqNL34sHAiho/nGGUGYIH+4YwJuCJqvxu45uL34a9HZmu9PioUsdd0l5gFuLknBPylT3LFnPonFO6qepDGWYlJS+qkch8ggSxjQwvrcJxayTCqnZSctPCtlXu5m/WMJMjOvI8iINjCWqRDrzPEhMS/DWOG7BcXvIZV3lqV8IOATAQ25XBVGqYs/itzOIbNQpGewg528qfhhix8G++qUM/pRXwEWN8=
+     type : 7
+    type : 14
+    code_elements :
+     type_code : 23
+     p_codes :
+      -
+        type : 35
+        enabled : false
+      -
+        code : |1+
+         
+         RefreshDataList()
+        type : 33
+      -
+        type : 17
+        enabled : false
+  -
+    name : BTN_Import
+    identifier : 0x2fae19711abbb28d
+    internal_properties : BgAAAAYAAACmlwfCO9k8OUyY2EMmb5moto3qZI5+9HOMzWa8N8NhAPXyRQwynn6qCeyZ7DBTcpUkPt3JBKv+ZL8YxaZWTbKTDo4zqifmRmgekwRYNCTvYfXfVYP9aoZTfrawQD8o2pe2lJ7Opzj/4eN92hUbtbO0ySGW765f79rte4Fh3lfql802Jstk8hElw7qKRgAX6nYkkzczzRqtwAwgmp8Q7oLy1nJp+UQLoGIpiR1fmDNbIgtUGpZpQxmEmgv6SJzTOQTwtKVCbZ1c7pQnZhtgZzSB9+VTtbQCLT+JODXZAVWyKZ0ikEH9CEFMMYNywObbm4JKpi8wKw4RhgOaGAJm1FZVV2oOo4zAyrNjB+MisS7/kSLbwOe0llC5EtBASBZb9X7FgAmruRlfLG3xay+uvt993RCPnPg5giASjIAXymVIxtwkvo7PgPidAsTT5WfCjHDXdbRDJ+NT6HPbYnRGG0FkzmDCt88AEpBWrN8+icklS/jEuCgQDg6v3EjF7NAOMQOjviRlmymLHWxaztsSeRZLQryxPwLv7FBJaP47bNaalQ+I0QE2dlasSC1isMgA1kTMid2D/jMIx0KMF6ZOIPnyiaNeifF1sDjhtvf8icV6oRpXiRjG4Z2uTyyswG7EKu3vuZ2sFix1c/sSWNH/TwkI6TNtE0PAWC3KbUxUGc9T/i2opDTAYNf6dDF6/Ddjz+9EhA4EALp3pHoyypui86u7bEtS6nYkojT3nnDI+HItIC1C2czZbLP2pWt2nyteK7yPFj10P8aEg5XU8d2QRrjuP6PFYKNbls0lg+xzHa5UlAno9p5484+G4RCt397w00FVkLfY7bQGUeeOXFfSRtVh/lF8JIIA9pcqg93TLbKV5s1mlSXrVHyz/aGQK/uvP0TdUXnze96Kpz3vbkd+aFFen9bYNsGTqlViPnrJyFp8QgIr3kITotCfwutdJ5qzK9JVxWfS6JbA3SA2nNO/h4nuzKeTWasGNWj8jQqypEn6SCVUMT36yH3lKT6mCMoGGZVeadfovk0cz4hqc6wRvrsxG0ibNC3mXG8E7SkOnREhyRKma3g0cU8BmMQ4strPtNWGkQDx/etMH13o4HUuMCyvA+kGofA83OVB6LJ4D6U+QWU6d5Z2DIGq4GrXcudx8K9M3pw33dBHEuUf0hhfu6yWZvQmdBWYT49tJUrrCF1wgGUtRDMm0ApBUoxRiOcuTzbXPHgdlY01S3IDao1VTnvoNcpDZLcyAKSzdCe+8gKrMdnffThN75Oi
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        internal_properties : BgAAAAYAAAAwpkIZS5qppFXe0wyahzxLBsdaM+3DO9CeWUDjEz0Ir/j2Mx0r0h5shRKPkRWtVrfQUJ4k/bwNTdXZ31ERMD8vYoblxpEBhTZPrlWRi86yQjZFLJwg/VOGTWOgttxnqR77FmMrG+QHI24Zkc43aAfGWMGmWbKIug9oWj2cNxf+QDtdirc8RyWvro/u2/tgPbptEjwBR2rYViAyHEAIKMe4u2lmXHIMsdCgRNA3NgZYnWcW+vKx6PaP9DXz+ch0wH7j+XdbPoojhBM0nL1oHzetsoYjJCHk6sH6yajU3Dz6oA0O+PQJFscvONBgIBtWSWy38Mu6/0HZ/7DRmo/+CB3XbndjMsj8/5DnqZe00eR/7qr5tjQ0RouR2t7EZ+O4N99eaouHB3hYPlvtloH9H5S9Hrgj8X8kc5nR2B23yuWQCU2SPT2A8u+X5Wufsf0M721nTMs8ZANBu7W5uiAQEHu628ZzxdoCmnSTek4mT0x6UaQgJHRaVMhqEA==
+        code : |1-
+         
+         local
+         	nOldVersionId is int on 8 bytes
+         	zz is int
+         	stDataFileTranslation is structure
+         		nTemplatePageID is int
+         		nLanguageID is int
+         		sDescription is int
+         	end
+         	stDataItemsTranslation is structure
+         		nDataItemsID is int
+         		nTemplatePageID is int
+         		nLanguageID is int
+         		sCaption is string
+         		sComboBoxContent is string
+         	end
+         	stDataItemsTypeDetails is structure
+         		nTemplateID is int
+         		sEditMask is string
+         		bGenerate is boolean
+         		bVisible is boolean
+         		nSortIndex is int
+         		nItemState is int
+         		x is int
+         		y is int
+         	end
+         	stDataItems is structure
+         		sItemName is string
+         		arrDataItemsTypeDetails is dynamic array of 0 stDataItemsTypeDetails
+         		arrDataItemsTranslation is dynamic array of 0 stDataItemsTranslation
+         	end
+         	stDataFile is structure
+         		sTableName is string
+         		sPrimaryKey is string
+         		nSort is int
+         		bGenerate is boolean
+         		bGenerateMasterDetail is boolean
+         		nDetail is int
+         		sDetailKey is string
+         		sSearchKeys is string
+         		arrDataFileTranslation is dynamic array of 0 stDataFileTranslation
+         		arrDataItems is dynamic array of 0 stdataitems
+         	end
+         	arrDataFile is dynamic array of 0 stdatafile
+         	f is int
+         	i is int
+         	t is int
+         	r is int
+         	
+         HDeactivateFilter(Project)
+         HReadSeek(Project,ProjectID,gnProjectID)
+         IF NOT HFound(Project) THEN
+         	Error("Projekt nicht gefunden!")
+         	return
+         END
+         
+         //ProjectID+VersionNo conversion
+         HReadSeek(Version,VersionKeyNo,[Project.ProjectID,Project.LastVersionNo],hIdentical)
+         
+         //Store all user settings in memory
+         hfilter(DataFile, VersionID, Version.VersionID, Version.VersionID)
+         HReadFirst(DataFile,VersionID)
+         while not hout(DataFile)
+         	f=ArrayAddLine(arrDataFile)
+         	arrDataFile[f].sTableName=DataFile.FileName
+         	arrDataFile[f].sPrimaryKey=DataFile.KeyName
+         	arrDataFile[f].bGenerate=DataFile.DataFileGenerate
+         	arrDataFile[f].bGenerateMasterDetail=DataFile.GenerateMasterDetail
+         	arrDataFile[f].nDetail=DataFile.DetailFileID
+         	arrDataFile[f].sDetailKey=DataFile.DetailKeyName
+         	arrDataFile[f].nSort=DataFile.DataFileSort
+         	arrDataFile[f].sSearchKeys=DataFile.AdditionalSearchFields
+         	
+         	hfilter(DataFileTranslation,DataFileID,DataFile.DetailFileID,DataFile.DetailFileID)
+         	HReadFirst(DataFileTranslation,DataFileID)
+         	while not hout(DataFileTranslation)
+         		i=ArrayAddLine(arrDataFile[f].arrDataFileTranslation)
+         		arrDataFile[f].arrDataFileTranslation[i].nTemplatePageID=DataFileTranslation.TemplatePageID
+         		arrDataFile[f].arrDataFileTranslation[i].nLanguageID=DataFileTranslation.LanguageID
+         		arrDataFile[f].arrDataFileTranslation[i].sDescription=DataFileTranslation.Description
+         		hreadnext(DataFileTranslation,DataFileID)
+         	END
+         	
+         	//DataFileID+DataItemsID
+         	hfilter(DataItems,DataItemsKey,[DataFile.DataFileID,hMinVal],[DataFile.DataFileID,hMaxVal])
+         	HReadFirst(DataItems,DataItemsKey)
+         	while not hout(DataItems)
+         		i=ArrayAddLine(arrDataFile[f].arrDataItems)
+         		arrDataFile[f].arrDataItems[i].sItemName=DataItems.ItemName
+         
+         		hfilter(DataItemsTypeDetails,DataItemsID,DataItems.DataItemsID,DataItems.DataItemsID)
+         		HReadFirst(DataItemsTypeDetails,DataItemsID)
+         		while not hout(DataItemsTypeDetails)
+         
+         			t = ArrayAddLine(arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails)
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nTemplateID	= DataItemsTypeDetails.TemplatePageID
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].bGenerate		= DataItemsTypeDetails.ItemGenerate
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].bVisible		= DataItemsTypeDetails.ItemVisible
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].sEditMask		= DataItemsTypeDetails.EditMask
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nSortIndex	= DataItemsTypeDetails.SortIndex
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].X				= DataItemsTypeDetails.X
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].Y				= DataItemsTypeDetails.Y
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nItemState	= DataItemsTypeDetails.ItemState
+         
+         			hreadnext(DataItemsTypeDetails,DataItemsID)
+         		END
+         		HReadNext(DataItems,DataItemsKey)
+         		
+         		//DataItemsID+TemplatePageID+LanguageID
+         		hfilter(DataItemsTranslation,DataItemsTranslationKey,[DataItems.DataItemsID,hMinVal,hMinVal],[DataItems.DataItemsID,hMaxVal,hMaxVal])
+         		HReadFirst(DataItemsTranslation,DataItemsTranslationKey)
+         		while not hout(DataItemsTranslation)
+         			r = arrayAddLine(arrDataFile[f].arrDataItems[i].arrDataItemsTranslation)
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[r].nDataItemsID		= DataItemsTranslation.DataItemsID
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[r].nTemplatePageID	= DataItemsTranslation.TemplatePageID
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[r].nLanguageID		= DataItemsTranslation.LanguageID
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[r].sCaption			= DataItemsTranslation.Caption
+         			arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[r].sComboBoxContent	= DataItemsTranslation.ComboBoxContent
+         			hreadnext(DataItemsTranslation,DataItemsTranslationKey)
+         		end		
+         	END
+         	hreadnext(DataFile,VersionID)
+         END
+         
+         //Release filter
+         HDeactivateFilter(DataFile)
+         HDeactivateFilter(DataItems)
+         HDeactivateFilter(DataItemsTypeDetails)
+         HDeactivateFilter(DataFileTranslation)
+         
+         IF Project.LastVersionNo>0 THEN
+         	HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+         	IF NOT HFound(Version) THEN
+         		Error("Datenbank Version " + Project.LastVersionNo+" nicht gefunden!")
+         		return
+         	ELSE
+         		nOldVersionId=Version.VersionID
+         	END
+         END
+         
+         Project.LastVersionNo++
+         HModify(Project)
+         
+         HReadSeek(Project,ProjectID,gnProjectID)
+         
+         Version.Description="** Automatischer Import **"
+         Version.GenerateDateTime=DateSys()+TimeSys()
+         Version.ProjectID=Project.ProjectID
+         Version.Title="Version: "+Project.LastVersionNo+" Import am "+DateToString(DateSys(),"DD.MM.YYYY")
+         Version.VersionNo=Project.LastVersionNo
+         HAdd(Version)
+         
+         HReadSeek(Version,VersionKeyNo,HBuildKeyValue(Version,VersionKeyNo,Project.ProjectID,Project.LastVersionNo),hIdentical)
+         IF NOT HFound(Version) THEN
+         	Error("Datenbank Version " + Project.LastVersionNo+" nicht gefunden!")
+         	return
+         END
+         
+         //Delete all Data with new version (for safty)
+         HFilter(DataFile,DataFileSortKey,HBuildKeyValue(DataFile,DataFileSortKey,Version.VersionID,hMinVal),HBuildKeyValue(DataFile,DataFileSortKey,Version.VersionID,hMaxVal))
+         HReadFirst(DataFile,DataFileSortKey)
+         WHILE NOT HOut(DataFile)
+         	
+         	//Delete all information in all datafiles about the project
+         	HFilter(DataKeys,DataFileID,DataFile.DataFileID,DataFile.DataFileID)
+         	HReadFirst(DataKeys,DataFileID)
+         	WHILE NOT HOut(DataKeys)
+         		HDelete(DataKeys)
+         		HReadNext(DataKeys,DataFileID)
+         	END
+         	HDeactivateFilter(DataKeys)
+         	
+         	HFilter(DataFileTranslation,DataFileID,DataFile.DataFileID,DataFile.DataFileID)
+         	HReadFirst(DataFileTranslation,DataFileID)
+         	WHILE NOT HOut(DataFileTranslation)
+         		HDelete(DataFileTranslation)
+         		HReadNext(DataFileTranslation,DataFileID)
+         	END
+         	HDeactivateFilter(DataFileTranslation)
+         	
+         	HFilter(DataItems,DataFileID,DataFile.DataFileID,DataFile.DataFileID)
+         	HReadFirst(DataItems,DataFileID)
+         	WHILE NOT HOut(DataItems)
+         		
+         		HFilter(ForeignKey,DataItemsID,DataItems.DataItemsID,DataItems.DataItemsID)
+         		HReadFirst(ForeignKey,DataItemsID)
+         		WHILE NOT HOut(ForeignKey)
+         			HDelete(ForeignKey)
+         			HReadNext(ForeignKey,DataItemsID)
+         		END
+         		HDeactivateFilter(ForeignKey)
+         		
+         		HFilter(DataItemsTypeDetails,DataItemsID,DataItems.DataItemsID,DataItems.DataItemsID)
+         		HReadFirst(DataItemsTypeDetails,DataItemsID)
+         		WHILE NOT HOut(DataItemsTypeDetails)
+         			HReadNext(DataItemsTypeDetails,DataItemsID)
+         		END
+         		HDeactivateFilter(DataItemsTypeDetails)
+         		
+         		HFilter(DataItemsTranslation,DataItemsID,DataFile.DataFileID,DataFile.DataFileID)
+         		HReadFirst(DataItemsTranslation,DataItemsID)
+         		WHILE NOT HOut(DataItemsTranslation)
+         			HDelete(DataItemsTranslation)
+         			HReadNext(DataItemsTranslation,DataItemsID)
+         		END
+         		HDeactivateFilter(DataItemsTranslation)
+         		
+         		HDelete(DataItems)
+         		HReadNext(DataItems,DataFileID)
+         	END
+         	HDeactivateFilter(DataItems)
+         	
+         	HDelete(DataFile)
+         	
+         	HReadNext(DataFile,DataFileSortKey)
+         END
+         HDeactivateFilter(DataFile)
+         
+         for i=1 to TableCount(TABLE_Tables)
+         	if TABLE_Tables[i].COL_check then
+         		if not ImportTable(version.VersionID, Combo_DBConnection,COMBO_Databases[ListSelect(COMBO_Databases)],TABLE_Tables[i].COL_TableName,i, Project.FileNameShortLength) then
+         			return
+         		END
+         		zz++
+         	END
+         END
+         
+         FOR i=1 to TableCount(TABLE_Tables)
+         	IF TABLE_Tables[i].COL_check THEN
+         		IF NOT ImportForeignKey(Version.VersionID, Combo_DBConnection,COMBO_Databases[ListSelect(COMBO_Databases)],TABLE_Tables[i].COL_TableName) THEN
+         			RETURN
+         		END
+         	END
+         END
+         
+         //ProjectID+VersionNo conversion
+         HReadSeek(Version,VersionKeyNo,[Project.ProjectID,Project.LastVersionNo],hIdentical)
+         
+         //Restore all user settings...
+         HFilter(DataFile, VersionID, Version.VersionID, Version.VersionID)
+         HReadFirst(DataFile,VersionID)
+         WHILE NOT HOut(DataFile)
+         
+         	f = ArraySeek(arrDataFile,asLinear,"sTableName",DataFile.FileName)
+         	if f<>-1 then
+         	
+         		if arrDataFile[f].sPrimaryKey<>"" then
+         			DataFile.KeyName=arrDataFile[f].sPrimaryKey
+         		end
+         		DataFile.DataFileSort=arrDataFile[f].nSort
+         		DataFile.DataFileGenerate=arrDataFile[f].bGenerate
+         		DataFile.GenerateMasterDetail=arrDataFile[f].bGenerateMasterDetail
+         		DataFile.DetailFileID=arrDataFile[f].nDetail
+         		DataFile.DetailKeyName=arrDataFile[f].sDetailKey
+         		DataFile.AdditionalSearchFields=arrDataFile[f].sSearchKeys
+         		HModify(DataFile)
+         		
+         		for i=1 to Dimension(arrDataFile[f].arrDataFileTranslation)
+         			//DataFileID+TemplatePageID+LanguageID
+         			HReadSeek(DataFileTranslation,DataFileTranslationKey,[DataFile.DataFileID,arrDataFile[f].arrDataFileTranslation[i].nTemplatePageID,arrDataFile[f].arrDataFileTranslation[i].nLanguageID],hIdentical)
+         			if HFound(DataFileTranslation) THEN
+         				DataFileTranslation.Description=arrDataFile[f].arrDataFileTranslation[i].sDescription
+         				HModify(DataFileTranslation)
+         			END
+         		END
+         		
+         		for i=1 to Dimension(arrDataFile[f].arrDataItems)
+         			
+         			//DataFileID+ItemName, we seek for the name, if it not exist, so we don't need to copy
+         			hreadseek(DataItems,DataItemsNameKey,[DataFile.DataFileID,arrDataFile[f].arrDataItems[i].sItemName],hIdentical)
+         			
+         			if hfound(DataItems) THEN
+         				//In items are no user settings...
+         				
+         				//But in templates type details
+         				FOR t=1 TO Dimension(arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails)
+         					//TemplatePageID, DataItemsID, we are on the right file, so we can take DataItemsID
+         					HReadSeek(DataItemsTypeDetails,DataItemsTypeDetailTemplateKey,[arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nTemplateID,DataItems.DataItemsID],hIdentical)
+         					if hfound(DataItemsTypeDetails) THEN
+         						DataItemsTypeDetails.EditMask=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].sEditMask	
+         						DataItemsTypeDetails.ItemGenerate=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].bGenerate	
+         						DataItemsTypeDetails.ItemVisible=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].bVisible	
+         						DataItemsTypeDetails.SortIndex=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nSortIndex 
+         						DataItemsTypeDetails.ItemState=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].nItemState 
+         						DataItemsTypeDetails.x=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].x
+         						DataItemsTypeDetails.y=arrDataFile[f].arrDataItems[i].arrDataItemsTypeDetails[t].y
+         						HModify(DataItemsTypeDetails)
+         					END
+         				END
+         				
+         				FOR t=1 TO Dimension(arrDataFile[f].arrDataItems[i].arrDataItemsTranslation)
+         					//DataItemsID+TemplatePageID+LanguageID
+         					HReadSeek(DataFileTranslation,DataFileTranslationKey,[DataItems.DataItemsID,arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].nTemplatePageID,arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].nLanguageID],hIdentical)
+         					if hfound(DataFileTranslation) then
+         						DataItemsTranslation.DataItemsID = arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].nDataItemsID	
+         						DataItemsTranslation.TemplatePageID = arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].nTemplatePageID
+         						DataItemsTranslation.LanguageID = arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].nLanguageID	
+         						DataItemsTranslation.Caption = arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].sCaption		
+         						DataItemsTranslation.ComboBoxContent = arrDataFile[f].arrDataItems[i].arrDataItemsTranslation[t].sComboBoxContent
+         						HModify(DataFileTranslation)
+         					END
+         				END
+         				
+         			END
+         		END
+         		
+         	end
+         	HReadNext(DataFile,VersionID)
+         END
+         HDeactivateFilter(DataFile)
+         
+         Info("Fertig! Anzahl: "+zz)
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : Combo_DBConnection
+    identifier : 0x2fae19cc16c51610
+    internal_properties : BgAAAAYAAADe8fYfL5WeR3TtpHCVauW2oX65XJkHe8oiJ5TmokOr+Zm8h6XNRuYguQxqrAFLPkpd8mZWJNbSwrZ6Qv32uKpquhyquNEmL5q4AySVxC2jnq8zvkljhwUbWzs2F85FEHZI7q7h+9mXHD5tx8F8UxfWvDKZLb5J8hEjeMd6EY/k2mznANO2i8JVPqjb6J411LwOki/jAJKn8njEN+5hwA6SekHAeU+CTxTd3tWIew1EDZ55iOhc49IVHepR4OU3l6/mWC+fiPnfaACjAXCGmdxvqUnsFEfMxWrB/6YOwSMrIqCprwuuqGz+Grqio58UGYdurv8jDFdcV6Q/DlP3SPgaGJ+5yGJAgk3wVpEW9ul9mREvNu8DKxkMf2fOMbaImekYzMr0gCMZ8vHRryRSLkyUCmM3piUFVuEx8/DXxg4fVOmTxhu54zAp5zYnfG4w0mqCfyXJdCgL+IMwPkse+V77nlxGgxbqVFruJjzF8xH3z2YVgApfKI41InwYjE/rxngTJGzefHRQhHOaGRc34r0xxqxalWHmTb2OxgwEXj5wYAuCSsrup7LaH0ooQpbJZCqU1tFPgnXt6dIpRaypfUdIi5IMkkJawYGhtOWE87luKjRlkAwpjghibQCF2hm+5JxzCh5i46yoNu1gFJu/8P2aqJrCMQm9lpKhfjv1+e+rjBmsC+B8lV6Y2nfBxxL2fYrQF/t2PcpK07NLMA/7fYvmZdtFNKU34uKriV4rE5+vn19W1xCILY2WtVoMN2+m1Zz0iZXp2uWF6mJfdaiqZ648nCSX5MPtJ2Sa4CPJmjis7HGHmKd+CMBksHhahFIfKV6YMINIU776K7HWtjAoq30IRInDrBqwpzbeToy09MTkm2wdpf9aySHFBknxA0auZue5JI2VdZOnS4/r3gewQzKD9QTG/ZC/k+y6xBB9Mm4VW5CXApEAEy9zRmx+OtfvW7CSlhjAzL3mqEVT9cFiWoDE3UGhMNWeSXuZytiwLX2pc+FQDthH50ZAngOlhJqdEsFirKjIQ5C7GvBmKsU3zVqX5WGtsAKEgM4mcsJkxw8sK59yqnNkxsHDexS55R5lxi3PD5ZIRLefYFDE/rm6xhocPwh7ItDjfvKkaOiQpiqOW72hjtkWGN+G6KZGgY6+N95ibnwcvbbBbGDeD7y0GMeij//eayiAadGWcaxDjiw779gwEM9t3uQqb0UdpBF5jnrIdGuGagiMjiSgbaoKocoE4EMtqr7IJXF6Yq4TytRqXz7hkngyjz8rDS3hkcgUnzGPPDTZU9oHpsIQjIJtJ158M588IDG6/0zq5gHPwwetTF8U/I+rL/x88r+t54kRW4BjGQcN7DAEPyx887iWXDs3lappY60DGHvhWX6bm3JXQ8e3NXXDfUZL0hRG47tPF0PO8tXg7uYJDFDm7A1WnicsjfxSSSihfbiVxXiSWSHWMSCYEyK1PB38LhsmFQarrE70uoxG6ymkDHJ1zd9xRl49wbcLtmGZQ51mP1GsVuVONybDSIofARGrIYk8H0an78J0+LU8IVA0J2Xk9zDKivsrRPIJRXR+6nJmnmH+7v3CmlYbzmg3pcmyKCtx7pF3x4HUupwbIkcqVS6p+Gvfi/yDctOaCYaQWDGiRLrJvJHoQVTGtbXg7TwoMj2ub0lZeBosnj8wmpz65fkDOZUlgs4edEqUys/lVOUr5buwtQNPFQcW/ZfVPYvGPpzxDrQ/d6/Hl5y5iKUVmHT1P4b/niG3AKL1XiKlejnbrqrcz4SyVlqps1R6EtxG+XsbY1UoeUhmBUwZwdBJ97M//A47BxJE0RVjWl+0P0i8VwYkw1dEOxieJOmFZnFQCQFhhmwVbBd64kmcRc+XCSEkty5P/ovpRq4fyxFKYYG97n4J3gm96eWiS9XqmOl5AYcGg3Qkrr0NbWMu2wcip+xv5W8qemx7Z2rv/c/iRzLOjhLKMK/R22K0scbZpLDzRnpoZ12wd+dT5Z7Wb3BEig6KjJMa5zugiU3lPH2vhln3sNoXN6rGaPCB69E8YAOuy5cQosiyNaocY/2dM3tfgNMlmMEJECB/Rl64b0D5eW37yrUDeVtW7l3tdxBPjdaF62F7k1Zq/7aqPlMZAvayFUrNYnvsE38pbt1UEGotQLQmm8DDmC/tEuuvH8HCr8ymrEiIQ3OoMOO60ILyDG12KDE81/Cj4NbnB2M7CeQERI7bXib5tBKNha5S77Z4qVmIFcK1agMVpOlDNiu1zidyTmX6d/XV1gYysSkD3fk0cMAhQblOR2YAseix+zxzpGzUCO7yrJIUwOXhqx8k83lc9NO5zA8hJfO6GylOHvO4uRMdqX20hIZizNu2IRhFnEkrcnxWSuEHrMV3hyr1G4OLF988zHeAnQlvFmfupZbEjWCML1cOHTJzbMS/ZVt6ed3MMQRNZUMid/HMpTfzxNYCuswFgw21I2VWwb5woFejz6SSXROcjDEbDPVqp975Wr6b7r0Vu1eXYZMVw2ZnsTCmO4ghPJcljHgfTvXcsm7JcLhmYvWsW9y+JQShrQIm/Dl4TmCkpt3hMD/6loRx1BElNz+ViBsf91hXJ3wbhAxYB7MX1wIuNVPn9T3p9wRxQQa7IMor9nC5ZdCaBH53UX0GZNZYreJEy6poheTc5xEqlwYRx/BrBFa79znWyMm23XfV3n9NVhPDqNSNT37EPtBHKl/OXAqCjLhjnKBq0E5ibXCID3r6MibyskwmTaiY6yMG4kXyoQB9b79QK3BjlRgvL/eaUpfw3XoPnfhs7mU8qegHNkJNMhPw3WdiSZ3JzmFsy22Q4OnmM8ta
+    dropdown :
+     internal_properties : BgAAAAYAAAB63NvAJvIekIQsLMX19X6koHRyWgGB2C2C15jnj9Q9cozQmHVp48dXKvecjDsKogdOusw1ekklh0Y8CvWUrO30QK4fEaGAUk41cIaK85K0m1ikGhpxukhmyzTMHi1hoMY+IIGiR9VeNqxilgese/QYcH3x+wKouKiba+jRhXKemi4/PMyCoVp/ck+By/HgpY/JgkH81rqggowdhkpniIsd9UyyZeC/hLP7lE6Z3gslIuZgZK0Ub2iVpI4cqGE4OhV0Qx7H8LC51f7VuXYt6fKfYCCQy2b/etzUOqFu07k2zqt9tqVdZL6lKCO692DN0bSpo0NwokqWncgp/5EeT4dkEtowcNB4DLyGxmBWOcoH833Ug8qoyqugOyfBprM9ppTXlfXAGGYmTUyZmPRgeY5SiogIKi2TfPEJPnaViClyvRqTYAIA9owL30exo5stcNzQZfT2MRxA6YCkRQkCt2l3h+SxIKCZblVJkiqGWDLXBvD4qpKTHKNnOjmUA93tnBgrEd0BtUu3MQ6JvC0zQjOjdhY7wz4qeDWuisjFR3T2Ih9j6abBPvyvz5yqdo/LsW660UIoVMK3Nbu9qsnEuidbQd18pMYDicG60ZbS/Rpc28fsS6gGvSba8ILfilULtUcfQybS4fyplsi+P3svrbghVB+iWcLCVT5K0zXUYL4fsXI3fI5YDpjuHdu3Ty8UUYjc0zEohOvS6A2sQzjANeUCrnG5wZrZI0SM6bXK/JbEdYtnX3Wv6dsUNGfffTU9DGEpUYkhBgjv3i6UJoH4zRX4g3KIWWLLMgohxRUSxIbNTTfKNXa0kAibpnVYaylUAwiuLfgH2+UTMAgUKwJGAeMDIaz0BsKAv13ijoHPgJdG5dPhx46rjfAXza1+Qt9Zn9O57RVCkzu/G13NT4jSmVmPX3p42HcOnBlO+IMjRVQsyKzK7+DSZJDqyCuMaKn01fYUqk1WEvkICGuGzWGLohienWRJhXNuBjYr/ByJ04OB5grgFF/rcGYL/aCH7iJ4S6rs/MwLI+xKxOWsWjm4aZa0uzQJGnawm8PoQxeyVsm6IV1izpVoxxbK2X9Bl+K0OYtgFw2mzpbda9yIBeDG/5uhW+AZAJir28IgQG2jh/icTAsJ7oRmwv7g+my7TXO/x4Os2feDn7Sq73EShAYh/AZNjYdFIh2h366HDfcBXQPWCRN8IGqUWIICPWkiQ+3Wjn61v6zMlQb7TpAWv9sqKLfsPPaX28L+hJl0CYjbZGcehOTvk/EbV5nkU7gTHf0JkkKjh6NX0Ip9np7klA9hHgdpL0xfpd7Q+1SBvr5e2EpKAMhME0tJKVIjQI+WLQ==
+     type : 7
+    type : 14
+    code_elements :
+     type_code : 23
+     p_codes :
+      -
+        code : |1-
+         
+         RefreshDBList()
+        type : 33
+      -
+        type : 17
+        enabled : false
+  -
+    name : BTN_Vision_DBConnectionID
+    identifier : 0x2fae19cc16c7161f
+    internal_properties : BgAAAAYAAAC/wfuucMXHL5rfTQ8x6n8S1qJW8PArcdRfoWEBWloz82t/JUfWMP2e1hGqxd7hvX19AcG7sbipA766Xh0MeLdU8ZLSBeJ62XhQwwaiEgZyLpBZ+AZgIPXEb1L4RULGgth8nq9bs6dHudCkTlg1GxnczGAYFBPt0fewoSNTFy4Bvs8QgKhWIxvty15USz676tenVvHqKXLrR4UQ4P/fv2GmOr6b8OJZbI57q+pmiVcNurvDcKnhokyz39jR4yB0vSJZWFTGnG/8sK9BmEKR0jNo0LLDbpwFMpQfZSk54Psggv07um/1tpIvdxWrxRVwc1DqA7ljlGHCWIhGTeTTH/Ld7Aux+ME0F2sUh9FZjr/D2uKkNxwhe1/P1phAaMWiYQzX1Jd7aSzebZKAc+5NkV7zIgxFBVl08OckiC1N35GoP4m4s9JM81JVrf3a+UfI4JrG1KYrWPNXojrgSdlGxEUmxq/wPms/XOw7+yOuviU0Jn+VB7scYqAWtuyPlzn/YUcTT5BEppDrRd7rBBgZ96qK/zV5raJj3OGp7vfRu4fCRo94xGEVu0HvIOv+9sauT9isMWDqeyqfBum/6HxfZ8O4D6LcBdVFu7Aaa1ZFRmn9xbOtEwPuUaXMmJy8g0XwAD79+PkSzwAEu8gNMWKN6TsZAECvDWT4nPf362RWdRnvxN3Fm0gbSFrnuwpI3Wlt5OVBgP4/3OmuvGnWCx/nU245BgEtOAFCWVx8Sim1+BtDebLK9EGIwyxmHpUZaozz0TDNkIoI1UNURhZ5QVuebI1SSkHoZwGSPVGKVjiTeYJNiztxTMe3ovn/qQ0VuFjx8400y1EcdGN0Jf3vYY/11T9HrnmTfeV5z6S6R3YGlD13eT7pMLgNPgRciBPwacVbhDHRLCUcY62cjzZmeRpAtWAs+1y6zZEmk0uZimwS9kOu7bKCY+FlyVHhhbYTxsRwfCsxvd2s8BsUTJPCNXvLJvLSxP/eMfd4npafl++DLJ7efXGNkG9k4h2aDl4FxJGYEWHHkJRAlYhFYfejxvfBPHhv3eOe502BdtODAYcvzR3X1FATpK0VNunwLCMcXpxSnegdIOLl9VGVSfa1ob58AilqbQhl3abH6XyHhiaiMTeVBl1LHkrLCGEYKKb/HGzHM1D3LEfahNJIHQH+jtdJoJgvVylDtCpc/grCFiA3CGVYX0fGkgE9FFjwQaet8UfPKpQu+9IfSk2biJYziadUH8UD65uD0K3DRRALogbxsAYE/Rs6hKL4KlqraBAT0sKtNzW7ksV5yCQfVmhNLCDo6cARAxHigu0c5h18XRQdHTlTc0jq19mmzY2uk37HajnJtClt/ZKv4l0fiaxrCv9EkQF5Ye1skmA7
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1+
+         
+         // Open the Vision+ window
+         IF Open(WIN_Vision_DBConnection,(Combo_DBConnection)) THEN
+         	// Refresh the combo box
+         	ListDisplay(Combo_DBConnection,taCurrentFirst)
+         	// Select the correct value in the combo box
+         
+         	Combo_DBConnection=DBConnection.DBConnectionID
+         	
+         	RefreshDBList()
+         	RefreshDataList()
+         	
+         	// The window was modified
+         	MyWindow..Modified = True
+         END
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_CheckAllNone
+    identifier : 0x2fb8b4ec181bf4db
+    internal_properties : BgAAAAYAAABX7Nazd+AXR6uNy2qHNeMPXVNi7OQsVryUfTeUe7khYw0/8ui7loz3C4VR7H1SKHDKwpy6t2RS3PTrzSO+QQieYi89jHtMYBT6Ft7Jqj2pHcnBCN3r8aod/WGp4jRNh6ks/DbnSECwtxKvaTefTFVsSWqQUPcJ6thkm8h7UQZV4+R1H9pZCyI6xwMXPI97WTVIFTLPtwc6CC0q2c9RMOeM2k9zGOQ70Lq+ik87kxXlnv2KT7uSJigChsbjeki368waiFFiIeNFDYy9fzACQhr8OI09VylL5in0TAPPbLqUU8zPfTOhNIcsfSTJGWvi786rNl5y/gZu+fa0l3bqb8bSravEx9UjIxmeISCgo5lt9nLny/fmJVut0HDsUqgVUINQh1nPXWAkRcWZ4VlKEaXoptbqkthu++QP9Qhl03004GADKk4PGHdpOWVw2aMbhh+WDYkKk1bYkWuQDNfLVtidjjcZZ00EjmLoakm+dtwdii1seabGqn2VhTU1bhKKKdTP94sJPArg1HJ5iXo1c5kxztycl8mYbX1zbQE9Av34dD+l8FPAvof8jUJwEviG35rF97wqjC7UvKso3lUufhAhzGTzeqy6bT4rMkWpq2mzO0WTVrj9OFE7jbK6odCtftYfJ8jVV+GTn7mUgn6vr82yArlqtKmSPgFUaw2PnqGZLsj0R1vIaijQ1nPl29T5f+0VFkGzB4EaNEyz9zEmP1u0LD9IcS0r1r7/rqKWICBYNFGNxElPskIRjX+BZqYfHHWn6P9mXwW7dzDjPb0lBxzOrWa2HB/6Mc31Me+GS+K1JTijrpKYGa8ZRBKG+PjNcTfiJ4+japXGFM6qtgwfoGSAPbBZQGY7WwwVaWiABhpWKou4FcHjtoj763CtZ/O8cAqTw8CwHqM0VW8GYA9xcUmeTA6GXCZfJVw4iSpcUWAwKvugREKKw8x2wdDgTkIq3/uDodfUPSFGKMqyW/1AYkOdij0c072N0A/2x7ruuPr61yD+wHRzgZJPQWb1XhRXF/Ue8jOicBc37WbQKdLh45TFsBl5j6yqU5xzXuE10PqUnJ1CRMqdjFvFQLhwlKOKpCyBxNov4EGjTOHUa4kbjYDnrhXPRZI9qoUt+dvpJwsOtTNfXkCSBrx8PI4DlhXkWQpYoA8QId2oA81PlOlSmw7YTgVF93VpkWE/MIcpysB2jhAadhjr9AmT2pRLtI9dPuzZDQVKikBTHHnihQvdc5ItR+nfvXrOZBOA02lIQt6XyLTffKO9YREA7pnhnlVQrYSts/+rrMAwCQUd1WPg1w==
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         
+         local
+         	n is int
+         	
+         if BTN_CheckAllNone..Pushed then
+         	BTN_CheckAllNone..Caption=<§$0001§>
+         	n=TableCount(TABLE_Tables)
+         	for i=1 to n
+         		TABLE_Tables[i].COL_check=true
+         	END
+         else
+         	BTN_CheckAllNone..Caption=<§$0002§>
+         	n=TableCount(TABLE_Tables)
+         	FOR i=1 to n
+         		TABLE_Tables[i].COL_check=false
+         	END
+         END
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : BTN_Close
+    identifier : 0x25a8ba87318cdf67
+    internal_properties : BgAAAAYAAACKX3MHuEF2t+e6JZmLil7nYfBjo43BSfM7qAgrRfaJ68yDy6X/Nnv8NDzx6vfoPGNphFwU21Udf+cTbd+xsN11LkEw5D6gBFwMwqipkShUgHCl2IqIIgl8WcwJT4bflKtgopr7d11ARqB1IZJoWPpcmneYNDcEqHqpww9ciqx1zDKf+CjXFL0jbtqiKuAddwgdzdZzzv00mpg5QJN29XNs7vaMyvL3NAGVtA7PVOV232diGxnsLteBDTNe07fv4FJvIzlyzVbzJmzFbx6YvLvX7qv1d3OzCFLkq1FMLGgleYlOO0ZoHrFVw7lgxyhXBzi9oAQ9TmpRCVKWfJzxWyORAj61qk3HFBRnwMGgUXPShV8h5UNrwOz9zSIL0dzFwHRKWyVoeKB0umR8Wtqm1x18mAYt6XMi825g/8G5n8vkmV6Mg6YLjYOEO+qIF032Mwhokjnx53bAWsqybZXj7eJ87teuslYl+4PhJo7D23lYf5LGUODHhhnkMY+yhCwHN966hk58YX+5lDuTCIQldpXBEwDm+n+8NNVFBh9/IqRereit3WKX4rHIS0Bq2fCgfUi4mibKdh0/e2Cz+mrRozM53ccuqCOubM07G7nWped3645o4TeZ6tjvS0DPYlZczyMPSJm/YGbIW/IWe1sYlbJ3h33ywsYIRcfI5nqH9B5/hZ0HqJa+/6XmQ/D1zY/a4W1nPRS4hW8i084l51v7TKIXPlKuNvIZ563soRipOvGnPProwujX8tNHYAr2iJoJlavMjazBjxB44StNhP0SO5R2IP4js8CbGKGebEu+/tf+rRqBTrhd6MihOjmuqWnyUJzBHKutje9Dj6FrDg2Ou+mwfAKGlD5rnQWlnoXCI8v3VK5UdAP5TdX8XWC3F+JJw06iFiJMRghWiTxLGUqY4IlCamS3geFb+QaYz3bG+x6GaScsXMP0y4prS+GUg23CMYvOJcHjALvFPvedq3SdicV0c7HEi9E8mWbzxtl5BSifz6EZUGA3RNdFxnza+ytU5GML/xADDQF2xIQmnsP50b0rbsrnanKmvobsELr3mPl9onYYbVDF07VGhXmrFS+Ygnb2JiBbG458hka/ZB0iBseak2yyovNEzXPTGbZ8xaKxjCalLng5Mmqmuos2I9XV24Hc4N7Puod+28TweqvUENc7dfSpzzvflWlj5DBphKdpUwZI1qr+jn+VzE7d7/HscLaGrdEOFykUDlCoxdWCfng0l/y+uoBYpTL9MSd18q6nR9leuVq19+pAD+bRwb3QFH288S2XTdaBuwYw1Qahg0vUOBhFGys=
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         // close the window (no action)
+         Close()
+         	
+         	
+        type : 18
+      -
+        type : 161
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+  controls :
+   -
+     name : SBC_NoName
+     identifier : 0x2fbac0d781cfaad1
+     internal_properties : BgAAAAYAAADx+uinPgYEE1VT6CdaB3qo4wiLJsGJ7sUq6v4sk7SmemBeZ2AdiyI0uHNb9o9ZsmtNJj+25qpKAKrDZXcSVaYox4qVJ7MumFk=
+     code_elements :
+      type_code : 62
+      p_codes :
+       -
+         type : 15
+         enabled : false
+       -
+         type : 16
+         enabled : false
+       -
+         type : 39
+         enabled : false
+       -
+         type : 17
+         enabled : false
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1-
+      
+      global
+      	clConnect is connection
+   -
+     code : |1+
+      
+      LOCAL
+      	nProjectID is int
+      
+      IF WinStatus(WIN_Main)<>NotFound THEN
+      	IF ListSelect(WIN_Main.COMBO_Project)>1 THEN
+      		gnProjectId=WIN_Main.COMBO_Project
+      	ELSE
+      		Info("Bitte wählen Sie ein Projekt aus!")
+      		Close()
+      	END	
+      ELSE
+      	IF Open(WIN_Vision_Project,nProjectID) THEN
+      		gnProjectID=nProjectID
+      	ELSE
+      		Close()
+      	END
+      END
+      
+      BTN_CheckAllNone..Pushed=true
+      
+      RefreshDBList()
+      RefreshDataList()
+     type : 34
+   -
+     type : 230
+     enabled : false
+   -
+     code : |1+
+      
+      
+     type : 2
+   -
+     code : |1+
+      
+      
+     type : 11
+   -
+     code : |1+
+      
+      
+     type : 12
+   -
+     code : |1+
+      
+      
+     type : 17
+   -
+     code : |1+
+      
+      
+     type : 13
+  procedures :
+   -
+     name : RefreshDBList
+     procedure_id : 2282792022817686710
+     type_code : 14
+     code : |1-
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //[ <Result> = ] RefreshDBList ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	boolean: // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE RefreshDBList()
+      
+      LOCAL
+      	n is int
+      	bRes is boolean
+      	dsData is data source
+      	
+      IF ListSelect(Combo_DBConnection)>0 THEN
+      	
+      	LOCAL
+      		sSQL is string
+      		
+      	ListDeleteAll(COMBO_Databases)
+      	
+      	HReadSeek(DBConnection,DBConnectionID,Combo_DBConnection)
+      	
+      	SWITCH DBConnection.Type
+      		CASE 1,2
+      			//MySQL,MariaDB
+      			clConnect..Server=DBConnection.Server
+      			clConnect..User=DBConnection.Username
+      			clConnect..Password=DBConnection.Password
+      			clConnect..Database=""
+      			clConnect..Provider = hNativeAccessMySQL
+      			clConnect..CursorOptions = hClientCursor
+      			clConnect..Access=hOReadWrite
+      		CASE 3
+      			//PostgreSQL
+      			clConnect..Server=DBConnection.Server
+      			clConnect..User=DBConnection.Username
+      			clConnect..Password=DBConnection.Password
+      			clConnect..Database=""
+      			clConnect..Provider = hOledbSQLServer
+      			clConnect..CursorOptions = hClientCursor
+      			clConnect..Access=hOReadWrite
+      		other case
+      			error("Datenbank Verbindung: "+DBConnection.Type+" ist noch nicht aktiv!")
+      			result false
+      	END
+      	
+      	bRes=HOpenConnection(clConnect)
+      	IF bRes THEN
+      		SWITCH DBConnection.Type
+      			CASE 1,2
+      				//MySQL,MariaDB
+      				sSQL="show databases;"
+      				IF HExecuteSQLQuery(dsData,clConnect,hQueryWithoutCorrection+hNoBind,sSQL) THEN
+      					//if Connector.cnExecute(sSQL) then
+      					HReadFirst(dsData)
+      					ListDeleteAll(COMBO_Databases)
+      					WHILE NOT HOut(dsData)
+      						ListAdd(COMBO_Databases,dsData.Database)
+      						HReadNext(dsData)
+      					END
+      					HFreeQuery(dsData)
+      					
+      					Combo_DBConnection..BrushColor=iWhite
+      					
+      					HReadSeek(Project,ProjectID,gnProjectID)
+      					n=ListCount(COMBO_Databases)
+      					FOR i=1 to n
+      						IF Lower(COMBO_Databases[i]..DisplayedValue)=Lower(NoSpace(Project.Database)) THEN
+      							ListSelectPlus(COMBO_Databases,i)
+      							BREAK
+      						END
+      					END
+      					
+      					RESULT True
+      				ELSE
+      					Info(HErrorInfo(hErrFullDetails))
+      					RESULT False
+      				END
+      			CASE 3
+      				//PostgreSQL
+      				sSQL="sp_databases;"
+      				IF HExecuteSQLQuery(dsData,clConnect,hQueryWithoutCorrection+hNoBind,sSQL) THEN
+      					//if Connector.cnExecute(sSQL) then
+      					HReadFirst(dsData)
+      					ListDeleteAll(COMBO_Databases)
+      					WHILE NOT HOut(dsData)
+      						ListAdd(COMBO_Databases,dsData.DATABASE_NAME)
+      						HReadNext(dsData)
+      					END
+      					HFreeQuery(dsData)
+      					
+      					Combo_DBConnection..BrushColor=iWhite
+      					
+      					HReadSeek(Project,ProjectID,gnProjectID)
+      					n=ListCount(COMBO_Databases)
+      					FOR i=1 to n
+      						IF Lower(COMBO_Databases[i]..DisplayedValue)=Lower(NoSpace(Project.Database)) THEN
+      							ListSelectPlus(COMBO_Databases,i)
+      							BREAK
+      						END
+      					END
+      					
+      					RESULT True
+      				ELSE
+      					Info(HErrorInfo(hErrFullDetails))
+      					RESULT False
+      				END
+      			OTHER CASE
+      		END
+      	ELSE
+      		Info(HErrorInfo(hErrFullDetails))
+      		Combo_DBConnection..BrushColor=iLightRed
+      		RESULT False
+      	END
+      ELSE
+      	RESULT False
+      END
+      
+      RESULT False
+     type : 458752
+   -
+     name : RefreshDataList
+     procedure_id : 2285776398045499412
+     type_code : 14
+     code : |1+
+      // Summary: <specify the procedure action>
+      // Syntax:
+      //RefreshDataList ()
+      //
+      // Parameters:
+      //	None
+      // Return Value:
+      // 	None
+      //
+      // For instance:
+      // Indicate an example.
+      //
+      PROCEDURE RefreshDataList()
+      
+      LOCAL
+      	sSQL is string
+      	dsData is data source
+      	bRes is boolean
+      	
+      IF ListSelect(Combo_DBConnection)>0 AND ListSelect(COMBO_Databases)>0 THEN		
+      	HReadSeek(DBConnection,DBConnectionID,Combo_DBConnection)
+      	SWITCH DBConnection.Type
+      		CASE 1,2
+      			//MySQL,MariaDB
+      			clConnect..Server=DBConnection.Server
+      			clConnect..User=DBConnection.Username
+      			clConnect..Password=DBConnection.Password
+      			clConnect..Database=""
+      			clConnect..Provider = hNativeAccessMySQL
+      			clConnect..CursorOptions = hClientCursor
+      			clConnect..Access=hOReadWrite
+      		CASE 3
+      			//PostgreSQL
+      			clConnect..Server=DBConnection.Server
+      			clConnect..User=DBConnection.Username
+      			clConnect..Password=DBConnection.Password
+      			clConnect..Database=COMBO_Databases..DisplayedValue
+      			clConnect..Provider = hOledbSQLServer
+      			clConnect..CursorOptions = hClientCursor
+      			clConnect..Access=hOReadWrite
+      	END
+      	
+      	bRes=HOpenConnection(clConnect)
+      	IF bRes THEN
+      		
+      		SWITCH DBConnection.Type
+      			CASE 1,2
+      				//MySQL,MariaDB
+      				sSQL="USE `" + COMBO_Databases..DisplayedValue + "`; SHOW FULL TABLES FROM `" + COMBO_Databases..DisplayedValue + "`;"
+      				HExecuteSQLQuery(dsData,clConnect,hQueryWithoutCorrection,sSQL)
+      				HReadFirst(dsData)
+      				TableDeleteAll(TABLE_Tables)
+      				WHILE NOT HOut(dsData)
+      					IF {"dsDATA.Table_type"}="BASE TABLE" THEN
+      						TableAdd(TABLE_Tables,{"dsDATA.tables_in_"+COMBO_Databases..DisplayedValue}+TAB+True)
+      					END
+      					HReadNext(dsData)
+      				END
+      				HCloseConnection(clConnect)
+      				HFreeQuery(dsData)
+      			CASE 3
+      				//PostgreSQL
+      				sSQL="sp_tables @table_name = '%';"
+      				HExecuteSQLQuery(dsData,clConnect,hQueryWithoutCorrection+hNoBind,sSQL)
+      				HReadFirst(dsData)
+      				TableDeleteAll(TABLE_Tables)
+      				WHILE NOT HOut(dsData)
+      					IF dsData.TABLE_OWNER="dbo" THEN
+      						TableAdd(TABLE_Tables,dsData.TABLE_NAME+TAB+True)
+      					END
+      					HReadNext(dsData)
+      				END
+      				HCloseConnection(clConnect)
+      				HFreeQuery(dsData)
+      			OTHER CASE
+      		END
+      	END
+      END
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x1fae19710012b28d
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text :
+      en-GB : The connection to the mysql server could not be established!
+     index : 0
+   -
+     text :
+      de-DE : "&Keine"
+      en-GB : "&None"
+     index : 1
+   -
+     text :
+      de-DE : "&Alle"
+      en-GB : "&All"
+     index : 2
+   -
+     text :
+      de-DE : "Lese Dateiinformationen "
+      en-GB : "Read database information "
+     index : 3
+   -
+     text :
+      de-DE : "Es konnten keine Abkürzungen für die Datei: "
+      en-GB : "I could not find a abbreviation for file:  "
+     index : 4
+   -
+     text :
+      de-DE : " gefunden werden, TIPP: Bitte erweitern Sie die Anzahl der Abkürzungsbuchstaben z.B. von 2 auf 3."
+      en-GB : " tip: extend the abbreviation characts for example from 2 to 3 chars in your project."
+     index : 5
+   -
+     text :
+      de-DE : "Lese Fremdschlüssel "
+      en-GB : "Read foreign keys "
+     index : 6
+   -
+     text :
+      de-DE : " nicht gefunden!"
+      en-GB : " not found!"
+     index : 7
+   -
+     text :
+      de-DE : " Feld in Datei nicht gefunden!"
+      en-GB : " Item in file not found!"
+     index : 8
+   -
+     text :
+      de-DE : " Feld in Datei nicht gefunden!"
+      en-GB : " Item in file not found!"
+     index : 9
+   -
+     text :
+      de-DE : " nicht gefunden!"
+      en-GB : " not found!"
+     index : 10
+   -
+     text :
+      de-DE : "Fertig! Anzahl: "
+      en-GB : "Ready! Count: "
+     index : 11
+   -
+     text :
+      de-DE : Projekt nicht gefunden!
+      en-GB : Project not found!
+     index : 12
+   -
+     text :
+      de-DE : Datenbank Version nicht gefunden!
+      en-GB : Version not found!
+     index : 13
+   -
+     text :
+      de-DE : "** Automatischer Import **"
+      en-GB : "** Automatic import **"
+     index : 14
+   -
+     text :
+      de-DE : " Import am "
+      en-GB : "Import on "
+     index : 15
+   -
+     text :
+      de-DE : " nicht gefunden!"
+      en-GB : " not found!"
+     index : 16
+   -
+     text :
+      de-DE : "Datenbank Version "
+      en-GB : "Database Version "
+     index : 17
+   -
+     text :
+      de-DE : "&Keine"
+      en-GB : "&None"
+     index : 18
+   -
+     text :
+      de-DE : "&Alle"
+      en-GB : "&All"
+     index : 19
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe

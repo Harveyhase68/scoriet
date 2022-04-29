@@ -1,0 +1,997 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : Scoriet
+ major_version : 26
+ minor_version : 0
+ type : 4097
+ description : ""
+ subtype : 0
+project :
+ identifier : 0x0
+ internal_properties : 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
+ configurations :
+  -
+    name : 32-bit Windows executable
+    internal_properties : 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
+    configuration_id : 7854216575002587298
+    type : 1
+    generation_directory : .\Exe\32-bit Windows executable
+    generation_name : Scoriet.exe
+    version :
+     major_version : 1
+     generation_version : 11
+     internal_generation_version : 31
+    icon_filename : .\code.ico
+    language : 3
+    new_features_help :
+     name : ""
+     internal_properties : BgAAAAYAAADaUkLu0wZ5LjziEwall+944Iq/1na82SKuUpmMarYl+X67TFYz+wt7pvpD3Dko3WoK3DbFTxgdEwUv
+  -
+    name : 64-bit Windows executable
+    internal_properties : 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
+    configuration_id : 5547471193033425877
+    type : 1
+    generation_directory : .\Exe\64-bit Windows executable
+    generation_name : Scoriet.exe
+    version :
+     major_version : 1
+     generation_version : 4
+     internal_generation_version : 5
+    icon_filename : .\code.ico
+    language : 3
+    64bits : true
+    new_features_help :
+     name : ""
+     internal_properties : BgAAAAYAAADaUkLu0wZ5LjziEwall+944Iq/1na82SKuUpmMarYl+X67TFYz+wt7pvpD3Dko3WoK3DbFTxgdEwUv
+ elements :
+  identifier : 0x4f7c8a2102732ec8
+  elements :
+   -
+     name : WIN_Table_Project
+     identifier : 0x400159eb00b53e16
+     internal_properties : BgAAAAYAAACSaMre7VrSjVUsqgJjudRk/E/LY0DF666mviZzOPicDOA+7aAKPqwG9i2XYSHfmw33fw==
+     physical_name : .\WIN_Table_Project.WDW
+     type : 2
+   -
+     name : WIN_Table_Template
+     identifier : 0x400159eb00a33b87
+     internal_properties : BgAAAAYAAABn409TUA0lxpCX6c2uNU31aWQg8LWybDutghQFiIgK9vLOfy5/genFsWhSrnZqFopy8g==
+     physical_name : .\WIN_Table_Template.WDW
+     type : 2
+   -
+     name : WIN_Table_DataItems
+     identifier : 0x400159eb00a93c81
+     internal_properties : BgAAAAYAAACimJqOPWpCXWX8OrLza4CYVDuTywxh3UFxIdRFPtK6fl6gq3I6zjyWRv3n0VGPa12nrw==
+     physical_name : .\WIN_Table_DataItems.WDW
+     type : 2
+   -
+     name : RPT_Table_Project
+     identifier : 0x400159ed00d34344
+     internal_properties : BgAAAAYAAABO1Kb6SXY+cXkAfnYH0DhI8FHPV1rPjUyihwNWLfOhD+k51rfmGoBaGgH7xU2Df3Fb2w==
+     physical_name : .\RPT_Table_Project.wde
+     type : 3
+   -
+     name : WIN_Form_Project
+     identifier : 0x400159eb00b33dd8
+     internal_properties : BgAAAAYAAABTr4ufLBkRypRr7cGi/BUtLa74uA9EXIymdqHwvUPTPbsROOXLfe3JtWxWomKeWk62vg==
+     physical_name : .\WIN_Form_Project.WDW
+     type : 2
+   -
+     name : RPT_Table_Template
+     identifier : 0x400159ec00c74161
+     internal_properties : BgAAAAYAAADEQiwIt+zE5/OG2FzdSKpWnoON7exBiaC19C9iHfOZX6Vp4ktQ8Fq0oIdxT9cJ8efRUQ==
+     physical_name : .\RPT_Table_Template.wde
+     type : 3
+   -
+     name : RPT_Table_DataItems
+     identifier : 0x400159ec00cb420c
+     internal_properties : BgAAAAYAAACD//svnMlhesSb3VHSXqGx9eL4aOuA8Md1hH+Sw125N4FDxldb7V25pZwG8rIuyj6Gjg==
+     physical_name : .\RPT_Table_DataItems.wde
+     type : 3
+   -
+     name : SET_GlobalProcedures
+     identifier : 0x4fb8c9d60032a91d
+     internal_properties : BgAAAAYAAAAmLA4Skc5mCdGoFo7vfICYWDmXzwE+ObR3Cpt2UN+1e12lqnM+wiiCcqkT7bUr18kzMw==
+     physical_name : .\SET_GlobalProcedures.wdg
+     type : 7
+   -
+     name : WIN_Form_Template
+     identifier : 0x400159eb00a13b49
+     internal_properties : BgAAAAYAAAD7VyNnRAEpMjzDNan6aI2dVTagsAd0o4KhVWU8Mc9HiU+drHEz1UWhXcQ+unp2AvbeZg==
+     physical_name : .\WIN_Form_Template.WDW
+     type : 2
+   -
+     name : WIN_Vision_ForeignKey
+     identifier : 0x400159e9009335bd
+     internal_properties : BgAAAAYAAABaMAIGpeLK1Z1k0krbSqioXMlb80pnjZetAqmwI/0fmWervFFS9mS+vmVfWdkX49U/xw==
+     physical_name : .\WIN_Vision_ForeignKey.WDW
+     type : 2
+   -
+     name : WIN_Form_DataItems
+     identifier : 0x400159eb00a73c42
+     internal_properties : BgAAAAYAAABl4U1RbgsjPIpNSyNM5HP/Xxz68jV61u9J6zVkjXObrR+RlAmpX8sn105IsHBgGIhw8A==
+     physical_name : .\WIN_Form_DataItems.WDW
+     type : 2
+   -
+     name : RPT_Form_Project
+     identifier : 0x400159ed00d142f6
+     internal_properties : BgAAAAYAAABk4kxoVwwkx5NmuDx97g4aLr8lrZA1xJCikwlIT6Hz7dcfLPGwULoUwGdRr3dpEYdx8Q==
+     physical_name : .\RPT_Form_Project.wde
+     type : 3
+   -
+     name : WIN_Vision_DataFile
+     identifier : 0x400159eb00b13d9a
+     internal_properties : BgAAAAYAAACHg+8z8K0FJjD3ya3OUKGx+dpEhDtQos1KBSV88Q8PiXdFxFlf4UmlUcgyjhbKtiqSkg==
+     physical_name : .\WIN_Vision_DataFile.WDW
+     type : 2
+   -
+     name : WIN_Vision_DBConnection
+     identifier : 0x400159ea0099384c
+     internal_properties : BgAAAAYAAABzz6v/TDlxqrRLTSFCNbG57bi0NAm+ByF1JOxtEPCargL+Dw6rXc0p1Uy2AoJ+em5W3g==
+     physical_name : .\WIN_Vision_DBConnection.WDW
+     type : 2
+   -
+     name : RPT_Form_Template
+     identifier : 0x400159ec00c54113
+     internal_properties : BgAAAAYAAABJxbFVUg8nyJZp189YFF/b25hm/rH+GSlxyXUs1Ttb5d/RtOnNc+fDs2pUrHRsFIRM1A==
+     physical_name : .\RPT_Form_Template.wde
+     type : 3
+   -
+     name : WIN_Vision_TemplatePage
+     identifier : 0x400159eb009f3afb
+     internal_properties : BgAAAAYAAACb90NHZCGJklwjlQka3y0tFVS8NPWCReJ1DOJ3DvKYqBiIhZgTNaUB/SSeGppWIpZ+hg==
+     physical_name : .\WIN_Vision_TemplatePage.WDW
+     type : 2
+   -
+     name : RPT_Form_DataItems
+     identifier : 0x400159ec00c941af
+     internal_properties : BgAAAAYAAAC2nJ6CIR4WGSG45v6/dfB4yJsXX2xh3B2pE+J3ZIwAEOTaUUxukvjSgrkjnWWbZ1mjow==
+     physical_name : .\RPT_Form_DataItems.wde
+     type : 3
+   -
+     name : WIN_Table_ForeignKey
+     identifier : 0x400159e900913540
+     internal_properties : BgAAAAYAAACno4+TEE3lhlBXqQ1uBU3VCWRAkBVS+sKtwgxVONg6xiKer/6/QakF8SiSbjaqVkqysg==
+     physical_name : .\WIN_Table_ForeignKey.WDW
+     type : 2
+   -
+     name : WIN_Table_DataFile
+     identifier : 0x400159eb00af3d5b
+     internal_properties : BgAAAAYAAABPy6f7SHU9bngPcXUG7gX1ecasjM+s1aqtph86S8XJL5Fz1sfnGYFdGQD6xk6CfnJa2g==
+     physical_name : .\WIN_Table_DataFile.WDW
+     type : 2
+   -
+     name : WIN_Table_DBConnection
+     identifier : 0x400159e9009736b7
+     internal_properties : BgAAAAYAAADYtoCcK1DYg08SRNhJ4nruqgvRCSyhVlyt5iU0I83PWVNDyMXkZNYwLBONayulXVO9RQ==
+     physical_name : .\WIN_Table_DBConnection.WDW
+     type : 2
+   -
+     name : RPT_Table_ForeignKey
+     identifier : 0x400159ec00bb3ec2
+     internal_properties : BgAAAAYAAADbt4OHJGFJUhzjVUnalO11xaYAUFccJLKx2YmIdZv7BePZUF1T9WVBPeTe2lqWYla+Rg==
+     physical_name : .\RPT_Table_ForeignKey.wde
+     type : 3
+   -
+     name : WIN_Table_TemplatePage
+     identifier : 0x400159eb009d3abc
+     internal_properties : BgAAAAYAAAB60KLmxYKqtb1Esip7BkjQ3Jmbg8pf1GhJyyU8V8nDJevXsP2yVsQe3kW/Ofn3g3Vf5w==
+     physical_name : .\WIN_Table_TemplatePage.WDW
+     type : 2
+   -
+     name : WIN_Form_ForeignKey
+     identifier : 0x400159e9008f34c4
+     internal_properties : BgAAAAYAAAC/m5eLOGVNXmj/IYX2gtVNWSa87N+0+M2J1xNOJxmFo21XMns3yTGNSfDq1l6SbmKqqg==
+     physical_name : .\WIN_Form_ForeignKey.WDW
+     type : 2
+   -
+     name : RPT_Table_DataFile
+     identifier : 0x400159ed00cf42a8
+     internal_properties : BgAAAAYAAAAAfnikA3gwa3cKDGAB/nLuQiMJEaRR/ZFKqTkgZ9kzlXdfzNHsHI5oFAv1w0O9RbsFDQ==
+     physical_name : .\RPT_Table_DataFile.wde
+     type : 3
+   -
+     name : RPT_Table_DBConnection
+     identifier : 0x400159ec00bf3f4e
+     internal_properties : BgAAAAYAAACutIaaKVbekVkgnpbnVZigsPP/pxQ5jt2thgpXtGygAMQqASyGuiD6+iGbZS2jX1G7uw==
+     physical_name : .\RPT_Table_DBConnection.wde
+     type : 3
+   -
+     name : WIN_Form_DataFile
+     identifier : 0x400159eb00ad3d1d
+     internal_properties : BgAAAAYAAACoppCMO2BIUx/iVEjZmPZiyr9J2fhV5wJx4eeqRfuZtwXpQltU9GZAPOPd21uVbWOttQ==
+     physical_name : .\WIN_Form_DataFile.WDW
+     type : 2
+   -
+     name : WIN_MySQL
+     identifier : 0x4f99aa89087a294a
+     internal_properties : BgAAAAYAAACoppCMO2BIUx/iVEjZmfZaIlEZEaEPf0yhTyaEl4iMvEzmQVxU9GZAPOPd21uVbWOttQ==
+     physical_name : .\WIN_MySQL.wdw
+     type : 2
+   -
+     name : RPT_Table_TemplatePage
+     identifier : 0x400159ec00c340d4
+     internal_properties : BgAAAAYAAAAzD2u/jPmx6vSLjeGCc/Vt/Uy03O2CPPFJB+5rCgaUrBT8UVxrnQ3plYx2QsI+Oq4WHg==
+     physical_name : .\RPT_Table_TemplatePage.wde
+     type : 3
+   -
+     name : WIN_Form_DBConnection
+     identifier : 0x400159e90095362a
+     internal_properties : BgAAAAYAAADiWNrO/aoCHSW8+vKzRYRs/E+70+CNME+h/fJvDASQqBT6UUx6jvzWhr0nkRHPqx3nbw==
+     physical_name : .\WIN_Form_DBConnection.WDW
+     type : 2
+   -
+     name : WIN_Vision_Project
+     identifier : 0x400159eb00b73e55
+     internal_properties : BgAAAAYAAADVsT1hXjtzrLo9e3M81wPvV+qmDrPwEMqu9PZbpmqgUOR40cz5D3tXBz64AIBwCPjAQA==
+     physical_name : .\WIN_Vision_Project.WDW
+     type : 2
+   -
+     name : WIN_Form_TemplatePage
+     identifier : 0x400159ea009b3a6e
+     internal_properties : BgAAAAYAAAAlIQ0RrstjfMqNi+OMePNXX3wq8iVyJg61NLHoKfcn0WuFQF1pnwvnl44I8LAg2MgwMA==
+     physical_name : .\WIN_Form_TemplatePage.WDW
+     type : 2
+   -
+     name : RPT_Form_ForeignKey
+     identifier : 0x400159eb00b93e93
+     internal_properties : BgAAAAYAAAByyKr+TTpyrbVMSiJDOLSUTA1LY8ZTmh+tGouWzVO5b4GR/h+qXswm1k23AYF/e21X3w==
+     physical_name : .\RPT_Form_ForeignKey.wde
+     type : 3
+   -
+     name : WIN_Generiere
+     identifier : 0x4fbbeb230031f23b
+     internal_properties : BgAAAAYAAAAxA6/7xAHXNkKygx/sv/cDDm7kGa624aGGBFIx4BGOcabhK7N7NuG8Cp5/OBv/uCM0
+     physical_name : .\WIN_Generiere.wdw
+     type : 2
+   -
+     name : WIN_TESTMySQL
+     identifier : 0x4f7d60a0000abefb
+     internal_properties : BgAAAAYAAABFwa3xTmtDXGrta0Msm9M3ZxqmfsIE9PiOW1cIwW6sVJCsnYBJ/2tHN+7o0FCAeGhQ0A==
+     physical_name : .\WIN_TESTMySQL.wdw
+     type : 2
+   -
+     name : WIN_Import
+     identifier : 0x4fae1971002eb367
+     internal_properties : BgAAAAYAAADKQDLW1ZKaRQ3UAhoLszggjNP743tWVyaOv6p3VdoyNtZYk5oiJpRubtXPKennkwXPVw==
+     physical_name : .\WIN_Import.wdw
+     type : 2
+   -
+     name : Connector
+     identifier : 0x4fae337e00307580
+     internal_properties : BgAAAAYAAABj31tPfCmBmqQ7fXEyywXNDUzUTHx/LtGzk6aNgb7cBDzUudT7DX1ZBTymEpJOKp5m7g==
+     physical_name : .\Connector.wdc
+     type : 4
+   -
+     name : RPT_Form_DataFile
+     identifier : 0x400159ec00cd425a
+     internal_properties : BgAAAAYAAACppZH1Mm9HaHYJd284+nPnu9T2pnUyQNmhFTcaZ6n1I8Ffzt/tE4djEwr0zFSMdGSstA==
+     physical_name : .\RPT_Form_DataFile.wde
+     type : 3
+   -
+     name : WIN_Vision_Template
+     identifier : 0x400159eb00a53bd5
+     internal_properties : BgAAAAYAAAByyKr+TTpyrbVMSiJDDrCI5KHTi0Jn8lmJX33kH/EbHSMv+CWqXswm1k23AYF/e21X3w==
+     physical_name : .\WIN_Vision_Template.WDW
+     type : 2
+   -
+     name : RPT_Form_DBConnection
+     identifier : 0x400159ec00bd3f20
+     internal_properties : BgAAAAYAAACyiOo+DXoybXUMCmIDz3DApOuzG6yJJwGt0jBpmnamYup0t+bqHoxmFg33wUG/uy2Xnw==
+     physical_name : .\RPT_Form_DBConnection.wde
+     type : 3
+   -
+     name : WIN_Template
+     identifier : 0x400127db008bad97
+     internal_properties : BgAAAAYAAAD8WtTA/6QMHyuuEBRlohbqxpc9JRiFY1iJG7usyyVv8RMT2MUIOKJ8eK8plx/RqR/paQ==
+     physical_name : .\WIN_Template.wdw
+     type : 2
+   -
+     name : WIN_Vision_DataItems
+     identifier : 0x400159eb00ab3ccf
+     internal_properties : BgAAAAYAAADVsT1hXjtzrLo9e3M80gfb3/iaWnkOhct1bJ+6N8nNU/kHxtf5D3tXBz64AIBwCPjAQA==
+     physical_name : .\WIN_Vision_DataItems.WDW
+     type : 2
+   -
+     name : RPT_Form_TemplatePage
+     identifier : 0x400159ec00c14077
+     internal_properties : BgAAAAYAAADLRzPX1JGZQgzTBRkKuTn59aDcjDEe8ZJ1SEDRDOQ28h4i66IjJZVxbdTOKurmkgbOVg==
+     physical_name : .\RPT_Form_TemplatePage.wde
+     type : 3
+   -
+     name : WIN_Main
+     identifier : 0x4f8065ea000b19c0
+     internal_properties : BgAAAAYAAABXM7/jwL319kAHWd1e7l0NsS5EJJarEn6KOP+maoWJX5FDhgfPcdk1IRiCfgb6hnpCwg==
+     physical_name : .\WIN_Main.wdw
+     type : 2
+   -
+     name : WIN_TEST
+     identifier : 0x42514ab9018f7338
+     internal_properties : BgAAAAYAAAAiGBoOverC3eV8ujJzFEScDF0Lw+jzye6MvY3wwy9tq1XdEhu6TrwWxn1nUdEP690nLw==
+     physical_name : .\WIN_TEST.wdw
+     type : 2
+   -
+     name : WIN_Form_DataItemsTranslation
+     identifier : 0x433fda870118d67c
+     internal_properties : BgAAAAYAAABbNwMHpOHJ0pxj1cla7G2lBVYQMIIi5J6yUguPgJODvUvRGPXTdeXBvWReWtoW4tY+xg==
+     physical_name : .\WIN_Form_DataItemsTranslation.wdw
+     type : 2
+   -
+     name : WIN_VISION_DataItemsTypeDetails
+     identifier : 0x42eb369501eebb33
+     internal_properties : BgAAAAYAAACKgPKWFVLahU0UQtpLDjjw7Pm7s48bU+SvkUtntFE7jaNfqOXiZtQuLhWPaSmnU0WPlw==
+     physical_name : .\WIN_VISION_DataItemsTypeDetails.wdw
+     type : 2
+   -
+     name : WIN_Table_DataItemsTypeDetails
+     identifier : 0x433fe42b035b8043
+     internal_properties : BgAAAAYAAABMyqTwT3Q8b3v+IIT12YLG7o21rRG5Z3+k/yb+U9BMlKxmgZw4yDKMSP/5x0+BeW9Z2Q==
+     physical_name : .\WIN_Table_DataItemsTypeDetails.wdw
+     type : 2
+   -
+     name : RPT_Details_DataItemsTypeDetails
+     identifier : 0x42eb369601febcaa
+     internal_properties : BgAAAAYAAAB/21dLeCWNnqg/YUU2G8mBgZC4sIsgyNi0u9sbrFY8jLx0udT3CXFNCTCqFp5SLqJq6g==
+     physical_name : .\RPT_Details_DataItemsTypeDetails.wde
+     type : 3
+   -
+     name : RPT_List_DataItemsTypeDetails
+     identifier : 0x42eb36960200bcd9
+     internal_properties : BgAAAAYAAAD2XN7C4V7W2eF4pj5/VXC4yFsXX24jlI6owvdHtmwg8AQ68SyuUrgSwnljXSXbpxnjYw==
+     physical_name : .\RPT_List_DataItemsTypeDetails.wde
+     type : 3
+   -
+     name : WIN_Table_DataItemsTranslation
+     identifier : 0x433fe25703445ab9
+     internal_properties : BgAAAAYAAAAAfnikA3gwa3cKDGABCjL2gqPZAb8n1vFcqU9T7jXnMct7sO3sHI5oFAv1w0O9RbsFDQ==
+     physical_name : .\WIN_Table_DataItemsTranslation.wdw
+     type : 2
+   -
+     name : WIN_Form_ProjectTemplates
+     identifier : 0x453c95f90309da67
+     internal_properties : BgAAAAYAAABUMrz4x7z0903+N9suf4OOJonlNZ+auM9KBTJjS/oS9trA6391TmsqMheBfwf5gXdBwQ==
+     physical_name : .\WIN_Form_ProjectTemplates.wdw
+     type : 2
+   -
+     name : WIN_Form_Language
+     identifier : 0x433fdd6201d6fc92
+     internal_properties : BgAAAAYAAACutIaaKVbekVkgnpbnc2ScyP9Hz3szi5erMWF8wVLCHibIY0qGuiD6+iGbZS2jX1G7uw==
+     physical_name : .\WIN_Form_Language.wdw
+     type : 2
+   -
+     name : WIN_VISION_Language
+     identifier : 0x42eb36990314c89b
+     internal_properties : BgAAAAYAAAD/W9fL+KUNHii/4cW2Y0kRQeCIEKSnp5VAgs31BT7UdJS8UVx3ifHNibAqlh7SriLqag==
+     physical_name : .\WIN_VISION_Language.wdw
+     type : 2
+   -
+     name : WIN_Table_Language
+     identifier : 0x433fe1f1032dcc6f
+     internal_properties : BgAAAAYAAAAsKgQQr9RcD9uewKTVg6banqHNbW1VcYeg1KkwgYIKLtJ4l4ZY6FKsqJ8Z568h2c85OQ==
+     physical_name : .\WIN_Table_Language.wdw
+     type : 2
+   -
+     name : RPT_Details_Language
+     identifier : 0x42eb36990324c957
+     internal_properties : BgAAAAYAAADPSyd7yPW97viP8fWGlUXtgazYSA9EABukP1klWshKplL+L25nmQHdmYB6Rs4C/vLaWg==
+     physical_name : .\RPT_Details_Language.wde
+     type : 3
+   -
+     name : RPT_List_Language
+     identifier : 0x42eb36990326c976
+     internal_properties : BgAAAAYAAAB60KLmxYKqtb1Esip7WwggPJObky4DPIR8gTHFIOIqnm5A6yKyVsQe3kW/Ofn3g3Vf5w==
+     physical_name : .\RPT_List_Language.wde
+     type : 3
+   -
+     name : WIN_Form_DataItemsTypeDetails
+     identifier : 0x433fdbb501b97395
+     internal_properties : BgAAAAYAAABAPrjkw7jwKzfKzKDB0vKmwvNJwe+36AyOmxj7Rt2/GSPDaLUs3E6oVMs1gwP9hXtFzQ==
+     physical_name : .\WIN_Form_DataItemsTypeDetails.wdw
+     type : 2
+   -
+     name : WIN_VISION_DataItemsTranslation
+     identifier : 0x42eb369a03a7cf5f
+     internal_properties : BgAAAAYAAADCuDpuXQoiPYVcmpKTRWSM3G8b87X5kdeNn0oq8QSQaJS6UUyarhz25l1HsXFvC/3HTw==
+     physical_name : .\WIN_VISION_DataItemsTranslation.wdw
+     type : 2
+   -
+     name : RPT_Details_DataItemsTranslation
+     identifier : 0x42eb369b03b7d039
+     internal_properties : BgAAAAYAAABO1Kb6SXY+cXkAfnYHGsRUyEUXH5Dl90SI1q5AjWWvIZdrnPHmGoBaGgH7xU2Df3Fb2w==
+     physical_name : .\RPT_Details_DataItemsTranslation.wde
+     type : 3
+   -
+     name : RPT_List_DataItemsTranslation
+     identifier : 0x42eb369b03b9d059
+     internal_properties : BgAAAAYAAADduTXp1oOrtALVAxsU0PuPpyRiugdci5mw0I7o8w8P+fPNWLUhJ5Nvb9bAOPjokADISA==
+     physical_name : .\RPT_List_DataItemsTranslation.wde
+     type : 3
+   -
+     name : WIN_Export_Template
+     identifier : 0x4312d8d800adca31
+     internal_properties : BgAAAAYAAABdObVpVgMrNIJVg5uUUX8TNxYeFpIlvzC2tcHfp2ymGuo61zahpxPv71ZAuHhoEIBIyA==
+     physical_name : .\WIN_Export_Template.wdw
+     type : 2
+   -
+     name : WIN_Import_Template
+     identifier : 0x434287db00a72c02
+     internal_properties : BgAAAAYAAADySCp+zbryLTXMyqLD3PR8HH1rswmEiR1CzsvE7BcF880lysMq3kymVs03gQH/++3XXw==
+     physical_name : .\WIN_Import_Template.wdw
+     type : 2
+   -
+     name : WinDevMessageBox
+     identifier : 0x44a5352c04622d1b
+     internal_properties : BgAAAAYAAACV50PPCLW+TD7UmGP2COH7/PV+g2qNvflXP5+3vpX8ko3ixA/TmOjrh83b5M8rlH+Q
+     physical_name : .\WinDevMessageBox.WDW
+     type : 2
+   -
+     name : WinDevDialogBox
+     identifier : 0x44a5352d046a2f6b
+     internal_properties : BgAAAAYAAABHMX0p6tfYOrhSYuyoKGH58vNkHUrary310e/268bH204hC6ZKEmZpAXd1Ai3NalHC
+     physical_name : .\WinDevDialogBox.WDW
+     type : 2
+   -
+     name : About
+     identifier : 0x44a5548d00d2c0f3
+     internal_properties : BgAAAAYAAACQbsjU04iguwQZFIXj8AUiut/5+VPtKB2Oe2t/jGets1nlDiKzFcicYdvFM/PtlQv1fQ==
+     physical_name : .\About.wdw
+     type : 2
+   -
+     name : WIN_Form_Version
+     identifier : 0x44a6686401e30a5d
+     internal_properties : BgAAAAYAAAAdeXUplsNrdMPV5fHXjAJj/Yy03NEXEMtfGASsjmY0jLRcI9cdLEjYrJYA+Lgo0MAICA==
+     physical_name : .\WIN_Form_Version.wdw
+     type : 2
+   -
+     name : WIN_Form_TemplateVars
+     identifier : 0x453d691601dc2a71
+     internal_properties : BgAAAAYAAACKgPKWFVLahU/9r4BqIClyhPHTO/fL8s+nbk0bEOW3Ub8jUujjJlAtMBWPaSmnU0WPlw==
+     physical_name : .\WIN_Form_TemplateVars.wdw
+     type : 2
+   -
+     name : WIN_Form_and_Table_Template_TemplateVars
+     identifier : 0x453d6b4b025dc845
+     internal_properties : BgAAAAYAAACOlOY6Cbb+MTupDVm76X9SyF8X39WpWrKItl7U/zZeskL8Sf9dpaaJXME7hQ3DvzGbmw==
+     physical_name : .\WIN_Form_and_Table_Template_TemplateVars.wdw
+     type : 2
+   -
+     name : RPT_TemplateVars
+     identifier : 0x453dec390489ef7e
+     internal_properties : BgAAAAYAAADfuzfr2IWtvgq42cZasi8UN0p2rpAUNx6oM+IKt1485AAcQD9b6XBUa9DKNv7yjgLKSg==
+     physical_name : .\RPT_TemplateVars.wde
+     type : 3
+   -
+     name : WIN_Form_and_Form_Project_ProjectVars
+     identifier : 0x453f727f0188f33a
+     internal_properties : BgAAAAYAAADySCp+zbryLTfXfMmEFuxlFCWz6+spyuiKGG87coMJL9FxpU41zCN/WM03gQH/++3XXw==
+     physical_name : .\WIN_Form_and_Form_Project_ProjectVars.wdw
+     type : 2
+   -
+     name : WIN_Form_ProjectVars
+     identifier : 0x453f72a0019f72a6
+     internal_properties : BgAAAAYAAADcujRgXwQsP7Up+vS+J6OdRGsT+7HPW4+uA5Tmb4YW8hrE4oAS76H92k9Jt39xCf/JSQ==
+     physical_name : .\WIN_Form_ProjectVars.wdw
+     type : 2
+   -
+     name : WIN_Form_and_Table_Project_ProjectVars
+     identifier : 0x453fc1f400d6c7f1
+     internal_properties : BgAAAAYAAABq4FK2dTJ6pa8fA3ppElRYPqMtzQGnGeNW7TqPgpP5P4VJqC+6Rn5HEDWvCYlHM6Vv9w==
+     physical_name : .\WIN_Form_and_Table_Project_ProjectVars.wdw
+     type : 2
+   -
+     name : WIN_Wizard
+     identifier : 0x4540f24c040fdfad
+     internal_properties : BgAAAAYAAADQLggUk8hge8F2ABY1A9SsKq35uRO6XiqpZEPvo0LSProQuSbUKASCppsF87Mt1cs1PQ==
+     physical_name : .\WIN_Wizard.wdw
+     type : 2
+   -
+     name : WIN_TemplatePageSort
+     identifier : 0x4559cb8a00c49aa0
+     internal_properties : BgAAAAYAAADXsz9jQD11dsKMWOM8IxgAnezUPAqS2kW20VlqH+a0TLQcZiSdG1+Yo5gC/oZ6BvrCQg==
+     physical_name : .\WIN_TemplatePageSort.wdw
+     type : 2
+   -
+     name : WIN_Form_and_Table_DataFile_DataItems
+     identifier : 0x455c482900d92906
+     internal_properties : BgAAAAYAAAAtKQUZppObRBzt3QaAbN1UcxxOnhKFXkNKzHzMjLllo1HfCaA6xuOdQebQKOgY4NA4OA==
+     physical_name : .\WIN_Form_and_Table_DataFile_DataItems.wdw
+     type : 2
+   -
+     name : Testprogramme_MenuScreenShot
+     identifier : 0x455c6ce200c399e4
+     internal_properties : BgAAAAYAAAA7F2OnBEHp8v6Ly70GpJXCf8423vM7XXvsUHC8XMDSbla+ZDWfocHnn4R+ejq2QrYeJg==
+     physical_name : .\Testprogramme_MenuScreenShot.wdw
+     type : 2
+   -
+     name : Testprogramme_MacheScreenShots
+     identifier : 0x455c6cf900ddf58a
+     internal_properties : BgAAAAYAAAAmLA4Skc5mCdPQZOHj6yId7P/r42z0QXO8WX1aWKRwaFSa8HVrXeyQdKkT7bUr18kzMw==
+     physical_name : .\Testprogramme_MacheScreenShots.wdw
+     type : 2
+   -
+     name : WIN_Lizenz
+     identifier : 0x49f0dbd701d40a92
+     internal_properties : BgAAAAYAAAALBaHtLptiLuSgIH9cxhP/24xizfwmQG2NuYqHckEWfWlUNp2JMBIb68WxzvEJth0O
+     physical_name : .\WIN_Lizenz.wdw
+     type : 2
+   -
+     name : WIN_Compare
+     identifier : 0x4560f02300dff67c
+     internal_properties : BgAAAAYAAABu9EZaaRYe0Zt8mMvz/buXpPGzmxeOelpOx7I+ADXnIS8zRTGpH3SsvGFbpW1jH5F7+w==
+     physical_name : .\WIN_Compare.wdw
+     type : 2
+   -
+     name : WIN_ForeignKeys
+     identifier : 0x45696e93017b68b2
+     internal_properties : BgAAAAYAAACoppCMO2BIUxnnlo/iB8sjTt9FDb0VC3qz08+fpEHTzTf/83UFBG8zPuPd21uVbWOttQ==
+     physical_name : .\WIN_ForeignKeys.wdw
+     type : 2
+   -
+     name : WIN_Form_SiteDefinition
+     identifier : 0x45a3db6600db025d
+     internal_properties : BgAAAAYAAABu9EZaaRYe0Zu/cZAhr3eAVgc9FZW3zlmKfIpR3DnbFT/HtlyCvujnvGFbpW1jH5F7+w==
+     physical_name : .\WIN_Form_SiteDefinition.wdw
+     type : 2
+   -
+     name : WIN_Table_SiteDefinition
+     identifier : 0x45a3dd4f00f57a3b
+     internal_properties : BgAAAAYAAACgnpiEIxgQy5G5Cbs3p0/OSt15CbNVbEKKfIce9x72yn68g2eJt+jttmtVo2OdZVulrQ==
+     physical_name : .\WIN_Table_SiteDefinition.wdw
+     type : 2
+   -
+     name : WIN_Vision_SiteDefinition
+     identifier : 0x45a3e70d010f8736
+     internal_properties : BgAAAAYAAACY9kBcaxAYw4lhy6k0BU5DyrsRmUnDSrlKKIahfJlzZVevR7Bui9IV7lNNq2tlHZN9hQ==
+     physical_name : .\WIN_Vision_SiteDefinition.wdw
+     type : 2
+   -
+     name : WIN_Settings
+     identifier : 0x45b139ed0391c280
+     internal_properties : BgAAAAYAAACX8/8jgP21tgIk9iaT5ChIeSZcDKxstm6vsSQVvGm1c52nPwOTsN2wY9jCPsY6xjqCgg==
+     physical_name : .\WIN_Settings.wdw
+     type : 2
+   -
+     name : WIN_Welcome
+     identifier : 0x45cda3b80247ca04
+     internal_properties : BgAAAAYAAADOVCZ6yfa+8fv5hZ6js3fXjJOLQ2nFJlipUy+8l44OinK8KCIQKs7ZnIF7Rc0D//HbWw==
+     physical_name : .\WIN_Welcome.wdw
+     type : 2
+   -
+     name : WIN_Table_Template_Delete
+     identifier : 0x45cdc0e10498b203
+     internal_properties : BgAAAAYAAAAQ7khUUwggO4GzyG15EKMaRtmV1e8bhTyuMdQsE/KaboK4T1Mw1A3v5ltFs3NtFYt1/Q==
+     physical_name : .\WIN_Table_Template_Delete.WDW
+     type : 2
+   -
+     name : WIN_DataDesigner
+     identifier : 0x490259c802159b06
+     internal_properties : BgAAAAYAAABLx7NXVBEZwoLZ7IuKcJcwo4B+ZlL/ExC3ugFQNvOjrQf5z8xa6HAx81ROqmpmEoZO1g==
+     physical_name : .\WIN_DataDesigner.wdw
+     type : 2
+   -
+     name : WIN_Designer
+     identifier : 0x49027bb802203011
+     internal_properties : BgAAAAYAAAAcenSgH0Ts/0m06SYZkg2wCmuxqR9R5+2iFpJtzi3veXNjTmK5AeeMHg+Jdz+xSb8JCQ==
+     physical_name : .\WIN_Designer.wdw
+     type : 2
+   -
+     name : Win_Designer_Container
+     identifier : 0x49027bc7023d6912
+     internal_properties : BgAAAAYAAAAHA2+zcC2Fprb9Iu6iCLPy4aDocMy+r3iCHrw8fa5k5GTsIMlhWS5V10iyDpZKNqoSEg==
+     physical_name : .\Win_Designer_Container.wdw
+     type : 8
+   -
+     name : ggWMI
+     identifier : 0x49066b6935af2d01
+     internal_properties : BgAAAAYAAADxTSl9yve/8Pw7GKovzC8hS2pyamnqwG62NWOxmowO2hLCXdDcEchHoYJ8RMwE/OzUXA==
+     physical_name : .\ggWMI.wdg
+     type : 7
+   -
+     name : WIN_TEST2
+     identifier : 0x4e10f92a01c817e0
+     internal_properties : BgAAAAYAAADiWNrO/aoCHUy2eYoIKjwnEG3PZ1Tipem20kixUf2XCf/TKW5FhMYLjb0nkRHPqx3nbw==
+     physical_name : .\WIN_TEST2.wdw
+     type : 2
+   -
+     name : WIN_Update_SQL
+     identifier : 0x4f70c7f301b5aa41
+     internal_properties : BgAAAAYAAABq4FK2dTJ6pcl438ee3UX2SB9HD8dsUSuOG87xnWKybpaY6TFzTtXuGjWvCYlHM6Vv9w==
+     physical_name : .\WIN_Update_SQL.wdw
+     type : 2
+   -
+     name : WIN_JSON2PHP
+     identifier : 0x4f7eef0b01b8b277
+     internal_properties : BgAAAAYAAADhXdnN+qcPIEozeAjrTaBfe846UnZJ5/5OS5od7QKQqBT4vfXAeWKRl7IslBzUrBzkbA==
+     physical_name : .\WIN_JSON2PHP.wdw
+     type : 2
+   -
+     name : WIN_JSON2WINDEV
+     identifier : 0x4f818529010224b7
+     internal_properties : BgAAAAYAAAChnZmNOmdPYIp2xEDDJ+QhKUaMfF7sSoiKtKHvsk1Bl6lbGop5SOFUV/Ls1FyUbFykrA==
+     physical_name : .\WIN_JSON2WINDEV.wdw
+     type : 2
+  other_elements :
+   -
+     physical_name : .\template.xml
+  analysis : .\Scoriet.ana\Scoriet.wda
+  analysis_password : 1bxMnF/DaW4GR/C/+ziIGWSMkCTXGntKfrs
+  net_assemblies : []
+  uwp_api : []
+  external_components : []
+  internal_components : []
+ languages :
+  - de-DE
+  - en-GB
+ wb_style_sheet : .\ClassMax.wws
+ rad_options :
+  internal_properties : BgAAAAYAAADePF4WdmdDc9It93F39cB51P54DRQfTYOm1AqoWMTFmBTNWmgBMS9EHpU1PWFZf7jlB4y+y5vOOoPrxKQOtn+PODHGNohGOICfAqmhTV9pZt+GADVAz8KcyagS6TM8+ps3UGWESVl3WdMInI+Phzu3VmwMKLn/P/upHBNGeyhX3xubzEo6xcviuvfSrET8OEU96vCLySeA6pmG9wVLaA==
+ code_elements :
+  internal_properties : BgAAAAYAAACyo+AGPHs6tl+CMW8i1j+hisKclwORtfzp4tr+6B34gnEg+AegA2o6CeaiNwKFgQlNnqdA
+  type_code : 0
+  p_codes :
+   -
+     code : |1+
+      
+      global
+      	gnLanguage is int
+      	gsVersion is string
+      	gnProjectID is int on 8 bytes
+      	gsDataPath is string
+      	gsExePath is string
+      	gsIniFile is string
+      	gsProjectPath is string
+      	gsAnalysePath is string
+      	gsDBPassword is string="" //Uncrypt("WvWtHBKEcXVWavLL",gsPassword,cryptRC516,encodeBASE64)
+      	gsWampVerzeichnis is string
+      	gsDocumentPath is string
+      	gsTemplatePath is string
+      	gsAgent is string
+      	gsUserName is string
+      	gsEmail is string
+      	gsActualFile is string
+      	garrWindowOpen is dynamic array of 0 string
+      	gbLoading is boolean
+      	gbOpenWizzard is boolean
+      	gnTestProjectID is int=1
+      	gnPageOffsetTop is int
+      	gnPageOffsetleft is real on 8 bytes
+      	gbEtiketteChanged is boolean
+      	gnAktuelleHistoryNr is int
+      	garrHistory is dynamic array of 0 stHistory
+      	iFarbe is array of 27 int
+      	sFarbeName is array of 27 string
+      	gnInternalWindowWidth is int
+      	gnInternalWindowHeight is int
+       	gnZoom is int
+       	gsTargetControl is string
+      	gaaHistoryVorher is associative array (*, NULL) of variant
+      	gaaHistoryNachher is associative array (*, NULL) of variant
+      	CustomColor is array of 16 int
+      	
+      	stKeyWord is Structure
+      		sKeyWord is string
+      		sCodeWord is string
+      		nType is int
+      		nVaterId is int
+      		bFinal is boolean
+      		bNoCrLf is boolean
+      	END
+      	arrKeyWord is dynamic array of 0 STKeyWord
+      	
+      	RECT is structure
+      		nLeft is int
+      		nTop is int
+      		nRight is int
+      		nBottom is int
+      	END
+      	
+      	stSourceTree is structure
+      		sSource is string
+      		nType is int
+      		nID is int
+      		nVaterID is int
+      		bFinal is boolean
+      		nIdent is int
+      	END
+      	
+      	stHistory is structure
+      		DataFileID is int on 8 bytes
+      		nType is int //1 = Add, 2 = Modify, 3 = Delete
+      		aaControlsVorher is associative array (*, NULL) of variant
+      		aaControlsNachher is associative array (*, NULL) of variant
+      	END
+      
+      	CONSTANT
+      		ZIP_ARCHIVE = "Scoriet_template_zip"
+      		SRCCOPY = 0xCC0020
+      		DT_CALCRECT = 0x400
+      		DEFAULT_CHARSET = 1
+      		OUT_DEFAULT_PRECIS = 0
+      		CLIP_DEFAULT_PRECIS = 0
+      		PROOF_QUALITY = 2
+      		DEFAULT_PITCH = 0
+      		DT_SINGLELINE =0x20
+      	END
+      
+      	POINTAPI is structure
+      		x is int
+      		y is int
+      	END
+      
+      	//Nur für API WM_ Messages Zahl zu Text übersetzen...
+      	wm_struc is structure
+      		wm_pars is string
+      		wm_value is int
+      	END
+      	wm_buf is array of 178 wm_struc
+      
+      	stArrIdent is Structure
+      		sName	is string
+      		bNoDot	is boolean
+      	END
+      
+      EXTERN "WINCONST.WL"
+      EXTERN "KeyConst.WL"
+      
+      IF In64bitMode() THEN
+      	CallDLL32("kernel32","CreateMutexA", Null, Null, "Scoriet64")
+      ELSE
+      	CallDLL32("kernel32","CreateMutexA", Null, Null, "Scoriet32")
+      END
+      
+      LOCAL
+      	sProcList is string
+      	sWampDir is string
+      	sConfDir is string
+      	sApacheConf is string
+      	sLine is string
+      	sSprache is string
+      	m is int
+      	
+      iFarbe[1]=iWhite
+      sFarbeName[1]="Weiss"
+      iFarbe[2]=iBlack
+      sFarbeName[2]="Schwarz"
+      iFarbe[3]=iDarkGray
+      sFarbeName[3]="Dunkelgrau"
+      iFarbe[4]=iLightGray
+      sFarbeName[4]="Hellgrau"
+      iFarbe[5]=iDarkRed
+      sFarbeName[5]="Dunkelrot"
+      iFarbe[6]=iLightRed
+      sFarbeName[6]="Hellrot"
+      iFarbe[7]=iDarkYellow
+      sFarbeName[7]="Dunkelgelb"
+      iFarbe[8]=iLightYellow
+      sFarbeName[8]="Hellgelb"
+      iFarbe[9]=iYellowToolhelp
+      sFarbeName[9]="Tooltip Gelb"
+      iFarbe[10]=iDarkGreen
+      sFarbeName[10]="Dunkelgrün"
+      iFarbe[11]=iLightGreen
+      sFarbeName[11]="Hellgrün"
+      iFarbe[12]=iDarkBlue
+      sFarbeName[12]="Dunkelblau"
+      iFarbe[13]=iLightBlue
+      sFarbeName[13]="Hellblau"
+      iFarbe[14]=iDarkCyan
+      sFarbeName[14]="Dunkeles Cyan"
+      iFarbe[15]=iLightCyan
+      sFarbeName[15]="Helles Cyan"
+      iFarbe[16]=iLightMagenta
+      sFarbeName[16]="Helles Mangenta"
+      iFarbe[17]=iDarkMagenta
+      sFarbeName[17]="Dunkles Mangenta"
+      iFarbe[18]=RGB(255,150,150)
+      sFarbeName[18]="Helles Rot"
+      iFarbe[19]=RGB(255,150,190)
+      sFarbeName[19]="Dunkles Rot"
+      iFarbe[20]=RGB(255,170,150)
+      sFarbeName[20]="Orange"
+      iFarbe[21]=RGB(255,235,150)
+      sFarbeName[21]="Gelb"
+      iFarbe[22]=RGB(150,255,150)
+      sFarbeName[22]="Grün"
+      iFarbe[23]=RGB(200,255,150)
+      sFarbeName[23]="Helles Grün"
+      iFarbe[24]=RGB(150,255,200)
+      sFarbeName[24]="Türkis"
+      iFarbe[25]=RGB(150,235,255)
+      sFarbeName[25]="Helles Blau"
+      iFarbe[26]=RGB(150,170,255)
+      sFarbeName[26]="Blau"
+      iFarbe[27]=RGB(200,150,255)
+      sFarbeName[27]="Violett"
+      
+      gbOpenWizzard=true
+      
+      //The path, where the executabe file is located
+      gsExePath=CompleteDir(fExeDir())
+      
+      gsIniFile=gsExePath+"Scoriet.ini"
+      
+      gsTemplatePath=INIRead("Scoriet","TemplateRootPath","",gsIniFile)
+      if gsTemplatePath="" then
+      	gsTemplatePath=CompleteDir(SysDir(srMyDocuments))+"Scoriet\Templates\"
+      	INIWrite("Scoriet","TemplateRootPath",gsTemplatePath,gsIniFile)
+      END
+      
+      gsDataPath=INIRead("Scoriet","DatabasePath","#",gsIniFile)
+      if gsDataPath="#" then
+      	gsDataPath=CompleteDir(SysDir(srMyDocuments))+"Scoriet\Data"
+      	INIWrite("Scoriet","DatabasePath",gsDataPath,gsIniFile)
+      END
+      
+      //The path, where the project (WinDev sources) are located
+      gsProjectPath=left(gsExePath,Position(gsExePath,"\scoriet")+8)
+      
+      //The path, where the analysis of the project is located
+      if ontestmode() then
+      	gsAnalysePath=CompleteDir(gsProjectPath+"Scoriet.ana")
+      else
+      	gsAnalysePath=CompleteDir(fExeDir())
+      end
+      
+      gsDocumentPath=CompleteDir(CompleteDir(SysDir(srMyDocuments))+"Scoriet")
+      
+      gsAgent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
+      
+      //Copy the analysis to the .exe directory, this is for testing of the upgrade and more
+      if ontestmode() THEN
+      	if not fCompare(gsExePath+"Scoriet.wdd",gsAnalysePath+"Scoriet.wdd")=0 then
+      		fCopyFile(gsAnalysePath+"Scoriet.wdd",gsExePath)
+      	END
+      END
+      
+      if InTestMode() then
+      	gsVersion=GetGUID(guidRough)
+      else
+      	gsVersion=ExeInfo(exeVersion)
+      END
+      	
+      IF fFileExist(CompleteDir(gsExePath)+"language.txt") THEN
+      	sSprache=fLoadText(CompleteDir(gsExePath)+"language.txt")
+      	switch sSprache
+      		case "en"
+      			SaveParameter("Language","3")
+      		case "de"
+      			SaveParameter("Language","1")
+      	END
+      	fDelete(CompleteDir(gsExePath)+"language.txt")
+      END
+      
+      gnLanguage=Val(LoadParameter("Language"))
+      SWITCH gnLanguage
+      	CASE 0
+      		//Default
+      		SaveParameter("Language",1)
+      		Nation(1)
+      	CASE 1
+      		Nation(1)
+      	OTHER CASE
+      		Nation(3)
+      END
+      
+      gsWampVerzeichnis=INIRead("Scoriet","wwwroot","",gsIniFile)
+      if gsWampVerzeichnis="" then
+      	sProcList=ExeListProcess(exePID, exeShortName)
+      	if Position(sProcList,"httpd.exe")>0 then
+      		//Nach Apache suchen!
+      		sWampDir=fExtractPath(Win32_Process2(),fDirectory+fDrive)
+      		sConfDir=Left(sWampDir,Length(sWampDir)-4)+"conf\httpd.conf"
+      		sApacheConf=fLoadText(sConfDir,foAnsi)
+      		m=stringcount(sApacheConf,Charact(10))+1
+      		for i=1 to m
+      			sLine=ExtractString(sApacheConf,i,Charact(10))
+      			if left(sLine,12)="DocumentRoot" then
+      				gsWampVerzeichnis=replace(replace(replace(Replace(middle(sLine,14),Charact(34),""),"/","\"),Charact(13),""),Charact(10),"")
+      				INIWrite("Scoriet","wwwroot",gsWampVerzeichnis,gsIniFile)
+      			END
+      		END
+      	else
+      		//Nach IIS suchen...
+      		gsWampVerzeichnis=RegistryQueryValue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\InetStp","PathWWWRoot")
+      		INIWrite("Scoriet","wwwroot",gsWampVerzeichnis,gsIniFile)
+      	END
+      END
+      
+      ArrayKeyWord()
+      
+      Database_Classic(gsDataPath)
+      
+      gsUserName=LoadParameter("Username")
+      gsEmail=LoadParameter("Email")
+      
+      if gsEmail="" and gsUserName="" then
+      	open(WIN_Lizenz)
+      END
+     type : 196608
+   -
+     type : 196621
+   -
+     type : 196627
+     enabled : false
+ code_parameters :
+  internal_properties : BgAAAAYAAAA6ih3UbgNXHwTtiPSFUEj+2fi/m7v4QV2rqidAupM=
+  original_name : ClassMax
+rad :
+ internal_properties : BgAAAAYAAABhIL0UXeZmxDJxY3Xy0Q==
+project_explorer :
+ explorer_type : project
+ children :
+  -
+    name : Windows Store Apps API
+    explorer_type : custom_folder
+resources :
+ string_res :
+  identifier : 0x0
+  internal_properties : BgAAAAYAAAAnMYFQ1bL/vz9ehh7L22SNNSlIzGTOI8h5F/WtgDNP
+  strings :
+   -
+     text :
+      de-DE : Leider ist die Demozeit abgelaufen
+      en-GB : Leider ist die Demozeit abgelaufen
+     index : 0
+   -
+     text :
+      de-DE : Leider ist die Demozeit (erweiterte Demo Lizenz 60 Tage) abgelaufen
+      en-GB : Sorry the demo version (extended 60 days license) is over
+     index : 1
+   -
+     text :
+      de-DE : "Sie haben das Template: "
+      en-GB : "You have the template: "
+     index : 2
+   -
+     text :
+      de-DE : " geändert, wollen Sie nun das Template hochladen für die Community?"
+      en-GB : " changed, do you want to upload the template to the community now?"
+     index : 3
+   -
+     text :
+      de-DE : Sie haben 5x verweigert ein Template der Gemeinschaft zur Verfügung zu stellen!
+      en-GB : You have declined to upload a template 5 times!
+     index : 4
+   -
+     text :
+      de-DE : Daher wird die Open-Source Lizenz ungültig!
+      en-GB : The open-source license will be now invalid!
+     index : 5
+   -
+     text :
+      de-DE : Sie können nun eine andere Lizenz wählen!
+      en-GB : You can now choose a other license type!
+     index : 6
+   -
+     text :
+      de-DE : "Sie haben noch "
+      en-GB : "You have remaining "
+     index : 7
+   -
+     text :
+      de-DE : " Möglichkeiten das Template der Gemeinschaft zur Verfügung zu stellen!"
+      en-GB : " times to upload the template to the community!"
+     index : 8
+   -
+     text :
+      de-DE : "Wenn Sie 5x ablehnen, dann wird die Open-Source Lizenz ungültig!"
+      en-GB : "If you decline 5 times in a row to upload a template, the open-source license will expire!"
+     index : 9
+   -
+     text :
+      de-DE : Vielen Dank für Ihren Beitrag zur Community!
+      en-GB : Thank you very much for your contribution to the scoriet community!
+     index : 10
+   -
+     text :
+      de-DE : Template konnte nicht hochgeladen werden!
+      en-GB : The template could not be uploaded!
+     index : 11
+   -
+     text :
+      de-DE : Verbindung zum Scoriet Server war nicht erfolgreich
+      en-GB : Could not connect to the scoriet server!
+     index : 12
+custom_note :
+ internal_properties : BgAAAAYAAAAd98VSJfHHqE3P0QHwrwdhn7ig8dWBR6valpUTgnAMTVXiDg==

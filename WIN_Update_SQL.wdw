@@ -1,0 +1,662 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : WIN_Update_SQL
+ major_version : 26
+ minor_version : 0
+ type : 2
+ description : ""
+ subtype : 0
+window :
+ name : WIN_Update_SQL
+ identifier : 0x2f70c7f3015baa31
+ internal_properties : BgAAAAYAAAAZg8W4sKboezC8EE4Y3gDO+Vvls7lVrSYwMqAM7dzlWepO+P3h0LnYv+jLB7uK/iP0p5eD52LCs2oC9f85mh+rxfycVPgC+pI0pXvHiMuZGjQTHMvkRxRGklq6N4rJJv4LXiPUzEHiem6hKNOTV+W1sfW2J9n0yb9XOkK5VFY6NCRagytLJb8QRNAXrIXHJzquCnn29auxoETiYMtIbmOmUwALW8t/XuI/bn4YX41oS7p/EY8OcPtwQLkY7TRtCVNGkDErd+Ai9bhFNROq3NsNeMa/Dhlk1KLPs9quUoZVXPU0/3aj0/O1OWgdtcUutKwVXxg9xDUt+rNDL3FAADElrhwIGX7UmeONxDZTfcSz5gw+Zb/l5rM8vIiU0/CZ3mXKoVy2ASSrKe8p854FgfZDDkSt13s0dcWShcKlXxPjZ1IlzitP7+AombRUL/XVLx+SbHAKegmBk8HCT9MvybE+4fEsHKAmnvSoTOwME7nFA3bfyZEAfAiGIhF3mctvU1qFUYl2ne5kRPHv0qWoAZXHIqfJTFvixUVa160C6uAiNIJXHMuVtuMUy7KcvSBwuBvlA/cOZtzgD/WJ5jAOt4EJOLe4VXQeBDHtEyag0he4LbW1isaDgxM1Kin6UQZRwT4GFDs6VLv86xuFQNn8uF8iIhklkuZuPBsRUehaALvgqyeOhFv6/lWs8KsShu183J5n8PnWsM1nuvXZQ+nHMlXvScQrwnBnvRfS7Edj0Ig/xh2GlLb1N2Nhsri7FTRkZSRXBW3cPiIlA7QE2gEVhCt9GQU24sUl2s7HYeAliOQ99LRlAQWqOWtWPCYlIFa3tDb+hwqFqVvTn1lE9/6YvCqtJ5OA2CXIKcRUGKc7NbF+bzGAbcZe1Uul24sFkh7z/LJ8/dHewUgOKJli6SNpPNrbULWeQYp0cYa+2Wzokldu+jviHVh67RupSoJSegWLgVcJ+Zkn9hWLJCayWEZEw04YrxeiMBri2oAueNDW3hS0s5/qnXMV+m7SpmDqHLlwGXiA53OgQk054f6PJpWi63Tk533gck4iMPsHaQr9FBe8nh2sFuSe3LDA48Au4hD7DxPJA0pmN84apsLVGndA9voNRZ+TDIu0JQCjreth15AV73I/K5o8iq/oYsbkXcyCkzqVQtkEY79fXPxsQcN7ULpynL8172fxs4kdHKjGYg==
+ controls :
+  -
+    name : COMBO_Version_FROM
+    identifier : 0x2f70c88d04a00528
+    internal_properties : BgAAAAYAAAA7TAcFSQGpWmwOZaPO60CIlSzmYv4YFdDYP/dZl1oD+EVZjZb7zh9Q2ZvxiI4W3qSYeheuAl1x8rWDuREuZY9ADkTFYdHwzPvofRe6mDwLlM5uCMa+yEg73UUFtA1e0euuSO334vf52lcv3BT/C7Zo2zVhHkfLNp7yBeQbNN7oRXYWSMzll/bRGBSSGVPcGG5pTVaLw20+l42+WmKrFVcz9VAR2gx1R6duwxK9WQ/NtegNLFbZs3xoCCHRwaw/IyEvlpx/+qE3dWK18YbxgaXilDUyiNvySj9K2yjUirmF562saVSTT4h7VNDLamuw4hbuva0xB3MQpqktld9yDZuxbt4opnQeX5d5YbyXaOv3OPVRqEvtqAasv32QyCckHQCHQRH3v/TMdirbjPncy3LkeizKJVD3s2I6NdDMr21m0+AvLN3GrsusL8x1/6MyfXRRW8iHLAVvZj77erXH2IQH9f6h/rkxlRP67uxJjFPkz7eFyIC+84oJJMSBr7MBaMgfzmFGY7a7LNmJcmw0bKxtB86UxslRK+xH+tJYvxXoU6TDc5HTvUr1qPpdbfkewtppV6sita8ZR1xiH6tnpCy7OU8GtUU3+PiHSr9fDg18JjGziHgHDy6p1kDFAcpw4X32xE2TgV34usxm5qyAnAxlszS2CRdMgGNWGUk9vgVUf+9kLtYjcmy09b6ow8Y107N0g3jSxzOskFubNidGCut2gijCa5zm6p5WnFk08nzlFwOOrlP15F1wB5N2JiKbGoIr8Ihxep3FdsfIyuTngc/Gc8lsRZx0X4k1ZwjNaxWZRQSVgyJ9KI7rdELFI1fDJr38ZQ+ZxvnAQgsCcuXdDRpy04fspG1CASJtsoOlzDstnY/d2AaQgrt5h0L+GzsOcnPbY06yXtRbTh4fsvsB6yHvWKYHQw32qkgiB9nB1BqsLjI//TuLwg/YfRo5fuAxh6Brwc06V6lidfPmy8VWVe2aH9fTMR+xnlGlqqikoubPu2QzCgBldkRmy4dxIE1wr77iH1LHe/iJ/eHwq5zmVpllp9FeNSw7J6WAazifA3oiRF640IeMjEfr992CmOgDa6qeVMJsfo7o2e4Jd4zzwYHpXkv17RZJEQ3TGJcKyBbYbVCObxlKdOlUxGD6Jf+XD+AKBWQ7QLVShxQfwsoGaXQeJupWmrnHkteZbDuJsKZ1mX4PXuuAvoP+UMjRPrpiivSamYukCp+ASwTattvDaNprKukYfuBNTcl0kDfEp2viX2RRYOX/QCuMZ0NwFLCQykDMuk2Iki42dypWqvjDPVl+Sz2BqbyjzD6JYJ8uxzzIYN7RuA+Hi5AeokVEG/Zhnrip5Wt870Ot96nFSrPE7HjA6Ud8Zr1y2cbZYIG+j0eY7YVnYtVGTHwkQ0ykK0t2Re2ruN+xSi5ajIfGSSbgFdMXx4VfiRLZIfKGGEARfAG4KXYOhRRcsg86RJMhaAxD1fvXzFNRs7TuIbLhFiIilWAb7m7/E24wTjBwMQ7m8E0SvDlB1aF+cWcaXWRSY5d37upRapB2wtH29lsa2ZY50xaOMzdmvDVJKswLJxmWQjkCAyuphShofUUr322tEIKIEm16P6VS7r2MjYIRglh2uvk97emVWszHKiQlWF5LphFevcz4ecttEDsr38qLPFDCQb7BCgVqJ4fbbZhM+WRAmYJ7QCpGbFli5GxVy94Ksue9NPhk1r57uYLFba2EuVCt9lqtSivGtOWImHAbTygj4lWMoK8fu01lE9nUTPupmp5+GdT13jIe6pNGssKH9HBDwJEgpmDvzmWfgywkQXyAN7oEKKUjv2laaI/fs6BhGwWu4ycKEAiK6WAvXXbsBp59jVu50JMuhuE4wfvAQqoZN0jCGgQsWlmD08NIMSYKOzhCB6rBlcOHX+Rx8X7/nbk7E+pVdxLwjEgVYHCb0P24HrFPsJjT5UXSK+I30FOT8JtL0cr0yUloUDb31VOzL/BhKIYOD9ZzcBb/4Ff97UyiR5Ds+Ulf80bmH3jlIj7w5zQbf2lO/08sYIrqwSHJ0MJUfn6JoirtfZ8jWKdSOQ7w+yS5mlgbZJIzwMbVZf5AMxtOnbNyDfm5yoEJ/NUDvaZE/WiILA0qDmH4p2QYBAyxoJpLekNZ7vwW9kac1OQZFLfPmBq1Appuhz7lDD7cdgEuVZRIEoTGBayPXSwsh74dLouZ3ofXuWJtKe/Fmw8pEcXnQAhO/x7qusKqVLGiUSEFVTSg8IENTYYIFidUxEg1syGXZI+EsNuiS0Qf+vg92VnCHbhnjnK9Qh+Ketraqb7gw457GGWpXw7lYRaX6Y7nI2L2dLroayyo0HUKZ79rDEqqS1M3I9ne4+LSyLACwd7wnw/2F7MULlPr6QIIz3kGi8N1SoEFM3ibHjDXiilwnUBLVWMjcbSMC/K7GEJLNO9+JpPKyCE05leTlg+D18JJuPUgr5bgBg/qVgElTk/C2HD0ddFPR4DavOSvVcqBs/RHOqVDshf3ySTwRuSE+KPHIwzoC+6Rf8DYjodVihDNawwFnSbSQHURNsI1hq3JQ9LGEE3jrH3qV//e9A5nx78WIWOx+OCRQkJGzFSIpDrOvHkmY5iC6mzuhYRl0/PiB81dLuD6pdRqBV72nrgLJY9yXsJTpckxAib3g0dLkddcSl/s4SHw4kwoniQ3p2VsMGde8+7jLbNIPDHEnu+FY9JQBH3xlKeF10zWvFEL/zLeqq8SnPKI9W0pt6q5w3kGi4kY2UA3k/KonA==
+    dropdown :
+     internal_properties : BgAAAAYAAAAbbV91hSFdlPKkZWlHwfa3rNmL8bJwwIcXqLk/JBiQojKpgNeuAg3BJ3bEC/yyX8uA57kJ+tvgB4sT5SoDaz2IEFBrob1quIxw4AWriCYZTg2I209wLBVrklSeUvycoS6FFQDdkMYXsOqWtlwtAC4bK360qHX4dFZZdY1JjVyuvS48HJhLiKuirJ3pLJ00tQmtG9xMm0cs4wzjwV+dEhKlVPF0y67kc4zoM7BNrqYKY6n1j5McBWeL3FpF+LiJlIPfWrQc3lOG+FlTRWxa52OJdSQx67RbZfhcs8x+skkjwzElnUYF/IUkYXRnQaJSpttyOgvROYBYaU5BPoh7HGgT340c1XIxSp+BhKr5+1zh6QubHgUoGBYB6XeC2d47TkWaMwgmBEw1PiYWVxwcq4UQD37u/TowxzCz7jKKAPPsjz2K00RhZnxkduk1WOisAmq+kr8fnAFf93AGIlQhzLTqfqtE1o8ls9jDERif9VWSy7LK8f3pwHlmTDZYqkTJ6fy35Mbn/D15XwXTeRxZrJ0ZNohydQq9JRTtf9g0EhhukrclGaEVy8BTLz8y9/BPFCidMezu1Dqyy24ulIbU6DDaFNmcPLB17+0lN3LGNOd2xtNgnvz7eY99KYhf2iEoUY2FKKOmTxq1loHpgSSaFngqwFKoDpWtWeJDw8YP1ksPysFez9ko1xxSOP0YnE+cMOdm4e0aJ6PZWT22TK2H3CaURGvfKVI15+orXshQDMFAPpV46D1z4Xe7O8oEYg5ByhyYxwncSv7EcvdpwLfzgLg4bwG5Tf99gjht+oZJiOL+UJWotsElJsSgkVW2C4B94IIv7s81Ue9IxMAc5GqSBSUQMRcYRfYp30VKwOr4gPQrjtiYIH9vEohfcHxhlpckp7aWKgIrwkBIIPX+e6ii+ovYJGVgARh5qWyvph92NflKzZh4z8lsRMrm3/9+hM+sHaFuDRpU/SgVXPFw7tn1KjeQ6N+b6LiUifFNCewK/a9AUFY3LHs1sxGk8Q0RFe0sOW76AirsMiOMlhi833HamGHHHuVAmmJuurGWAmDP69cPGF7vX1ze7VOEp3LAYSWbWYR12M/gdIl1csVtw8LmfCUOKd/OXXZpXsXY8t/yInv0o3oIbN4sW6fbQq6M/unHxfDX8GvwOuSXizVGg4XPRVS0M4Ff+P3/XRPGwTDfg3pCxi/TQ1/gAcjs5qXqcoUsvCLmnVajtgzVapwZhFUJuDl2xhhkVzGf8CELCQrrpzp3mp6iZmee8IV5ASUS4yO0mWRn8Aw=
+     type : 7
+    type : 14
+    code_elements :
+     type_code : 23
+     p_codes :
+      -
+        type : 35
+        enabled : false
+      -
+        type : 17
+        enabled : false
+  -
+    name : COMBO_Version_TO
+    identifier : 0x2f70c8b304cd9989
+    internal_properties : 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
+    dropdown :
+     internal_properties : BgAAAAYAAAAbbV91hSFdlPKkZWlHwfa3rNmL8bJwwIcXqLk/JBiQojKpgNeuAg3BJ3bEC/yyX8uA57kJ+tvgB4sT5SoDaz2IEFBrob1quIxw4AWriCYZTg2I209wLBVrklSeUvycoS6FFQDdkMYXsOqWtlwtAC4bK360qHX4dFZZdY1JjVyuvS48HJhLiKuirJ3pLJ00tQmtG9xMm0cs4wzjwV+dEhKlVPF0y67kc4zoM7BNrqYKY6n1j5McBWeL3FpF+LiJlIPfWrQc3lOG+FlTRWxa52OJdSQx67RbZfhcs8x+skkjwzElnUYF/IUkYXRnQaJSpttyOgvROYBYaU5BPoh7HGgT340c1XIxSp+BhKr5+1zh6QubHgUoGBYB6XeC2d47TkWaMwgmBEw1PiYWVxwcq4UQD37u/TowxzCz7jKKAPPsjz2K00RhZnxkduk1WOisAmq+kr8fnAFf93AGIlQhzLTqfqtE1o8ls9jDERif9VWSy7LK8f3pwHlmTDZYqkTJ6fy35Mbn/D15XwXTeRxZrJ0ZNohydQq9JRTtf9g0EhhukrclGaEVy8BTLz8y9/BPFCidMezu1Dqyy24ulIbU6DDaFNmcPLB17+0lN3LGNOd2xtNgnvz7eY99KYhf2iEoUY2FKKOmTxq1loHpgSSaFngqwFKoDpWtWeJDw8YP1ksPysFez9ko1xxSOP0YnE+cMOdm4e0aJ6PZWT22TK2H3CaURGvfKVI15+orXshQDMFAPpV46D1z4Xe7O8oEYg5ByhyYxwncSv7EcvdpwLfzgLg4bwG5Tf99gjht+oZJiOL+UJWotsElJsSgkVW2C4B94IIv7s81Ue9IxMAc5GqSBSUQMRcYRfYp30VKwOr4gPQrjtiYIH9vEohfcHxhlpckp7aWKgIrwkBIIPX+e6ii+ovYJGVgARh5qWyvph92NflKzZh4z8lsRMrm3/9+hM+sHaFuDRpU/SgVXPFw7tn1KjeQ6N+b6LiUifFNCewK/a9AUFY3LHs1sxGk8Q0RFe0sOW76AirsMiOMlhi833HamGHHHuVAmmJuurGWAmDP69cPGF7vX1ze7VOEp3LAYSWbWYR12M/gdIl1csVtw8LmfCUOKd/OXXZpXsXY8t/yInv0o3oIbN4sW6fbQq6M/unHxfDX8GvwOuSXizVGg4XPRVS0M4Ff+P3/XRPGwTDfg3pCxi/TQ1/gAcjs5qXqcoUsvCLmnVajtgzVapwZhFUJuDl2xhhkVzGf8CELCQrrpzp3mp6iZmee8IV5ASUS4yO0mWRn8Aw=
+     type : 7
+    type : 14
+    code_elements :
+     type_code : 23
+     p_codes :
+      -
+        type : 35
+        enabled : false
+      -
+        type : 17
+        enabled : false
+  -
+    name : BTN_Start
+    identifier : 0x2f70c8f107798c74
+    internal_properties : BgAAAAYAAADWR+HzCctxKJTMoCWsAMpCTy6c4HvwxHFqsFxmUveKt9duYZ6DefzfJTJ3PP0VX1IlvTh9LMFRX1En/9euBL7BLgVFcx5jvZjuvrJWsb6Ac+VBH54vofjGkkhM9sKR0ltUaFMDnqnKh7JLJyFBOAPVaZZig16ut/CXuzokuo4SWXNjlj3B5nEvP45ebf+Ri6hOiabwHHlmvZgxJrG7Q33q3OSw8LLqHi9eYs7+OhVcNOsgR7dpvIiZuB9Wf9mLz1FMVI4VZzVsi9kNIg/tQ1IN8uydzSPvSNwOJrha8tx/s01PwyNbbb19c92uhDQCoMGpjNS9PcA6U1Mkt6Jzw7FQHEBKtXcdeTx3KjW81rDpy3i5YvFIRcSMs2GypOEwzDigdWIvwWzFTagPdYee0nP9uKL9WDl+s7HaGwwjnNPhqdLUonGQOiTxpeMC5hudLa9FgngLyQxVvTITGIAr1a5BzjobCqHMGyPpjqxszyRSzVLVDsFt40uX8sqoTzgS815DMpvf5YjHJmUeT+NEj6dBPHULtM6rP14TpQAt8/N0EaZbP5yJH3C7AWFA3AHXBAUCX4CFgDaHPys8tNP7OtpLOinI1Qww6SBPQKfpnFFlA30iGVemamkfW4swZwnlDJ0aEPEVUZK4tSxNxFYcn4RlmAASFShZHlBbUq0qUsmuNUWkxWkP7BOSR2R9QgYZWKAxDon31DNMCdCCv1gEjJj//8jsp1cwsET5qcJ7RyDShnHEFpf+KC2O589cj2xQwoYp0Qgy/NKMo1zbhXCbZlNDT7TFrQZ3XRN7lCLkfArf8ZdcqekgkYFQCAFIPgtJwsOCHf0C7bqgPR+JOsGAWlZceZ9vSak2ApldVzapy/mD7tSYRY8YwLokMbTBN9mIsmYfFCj4leSQUndG9uJfmxzujZANERNMkDyb+qsnobkS+2gLgZIUSOogv8ld2nEaIDcLqvNpIx18/uV5Urmi42teJOc8iaM9iTddwBPzxSlk96b6RhKb8WxxhJm63nsQQwBG+Enm/YH7SvZ7Dwq6nEMtYvyCmNevuGNUQwVQM75l3E+XZ8YDQOJOrhARknPcyqOjV1Rc6KsSR+ZRo3OCAn39RUXAhqiODsCEOMl6KWzJueVZG5SJbnmMfRRjsDmGbebx+pDKZjYUqxnZUzGUd8Tw0/5wzodPto+pmVF9EBZMtETiX5WaTaxYSiTSEN7hFZ56iCp55UclsQ0uGEEju/06nE/hyDerCBgWiMYH1y619bTMLzXh
+    type : 4
+    code_elements :
+     type_code : 4
+     p_codes :
+      -
+        code : |1-
+         
+         local
+         	nVersionFrom is int on 8 bytes
+         	nVersionTo is int on 8 bytes
+         	
+         	zz is int
+         	xx is int
+         	kk is int
+         	ki is int
+         	
+         	stKeySegment is structure
+         		sKeyItemName is string
+         		nSegment is int
+         		bExist is boolean
+         		bNew is boolean
+         	end
+         	stKeys is structure
+         		ID is int on 8 bytes
+         		sKeyName is string
+         		nKeyType is int
+         		bPrimary is boolean
+         		bUnique is boolean
+         		bExist is boolean
+         		bNew is boolean
+         		bUpdate is boolean
+         		arrKeyItems is dynamic array of 0 stKeySegment
+         	end
+         	stItems is structure
+         		sItemName is string
+         		bExist is boolean
+         		bNew is boolean
+         		bUpdate is boolean
+         		sType is string
+         		sSize is string
+         		nKeyType is int
+         		bNotNull is boolean
+         		bAutoIncrement is boolean
+         		sDefault is string
+         	end
+         	stFiles is structure
+         		sFileName is string
+         		bExist is boolean
+         		bNew is boolean
+         		bNewKey is boolean
+         		bUpdate is boolean
+         		bKeyUpdate is boolean
+         		arrItems is dynamic array of 0 stItems
+         		arrKeys is dynamic array of 0 stKeys
+         	end
+         	arrFiles is dynamic array of stfiles
+         	sItem is string
+         	
+         nVersionFrom=val(COMBO_Version_FROM)
+         nVersionTo=Val(COMBO_Version_To)
+         
+         HDeactivateFilter(Project)
+         HReadSeek(Project,ProjectID,gnProjectID)
+         IF NOT HFound(Project) THEN
+         	Error("Projekt nicht gefunden!")
+         	return
+         END
+         
+         //Read all data old version
+         zz=0
+         HFilter(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,nVersionFrom,hMinVal),HBuildKeyValue(DataFile,DataFileKey,nVersionFrom,hMaxVal))
+         HReadFirst(DataFile,DataFileKey)
+         WHILE NOT HOut(DataFile)
+         	
+         	zz=ArrayAddLine(arrFiles)
+         	arrFiles[zz].sFileName=DataFile.FileName
+         	
+         	//Data items to array
+         	xx=0
+         	HFilter(DataItems,DataFileID,DataFile.DataFileID,DataFile.DataFileID)
+         	HReadFirst(DataItems,DataFileID)
+         	WHILE NOT HOut(DataItems)
+         		
+         		xx=ArrayAddLine(arrFiles[zz].arrItems)
+         		arrFiles[zz].arrItems[xx].sItemName=DataItems.ItemName
+         		arrFiles[zz].arrItems[xx].sType=DataItems.DB_Data_Type
+         		arrFiles[zz].arrItems[xx].sSize=DataItems.Size
+         		arrFiles[zz].arrItems[xx].nKeyType=DataItems.KeyType
+         		arrFiles[zz].arrItems[xx].bNotNull=DataItems.bNotNull
+         		arrFiles[zz].arrItems[xx].bAutoIncrement=DataItems.AutoIncrement
+         		arrFiles[zz].arrItems[xx].sDefault=DataItems.sDefault
+         		
+         		hreadnext(DataItems,DataFileID)
+         	end	
+         	
+         	kk=0
+         	HFilter(DataKeys,DataKeysKey,[DataFile.DataFileID,hMinVal,hMinVal],[DataFile.DataFileID,hMaxVal,hMaxVal])
+         	HReadFirst(DataKeys,DataKeysKey)
+         	while not hout(DataKeys)
+         		kk=ArraySeek(arrFiles[zz].arrKeys,asLinear,"sKeyName",DataKeys.KeyName)
+         		if kk>0 then
+         			ki														= ArrayAddLine(arrFiles[zz].arrKeys[kk].arrKeyItems)
+         			arrFiles[zz].arrKeys[kk].ID								= DataKeys.DataKeysID
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].sKeyItemName	= DataKeys.Field
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].nSegment		= DataKeys.Segment
+         		else
+         			kk														= ArrayAddLine(arrFiles[zz].arrKeys)
+         			arrFiles[zz].arrKeys[kk].ID								= DataKeys.DataKeysID
+         			arrFiles[zz].arrKeys[kk].sKeyName						= DataKeys.KeyName
+         			arrFiles[zz].arrKeys[kk].nKeyType						= DataKeys.KeyType
+         			ki														= ArrayAddLine(arrFiles[zz].arrKeys[kk].arrKeyItems)
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].sKeyItemName	= DataKeys.Field
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].nSegment		= DataKeys.Segment
+         		end
+         		HReadNext(DataKeys,DataKeysKey)
+         	END
+         	HDeactivateFilter(DataKeys)
+         	
+         	HReadNext(DataFile,DataFileKey)
+         	
+         END
+         HDeactivateFilter(DataFile)
+         
+         //Read all data new version
+         HFilter(DataFile,DataFileKey,HBuildKeyValue(DataFile,DataFileKey,nVersionTo,hMinVal),HBuildKeyValue(DataFile,DataFileKey,nVersionTo,hMaxVal))
+         HReadFirst(DataFile,DataFileKey)
+         WHILE NOT HOut(DataFile)
+         	
+         	//if DataFile.DataFileID=11 then stop
+         	
+         	zz = ArraySeek(arrFiles,asLinear,"sFileName",DataFile.FileName)
+         	if zz<>-1 then
+         		arrFiles[zz].bExist=true
+         	else
+         		zz=ArrayAddLine(arrFiles)
+         		arrFiles[zz].bNew=True
+         		arrFiles[zz].sFileName=DataFile.FileName
+         	end
+         	
+         	HFilter(DataItems,DataFileID,DataFile.DataFileID,DataFile.DataFileID)
+         	HReadFirst(DataItems,DataFileID)
+         	WHILE NOT HOut(DataItems)
+         		
+         		xx = ArraySeek(arrFiles[zz].arrItems,asLinear,"sItemName",DataItems.ItemName)
+         		if xx<>-1 then
+         			arrFiles[zz].arrItems[xx].bExist=true
+         			IF arrFiles[zz].arrItems[xx].sType<>DataItems.DB_Data_Type THEN
+         				arrFiles[zz].bUpdate				= True
+         				arrFiles[zz].arrItems[xx].bUpdate	= True
+         				arrFiles[zz].arrItems[xx].sType		= DataItems.DB_Data_Type
+         			END
+         			IF arrFiles[zz].arrItems[xx].sSize<>DataItems.Size THEN
+         				arrFiles[zz].bUpdate				= True
+         				arrFiles[zz].arrItems[xx].bUpdate	= True
+         				arrFiles[zz].arrItems[xx].sSize		= DataItems.Size
+         			END
+         			IF arrFiles[zz].arrItems[xx].nKeyType<> DataItems.KeyType THEN
+         				arrFiles[zz].bUpdate					= True
+         				arrFiles[zz].arrItems[xx].bUpdate		= True
+         				arrFiles[zz].arrItems[xx].nKeyType		= DataItems.KeyType
+         			END
+         			IF arrFiles[zz].arrItems[xx].bNotNull<>DataItems.bNotNull THEN
+         				arrFiles[zz].bUpdate					= True
+         				arrFiles[zz].arrItems[xx].bUpdate		= True
+         				arrFiles[zz].arrItems[xx].bNotNull		= DataItems.bNotNull
+         			END
+         			IF arrFiles[zz].arrItems[xx].bAutoIncrement<>DataItems.AutoIncrement THEN
+         				arrFiles[zz].bUpdate						= True
+         				arrFiles[zz].arrItems[xx].bUpdate			= True
+         				arrFiles[zz].arrItems[xx].bAutoIncrement	= DataItems.AutoIncrement
+         			END
+         			IF arrFiles[zz].arrItems[xx].sDefault<>DataItems.sDefault THEN
+         				arrFiles[zz].bUpdate					= True
+         				arrFiles[zz].arrItems[xx].bUpdate		= True
+         				arrFiles[zz].arrItems[xx].sDefault		= DataItems.sDefault
+         			END
+         		else
+         			xx=arrayseek(arrFiles[zz].arrItems,asLinear,"sItemName",sItem)
+         			if xx<>-1 then
+         				xx++
+         				ArrayInsertLine(arrFiles[zz].arrItems,xx)
+         				arrFiles[zz].arrItems[xx].bNew				= True
+         				arrFiles[zz].bUpdate						= True
+         				arrFiles[zz].arrItems[xx].sItemName			= DataItems.ItemName
+         				arrFiles[zz].arrItems[xx].sType				= DataItems.DB_Data_Type
+         				arrFiles[zz].arrItems[xx].sSize				= DataItems.Size
+         				arrFiles[zz].arrItems[xx].nKeyType			= DataItems.KeyType
+         				arrFiles[zz].arrItems[xx].bNotNull			= DataItems.bNotNull
+         				arrFiles[zz].arrItems[xx].bAutoIncrement	= DataItems.AutoIncrement
+         				arrFiles[zz].arrItems[xx].sDefault			= DataItems.sDefault
+         			else
+         				xx=ArrayAddLine(arrFiles[zz].arrItems)
+         				arrFiles[zz].arrItems[xx].bNew=True
+         				arrFiles[zz].bUpdate=True
+         				arrFiles[zz].arrItems[xx].sItemName			= DataItems.ItemName
+         				arrFiles[zz].arrItems[xx].sType				= DataItems.DB_Data_Type
+         				arrFiles[zz].arrItems[xx].sSize				= DataItems.Size
+         				arrFiles[zz].arrItems[xx].nKeyType			= DataItems.KeyType
+         				arrFiles[zz].arrItems[xx].bNotNull			= DataItems.bNotNull
+         				arrFiles[zz].arrItems[xx].bAutoIncrement	= DataItems.AutoIncrement
+         				arrFiles[zz].arrItems[xx].sDefault			= DataItems.sDefault
+         			end
+         		END
+         		
+         		sItem=DataItems.ItemName
+         		
+         		HReadNext(DataItems,DataFileID)
+         	END
+         	
+         	kk=0
+         	HFilter(DataKeys,DataKeysKey,[DataFile.DataFileID,hMinVal,hMinVal],[DataFile.DataFileID,hMaxVal,hMaxVal])
+         	HReadFirst(DataKeys,DataKeysKey)
+         	WHILE NOT HOut(DataKeys)
+         		//if DataFile.FileName="vat" then stop
+         		kk=ArraySeek(arrFiles[zz].arrKeys,asLinear,"sKeyName",DataKeys.KeyName)
+         		IF kk>0 THEN
+         			arrFiles[zz].arrKeys[kk].bExist=true
+         			if arrFiles[zz].arrKeys[kk].nKeyType<>DataKeys.KeyType then
+         				arrFiles[zz].arrKeys[kk].bUpdate=True
+         			END
+         		ELSE
+         			kk														= ArrayAddLine(arrFiles[zz].arrKeys)
+         			arrFiles[zz].arrKeys[kk].bExist=false
+         			arrFiles[zz].arrKeys[kk].bNew=true
+         			arrFiles[zz].arrKeys[kk].ID								= DataKeys.DataKeysID
+         			arrFiles[zz].arrKeys[kk].sKeyName						= DataKeys.KeyName
+         			arrFiles[zz].arrKeys[kk].nKeyType						= DataKeys.KeyType
+         		END
+         		ki=ArraySeek(arrFiles[zz].arrKeys[kk].arrKeyItems,asLinear,"sKeyItemName;nSegment",DataKeys.Field,DataKeys.Segment)
+         		if ki>0 then
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].bExist=true
+         		else
+         			ki														= ArrayAddLine(arrFiles[zz].arrKeys[kk].arrKeyItems)
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].sKeyItemName	= DataKeys.Field
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].nSegment		= DataKeys.Segment
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].bExist=false
+         			arrFiles[zz].arrKeys[kk].arrKeyItems[ki].bNew=True
+         		end
+         		HReadNext(DataKeys,DataKeysKey)
+         	END
+         	HDeactivateFilter(DataKeys)
+         	
+         	HReadNext(DataFile,DataFileKey)
+         END
+         HDeactivateFilter(DataFile)
+         
+         for f=1 to Dimension(arrFiles)
+         	ArraySort(arrFiles[f].arrKeys,asMember,"+ID")
+         	for k=1 to Dimension(arrFiles[f].arrKeys)
+         		if arrFiles[f].arrKeys[k].bUpdate then
+         			arrFiles[f].bKeyUpdate=True
+         		END
+         		for i=1 to Dimension(arrFiles[f].arrKeys[k].arrKeyItems)
+         			IF arrFiles[f].arrKeys[k].arrKeyItems[i].bNew THEN
+         				arrFiles[f].arrKeys[k].bUpdate=true
+         				arrFiles[f].bKeyUpdate=True
+         			END
+         		END
+         	end
+         END
+         
+         switch COMBO_Database
+         	case 1,2
+         		//MySQL/MariaDB phpMySQL
+         		EDT_SQL_Script+="-- phpMyAdmin Compatible SQL Script"+CRLF
+         		EDT_SQL_Script+="--"+CRLF
+         		EDT_SQL_Script+=<§$0001§>+DateToString(DateSys(),"DD.MM.YYYY")+" "+TimeToString(TimeSys(),"HH:MM:SS")+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+="SET SQL_MODE = ""NO_AUTO_VALUE_ON_ZERO"";"+CRLF
+         		EDT_SQL_Script+="SET time_zone = ""+00:00"";"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+="/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;"+CRLF
+         		EDT_SQL_Script+="/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;"+CRLF
+         		EDT_SQL_Script+="/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;"+CRLF
+         		EDT_SQL_Script+="/*!40101 SET NAMES utf8mb4 */;"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         	case 3
+         		//MySQL Navicat
+         		EDT_SQL_Script+="/*"+CRLF
+         		EDT_SQL_Script+=" Navicat Premium Data Transfer Compatible SQL Script"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+=" Source Server Type    : MySQL"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+=" Target Server Type    : MySQL"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+=" Date: "+DateToString(datesys(),"DD.MM.YYYY")+" "+TimeToString(timesys(),"HH:MM:SS")+CRLF
+         		EDT_SQL_Script+="*/"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         		EDT_SQL_Script+="SET NAMES utf8mb4;"+CRLF
+         		EDT_SQL_Script+="SET FOREIGN_KEY_CHECKS = 0;"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         	OTHER CASE
+         		
+         END
+         
+         for f=1 to Dimension(arrFiles)
+         	if arrFiles[f].bNew=True then
+         		EDT_SQL_Script+="CREATE TABLE IF NOT EXISTS `"+arrFiles[f].sFileName+"` ("+crlf
+         		FOR i=1 to Dimension(arrFiles[f].arrItems)
+         			if arrFiles[f].arrItems[i].bNew THEN
+         				if arrFiles[f].arrItems[i].bNotNull then
+         					EDT_SQL_Script+="  "+"`"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType+" NOT NULL"
+         				else
+         					EDT_SQL_Script+="  "+"`"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType
+         				end
+         				IF arrFiles[f].arrItems[i].sDefault<>"" THEN
+         					switch arrFiles[f].arrItems[i].sDefault
+         						case "NULL"
+         							EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         						case "CURRENT_TIMESTAMP"
+         							if COMBO_Database=2 then
+         								//Replace default CURRENT_TIMESTAMP to '0000-00-00 00:00:00', because MariaDB cannot handle CURRENT_TIMESTAMP!!!!
+         								EDT_SQL_Script+=" DEFAULT '0000-00-00 00:00:00'"
+         							else
+         								EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         							end
+         						OTHER CASE
+         							EDT_SQL_Script+=" DEFAULT '"+arrFiles[f].arrItems[i].sDefault+"'"
+         					END
+         				END
+         				IF arrFiles[f].arrItems[i].bAutoIncrement THEN
+         					EDT_SQL_Script+=" AUTO_INCREMENT"
+         				END
+         				IF Dimension(arrFiles[f].arrKeys)>0 THEN
+         					EDT_SQL_Script+=","+CRLF
+         				end
+         			END
+         		ENd
+         		FOR k=1 to Dimension(arrFiles[f].arrKeys)
+         			switch arrFiles[f].arrKeys[k].nKeyType
+         				case 1,2,3
+         					switch arrFiles[f].arrKeys[k].nKeyType
+         						CASE 2
+         							EDT_SQL_Script+="  KEY "
+         						case 3
+         							EDT_SQL_Script+="  UNIQUE KEY "
+         						OTHER CASE
+         					END
+         					EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].sKeyName+"` ("
+         					FOR ki=1 TO Dimension(arrFiles[f].arrKeys[k].arrKeyItems)
+         						EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].arrKeyItems[ki].sKeyItemName+"`"
+         						IF ki<Dimension(arrFiles[f].arrKeys[k].arrKeyItems) THEN
+         							EDT_SQL_Script+=","
+         						END
+         					END
+         					EDT_SQL_Script+=")"
+         				case 4
+         					EDT_SQL_Script+="  PRIMARY KEY ("
+         					EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].arrKeyItems[1].sKeyItemName+"`"
+         					EDT_SQL_Script+=")"
+         				OTHER CASE
+         			END
+         			if k<Dimension(arrFiles[f].arrKeys) then
+         				EDT_SQL_Script+=","+crlf
+         			else
+         				EDT_SQL_Script+=CRLF
+         			END
+         		END
+         		EDT_SQL_Script+=") ENGINE="+DataFile.MySQL_Engine+" DEFAULT CHARSET="+DataFile.MySQL_CharSet+";"+CRLF+crlf
+         	else if not arrFiles[f].bExist then
+         		EDT_SQL_Script+="DROP TABLE IF EXISTS `"+arrFiles[f].sFileName+";"+crlf+crlf
+         	else if arrFiles[f].bUpdate then
+         		EDT_SQL_Script+="ALTER TABLE `"+arrFiles[f].sFileName+"`"+crlf
+         	 	FOR i=1 to Dimension(arrFiles[f].arrItems)
+         	 		IF arrFiles[f].arrItems[i].bNew THEN
+         	 			sItem=""
+         				for t=i-1 to 1 step -1
+         					if arrFiles[f].arrItems[t].bExist OR arrFiles[f].arrItems[t].bNew then
+         						sItem=arrFiles[f].arrItems[t].sItemName
+         						break
+         					END
+         				END
+         				if sItem<>"" then
+         					IF arrFiles[f].arrItems[i].bNotNull THEN
+         						EDT_SQL_Script+="  "+"ADD `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType+" NOT NULL"
+         					ELSE
+         						EDT_SQL_Script+="  "+"ADD `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType
+         					END
+         	 			else
+         					IF arrFiles[f].arrItems[i].bNotNull THEN
+         						EDT_SQL_Script+="  "+"ADD `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType+" NOT NULL"
+         					ELSE
+         						EDT_SQL_Script+="  "+"ADD `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType
+         					END
+         	 			end
+         				IF arrFiles[f].arrItems[i].sDefault<>"" THEN
+         					SWITCH arrFiles[f].arrItems[i].sDefault
+         						CASE "NULL"
+         							EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         						CASE "CURRENT_TIMESTAMP"
+         							IF COMBO_Database=2 THEN
+         								//Replace default CURRENT_TIMESTAMP to '0000-00-00 00:00:00', because MariaDB cannot handle CURRENT_TIMESTAMP!!!!
+         								EDT_SQL_Script+=" DEFAULT '0000-00-00 00:00:00'"
+         							ELSE
+         								EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         							END
+         						OTHER CASE
+         							EDT_SQL_Script+=" DEFAULT '"+arrFiles[f].arrItems[i].sDefault+"'"
+         					END
+         				END
+         				IF arrFiles[f].arrItems[i].bAutoIncrement THEN
+         					EDT_SQL_Script+=" AUTO_INCREMENT"
+         				END
+         				EDT_SQL_Script+=" AFTER `"+sItem+"`"
+         	 			IF i<Dimension(arrFiles[f].arrItems) THEN
+         	 				EDT_SQL_Script+=","+CRLF
+         	 			ELSE
+         	 				EDT_SQL_Script+=";"+CRLF
+         	 			END
+         	 		else IF not arrFiles[f].arrItems[i].bExist THEN
+         	 			EDT_SQL_Script+="  "+"DROP `"+arrFiles[f].arrItems[i].sItemName+"`"
+         	 			IF i<Dimension(arrFiles[f].arrItems) THEN
+         	 				EDT_SQL_Script+=","+CRLF
+         	 			ELSE
+         	 				EDT_SQL_Script+=";"+CRLF
+         	 			END
+         	 		else if arrFiles[f].arrItems[i].bUpdate then
+         	 			if arrFiles[f].arrItems[i].bNotNull then
+         	 				EDT_SQL_Script+="  "+"CHANGE `"+arrFiles[f].arrItems[i].sItemName+"` `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType+" NOT NULL"+crlf
+         	 			else
+         	 				EDT_SQL_Script+="  "+"CHANGE `"+arrFiles[f].arrItems[i].sItemName+"` `"+arrFiles[f].arrItems[i].sItemName+"` "+arrFiles[f].arrItems[i].sType+""+CRLF
+         	 			end
+         				IF arrFiles[f].arrItems[i].sDefault<>"" THEN
+         					SWITCH arrFiles[f].arrItems[i].sDefault
+         						CASE "NULL"
+         							EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         						CASE "CURRENT_TIMESTAMP"
+         							IF COMBO_Database=2 THEN
+         								//Replace default CURRENT_TIMESTAMP to '0000-00-00 00:00:00', because MariaDB cannot handle CURRENT_TIMESTAMP!!!!
+         								EDT_SQL_Script+=" DEFAULT '0000-00-00 00:00:00'"
+         							ELSE
+         								EDT_SQL_Script+=" DEFAULT "+arrFiles[f].arrItems[i].sDefault
+         							END
+         						OTHER CASE
+         							EDT_SQL_Script+=" DEFAULT '"+arrFiles[f].arrItems[i].sDefault+"'"
+         					END
+         				END
+         				IF arrFiles[f].arrItems[i].bAutoIncrement THEN
+         					EDT_SQL_Script+=" AUTO_INCREMENT"
+         				END
+         				EDT_SQL_Script+=","+CRLF
+         			END
+         	 	END
+         	 	EDT_SQL_Script=left(EDT_SQL_Script,Length(EDT_SQL_Script)-3)+";"+crlf
+         	 	EDT_SQL_Script+=CRLF
+         	else if arrFiles[f].bKeyUpdate OR arrFiles[f].bNewKey then
+         		//if arrFiles[f].sFileName="vat" then stop
+         		FOR k=1 to Dimension(arrFiles[f].arrKeys)
+         			IF arrFiles[f].arrKeys[k].bUpdate THEN
+         				//Delete it first!
+         				EDT_SQL_Script+="ALTER TABLE `"+arrFiles[f].sFileName+"` DROP INDEX `"+arrFiles[f].arrKeys[k].sKeyName+"`;"+CRLF
+         			END
+         		end
+         		EDT_SQL_Script+="ALTER TABLE `"+arrFiles[f].sFileName+"`"+CRLF
+         		for k=1 to Dimension(arrFiles[f].arrKeys)
+         			if arrFiles[f].arrKeys[k].bNew or arrFiles[f].arrKeys[k].bUpdate then
+         				switch arrFiles[f].arrKeys[k].nKeyType
+         					CASE 1,2,3,5,6
+         						SWITCH arrFiles[f].arrKeys[k].nKeyType
+         							CASE 2
+         								EDT_SQL_Script+="  ADD INDEX "
+         							CASE 3
+         								EDT_SQL_Script+="  ADD UNIQUE KEY "
+         							case 5
+         								EDT_SQL_Script+="  ADD SPATIAL "
+         							CASE 6
+         								EDT_SQL_Script+="  ADD FULLTEXT "
+         							OTHER CASE
+         						END
+         						EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].sKeyName+"` ("
+         						FOR ki=1 TO Dimension(arrFiles[f].arrKeys[k].arrKeyItems)
+         							EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].arrKeyItems[ki].sKeyItemName+"`"
+         							IF ki<Dimension(arrFiles[f].arrKeys[k].arrKeyItems) THEN
+         								EDT_SQL_Script+=","
+         							END
+         						END
+         						EDT_SQL_Script+=")"
+         					CASE 4
+         						EDT_SQL_Script+="  ADD PRIMARY KEY ("
+         						EDT_SQL_Script+="`"+arrFiles[f].arrKeys[k].arrKeyItems[1].sKeyItemName+"`"
+         						EDT_SQL_Script+=")"
+         					OTHER CASE
+         				END
+         				EDT_SQL_Script+=";"+crlf
+         			END
+         		END
+         	END
+         END
+         
+         switch COMBO_Database
+         	case 1,2
+         		EDT_SQL_Script+="/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;"+CRLF
+         		EDT_SQL_Script+="/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;"+CRLF
+         		EDT_SQL_Script+="/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;"+CRLF
+         		EDT_SQL_Script+=""+CRLF
+         	case 3
+         		EDT_SQL_Script+="SET FOREIGN_KEY_CHECKS = 1;"+crlf
+         end
+         
+         Info("Fertig! Anzahl: "+zz)
+        type : 18
+      -
+        type : 161
+        enabled : false
+  -
+    name : EDT_SQL_Script
+    identifier : 0x2f70cb4608eda8ea
+    internal_properties : BgAAAAYAAACQfzQ+M8ErZQCztvtA6It+gO1t9C4OL23nPPEKpcE91sxNTZQv372eDsSScJVUY1tp5g8Svx3EkOVjzy7TfQYUI9/fqRXUNbr4mYbpUiWFa+vz3x70nFXrOzZ0PM4tdwkSOAib+UwZv8K8m7qKRn/kTlCEteRcrrWuu9+4KGUARffnY0HnkpskyQO7nsNSS3XjpxaKjbuyrJ2rBJQ95gwx0phvlcqZCLnjwNqtQoFWNe4/AkU6DHS91Ns5GChQ6VDNh+6WxbMa3miOjMWOm9sUkexhZcMVz/nAthOkU7ApbNYANeWyRoLDQAcKCzp1OthLyiaF3QTJ6jif7GAJ46Foxcz0mYVUC9kKOAZ5rhBSA4erlpvT/ZLLyYh+SGisxhLf5dc0PsewxiwlZr3iMqhG3cNLUEkIa5Qr21z73yvFB9xNugT3x1w6D/r6XSL5RhHUHO1PhdUnrwUBtYnNbwjMvFkAhmWQUNl8qTg+J4MrUKoDzb1P/E0BdbnoFdS1yCSvJTjyGKT868Nvm+0ejigX5uwkk5Prmlph1bJgjwg81qS/bheRnr1ynbEy/0EhcopAw7vWji+gH7WDyh76QrGrXqPvclCHm/mM4GdExJ+uClSxxkxFW4Vj9poSnW9QOF1U+fl4zJZnMtbqo73H39ACFY5gsA7Cg1G5QYF/zarzn6yjnwl/Mh4fWGHUSUi+bPItwKoqZBVpJ523KjqwAucQPjBpf3di0hM3Nns/RL+Ut/mDL2wTV33HtteLaHVpK8AiLUutefTZvfxAReF5jSnj0TSZzuK2FYdiU0D09K8C9k/o1pr54s9NVi+sHB/7us6JuwzetdoYl9dIiD8j8Gm6h6qFdTQ+ROzvhcBXbE6qhzWnYvdgxpRBj1ihlVniMw7W3oXBTrvaCi/oy0ZzqcmfTUiku1zClqMrFbbeCQnBLb7iF8NYLXbce9T7aEN78rrznv9daD7KJjlQETVyTxO5NQA87yfkj8SZmyRfSgWtD0Kmba4+kHGGehk9lUd0FE+5WLCnzU5uX4dHfpAphV3nwGnSbv5trNqoNSvnHqLEjMKY0gmcxRhhHJJ4rMn+NkavLyUnZaaYP2XyGvkWb+tBE+hr7rcVu6rRp5mv3dZ+uDyI6RjZSoJ2Qpzd0CJF1oAI+s+ZnFxY/8f9VVZnObwrwDQi/gyHCGDM4jq5klY/Okyzu9faGVvu4LtLRl2Th8WIArjQjOnFukfLgziS67b0JUW9EZrRsSDgIyBFpeOS6wa3HPCBshAFC0ZnH1+q35VKof36XG5AYMJuRA12P0pOfr2BYaIiiNPCLruQiqUb75ixj2qxAkJ/G2bGkQjyTFC266Y5K/B3TGc+UHbEJwmpjkKCgRmfSmq2hffoOEmZJg/ZCi05MCXVfWixQzjTtmIlNvE1kG3KxQGjqEirOly03uichMO8WwufMqMrY/4ftUCotNkchr9UejXeUkNWznGHYu1AjHE6wLRm9keaL3AY16kGdYdl8eNLGlwas1KsaMpUA2dJlgZG01qGWOStmhFEf82RIKf+hX07YGKb5KlzZWS6zdwXJCL/v5pnrp474XN+ASomzcAW0zO4pxZSPozPPypEf1OjlZLRmQyCT8TDufaPP/BQEcVPJTlV2WxCdzjGAE1H+GXhxmZcBzD2d4eQQePq4ppgwGKKbSk/QayNRiHjHryhfWWfRdLMWpbR7E5tK3TE8mnDBT2O1J2V+fRFyAVx4nvblE5kjaXnJmrS+Z/ZuGXHyMZYALaOEh0qmOr2oL7uZI13Pv+YK3oTA/FjOcPM3qiFWXQwk9q910ElNGkqsirfaMQtCJPpnRx3/hVzDx/nHLEaf90l8t+QWwdutJTaOx9Nt17ViemIWhd3NxhBcwgYXoMGR/HV/074LWSh+uuWyW5e51MEJxsGQQ12nhy+Xmy9J/onC44Bog==
+    type : 2
+    code_elements :
+     type_code : 3
+     p_codes :
+      -
+        type : 276
+        enabled : false
+      -
+        type : 277
+        enabled : false
+      -
+        type : 278
+        enabled : false
+  -
+    name : COMBO_Database
+    identifier : 0x2f71afd105d76c37
+    internal_properties : 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
+    dropdown :
+     internal_properties : BgAAAAYAAAAJgGnP2vLTdB87A1CxDNR+Vx5a+q0OnkRM4tWkLND3TEctBf7My5EE6uQI/w/1ulpypbfARmtNvIr+NN0E69BurbuAUjUJP2NK8TffESLIOBOeVbrYFpuqO0oUd6qs0J5LQagucgNYUJX20+xYweFZ1OLh2rxNxg7EueV2LXqErdNKo996dDTFzRNXoFr7fDSWg723fF4cju8Gqlgyuw5E7LmskIGm1UcscfDtaIllC6r9YdVVn38z1loyU/jJYMXhVmTP33R+M8P9m5TYQ5SvHUSos33htt48G5j6p1HPZb6XB6qAT+JSkcXleV+TMMggldyUtJpXcl5T327vlpRbRQgF0Ahs2WnAB5SirAkbS7JhvRI8RoMVKGLICP+TSS1jovBMWs9gpMpEJz+Xuxnl/Zm8aHa81VeED9E4jtZzmaLxLXjuESA8wXotra3KWBxSH3gjKKzM2grrr8GQDyMuo7a4B78DweYArSBj4yBus5UeUPrQEN2gRBOkypwBMsweMNFJppy8vFaLy0L75JDpZe/h+lQ7W/NVqvtT+mROKyPHarKhYMS6AiIPdZpCsZqg4tpU5HO06ZdOVe8pbalHJG8WDHP1dPMEHy+u/wU64o+3Tm4pXU4mWnOKhzSFRyNcteHWul1pgfjUk/aexzi2RUZ5/NKb5KMPW69soiq84QMhCGlPlkAtMSDaAoQy1LRyfmqLR32i8dEY/MpaDaetJoF4Maf9aHeqPNJCn2mi52KX+QWb1LWFGREGI/CtYisL8gWJ1GVx+ZgDiYWhp77SAtCcaK/zpK190NhhnXcnMvJM7yS5juFbvpSfhGcsDGa6oj7lFgXz7HIVPxisprHai6FHkaJ1zTCn1h43OhaXXK7A7y935NfK3oFl/wbuL4iAv9Pr8AwzvU91t61moVIS9ewjGgqA20sb+bYoHugZQFMkk9fkBm2T8+hW4XNZYwYtb4xpwfiPpOSwjkDuW0bYu4p4nAFJ3d0lxTS+Xjzpzgq2rboAfn5Pf4pWC/IFV+z0UfvCuzN19ie2trIUPlQcmBBja73sbiC0hVFdVLX06Jd3ezg+IAQb3x5dqD87Z2lqhyqQxC4w7VRjsxOoV+PvCEQzmOdtzphQnn8zg9A/cpUdo7o4GzucXythzv8+Y5MpLYqAjBViuNxxpmC4iWjWHL6y6pZkmQcjzzNjeX0ZtP8vNYxqIxsEI4cCR+6ZuFxHEHV9FSMevK93Hj+cz0eOqWX9k6pv6ZV57urTrApUbJdsMj9ZbHydHTypmhYid280YuYbwTdAIZtZrNJqNmHLtWFR8YEk5uYN+7B/CDXcuEdAvWK+sj68OXxicYaUyqGP4PJtcpqR6Km07heb6wYF
+     type : 7
+    type : 14
+    code_elements :
+     type_code : 23
+     p_codes :
+      -
+        type : 35
+        enabled : false
+      -
+        type : 17
+        enabled : false
+ menu :
+  name : _Menu
+  identifier : 0x292573e513b5f221
+  internal_properties : BgAAAAYAAACu1EK9cHAkN5Twz1hVIc+FtYSepVp6OILXiORFbjytXgAsGUCSpN5mrorWH2CVHOYlY4+rF2Sy1IZzzzxvCJu7QBcSAqhQMDzKvfh1V8yfoi9Ves1JlhY+e0Nq/6GomTv4eTtMQ7vvkK0GoiSdR7jgQApfITz+5hiKin3aCatyfk/kFdeczXBQLezuL9mZURtGcsavGmlthynIFkFxO7gBxRRk4KRGASHZ9xjbrRmis6S414nZEmdjqrU5WTQjWQ==
+  options : []
+ languages :
+  - en-GB
+  - de-DE
+ popup_menus : []
+ message_bar :
+  internal_properties : BgAAAAYAAAA67fgqjL+BlNW0l7RVb9QHekfVEUcR8SpB62EFBVueAPYoi1/j/aXUAO/gLLyCTVuQazFai314Ui0SG0rWW0oZm0BFICoRFAhcTeX8
+ code_elements :
+  type_code : 1
+  p_codes :
+   -
+     code : |1+
+      PROCEDURE WIN_Update_SQL()
+   -
+     code : |1-
+      
+      if ontestmode() then
+      	if gnProjectID=0 then
+      		gnProjectID=1
+      	END
+      end
+      
+      HReadSeek(Project,ProjectID,gnProjectID,hIdentical)
+      HReadSeek(DBConnection,DBConnectionID,Project.DBConnectionID,hIdentical)
+      ListSelectPlus(COMBO_Database,DBConnection.Type)
+      
+      ListDeleteAll(COMBO_Version_FROM)
+      ListDeleteAll(COMBO_Version_TO)
+      
+      HFilter(Version,VersionKeyno,HBuildKeyValue(Version,VersionKeyNo,gnProjectID,hMinVal),HBuildKeyValue(Version,VersionKeyNo,gnProjectID,hMaxVal))
+      HReadFirst(Version,VersionKeyno)
+      while not hout(Version)
+      	ListAdd(COMBO_Version_FROM,gLink(Version.VersionID)+version.Title)
+      	ListAdd(COMBO_Version_TO,gLink(Version.VersionID)+Version.Title)
+      	hreadnext(Version,VersionKeyNo)
+      END
+      HDeactivateFilter(Version)
+      
+      //if ontestmode() THEN
+      //	ListSelectPlus(COMBO_Version_FROM,1)
+      //	ListSelectPlus(COMBO_Version_TO,2)
+      //	ListSelectPlus(COMBO_Database,1)
+      //END
+     type : 34
+   -
+     type : 230
+     enabled : false
+ code_parameters :
+  internal_properties : BgAAAAYAAAAwjDLmDSZ0H1P68nJIeNfqR9EvRjU/K+sVcM1T6rhVNr+VTV1mZ/rmoweYbFDZUhBGcv8UsxlDxVCOnb2U/SQOvlGWzNby3/w/V+ppSymxv+Vh
+  original_name : Modele1
+resources :
+ string_res :
+  identifier : 0x1f70c7eb00078d81
+  internal_properties : BgAAAAYAAAAa2Zm8J9E/zh+/WIrVvz1fER/So3PB0gjQuxc1xKQVWY4ZDm5lfg==
+  strings :
+   -
+     text : {}
+     index : 0
+   -
+     text :
+      de-DE : "-- Erstellungszeit: "
+      en-GB : "-- Creation: "
+     index : 1
+custom_note :
+ internal_properties : BgAAAAYAAAC68/W0/adbG0nFCRhrE42B5HRnbDzVHaz86sSQyxlBk7I=
+rad :
+ internal_properties : BgAAAAYAAABoAN7PLpwJW3EiA7WVZdCA5EwrCA1rvutcDHooMWKe
