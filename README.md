@@ -20,3 +20,5 @@ Scoriet has a database import version, so you can make for example a laravel mig
 Scoriet delivers a PHP sample template, be kind, this was not my best work, I wanted to deliver a class/master/datapresentation PHP framework, with savvy a PHP framework, but time was against me... sorry, so I deliver a CRUD but with bootstrap css framework. Not a single class in it
 
 CRUD framework with bootstrap and jQuery new upload, try it, with PHP 7.2+, table with search, column sort, pagination, image support, printing and more!
+
+ALL SETUP FILES ARE FROM NOW ON DOWNLOADABLE FROM www.scoriet.com
