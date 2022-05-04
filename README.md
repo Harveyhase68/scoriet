@@ -1,7 +1,6 @@
 # scoriet
-Scoriet - a source code generator - templates &amp; installer
-Scoriet, no payment, no commercials, limited to MySQL, MariaDB and PostgreSQL (but able to access all DB with little effort!)
-Scoriet - a source code generator - source - templates &amp; installer
+Scoriet - a source code generator - templates included in direcory \exe\templates (you need to copy them to \documents\scoriet\templates)
+Scoriet - access to MySQL, MariaDB and PostgreSQL (but able to access all DB with little effort!)
 
 Scoriet is written in WinDev, this version is in WinDev 26, english version and with plain source code! So it is readable and maybe downgradable to older WinDev Versions.
 
@@ -20,5 +19,7 @@ Scoriet has a database import version, so you can make for example a laravel mig
 Scoriet delivers a PHP sample template, be kind, this was not my best work, I wanted to deliver a class/master/datapresentation PHP framework, with savvy a PHP framework, but time was against me... sorry, so I deliver a CRUD but with bootstrap css framework. Not a single class in it
 
 CRUD framework with bootstrap and jQuery new upload, try it, with PHP 7.2+, table with search, column sort, pagination, image support, printing and more!
+
+An additional template I added, this you can use for an REST API, it is a REST API!
 
 ALL SETUP FILES ARE FROM NOW ON DOWNLOADABLE FROM www.scoriet.com
