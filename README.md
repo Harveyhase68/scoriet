@@ -1,9 +1,9 @@
 # scoriet
 Scoriet - a source code generator - templates &amp; installer
-Scoriet Free Edition, no payment, no commercials, limited to MySQL, no adding or changing of templates
+Scoriet, no payment, no commercials, limited to MySQL, MariaDB and PostgreSQL (but able to access all DB with little effort!)
 Scoriet - a source code generator - source - templates &amp; installer
 
-Scoriet is written in WinDev, this version is in WinDev 25, english version and with plain source code! So it is readable and maybe downgradable to older WinDev Versions.
+Scoriet is written in WinDev, this version is in WinDev 26, english version and with plain source code! So it is readable and maybe downgradable to older WinDev Versions.
 
 WinDev is a 4GL programming language. WinDev is not open-source. WinDev has a commercial hardware dongle!
 
@@ -13,7 +13,7 @@ WinDev has the ability to execute code in runtime. This makes WinDev unique, onl
 
 Scoriet works with templates, the generator reads every template and compiles it, execute it and the execution of the template generates the final application.
 
-Scoriet must import in first your application database. It imports it in Hyper File classic database in order to produce fast the result. Every database table, field, link, key can be translated to several languages! So if you generate the application, you have your captions in the desired language!
+Scoriet must import first your application database. It imports it in Hyper File classic database in order to produce fast the result. Every database table, field, link, key can be translated to several languages! So if you generate the application, you have your captions in the desired language!
 
 Scoriet has a database import version, so you can make for example a laravel migrations/database updates!
 
