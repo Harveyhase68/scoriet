@@ -1,7 +1,7 @@
-@import './dragging';
-@import './tabs';
-@import './panel';
-@import './predefined-panels';
+@use './dragging';
+@use './tabs';
+@use './panel';
+@use './predefined-panels';
 
 .top-panel {
   position: absolute;
