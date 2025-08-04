@@ -1,4 +1,4 @@
-# Scoriet [Main Site](https://www.scoriet.com)
+# Scoriet [see old site](https://www.scoriet.com)
 
 An Enterprise Code Generator prepared and created with the help of Claude, ChatGPT, Gemini, and Builder.io AI.
 
