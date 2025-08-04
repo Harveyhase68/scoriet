@@ -4,12 +4,12 @@ import { DockLayout, LayoutData } from "rc-dock";
 import "./style/index.scss";
 // import "./dist.rc-dock.css";
 
-let tab = {
+const tab = {
   content: <div>Tab Content</div>,
   closable: true
 };
 
-let layout = {
+const layout = {
   dockbox: {
     mode: "horizontal",
     children: [
