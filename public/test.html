@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoriet JavaScript Test</title>
+</head>
+<body>
+    <h1>🚀 Scoriet JavaScript Test</h1>
+    
+    <div id="output">
+        <p>Loading JavaScript...</p>
+    </div>
+    
+    <button onclick="runTest()">Run Test</button>
+    <button onclick="testApiConnection()">Test API Connection</button>
+    
+    <script>
+        function runTest() {
+            if (window.ScorietTest) {
+                const test = new ScorietTest();
+                const result = test.test();
+                document.getElementById('output').innerHTML = 
+                    `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } else {
+                document.getElementById('output').innerHTML = 
+                    '<p style="color: red;">❌ ScorietTest not loaded!</p>';
+            }
+        }
+        
+        async function testApiConnection() {
+            if (window.ScorietTest) {
+                const test = new ScorietTest();
+                const result = await test.testApiConnection();
+                document.getElementById('output').innerHTML = 
+                    `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } else {
+                document.getElementById('output').innerHTML = 
+                    '<p style="color: red;">❌ ScorietTest not loaded!</p>';
+            }
+        }
+    </script>
+    
+    <!-- JavaScript von Laravel laden -->
+    <script src="http://localhost:8000/api/js/scoriet-test.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+@import './dragging';
+@import './tabs';
+@import './panel';
+@import './predefined-panels';
+
+.top-panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.btn {
+  display: inline-block;
+  margin: 5px;
+  font-weight: 400;
+  text-align: center;
+  vertical-align: middle;
+  user-select: none;
+  -webkit-user-select: none;
+  color: #212529;
+  background-color: #fff;
+  border: 1px solid #e9ecef;
+  padding: 3px 10px;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.btn:hover {
+  color: #000;
+  background-color: #f8f8f8;
+  border-color: #cbd3da;
+  text-decoration: none;
+}
+
+.btn:focus {
+  outline: 0;
+}
+
+.btn.disabled {
+  color: #888;
+  background-color: #f8f8f8;
+  border-color: #e9ecef;
+  opacity: 0.65;
+}
+
+iframe {
+  box-sizing: border-box;
+  border: none;
+  width: 100%;
+  height: 100%;
+}

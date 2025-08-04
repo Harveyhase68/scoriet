@@ -1,0 +1,92 @@
+DROP TABLE IF EXISTS `branches`;
+CREATE TABLE IF NOT EXISTS `branches` (
+  `branch_id` bigint NOT NULL AUTO_INCREMENT,
+  `branch_no` int unsigned NOT NULL DEFAULT '0',
+  `branch_ref_no` int unsigned NULL DEFAULT NULL,
+  `branch_description` VARCHAR(50) NULL DEFAULT NULL,
+  `branch_fiscal_authorities_description` VARCHAR(12) NULL DEFAULT NULL,
+  `branch_composite_no_description` VARCHAR(57) NULL DEFAULT NULL,
+  `branch_account` int unsigned NULL DEFAULT NULL,
+  `branch_offset_account` int unsigned NULL DEFAULT NULL,
+  `branch_booking_reference` VARCHAR(6) NULL DEFAULT NULL,
+  `branch_customer_payments_booking_reference` VARCHAR(6) NULL DEFAULT NULL,
+  `branch_customer_payments_code` int unsigned NULL DEFAULT NULL,
+  `branch_customer_payments_offset_account` int unsigned NULL DEFAULT NULL,
+  `branch_last_waitl_no` int unsigned NULL DEFAULT '0',
+  PRIMARY KEY (`branch_id`),
+  UNIQUE KEY `branches_branch_no_key` (`branch_no`),
+  UNIQUE KEY `branches_branch_ref_no_key` (`branch_ref_no`),
+  UNIQUE KEY `branches_branch_composite_no_description_key` (`branch_composite_no_description`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS `accounting_log` (
+  `accl_id` bigint NOT NULL AUTO_INCREMENT,
+  `branch_no` int UNSIGNED NOT NULL DEFAULT '0',
+  `station_no` int NOT NULL DEFAULT '0',
+  `moncl_no` int UNSIGNED DEFAULT NULL,
+  `accl_type` tinyint UNSIGNED DEFAULT NULL,
+  `accl_type_no` int UNSIGNED DEFAULT NULL,
+  `accl_date` date DEFAULT NULL,
+  `accl_time` time DEFAULT NULL,
+  `opera_no` smallint UNSIGNED DEFAULT NULL,
+  `accl_changed_date` datetime(3) DEFAULT NULL,
+  `accl_first_slip_no` bigint UNSIGNED DEFAULT '0',
+  `accl_last_slip_no` bigint UNSIGNED DEFAULT '0',
+  `accl_accounting_date` date DEFAULT NULL,
+  `accl_created` timestamp DEFAULT NULL,
+  `accl_pdf` longblob,
+  `accl_atm_accounting` longtext,
+  PRIMARY KEY (`accl_id`),
+  KEY `accounting_log_station_no_ckey` (`station_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `stations`;
+CREATE TABLE IF NOT EXISTS `stations` (
+  `station_id` bigint NOT NULL AUTO_INCREMENT,
+  `station_no` int unsigned NULL DEFAULT NULL,
+  `station_device_id` VARCHAR(32) NULL DEFAULT NULL,
+  `branch_no` int unsigned NULL DEFAULT NULL,
+  `station_composite_no_description` VARCHAR(57) NULL DEFAULT NULL,
+  `station_description` VARCHAR(50) NULL DEFAULT NULL,
+  `station_fiscal_authorities_description` VARCHAR(9) NULL DEFAULT '',
+  `station_is_server` tinyint NULL DEFAULT FALSE,
+  `station_is_back_office` tinyint NULL DEFAULT FALSE,
+  `station_locked` tinyint NULL DEFAULT FALSE,
+  `station_mobile` tinyint NULL DEFAULT FALSE,
+  `station_warehouse_master` tinyint NULL DEFAULT FALSE,
+  `station_message_send_type` tinyint unsigned NULL DEFAULT '0',
+  `station_messages_do_not_delete` tinyint NULL DEFAULT FALSE,
+  `station_email_address` VARCHAR(128) NULL DEFAULT NULL,
+  `station_email_name` VARCHAR(80) NULL DEFAULT NULL,
+  `station_pop_user_name` VARCHAR(80) NULL DEFAULT NULL,
+  `station_pop_password` VARCHAR(80) NULL DEFAULT NULL,
+  `station_pop_authentication` tinyint unsigned NULL DEFAULT '0',
+  `station_pop_server` VARCHAR(80) NULL DEFAULT NULL,
+  `station_pop_port` int unsigned NULL DEFAULT NULL,
+  `station_pop_tls` tinyint unsigned NULL DEFAULT NULL,
+  `station_smtp_user_name` VARCHAR(80) NULL DEFAULT NULL,
+  `station_smtp_password` VARCHAR(80) NULL DEFAULT NULL,
+  `station_smtp_authentication` tinyint unsigned NULL DEFAULT '0',
+  `station_smtp_server` VARCHAR(80) NULL DEFAULT NULL,
+  `station_smtp_port` int unsigned NULL DEFAULT NULL,
+  `station_smtp_tls` tinyint unsigned NULL DEFAULT NULL,
+  `station_fiscal_authorities_transferred` datetime NULL DEFAULT NULL,
+  `station_last_logon` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`station_id`),
+  UNIQUE KEY `stations_station_no_key` (`station_no`),
+  KEY `stations_station_device_id_ckey` (`station_device_id`),
+  KEY `stations_branch_no_ckey` (`branch_no`),
+  UNIQUE KEY `stations_station_composite_no_description_key` (`station_composite_no_description`),
+  KEY `stations_station_is_server_ckey` (`station_is_server`),
+  KEY `stations_station_is_back_office_ckey` (`station_is_back_office`),
+  KEY `stations_station_mobile_ckey` (`station_mobile`),
+  KEY `stations_station_email_address_ckey` (`station_email_address`),
+  KEY `stations_station_master_key_ckey` (`branch_no`,`station_warehouse_master`),
+  KEY `stations_station_key_ckey` (`branch_no`,`station_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+ALTER TABLE `accounting_log`
+  ADD CONSTRAINT `accounting_log_constraint_stations_accounting_logs_fkey` FOREIGN KEY (`station_no`) REFERENCES `stations` (`station_no`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `stations`
+  ADD CONSTRAINT `stations_constraint_branches_stations_fkey` FOREIGN KEY (`branch_no`) REFERENCES `branches` (`branch_no`) ON DELETE RESTRICT ON UPDATE RESTRICT;
