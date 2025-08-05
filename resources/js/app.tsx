@@ -1,3 +1,4 @@
+// resources/js/app.tsx
 import '../css/app.css';
 
 import { createRoot } from 'react-dom/client';
@@ -15,9 +16,11 @@ createInertiaApp({
             import.meta.glob('./pages/**/*.tsx')
         );
         
-        // Automatisch AdminLayout für alle Seiten außer Auth-Seiten
+        // Automatisch AdminLayout für alle Seiten außer Auth-Seiten UND Index
         page.then((module) => {
-            if (!name.startsWith('Auth/') && !name.startsWith('Guest/')) {
+            if (!name.startsWith('Auth/') && 
+                !name.startsWith('Guest/') && 
+                name !== 'Index') { // Index verwendet RC Dock Layout
                 module.default.layout = module.default.layout || ((page) => (
                     <AdminLayout>{page}</AdminLayout>
                 ));
