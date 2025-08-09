@@ -6,6 +6,17 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import AdminLayout from '@/components/AdminLayout';
 
+// PrimeReact CSS - hier hinzufügen!
+import 'primereact/resources/themes/lara-light-blue/theme.css';
+import 'primereact/resources/primereact.min.css';
+import 'primeicons/primeicons.css';
+
+// RC Dock CSS - das ist wichtig!
+import 'rc-dock/dist/rc-dock.css';
+
+// Deine anderen Imports...
+import '../css/app.css';
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({

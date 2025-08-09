@@ -12,6 +12,7 @@ Route::get('/oauth/clients', [ClientController::class, 'forUser'])->middleware('
 Route::post('/oauth/personal-access-tokens', [PersonalAccessTokenController::class, 'store'])->middleware('auth:api');
 
 Route::middleware('auth:api')->group(function () {
+    Route::get('/user-update', [SqlParserController::class, 'parse']);
     Route::post('/sql-parse', [SqlParserController::class, 'parse']);
     Route::post('/sql-parse-and-store', [SqlParserController::class, 'parseAndStore']);
     Route::get('/schema-versions', [SqlParserController::class, 'getAllSchemaVersions']);

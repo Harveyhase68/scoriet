@@ -20,7 +20,7 @@ Scoriet offers a range of features that make it a comprehensive tool for code ge
 * Inertia.js: Seamlessly connects Laravel and React for monolithic application development.
 * React Theme from Builder.io: Ensures a professional and appealing design.
 
-Client-Side Template Execution: All templates are executed directly in the client's browser using JavaScript, ensuring fast and secure generation without server load.
+**Client-Side Template Execution: All templates are executed directly in the client's browser using JavaScript, ensuring fast and secure generation without server load.**
 
 **Secure Authentication:**
 
@@ -35,6 +35,7 @@ Scoriet provides various ways to manage and utilize templates, ensuring maximum 
 * Local Directories: Entire directories containing template files can be included.
 * One-Time Project Template: A central template that can be used for initializing an entire project.
 * Table-Specific Templates: Create specific templates for each database table to automate the generation of CRUD operations or models.
+* Each Template, which is compatible, can be stacked together, so you can have a CRUD template and a login/profile poilerplate template, both together generates a complete CRUD app with login and a user profile!
 
 **Powerful Template Syntax**
 
@@ -45,4 +46,76 @@ Scoriet provides various ways to manage and utilize templates, ensuring maximum 
 
 **Getting Started**
 
-To start using Scoriet, simply clone the repository and follow the instructions in the documentation... (Here you could add instructions for getting started, e.g., npm install, composer install, etc.)
+To start using Scoriet, simply clone the repository and follow the instructions in the documentation...
+
+# Installation
+
+## Requirements
+- **PHP** ≥ 8.2  
+- **Composer**  
+- **Node.js** ≥ 18 & npm/yarn  
+- **MySQL**, **PostgreSQL**, **SQLite** or **MS-SQL**
+
+## Setup
+
+# 1. Clone repository
+git clone harveyhase68/scoriet
+cd scoriet
+
+# 2. Install PHP dependencies
+composer install
+
+# 3. Configure environment
+cp .env.example .env
+php artisan key:generate
+
+# 4. Configure database in .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_database_name
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+
+# 5. Run migrations
+php artisan migrate
+
+# 6. Install Node.js dependencies
+npm install
+
+# 7. (Optional) Install Laravel Passport
+php artisan passport:install
+
+# Development
+
+# All-in-one (recommended)
+composer run dev
+
+# With SSR
+composer run dev:ssr
+
+# Manual start
+php artisan serve          # Laravel
+php artisan queue:listen   # Queue (optional)
+npm run dev                # Frontend
+
+# Testing
+composer run test
+
+# or
+php artisan test
+
+# Production
+
+npm run build
+npm run build:ssr    # With SSR
+
+# Code Quality
+npm run format   # Format
+npm run lint     # Lint
+npm run types    # TypeScript check
+
+# Troubleshooting
+chmod -R 755 storage bootstrap/cache
+rm -rf node_modules && npm install
+composer dump-autoload
