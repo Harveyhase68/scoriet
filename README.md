@@ -147,4 +147,3 @@ npm run types    # TypeScript check
 chmod -R 755 storage bootstrap/cache
 rm -rf node_modules && npm install
 composer dump-autoload
-```
