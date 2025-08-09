@@ -66,12 +66,14 @@ cd scoriet
 
 # 2. Install PHP dependencies
 ```bash
-composer install```
+composer install
+```
 
 # 3. Configure environment
 ```bash
 cp .env.example .env
-php artisan key:generate```
+php artisan key:generate
+```
 
 # 4. Configure database in .env
 ```env
@@ -80,57 +82,69 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=your_database_name
 DB_USERNAME=your_username
-DB_PASSWORD=your_password```
+DB_PASSWORD=your_password
+```
 
 # 5. Run migrations
 ```bash
-php artisan migrate```
+php artisan migrate
+```
 
 # 6. Install Node.js dependencies
 ```bash
-npm install```
+npm install
+```
 
 # 7. (Optional) Install Laravel Passport
 ```bash
-php artisan passport:install```
+php artisan passport:install
+```
 
 # Development
 
 # All-in-one (recommended)
 ```bash
-composer run dev```
+composer run dev
+```
 
 # With SSR
 ```bash
-composer run dev:ssr```
+composer run dev:ssr
+```
 
 # Manual start
 ```bash
 php artisan serve          # Laravel
 php artisan queue:listen   # Queue (optional)
-npm run dev                # Frontend```
+npm run dev                # Frontend
+```
 
 # Testing
 ```bash
-composer run test```
+composer run test
+```
 
 # or
 ```bash
-php artisan test```
+php artisan test
+```
 
 # Production
 ```bash
 npm run build
-npm run build:ssr    # With SSR```
+npm run build:ssr    # With SSR
+```
 
 # Code Quality
 ```bash
 npm run format   # Format
 npm run lint     # Lint
-npm run types    # TypeScript check```
+npm run types    # TypeScript check
+```
 
 # Troubleshooting
 ```bash
 chmod -R 755 storage bootstrap/cache
 rm -rf node_modules && npm install
-composer dump-autoload```
+composer dump-autoload
+```
