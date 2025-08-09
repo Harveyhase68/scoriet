@@ -59,63 +59,78 @@ To start using Scoriet, simply clone the repository and follow the instructions 
 ## Setup
 
 # 1. Clone repository
+```bash
 git clone harveyhase68/scoriet
 cd scoriet
+```
 
 # 2. Install PHP dependencies
-composer install
+```bash
+composer install```
 
 # 3. Configure environment
+```bash
 cp .env.example .env
-php artisan key:generate
+php artisan key:generate```
 
 # 4. Configure database in .env
+```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=your_database_name
 DB_USERNAME=your_username
-DB_PASSWORD=your_password
+DB_PASSWORD=your_password```
 
 # 5. Run migrations
-php artisan migrate
+```bash
+php artisan migrate```
 
 # 6. Install Node.js dependencies
-npm install
+```bash
+npm install```
 
 # 7. (Optional) Install Laravel Passport
-php artisan passport:install
+```bash
+php artisan passport:install```
 
 # Development
 
 # All-in-one (recommended)
-composer run dev
+```bash
+composer run dev```
 
 # With SSR
-composer run dev:ssr
+```bash
+composer run dev:ssr```
 
 # Manual start
+```bash
 php artisan serve          # Laravel
 php artisan queue:listen   # Queue (optional)
-npm run dev                # Frontend
+npm run dev                # Frontend```
 
 # Testing
-composer run test
+```bash
+composer run test```
 
 # or
-php artisan test
+```bash
+php artisan test```
 
 # Production
-
+```bash
 npm run build
-npm run build:ssr    # With SSR
+npm run build:ssr    # With SSR```
 
 # Code Quality
+```bash
 npm run format   # Format
 npm run lint     # Lint
-npm run types    # TypeScript check
+npm run types    # TypeScript check```
 
 # Troubleshooting
+```bash
 chmod -R 755 storage bootstrap/cache
 rm -rf node_modules && npm install
-composer dump-autoload
+composer dump-autoload```
