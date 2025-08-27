@@ -1,6 +1,7 @@
 <?php
 
 // app/Models/SchemaTable.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ class SchemaTable extends Model
 {
     protected $fillable = [
         'schema_version_id',
-        'table_name'
+        'table_name',
     ];
 
     public function schemaVersion(): BelongsTo

@@ -1,6 +1,7 @@
 <?php
 
 // app/Models/SchemaForeignKeyReference.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ class SchemaForeignKeyReference extends Model
 {
     protected $fillable = [
         'constraint_id',
-        'referenced_table_id'
+        'referenced_table_id',
     ];
 
     public function constraint(): BelongsTo

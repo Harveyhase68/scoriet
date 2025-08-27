@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\MySQLParser;
 use App\Services\SchemaStorageService;
+use Illuminate\Http\Request;
 
 class SqlParserController extends Controller
 {
@@ -17,79 +17,79 @@ class SqlParserController extends Controller
 
     public function parse(Request $request)
     {
-        // Raw Body lesen statt JSON
+        // Read raw body instead of JSON
         $sqlScript = $request->getContent();
-        
-        // Validation für Raw Data
+
+        // Validation for raw data
         if (empty(trim($sqlScript))) {
             return response()->json([
                 'success' => false,
-                'error' => 'SQL script is required'
+                'error' => 'SQL script is required',
             ], 400);
         }
-        
+
         try {
-            $parser = new MySQLParser();
+            $parser = new MySQLParser;
             $version = $parser->parseSQL($sqlScript);
-            
+
             return response()->json([
                 'success' => true,
-                'version' => $version
+                'version' => $version,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 400);
         }
     }
 
     public function parseAndStore(Request $request)
     {
-        // Optional: JSON mit zusätzlichen Parametern
+        // Optional: JSON with additional parameters
         if ($request->isJson()) {
             $data = $request->json()->all();
             $sqlScript = $data['sql_script'] ?? '';
-            $versionName = $data['version_name'] ?? 'Version ' . date('Y-m-d H:i:s');
+            $versionName = $data['version_name'] ?? 'Version '.date('Y-m-d H:i:s');
             $description = $data['description'] ?? null;
         } else {
-            // Raw Body für SQL Script
+            // Raw body for SQL script
             $sqlScript = $request->getContent();
-            $versionName = $request->header('X-Version-Name', 'Version ' . date('Y-m-d H:i:s'));
+            $versionName = $request->header('X-Version-Name', 'Version '.date('Y-m-d H:i:s'));
             $description = $request->header('X-Description');
         }
-        
+
         // Validation
         if (empty(trim($sqlScript))) {
             return response()->json([
                 'success' => false,
-                'error' => 'SQL script is required'
+                'error' => 'SQL script is required',
             ], 400);
         }
-        
+
         try {
             // SQL parsen
-            $parser = new MySQLParser();
+            $parser = new MySQLParser;
             $parsedTables = $parser->parseSQL($sqlScript);
-            
+
             // In Datenbank speichern
             $schemaVersion = $this->schemaStorageService->storeSchema(
-                $parsedTables, 
-                $versionName, 
+                $parsedTables,
+                $versionName,
                 $description
             );
-            
+
             return response()->json([
                 'success' => true,
                 'schema_version_id' => $schemaVersion->id,
                 'version_name' => $schemaVersion->version_name,
                 'tables_count' => count($parsedTables),
-                'parsed_data' => $parsedTables
+                'parsed_data' => $parsedTables,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 400);
         }
     }
@@ -98,22 +98,22 @@ class SqlParserController extends Controller
     {
         try {
             $schemaVersion = $this->schemaStorageService->getSchemaVersion($id);
-            
-            if (!$schemaVersion) {
+
+            if (! $schemaVersion) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Schema version not found'
+                    'error' => 'Schema version not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'schema_version' => $schemaVersion
+                'schema_version' => $schemaVersion,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 400);
         }
     }
@@ -122,15 +122,15 @@ class SqlParserController extends Controller
     {
         try {
             $versions = $this->schemaStorageService->getAllSchemaVersions();
-            
+
             return response()->json([
                 'success' => true,
-                'versions' => $versions
+                'versions' => $versions,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 400);
         }
     }
@@ -139,22 +139,22 @@ class SqlParserController extends Controller
     {
         try {
             $schemaVersion = $this->schemaStorageService->getSchemaVersionByName($name);
-            
-            if (!$schemaVersion) {
+
+            if (! $schemaVersion) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Schema version not found'
+                    'error' => 'Schema version not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'schema_version' => $schemaVersion
+                'schema_version' => $schemaVersion,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 400);
         }
     }

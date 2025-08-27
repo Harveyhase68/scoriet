@@ -2,10 +2,8 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Laravel\Passport\Passport;
-use Carbon\Carbon;
 use Carbon\CarbonInterval;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthServiceProvider
 {
@@ -28,5 +26,8 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         Passport::refreshTokensExpireIn(now()->addDays(30));
         Passport::personalAccessTokensExpireIn(CarbonInterval::months(6));
         
+        // Enable Password Grant Type
+        Passport::enablePasswordGrant();
+
     }
 }

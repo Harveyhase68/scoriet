@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan passport:client:*)",
+      "Bash(npm run dev:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(composer run:*)",
+      "Bash(php artisan migrate:*)",
+      "Bash(find:*)",
+      "Bash(npm run types:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(composer:*)",
+      "Bash(php artisan pail:*)",
+      "Bash(taskkill:*)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(php artisan make:model:*)",
+      "Bash(php artisan make:controller:*)",
+      "Bash(php artisan make:seeder:*)",
+      "Bash(php artisan:*)",
+      "Bash(php:*)",
+      "Bash(npm test)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "default"
+}

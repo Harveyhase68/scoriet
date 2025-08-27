@@ -2,12 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\SqlParserController;  // ← Das ist wichtig!
 
 Route::get('/', function () {
     return Inertia::render('Index');
 })->name('index');
 
+/*
 Route::get('/app', function () {
     return Inertia::render('Dashboard', [
         'user' => auth()->user() // User-Daten mitgeben
@@ -39,11 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 });
-
-// Neue Route für RC-Dock Database Visualizer
-Route::get('/database-designer', function () {
-    return Inertia::render('DatabaseDesigner');
-})->name('database-designer');
+*/
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
