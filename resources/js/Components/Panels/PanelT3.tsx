@@ -64,7 +64,7 @@ export default function PanelT3() {
   const loadProjectTemplates = async (schemaVersionId: number) => {
     try {
       const projectTemplates = await apiClient.getProjectTemplates(schemaVersionId);
-      const assignedIds = new Set(projectTemplates.map((pt: any) => pt.template_id));
+      const assignedIds = new Set<number>(projectTemplates.map((pt: any) => pt.template_id));
       setAssignedTemplates(assignedIds);
       
       // Pre-select assigned templates
