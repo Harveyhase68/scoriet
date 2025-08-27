@@ -9,10 +9,19 @@ interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
 }
 
+interface BreadcrumbItem {
+  label: string;
+  icon?: string;
+  action?: string;
+  children?: BreadcrumbItem[];
+}
+
 export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNavigationPanelProps) {
   const [profileActiveIndex, setProfileActiveIndex] = useState<number>(-1); // -1 = nothing selected
   const [mainActiveIndex, setMainActiveIndex] = useState<number>(-1); // -1 = nothing selected
-  const [currentBreadcrumb, setCurrentBreadcrumb] = useState<string>('Home'); // For breadcrumbs
+  const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([
+    { label: 'Project', icon: 'pi pi-home' }
+  ]); // For hierarchical breadcrumbs
   // Local modal state removed - managed centrally
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
@@ -75,32 +84,80 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Available navigation options (for future hierarchical navigation)
+  // const navigationTree: BreadcrumbItem[] = [
+  //   {
+  //     label: 'Project',
+  //     icon: 'pi pi-home',
+  //     children: [
+  //       {
+  //         label: 'Teams',
+  //         icon: 'pi pi-users',
+  //         action: 'teams'
+  //       },
+  //       {
+  //         label: 'Templates',
+  //         icon: 'pi pi-cog',
+  //         action: 'templates'
+  //       },
+  //       {
+  //         label: 'Database',
+  //         icon: 'pi pi-database',
+  //         children: [
+  //           {
+  //             label: 'Designer',
+  //             icon: 'pi pi-window-maximize',
+  //             action: 'databasedesigner'
+  //           },
+  //           {
+  //             label: 'Import',
+  //             icon: 'pi pi-upload',
+  //             children: [
+  //               {
+  //                 label: 'Import .sql',
+  //                 icon: 'pi pi-file',
+  //                 action: 'import-sql'
+  //               },
+  //               {
+  //                 label: 'Import Schema',
+  //                 icon: 'pi pi-sitemap',
+  //                 action: 'import-schema'
+  //               }
+  //             ]
+  //           },
+  //           {
+  //             label: 'Export',
+  //             icon: 'pi pi-download',
+  //             children: [
+  //               {
+  //                 label: 'Export Schema',
+  //                 icon: 'pi pi-file-export',
+  //                 action: 'export-schema'
+  //               }
+  //             ]
+  //           }
+  //         ]
+  //       }
+  //     ]
+  //   }
+  // ];
+
   // Menu items with PrimeIcons and panel logic
   const menuItems: MenuItem[] = [
     {
-      label: 'Home',
-      icon: 'pi pi-home',
-      command: () => handleMainAction('home')
+      label: 'Teams',
+      icon: 'pi pi-users',
+      command: () => handleMainAction('teams')
     },
     {
-      label: 'Main',
+      label: 'Database Designer',
       icon: 'pi pi-window-maximize',
-      command: () => handleMainAction('main')
+      command: () => handleMainAction('databasedesigner')
     },
     {
-      label: 'Interactive',
+      label: 'Templates',
       icon: 'pi pi-cog',
-      command: () => handleMainAction('interactive')
-    },
-    {
-      label: 'Database',
-      icon: 'pi pi-database',
-      command: () => handleMainAction('database')
-    },
-    {
-      label: 'Tools',
-      icon: 'pi pi-wrench',
-      command: () => handleMainAction('tools')
+      command: () => handleMainAction('templates')
     }
   ];
 
@@ -108,15 +165,24 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
   const handleProfileAction = React.useCallback((action: string) => {
     switch (action) {
       case 'login':
-        setCurrentBreadcrumb('Login');
+        setBreadcrumbPath([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Login', icon: 'pi pi-sign-in' }
+        ]);
         onOpenModal?.('login');
         break;
       case 'register':
-        setCurrentBreadcrumb('Register');
+        setBreadcrumbPath([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Register', icon: 'pi pi-user-plus' }
+        ]);
         onOpenModal?.('register');
         break;
       case 'profile':
-        setCurrentBreadcrumb('Profile');
+        setBreadcrumbPath([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Profile', icon: 'pi pi-user' }
+        ]);
         onOpenModal?.('profile');
         break;
       case 'logout':
@@ -134,7 +200,10 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
         
         setIsLoggedIn(false);
         setUserName('');
-        setCurrentBreadcrumb('Logged out');
+        setBreadcrumbPath([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Logged out', icon: 'pi pi-sign-out' }
+        ]);
         
         // Trigger storage event to update other components
         window.dispatchEvent(new Event('storage'));
@@ -178,33 +247,77 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
     }
   }, [isLoggedIn, userName, handleProfileAction]);
 
+  // Navigate to breadcrumb path and execute action
+  const navigateTo = (path: BreadcrumbItem[], action?: string) => {
+    setBreadcrumbPath(path);
+    
+    if (action) {
+      switch (action) {
+        case "databasedesigner":
+          onOpenPanel('t2');
+          break;
+        case "templates":
+          onOpenPanel('t3');
+          break;
+        case "teams":
+          onOpenPanel('teams');
+          break;
+        case "import-sql":
+          // TODO: Open SQL import dialog
+          console.log('Opening SQL import');
+          break;
+        case "import-schema":
+          // TODO: Open schema import dialog
+          console.log('Opening schema import');
+          break;
+        case "export-schema":
+          // TODO: Open schema export dialog
+          console.log('Opening schema export');
+          break;
+      }
+    }
+  };
+
   // For main menu (resets itself)
   const handleMainAction = (action: string) => {
     switch (action) {
-      case "home":
-        setCurrentBreadcrumb('Home');
-        // Here you could open a dashboard panel
-        // onOpenPanel('dashboard');
+        case "teams":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Teams', icon: 'pi pi-users', action: 'databasedesigner' }
+        ], action);
+        onOpenPanel('teams');
+          break;
+      case "databasedesigner":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Database', icon: 'pi pi-database' },
+          { label: 'Designer', icon: 'pi pi-window-maximize', action: 'databasedesigner' }
+        ], action);
         break;
-      case "main":
-        setCurrentBreadcrumb('Main');
-        onOpenPanel('t2');
-        break;
-      case "interactive":
-        setCurrentBreadcrumb('Interactive');
-        onOpenPanel('t3');
-        break;
-      case "database":
-        setCurrentBreadcrumb('Database');
-        onOpenPanel('t5');
-        break;
-      case "tools":
-        setCurrentBreadcrumb('Tools');
+      case "templates":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Templates', icon: 'pi pi-cog', action: 'templates' }
+        ], action);
         break;
     }
 
     // Reset immediately so nothing remains selected
     setTimeout(() => setMainActiveIndex(-1), 100);
+  };
+
+  // Handle breadcrumb clicks - navigate back to that level
+  const handleBreadcrumbClick = (index: number) => {
+    const newPath = breadcrumbPath.slice(0, index + 1);
+    const clickedItem = breadcrumbPath[index];
+    
+    // If the clicked item has an action, execute it
+    if (clickedItem.action) {
+      navigateTo(newPath, clickedItem.action);
+    } else {
+      setBreadcrumbPath(newPath);
+    }
   };
 
   return (
@@ -213,7 +326,7 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
       <nav style={{ flex: 1, height: '60px' }} className="flex justify-between items-center px-6 py-4 bg-gray-800 border-b border-gray-700">
         {/* Logo/Brand */}
         <div className="flex items-center space-x-4">
-          <div className="text-xl font-bold text-blue-400">MyApp</div>
+          <div className="text-xl font-bold text-blue-400">Scoriet</div>
         </div>
 
         {/* PrimeReact TabMenu */}
@@ -253,19 +366,112 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
         </div>
       </nav>
 
-      {/* Breadcrumbs */}
+      {/* Interactive Breadcrumbs */}
       <div className="px-6 py-3 bg-gray-825 border-b border-gray-700">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-sm text-gray-300">
-            <span>{currentBreadcrumb}</span>
-            <span>→</span>
-            <span className="text-white font-medium">Current View</span>
+          <div className="flex items-center space-x-2 text-sm">
+            {breadcrumbPath.map((item, index) => (
+              <React.Fragment key={index}>
+                <button
+                  onClick={() => handleBreadcrumbClick(index)}
+                  className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200 text-gray-300 hover:text-white"
+                >
+                  {item.icon && <i className={item.icon}></i>}
+                  <span className={index === breadcrumbPath.length - 1 ? 'text-white font-medium' : 'text-gray-300'}>{item.label}</span>
+                </button>
+                {index < breadcrumbPath.length - 1 && (
+                  <i className="pi pi-angle-right text-gray-500 text-xs"></i>
+                )}
+              </React.Fragment>
+            ))}
           </div>
 
+          {/* Quick Navigation Dropdown */}
+          <div className="flex items-center space-x-2">
+            <div className="relative group">
+              <button className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors duration-200">
+                <i className="pi pi-compass"></i>
+                <span>Quick Nav</span>
+                <i className="pi pi-angle-down text-xs"></i>
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 top-full mt-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="p-2">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-2 px-2">Project Areas</div>
+                  
+                  <button 
+                    onClick={() => navigateTo([
+                      { label: 'Project', icon: 'pi pi-home' },
+                      { label: 'Templates', icon: 'pi pi-cog', action: 'templates' }
+                    ], 'templates')}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                  >
+                    <i className="pi pi-cog"></i>
+                    <span>Templates</span>
+                  </button>
+                  
+                  <div className="border-t border-gray-600 my-2"></div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-2 px-2">Team Management</div>
+                  
+                  <button 
+                    onClick={() => navigateTo([
+                      { label: 'Project', icon: 'pi pi-home' },
+                      { label: 'Teams', icon: 'pi pi-users', action: 'teams' }
+                    ], 'teams')}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                  >
+                    <i className="pi pi-users"></i>
+                    <span>Manage Teams</span>
+                  </button>
+                  
+                  <div className="border-t border-gray-600 my-2"></div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-2 px-2">Database</div>
+                  
+                  <button 
+                    onClick={() => navigateTo([
+                      { label: 'Project', icon: 'pi pi-home' },
+                      { label: 'Database', icon: 'pi pi-database' },
+                      { label: 'Designer', icon: 'pi pi-window-maximize', action: 'databasedesigner' }
+                    ], 'databasedesigner')}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                  >
+                    <i className="pi pi-window-maximize"></i>
+                    <span>Database Designer</span>
+                  </button>
+                  
+                  <button 
+                    onClick={() => navigateTo([
+                      { label: 'Project', icon: 'pi pi-home' },
+                      { label: 'Database', icon: 'pi pi-database' },
+                      { label: 'Import', icon: 'pi pi-upload' },
+                      { label: 'Import .sql', icon: 'pi pi-file', action: 'import-sql' }
+                    ], 'import-sql')}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                  >
+                    <i className="pi pi-file"></i>
+                    <span>Import SQL</span>
+                  </button>
+                  
+                  <button 
+                    onClick={() => navigateTo([
+                      { label: 'Project', icon: 'pi pi-home' },
+                      { label: 'Database', icon: 'pi pi-database' },
+                      { label: 'Export', icon: 'pi pi-download' },
+                      { label: 'Export Schema', icon: 'pi pi-file-export', action: 'export-schema' }
+                    ], 'export-schema')}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                  >
+                    <i className="pi pi-file-export"></i>
+                    <span>Export Schema</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Authentication Modals - REMOVED: Now managed centrally in Index */}
     </div>
   );
 }

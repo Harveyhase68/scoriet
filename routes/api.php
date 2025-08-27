@@ -3,6 +3,8 @@
 use App\Http\Controllers\SqlParserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamInvitationController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Http\Controllers\AccessTokenController;
 use Laravel\Passport\Http\Controllers\ClientController;
@@ -70,6 +72,30 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-versions/{id}/templates', [TemplateController::class, 'getProjectTemplates']);
     Route::post('/schema-versions/{id}/templates', [TemplateController::class, 'assignToProject']);
     Route::delete('/schema-versions/{schemaId}/templates/{templateId}', [TemplateController::class, 'removeFromProject']);
+    
+    // Teams Management - Debug Route
+    Route::get('/teams-debug', function() {
+        $user = Auth::user();
+        return response()->json([
+            'message' => 'Teams debug endpoint works',
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'timestamp' => now()
+        ]);
+    });
+    
+    Route::resource('teams', TeamController::class);
+    Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
+    Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);
+    
+    // Team Invitations
+    Route::post('/teams/{team}/invitations', [TeamInvitationController::class, 'store']);
+    Route::get('/teams/{team}/invitations', [TeamInvitationController::class, 'teamInvitations']);
+    Route::get('/invitations/received', [TeamInvitationController::class, 'received']);
+    Route::post('/invitations/{token}/accept', [TeamInvitationController::class, 'accept']);
+    Route::post('/invitations/{token}/decline', [TeamInvitationController::class, 'decline']);
+    Route::delete('/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'cancel']);
+    Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamInvitationController::class, 'resend']);
 });
 
 // JavaScript-Datei ausliefern

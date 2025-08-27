@@ -14,6 +14,7 @@ import PanelT5 from '@/Components/Panels/PanelT5';
 import NavigationPanel from '@/Components/Panels/NavigationPanel';
 import PanelT1 from '@/Components/Panels/PanelT1';
 import LoginPanel from '@/Components/Panels/LoginPanel';
+import TeamsPanel from '@/Components/Panels/TeamsPanel';
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
@@ -119,6 +120,15 @@ const loadTab = (data: any) => {
         id,
         title: data.title || 'Database Explorer',
         content: <PanelT5 />,
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'teams':
+      return {
+        id,
+        title: data.title || 'Teams',
+        content: <TeamsPanel isActive={true} />,
         closable: true,
         group: 'card custom'
       };
