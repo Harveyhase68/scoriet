@@ -1,0 +1,130 @@
+/* resources/css/dark-dock-theme.css */
+
+/* Globales Dark Theme für rc-dock */
+.dock-layout {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+}
+
+/* Dock Container */
+.dock-box {
+  background-color: #1a1a1a;
+}
+
+/* Panel Background */
+.dock-panel {
+  background-color: #2d2d2d;
+  border: 1px solid #404040;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Tab Bar */
+.dock-tab-bar {
+  background-color: #333333;
+  border-bottom: 1px solid #404040;
+}
+
+/* Tabs */
+.dock-tab {
+  background-color: #3d3d3d;
+  color: #e0e0e0;
+  border: 1px solid #404040;
+  border-bottom: none;
+  margin-right: 2px;
+}
+
+.dock-tab:hover {
+  background-color: #4d4d4d;
+  color: #ffffff;
+}
+
+.dock-tab.dock-tab-active {
+  background-color: #2d2d2d;
+  color: #ffffff;
+  border-bottom: 1px solid #2d2d2d;
+}
+
+/* Tab Content Area */
+.dock-tab-pane {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+}
+
+/* Close Button auf Tabs */
+.dock-tab-close-btn {
+  color: #999999;
+}
+
+.dock-tab-close-btn:hover {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+/* Splitter (Trennlinien zwischen Panels) */
+.dock-bar {
+  background-color: #404040;
+}
+
+.dock-bar:hover {
+  background-color: #505050;
+}
+
+/* Maximize/Restore Buttons */
+.my-panel-extra-btn {
+  color: #999999;
+}
+
+.my-panel-extra-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Navigation Panel ohne Tabs */
+.navigation-panel-no-tabs .dock-tab-bar {
+  display: none !important;
+}
+
+.navigation-panel-no-tabs .dock-panel {
+  border-top: none !important;
+  background-color: #1a1a1a;
+}
+
+.navigation-panel-no-tabs .dock-tab-pane {
+  padding: 0 !important;
+}
+
+/* Floating Windows */
+.dock-modal {
+  background-color: #2d2d2d;
+  border: 1px solid #404040;
+}
+
+.dock-modal-title {
+  background-color: #333333;
+  color: #e0e0e0;
+  border-bottom: 1px solid #404040;
+}
+
+/* Drag Preview */
+.dock-drop-indicator {
+  background-color: rgba(100, 149, 237, 0.3);
+  border: 2px solid #6495ED;
+}
+
+/* Scrollbars (für WebKit Browser) */
+.dock-tab-pane::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dock-tab-pane::-webkit-scrollbar-track {
+  background-color: #2d2d2d;
+}
+
+.dock-tab-pane::-webkit-scrollbar-thumb {
+  background-color: #555555;
+  border-radius: 4px;
+}
+
+.dock-tab-pane::-webkit-scrollbar-thumb:hover {
+  background-color: #666666;
+}

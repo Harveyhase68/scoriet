@@ -2,33 +2,33 @@
 
 namespace App\Services;
 
-use App\Models\SchemaVersion;
-use App\Models\SchemaTable;
-use App\Models\SchemaField;
 use App\Models\SchemaConstraint;
 use App\Models\SchemaConstraintColumn;
+use App\Models\SchemaField;
 use App\Models\SchemaForeignKeyReference;
 use App\Models\SchemaForeignKeyReferenceColumn;
+use App\Models\SchemaTable;
+use App\Models\SchemaVersion;
 use Illuminate\Support\Facades\DB;
 
 class SchemaStorageService
 {
-    public function storeSchema(array $parsedTables, string $versionName, string $description = null)
+    public function storeSchema(array $parsedTables, string $versionName, ?string $description = null)
     {
         return DB::transaction(function () use ($parsedTables, $versionName, $description) {
             // Schema Version erstellen
             $schemaVersion = SchemaVersion::create([
                 'version_name' => $versionName,
-                'description' => $description
+                'description' => $description,
             ]);
 
-            $tableMap = []; // Für Foreign Key Referenzen
+            $tableMap = []; // For foreign key references
 
-            // Erste Phase: Tabellen und Felder speichern
+            // First phase: Save tables and fields
             foreach ($parsedTables as $tableData) {
                 $table = $this->storeTable($schemaVersion, $tableData);
                 $tableMap[$tableData['table_name']] = $table;
-                
+
                 $this->storeFields($table, $tableData['fields']);
             }
 
@@ -46,7 +46,7 @@ class SchemaStorageService
     {
         return SchemaTable::create([
             'schema_version_id' => $schemaVersion->id,
-            'table_name' => $tableData['table_name']
+            'table_name' => $tableData['table_name'],
         ]);
     }
 
@@ -61,7 +61,7 @@ class SchemaStorageService
                 'is_nullable' => $fieldData['nullable'] ?? true,
                 'default_value' => $this->normalizeDefaultValue($fieldData['default'] ?? null),
                 'is_auto_increment' => $fieldData['auto_increment'] ?? false,
-                'field_order' => $index + 1
+                'field_order' => $index + 1,
             ]);
         }
     }
@@ -72,7 +72,7 @@ class SchemaStorageService
             $constraint = SchemaConstraint::create([
                 'table_id' => $table->id,
                 'constraint_name' => $constraintData['name'] ?? null,
-                'constraint_type' => $constraintData['type']
+                'constraint_type' => $constraintData['type'],
             ]);
 
             // Constraint Columns speichern
@@ -97,7 +97,7 @@ class SchemaStorageService
                 SchemaConstraintColumn::create([
                     'constraint_id' => $constraint->id,
                     'field_id' => $field->id,
-                    'column_order' => $index + 1
+                    'column_order' => $index + 1,
                 ]);
             }
         }
@@ -108,13 +108,13 @@ class SchemaStorageService
         $referencedTableName = $referenceData['table'];
         $referencedTable = $tableMap[$referencedTableName] ?? null;
 
-        if (!$referencedTable) {
+        if (! $referencedTable) {
             throw new \Exception("Referenced table '{$referencedTableName}' not found");
         }
 
         $reference = SchemaForeignKeyReference::create([
             'constraint_id' => $constraint->id,
-            'referenced_table_id' => $referencedTable->id
+            'referenced_table_id' => $referencedTable->id,
         ]);
 
         // Referenced Columns speichern
@@ -127,7 +127,7 @@ class SchemaStorageService
                 SchemaForeignKeyReferenceColumn::create([
                     'reference_id' => $reference->id,
                     'referenced_field_id' => $referencedField->id,
-                    'column_order' => $index + 1
+                    'column_order' => $index + 1,
                 ]);
             }
         }
@@ -139,7 +139,7 @@ class SchemaStorageService
             return null;
         }
 
-        // Anführungszeichen entfernen falls vorhanden
+        // Remove quotes if present
         if (is_string($defaultValue)) {
             $defaultValue = trim($defaultValue, '"\'');
         }
@@ -153,7 +153,7 @@ class SchemaStorageService
             'tables.fields',
             'tables.constraints.constraintColumns.field',
             'tables.constraints.foreignKeyReference.referencedTable',
-            'tables.constraints.foreignKeyReference.referenceColumns.referencedField'
+            'tables.constraints.foreignKeyReference.referenceColumns.referencedField',
         ])->find($versionId);
     }
 
@@ -163,7 +163,7 @@ class SchemaStorageService
             'tables.fields',
             'tables.constraints.constraintColumns.field',
             'tables.constraints.foreignKeyReference.referencedTable',
-            'tables.constraints.foreignKeyReference.referenceColumns.referencedField'
+            'tables.constraints.foreignKeyReference.referenceColumns.referencedField',
         ])->where('version_name', $versionName)->first();
     }
 

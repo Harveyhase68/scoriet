@@ -1,0 +1,102 @@
+/* Custom styling for authentication modals */
+.p-dialog-custom .p-dialog-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 6px 6px 0 0;
+}
+
+.p-dialog-custom .p-dialog-header .p-dialog-title {
+  color: white;
+  font-weight: 600;
+}
+
+.p-dialog-custom .p-dialog-header .p-dialog-header-icon {
+  color: white;
+}
+
+.p-dialog-custom .p-dialog-header .p-dialog-header-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.p-dialog-custom .p-dialog-content {
+  padding: 2rem;
+}
+
+/* Responsive modal sizing */
+@media (max-width: 768px) {
+  .p-dialog-custom {
+    width: 95vw !important;
+    margin: 0 auto;
+  }
+  
+  .p-dialog-custom .p-dialog-content {
+    padding: 1.5rem;
+  }
+}
+
+/* Form styling within modals */
+.p-dialog-custom .field {
+  margin-bottom: 1.5rem;
+}
+
+.p-dialog-custom .field:last-child {
+  margin-bottom: 0;
+}
+
+.p-dialog-custom .p-button {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.p-dialog-custom .p-button-link {
+  text-decoration: none;
+  padding: 0.5rem 0;
+}
+
+.p-dialog-custom .p-button-link:hover {
+  text-decoration: underline;
+}
+
+/* Tab styling for profile modal */
+.p-dialog-custom .p-tabview .p-tabview-nav li .p-tabview-nav-link {
+  border-radius: 6px 6px 0 0;
+}
+
+.p-dialog-custom .p-tabview .p-tabview-panels {
+  padding: 1.5rem 0;
+}
+
+/* Message styling */
+.p-dialog-custom .p-message {
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+/* Input field styling */
+.p-dialog-custom .p-inputtext,
+.p-dialog-custom .p-password input {
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  transition: border-color 0.2s ease;
+}
+
+.p-dialog-custom .p-inputtext:focus,
+.p-dialog-custom .p-password input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 1px #667eea;
+}
+
+/* Loading states */
+.p-dialog-custom .p-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.p-dialog-custom .p-button .pi-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('version_name', 100);
             $table->text('description')->nullable();
             $table->timestamps();
-            
+
             $table->index('version_name');
         });
 
@@ -27,7 +27,7 @@ return new class extends Migration
             $table->foreignId('schema_version_id')->constrained()->onDelete('cascade');
             $table->string('table_name');
             $table->timestamps();
-            
+
             $table->unique(['schema_version_id', 'table_name']);
             $table->index('table_name');
         });
@@ -44,7 +44,7 @@ return new class extends Migration
             $table->boolean('is_auto_increment')->default(false);
             $table->integer('field_order')->default(0);
             $table->timestamps();
-            
+
             $table->unique(['table_id', 'field_name']);
             $table->index('field_name');
         });
@@ -56,7 +56,7 @@ return new class extends Migration
             $table->string('constraint_name')->nullable();
             $table->enum('constraint_type', ['PRIMARY KEY', 'UNIQUE', 'KEY', 'FOREIGN KEY', 'INDEX']);
             $table->timestamps();
-            
+
             $table->index('constraint_type');
             $table->index('constraint_name');
         });
@@ -68,7 +68,7 @@ return new class extends Migration
             $table->foreignId('field_id')->constrained('schema_fields')->onDelete('cascade');
             $table->integer('column_order')->default(0);
             $table->timestamps();
-            
+
             $table->unique(['constraint_id', 'field_id'], 'constraint_field_unique');
         });
 
@@ -78,7 +78,7 @@ return new class extends Migration
             $table->foreignId('constraint_id')->constrained('schema_constraints')->onDelete('cascade');
             $table->foreignId('referenced_table_id')->constrained('schema_tables')->onDelete('cascade');
             $table->timestamps();
-            
+
             $table->unique('constraint_id', 'fk_ref_constraint_unique');
         });
 
@@ -89,7 +89,7 @@ return new class extends Migration
             $table->foreignId('referenced_field_id')->constrained('schema_fields')->onDelete('cascade');
             $table->integer('column_order')->default(0);
             $table->timestamps();
-            
+
             $table->unique(['reference_id', 'referenced_field_id'], 'fk_ref_col_unique');
         });
     }

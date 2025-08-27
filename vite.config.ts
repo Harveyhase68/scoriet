@@ -17,6 +17,13 @@ export default defineConfig({
     esbuild: {
         jsx: 'automatic',
     },
+    css: {
+        preprocessorOptions: {
+            scss: {
+                api: 'modern-compiler',
+            },
+        },
+    },
     resolve: {
         alias: {
 			'@': resolve(__dirname, 'resources/js'), // <--- das hier fehlt
@@ -24,7 +31,7 @@ export default defineConfig({
         },
     },
     server: {
-        host: '10.0.0.8',     // oder `true` für 0.0.0.0 (alle Interfaces)
+        host: '10.0.0.8',     // or `true` for 0.0.0.0 (all interfaces)
         port: 5173,
         strictPort: true,
         hmr: {

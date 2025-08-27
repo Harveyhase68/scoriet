@@ -1,6 +1,7 @@
 <?php
 
 // app/Models/SchemaField.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -17,13 +18,13 @@ class SchemaField extends Model
         'is_nullable',
         'default_value',
         'is_auto_increment',
-        'field_order'
+        'field_order',
     ];
 
     protected $casts = [
         'is_unsigned' => 'boolean',
         'is_nullable' => 'boolean',
-        'is_auto_increment' => 'boolean'
+        'is_auto_increment' => 'boolean',
     ];
 
     public function table(): BelongsTo

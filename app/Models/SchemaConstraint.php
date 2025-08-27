@@ -1,5 +1,7 @@
 <?php
+
 // app/Models/SchemaConstraint.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +14,7 @@ class SchemaConstraint extends Model
     protected $fillable = [
         'table_id',
         'constraint_name',
-        'constraint_type'
+        'constraint_type',
     ];
 
     public function table(): BelongsTo

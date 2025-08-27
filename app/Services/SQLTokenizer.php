@@ -2,32 +2,38 @@
 
 namespace App\Services;
 
-class SQLTokenizer {
+class SQLTokenizer
+{
     private $sql_text;
+
     private $position;
+
     private $tokens;
+
     private $keywords;
-    
-    public function __construct($sql_text) {
+
+    public function __construct($sql_text)
+    {
         $this->sql_text = trim($sql_text);
         $this->position = 0;
         $this->tokens = [];
         $this->keywords = [
-            'CREATE', 'TABLE', 'ALTER', 'ADD', 'CONSTRAINT', 'FOREIGN', 'KEY', 
+            'CREATE', 'TABLE', 'ALTER', 'ADD', 'CONSTRAINT', 'FOREIGN', 'KEY',
             'REFERENCES', 'PRIMARY', 'IF', 'NOT', 'EXISTS', 'NULL', 'DEFAULT',
-            'AUTO_INCREMENT', 'UNSIGNED', 'ENGINE', 'UNIQUE', 'INDEX'
+            'AUTO_INCREMENT', 'UNSIGNED', 'ENGINE', 'UNIQUE', 'INDEX',
         ];
     }
-    
-    public function tokenize() {
+
+    public function tokenize()
+    {
         while ($this->position < strlen($this->sql_text)) {
             $this->skipWhitespace();
             if ($this->position >= strlen($this->sql_text)) {
                 break;
             }
-            
+
             $char = $this->sql_text[$this->position];
-            
+
             switch ($char) {
                 case '(':
                     $this->tokens[] = new SQLToken('LPAREN', '(', $this->position);
@@ -40,7 +46,7 @@ class SQLTokenizer {
                 case ',':
                     $this->tokens[] = new SQLToken('COMMA', ',', $this->position);
                     $this->position++;
-                    break;  
+                    break;
                 case ';':
                     $this->tokens[] = new SQLToken('SEMICOLON', ';', $this->position);
                     $this->position++;
@@ -65,22 +71,24 @@ class SQLTokenizer {
                     break;
             }
         }
-        
+
         return $this->tokens;
     }
-    
-    private function skipWhitespace() {
-        while ($this->position < strlen($this->sql_text) && 
+
+    private function skipWhitespace()
+    {
+        while ($this->position < strlen($this->sql_text) &&
                ctype_space($this->sql_text[$this->position])) {
             $this->position++;
         }
     }
-    
-    private function readQuotedString($quote_char) {
+
+    private function readQuotedString($quote_char)
+    {
         $start_pos = $this->position;
         $this->position++; // Skip opening quote
-        $value = "";
-        
+        $value = '';
+
         while ($this->position < strlen($this->sql_text)) {
             $char = $this->sql_text[$this->position];
             if ($char === $quote_char) {
@@ -96,37 +104,39 @@ class SQLTokenizer {
                 $this->position++;
             }
         }
-        
+
         $this->tokens[] = new SQLToken('QUOTED_STRING', $value, $start_pos);
     }
-    
-    private function readIdentifierOrKeyword() {
+
+    private function readIdentifierOrKeyword()
+    {
         $start_pos = $this->position;
-        $value = "";
-        
-        while ($this->position < strlen($this->sql_text) && 
-               (ctype_alnum($this->sql_text[$this->position]) || 
+        $value = '';
+
+        while ($this->position < strlen($this->sql_text) &&
+               (ctype_alnum($this->sql_text[$this->position]) ||
                 $this->sql_text[$this->position] === '_')) {
             $value .= $this->sql_text[$this->position];
             $this->position++;
         }
-        
+
         $upper_value = strtoupper($value);
         $token_type = in_array($upper_value, $this->keywords) ? 'KEYWORD' : 'IDENTIFIER';
         $this->tokens[] = new SQLToken($token_type, $upper_value, $start_pos);
     }
-    
-    private function readNumber() {
+
+    private function readNumber()
+    {
         $start_pos = $this->position;
-        $value = "";
-        
-        while ($this->position < strlen($this->sql_text) && 
-               (ctype_digit($this->sql_text[$this->position]) || 
+        $value = '';
+
+        while ($this->position < strlen($this->sql_text) &&
+               (ctype_digit($this->sql_text[$this->position]) ||
                 $this->sql_text[$this->position] === '.')) {
             $value .= $this->sql_text[$this->position];
             $this->position++;
         }
-        
+
         $this->tokens[] = new SQLToken('NUMBER', $value, $start_pos);
     }
 }

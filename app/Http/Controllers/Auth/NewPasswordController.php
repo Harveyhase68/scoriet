@@ -22,7 +22,7 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render('auth/reset-password', [
+        return Inertia::render('ResetPassword', [
             'email' => $request->email,
             'token' => $request->route('token'),
         ]);
@@ -56,11 +56,11 @@ class NewPasswordController extends Controller
             }
         );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
+        // If the password was successfully reset, we will return a successful response
+        // for our modal system instead of redirecting
         if ($status == Password::PasswordReset) {
-            return to_route('login')->with('status', __($status));
+            // For Inertia requests, return a simple redirect with success message
+            return redirect()->route('index')->with('status', __($status));
         }
 
         throw ValidationException::withMessages([

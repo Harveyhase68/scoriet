@@ -43,8 +43,11 @@ jobs:
       - name: Copy Environment File
         run: cp .env.example .env
 
-      - name: Generate Application Key
-        run: php artisan key:generate
+      - name: Setup Environment
+        run: |
+        echo "APP_KEY=${{ secrets.APP_KEY }}" >> .env
+        echo "DB_CONNECTION=sqlite" >> .env  
+        echo "DB_DATABASE=:memory:" >> .env  
 
       - name: Tests
         run: ./vendor/bin/pest
