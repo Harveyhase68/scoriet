@@ -309,7 +309,7 @@ export default function PanelT2() {
         {/* Header */}
         <div className="flex justify-between items-center p-4 bg-gray-900 border-b border-gray-600 flex-shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-blue-400">🗃️ Database Schema Designer</h3>
+            <h3 className="text-lg font-bold text-blue-400">🗃️ Database Designer</h3>
             <p className="text-sm text-gray-400">
               {selectedVersion ? `${selectedVersion.version_name} - ${selectedVersion.tables?.length || 0} tables` : 'No schema loaded'}
             </p>

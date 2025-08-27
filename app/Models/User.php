@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -23,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'username', // GitHub-style unique username
     ];
 
     /**
@@ -46,5 +48,44 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Team relationships
+    public function ownedTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'project_owner_id');
+    }
+
+    public function teamMemberships(): HasMany
+    {
+        return $this->hasMany(TeamMember::class);
+    }
+
+    public function teamInvitations(): HasMany
+    {
+        return $this->hasMany(TeamInvitation::class, 'invited_by');
+    }
+
+    public function receivedInvitations()
+    {
+        return TeamInvitation::where('invited_user_id', $this->username ?? $this->name)
+                            ->where('status', 'pending');
+    }
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_members', 'user_id', 'team_id')
+                    ->withPivot('role', 'joined_at')
+                    ->withTimestamps();
+    }
+
+    public function isTeamOwner(Team $team): bool
+    {
+        return $team->project_owner_id === $this->id;
+    }
+
+    public function getTeamRole(Team $team): ?string
+    {
+        return $team->getUserRole($this);
     }
 }

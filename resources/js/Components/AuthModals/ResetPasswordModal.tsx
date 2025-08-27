@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { createPortal } from 'react-dom';
 
 interface ResetPasswordModalProps {
   visible: boolean;
@@ -100,8 +101,16 @@ export default function ResetPasswordModal({
 
   if (!visible) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
+  const modalContent = (
+    <div 
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ 
+        zIndex: 999999,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(4px)'
+      }}
+      onClick={onHide}
+    >
       <div 
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all duration-300 border border-gray-200 dark:border-gray-700"
         onClick={(e) => e.stopPropagation()}
@@ -337,4 +346,7 @@ export default function ResetPasswordModal({
       </div>
     </div>
   );
+
+  // Render modal content in a portal to the document body
+  return createPortal(modalContent, document.body);
 }

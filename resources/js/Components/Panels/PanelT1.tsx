@@ -45,7 +45,7 @@ const generateTreeData = (): TreeNode[] => {
   return [
     {
       id: '1',
-      name: 'Projects',
+      name: 'Project',
       type: 'folder',
       expanded: true,
       children: [
