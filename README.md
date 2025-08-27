@@ -10,7 +10,7 @@
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[**Live Demo**](https://www.scoriet.com) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
+[**Live Demo**](https://www.scoriet.com) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
 
 </div>
 
@@ -59,6 +59,10 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **Node.js** ≥ 18.0 & npm ≥ 9.0
 - **Database**: MySQL 8.0+ / PostgreSQL 13+ / SQLite 3.8+ / SQL Server 2019+
 - **Memory**: 512MB RAM minimum (2GB+ recommended)
+
+## 🚀 Getting Started
+
+> **📋 For detailed Windows installation instructions, see [INSTALLATION.md](INSTALLATION.md)**
 
 ## ⚡ Quick Start
 

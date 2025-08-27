@@ -65,7 +65,7 @@ const groups = {
 };
 
 // EMPTY LAYOUT - starts without panels
-const initialLayout = {
+const initialLayout: any = {
   "dockbox": {
     "id": "+1",
     "mode": "horizontal",

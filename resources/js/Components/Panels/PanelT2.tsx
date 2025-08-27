@@ -469,7 +469,7 @@ export default function PanelT2() {
               <div>
                 <span className="text-gray-400">Primary Keys:</span>
                 <span className="ml-2 text-yellow-400">
-                  {selectedNode.data.fields?.filter(f => f.isPrimary).length || 0}
+                  {selectedNode.data.fields?.filter((f: { isPrimary: boolean }) => f.isPrimary).length || 0}
                 </span>
               </div>
             </div>
