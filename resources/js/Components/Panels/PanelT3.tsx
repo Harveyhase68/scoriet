@@ -1,7 +1,14 @@
 // resources/js/Components/Panels/PanelT3.tsx - Templates Panel
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TabContentProps } from '@/types';
-import { apiClient } from '@/lib/api';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button } from 'primereact/button';
+import { Checkbox } from 'primereact/checkbox';
+import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { Card } from 'primereact/card';
+import { useProject } from '@/contexts/ProjectContext';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,338 +34,446 @@ interface Template {
   id: number;
   name: string;
   description: string;
-  category: 'Web' | 'Mobile' | 'API' | 'Desktop' | 'Database';
+  category: string;
   language: string;
-  tags: string[];
-  isActive: boolean;
-  createdAt: string;
-  fileCount: number;
+  is_active: boolean;
+  created_at: string;
+  owner?: {
+    id: number;
+    name: string;
+  };
 }
+
 
 // Templates are now loaded from API
 
 export default function PanelT3() {
+  const { selectedProject } = useProject();
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplates, setSelectedTemplates] = useState<Set<number>>(new Set());
-  const [assignedTemplates, setAssignedTemplates] = useState<Set<number>>(new Set());
-  const [currentSchemaVersionId, setCurrentSchemaVersionId] = useState<number | null>(null);
+  const [assignedTemplates, setAssignedTemplates] = useState<Template[]>([]);
+  const [availableTemplates, setAvailableTemplates] = useState<Template[]>([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true); // Start with loading true
+  const [assigningTemplates, setAssigningTemplates] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('All');
-  const [draggedTemplate, setDraggedTemplate] = useState<Template | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState('All');
 
-  const getCurrentSchemaVersion = useCallback(async () => {
-    try {
-      // Try to get the first available schema version as current
-      const versions = await apiClient.getAllSchemaVersions();
-      if (versions.length > 0) {
-        setCurrentSchemaVersionId(versions[0].id);
-        await loadProjectTemplates(versions[0].id);
+  // Load templates on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await loadAllTemplates(); // Load templates first
+      } catch (err) {
+        console.error('Error loading data:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // Error loading schema versions
-    }
+    };
+    loadData();
   }, []);
 
-  const loadProjectTemplates = async (schemaVersionId: number) => {
+  // When templates are loaded and selectedProject changes, reload project templates
+  useEffect(() => {
+    if (templates.length > 0 && selectedProject) {
+      loadProjectTemplates(selectedProject.id);
+    } else if (templates.length > 0 && !selectedProject) {
+      // If templates loaded but no project selected, show all as available
+      setAvailableTemplates(templates);
+      setAssignedTemplates([]);
+      setSelectedTemplateIds([]); // Clear selections too
+    }
+  }, [templates, selectedProject, loadProjectTemplates]);
+
+
+  const loadAllTemplates = async () => {
     try {
-      const projectTemplates = await apiClient.getProjectTemplates(schemaVersionId);
-      const assignedIds = new Set<number>(projectTemplates.map((pt: any) => pt.template_id));
-      setAssignedTemplates(assignedIds);
+      setError('');
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch('/api/templates', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load templates');
+      }
+
+      const data = await response.json();
       
-      // Pre-select assigned templates
-      setSelectedTemplates(assignedIds);
-    } catch {
-      // Error loading project templates
+      // Extract templates from the response object
+      const templatesArray = data.templates || [];
+      
+      setTemplates(templatesArray);
+      // Don't set availableTemplates here - will be set after loading project templates
+      // setAvailableTemplates(templatesArray); // Initially all templates are available
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error loading templates');
     }
   };
 
-  const loadTemplates = useCallback(async () => {
+  // Load templates assigned to a specific project
+  const loadProjectTemplates = useCallback(async (projectId: number) => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await apiClient.getAllTemplates({
-        category: filterCategory,
-        search: searchQuery,
-        active_only: false,
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`/api/schema-versions/${projectId}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       });
       
-      // Convert API data to our interface format
-      const formattedTemplates = data.map((template: any) => ({
-        id: template.id,
-        name: template.name,
-        description: template.description || '',
-        category: template.category,
-        language: template.language,
-        tags: template.tags || [],
-        isActive: template.is_active,
-        createdAt: template.created_at,
-        fileCount: template.file_count || 0,
-      }));
-      
-      setTemplates(formattedTemplates);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Extract project_templates array from response
+        const projectTemplatesArray = data.project_templates || [];
+        
+        // Extract assigned template IDs
+        const assignedTemplateIds = projectTemplatesArray.map((pt: any) => pt.template_id || pt.id);
+        
+        // Split templates into assigned and available
+        const assigned = templates.filter(t => assignedTemplateIds.includes(t.id));
+        const available = templates.filter(t => !assignedTemplateIds.includes(t.id));
+        
+        // Update state
+        setAssignedTemplates(assigned);
+        setAvailableTemplates(available);
+        
+        // Clear any selected template IDs when switching projects
+        setSelectedTemplateIds([]);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load templates');
-    } finally {
-      setLoading(false);
+      console.error('Error loading project templates:', err);
     }
-  }, [filterCategory, searchQuery]);
+  }, [templates]);
 
-  // Load templates and get current schema version on mount
-  useEffect(() => {
-    loadTemplates();
-    getCurrentSchemaVersion();
-  }, [getCurrentSchemaVersion, loadTemplates]);
+  // Handle template assignment
+  const handleAssignTemplates = async () => {
+    if (!selectedProject || selectedTemplateIds.length === 0) return;
 
-  // Filter templates (now client-side since API filtering might be different)
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = !searchQuery || (
-      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    
-    const matchesCategory = filterCategory === 'All' || template.category === filterCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
+    setAssigningTemplates(true);
+    setError('');
 
-  const handleTemplateToggle = (templateId: number) => {
-    const newSelected = new Set(selectedTemplates);
-    if (newSelected.has(templateId)) {
-      newSelected.delete(templateId);
-    } else {
-      newSelected.add(templateId);
-    }
-    setSelectedTemplates(newSelected);
-  };
-
-  const handleSelectAll = () => {
-    if (selectedTemplates.size === filteredTemplates.length) {
-      setSelectedTemplates(new Set());
-    } else {
-      setSelectedTemplates(new Set(filteredTemplates.map(t => t.id)));
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent, template: Template) => {
-    setDraggedTemplate(template);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('text/plain', template.name);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedTemplate(null);
-  };
-
-  const categories = ['All', 'Web', 'Mobile', 'API', 'Desktop', 'Database'];
-
-  const handleAssignToProject = async () => {
-    if (!currentSchemaVersionId) {
-      setError('No schema version selected');
-      return;
-    }
-    
-    
     try {
-      setLoading(true);
-      await apiClient.assignTemplatesToProject(
-        currentSchemaVersionId, 
-        Array.from(selectedTemplates)
-      );
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the existing project-template assignment API
+      const response = await fetch(`/api/schema-versions/${selectedProject.id}/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          template_ids: selectedTemplateIds
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to assign templates');
+      }
+
+      // Move assigned templates from available to assigned
+      const newlyAssigned = availableTemplates.filter(t => selectedTemplateIds.includes(t.id));
+      setAssignedTemplates(prev => [...prev, ...newlyAssigned]);
+      setAvailableTemplates(prev => prev.filter(t => !selectedTemplateIds.includes(t.id)));
       
-      
-      // Update assigned templates
-      setAssignedTemplates(selectedTemplates);
-      
-      // Show success message
-      setError(null);
+      setSelectedTemplateIds([]);
+      setSuccess(`${selectedTemplateIds.length} templates assigned to project successfully`);
+
     } catch (err) {
-      // Assignment error
-      setError(err instanceof Error ? err.message : 'Failed to assign templates');
+      setError(err instanceof Error ? err.message : 'Error assigning templates');
     } finally {
-      setLoading(false);
+      setAssigningTemplates(false);
     }
   };
+
+  // Handle template removal
+  const handleRemoveTemplate = async (templateId: number) => {
+    if (!selectedProject) return;
+
+    try {
+      setError('');
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call API to remove template from project
+      const response = await fetch(`/api/schema-versions/${selectedProject.id}/templates/${templateId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      await response.json();
+
+      // Move template from assigned to available
+      const removedTemplate = assignedTemplates.find(t => t.id === templateId);
+      if (removedTemplate) {
+        setAssignedTemplates(prev => prev.filter(t => t.id !== templateId));
+        setAvailableTemplates(prev => [...prev, removedTemplate]);
+        setSuccess(`Template "${removedTemplate.name}" removed from project successfully`);
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error removing template');
+    }
+  };
+
+  // Filter templates based on search and category - with safe array check
+  const filteredAvailableTemplates = React.useMemo(() => {
+    if (!Array.isArray(availableTemplates)) {
+      return [];
+    }
+    
+    return availableTemplates.filter(template => {
+      const matchesSearch = !searchQuery || 
+        template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        template.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = filterCategory === 'All' || template.category === filterCategory;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [availableTemplates, searchQuery, filterCategory]);
+
+  const categories = React.useMemo(() => {
+    return [
+      { label: 'All Categories', value: 'All' },
+      { label: 'Web', value: 'Web' },
+      { label: 'Mobile', value: 'Mobile' },
+      { label: 'API', value: 'API' },
+      { label: 'Desktop', value: 'Desktop' },
+      { label: 'Database', value: 'Database' }
+    ];
+  }, []);
 
   return (
     <TabContent style={{}}>
-      <div className="h-full flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 bg-gray-900 border-b border-gray-600 flex-shrink-0">
-          <div>
-            <h3 className="text-lg font-bold text-purple-400">📋 Templates Manager - NEW VERSION</h3>
-            <p className="text-sm text-gray-400">
-              {filteredTemplates.length} Templates | {selectedTemplates.size} Selected | {assignedTemplates.size} Assigned
-            </p>
+      <div className="h-full flex flex-col bg-gray-800 text-gray-100">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
+              <p className="text-gray-300">Loading templates...</p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleSelectAll}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
-            >
-              {selectedTemplates.size === filteredTemplates.length ? '📋 Deselect All' : '☑️ Select All'}
-            </button>
-            <button
-              onClick={handleAssignToProject}
-              className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-              disabled={selectedTemplates.size === 0 || loading}
-            >
-              ✅ Apply to Project ({selectedTemplates.size})
-            </button>
-          </div>
-        </div>
+        ) : (
+          <>
+            {/* Header */}
+            <Card title={selectedProject ? `Templates Assignment - ${selectedProject.name}` : "Templates Assignment"} className="m-4 mb-2">
+          <div className="flex flex-col gap-4">
+            {/* Project Info */}
+            {selectedProject && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                <i className="pi pi-briefcase"></i>
+                <span>Working on: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
+              </div>
+            )}
+            
+            {!selectedProject && (
+              <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                <i className="pi pi-exclamation-triangle"></i>
+                <span>Please select a project from the navigation to manage templates</span>
+              </div>
+            )}
 
-        {/* Search and Filter Bar */}
-        <div className="p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
-          <div className="flex gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search templates, tags, or descriptions..."
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            {/* Search and Filter */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <InputText
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search templates..."
+                  className="w-full"
+                />
+              </div>
+              <Dropdown
+                value={filterCategory}
+                options={categories || []}
+                onChange={(e) => {
+                  setFilterCategory(e.value);
+                }}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Filter by category"
+                className="w-48"
               />
             </div>
-            
-            {/* Category Filter */}
-            <div className="min-w-[120px]">
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
 
-        {/* Templates List */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {filteredTemplates.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-bold mb-2">No Templates Found</h3>
-                <p className="text-sm">
-                  {searchQuery || filterCategory !== 'All' 
-                    ? 'Try adjusting your search or filter criteria' 
-                    : 'No templates available yet'
-                  }
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {filteredTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, template)}
-                  onDragEnd={handleDragEnd}
-                  className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                    selectedTemplates.has(template.id)
-                      ? 'border-purple-400 bg-purple-900/20'
-                      : assignedTemplates.has(template.id)
-                      ? 'border-blue-400 bg-blue-900/20'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                  } ${draggedTemplate?.id === template.id ? 'opacity-50' : ''}`}
-                  onClick={() => handleTemplateToggle(template.id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedTemplates.has(template.id)}
-                          onChange={() => handleTemplateToggle(template.id)}
-                          className="w-4 h-4 text-purple-600 bg-gray-600 border-gray-500 rounded focus:ring-purple-500"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <h4 className="font-semibold text-white">{template.name}</h4>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          template.isActive 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-600 text-gray-300'
-                        }`}>
-                          {template.isActive ? '✅ Active' : '⏸️ Inactive'}
-                        </span>
-                        {assignedTemplates.has(template.id) && (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">
-                            🔗 Assigned
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="text-gray-300 text-sm mb-3">{template.description}</p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          📁 {template.category}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          💾 {template.language}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          📄 {template.fileCount} files
-                        </span>
-                        <span className="flex items-center gap-1">
-                          📅 {new Date(template.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {template.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-800 text-gray-300 rounded text-xs"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="ml-4 flex items-center text-gray-500">
-                      <span className="text-xl cursor-move">⋮⋮</span>
-                    </div>
-                  </div>
+            {/* Status Messages */}
+            {error && <div className="text-red-500 text-sm">{error}</div>}
+            {success && <div className="text-green-500 text-sm">{success}</div>}
+          </div>
+        </Card>
+
+        {/* Templates Table */}
+        <div className="flex-1 mx-4 mb-4">
+          <Card className="h-full">
+            <div className="h-full flex flex-col">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <i className="pi pi-spinner pi-spin text-2xl text-blue-500"></i>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              ) : (
+                <>
+                  <DataTable
+                    key={`templates-table-${selectedProject?.id || 'no-project'}-${selectedTemplateIds.join('-')}-${assignedTemplates.length}-${filteredAvailableTemplates.length}`}
+                    value={[...(assignedTemplates || []), ...filteredAvailableTemplates]}
+                    className="p-datatable-sm"
+                    emptyMessage="No templates found"
+                    paginator
+                    rows={10}
+                    rowsPerPageOptions={[5, 10, 20]}
+                    scrollable
+                    scrollHeight="400px"
+                    header={
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">
+                          Templates ({(assignedTemplates || []).length + filteredAvailableTemplates.length})
+                        </span>
+                        <div className="text-sm text-gray-500">
+                          {selectedTemplateIds.length > 0 && `${selectedTemplateIds.length} selected`}
+                        </div>
+                      </div>
+                    }
+                  >
+                    <Column 
+                      headerStyle={{ width: '3rem' }}
+                      header={() => {
+                        const availableTemplateIds = filteredAvailableTemplates.map(template => template.id);
+                        const allSelected = availableTemplateIds.length > 0 && 
+                          availableTemplateIds.every(id => selectedTemplateIds.includes(id));
+                        const someSelected = availableTemplateIds.some(id => selectedTemplateIds.includes(id));
+                        
+                        return (
+                          <Checkbox
+                            checked={allSelected}
+                            indeterminate={someSelected && !allSelected ? true : undefined}
+                            onChange={(e) => {
+                              if (e.checked) {
+                                setSelectedTemplateIds(availableTemplateIds);
+                              } else {
+                                setSelectedTemplateIds([]);
+                              }
+                            }}
+                          />
+                        );
+                      }}
+                      body={(template) => {
+                        const isAssigned = (assignedTemplates || []).some(t => t.id === template.id);
+                        
+                        if (isAssigned) {
+                          return (
+                            <Button
+                              icon="pi pi-times"
+                              className="p-button-rounded p-button-text p-button-sm p-button-danger"
+                              tooltip="Remove from project"
+                              onClick={() => handleRemoveTemplate(template.id)}
+                            />
+                          );
+                        } else {
+                          const isChecked = selectedTemplateIds.includes(template.id);
+                          return (
+                            <Checkbox
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.checked) {
+                                  setSelectedTemplateIds(prev => [...prev, template.id]);
+                                } else {
+                                  setSelectedTemplateIds(prev => prev.filter(id => id !== template.id));
+                                }
+                              }}
+                            />
+                          );
+                        }
+                      }}
+                    />
+                    
+                    <Column field="name" header="Template Name" sortable />
+                    <Column field="description" header="Description" />
+                    <Column 
+                      field="category" 
+                      header="Category" 
+                      body={(template) => (
+                        <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
+                          {template.category}
+                        </span>
+                      )}
+                    />
+                    <Column field="language" header="Language" />
+                    <Column 
+                      field="is_active" 
+                      header="Status"
+                      body={(template) => (
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                        }`}>
+                          {template.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
+                    />
+                    <Column 
+                      field="created_at" 
+                      header="Created"
+                      body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
+                    />
+                  </DataTable>
 
-        {/* Footer Actions */}
-        {selectedTemplates.size > 0 && (
-          <div className="p-4 bg-gray-900 border-t border-gray-600 flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-400">
-                {selectedTemplates.size} template{selectedTemplates.size !== 1 ? 's' : ''} selected
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setSelectedTemplates(new Set())}
-                  className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-sm transition-colors"
-                >
-                  Clear Selection
-                </button>
-                <button
-                  onClick={handleAssignToProject}
-                  className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  💾 Save Template Assignment
-                </button>
-              </div>
+                  {/* Action Buttons */}
+                  {selectedTemplateIds.length > 0 && (
+                    <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
+                      <div className="text-sm text-gray-500">
+                        {selectedTemplateIds.length} template{selectedTemplateIds.length !== 1 ? 's' : ''} selected
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          label="Clear Selection"
+                          icon="pi pi-times"
+                          onClick={() => setSelectedTemplateIds([])}
+                          className="p-button-text"
+                        />
+                        <Button
+                          label={`Assign Templates (${selectedTemplateIds.length})`}
+                          icon="pi pi-check"
+                          onClick={handleAssignTemplates}
+                          disabled={!selectedProject || assigningTemplates}
+                          loading={assigningTemplates}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          </div>
+          </Card>
+        </div>
+          </>
         )}
       </div>
     </TabContent>

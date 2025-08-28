@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { TabMenu } from 'primereact/tabmenu';
 import { MenuItem } from 'primereact/menuitem';
+import { Dropdown } from 'primereact/dropdown';
 import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -17,6 +19,7 @@ interface BreadcrumbItem {
 }
 
 export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNavigationPanelProps) {
+  const { projects, selectedProject, setSelectedProject, loading } = useProject();
   const [profileActiveIndex, setProfileActiveIndex] = useState<number>(-1); // -1 = nothing selected
   const [mainActiveIndex, setMainActiveIndex] = useState<number>(-1); // -1 = nothing selected
   const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([
@@ -144,6 +147,11 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
 
   // Menu items with PrimeIcons and panel logic
   const menuItems: MenuItem[] = [
+    {
+      label: 'Project',
+      icon: 'pi pi-briefcase',
+      command: () => handleMainAction('project')
+    },
     {
       label: 'Teams',
       icon: 'pi pi-users',
@@ -281,13 +289,20 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
   // For main menu (resets itself)
   const handleMainAction = (action: string) => {
     switch (action) {
-        case "teams":
+      case "project":
         navigateTo([
           { label: 'Project', icon: 'pi pi-home' },
-          { label: 'Teams', icon: 'pi pi-users', action: 'databasedesigner' }
+          { label: 'Overview', icon: 'pi pi-pen-to-square', action: 'project' }
+        ], action);
+        onOpenPanel('project');
+        break;
+      case "teams":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Teams', icon: 'pi pi-users', action: 'teams' }
         ], action);
         onOpenPanel('teams');
-          break;
+        break;
       case "databasedesigner":
         navigateTo([
           { label: 'Project', icon: 'pi pi-home' },
@@ -324,9 +339,39 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
     <div style={{ flex: 1, height: '100%' }} className="bg-gray-900 text-white">
       {/* Top Navigation Bar with Logo and Actions */}
       <nav style={{ flex: 1, height: '60px' }} className="flex justify-between items-center px-6 py-4 bg-gray-800 border-b border-gray-700">
-        {/* Logo/Brand */}
-        <div className="flex items-center space-x-4">
+        {/* Logo/Brand and Project Selector */}
+        <div className="flex items-center space-x-6">
           <div className="text-xl font-bold text-blue-400">Scoriet</div>
+          
+          {/* Global Project Selector */}
+          {isLoggedIn && (
+            <div className="flex items-center space-x-2">
+              <i className="pi pi-briefcase text-gray-400"></i>
+              <Dropdown
+                value={selectedProject}
+                options={projects || []}
+                onChange={(e) => {
+                  setSelectedProject(e.value);
+                }}
+                optionLabel="name"
+                optionValue={null}
+                placeholder="Select Project"
+                className="w-48"
+                disabled={loading || !projects || projects.length === 0}
+                filter
+                emptyMessage="No projects found"
+                style={{ 
+                  backgroundColor: '#374151',
+                  border: '1px solid #4B5563'
+                }}
+              />
+              {selectedProject && (
+                <span className="text-xs text-gray-400">
+                  by {selectedProject.owner.name}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* PrimeReact TabMenu */}
