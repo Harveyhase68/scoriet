@@ -61,8 +61,9 @@ export default function RegisterModal({
         throw new Error(errorData.message || 'Registration failed');
       }
 
-      await response.json();
-      setSuccess('Registration successful! You can now log in.');
+      const registrationData = await response.json();
+      const userId = registrationData.user?.id;
+      setSuccess(`Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`);
       
       // Automatically switch to login after 2 seconds
       setTimeout(() => {

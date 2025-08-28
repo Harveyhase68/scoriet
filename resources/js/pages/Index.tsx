@@ -15,9 +15,13 @@ import NavigationPanel from '@/Components/Panels/NavigationPanel';
 import PanelT1 from '@/Components/Panels/PanelT1';
 import LoginPanel from '@/Components/Panels/LoginPanel';
 import TeamsPanel from '@/Components/Panels/TeamsPanel';
+import ProjectPanel from '@/Components/Panels/ProjectPanel';
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+
+// Project Context
+import { ProjectProvider } from '@/contexts/ProjectContext';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -129,6 +133,15 @@ const loadTab = (data: any) => {
         id,
         title: data.title || 'Teams',
         content: <TeamsPanel isActive={true} />,
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'project':
+      return {
+        id,
+        title: data.title || 'Project',
+        content: <ProjectPanel isActive={true} />,
         closable: true,
         group: 'card custom'
       };
@@ -586,20 +599,21 @@ useHotkeys('alt+n', () => {
   return (
     <>
       <Head title={resetToken ? "Reset Password - Scoriet" : "Scoriet - Enterprise Code Generator"} />
-
-      <div 
-        style={{ 
-          height: '100vh', 
-          width: '100vw', 
-          display: 'flex', 
-          flexDirection: 'column',
-          backgroundColor: '#1a1a1a' // Fallback background
-        }}
-      >
-        {/* FESTE NAVIGATION OBEN */}
-        <div style={{ height: '120px', flexShrink: 0, backgroundColor: '#1a1a1a' }}>
-          <NavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} />
-        </div>
+      
+      <ProjectProvider>
+        <div 
+          style={{ 
+            height: '100vh', 
+            width: '100vw', 
+            display: 'flex', 
+            flexDirection: 'column',
+            backgroundColor: '#1a1a1a' // Fallback background
+          }}
+        >
+          {/* FESTE NAVIGATION OBEN */}
+          <div style={{ height: '120px', flexShrink: 0, backgroundColor: '#1a1a1a' }}>
+            <NavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} />
+          </div>
 
         {/* HAUPTBEREICH MIT LINKEM PANEL UND MDI */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
@@ -647,7 +661,8 @@ useHotkeys('alt+n', () => {
             />
           </div>
         </div>
-      </div>
+        </div>
+      </ProjectProvider>
 
       {/* AUTH MODAL SYSTEM */}
       <AuthModalManager

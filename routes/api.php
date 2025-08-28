@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
+use App\Http\Controllers\Api\ProjectController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Http\Controllers\AccessTokenController;
 use Laravel\Passport\Http\Controllers\ClientController;
@@ -72,6 +73,17 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-versions/{id}/templates', [TemplateController::class, 'getProjectTemplates']);
     Route::post('/schema-versions/{id}/templates', [TemplateController::class, 'assignToProject']);
     Route::delete('/schema-versions/{schemaId}/templates/{templateId}', [TemplateController::class, 'removeFromProject']);
+    
+    // Projects Management
+    Route::apiResource('projects', ProjectController::class);
+    Route::post('/projects/{project}/restore', [ProjectController::class, 'restore']);
+    Route::delete('/projects/{project}/force', [ProjectController::class, 'forceDestroy']);
+    
+    // Project Team Management
+    Route::get('/projects/{project}/teams/available', [ProjectController::class, 'getAvailableTeams']);
+    Route::get('/projects/{project}/teams/assigned', [ProjectController::class, 'getAssignedTeams']);
+    Route::post('/projects/{project}/teams/assign', [ProjectController::class, 'assignTeams']);
+    Route::delete('/projects/{project}/teams/{team}', [ProjectController::class, 'removeTeam']);
     
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {

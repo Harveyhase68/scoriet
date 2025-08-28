@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Team extends Model
 {
@@ -54,5 +55,16 @@ class Team extends Model
     {
         $member = $this->members()->where('user_id', $user->id)->first();
         return $member?->role;
+    }
+
+    /**
+     * Get projects this team is assigned to
+     */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_teams', 'team_id', 'project_id')
+                    ->withPivot('assigned_at', 'assigned_by')
+                    ->withTimestamps()
+                    ->orderBy('assigned_at', 'desc');
     }
 }

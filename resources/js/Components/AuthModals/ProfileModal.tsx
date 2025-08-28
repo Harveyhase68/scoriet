@@ -214,6 +214,21 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
             )}
 
             <div className="field">
+              <label htmlFor="profile-userid" className="block text-sm font-medium mb-2">
+                User ID
+              </label>
+              <InputText
+                id="profile-userid"
+                type="text"
+                value={userData.id?.toString() || ''}
+                className="w-full"
+                disabled={true}
+                readOnly={true}
+                style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
+              />
+            </div>
+
+            <div className="field">
               <label htmlFor="profile-name" className="block text-sm font-medium mb-2">
                 Name
               </label>
