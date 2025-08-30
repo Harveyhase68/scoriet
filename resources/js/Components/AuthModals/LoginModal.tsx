@@ -80,7 +80,7 @@ export default function LoginModal({
         localStorage.getItem('access_token') : 
         sessionStorage.getItem('access_token');
         
-      await fetch('/api/user-update', {
+      await fetch('/api/user', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
