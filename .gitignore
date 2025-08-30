@@ -22,3 +22,11 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+branches_station_test.sql
+fix.bat
+reset.bat
+run.bat
+run.ps1
+scoriet.code-workspace
+test.bat
+git_up.bat

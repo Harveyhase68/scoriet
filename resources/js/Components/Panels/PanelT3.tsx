@@ -74,6 +74,46 @@ export default function PanelT3() {
     loadData();
   }, []);
 
+  // Load templates assigned to a specific project
+  const loadProjectTemplates = useCallback(async (projectId: number) => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`/api/schema-versions/${projectId}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Extract project_templates array from response
+        const projectTemplatesArray = data.project_templates || [];
+        
+        // Extract assigned template IDs
+        const assignedTemplateIds = projectTemplatesArray.map((pt: any) => pt.template_id || pt.id);
+        
+        // Split templates into assigned and available
+        const assigned = templates.filter(t => assignedTemplateIds.includes(t.id));
+        const available = templates.filter(t => !assignedTemplateIds.includes(t.id));
+        
+        // Update state
+        setAssignedTemplates(assigned);
+        setAvailableTemplates(available);
+        
+        // Clear selections when switching projects
+        setSelectedTemplateIds([]);
+      }
+    } catch (err) {
+      console.error('Error loading project templates:', err);
+    }
+  }, [templates]);
+
   // When templates are loaded and selectedProject changes, reload project templates
   useEffect(() => {
     if (templates.length > 0 && selectedProject) {
@@ -90,7 +130,7 @@ export default function PanelT3() {
   const loadAllTemplates = async () => {
     try {
       setError('');
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -120,46 +160,6 @@ export default function PanelT3() {
     }
   };
 
-  // Load templates assigned to a specific project
-  const loadProjectTemplates = useCallback(async (projectId: number) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch(`/api/schema-versions/${projectId}/templates`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Extract project_templates array from response
-        const projectTemplatesArray = data.project_templates || [];
-        
-        // Extract assigned template IDs
-        const assignedTemplateIds = projectTemplatesArray.map((pt: any) => pt.template_id || pt.id);
-        
-        // Split templates into assigned and available
-        const assigned = templates.filter(t => assignedTemplateIds.includes(t.id));
-        const available = templates.filter(t => !assignedTemplateIds.includes(t.id));
-        
-        // Update state
-        setAssignedTemplates(assigned);
-        setAvailableTemplates(available);
-        
-        // Clear any selected template IDs when switching projects
-        setSelectedTemplateIds([]);
-      }
-    } catch (err) {
-      console.error('Error loading project templates:', err);
-    }
-  }, [templates]);
-
   // Handle template assignment
   const handleAssignTemplates = async () => {
     if (!selectedProject || selectedTemplateIds.length === 0) return;
@@ -168,7 +168,7 @@ export default function PanelT3() {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -212,7 +212,7 @@ export default function PanelT3() {
 
     try {
       setError('');
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }

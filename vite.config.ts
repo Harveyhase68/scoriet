@@ -29,13 +29,5 @@ export default defineConfig({
 			'@': resolve(__dirname, 'resources/js'), // <--- das hier fehlt
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
-    },
-    server: {
-        host: '10.0.0.8',     // or `true` for 0.0.0.0 (all interfaces)
-        port: 5173,
-        strictPort: true,
-        hmr: {
-            host: '10.0.0.8',
-        },
-    },
+    }
 });

@@ -58,9 +58,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
+      // Check both localStorage and sessionStorage for the token
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
-
       const response = await fetch('/api/projects', {
         headers: {
           'Authorization': `Bearer ${token}`,

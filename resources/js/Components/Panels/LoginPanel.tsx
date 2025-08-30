@@ -50,8 +50,8 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
       localStorage.setItem('access_token', tokenData.access_token);
       localStorage.setItem('refresh_token', tokenData.refresh_token);
 
-      // Call user update
-      await fetch('/api/user-update', {
+      // Get user data
+      await fetch('/api/user', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
           'Accept': 'application/json',

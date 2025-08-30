@@ -7,14 +7,10 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Passport\Http\Controllers\AccessTokenController;
-use Laravel\Passport\Http\Controllers\ClientController;
-use Laravel\Passport\Http\Controllers\PersonalAccessTokenController;
 
-// Laravel Passport OAuth Routes
-Route::post('/oauth/token', [AccessTokenController::class, 'issueToken'])->name('passport.token');
-Route::get('/oauth/clients', [ClientController::class, 'forUser'])->middleware('auth:api');
-Route::post('/oauth/personal-access-tokens', [PersonalAccessTokenController::class, 'store'])->middleware('auth:api');
+// Manual OAuth token route for API (since auto-registered route is at /oauth/token)
+use Laravel\Passport\Http\Controllers\AccessTokenController;
+Route::post('/oauth/token', [AccessTokenController::class, 'issueToken'])->name('api.oauth.token');
 
 // Authentication Routes (public)
 Route::prefix('auth')->group(function () {

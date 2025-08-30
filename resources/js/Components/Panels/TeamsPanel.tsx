@@ -70,59 +70,10 @@ export default function TeamsPanel() {
     loadData();
   }, []);
 
-  // When teams are loaded and selectedProject changes, reload project teams
-  useEffect(() => {
-    if (teams.length > 0 && selectedProject) {
-      loadProjectTeams(selectedProject.id);
-    } else if (teams.length > 0 && !selectedProject) {
-      // No project selected, show all teams as available
-      setAvailableTeams(teams);
-      setAssignedTeams([]);
-      setSelectedTeamIds([]);
-    }
-  }, [teams, selectedProject, loadProjectTeams]);
-
-  const loadAllTeams = async () => {
-    try {
-      setError('');
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch('/api/teams', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load teams');
-      }
-
-      const data = await response.json();
-      
-      // Teams API might return { owned_teams: [], member_teams: [] }
-      let teamsArray = [];
-      if (data.owned_teams || data.member_teams) {
-        teamsArray = [...(data.owned_teams || []), ...(data.member_teams || [])];
-      } else if (data.teams) {
-        teamsArray = data.teams;
-      } else if (Array.isArray(data)) {
-        teamsArray = data;
-      }
-      setTeams(teamsArray);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading teams');
-    }
-  };
-
   // Load teams assigned to a specific project
   const loadProjectTeams = useCallback(async (projectId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         return;
       }
@@ -156,6 +107,55 @@ export default function TeamsPanel() {
     }
   }, [teams]);
 
+  // When teams are loaded and selectedProject changes, reload project teams
+  useEffect(() => {
+    if (teams.length > 0 && selectedProject) {
+      loadProjectTeams(selectedProject.id);
+    } else if (teams.length > 0 && !selectedProject) {
+      // No project selected, show all teams as available
+      setAvailableTeams(teams);
+      setAssignedTeams([]);
+      setSelectedTeamIds([]);
+    }
+  }, [teams, selectedProject, loadProjectTeams]);
+
+  const loadAllTeams = async () => {
+    try {
+      setError('');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch('/api/teams', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load teams');
+      }
+
+      const data = await response.json();
+      
+      // Teams API might return { owned_teams: [], member_teams: [] }
+      let teamsArray = [];
+      if (data.owned_teams || data.member_teams) {
+        teamsArray = [...(data.owned_teams || []), ...(data.member_teams || [])];
+      } else if (data.teams) {
+        teamsArray = data.teams;
+      } else if (Array.isArray(data)) {
+        teamsArray = data;
+      }
+      setTeams(teamsArray);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error loading teams');
+    }
+  };
+
   // Handle team assignment
   const handleAssignTeams = async () => {
     if (!selectedProject || selectedTeamIds.length === 0) return;
@@ -164,7 +164,7 @@ export default function TeamsPanel() {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -208,7 +208,7 @@ export default function TeamsPanel() {
 
     try {
       setError('');
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
