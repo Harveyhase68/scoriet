@@ -7,12 +7,22 @@ interface Project {
   description: string;
   owner_id: number;
   is_active: boolean;
+  is_public?: boolean;
+  join_code?: string;
+  allow_join_requests?: boolean;
   created_at: string;
   updated_at: string;
+  teams_count?: number;
+  templates_count?: number;
+  databases_count?: number;
+  applications_count?: number;
+  is_owner?: boolean;
+  can_join?: boolean;
   owner: {
     id: number;
     name: string;
     email: string;
+    username?: string;
   };
 }
 
@@ -110,9 +120,33 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     localStorage.removeItem('scoriet_selected_project_id');
   };
 
-  // Load projects on mount
+  // Load projects on mount and when auth status changes
   useEffect(() => {
     loadProjects();
+
+    // Listen for authentication changes (login/logout events)
+    const handleAuthChange = () => {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (token) {
+        // User logged in - reload projects
+        loadProjects();
+      } else {
+        // User logged out - clear projects
+        setProjects([]);
+        setSelectedProject(null);
+      }
+    };
+
+    // Listen for storage events (triggered by login/logout)
+    window.addEventListener('storage', handleAuthChange);
+    
+    // Listen for custom auth events
+    window.addEventListener('auth-change', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
   }, []);
 
   const value: ProjectContextType = {

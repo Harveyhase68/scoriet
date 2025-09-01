@@ -9,6 +9,8 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
+import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
+import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -18,16 +20,23 @@ interface Project {
   id: number;
   name: string;
   description: string;
+  is_public?: boolean;
+  join_code?: string;
+  allow_join_requests?: boolean;
+  is_owner?: boolean;
+  can_join?: boolean;
   owner: {
     id: number;
     name: string;
     email: string;
+    username?: string;
   };
   created_at: string;
   updated_at: string;
   teams_count?: number;
   templates_count?: number;
   databases_count?: number;
+  applications_count?: number;
 }
 
 export default function ProjectPanel({ isActive }: TabPanelProps) {
@@ -45,7 +54,9 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
-    description: ''
+    description: '',
+    is_public: true,
+    allow_join_requests: false
   });
   const [creating, setCreating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -58,6 +69,8 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [assigningTeams, setAssigningTeams] = useState(false);
+  const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
+  const [showApplicationsModal, setShowApplicationsModal] = useState(false);
 
   // Load projects when panel becomes active
   useEffect(() => {
@@ -203,7 +216,7 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
       await loadProjects();
       
       setShowCreateModal(false);
-      setCreateForm({ name: '', description: '' });
+      setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
       setSuccess('Project created successfully');
 
     } catch (err) {
@@ -215,7 +228,7 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
 
   const handleCreateModalHide = () => {
     setShowCreateModal(false);
-    setCreateForm({ name: '', description: '' });
+    setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
     setError('');
   };
 
@@ -485,6 +498,13 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
             disabled={loading}
           />
           <Button
+            icon="pi pi-sign-in"
+            label="Join Project"
+            className="p-button-outlined"
+            onClick={() => setShowJoinCodeModal(true)}
+            disabled={loading}
+          />
+          <Button
             icon="pi pi-refresh"
             label="Refresh"
             className="p-button-outlined"
@@ -595,24 +615,56 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-600">
+                    {/* Join Code Section */}
+                    {currentProject.join_code && (
+                      <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-gray-300 mb-1">Join Code</div>
+                            <div className="flex items-center space-x-2">
+                              <code className="px-2 py-1 bg-gray-700 rounded text-blue-300 font-mono text-sm">
+                                {currentProject.join_code}
+                              </code>
+                              <Button
+                                icon="pi pi-copy"
+                                className="p-button-rounded p-button-text p-button-sm"
+                                tooltip="Copy join code"
+                                onClick={() => navigator.clipboard.writeText(currentProject.join_code!)}
+                              />
+                            </div>
+                          </div>
+                          <Tag 
+                            value={currentProject.is_public ? "Public" : "Private"} 
+                            severity={currentProject.is_public ? "success" : "warning"}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-4 gap-4 pt-3 border-t border-gray-600">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-400">
+                        <div className="text-xl font-bold text-blue-400">
                           {currentProject.teams_count || 0}
                         </div>
                         <div className="text-xs text-gray-400">Teams</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-400">
+                        <div className="text-xl font-bold text-green-400">
                           {currentProject.templates_count || 0}
                         </div>
                         <div className="text-xs text-gray-400">Templates</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-400">
+                        <div className="text-xl font-bold text-purple-400">
                           {currentProject.databases_count || 0}
                         </div>
                         <div className="text-xs text-gray-400">Databases</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-orange-400">
+                          {currentProject.applications_count || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Applications</div>
                       </div>
                     </div>
                   </div>
@@ -644,6 +696,13 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                 disabled={!currentProject}
               />
               <Button
+                label="Applications"
+                icon="pi pi-user-plus"
+                className="p-button-outlined flex-col h-20"
+                onClick={() => setShowApplicationsModal(true)}
+                disabled={!currentProject || !currentProject.allow_join_requests}
+              />
+              <Button
                 label="Templates"
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-20"
@@ -654,12 +713,6 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-20"
                 onClick={() => console.log('Open Database')}
-              />
-              <Button
-                label="Settings"
-                icon="pi pi-cog"
-                className="p-button-outlined flex-col h-20"
-                onClick={() => console.log('Open Settings')}
               />
             </div>
           </Card>
@@ -746,6 +799,38 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
               rows={3}
               disabled={creating}
             />
+          </div>
+
+          <div className="field">
+            <div className="flex items-center space-x-2 mb-3">
+              <Checkbox
+                id="create-is-public"
+                checked={createForm.is_public}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.checked || false }))}
+                disabled={creating}
+              />
+              <label htmlFor="create-is-public" className="text-sm font-medium text-gray-700">
+                Public Project
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Public projects are visible to all users and can be discovered in the project gallery.
+            </p>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="create-allow-join"
+                checked={createForm.allow_join_requests}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.checked || false }))}
+                disabled={creating}
+              />
+              <label htmlFor="create-allow-join" className="text-sm font-medium text-gray-700">
+                Allow Join Requests
+              </label>
+            </div>
+            <p className="text-xs text-gray-500">
+              Users can request to join this project using a join code.
+            </p>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
@@ -997,6 +1082,20 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
           )}
         </div>
       </Dialog>
+
+      {/* Join Code Modal */}
+      <JoinCodeModal
+        visible={showJoinCodeModal}
+        onHide={() => setShowJoinCodeModal(false)}
+        onSuccess={loadProjects}
+      />
+
+      {/* Applications Modal */}
+      <ApplicationsModal
+        visible={showApplicationsModal}
+        onHide={() => setShowApplicationsModal(false)}
+        project={currentProject}
+      />
     </div>
   );
 }

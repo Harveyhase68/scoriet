@@ -14,6 +14,7 @@ interface ProfileModalProps {
 interface UserData {
   id?: number;
   name: string;
+  username?: string;
   email: string;
   email_verified_at?: string;
   created_at?: string;
@@ -30,12 +31,19 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
     password: '',
     password_confirmation: ''
   });
+  const [deleteData, setDeleteData] = useState({
+    password: '',
+    confirmText: ''
+  });
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(false);
   const [profileError, setProfileError] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
+  const [deleteError, setDeleteError] = useState<string>('');
   const [profileSuccess, setProfileSuccess] = useState<string>('');
   const [passwordSuccess, setPasswordSuccess] = useState<string>('');
+  const [deleteSuccess, setDeleteSuccess] = useState<string>('');
 
   // Load user data when opening
   useEffect(() => {
@@ -169,16 +177,80 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
     if (passwordSuccess) setPasswordSuccess('');
   };
 
+  const handleDeleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoadingDelete(true);
+    setDeleteError('');
+    setDeleteSuccess('');
+
+    // Check confirmation text
+    if (deleteData.confirmText !== 'DELETE') {
+      setDeleteError('Sie müssen "DELETE" eingeben, um Ihren Account zu löschen');
+      setLoadingDelete(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not logged in');
+      }
+
+      const response = await fetch('/api/profile/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          password: deleteData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Fehler beim Löschen des Accounts');
+      }
+
+      setDeleteSuccess('Account erfolgreich gelöscht. Sie werden automatisch abgemeldet.');
+      
+      // Clear tokens and reload page after 2 seconds
+      setTimeout(() => {
+        localStorage.removeItem('access_token');
+        sessionStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('refresh_token');
+        window.location.reload();
+      }, 2000);
+      
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } finally {
+      setLoadingDelete(false);
+    }
+  };
+
+  const handleDeleteInputChange = (field: string, value: string) => {
+    setDeleteData(prev => ({ ...prev, [field]: value }));
+    if (deleteError) setDeleteError('');
+    if (deleteSuccess) setDeleteSuccess('');
+  };
+
   const handleHide = () => {
     // Reset form when closing
     setUserData({ name: '', email: '' });
     setPasswordData({ current_password: '', password: '', password_confirmation: '' });
+    setDeleteData({ password: '', confirmText: '' });
     setProfileError('');
     setPasswordError('');
+    setDeleteError('');
     setProfileSuccess('');
     setPasswordSuccess('');
+    setDeleteSuccess('');
     setLoadingProfile(false);
     setLoadingPassword(false);
+    setLoadingDelete(false);
     onHide();
   };
 
@@ -226,6 +298,24 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
                 readOnly={true}
                 style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
               />
+            </div>
+
+            <div className="field">
+              <label htmlFor="profile-username" className="block text-sm font-medium mb-2">
+                Username
+              </label>
+              <InputText
+                id="profile-username"
+                type="text"
+                value={userData.username || ''}
+                className="w-full"
+                disabled={true}
+                readOnly={true}
+                style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
+              />
+              <small className="text-gray-500">
+                Der Username kann nach der Registrierung nicht mehr geändert werden.
+              </small>
             </div>
 
             <div className="field">
@@ -348,6 +438,86 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
               icon={loadingPassword ? "pi pi-spinner pi-spin" : "pi pi-key"}
               className="w-full"
               disabled={loadingPassword}
+            />
+          </form>
+        </TabPanel>
+
+        <TabPanel header="Delete Account" leftIcon="pi pi-trash">
+          <form onSubmit={handleDeleteSubmit} className="space-y-4">
+            {deleteError && (
+              <Message 
+                severity="error" 
+                text={deleteError} 
+                className="w-full"
+              />
+            )}
+
+            {deleteSuccess && (
+              <Message 
+                severity="success" 
+                text={deleteSuccess} 
+                className="w-full"
+              />
+            )}
+
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <h3 className="text-red-800 font-semibold mb-2 flex items-center">
+                <i className="pi pi-exclamation-triangle mr-2"></i>
+                Warning: Delete account
+              </h3>
+              <p className="text-red-700 text-sm mb-3">
+                This action cannot be undone. Your account and all associated data will be permanently deleted.
+              </p>
+              <ul className="text-red-700 text-sm list-disc list-inside space-y-1">
+                <li>All your projects and templates will be deleted</li>
+                <li>Your team memberships will be terminated</li>
+                <li>This action cannot be undone</li>
+              </ul>
+            </div>
+
+            <div className="field">
+              <label htmlFor="delete-password" className="block text-sm font-medium mb-2">
+                Confirm current password
+              </label>
+              <Password
+                id="delete-password"
+                value={deleteData.password}
+                onChange={(e) => handleDeleteInputChange('password', e.target.value)}
+                placeholder="Your current password"
+                className="w-full"
+                inputClassName="w-full"
+                disabled={loadingDelete}
+                feedback={false}
+                toggleMask
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="delete-confirm" className="block text-sm font-medium mb-2">
+                Enter "DELETE" to confirm
+              </label>
+              <InputText
+                id="delete-confirm"
+                type="text"
+                value={deleteData.confirmText}
+                onChange={(e) => handleDeleteInputChange('confirmText', e.target.value)}
+                placeholder="DELETE"
+                className="w-full"
+                disabled={loadingDelete}
+                required
+              />
+              <small className="text-gray-500">
+                You must enter exactly "DELETE" (capital letters)
+              </small>
+            </div>
+
+            <Button
+              type="submit"
+              label={loadingDelete ? "Account will be deleted..." : "Permanently delete account"}
+              icon={loadingDelete ? "pi pi-spinner pi-spin" : "pi pi-trash"}
+              className="w-full p-button-danger"
+              disabled={loadingDelete || deleteData.confirmText !== 'DELETE'}
             />
           </form>
         </TabPanel>

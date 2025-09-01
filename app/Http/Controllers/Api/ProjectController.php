@@ -14,29 +14,59 @@ use App\Models\SchemaVersion;
 class ProjectController extends Controller
 {
     /**
-     * Display a listing of the user's projects with current project info
+     * Display a listing of projects visible to the user
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
+        $showPublic = $request->get('public', false);
         
-        // Get all projects owned by the user
-        $projects = Project::with(['owner'])
-            ->ownedBy($user->id)
-            ->active()
-            ->latest()
-            ->get()
-            ->map(function ($project) {
-                $counts = $project->getCounts();
-                return array_merge($project->toArray(), $counts);
-            });
+        if ($showPublic) {
+            // Public project gallery - all public projects
+            $projects = Project::with(['owner'])
+                ->public()
+                ->active()
+                ->latest()
+                ->get()
+                ->map(function ($project) {
+                    $counts = $project->getCounts();
+                    return [
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'description' => $project->description,
+                        'owner' => $project->owner->only(['id', 'name', 'username']),
+                        'is_public' => $project->is_public,
+                        'created_at' => $project->created_at,
+                        'teams_count' => $counts['teams_count'],
+                        'can_join' => $project->allow_join_requests && !empty($project->join_code),
+                    ];
+                });
+        } else {
+            // User's own projects + projects they're team members of
+            $projects = Project::with(['owner'])
+                ->visibleTo($user)
+                ->active()
+                ->latest()
+                ->get()
+                ->map(function ($project) use ($user) {
+                    $counts = $project->getCounts();
+                    return array_merge($project->toArray(), $counts, [
+                        'is_owner' => $project->owner_id === $user->id,
+                    ]);
+                });
 
-        // Get current project (for now, just the latest one)
-        $currentProject = $projects->first();
+            // Get current project (for now, just the latest one)
+            $currentProject = $projects->first();
+
+            return response()->json([
+                'projects' => $projects,
+                'current_project' => $currentProject,
+                'total_projects' => $projects->count(),
+            ]);
+        }
 
         return response()->json([
             'projects' => $projects,
-            'current_project' => $currentProject,
             'total_projects' => $projects->count(),
         ]);
     }
@@ -46,17 +76,37 @@ class ProjectController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
+            'is_public' => 'boolean',
+            'allow_join_requests' => 'boolean',
         ]);
+
+        // Check if user can create private projects
+        if (isset($validated['is_public']) && !$validated['is_public']) {
+            if (!$user->canCreatePrivateProjects()) {
+                return response()->json([
+                    'message' => 'Private Projekte sind nur für Premium-User verfügbar'
+                ], 403);
+            }
+        }
 
         $project = Project::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'owner_id' => Auth::id(),
+            'owner_id' => $user->id,
             'is_active' => true,
+            'is_public' => $validated['is_public'] ?? true,
+            'allow_join_requests' => $validated['allow_join_requests'] ?? false,
         ]);
+
+        // Generate join code if join requests are allowed
+        if ($project->allow_join_requests) {
+            $project->generateJoinCode();
+        }
 
         // Create a default schema version for this project
         // Try to create with project ID, if it fails, let auto-increment handle it

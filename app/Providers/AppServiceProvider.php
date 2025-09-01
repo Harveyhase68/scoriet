@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Carbon\CarbonInterval;
 use Laravel\Passport\Passport;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthServiceProvider
 {
@@ -28,6 +30,18 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         
         // Enable Password Grant Type
         Passport::enablePasswordGrant();
+
+        // Custom email verification URL
+        VerifyEmail::createUrlUsing(function ($notifiable) {
+            $id = $notifiable->getKey();
+            $hash = sha1($notifiable->getEmailForVerification());
+            
+            return url("/verify-email/{$id}/{$hash}") . 
+                   '?expires=' . now()->addHour()->timestamp . 
+                   '&signature=' . hash_hmac('sha256', 
+                       "verify-email/{$id}/{$hash}", 
+                       config('app.key'));
+        });
 
     }
 }

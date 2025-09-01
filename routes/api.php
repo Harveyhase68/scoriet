@@ -6,11 +6,12 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\ProjectApplicationController;
 use Illuminate\Support\Facades\Route;
 
-// Manual OAuth token route for API (since auto-registered route is at /oauth/token)
-use Laravel\Passport\Http\Controllers\AccessTokenController;
-Route::post('/oauth/token', [AccessTokenController::class, 'issueToken'])->name('api.oauth.token');
+// Manual OAuth token route for API with email verification check
+use App\Http\Controllers\CustomTokenController;
+Route::post('/oauth/token', [CustomTokenController::class, 'issueToken'])->name('api.oauth.token');
 
 // Authentication Routes (public)
 Route::prefix('auth')->group(function () {
@@ -18,6 +19,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    
+    // Email Verification Routes
+    Route::post('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+    Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
     
     // Token validation endpoint for Reset Password Modal
     Route::post('/validate-reset-token', function (\Illuminate\Http\Request $request) {
@@ -46,6 +51,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::put('/profile/password', [AuthController::class, 'updatePassword']);
+    Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
     
     // User Activity
@@ -104,6 +110,13 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/invitations/{token}/decline', [TeamInvitationController::class, 'decline']);
     Route::delete('/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'cancel']);
     Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamInvitationController::class, 'resend']);
+    
+    // Project Applications & Join Codes
+    Route::get('/join-code/{joinCode}', [ProjectApplicationController::class, 'getProjectByJoinCode']);
+    Route::post('/project-applications', [ProjectApplicationController::class, 'apply']);
+    Route::get('/projects/{project}/applications', [ProjectApplicationController::class, 'getProjectApplications']);
+    Route::post('/applications/{application}/review', [ProjectApplicationController::class, 'reviewApplication']);
+    Route::get('/my-applications', [ProjectApplicationController::class, 'getMyApplications']);
 });
 
 // JavaScript-Datei ausliefern

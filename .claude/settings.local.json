@@ -22,7 +22,8 @@
       "Bash(npm test)",
       "Bash(curl:*)",
       "Bash(npx vite:*)",
-      "Bash(ren:*)"
+      "Bash(ren:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

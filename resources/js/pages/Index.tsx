@@ -11,11 +11,15 @@ import { TabContentProps } from '@/types';
 import PanelT2 from '@/Components/Panels/PanelT2';
 import PanelT3 from '@/Components/Panels/PanelT3';
 import PanelT5 from '@/Components/Panels/PanelT5';
-import NavigationPanel from '@/Components/Panels/NavigationPanel';
+import NewNavigationPanel from '@/Components/Panels/NewNavigationPanel';
+import TopBar from '@/Components/TopBar';
+import '@/Components/Panels/styles.css';
 import PanelT1 from '@/Components/Panels/PanelT1';
 import LoginPanel from '@/Components/Panels/LoginPanel';
 import TeamsPanel from '@/Components/Panels/TeamsPanel';
 import ProjectPanel from '@/Components/Panels/ProjectPanel';
+import MyApplicationsPanel from '@/Components/Panels/MyApplicationsPanel';
+import PublicProjectsPanel from '@/Components/Panels/PublicProjectsPanel';
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
@@ -142,6 +146,24 @@ const loadTab = (data: any) => {
         id,
         title: data.title || 'Project',
         content: <ProjectPanel isActive={true} />,
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'my-applications':
+      return {
+        id,
+        title: data.title || 'My Applications',
+        content: <MyApplicationsPanel isActive={true} />,
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'public-projects':
+      return {
+        id,
+        title: data.title || 'Public Projects',
+        content: <PublicProjectsPanel isActive={true} />,
         closable: true,
         group: 'card custom'
       };
@@ -607,60 +629,64 @@ useHotkeys('alt+n', () => {
             width: '100vw', 
             display: 'flex', 
             flexDirection: 'column',
-            backgroundColor: '#1a1a1a' // Fallback background
+            backgroundColor: '#1a1a1a'
           }}
         >
-          {/* FESTE NAVIGATION OBEN */}
-          <div style={{ height: '120px', flexShrink: 0, backgroundColor: '#1a1a1a' }}>
-            <NavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} />
-          </div>
+          {/* TOP BAR */}
+          <TopBar />
 
-        {/* HAUPTBEREICH MIT LINKEM PANEL UND MDI */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
-          {/* LINKES PANEL (Tree View) - Größe änderbar */}
-          <div
-            style={{
-              width: `${leftPanelWidth}px`,
-              flexShrink: 0,
-              backgroundColor: '#2a2a2a',
-              borderRight: '1px solid #444'
-            }}
-          >
-            <PanelT1 />
-          </div>
+          {/* HAUPTBEREICH */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+            {/* NEUE NAVIGATION LINKS */}
+            <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} />
 
-          {/* RESIZE HANDLE */}
-          <div
-            style={{
-              width: '4px',
-              backgroundColor: isResizing ? '#3d3df5' : 'transparent',
-              cursor: 'ew-resize',
-              flexShrink: 0,
-              borderLeft: '1px solid #444',
-              borderRight: '1px solid #444'
-            }}
-            onMouseDown={handleMouseDown}
-          />
+            {/* ARBEITSBEREICH MIT LINKEM PANEL UND MDI */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+              {/* LINKES PANEL (Tree View) - Größe änderbar */}
+              <div
+                style={{
+                  width: `${leftPanelWidth}px`,
+                  flexShrink: 0,
+                  backgroundColor: '#2a2a2a',
+                  borderRight: '1px solid #444'
+                }}
+              >
+                <PanelT1 />
+              </div>
 
-          {/* RC-DOCK MDI AREA */}
-          <div style={{ flex: 1, position: 'relative', backgroundColor: '#1e1e1e' }}>
-            <DockLayout
-              ref={ref}
-              layout={layout as any}
-              onLayoutChange={onLayoutChange}
-              loadTab={loadTab}
-              groups={groups}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: '#1e1e1e'
-              }}
-            />
+              {/* RESIZE HANDLE */}
+              <div
+                style={{
+                  width: '4px',
+                  backgroundColor: isResizing ? '#3d3df5' : 'transparent',
+                  cursor: 'ew-resize',
+                  flexShrink: 0,
+                  borderLeft: '1px solid #444',
+                  borderRight: '1px solid #444'
+                }}
+                onMouseDown={handleMouseDown}
+              />
+
+              {/* RC-DOCK MDI AREA */}
+              <div style={{ flex: 1, position: 'relative', backgroundColor: '#1e1e1e' }}>
+                <DockLayout
+                  ref={ref}
+                  layout={layout as any}
+                  onLayoutChange={onLayoutChange}
+                  loadTab={loadTab}
+                  groups={groups}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#1e1e1e'
+                  }}
+                />
+              </div>
+            </div>
           </div>
-        </div>
         </div>
       </ProjectProvider>
 
@@ -675,6 +701,8 @@ useHotkeys('alt+n', () => {
         onLoginSuccess={() => {
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
+          // Also dispatch custom auth event for ProjectContext
+          window.dispatchEvent(new Event('auth-change'));
           handleCloseModal();
         }}
         onRegistrationSuccess={() => {
