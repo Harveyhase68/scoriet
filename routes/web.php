@@ -7,6 +7,28 @@ Route::get('/', function () {
     return Inertia::render('Index');
 })->name('index');
 
+Route::get('/verify-email/{id}/{hash}', function ($id, $hash) {
+    return Inertia::render('EmailVerification', [
+        'userId' => $id,
+        'hash' => $hash
+    ]);
+})->name('verification.verify');
+
+// Demo login route (for demo.scoriet.dev)
+Route::get('/demo-login', function () {
+    $userType = request('user', 'demo-user');
+    
+    if (!in_array($userType, ['demo-admin', 'demo-user'])) {
+        $userType = 'demo-user';
+    }
+    
+    return Inertia::render('Index', [
+        'demoLogin' => true,
+        'demoUser' => $userType,
+        'demoMessage' => 'Demo-Modus aktiviert! Daten werden alle 20 Minuten zurückgesetzt.'
+    ]);
+})->name('demo.login');
+
 /*
 Route::get('/app', function () {
     return Inertia::render('Dashboard', [

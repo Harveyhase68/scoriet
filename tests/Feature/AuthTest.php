@@ -9,6 +9,7 @@ describe('Authentication System', function () {
     test('user can register with valid data', function () {
         $userData = [
             'name' => 'Test User',
+            'username' => 'testuser',
             'email' => 'test@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123'
@@ -18,7 +19,7 @@ describe('Authentication System', function () {
 
         $response->assertStatus(201)
                 ->assertJson([
-                    'message' => 'Benutzer erfolgreich registriert'
+                    'message' => 'Benutzer erfolgreich registriert. Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.'
                 ]);
 
         $this->assertDatabaseHas('users', [

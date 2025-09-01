@@ -20,6 +20,7 @@ export default function RegisterModal({
 }: RegisterModalProps) {
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     password_confirmation: ''
@@ -50,6 +51,7 @@ export default function RegisterModal({
         },
         body: JSON.stringify({
           name: formData.name,
+          username: formData.username,
           email: formData.email,
           password: formData.password,
           password_confirmation: formData.password_confirmation,
@@ -62,15 +64,22 @@ export default function RegisterModal({
       }
 
       const registrationData = await response.json();
-      const userId = registrationData.user?.id;
-      setSuccess(`Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`);
       
-      // Automatically switch to login after 2 seconds
-      setTimeout(() => {
+      if (registrationData.email_verification_required) {
+        setSuccess('Registration successful! Please check your email for a verification link before logging in.');
+        // Don't automatically switch to login - user needs to verify email first
         onRegistrationSuccess?.();
-        handleHide();
-        onSwitchToLogin();
-      }, 2000);
+      } else {
+        const userId = registrationData.user?.id;
+        setSuccess(`Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`);
+        
+        // Automatically switch to login after 2 seconds
+        setTimeout(() => {
+          onRegistrationSuccess?.();
+          handleHide();
+          onSwitchToLogin();
+        }, 2000);
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -87,7 +96,7 @@ export default function RegisterModal({
 
   const handleHide = () => {
     // Reset form when closing
-    setFormData({ name: '', email: '', password: '', password_confirmation: '' });
+    setFormData({ name: '', username: '', email: '', password: '', password_confirmation: '' });
     setError('');
     setSuccess('');
     setLoading(false);
@@ -137,6 +146,26 @@ export default function RegisterModal({
             disabled={loading}
             required
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="register-username" className="block text-sm font-medium mb-2">
+            Username (Nickname)
+          </label>
+          <InputText
+            id="register-username"
+            type="text"
+            value={formData.username}
+            onChange={(e) => handleInputChange('username', e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+            placeholder="username123"
+            className="w-full"
+            disabled={loading}
+            required
+            maxLength={30}
+          />
+          <small className="text-gray-500">
+            Nur Kleinbuchstaben, Zahlen, Unterstriche und Bindestriche. Kann später nicht geändert werden.
+          </small>
         </div>
 
         <div className="field">

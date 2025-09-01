@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     // use HasFactory, Notifiable;
@@ -25,6 +25,8 @@ class User extends Authenticatable
         'email',
         'password',
         'username', // GitHub-style unique username
+        'user_type',
+        'premium_expires_at',
     ];
 
     /**
@@ -46,6 +48,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'premium_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -87,5 +90,28 @@ class User extends Authenticatable
     public function getTeamRole(Team $team): ?string
     {
         return $team->getUserRole($this);
+    }
+
+    // Project applications relationship
+    public function projectApplications(): HasMany
+    {
+        return $this->hasMany(ProjectApplication::class);
+    }
+
+    // Premium user methods
+    public function isPremium(): bool
+    {
+        return $this->user_type === 'premium' && 
+               ($this->premium_expires_at === null || $this->premium_expires_at->isFuture());
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->user_type === 'admin';
+    }
+
+    public function canCreatePrivateProjects(): bool
+    {
+        return $this->isPremium() || $this->isAdmin();
     }
 }

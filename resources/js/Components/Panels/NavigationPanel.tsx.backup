@@ -158,6 +158,16 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
       command: () => handleMainAction('teams')
     },
     {
+      label: 'My Applications',
+      icon: 'pi pi-send',
+      command: () => handleMainAction('my-applications')
+    },
+    {
+      label: 'Public Projects',
+      icon: 'pi pi-globe',
+      command: () => handleMainAction('public-projects')
+    },
+    {
       label: 'Database Designer',
       icon: 'pi pi-window-maximize',
       command: () => handleMainAction('databasedesigner')
@@ -302,6 +312,20 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
           { label: 'Teams', icon: 'pi pi-users', action: 'teams' }
         ], action);
         onOpenPanel('teams');
+        break;
+      case "my-applications":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'My Applications', icon: 'pi pi-send', action: 'my-applications' }
+        ], action);
+        onOpenPanel('my-applications');
+        break;
+      case "public-projects":
+        navigateTo([
+          { label: 'Project', icon: 'pi pi-home' },
+          { label: 'Public Projects', icon: 'pi pi-globe', action: 'public-projects' }
+        ], action);
+        onOpenPanel('public-projects');
         break;
       case "databasedesigner":
         navigateTo([

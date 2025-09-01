@@ -1,0 +1,173 @@
+/* TieredMenu Sidebar Styling */
+.tiered-menu-sidebar {
+  width: 100% !important;
+}
+
+.tiered-menu-sidebar .p-tieredmenu {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.tiered-menu-sidebar .p-menuitem {
+  margin: 0 0 2px 0 !important;
+}
+
+.tiered-menu-sidebar .p-menuitem-link {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  color: #d1d5db !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.tiered-menu-sidebar .p-menuitem-link:hover {
+  background: #4b5563 !important;
+  color: white !important;
+}
+
+.tiered-menu-sidebar .p-menuitem-link:focus {
+  box-shadow: none !important;
+  background: #4b5563 !important;
+  color: white !important;
+}
+
+.tiered-menu-sidebar .p-menuitem-icon {
+  font-size: 14px !important;
+  width: 16px !important;
+  margin-right: 0 !important;
+}
+
+.tiered-menu-sidebar .p-menuitem-text {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.tiered-menu-sidebar .p-submenu-icon {
+  font-size: 12px !important;
+  color: #9ca3af !important;
+}
+
+/* Prevent immediate execution on parent items with submenus */
+.tiered-menu-sidebar .p-menuitem:has(.p-submenu-icon) .p-menuitem-link {
+  pointer-events: none !important;
+}
+
+.tiered-menu-sidebar .p-menuitem:has(.p-submenu-icon):hover .p-menuitem-link {
+  pointer-events: auto !important;
+}
+
+/* Submenu overlay styling */
+.p-tieredmenu-overlay {
+  background: #1f2937 !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.p-tieredmenu-overlay .p-menuitem-link {
+  color: #d1d5db !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  margin: 2px !important;
+}
+
+.p-tieredmenu-overlay .p-menuitem-link:hover {
+  background: #374151 !important;
+  color: white !important;
+}
+
+.p-tieredmenu-overlay .p-separator {
+  border-top: 1px solid #4b5563 !important;
+  margin: 4px 8px !important;
+}
+
+/* Custom Dropdown Styling for TopBar */
+.custom-dropdown {
+  height: 28px !important;
+}
+
+.custom-dropdown .p-dropdown {
+  height: 28px !important;
+  background: #374151 !important;
+  border: 1px solid #4B5563 !important;
+  border-radius: 4px !important;
+}
+
+.custom-dropdown .p-dropdown .p-inputtext {
+  height: 28px !important;
+  line-height: 1.2 !important;
+  padding: 6px 8px !important;
+  font-size: 13px !important;
+  color: #d1d5db !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  background: #374151 !important;
+}
+
+.custom-dropdown .p-dropdown .p-dropdown-trigger {
+  height: 28px !important;
+  width: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.custom-dropdown .p-dropdown:hover {
+  border-color: #6B7280 !important;
+}
+
+.custom-dropdown .p-dropdown:focus-within {
+  border-color: #6B7280 !important;
+  box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.3) !important;
+  height: 28px !important;
+}
+
+.custom-dropdown .p-dropdown:focus {
+  height: 28px !important;
+  border-color: #6B7280 !important;
+  box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.3) !important;
+}
+
+/* Additional fixes for text alignment */
+.custom-dropdown .p-dropdown-label {
+  padding: 6px 8px !important;
+  line-height: 1.2 !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  background: #374151 !important;
+  box-sizing: border-box !important;
+}
+
+.custom-dropdown .p-dropdown .p-dropdown-label.p-placeholder {
+  color: #9ca3af !important;
+}
+
+/* Fix for input wrapper height issues */
+.custom-dropdown .p-inputwrapper {
+  height: 28px !important;
+}
+
+.custom-dropdown .p-inputwrapper-filled,
+.custom-dropdown .p-inputwrapper-focus {
+  height: 28px !important;
+}
+
+/* Ensure consistent sizing across all states */
+.custom-dropdown .p-dropdown,
+.custom-dropdown .p-dropdown:hover,
+.custom-dropdown .p-dropdown:focus,
+.custom-dropdown .p-dropdown:focus-within,
+.custom-dropdown .p-dropdown.p-focus {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+}
