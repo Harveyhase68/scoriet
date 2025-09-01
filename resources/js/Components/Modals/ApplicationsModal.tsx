@@ -54,12 +54,6 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
 
-  useEffect(() => {
-    if (visible && project) {
-      loadApplications();
-    }
-  }, [visible, project, loadApplications]);
-
   const loadApplications = useCallback(async () => {
     if (!project) return;
 
@@ -93,6 +87,12 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       setLoading(false);
     }
   }, [project]);
+
+  useEffect(() => {
+    if (visible && project) {
+      loadApplications();
+    }
+  }, [visible, project, loadApplications]);
 
   const handleReview = async () => {
     if (!selectedApplication) return;
