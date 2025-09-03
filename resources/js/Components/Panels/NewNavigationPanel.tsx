@@ -93,7 +93,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
         {
           label: 'Teams',
           icon: 'pi pi-users',
-          command: () => onOpenPanel('teams')
+          items: [
+            {
+              label: 'Team Management',
+              icon: 'pi pi-cog',
+              command: () => onOpenPanel('team-management')
+            },
+            {
+              label: 'Team Assignment',
+              icon: 'pi pi-link',
+              command: () => onOpenPanel('teams')
+            }
+          ]
         },
         {
           label: 'Templates',
@@ -300,10 +311,26 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                     <i className="pi pi-home"></i>
                     <span>Overview</span>
                   </button>
-                  <button onClick={() => onOpenPanel('teams')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-users"></i>
-                    <span>Teams</span>
-                  </button>
+                  <div className="relative group/teams">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-users"></i>
+                      <span>Teams</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Teams */}
+                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-cog"></i>
+                          <span>Team Management</span>
+                        </button>
+                        <button onClick={() => onOpenPanel('teams')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-link"></i>
+                          <span>Team Assignment</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <div className="relative group/sub">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-cog"></i>

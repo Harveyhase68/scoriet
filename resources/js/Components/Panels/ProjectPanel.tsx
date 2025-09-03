@@ -207,6 +207,12 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle Laravel validation errors
+        if (errorData.errors && errorData.errors.name) {
+          throw new Error(errorData.errors.name[0]);
+        }
+        
         throw new Error(errorData.message || 'Failed to create project');
       }
 
