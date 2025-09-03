@@ -70,6 +70,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/templates', [TemplateController::class, 'store']);
     Route::put('/templates/{id}', [TemplateController::class, 'update']);
     Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
+    Route::get('/templates/{id}/export', [TemplateController::class, 'export']);
+    Route::post('/templates/import', [TemplateController::class, 'import']);
     
     // Project Template Assignments
     Route::get('/schema-versions/{id}/templates', [TemplateController::class, 'getProjectTemplates']);

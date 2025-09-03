@@ -168,6 +168,45 @@ class ApiClient {
       }),
     });
   }
+
+  // Template CRUD methods
+  async createTemplate(templateData: any): Promise<any> {
+    return this.request('/templates', {
+      method: 'POST',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async updateTemplate(id: number, templateData: any): Promise<any> {
+    return this.request(`/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async deleteTemplate(id: number): Promise<any> {
+    return this.request(`/templates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getTemplate(id: number): Promise<any> {
+    return this.request(`/templates/${id}`);
+  }
+
+  async exportTemplate(id: number): Promise<any> {
+    return this.request(`/templates/${id}/export`);
+  }
+
+  async importTemplate(templateData: any, overwriteExisting: boolean = false): Promise<any> {
+    return this.request('/templates/import', {
+      method: 'POST',
+      body: JSON.stringify({
+        template_data: templateData,
+        overwrite_existing: overwriteExisting,
+      }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

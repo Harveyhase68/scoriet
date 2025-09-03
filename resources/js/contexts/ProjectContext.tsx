@@ -1,5 +1,5 @@
 // resources/js/contexts/ProjectContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 interface Project {
   id: number;
@@ -65,12 +65,18 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     // This could happen during page refresh before projects are loaded
   }, [selectedProject]);
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
       // Check both localStorage and sessionStorage for the token
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
+      if (!token) {
+        console.log('ProjectContext - No auth token found, skipping project load');
+        setProjects([]);
+        setSelectedProject(null);
+        return;
+      }
+      
       const response = await fetch('/api/projects', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -113,29 +119,29 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Utility function to clear saved project
   const clearSavedProject = () => {
     localStorage.removeItem('scoriet_selected_project_id');
   };
 
+  // Listen for authentication changes (login/logout events)
+  const handleAuthChange = useCallback(() => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (token) {
+      // User logged in - reload projects
+      loadProjects();
+    } else {
+      // User logged out - clear projects
+      setProjects([]);
+      setSelectedProject(null);
+    }
+  }, [loadProjects]);
+
   // Load projects on mount and when auth status changes
   useEffect(() => {
     loadProjects();
-
-    // Listen for authentication changes (login/logout events)
-    const handleAuthChange = () => {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (token) {
-        // User logged in - reload projects
-        loadProjects();
-      } else {
-        // User logged out - clear projects
-        setProjects([]);
-        setSelectedProject(null);
-      }
-    };
 
     // Listen for storage events (triggered by login/logout)
     window.addEventListener('storage', handleAuthChange);
@@ -147,7 +153,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       window.removeEventListener('storage', handleAuthChange);
       window.removeEventListener('auth-change', handleAuthChange);
     };
-  }, []);
+  }, [loadProjects, handleAuthChange]);
 
   const value: ProjectContextType = {
     projects,
