@@ -20,6 +20,7 @@ import TeamsPanel from '@/Components/Panels/TeamsPanel';
 import ProjectPanel from '@/Components/Panels/ProjectPanel';
 import MyApplicationsPanel from '@/Components/Panels/MyApplicationsPanel';
 import PublicProjectsPanel from '@/Components/Panels/PublicProjectsPanel';
+import TemplateManagementPanel from '@/Components/Panels/TemplateManagementPanel';
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
@@ -195,6 +196,15 @@ const loadTab = (data: any) => {
         id,
         title: data.title || 'Login',
         content: <LoginPanel />,
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'template-management':
+      return {
+        id,
+        title: data.title || 'Template Verwaltung',
+        content: <TemplateManagementPanel />,
         closable: true,
         group: 'card custom'
       };

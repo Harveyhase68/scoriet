@@ -98,7 +98,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
         {
           label: 'Templates',
           icon: 'pi pi-cog',
-          command: () => onOpenPanel('t3')
+          items: [
+            {
+              label: 'Template Editor',
+              icon: 'pi pi-code',
+              command: () => onOpenPanel('t3')
+            },
+            {
+              label: 'Template Verwaltung',
+              icon: 'pi pi-list',
+              command: () => onOpenPanel('template-management')
+            }
+          ]
         },
         {
           separator: true
@@ -293,10 +304,26 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                     <i className="pi pi-users"></i>
                     <span>Teams</span>
                   </button>
-                  <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-cog"></i>
-                    <span>Templates</span>
-                  </button>
+                  <div className="relative group/sub">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-cog"></i>
+                      <span>Templates</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Templates */}
+                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-code"></i>
+                          <span>Template Editor</span>
+                        </button>
+                        <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-list"></i>
+                          <span>Template Verwaltung</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenPanel('my-applications')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-send"></i>
