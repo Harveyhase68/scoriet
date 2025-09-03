@@ -79,7 +79,14 @@ class ProjectController extends Controller
         $user = Auth::user();
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('projects')->where(function ($query) use ($user) {
+                    return $query->where('owner_id', $user->id);
+                })
+            ],
             'description' => 'nullable|string|max:1000',
             'is_public' => 'boolean',
             'allow_join_requests' => 'boolean',
@@ -161,7 +168,14 @@ class ProjectController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('projects')->ignore($project->id)->where(function ($query) use ($project) {
+                    return $query->where('owner_id', $project->owner_id);
+                })
+            ],
             'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
         ]);

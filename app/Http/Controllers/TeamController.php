@@ -8,6 +8,7 @@ use App\Models\TeamMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Routing\Controller;
 
 class TeamController extends Controller
@@ -20,20 +21,33 @@ class TeamController extends Controller
     {
         $user = Auth::user();
         $projectName = $request->get('project', 'default');
+        $showAll = $request->get('all', false);
 
-        // Get teams where user is owner
-        $ownedTeams = Team::where('project_owner_id', $user->id)
-                         ->where('project_name', $projectName)
-                         ->with(['members.user', 'pendingInvitations'])
-                         ->get();
+        if ($showAll) {
+            // Get ALL teams where user is owner or member (for Team Management)
+            $ownedTeams = Team::where('project_owner_id', $user->id)
+                             ->with(['members.user', 'pendingInvitations'])
+                             ->get();
 
-        // Get teams where user is a member
-        $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
-        $memberTeams = Team::whereIn('id', $memberTeamIds)
-                           ->where('project_name', $projectName)
-                           ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
-                           ->with(['owner', 'members.user', 'pendingInvitations'])
-                           ->get();
+            $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
+            $memberTeams = Team::whereIn('id', $memberTeamIds)
+                               ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
+                               ->with(['owner', 'members.user', 'pendingInvitations'])
+                               ->get();
+        } else {
+            // Get teams filtered by project (for Team Assignment)
+            $ownedTeams = Team::where('project_owner_id', $user->id)
+                             ->where('project_name', $projectName)
+                             ->with(['members.user', 'pendingInvitations'])
+                             ->get();
+
+            $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
+            $memberTeams = Team::whereIn('id', $memberTeamIds)
+                               ->where('project_name', $projectName)
+                               ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
+                               ->with(['owner', 'members.user', 'pendingInvitations'])
+                               ->get();
+        }
 
         return response()->json([
             'owned_teams' => $ownedTeams,
@@ -46,8 +60,18 @@ class TeamController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('teams')->where(function ($query) use ($request, $user) {
+                    return $query->where('project_owner_id', $user->id)
+                                ->where('project_name', $request->project_name);
+                })
+            ],
             'description' => 'nullable|string|max:1000',
             'project_name' => 'required|string|max:255',
         ]);
@@ -58,8 +82,6 @@ class TeamController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-
-        $user = Auth::user();
 
         // Create the team
         $team = Team::create([
@@ -114,7 +136,16 @@ class TeamController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('teams')->ignore($team->id)->where(function ($query) use ($team) {
+                    return $query->where('project_owner_id', $team->project_owner_id)
+                                ->where('project_name', $team->project_name);
+                })
+            ],
             'description' => 'nullable|string|max:1000',
         ]);
 
