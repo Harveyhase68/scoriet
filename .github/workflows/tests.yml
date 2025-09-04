@@ -45,9 +45,9 @@ jobs:
 
       - name: Setup Environment
         run: |
-        echo "APP_KEY=${{ secrets.APP_KEY }}" >> .env
-        echo "DB_CONNECTION=sqlite" >> .env  
-        echo "DB_DATABASE=:memory:" >> .env  
+          echo "APP_KEY=${{ secrets.APP_KEY }}" >> .env
+          echo "DB_CONNECTION=sqlite" >> .env  
+          echo "DB_DATABASE=:memory:" >> .env  
 
       - name: Tests
         run: ./vendor/bin/pest

@@ -26,8 +26,48 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-			'@': resolve(__dirname, 'resources/js'), // <--- das hier fehlt
+			'@': resolve(__dirname, 'resources/js'),
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: (id) => {
+                    // Vendor libraries in separate chunks
+                    if (id.includes('node_modules')) {
+                        if (id.includes('primereact') || id.includes('primeicons')) {
+                            return 'ui-prime';
+                        }
+                        if (id.includes('antd') || id.includes('@ant-design/icons')) {
+                            return 'ui-ant';
+                        }
+                        if (id.includes('react') || id.includes('react-dom')) {
+                            return 'ui-core';
+                        }
+                        if (id.includes('rc-dock')) {
+                            return 'dock';
+                        }
+                        if (id.includes('reactflow')) {
+                            return 'flowchart';
+                        }
+                        return 'vendor';
+                    }
+                    
+                    // App chunks
+                    if (id.includes('/Components/Panels/')) {
+                        return 'panels';
+                    }
+                    if (id.includes('/Components/Modals/')) {
+                        return 'modals';
+                    }
+                    if (id.includes('/Components/AuthModals/')) {
+                        return 'auth';
+                    }
+                },
+            },
+        },
+        // Increase chunk size warning limit since we now have proper splitting
+        chunkSizeWarningLimit: 1000,
     }
 });

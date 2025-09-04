@@ -23,7 +23,9 @@
       "Bash(curl:*)",
       "Bash(npx vite:*)",
       "Bash(ren:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []

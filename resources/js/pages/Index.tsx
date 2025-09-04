@@ -1,5 +1,5 @@
 //resources/js/pages/Index.tsx
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { Head } from '@inertiajs/react';
 import { DockLayout } from 'rc-dock';
 import "rc-dock/dist/rc-dock.css";
@@ -7,21 +7,23 @@ import { ExpandOutlined, CompressOutlined, CloseOutlined, CaretDownOutlined } fr
 import { useHotkeys } from 'react-hotkeys-hook';
 import { TabContentProps } from '@/types';
 
-// Import of Panel components
-import PanelT2 from '@/Components/Panels/PanelT2';
-import PanelT3 from '@/Components/Panels/PanelT3';
-import PanelT5 from '@/Components/Panels/PanelT5';
+// Always-loaded components (small and critical)
 import NewNavigationPanel from '@/Components/Panels/NewNavigationPanel';
 import TopBar from '@/Components/TopBar';
 import '@/Components/Panels/styles.css';
-import PanelT1 from '@/Components/Panels/PanelT1';
-import LoginPanel from '@/Components/Panels/LoginPanel';
-import TeamsPanel from '@/Components/Panels/TeamsPanel';
-import ProjectPanel from '@/Components/Panels/ProjectPanel';
-import MyApplicationsPanel from '@/Components/Panels/MyApplicationsPanel';
-import PublicProjectsPanel from '@/Components/Panels/PublicProjectsPanel';
-import TemplateManagementPanel from '@/Components/Panels/TemplateManagementPanel';
-import TeamManagementPanel from '@/Components/Panels/TeamManagementPanel';
+
+// Lazy-loaded Panel components (code splitting!)
+const PanelT1 = lazy(() => import('@/Components/Panels/PanelT1'));
+const PanelT2 = lazy(() => import('@/Components/Panels/PanelT2'));
+const PanelT3 = lazy(() => import('@/Components/Panels/PanelT3'));
+const PanelT5 = lazy(() => import('@/Components/Panels/PanelT5'));
+const LoginPanel = lazy(() => import('@/Components/Panels/LoginPanel'));
+const TeamsPanel = lazy(() => import('@/Components/Panels/TeamsPanel'));
+const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
+const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
+const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
+const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
+const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
@@ -102,7 +104,55 @@ const initialLayout: any = {
   }
 };
 
-// ✅ CORRECTED loadTab function - That was the problem!
+// Loading spinner component
+const PanelLoader = () => (
+  <div className="flex items-center justify-center h-64 bg-gray-800 text-gray-100">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+      <p className="text-sm text-gray-300">Loading panel...</p>
+    </div>
+  </div>
+);
+
+// Helper function to find the first existing tabset
+function findFirstTabset(layout: any): any {
+  if (!layout) return null;
+
+  // Function to search recursively through all boxes
+  function searchBox(node: any): any {
+    if (!node) return null;
+
+    // Check if this node has tabs (is a tabset)
+    if (node.tabs && Array.isArray(node.tabs) && node.tabs.length > 0) {
+      return node;
+    }
+
+    // Search through children
+    if (node.children && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        const found = searchBox(child);
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }
+
+  // Search in all layout boxes in priority order
+  const boxes = ['dockbox', 'floatbox', 'windowbox', 'maxbox'];
+  
+  for (const boxName of boxes) {
+    const box = layout[boxName];
+    if (box) {
+      const found = searchBox(box);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+// ✅ CORRECTED loadTab function with Lazy Loading!
 const loadTab = (data: any) => {
   const { id } = data;
 
@@ -110,8 +160,12 @@ const loadTab = (data: any) => {
     case 't2':
       return {
         id,
-        title: data.title || 'Main Tab', // ← Use data.title if available
-        content: <PanelT2 />,
+        title: data.title || 'Main Tab',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PanelT2 />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -120,7 +174,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Templates',
-        content: <PanelT3 />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PanelT3 />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -129,7 +187,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Database Explorer',
-        content: <PanelT5 />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PanelT5 />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -138,7 +200,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Teams',
-        content: <TeamsPanel isActive={true} />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TeamsPanel isActive={true} />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -147,7 +213,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Project',
-        content: <ProjectPanel isActive={true} />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ProjectPanel isActive={true} />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -156,7 +226,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'My Applications',
-        content: <MyApplicationsPanel isActive={true} />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <MyApplicationsPanel isActive={true} />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -165,7 +239,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Public Projects',
-        content: <PublicProjectsPanel isActive={true} />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PublicProjectsPanel isActive={true} />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -196,7 +274,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Login',
-        content: <LoginPanel />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <LoginPanel />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -205,7 +287,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Template Verwaltung',
-        content: <TemplateManagementPanel />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TemplateManagementPanel />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -214,7 +300,11 @@ const loadTab = (data: any) => {
       return {
         id,
         title: data.title || 'Team Verwaltung',
-        content: <TeamManagementPanel />,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TeamManagementPanel />
+          </Suspense>
+        ),
         closable: true,
         group: 'card custom'
       };
@@ -393,8 +483,7 @@ export default function Index(props: IndexProps = {}) {
   const openPanel = (panelId: string) => {
     // Check authentication first
     if (!isAuthenticated) {
-      // Authentication required to open panels
-      setActiveModal('login'); // Show login modal
+      setActiveModal('login');
       return;
     }
 
@@ -404,32 +493,112 @@ export default function Index(props: IndexProps = {}) {
     }
 
     setTimeout(() => {
-      if (!ref.current) return;
+      if (!ref.current) {
+        return;
+      }
 
       const existingTab = ref.current.find(panelId);
 
       if (existingTab) {
+        // Tab exists, activate it
         ref.current.dockMove(existingTab, existingTab.parent, 'active');
       } else {
+        // Create new tab
         const newTab = loadTab({ id: panelId });
+        
         if (newTab) {
-          const updatedLayout = {
-            ...layout,
-            dockbox: {
-              ...layout.dockbox,
-              children: [
-                ...layout.dockbox.children,
-                {
-                  id: `+${Date.now()}`,
-                  size: 300,
-                  tabs: [{ id: panelId, title: newTab.title }],
-                  group: 'card custom',
-                  activeId: panelId
+          const currentLayout = ref.current.saveLayout();
+          const firstTabset = findFirstTabset(currentLayout);
+
+          if (!firstTabset) {
+            // Create first tabset
+            const updatedLayout = {
+              ...layout,
+              dockbox: {
+                ...layout.dockbox,
+                children: [
+                  ...layout.dockbox.children,
+                  {
+                    id: `+${Date.now()}`,
+                    size: 300,
+                    tabs: [{ id: panelId, title: newTab.title }],
+                    group: 'card custom',
+                    activeId: panelId
+                  }
+                ]
+              }
+            };
+            setLayout(updatedLayout);
+          } else {
+            try {
+              // Add new tab to existing tabset
+              const currentLayout = ref.current.saveLayout();
+              
+              function addTabToTabset(node: any): boolean {
+                if (node.tabs && Array.isArray(node.tabs) && node.tabs.length > 0) {
+                  node.tabs.push({ id: panelId, title: newTab.title });
+                  node.activeId = panelId;
+                  return true;
                 }
-              ]
+                
+                if (node.children && Array.isArray(node.children)) {
+                  for (const child of node.children) {
+                    if (addTabToTabset(child)) return true;
+                  }
+                }
+                return false;
+              }
+              
+              // Try to add to existing tabset
+              const added = addTabToTabset(currentLayout.dockbox) ||
+                           addTabToTabset(currentLayout.floatbox) ||
+                           addTabToTabset(currentLayout.windowbox) ||
+                           addTabToTabset(currentLayout.maxbox);
+              
+              if (added) {
+                setLayout({...currentLayout});
+              } else {
+                // Fallback: create new tabset
+                const updatedLayout = {
+                  ...currentLayout,
+                  dockbox: {
+                    ...currentLayout.dockbox,
+                    children: [
+                      ...currentLayout.dockbox.children,
+                      {
+                        id: `+${Date.now()}`,
+                        size: 300,
+                        tabs: [{ id: panelId, title: newTab.title }],
+                        group: 'card custom',
+                        activeId: panelId
+                      }
+                    ]
+                  }
+                };
+                setLayout(updatedLayout);
+              }
+            } catch (error) {
+              console.error('Error in layout modification:', error);
+              // Final fallback
+              const updatedLayout = {
+                ...layout,
+                dockbox: {
+                  ...layout.dockbox,
+                  children: [
+                    ...layout.dockbox.children,
+                    {
+                      id: `+${Date.now()}`,
+                      size: 300,
+                      tabs: [{ id: panelId, title: newTab.title }],
+                      group: 'card custom',
+                      activeId: panelId
+                    }
+                  ]
+                }
+              };
+              setLayout(updatedLayout);
             }
-          };
-          setLayout(updatedLayout);
+          }
         }
       }
     }, 50);
