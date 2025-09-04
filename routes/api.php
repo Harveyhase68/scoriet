@@ -21,7 +21,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     
     // Email Verification Routes
-    Route::post('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+    Route::post('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('api.verification.verify');
     Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
     
     // Token validation endpoint for Reset Password Modal

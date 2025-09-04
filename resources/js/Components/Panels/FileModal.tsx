@@ -1,6 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, Select } from 'antd';
-import { Button } from 'primereact/button';
+import { Modal, Form, Input, Select, Button } from 'antd';
 
 const { TextArea } = Input;
 const { Option } = Select;
