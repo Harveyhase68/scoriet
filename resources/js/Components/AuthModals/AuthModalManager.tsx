@@ -14,6 +14,7 @@ interface AuthModalManagerProps {
   onRegistrationSuccess?: () => void;
   resetPasswordToken?: string;
   resetPasswordEmail?: string;
+  isLoginClosable?: boolean;
 }
 
 export default function AuthModalManager({ 
@@ -22,7 +23,8 @@ export default function AuthModalManager({
   onLoginSuccess,
   onRegistrationSuccess,
   resetPasswordToken,
-  resetPasswordEmail
+  resetPasswordEmail,
+  isLoginClosable = true
 }: AuthModalManagerProps) {
   const [currentModal, setCurrentModal] = useState<AuthModalType>(null);
 
@@ -36,6 +38,11 @@ export default function AuthModalManager({
   };
 
   const handleCloseModal = () => {
+    // Prevent closing login modal if not closable
+    if (currentModal === 'login' && !isLoginClosable) {
+      return;
+    }
+    
     setCurrentModal(null);
     onCloseModal();
   };
@@ -48,18 +55,19 @@ export default function AuthModalManager({
         onSwitchToRegister={() => handleSwitchModal('register')}
         onSwitchToForgotPassword={() => handleSwitchModal('forgot')}
         onLoginSuccess={onLoginSuccess}
+        closable={isLoginClosable}
       />
 
       <RegisterModal
         visible={currentModal === 'register'}
-        onHide={handleCloseModal}
+        onHide={() => handleSwitchModal('login')} // X button returns to login
         onSwitchToLogin={() => handleSwitchModal('login')}
         onRegistrationSuccess={onRegistrationSuccess}
       />
 
       <ForgotPasswordModal
         visible={currentModal === 'forgot'}
-        onHide={handleCloseModal}
+        onHide={() => handleSwitchModal('login')} // X button returns to login
         onSwitchToLogin={() => handleSwitchModal('login')}
       />
 

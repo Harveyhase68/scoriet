@@ -46,8 +46,15 @@ jobs:
       - name: Setup Environment
         run: |
           echo "DB_CONNECTION=sqlite" >> .env  
-          echo "DB_DATABASE=/tmp/database.sqlite" >> .env
-          touch /tmp/database.sqlite  
+          echo "DB_DATABASE=:memory:" >> .env
+          echo "SESSION_DRIVER=array" >> .env
+          echo "CACHE_STORE=array" >> .env
+          echo "QUEUE_CONNECTION=sync" >> .env
+          # Remove any MySQL configuration that might interfere
+          sed -i '/^DB_HOST=/d' .env || true
+          sed -i '/^DB_PORT=/d' .env || true
+          sed -i '/^DB_USERNAME=/d' .env || true
+          sed -i '/^DB_PASSWORD=/d' .env || true  
 
       - name: Generate Application Key
         run: php artisan key:generate

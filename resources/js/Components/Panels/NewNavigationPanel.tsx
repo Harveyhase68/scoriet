@@ -81,6 +81,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
   // Main navigation menu items for TieredMenu
   const navigationItems: MenuItem[] = [
     {
+      label: 'Home',
+      icon: 'pi pi-home',
+      command: () => onOpenPanel('home')
+    },
+    {
+      separator: true
+    },
+    {
       label: 'Project',
       icon: 'pi pi-briefcase',
       // No command here - parent items should not execute

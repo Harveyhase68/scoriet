@@ -1,3 +1,18 @@
+/* Video Modal Styling */
+.video-modal .p-dialog-content {
+  background: #000 !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+.video-modal .p-dialog-header {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.video-modal .p-dialog {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
 /* TieredMenu Sidebar Styling */
 .tiered-menu-sidebar {
   width: 100% !important;

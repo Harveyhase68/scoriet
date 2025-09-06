@@ -3,9 +3,18 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Landing Page (Public)
 Route::get('/', function () {
+    $isAuthenticated = auth()->check();
+    return Inertia::render('LandingPage', [
+        'isAuthenticated' => $isAuthenticated
+    ]);
+})->name('landing');
+
+// Protected App
+Route::get('/app', function () {
     return Inertia::render('Index');
-})->name('index');
+})->name('app');
 
 Route::get('/verify-email/{id}/{hash}', function ($id, $hash) {
     return Inertia::render('EmailVerification', [
