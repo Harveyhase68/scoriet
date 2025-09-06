@@ -400,6 +400,7 @@ export default function Index(props: IndexProps = {}) {
   
   // Auth State Management
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasAutoOpenedHome, setHasAutoOpenedHome] = useState<boolean>(false);
 
   // Initial setup for Reset Password
   React.useEffect(() => {
@@ -641,17 +642,18 @@ export default function Index(props: IndexProps = {}) {
   React.useEffect(() => {
     const shouldOpenHomeTab = localStorage.getItem('open_home_on_start');
     
-    // Default to true if setting doesn't exist (first time users)
-    if (shouldOpenHomeTab === null || shouldOpenHomeTab === 'true') {
+    // Only auto-open once per session and only if not already opened
+    if (!hasAutoOpenedHome && (shouldOpenHomeTab === null || shouldOpenHomeTab === 'true')) {
       // Only auto-open if authenticated and no active modal
       if (isAuthenticated && !activeModal) {
         // Small delay to ensure everything is loaded
         setTimeout(() => {
           openPanel('home');
+          setHasAutoOpenedHome(true); // Mark as opened to prevent reopening
         }, 500);
       }
     }
-  }, [isAuthenticated, activeModal, openPanel]);
+  }, [isAuthenticated, activeModal, openPanel, hasAutoOpenedHome]);
 
   // Helper function to clean layout for export
   const cleanLayoutForExport = (layout: any) => {
