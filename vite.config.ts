@@ -42,15 +42,13 @@ export default defineConfig({
                         if (id.includes('antd') || id.includes('@ant-design/icons')) {
                             return 'ui-ant';
                         }
-                        if (id.includes('react') || id.includes('react-dom')) {
-                            return 'ui-core';
-                        }
                         if (id.includes('rc-dock')) {
                             return 'dock';
                         }
                         if (id.includes('reactflow')) {
                             return 'flowchart';
                         }
+                        // Keep React together with other core vendors for compatibility
                         return 'vendor';
                     }
                     
