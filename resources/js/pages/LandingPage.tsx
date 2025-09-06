@@ -136,7 +136,7 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
     <>
       <Head title="Scoriet - Enterprise Code Generator" />
       
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-gray-900 text-white overflow-y-auto max-h-screen">
         {/* Settings Panel (only shown in tab view) */}
         {isAuthenticated && window.location.pathname === '/app' && (
           <div className="bg-gray-800 border-b border-gray-700 p-3">
