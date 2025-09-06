@@ -12,6 +12,7 @@ interface LoginModalProps {
   onSwitchToRegister: () => void;
   onSwitchToForgotPassword: () => void;
   onLoginSuccess?: () => void;
+  closable?: boolean;
 }
 
 export default function LoginModal({ 
@@ -19,7 +20,8 @@ export default function LoginModal({
   onHide, 
   onSwitchToRegister, 
   onSwitchToForgotPassword,
-  onLoginSuccess 
+  onLoginSuccess,
+  closable = true
 }: LoginModalProps) {
   const [formData, setFormData] = useState({
     email: '',
@@ -178,7 +180,7 @@ export default function LoginModal({
       onHide={handleHide}
       style={{ width: '400px' }}
       modal
-      closable
+      closable={closable}
       draggable={false}
       resizable={false}
       className="p-dialog-custom"

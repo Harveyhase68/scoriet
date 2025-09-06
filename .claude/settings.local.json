@@ -25,7 +25,8 @@
       "Bash(ren:*)",
       "Bash(git add:*)",
       "Bash(grep:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

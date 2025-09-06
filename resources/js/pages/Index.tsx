@@ -24,6 +24,7 @@ const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplication
 const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
 const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
@@ -157,6 +158,20 @@ const loadTab = (data: any) => {
   const { id } = data;
 
   switch (id) {
+    case 'home':
+    case 'landing':
+      return {
+        id: 'home',
+        title: data.title || 'Welcome',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <LandingPage isAuthenticated={true} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 't2':
       return {
         id,
@@ -404,7 +419,17 @@ export default function Index(props: IndexProps = {}) {
       // Check both localStorage (Remember Me) and sessionStorage (Session only)
       const localToken = localStorage.getItem('access_token');
       const sessionToken = sessionStorage.getItem('access_token');
-      setIsAuthenticated(!!(localToken || sessionToken));
+      const authenticated = !!(localToken || sessionToken);
+      setIsAuthenticated(authenticated);
+      
+      // Auto-open login modal if not authenticated and no modal is open
+      if (!authenticated && !activeModal && !resetToken) {
+        setActiveModal('login');
+      }
+      // Close modal if authenticated
+      else if (authenticated && activeModal) {
+        setActiveModal(null);
+      }
     };
 
     // Initial check
@@ -447,7 +472,7 @@ export default function Index(props: IndexProps = {}) {
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
     };
-  }, []);
+  }, [activeModal, resetToken]); // Add dependencies for auto-login logic
 
   // Function to close all panels
   const closeAllPanels = () => {
@@ -480,7 +505,7 @@ export default function Index(props: IndexProps = {}) {
     }
   };
 
-  const openPanel = (panelId: string) => {
+  const openPanel = useCallback((panelId: string) => {
     // Check authentication first
     if (!isAuthenticated) {
       setActiveModal('login');
@@ -500,8 +525,16 @@ export default function Index(props: IndexProps = {}) {
       const existingTab = ref.current.find(panelId);
 
       if (existingTab) {
-        // Tab exists, activate it
-        ref.current.dockMove(existingTab, existingTab.parent, 'active');
+        // Tab exists, just activate it within the tabset without moving
+        if (existingTab.parent && existingTab.parent.activeId !== panelId) {
+          // Update the parent tabset to make this tab active
+          existingTab.parent.activeId = panelId;
+          // Force re-render by updating layout
+          const currentLayout = ref.current.saveLayout();
+          setLayout({...currentLayout});
+        }
+        // Tab is already active, do nothing
+        return;
       } else {
         // Create new tab
         const newTab = loadTab({ id: panelId });
@@ -602,7 +635,23 @@ export default function Index(props: IndexProps = {}) {
         }
       }
     }, 50);
-  };
+  }, [isAuthenticated, setActiveModal, ref, layout, setLayout]);
+
+  // Auto-open Home tab on app start (must be after openPanel definition)
+  React.useEffect(() => {
+    const shouldOpenHomeTab = localStorage.getItem('open_home_on_start');
+    
+    // Default to true if setting doesn't exist (first time users)
+    if (shouldOpenHomeTab === null || shouldOpenHomeTab === 'true') {
+      // Only auto-open if authenticated and no active modal
+      if (isAuthenticated && !activeModal) {
+        // Small delay to ensure everything is loaded
+        setTimeout(() => {
+          openPanel('home');
+        }, 500);
+      }
+    }
+  }, [isAuthenticated, activeModal, openPanel]);
 
   // Helper function to clean layout for export
   const cleanLayoutForExport = (layout: any) => {
@@ -796,6 +845,12 @@ useHotkeys('alt+n', () => {
 
   const handleCloseModal = () => {
     const currentModal = activeModal;
+    
+    // Prevent closing login modal if not authenticated (mandatory login)
+    if (currentModal === 'login' && !isAuthenticated) {
+      return; // Don't allow closing
+    }
+    
     setActiveModal(null);
     
     // When the reset modal is closed and we come from a reset URL,
@@ -803,6 +858,13 @@ useHotkeys('alt+n', () => {
     if (currentModal === 'reset' && resetToken) {
       setTimeout(() => {
         window.location.href = '/';
+      }, 100);
+    }
+    
+    // If closing register/forgot modal and not authenticated, return to login
+    if ((currentModal === 'register' || currentModal === 'forgot') && !isAuthenticated) {
+      setTimeout(() => {
+        setActiveModal('login');
       }, 100);
     }
   };
@@ -887,6 +949,7 @@ useHotkeys('alt+n', () => {
         }}
         resetPasswordToken={resetToken}
         resetPasswordEmail={resetEmail}
+        isLoginClosable={isAuthenticated} // Login modal only closable when authenticated
         onLoginSuccess={() => {
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
