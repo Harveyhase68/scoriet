@@ -4,6 +4,8 @@
 
 ### Enterprise Code Generator with Intelligent Templating
 
+![Scoriet - Enterprise Code Generator](github-social-preview.png)
+
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-red.svg?style=flat-square&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)

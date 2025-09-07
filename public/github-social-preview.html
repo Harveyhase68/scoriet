@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoriet - GitHub Social Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 25%, #cbd5e1 75%, #94a3b8 100%);
+            width: 1280px;
+            height: 640px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Background pattern */
+        .bg-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.05;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #3b82f6 2px, transparent 2px),
+                radial-gradient(circle at 75% 75%, #1e40af 2px, transparent 2px);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+        }
+        
+        /* Floating code elements */
+        .code-element {
+            position: absolute;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 12px;
+            color: #1e40af;
+            font-weight: 500;
+        }
+        
+        .code-1 {
+            top: 80px;
+            left: 100px;
+            transform: rotate(-5deg);
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .code-2 {
+            top: 120px;
+            right: 120px;
+            transform: rotate(3deg);
+            animation: float 8s ease-in-out infinite reverse;
+        }
+        
+        .code-3 {
+            bottom: 100px;
+            left: 80px;
+            transform: rotate(2deg);
+            animation: float 7s ease-in-out infinite;
+        }
+        
+        .code-4 {
+            bottom: 140px;
+            right: 100px;
+            transform: rotate(-3deg);
+            animation: float 5s ease-in-out infinite reverse;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); }
+        }
+        
+        .code-1 { --rotation: -5deg; }
+        .code-2 { --rotation: 3deg; }
+        .code-3 { --rotation: 2deg; }
+        .code-4 { --rotation: -3deg; }
+        
+        /* Main content container */
+        .container {
+            text-align: center;
+            z-index: 10;
+            max-width: 900px;
+            padding: 40px;
+        }
+        
+        /* Logo */
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.2));
+        }
+        
+        /* Main title */
+        .title {
+            font-size: 64px;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 4px rgba(30, 41, 59, 0.1);
+        }
+        
+        /* Subtitle */
+        .subtitle {
+            font-size: 28px;
+            font-weight: 600;
+            color: #3b82f6;
+            margin: 0 0 20px 0;
+            letter-spacing: -0.01em;
+        }
+        
+        /* Description */
+        .description {
+            font-size: 20px;
+            font-weight: 400;
+            color: #475569;
+            margin: 0 0 32px 0;
+            line-height: 1.4;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* Feature badges */
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+        
+        .feature-badge {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #1e40af;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Status badge */
+        .status {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            background: rgba(251, 146, 60, 0.1);
+            border: 1px solid rgba(251, 146, 60, 0.3);
+            color: #ea580c;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Decorative elements */
+        .decoration {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.05) 100%);
+            border-radius: 50%;
+        }
+        
+        .decoration-1 {
+            width: 200px;
+            height: 200px;
+            top: -100px;
+            left: -100px;
+        }
+        
+        .decoration-2 {
+            width: 150px;
+            height: 150px;
+            bottom: -75px;
+            right: -75px;
+        }
+        
+        .decoration-3 {
+            width: 100px;
+            height: 100px;
+            top: 50%;
+            left: -50px;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Background pattern -->
+    <div class="bg-pattern"></div>
+    
+    <!-- Decorative elements -->
+    <div class="decoration decoration-1"></div>
+    <div class="decoration decoration-2"></div>
+    <div class="decoration decoration-3"></div>
+    
+    <!-- Floating code elements -->
+    <div class="code-element code-1">{projectname}</div>
+    <div class="code-element code-2">SQL Parser</div>
+    <div class="code-element code-3">{for %}{endfor}</div>
+    <div class="code-element code-4">Laravel + React</div>
+    
+    <!-- Status badge -->
+    <div class="status">
+        🚧 In Development
+    </div>
+    
+    <!-- Main content -->
+    <div class="container">
+        <img src="/images/logos/scoriet-logo.png" alt="Scoriet Logo" class="logo">
+        
+        <h1 class="title">Scoriet</h1>
+        <h2 class="subtitle">Enterprise Code Generator</h2>
+        
+        <p class="description">
+            Revolutionize your development workflow with intelligent templating and automated code generation
+        </p>
+        
+        <div class="features">
+            <div class="feature-badge">
+                ⚡ Laravel 12 + React 19
+            </div>
+            <div class="feature-badge">
+                🎯 Smart Templates
+            </div>
+            <div class="feature-badge">
+                🗄️ SQL Parser
+            </div>
+            <div class="feature-badge">
+                🔒 OAuth2 Security
+            </div>
+        </div>
+    </div>
+</body>
+</html>
