@@ -5,6 +5,8 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { Card } from 'primereact/card';
+import { Badge } from 'primereact/badge';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -238,8 +240,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
   };
 
   const handleHide = () => {
-    // Reset form when closing
-    setUserData({ name: '', email: '' });
+    // Only reset form fields that should be cleared, keep user data loaded
     setPasswordData({ current_password: '', password: '', password_confirmation: '' });
     setDeleteData({ password: '', confirmText: '' });
     setProfileError('');
@@ -259,7 +260,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       header="My Profile"
       visible={visible}
       onHide={handleHide}
-      style={{ width: '500px' }}
+      style={{ width: '700px' }}
       modal
       closable
       draggable={false}
@@ -440,6 +441,86 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
               disabled={loadingPassword}
             />
           </form>
+        </TabPanel>
+
+        <TabPanel header="Plans & Billing" leftIcon="pi pi-credit-card">
+          <div className="space-y-6">
+            {/* Current Plan */}
+            <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+                <Badge value="Free" severity="info" />
+              </div>
+              <p className="text-gray-300 mb-4">
+                You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features!
+              </p>
+            </div>
+
+            {/* Available Plans */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4">Available Plans</h3>
+              
+              {/* Free Plan */}
+              <Card className="border-l-4 border-l-gray-400 bg-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-white">Free</h4>
+                    <p className="text-2xl font-bold text-white mb-2">€0 <span className="text-sm font-normal text-gray-300">forever</span></p>
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      <li>• Up to 3 projects</li>
+                      <li>• Basic templates</li>
+                      <li>• Community support</li>
+                    </ul>
+                  </div>
+                  <Badge value="Current" severity="info" />
+                </div>
+              </Card>
+
+              {/* Premium Plan */}
+              <Card className="border-l-4 border-l-blue-500 bg-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-white">Premium</h4>
+                    <p className="text-2xl font-bold text-blue-400 mb-2">€2.99 <span className="text-sm font-normal text-gray-300">/month</span></p>
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      <li>• Unlimited projects</li>
+                      <li>• Advanced templates</li>
+                      <li>• Priority support</li>
+                      <li>• Team collaboration</li>
+                    </ul>
+                  </div>
+                  <Button 
+                    label="Upgrade" 
+                    size="small" 
+                    className="p-button-primary"
+                    onClick={() => alert('Upgrade to Premium - Coming Soon!')}
+                  />
+                </div>
+              </Card>
+
+              {/* Patron Plan */}
+              <Card className="border-l-4 border-l-purple-500 bg-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-white">Patron</h4>
+                    <p className="text-2xl font-bold text-purple-400 mb-2">€5+ <span className="text-sm font-normal text-gray-300">/month</span></p>
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      <li>• All Premium features</li>
+                      <li>• Early access to features</li>
+                      <li>• Community Discord access</li>
+                      <li>• Custom amount (€5-50+)</li>
+                    </ul>
+                  </div>
+                  <Button 
+                    label="Become Patron" 
+                    size="small" 
+                    className="p-button-help"
+                    onClick={() => alert('Become Patron - Coming Soon!')}
+                  />
+                </div>
+              </Card>
+            </div>
+          </div>
         </TabPanel>
 
         <TabPanel header="Delete Account" leftIcon="pi pi-trash">

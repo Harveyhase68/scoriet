@@ -426,7 +426,7 @@ export default function PanelT2() {
                   <>
                     <div className="text-6xl mb-4">🔐</div>
                     <h3 className="text-xl font-bold mb-2 text-yellow-400">Authentication Required</h3>
-                    <p className="text-sm mb-4">Your session has expired. Please log in to access schema data.</p>
+                    <p className="text-sm mb-4">Your session has expired. Please login to access schema data.</p>
                     <p className="text-xs text-gray-500">
                       Use the navigation menu to log in again
                     </p>

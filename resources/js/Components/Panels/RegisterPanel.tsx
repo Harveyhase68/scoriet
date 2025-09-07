@@ -136,7 +136,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="ihre.email@example.com"
+              placeholder="your.email@example.com"
               className="w-full"
               disabled={loading}
               required

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
@@ -16,17 +16,65 @@ import {
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 
-interface LandingPageProps {
-  isAuthenticated?: boolean;
+interface UserData {
+  id?: number;
+  name: string;
+  email: string;
+  email_verified_at?: string;
 }
 
-export default function LandingPage({ isAuthenticated = false }: LandingPageProps) {
+export default function LandingPage() {
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
+  const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [openHomeOnStart, setOpenHomeOnStart] = useState<boolean>(() => {
     const setting = localStorage.getItem('open_home_on_start');
     return setting === null || setting === 'true';
   });
+
+  // Check if this is a demo installation
+  const isDemoMode = import.meta.env.VITE_SCORIET_DEMO === 'true';
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = () => {
+      // Clear logout flag when arriving at lobby
+      localStorage.removeItem('logout_in_progress');
+      
+      const token = localStorage.getItem('access_token');
+      const isAuth = !!token;
+      setIsAuthenticated(isAuth);
+      if (isAuth && !userData) {
+        loadUserData();
+      }
+    };
+    
+    checkAuth();
+  }, [userData]);
+
+
+  const loadUserData = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        setUserData(user);
+      }
+    } catch (err) {
+      console.error('Error loading user data:', err);
+    }
+  };
 
   const features = [
     {
@@ -86,7 +134,7 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
       popular: true
     },
     {
-      name: "Patreon",
+      name: "Patron",
       price: "€5+",
       period: "/month",
       description: "Support the community",
@@ -115,9 +163,39 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
     if (isAuthenticated) {
       window.location.href = '/app';
     } else {
+      // Set flag to redirect to app after login
+      localStorage.setItem('redirect_after_login', '/app');
       setActiveModal('login');
     }
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('auth_token'); // if using different key
+    setUserData(null);
+    setIsAuthenticated(false);
+    window.location.reload();
+  };
+
+  const handleLoginSuccess = () => {
+    // After successful login, check auth state
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      setIsAuthenticated(true);
+      loadUserData();
+      setActiveModal(null);
+      
+      // Check if we should redirect after login
+      const redirectUrl = localStorage.getItem('redirect_after_login');
+      if (redirectUrl) {
+        localStorage.removeItem('redirect_after_login');
+        setTimeout(() => {
+          window.location.href = redirectUrl;
+        }, 100); // Small delay to ensure state is updated
+      }
+    }
+  };
+
 
   const handleOpenHomeOnStartChange = (checked: boolean) => {
     setOpenHomeOnStart(checked);
@@ -168,32 +246,63 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <h1 className="text-2xl font-bold text-blue-400">Scoriet</h1>
+                <img 
+                  src="/images/logos/scoriet-logo.png" 
+                  alt="Scoriet Logo" 
+                  className="h-8 w-auto"
+                />
                 <Badge value="BETA" severity="info" className="ml-2" />
               </div>
               
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-2">
                 {!isAuthenticated ? (
                   <>
                     <Button 
                       label="Login" 
                       className="p-button-text"
+                      style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => handleOpenModal('login')}
                     />
-                    <Button 
-                      label="Register" 
-                      className="p-button-outlined"
-                      onClick={() => handleOpenModal('register')}
-                    />
+                    {!isDemoMode && (
+                      <Button 
+                        label="Register" 
+                        className="p-button-outlined"
+                        style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+                        onClick={() => handleOpenModal('register')}
+                      />
+                    )}
                   </>
                 ) : (
-                  <span className="text-green-400 mr-4">Welcome back!</span>
+                  <>
+                    <Button 
+                      label="Profile"
+                      icon="pi pi-user"
+                      className="p-button-text"
+                      style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+                      onClick={() => setActiveModal('profile')}
+                    />
+                    <Button 
+                      label="Change Plan"
+                      icon="pi pi-credit-card"
+                      className="p-button-outlined p-button-info"
+                      style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+                      onClick={() => setShowPlanModal(true)}
+                    />
+                    <Button 
+                      label="Logout"
+                      icon="pi pi-sign-out"
+                      className="p-button-outlined"
+                      style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+                      onClick={handleLogout}
+                    />
+                  </>
                 )}
                 
                 <Button 
                   label="Goto App" 
                   icon="pi pi-arrow-right"
                   className="p-button-primary"
+                  style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                   onClick={handleGotoApp}
                 />
               </div>
@@ -212,18 +321,27 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
               Reduce development time by 80% with automated code generation.
             </p>
             
-            <div className="flex justify-center space-x-4">
+            <div className="flex justify-center gap-2">
+              {!isDemoMode ? (
               <Button 
                 label="Start Free" 
-                size="large"
-                className="p-button-primary p-button-lg"
+                className="p-button-primary"
+                style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                 onClick={() => handleOpenModal('register')}
               />
+            ) : (
+              <Button 
+                label="Try Demo" 
+                className="p-button-primary"
+                style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                onClick={() => handleOpenModal('login')}
+              />
+            )}
               <Button 
                 label="Watch Demo" 
-                size="large" 
                 icon="pi pi-play"
-                className="p-button-outlined p-button-lg"
+                className="p-button-outlined p-button-primary"
+                style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                 onClick={handleOpenVideoModal}
               />
             </div>
@@ -305,9 +423,13 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
                       className={`${tier.buttonClass} w-full`}
                       onClick={() => {
                         if (tier.name === 'Free') {
-                          handleOpenModal('register');
+                          if (!isDemoMode) {
+                            handleOpenModal('register');
+                          } else {
+                            handleOpenModal('login');
+                          }
                         } else {
-                          // Handle premium/patreon signup
+                          // Handle premium/patron signup
                           console.log(`Subscribe to ${tier.name}`);
                         }
                       }}
@@ -328,22 +450,87 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
             <p className="text-xl mb-8 text-blue-100">
               Join thousands of developers who are already using Scoriet to build better software faster.
             </p>
-            <div className="flex justify-center space-x-4">
-              <Button 
-                label="Start Free Trial"
-                size="large"
-                className="p-button-secondary p-button-lg"
-                onClick={() => handleOpenModal('register')}
-              />
+            <div className="flex justify-center gap-2">
+              {!isDemoMode ? (
+                <Button 
+                  label="Start Free Trial"
+                  className="p-button-secondary"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={() => handleOpenModal('register')}
+                />
+              ) : (
+                <Button 
+                  label="Try Demo Now"
+                  className="p-button-secondary"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={() => handleOpenModal('login')}
+                />
+              )}
               <Button 
                 label="Contact Sales"
-                size="large"
-                className="p-button-outlined p-button-lg"
-                style={{ borderColor: 'white', color: 'white' }}
+                className="p-button-outlined"
+                style={{ borderColor: 'white', color: 'white', borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
               />
             </div>
           </div>
         </section>
+
+        {/* Current Plan Section - Only for Authenticated Users */}
+        {isAuthenticated && (
+          <section className="py-16 bg-gray-800 border-y border-gray-700">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Welcome back, {userData?.name || 'User'}! 👋
+                </h2>
+                <p className="text-xl text-gray-300 mb-4">
+                  You're currently on the <span className="text-blue-400 font-semibold">Free Plan</span>
+                </p>
+                <Badge value="Free Tier" severity="info" className="text-lg px-4 py-2" />
+              </div>
+              
+              <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                {pricingTiers.map((plan, index) => (
+                  <Card 
+                    key={index}
+                    className={`p-6 text-center ${plan.popular ? 'ring-2 ring-blue-500 bg-gray-700' : 'bg-gray-700'} border border-gray-600`}
+                  >
+                    <div className="mb-4">
+                      {plan.popular && (
+                        <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                      )}
+                      <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                      <div className="text-3xl font-bold text-blue-400 mb-2">
+                        {plan.price}
+                        {plan.price !== 'Free' && plan.price !== 'Custom' && (
+                          <span className="text-lg text-gray-400">/month</span>
+                        )}
+                      </div>
+                      <p className="text-gray-300 mb-6">{plan.description}</p>
+                    </div>
+                    
+                    <ul className="text-left text-gray-300 mb-8 space-y-2">
+                      {plan.features.map((feature, fIndex) => (
+                        <li key={fIndex} className="flex items-center">
+                          <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    
+                    <Button 
+                      label={plan.name === 'Free' ? 'Current Plan' : `Upgrade to ${plan.name}`}
+                      className={plan.name === 'Free' ? 'p-button-secondary' : plan.buttonClass}
+                      style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                      disabled={plan.name === 'Free'}
+                      onClick={() => plan.name !== 'Free' && alert(`Upgrading to ${plan.name} - Coming Soon!`)}
+                    />
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Footer */}
         <footer className="bg-gray-800 border-t border-gray-700 py-12">
@@ -432,19 +619,88 @@ export default function LandingPage({ isAuthenticated = false }: LandingPageProp
         </div>
       </Dialog>
 
+      {/* Plan Selection Modal */}
+      <Dialog
+        visible={showPlanModal}
+        onHide={() => setShowPlanModal(false)}
+        modal
+        header="Choose Your Plan"
+        style={{ width: '90vw', maxWidth: '1000px' }}
+        contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
+        headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
+        className="plan-modal"
+      >
+        <div className="space-y-6">
+          {/* Current Plan Status */}
+          <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+              <Badge value="Free" severity="info" />
+            </div>
+            <p className="text-gray-300">
+              You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features and support the project!
+            </p>
+          </div>
+
+          {/* Plans Grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {pricingTiers.map((plan, index) => (
+              <Card 
+                key={index}
+                className={`text-center ${plan.popular ? 'ring-2 ring-blue-400 bg-gray-700' : 'bg-gray-700'} border border-gray-600 hover:shadow-xl transition-shadow`}
+              >
+                <div className="p-6">
+                  {plan.popular && (
+                    <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                  )}
+                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                  <div className="text-3xl font-bold text-blue-400 mb-2">
+                    {plan.price}
+                    {plan.price !== 'Free' && plan.price !== 'Custom' && (
+                      <span className="text-lg text-gray-400">/month</span>
+                    )}
+                  </div>
+                  <p className="text-gray-300 mb-6">{plan.description}</p>
+                  
+                  <ul className="text-left text-gray-300 mb-8 space-y-2">
+                    {plan.features.map((feature, fIndex) => (
+                      <li key={fIndex} className="flex items-center">
+                        <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button 
+                    label={plan.name === 'Free' ? 'Current Plan' : `Choose ${plan.name}`}
+                    className={plan.name === 'Free' ? 'p-button-secondary w-full' : `${plan.buttonClass} w-full`}
+                    style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                    disabled={plan.name === 'Free'}
+                    onClick={() => {
+                      if (plan.name !== 'Free') {
+                        alert(`Upgrading to ${plan.name} - Payment integration coming soon!`);
+                        setShowPlanModal(false);
+                      }
+                    }}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Footer Note */}
+          <div className="text-center text-gray-400 text-sm">
+            <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
+          </div>
+        </div>
+      </Dialog>
+
       {/* Auth Modals */}
       <AuthModalManager
         activeModal={activeModal}
         onCloseModal={handleCloseModal}
         isLoginClosable={true} // On landing page, login is always closable
-        onLoginSuccess={() => {
-          window.dispatchEvent(new Event('storage'));
-          handleCloseModal();
-          // Redirect to app after successful login
-          setTimeout(() => {
-            window.location.href = '/app';
-          }, 1000);
-        }}
+        onLoginSuccess={handleLoginSuccess}
         onRegistrationSuccess={() => {
           handleCloseModal();
           // Could redirect to welcome flow or stay on landing

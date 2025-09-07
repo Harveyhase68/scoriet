@@ -78,7 +78,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
   return (
     <div className="flex justify-center items-center min-h-full bg-gray-900 p-4">
       <Card 
-        title="Log In" 
+        title="Login" 
         className="w-full max-w-md shadow-lg bg-gray-800 border-gray-600"
         pt={{
           root: { className: 'border border-gray-600 bg-gray-800' },
@@ -104,7 +104,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="ihre.email@example.com"
+              placeholder="your.email@example.com"
               className="w-full"
               disabled={loading}
               required
@@ -131,7 +131,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
 
           <Button
             type="submit"
-            label={loading ? "Logging in..." : "Log In"}
+            label={loading ? "Logging in..." : "Login"}
             icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
             className="w-full"
             disabled={loading}

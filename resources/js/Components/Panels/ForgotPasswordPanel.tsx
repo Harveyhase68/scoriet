@@ -177,7 +177,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ihre.email@example.com"
+                placeholder="your.email@example.com"
                 className="w-full"
                 disabled={loading}
                 required

@@ -81,6 +81,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
   // Main navigation menu items for TieredMenu
   const navigationItems: MenuItem[] = [
     {
+      label: 'Back to Lobby',
+      icon: 'pi pi-arrow-left',
+      command: () => window.location.href = '/'
+    },
+    {
+      separator: true
+    },
+    {
       label: 'Home',
       icon: 'pi pi-home',
       command: () => onOpenPanel('home')
@@ -240,6 +248,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           label: 'Logout',
           icon: 'pi pi-sign-out',
           command: () => {
+            // Set logout flag to prevent login modal popup
+            localStorage.setItem('logout_in_progress', 'true');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('remember_me');
@@ -250,8 +260,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
             document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             setIsLoggedIn(false);
             setUserName('');
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new Event('auth-change'));
+            // Redirect to lobby immediately
+            window.location.href = '/';
           }
         }
       ]
@@ -307,6 +317,25 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           </div>
         ) : (
           <div className="flex flex-col space-y-2">
+            {/* Back to Lobby and Home buttons */}
+            <div className="relative group">
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                title="Back to Lobby"
+              >
+                <i className="pi pi-arrow-left text-gray-300"></i>
+              </button>
+            </div>
+            <div className="relative group">
+              <button 
+                onClick={() => onOpenPanel('home')}
+                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                title="Home"
+              >
+                <i className="pi pi-home text-gray-300"></i>
+              </button>
+            </div>
             {/* Icon-only navigation with TieredMenu - only 3 main categories */}
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
@@ -465,6 +494,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                       </button>
                       <div className="border-t border-gray-600 my-2"></div>
                       <button onClick={() => {
+                        // Set logout flag to prevent login modal popup
+                        localStorage.setItem('logout_in_progress', 'true');
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('refresh_token');
                         localStorage.removeItem('remember_me');
@@ -475,8 +506,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                         document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                         setIsLoggedIn(false);
                         setUserName('');
-                        window.dispatchEvent(new Event('storage'));
-                        window.dispatchEvent(new Event('auth-change'));
+                        // Redirect to lobby immediately
+                        window.location.href = '/';
                       }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-sign-out"></i>
                         <span>Logout</span>

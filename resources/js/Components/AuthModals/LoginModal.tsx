@@ -175,7 +175,7 @@ export default function LoginModal({
 
   return (
     <Dialog
-      header="Log In"
+      header="Login"
       visible={visible}
       onHide={handleHide}
       style={{ width: '400px' }}
@@ -221,27 +221,37 @@ export default function LoginModal({
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
           <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
             <i className="pi pi-info-circle mr-2"></i>
-            Demo-Modus verfügbar
+            Demo mode available
           </h3>
           <p className="text-blue-700 text-sm mb-3">
-            Testen Sie Scoriet ohne Registrierung mit vorgefertigten Demo-Daten:
+            Test Scoriet without registration with ready-made demo data:
           </p>
           <div className="space-y-2">
-            <div className="bg-white p-2 rounded border border-blue-300">
+            <button 
+              type="button"
+              className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
+              onClick={() => window.location.href = 'https://demo.scoriet.dev/demo-login?user=demo-admin'}
+              disabled={loading}
+            >
               <strong className="text-blue-800">demo-admin</strong>
               <span className="text-blue-600 text-sm ml-2">
-                - Vollzugriff, 2 Teams, 3 Projekte
+                - Full access, 2 teams, 3 projects
               </span>
-            </div>
-            <div className="bg-white p-2 rounded border border-blue-300">
+            </button>
+            <button 
+              type="button"
+              className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
+              onClick={() => window.location.href = 'https://demo.scoriet.dev/demo-login?user=demo-user'}
+              disabled={loading}
+            >
               <strong className="text-blue-800">demo-user</strong>
               <span className="text-blue-600 text-sm ml-2">
-                - Team-Mitglied, 1 Projekt zugewiesen
+                - Team member, assigned 1 project
               </span>
-            </div>
+            </button>
           </div>
           <p className="text-blue-600 text-xs mt-2">
-            Passwort beliebig - Demo startet automatisch neu alle 20 Minuten
+            Click cards above for instant demo or enter username manually (leave password empty) - Demo restarts every 20 minutes
           </p>
         </div>
 
@@ -251,10 +261,10 @@ export default function LoginModal({
           </label>
           <InputText
             id="login-email"
-            type="email"
+            type={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'text' : 'email'}
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder="ihre.email@example.com"
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : 'your.email@example.com'}
             className="w-full"
             disabled={loading}
             required
@@ -269,13 +279,13 @@ export default function LoginModal({
             id="login-password"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            placeholder="Ihr Passwort"
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'Leave empty for demo' : 'Your password'}
             className="w-full"
             inputClassName="w-full"
             disabled={loading}
             feedback={false}
             toggleMask
-            required
+            required={formData.email !== 'demo-admin' && formData.email !== 'demo-user'}
           />
         </div>
 
@@ -298,24 +308,26 @@ export default function LoginModal({
 
         <Button
           type="submit"
-          label={loading ? "Logging in..." : "Log In"}
+          label={loading ? "Logging in..." : "Login"}
           icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
           className="w-full"
           disabled={loading}
         />
 
         <div className="text-center space-y-2 mt-4">
-          <div>
-            <Button
-              type="button"
-              label="Don't have an account? Register"
-              className="p-button-link p-button-sm"
-              onClick={() => {
-                handleHide();
-                onSwitchToRegister();
-              }}
-            />
-          </div>
+          {import.meta.env.VITE_SCORIET_DEMO !== 'true' && (
+            <div>
+              <Button
+                type="button"
+                label="Don't have an account? Register"
+                className="p-button-link p-button-sm"
+                onClick={() => {
+                  handleHide();
+                  onSwitchToRegister();
+                }}
+              />
+            </div>
+          )}
           <div>
             <Button
               type="button"

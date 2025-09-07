@@ -177,7 +177,7 @@ export default function RegisterModal({
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder="ihre.email@example.com"
+            placeholder="your.email@example.com"
             className="w-full"
             disabled={loading}
             required
@@ -231,7 +231,7 @@ export default function RegisterModal({
         <div className="text-center mt-4">
           <Button
             type="button"
-            label="Already have an account? Log In"
+            label="Already have an account? Login"
             className="p-button-link p-button-sm"
             onClick={() => {
               handleHide();
