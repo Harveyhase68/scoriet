@@ -91,7 +91,7 @@ class ApiClient {
     
     // If no token, throw authentication error immediately
     if (!token) {
-      throw new Error('Authentication required - please log in');
+      throw new Error('Authentication required - please login');
     }
     
     const response = await fetch(`${this.baseURL}${endpoint}`, {

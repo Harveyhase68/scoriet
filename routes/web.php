@@ -5,10 +5,8 @@ use Inertia\Inertia;
 
 // Landing Page (Public)
 Route::get('/', function () {
-    $isAuthenticated = auth()->check();
-    return Inertia::render('LandingPage', [
-        'isAuthenticated' => $isAuthenticated
-    ]);
+    // Frontend handles auth state via JavaScript and localStorage
+    return Inertia::render('LandingPage');
 })->name('landing');
 
 // Protected App

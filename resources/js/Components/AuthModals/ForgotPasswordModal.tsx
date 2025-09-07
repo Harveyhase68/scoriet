@@ -110,7 +110,7 @@ export default function ForgotPasswordModal({
             type="email"
             value={email}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="ihre.email@example.com"
+            placeholder="your.email@example.com"
             className="w-full"
             disabled={loading}
             required

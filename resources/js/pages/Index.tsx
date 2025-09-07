@@ -423,12 +423,13 @@ export default function Index(props: IndexProps = {}) {
       const authenticated = !!(localToken || sessionToken);
       setIsAuthenticated(authenticated);
       
-      // Auto-open login modal if not authenticated and no modal is open
-      if (!authenticated && !activeModal && !resetToken) {
+      // Auto-open login modal if not authenticated and no modal is open (but not during logout)
+      const isLoggingOut = localStorage.getItem('logout_in_progress');
+      if (!authenticated && !activeModal && !resetToken && !isLoggingOut) {
         setActiveModal('login');
       }
-      // Close modal if authenticated
-      else if (authenticated && activeModal) {
+      // Close login modal if authenticated (but keep other modals open)
+      else if (authenticated && activeModal === 'login') {
         setActiveModal(null);
       }
     };
