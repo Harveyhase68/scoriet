@@ -9,8 +9,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Development Status](https://img.shields.io/badge/Status-🚧%20In%20Development-orange.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
 
-[**Live Demo**](https://demo.scoriet.dev) • [**Work in Progress**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
+[**🧪 Live Demo**](https://demo.scoriet.dev) • [**🚧 Alpha Preview**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
+
+> **⚠️ Development Status**: Scoriet is currently in **active development**. The application is functional but features are being added regularly. Expect frequent updates and breaking changes. Not recommended for production use yet.
 
 </div>
 
@@ -19,6 +22,39 @@
 ## 🚀 About Scoriet
 
 Scoriet is a modern enterprise code generator that revolutionizes development workflows through intelligent templating and automation. Built as a complete rewrite of the original WinDev application, it now leverages cutting-edge web technologies to provide a seamless, browser-based development experience.
+
+## 🚧 Current Development Status
+
+**We're currently in active development!** Here's what's working and what's coming:
+
+### ✅ **Completed Features** (Alpha Ready)
+- ✅ **Modern UI/UX**: Professional dark theme with dockable panels
+- ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
+- ✅ **Demo System**: Instant demo access with `demo-admin` and `demo-user`
+- ✅ **Professional Landing Page**: Marketing site with pricing tiers
+- ✅ **Maintenance Mode**: Professional 503 page for updates
+- ✅ **Responsive Design**: Works on desktop, tablet, and mobile
+- ✅ **Environment-based Features**: Demo vs. Production mode
+- ✅ **Development Tooling**: Full CI/CD, linting, testing setup
+
+### 🚧 **In Progress** (Coming Soon)
+- 🚧 **SQL Parser Engine**: MySQL schema parsing and analysis
+- 🚧 **Template System**: JavaScript-based code generation
+- 🚧 **Database Designer**: Visual schema creation tools
+- 🚧 **Project Management**: Teams, projects, and collaboration
+- 🚧 **Payment Integration**: PayPal and Stripe subscription handling
+- 🚧 **AI Integration**: Claude API for enhanced code generation
+
+### 📅 **Planned Features** (Roadmap)
+- 📅 **Multi-Database Support**: PostgreSQL, SQLite, SQL Server
+- 📅 **Advanced Templates**: Loop constructs and complex generation
+- 📅 **Team Collaboration**: Multi-user projects and sharing
+- 📅 **API Ecosystem**: Public API for third-party integrations
+- 📅 **Plugin System**: Extensible architecture for custom generators
+
+### 🧪 **Try It Now**
+- **Live Demo**: [demo.scoriet.dev](https://demo.scoriet.dev) - Full featured demo environment
+- **Alpha Preview**: [scoriet.dev](https://scoriet.dev) - Latest development build
 
 ### ✨ Key Features
 
@@ -123,7 +159,32 @@ php artisan passport:client --personal --name="Scoriet Personal Access Client"
 # Update .env with the Password Grant Client credentials
 # VITE_PASSPORT_CLIENT_ID=your-password-grant-client-id
 # VITE_PASSPORT_CLIENT_SECRET=your-password-grant-client-secret
+
+# For demo installations (optional)
+# SCORIET_DEMO=true     # Disables registration, enables demo mode
+# VITE_SCORIET_DEMO="${SCORIET_DEMO}"
 ```
+
+## 🧪 Demo Access
+
+### Instant Demo (No Registration Required)
+
+Visit [demo.scoriet.dev](https://demo.scoriet.dev) and try either:
+
+**Option 1: Click Demo Cards**
+- Click on `demo-admin` or `demo-user` cards in the login modal
+- Instant access to demo environment
+
+**Option 2: Manual Login**
+- Username: `demo-admin` or `demo-user`
+- Password: Leave empty
+- Click "Log In"
+
+### Demo Users
+- **demo-admin**: Full admin access, 2 teams, 3 projects
+- **demo-user**: Team member access, assigned to 1 project
+
+> **Note**: Demo resets automatically every 20 minutes. All changes are temporary.
 
 ## 🛠️ Development
 
