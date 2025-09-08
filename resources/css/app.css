@@ -4,6 +4,15 @@
 @import 'primereact/resources/primereact.css';
 @import './auth-modals.css';
 
+/* ==============================================
+   FONT CONFIGURATION - Tailwind 4.0 Style
+   ============================================== */
+
+@theme {
+  --font-instrument-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-family-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
 /* @import './components/tabmenu-dark.css'; */
 
 /* ==============================================

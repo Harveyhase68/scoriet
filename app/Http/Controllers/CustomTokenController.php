@@ -26,33 +26,25 @@ class CustomTokenController extends AccessTokenController
                 }
             }
             
-            \Log::info('OAuth Request Data', ['data' => $requestData]);
             
             if (isset($requestData['grant_type']) && $requestData['grant_type'] === 'password') {
                 if (isset($requestData['username'])) {
                     // Support both email and username login
                     $loginField = $requestData['username'];
                     
-                    \Log::info('Login attempt with field: ' . $loginField);
-                    
                     // Check if input contains @ symbol to determine if it's email or username
                     if (str_contains($loginField, '@')) {
                         // Login with email - use as is
                         $user = User::where('email', $loginField)->first();
-                        \Log::info('Email login attempt', ['email' => $loginField, 'user_found' => $user ? 'yes' : 'no']);
                     } else {
                         // Login with username - convert to email for Passport
                         $user = User::where('username', $loginField)->first();
-                        \Log::info('Username login attempt', ['username' => $loginField, 'user_found' => $user ? 'yes' : 'no']);
                         
                         if ($user) {
                             // Replace username with email in request for Passport
                             $requestData['username'] = $user->email;
-                            
-                            \Log::info('Converting username to email', ['original' => $loginField, 'converted_to' => $user->email]);
                         } else {
                             // User not found with username
-                            \Log::warning('User not found with username: ' . $loginField);
                             return response()->json([
                                 'error' => 'invalid_credentials',
                                 'message' => 'The provided credentials are incorrect.'
@@ -61,7 +53,6 @@ class CustomTokenController extends AccessTokenController
                     }
                     
                     if ($user && !$user->hasVerifiedEmail()) {
-                        \Log::info('User email not verified', ['user_id' => $user->id]);
                         return response()->json([
                             'message' => 'E-Mail-Adresse muss vor dem Login bestätigt werden',
                             'email_verification_required' => true
@@ -82,18 +73,14 @@ class CustomTokenController extends AccessTokenController
                 $formData
             );
             
-            \Log::info('Proceeding to parent issueToken with form data');
-            
             // Continue with normal token issuance
             return parent::issueToken($newRequest, $psrResponse);
             
         } catch (\Exception $e) {
             \Log::error('OAuth token error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'error' => 'server_error',
-                'message' => 'An error occurred while processing your request.',
-                'debug' => $e->getMessage()
+                'message' => 'An error occurred while processing your request.'
             ], 500);
         }
     }
