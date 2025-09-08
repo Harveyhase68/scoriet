@@ -13,15 +13,6 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'already_verified'>('loading');
   const [message, setMessage] = useState<string>('');
 
-  useEffect(() => {
-    if (userId && hash) {
-      verifyEmail();
-    } else {
-      setStatus('error');
-      setMessage('Ungültiger Bestätigungslink');
-    }
-  }, [userId, hash, verifyEmail]);
-
   const verifyEmail = useCallback(async () => {
     try {
       const response = await fetch(`/api/auth/email/verify/${userId}/${hash}`, {
@@ -49,6 +40,15 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
       setMessage('Netzwerkfehler - bitte versuchen Sie es später erneut');
     }
   }, [userId, hash]);
+
+  useEffect(() => {
+    if (userId && hash) {
+      verifyEmail();
+    } else {
+      setStatus('error');
+      setMessage('Ungültiger Bestätigungslink');
+    }
+  }, [userId, hash, verifyEmail]);
 
   const handleGoToLogin = () => {
     // Redirect to main page or trigger login modal

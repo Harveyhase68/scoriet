@@ -105,6 +105,17 @@ class User extends Authenticatable implements MustVerifyEmail
                ($this->premium_expires_at === null || $this->premium_expires_at->isFuture());
     }
 
+    /**
+     * Find user for Passport authentication - supports both email and username
+     * This method is called by Laravel Passport during authentication
+     */
+    public function findForPassport($username)
+    {
+        // Since our CustomTokenController already converts username to email,
+        // this method should just find by email
+        return static::where('email', $username)->first();
+    }
+
     public function isAdmin(): bool
     {
         return $this->user_type === 'admin';
