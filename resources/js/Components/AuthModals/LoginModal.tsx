@@ -251,20 +251,20 @@ export default function LoginModal({
             </button>
           </div>
           <p className="text-blue-600 text-xs mt-2">
-            Click cards above for instant demo or enter username manually (leave password empty) - Demo restarts every 20 minutes
+            Click cards above for instant demo or enter demo username manually (leave password empty) - Demo restarts every 20 minutes
           </p>
         </div>
 
         <div className="field">
           <label htmlFor="login-email" className="block text-sm font-medium mb-2">
-            E-Mail
+            E-Mail oder Username
           </label>
           <InputText
             id="login-email"
-            type={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'text' : 'email'}
+            type="text"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : 'your.email@example.com'}
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : 'email@example.com oder username'}
             className="w-full"
             disabled={loading}
             required
