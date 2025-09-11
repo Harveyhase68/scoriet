@@ -11,10 +11,13 @@ class SQLParser
     private $tables;
 
     private $table_map;
+    
+    private $sql_text;
 
-    public function __construct($tokens)
+    public function __construct($tokens, $sql_text = null)
     {
         $this->tokens = $tokens;
+        $this->sql_text = $sql_text;
         $this->position = 0;
         $this->tables = [];
         $this->table_map = [];
@@ -27,6 +30,8 @@ class SQLParser
                 $this->parseCreateStatement();
             } elseif ($this->currentTokenMatches('KEYWORD', 'ALTER')) {
                 $this->parseAlterStatement();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'DROP')) {
+                $this->parseDropStatement();
             } else {
                 $this->position++;
             }
@@ -62,16 +67,67 @@ class SQLParser
         $token = $this->currentToken();
         if ($token) {
             if ($expected_type && $token->type !== $expected_type) {
-                throw new Exception("Expected {$expected_type}, got {$token->type}");
+                $context = $this->getErrorContext();
+                throw new Exception("SQL Syntax Error: Expected token '{$expected_type}', but got '{$token->type}' with value '{$token->value}'{$context}");
             }
             if ($expected_value && $token->value !== $expected_value) {
-                throw new Exception("Expected {$expected_value}, got {$token->value}");
+                $context = $this->getErrorContext();
+                throw new Exception("SQL Syntax Error: Expected '{$expected_value}', but got '{$token->value}'{$context}");
             }
             $this->position++;
 
             return $token;
         }
-        throw new Exception('Unexpected end of tokens');
+        
+        $context = $this->getErrorContext();
+        throw new Exception("SQL Syntax Error: Unexpected end of SQL script{$context}. Missing semicolon or incomplete statement?");
+    }
+
+    private function getErrorContext()
+    {
+        if (empty($this->tokens)) {
+            return " (no tokens found)";
+        }
+
+        $currentPos = min($this->position, count($this->tokens) - 1);
+        $token = $this->tokens[$currentPos] ?? null;
+        
+        if (!$token) {
+            return " at end of SQL";
+        }
+
+        // Get surrounding tokens for context
+        $start = max(0, $currentPos - 2);
+        $end = min(count($this->tokens) - 1, $currentPos + 2);
+        
+        $contextTokens = [];
+        for ($i = $start; $i <= $end; $i++) {
+            $t = $this->tokens[$i];
+            if ($i === $currentPos) {
+                $contextTokens[] = ">>>{$t->value}<<<";  // Highlight current token
+            } else {
+                $contextTokens[] = $t->value;
+            }
+        }
+        
+        // Calculate approximate line and character position in original SQL
+        $sqlPosition = $token->position ?? 0;
+        $sqlLines = explode("\n", $this->sql_text ?? '');
+        $currentLine = 1;
+        $currentChar = 0;
+        $charCount = 0;
+        
+        foreach ($sqlLines as $lineNum => $line) {
+            if ($charCount + strlen($line) >= $sqlPosition) {
+                $currentLine = $lineNum + 1;
+                $currentChar = $sqlPosition - $charCount + 1;
+                break;
+            }
+            $charCount += strlen($line) + 1; // +1 for newline
+        }
+        
+        return " near: " . implode(' ', $contextTokens) . 
+               " (SQL line: {$currentLine}, character: {$currentChar}, token position: " . ($currentPos + 1) . "/" . count($this->tokens) . ")";
     }
 
     private function parseCreateStatement()
@@ -304,6 +360,12 @@ class SQLParser
 
         $this->consumeToken('RPAREN');
 
+        // Optional USING BTREE/HASH
+        if ($this->currentTokenMatches('KEYWORD', 'USING')) {
+            $this->consumeToken('KEYWORD', 'USING');
+            $this->consumeToken(); // BTREE or HASH
+        }
+
         return [
             'type' => 'KEY',
             'name' => $key_name,
@@ -347,6 +409,12 @@ class SQLParser
         }
 
         $this->consumeToken('RPAREN');
+
+        // Optional USING BTREE/HASH
+        if ($this->currentTokenMatches('KEYWORD', 'USING')) {
+            $this->consumeToken('KEYWORD', 'USING');
+            $this->consumeToken(); // BTREE or HASH
+        }
 
         return [
             'type' => 'UNIQUE',
@@ -433,6 +501,24 @@ class SQLParser
         if (isset($this->table_map[$table_name])) {
             $this->table_map[$table_name]['constraints'][] = $fk;
         }
+    }
+
+    private function parseDropStatement()
+    {
+        $this->consumeToken('KEYWORD', 'DROP');
+        $this->consumeToken('KEYWORD', 'TABLE');
+
+        // Optional IF EXISTS
+        if ($this->currentTokenMatches('KEYWORD', 'IF')) {
+            $this->consumeToken('KEYWORD', 'IF');
+            $this->consumeToken('KEYWORD', 'EXISTS');
+        }
+
+        // Table name (we don't need to store DROP statements)
+        $this->consumeToken(); // table name
+
+        // Skip to semicolon
+        $this->skipToSemicolonOrEnd();
     }
 
     private function skipToSemicolonOrEnd()

@@ -171,4 +171,33 @@ class SchemaStorageService
     {
         return SchemaVersion::orderBy('created_at', 'desc')->get();
     }
+
+    /**
+     * Store parsed tables in an existing schema version
+     */
+    public function storeParsedTablesInVersion(SchemaVersion $schemaVersion, array $parsedTables)
+    {
+        return DB::transaction(function () use ($schemaVersion, $parsedTables) {
+            // Clear existing tables for this version
+            $schemaVersion->tables()->delete();
+
+            $tableMap = []; // For foreign key references
+
+            // First phase: Save tables and fields
+            foreach ($parsedTables as $tableData) {
+                $table = $this->storeTable($schemaVersion, $tableData);
+                $tableMap[$tableData['table_name']] = $table;
+
+                $this->storeFields($table, $tableData['fields']);
+            }
+
+            // Second phase: Store constraints (after all tables exist)
+            foreach ($parsedTables as $tableData) {
+                $table = $tableMap[$tableData['table_name']];
+                $this->storeConstraints($table, $tableData['constraints'], $tableMap);
+            }
+
+            return $schemaVersion;
+        });
+    }
 }

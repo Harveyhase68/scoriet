@@ -496,24 +496,28 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
           <i className="pi pi-briefcase text-2xl text-blue-600"></i>
           <h1 className="text-2xl font-bold text-white">Project Management</h1>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 gap-2">
           <Button
             icon="pi pi-plus"
             label="New Project"
+            className="p-button-text"
+            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={() => setShowCreateModal(true)}
             disabled={loading}
           />
           <Button
             icon="pi pi-sign-in"
             label="Join Project"
-            className="p-button-outlined"
+            className="p-button-text"
+            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={() => setShowJoinCodeModal(true)}
             disabled={loading}
           />
           <Button
             icon="pi pi-refresh"
             label="Refresh"
-            className="p-button-outlined"
+            className="p-button-text"
+            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={loadProjects}
             disabled={loading}
           />

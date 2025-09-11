@@ -127,14 +127,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           icon: 'pi pi-cog',
           items: [
             {
-              label: 'Template Editor',
-              icon: 'pi pi-code',
-              command: () => onOpenPanel('t3')
-            },
-            {
               label: 'Template Verwaltung',
               icon: 'pi pi-list',
               command: () => onOpenPanel('template-management')
+            },
+            {
+              label: 'Template Editor',
+              icon: 'pi pi-code',
+              command: () => onOpenPanel('t3')
             }
           ]
         },
@@ -158,6 +158,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
       icon: 'pi pi-database',
       // No command here - parent items should not execute
       items: [
+        {
+          label: 'Manage Databases',
+          icon: 'pi pi-cog',
+          command: () => onOpenPanel('database-management')
+        },
         {
           label: 'Designer',
           icon: 'pi pi-window-maximize',
@@ -377,13 +382,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                     {/* Sub-submenu for Templates */}
                     <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
                       <div className="p-2">
-                        <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-code"></i>
-                          <span>Template Editor</span>
-                        </button>
                         <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-list"></i>
                           <span>Template Verwaltung</span>
+                        </button>
+                        <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-code"></i>
+                          <span>Template Editor</span>
                         </button>
                       </div>
                     </div>
@@ -408,28 +413,55 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
               {/* Popup submenu for Database */}
               <div className="absolute left-full top-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
+                  <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-cog"></i>
+                    <span>Manage Databases</span>
+                  </button>
                   <button onClick={() => onOpenPanel('t2')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-window-maximize"></i>
                     <span>Designer</span>
                   </button>
                   <div className="border-t border-gray-600 my-2"></div>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-file"></i>
-                    <span>Import .sql File</span>
-                  </button>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-sitemap"></i>
-                    <span>Import Schema</span>
-                  </button>
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-file-export"></i>
-                    <span>Export Schema</span>
-                  </button>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-table"></i>
-                    <span>Export Data</span>
-                  </button>
+                  <div className="relative group/import">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-upload"></i>
+                      <span>Import</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Import */}
+                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/import:opacity-100 group-hover/import:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-file"></i>
+                          <span>Import .sql File</span>
+                        </button>
+                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-sitemap"></i>
+                          <span>Import Schema</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="relative group/export">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-download"></i>
+                      <span>Export</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Export */}
+                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-file-export"></i>
+                          <span>Export Schema</span>
+                        </button>
+                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-table"></i>
+                          <span>Export Data</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

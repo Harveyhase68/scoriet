@@ -27,7 +27,8 @@
       "Bash(grep:*)",
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Read(//c//**)"
     ],
     "deny": [],
     "ask": []

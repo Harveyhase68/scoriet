@@ -277,6 +277,7 @@ export default function LoginModal({
           </label>
           <Password
             id="login-password"
+            inputId="login-password-input"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
             placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'Leave empty for demo' : 'Your password'}
@@ -285,6 +286,7 @@ export default function LoginModal({
             disabled={loading}
             feedback={false}
             toggleMask
+            autoComplete="current-password"
             required={formData.email !== 'demo-admin' && formData.email !== 'demo-user'}
           />
         </div>

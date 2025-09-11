@@ -26,7 +26,6 @@ class CustomTokenController extends AccessTokenController
                 }
             }
             
-            
             if (isset($requestData['grant_type']) && $requestData['grant_type'] === 'password') {
                 if (isset($requestData['username'])) {
                     // Support both email and username login
@@ -58,23 +57,14 @@ class CustomTokenController extends AccessTokenController
                             'email_verification_required' => true
                         ], 403);
                     }
-                    
                 }
             }
             
-            // Convert request data to form format for Passport compatibility
-            $formData = http_build_query($requestData);
-            
-            // Create a new PSR request with form data format
-            $newRequest = new ServerRequest(
-                $psrRequest->getMethod(),
-                $psrRequest->getUri(),
-                ['Content-Type' => 'application/x-www-form-urlencoded'] + $psrRequest->getHeaders(),
-                $formData
-            );
+            // Update the parsed body with the modified request data
+            $psrRequest = $psrRequest->withParsedBody($requestData);
             
             // Continue with normal token issuance
-            return parent::issueToken($newRequest, $psrResponse);
+            return parent::issueToken($psrRequest, $psrResponse);
             
         } catch (\Exception $e) {
             \Log::error('OAuth token error: ' . $e->getMessage());

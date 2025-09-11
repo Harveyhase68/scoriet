@@ -6,6 +6,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\SchemaController;
 use App\Http\Controllers\ProjectApplicationController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +61,8 @@ Route::middleware('auth:api')->group(function () {
     // SQL Parser API
     Route::post('/sql-parse', [SqlParserController::class, 'parse']);
     Route::post('/sql-parse-and-store', [SqlParserController::class, 'parseAndStore']);
+    Route::post('/sql-debug', [SqlParserController::class, 'debugParse']);
+    Route::get('/schema-debug/{versionId}', [SchemaController::class, 'debugSchemaVersion']);
     Route::get('/schema-versions', [SqlParserController::class, 'getAllSchemaVersions']);
     Route::get('/schema-versions/{id}', [SqlParserController::class, 'getSchemaVersion']);
     Route::get('/schema-versions/by-name/{name}', [SqlParserController::class, 'getSchemaVersionByName']);
@@ -103,6 +106,28 @@ Route::middleware('auth:api')->group(function () {
     Route::resource('teams', TeamController::class);
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);
+    
+    // Project Schema Management
+    Route::post('/projects/{project}/schemas', [ProjectController::class, 'associateSchema']);
+    Route::delete('/projects/{project}/schemas/{schema}', [ProjectController::class, 'dissociateSchema']);
+    Route::get('/projects/{project}/schemas', [ProjectController::class, 'getProjectSchemas']);
+    Route::get('/projects/{project}/editable-schemas', [ProjectController::class, 'getEditableSchemas']);
+    
+    // Schema Management
+    Route::apiResource('schemas', SchemaController::class);
+    Route::get('/projects/{project}/available-schemas', [SchemaController::class, 'getAvailableForProject']);
+    
+    // Floating Schema Version Management
+    Route::get('/floating-schemas/{schema}/versions', [SchemaController::class, 'getSchemaVersions']);
+    Route::post('/floating-schemas/{schema}/versions', [SchemaController::class, 'createNewVersion']);
+    Route::get('/schema-versions/{version}/tables', [SchemaController::class, 'getVersionTables']);
+    Route::delete('/schema-versions/{version}/tables/{table}', [SchemaController::class, 'deleteTable']);
+    Route::post('/schema-versions/{version}/tables/{table}/delete-with-copy', [SchemaController::class, 'deleteTableWithVersionCopy']);
+    Route::put('/schema-versions/{version}/unsaved-changes', [SchemaController::class, 'markUnsavedChanges']);
+    
+    // Schema Designer Layout Management
+    Route::post('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'saveLayout']);
+    Route::get('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'getLayout']);
     
     // Team Invitations
     Route::post('/teams/{team}/invitations', [TeamInvitationController::class, 'store']);
