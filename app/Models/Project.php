@@ -54,23 +54,58 @@ class Project extends Model
     }
 
     /**
-     * Get templates associated with this project
-     * Note: Templates table structure unknown - might not exist yet
+     * Get templates associated with this project (legacy - needs updating)
+     * TODO: Update this relationship for the new floating schemas system
      */
-    public function templates()
+    public function templates(): BelongsToMany
     {
-        // For now, return empty collection since templates table structure is unknown
-        return collect([]);
+        // For now, return empty collection to avoid SQL errors
+        // This needs to be properly implemented with the new schema system
+        return $this->belongsToMany(Template::class, 'project_templates', 'project_id', 'template_id')
+                    ->whereRaw('1 = 0'); // Always return empty result set
     }
 
     /**
-     * Get databases associated with this project  
-     * Note: Database table structure unknown - might not exist yet
+     * Get floating schemas associated with this project
+     */
+    public function floatingSchemas(): BelongsToMany
+    {
+        return $this->belongsToMany(FloatingSchema::class, 'project_schemas', 'project_id', 'schema_id')
+                    ->withPivot(['association_type', 'alias'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get linked schemas (read-only reference to public schemas)
+     */
+    public function linkedSchemas()
+    {
+        return $this->floatingSchemas()->wherePivot('association_type', 'linked');
+    }
+
+    /**
+     * Get cloned schemas (private copies of schemas)
+     */
+    public function clonedSchemas()
+    {
+        return $this->floatingSchemas()->wherePivot('association_type', 'cloned');
+    }
+
+    /**
+     * Get imported schemas (merged into existing schemas)
+     */
+    public function importedSchemas()
+    {
+        return $this->floatingSchemas()->wherePivot('association_type', 'imported');
+    }
+
+    /**
+     * Get databases associated with this project (legacy method for compatibility)
      */
     public function databases()
     {
-        // For now, return empty collection since database table structure is unknown
-        return collect([]);
+        // Return floating schemas for backward compatibility
+        return $this->floatingSchemas;
     }
 
     /**
@@ -164,8 +199,69 @@ class Project extends Model
         return [
             'teams_count' => $this->teams()->count(),
             'applications_count' => $this->pendingApplications()->count(),
-            'templates_count' => 0, // Templates not implemented yet
-            'databases_count' => 0, // Databases not implemented yet
+            'templates_count' => 0, // TODO: Fix template relationship for new schema system
+            'schemas_count' => $this->floatingSchemas()->count(),
+            'databases_count' => $this->floatingSchemas()->count(), // For backward compatibility
         ];
+    }
+
+    /**
+     * Associate a schema with this project
+     */
+    public function associateSchema(FloatingSchema $schema, string $associationType = 'linked', ?string $alias = null)
+    {
+        return $this->floatingSchemas()->attach($schema->id, [
+            'association_type' => $associationType,
+            'alias' => $alias,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * Remove schema association from this project
+     */
+    public function dissociateSchema(FloatingSchema $schema)
+    {
+        return $this->floatingSchemas()->detach($schema->id);
+    }
+
+    /**
+     * Check if project has access to a specific schema
+     */
+    public function hasSchemaAccess(FloatingSchema $schema): bool
+    {
+        return $this->floatingSchemas()->where('schema_id', $schema->id)->exists();
+    }
+
+    /**
+     * Clone a template's schemas into this project
+     */
+    public function cloneTemplateSchemas(Template $template, $user)
+    {
+        $clonedSchemas = [];
+        
+        foreach ($template->schemasDependencies as $templateSchema) {
+            if ($templateSchema->pivot->is_required || $this->shouldIncludeOptionalSchema($templateSchema)) {
+                // Clone the schema for this project owner
+                $clonedSchema = $templateSchema->cloneForOwner($user, $templateSchema->name . ' (from ' . $template->name . ')');
+                
+                // Associate the cloned schema with this project
+                $this->associateSchema($clonedSchema, 'cloned', $templateSchema->pivot->alias);
+                
+                $clonedSchemas[] = $clonedSchema;
+            }
+        }
+        
+        return $clonedSchemas;
+    }
+
+    /**
+     * Check if an optional schema should be included (can be overridden)
+     */
+    protected function shouldIncludeOptionalSchema(FloatingSchema $schema): bool
+    {
+        // Default: include all schemas, but this can be customized
+        return true;
     }
 }

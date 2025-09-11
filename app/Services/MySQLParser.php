@@ -10,7 +10,7 @@ class MySQLParser
             $tokenizer = new SQLTokenizer($sql_text);
             $tokens = $tokenizer->tokenize();
 
-            $parser = new SQLParser($tokens);
+            $parser = new SQLParser($tokens, $sql_text);
             $tables = $parser->parse();
 
             return $tables;

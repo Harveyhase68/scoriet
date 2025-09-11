@@ -32,6 +32,18 @@ class SchemaField extends Model
         return $this->belongsTo(SchemaTable::class, 'table_id');
     }
 
+    /**
+     * Clone this field to a new table
+     */
+    public function cloneToTable(SchemaTable $targetTable): self
+    {
+        $clone = $this->replicate();
+        $clone->table_id = $targetTable->id;
+        $clone->save();
+
+        return $clone;
+    }
+
     public function constraintColumns(): HasMany
     {
         return $this->hasMany(SchemaConstraintColumn::class, 'field_id');

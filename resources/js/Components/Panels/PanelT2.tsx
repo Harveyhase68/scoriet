@@ -1,5 +1,12 @@
 // resources/js/Components/Panels/PanelT2.tsx - Database Schema Visualizer
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+
+// TypeScript declaration for window timeout
+declare global {
+  interface Window {
+    layoutSaveTimeout?: NodeJS.Timeout;
+  }
+}
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -13,11 +20,33 @@ import ReactFlow, {
   BackgroundVariant,
   Handle,
   Position,
+  NodeResizer,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { TabContentProps } from '@/types';
-import { apiClient, SchemaVersion, SchemaTable } from '@/lib/api';
+import { SchemaTable } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
+import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
+import { useProject } from '@/contexts/ProjectContext';
+
+interface FloatingSchema {
+  id: number;
+  name: string;
+  description?: string;
+  last_version: number;
+  association_type: 'linked' | 'cloned' | 'imported';
+  alias?: string;
+}
+
+interface SchemaVersionExtended {
+  id: number;
+  schema_id?: number;
+  version_name: string;
+  version_number?: number;
+  description?: string;
+  imported_at?: string;
+  display_name?: string;
+}
 
 interface DatabaseNodeData {
   tableName: string;
@@ -32,6 +61,9 @@ interface DatabaseNodeData {
     type: string;
     name?: string;
   }>;
+  table?: SchemaTable;
+  onDelete?: (table: SchemaTable) => void;
+  isLatestVersion?: boolean;
 }
 
 interface DatabaseNodeProps {
@@ -61,48 +93,70 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
 // Database Table Node
 const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
   return (
-    <div className={`shadow-lg rounded-lg border-2 min-w-64 max-w-80 ${
+    <div className={`shadow-lg rounded-lg border-2 w-full h-full flex flex-col ${
       selected 
         ? 'border-blue-400 bg-gray-700' 
         : 'border-gray-600 bg-gray-800'
-    }`}>
+    }`} style={{ minWidth: 250, minHeight: 150 }}>
+      {/* Node Resizer - only show when selected */}
+      {selected && (
+        <NodeResizer
+          color="#3b82f6"
+          isVisible={selected}
+          minWidth={250}
+          minHeight={150}
+          handleStyle={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '2px'
+          }}
+          lineStyle={{
+            borderWidth: '2px'
+          }}
+        />
+      )}
       {/* Table Header */}
-      <div className="bg-blue-600 px-3 py-2 rounded-t-lg">
-        <div className="flex items-center">
-          <div className="text-lg mr-2">🗃️</div>
-          <div className="text-sm font-bold text-white">{data.tableName}</div>
+      <div className="bg-blue-600 px-3 py-2 rounded-t-lg flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="text-lg mr-2">🗃️</div>
+            <div className="text-sm font-bold text-white">{data.tableName}</div>
+          </div>
+          {data.onDelete && data.isLatestVersion && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                data.onDelete(data.table);
+              }}
+              className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+              title="Tabelle löschen"
+            >
+              🗑️
+            </button>
+          )}
         </div>
       </div>
       
-      {/* Fields */}
-      <div className="p-3">
-        {data.fields.length > 0 && (
-          <div className="space-y-1">
+      {/* Fields - Scrollable List */}
+      <div className="flex-1 p-3 overflow-hidden">
+        {data.fields.length > 0 ? (
+          <div className="h-full overflow-y-auto overflow-x-hidden space-y-1">
             {data.fields.map((field, index) => (
-              <div key={index} className="flex justify-between items-center text-xs">
-                <div className="flex items-center">
+              <div key={index} className="flex justify-between items-center text-xs min-h-[20px]">
+                <div className="flex items-center flex-shrink-0">
                   {field.isPrimary && <span className="text-yellow-400 mr-1">🔑</span>}
                   {field.isForeign && <span className="text-orange-400 mr-1">🔗</span>}
-                  <span className="text-white font-mono">{field.name}</span>
+                  <span className="text-white font-mono truncate">{field.name}</span>
                 </div>
-                <div className="text-gray-400">
-                  {field.type}{!field.nullable && <span className="text-red-400"> NOT NULL</span>}
+                <div className="text-gray-400 text-right flex-shrink-0 ml-2">
+                  <span className="truncate">{field.type}</span>
+                  {!field.nullable && <span className="text-red-400"> NOT NULL</span>}
                 </div>
               </div>
             ))}
           </div>
-        )}
-        
-        {/* Constraints */}
-        {data.constraints.length > 0 && (
-          <div className="mt-3 pt-2 border-t border-gray-600">
-            <div className="text-xs text-gray-400 mb-1">Constraints:</div>
-            {data.constraints.map((constraint, index) => (
-              <div key={index} className="text-xs text-gray-300">
-                {constraint.type} {constraint.name && `(${constraint.name})`}
-              </div>
-            ))}
-          </div>
+        ) : (
+          <div className="text-gray-400 text-xs text-center">No fields</div>
         )}
       </div>
       
@@ -127,7 +181,7 @@ const nodeTypes = {
 };
 
 // Helper functions
-const convertSchemaToNodes = (tables: SchemaTable[]): Node[] => {
+const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
   return tables.map((table, index) => {
     // Primary Keys finden
     const primaryKeyFields = table.constraints
@@ -152,21 +206,51 @@ const convertSchemaToNodes = (tables: SchemaTable[]): Node[] => {
         type: constraint.constraint_type,
         name: constraint.constraint_name,
       })) || [],
+      table: table,
+      onDelete: onDeleteTable,
+      isLatestVersion: isLatestVersion,
     };
 
-    // Position berechnen (Grid Layout)
-    const cols = Math.ceil(Math.sqrt(tables.length));
-    const row = Math.floor(index / cols);
-    const col = index % cols;
+    // Check if we have saved layout for this table
+    const savedLayout = savedLayouts[table.table_name];
+    
+    let position;
+    let width = undefined;
+    let height = undefined;
+    
+    if (savedLayout) {
+      // Use saved position and dimensions
+      position = {
+        x: parseFloat(savedLayout.x_position) || 0,
+        y: parseFloat(savedLayout.y_position) || 0
+      };
+      width = savedLayout.width ? parseFloat(savedLayout.width) : 280;
+      height = savedLayout.height ? parseFloat(savedLayout.height) : undefined;
+    } else {
+      // Calculate default grid position
+      const cols = Math.ceil(Math.sqrt(tables.length));
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      position = { 
+        x: col * 350 + 50, 
+        y: row * 300 + 50 
+      };
+      width = 280; // Default width
+    }
 
     return {
       id: `table-${table.id}`,
       type: 'database',
-      position: { 
-        x: col * 350 + 50, 
-        y: row * 300 + 50 
-      },
+      position,
+      width,
+      height,
       data: nodeData,
+      draggable: true,
+      selectable: true,
+      style: {
+        width: width,
+        height: height || 'auto',
+      }
     };
   });
 };
@@ -204,72 +288,277 @@ const convertSchemaToEdges = (tables: SchemaTable[]): Edge[] => {
   return edges;
 };
 
-export default function PanelT2() {
+interface PanelT2Props {
+  preSelectedSchemaId?: number;
+}
+
+export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
+  const { selectedProject } = useProject();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [schemaVersions, setSchemaVersions] = useState<SchemaVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<SchemaVersion | null>(null);
+  const [floatingSchemas, setFloatingSchemas] = useState<FloatingSchema[]>([]);
+  const [selectedSchema, setSelectedSchema] = useState<FloatingSchema | null>(null);
+  const [schemaVersions, setSchemaVersions] = useState<SchemaVersionExtended[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<SchemaVersionExtended | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
 
-  const loadSchemaVersions = useCallback(async () => {
+  const loadFloatingSchemas = useCallback(async (preserveSchemaId?: number) => {
+    if (!selectedProject) {
+      setFloatingSchemas([]);
+      setSelectedSchema(null);
+      setSchemaVersions([]);
+      setSelectedVersion(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const versions = await apiClient.getAllSchemaVersions();
-      setSchemaVersions(versions);
+      
+      // Load schemas associated with the current project
+      const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`Failed to load schemas: ${response.statusText}`);
+      }
+      
+      const schemas = await response.json();
+      setFloatingSchemas(schemas);
+      
+      // If we're preserving a specific schema ID, find and select it
+      if (preserveSchemaId) {
+        const schemaToPreserve = schemas.find((s: FloatingSchema) => s.id === preserveSchemaId);
+        if (schemaToPreserve) {
+          setSelectedSchema(schemaToPreserve);
+          return; // Exit early, don't do auto-selection
+        }
+      }
+      
+      // Auto-select first editable schema only if no schema is currently selected
+      // and no preSelectedSchemaId is provided
+      if (!preSelectedSchemaId && !selectedSchema) {
+        const editableSchema = schemas.find((s: FloatingSchema) => s.association_type !== 'linked');
+        if (editableSchema) {
+          setSelectedSchema(editableSchema);
+        }
+      }
+      
+      // If preSelectedSchemaId is provided and schema exists, select it
+      if (preSelectedSchemaId && !selectedSchema) {
+        const preSelectedSchema = schemas.find((s: FloatingSchema) => s.id === preSelectedSchemaId);
+        if (preSelectedSchema) {
+          setSelectedSchema(preSelectedSchema);
+        }
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load schema versions';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load schemas';
       setError(errorMessage);
       
-      // If it's an auth error, clear the nodes/edges to show login prompt
+      // If it's an auth error, clear the state
       if (errorMessage.includes('Authentication')) {
         setNodes([]);
         setEdges([]);
+        setFloatingSchemas([]);
+        setSelectedSchema(null);
         setSchemaVersions([]);
         setSelectedVersion(null);
       }
     } finally {
       setLoading(false);
     }
-  }, [setEdges, setNodes]);
+  }, [selectedProject, preSelectedSchemaId, setEdges, setNodes]); // Removed selectedSchema dependency
 
-  const loadSchemaVersion = useCallback(async (versionId: number) => {
+  // Save layout to backend
+  const saveLayout = useCallback(async (nodes: Node[]) => {
+    if (!selectedSchema || !selectedVersion) return;
+
+    const layouts = nodes.map(node => ({
+      table_name: node.data.tableName,
+      x_position: node.position.x,
+      y_position: node.position.y,
+      width: node.width || null,
+      height: node.height || null
+    }));
+
+    try {
+      const response = await fetch(
+        `/api/floating-schemas/${selectedSchema.id}/layouts/${selectedVersion.version_number}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ layouts })
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Failed to save layout:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error saving layout:', error);
+    }
+  }, [selectedSchema, selectedVersion]);
+
+
+  // Load layout for specific schema and version (bypasses state dependencies)
+  const loadLayoutForVersion = useCallback(async (schema: FloatingSchema | null, version: SchemaVersionExtended): Promise<Record<string, any>> => {
+    if (!schema || !version) return {};
+
+    try {
+      const response = await fetch(
+        `/api/floating-schemas/${schema.id}/layouts/${version.version_number}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const layouts = await response.json();
+        return layouts;
+      }
+    } catch (error) {
+      console.error('Error loading layout:', error);
+    }
+    
+    return {};
+  }, []);
+
+  const loadSchemaVersions = useCallback(async (schema: FloatingSchema) => {
     try {
       setLoading(true);
-      const version = await apiClient.getSchemaVersion(versionId);
+      setError(null);
       
-      if (version && version.tables) {
-        setSelectedVersion(version);
-        const newNodes = convertSchemaToNodes(version.tables);
-        const newEdges = convertSchemaToEdges(version.tables);
+      const response = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load schema versions: ${response.statusText}`);
+      }
+      
+      const versions = await response.json();
+      setSchemaVersions(versions);
+      
+      // Auto-select latest version or clear if no versions
+      if (versions.length > 0) {
+        const latestVersion = versions.reduce((latest: SchemaVersionExtended, current: SchemaVersionExtended) => 
+          (current.version_number || 0) > (latest.version_number || 0) ? current : latest
+        );
+        await loadSchemaVersionWithSchema(schema, latestVersion);
+      } else {
+        // No versions available - clear the diagram
+        setSelectedVersion(null);
+        setNodes([]);
+        setEdges([]);
+      }
+      
+      return versions;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load schema versions');
+      setSchemaVersions([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []); // No dependencies to avoid circular dependency
+
+  // Load schema version with explicit schema parameter (solves state timing issues)
+  const loadSchemaVersionWithSchema = useCallback(async (schema: FloatingSchema, version: SchemaVersionExtended) => {
+    try {
+      setLoading(true);
+      
+      // FIRST: Set the selected version so it's available
+      setSelectedVersion(version);
+      
+      const response = await fetch(`/api/schema-versions/${version.id}/tables`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load schema version tables: ${response.statusText}`);
+      }
+      
+      const tables = await response.json();
+      
+      if (tables && tables.length > 0) {
+        // Load saved layouts for this version with explicit schema parameter
+        const savedLayouts = await loadLayoutForVersion(schema, version);
+        
+        // Check if this is the latest version - use the passed parameters, not state
+        const isLatestVersion = schema && version && 
+          version.version_number === schema.last_version;
+        
+        
+        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, isLatestVersion);
+        const newEdges = convertSchemaToEdges(tables);
         
         setNodes(newNodes);
         setEdges(newEdges);
         setError(null);
       } else {
-        setError('No tables found in this schema version');
+        setNodes([]);
+        setEdges([]);
+        setError(null); // Clear error, empty version is valid
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load schema version');
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, loadLayoutForVersion]);
 
-  // Load schema versions on mount
-  useEffect(() => {
-    loadSchemaVersions();
-  }, [loadSchemaVersions]);
 
-  // Auto-select first version when versions are loaded
+  // Load floating schemas when project changes
   useEffect(() => {
-    if (schemaVersions.length > 0 && !selectedVersion) {
-      loadSchemaVersion(schemaVersions[0].id);
+    loadFloatingSchemas();
+  }, [loadFloatingSchemas]);
+
+  // Auto-select schema when preSelectedSchemaId is provided
+  useEffect(() => {
+    if (preSelectedSchemaId && floatingSchemas.length > 0) {
+      const preSelectedSchema = floatingSchemas.find(schema => schema.id === preSelectedSchemaId);
+      if (preSelectedSchema && (!selectedSchema || selectedSchema.id !== preSelectedSchemaId)) {
+        setSelectedSchema(preSelectedSchema);
+      }
     }
-  }, [schemaVersions, selectedVersion, loadSchemaVersion]);
+  }, [preSelectedSchemaId, floatingSchemas]); // Removed selectedSchema dependency
+
+  // Load schema versions when selected schema changes
+  useEffect(() => {
+    // Always reset state when schema changes
+    setSchemaVersions([]);
+    setSelectedVersion(null);
+    setNodes([]);
+    setEdges([]);
+    
+    if (selectedSchema) {
+      loadSchemaVersions(selectedSchema);
+    }
+  }, [selectedSchema, loadSchemaVersions, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) =>
@@ -291,17 +580,159 @@ export default function PanelT2() {
     setSelectedNode(null);
   }, []);
 
-  const handleImportSuccess = (result: any) => {
-    // Reload schema versions to include the new one
-    loadSchemaVersions().then(() => {
-      // Try to select the newly imported version
-      if (result.schema_version_id) {
-        loadSchemaVersion(result.schema_version_id);
-      }
+  const handleImportSuccess = () => {
+    // Reload floating schemas to include the new one
+    loadFloatingSchemas().then(() => {
+      // The new schema should be auto-selected by loadFloatingSchemas
     });
-    
-    // Show success message (you could add a toast notification here)
   };
+
+  const handleDeleteTable = useCallback((table: SchemaTable) => {
+    
+    setPendingDeleteTable(table);
+    
+    // Check if we should show version confirmation modal
+    if (!selectedVersion?.has_unsaved_changes) {
+      setShowVersionModal(true);
+    } else {
+      // Directly delete if already marked as having changes
+      performDeleteTable(table);
+    }
+  }, [selectedVersion]);
+
+  const performDeleteTable = useCallback(async (table: SchemaTable) => {
+    if (!selectedVersion) return;
+
+    try {
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${table.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete table');
+      }
+
+      // Reload the schema version to reflect changes
+      if (selectedSchema && selectedVersion) {
+        loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+      }
+    } catch (error) {
+      console.error('Error deleting table:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete table');
+    }
+  }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema]);
+
+  const handleVersionModalNewVersion = useCallback(async () => {
+    if (!selectedSchema || !selectedVersion || !pendingDeleteTable) return;
+
+
+    // SAFETY CHECK: Double confirm which table we're about to delete
+    const confirmMessage = `Sie sind dabei die Tabelle "${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id}) zu löschen. Ist das korrekt?`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // Use the new API endpoint that creates version copy AND deletes table in one operation
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: `Table deletion: ${pendingDeleteTable.table_name}`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create version and delete table');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.new_version_number) {
+        // Reload floating schemas to update last_version
+        await loadFloatingSchemas();
+        
+        // Reload schema versions to get the new version
+        const newVersions = await loadSchemaVersions(selectedSchema);
+        const newVersion = newVersions?.find(v => v.version_number === result.new_version_number);
+        
+        if (newVersion) {
+          setSelectedVersion(newVersion);
+          // Refresh the table view for the new version
+          loadSchemaVersionWithSchema(selectedSchema, newVersion);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating new version and deleting table:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
+    } finally {
+      setShowVersionModal(false);
+      setPendingDeleteTable(null);
+    }
+  }, [selectedSchema, selectedVersion, pendingDeleteTable, loadSchemaVersions, loadSchemaVersionWithSchema]);
+
+  const handleVersionModalContinue = useCallback(async () => {
+    if (!selectedVersion || !pendingDeleteTable) return;
+
+    try {
+      // Mark version as having unsaved changes
+      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Update local state
+      setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
+
+      // Delete the table
+      await performDeleteTable(pendingDeleteTable);
+    } catch (error) {
+      console.error('Error marking unsaved changes:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update version');
+    } finally {
+      setShowVersionModal(false);
+      setPendingDeleteTable(null);
+    }
+  }, [selectedVersion, pendingDeleteTable, performDeleteTable]);
+
+  const handleRefresh = useCallback(async () => {
+    // Store current selections to preserve them
+    const currentSchemaId = selectedSchema?.id;
+    const currentVersion = selectedVersion;
+    
+    // Clear current diagram to prevent "ghost" tables
+    setNodes([]);
+    setEdges([]);
+    
+    // Reload schemas with preservation of current selection
+    await loadFloatingSchemas(currentSchemaId);
+    
+    // If we had a schema and version selected, reload the version data
+    if (currentSchemaId && currentVersion) {
+      setTimeout(() => {
+        // The schema should now be restored, reload its versions and current version data
+        loadSchemaVersions(selectedSchema!);
+        setTimeout(() => {
+          loadSchemaVersionWithSchema(selectedSchema!, currentVersion);
+        }, 100);
+      }, 100);
+    } else if (currentSchemaId) {
+      // Just reload versions for the current schema
+      setTimeout(() => {
+        loadSchemaVersions(selectedSchema!);
+      }, 100);
+    }
+  }, [selectedSchema, selectedVersion, loadFloatingSchemas, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
 
   return (
     <TabContent style={{}}>
@@ -311,31 +742,72 @@ export default function PanelT2() {
           <div>
             <h3 className="text-lg font-bold text-blue-400">🗃️ Database Designer</h3>
             <p className="text-sm text-gray-400">
-              {selectedVersion ? `${selectedVersion.version_name} - ${selectedVersion.tables?.length || 0} tables` : 'No schema loaded'}
+              {selectedSchema && selectedVersion 
+                ? `${selectedSchema.name} (v${selectedVersion.version_number}) - ${nodes.length} tables`
+                : selectedSchema && schemaVersions.length === 0
+                  ? `${selectedSchema.name} (no versions) - empty schema`
+                : selectedSchema
+                  ? 'Loading schema versions...'
+                : selectedProject 
+                  ? 'No schema selected'
+                  : 'No project selected'
+              }
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            {/* Schema Version Selector */}
+            {/* Schema Selector */}
             <select
-              value={selectedVersion?.id || ''}
+              value={selectedSchema?.id || ''}
               onChange={(e) => {
-                const versionId = parseInt(e.target.value);
-                if (versionId) loadSchemaVersion(versionId);
+                const schemaId = parseInt(e.target.value);
+                const schema = floatingSchemas.find(s => s.id === schemaId);
+                setSelectedSchema(schema || null);
               }}
               className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
+              disabled={!selectedProject}
             >
-              <option value="">Select Schema Version</option>
-              {schemaVersions.map(version => (
-                <option key={version.id} value={version.id}>
-                  {version.version_name}
-                </option>
-              ))}
+              <option value="">{selectedProject ? 'Select Schema' : 'No Project Selected'}</option>
+              {floatingSchemas.map(schema => {
+                const typeIcon = schema.association_type === 'linked' ? '🔗' : 
+                               schema.association_type === 'cloned' ? '📋' : '📥';
+                return (
+                  <option key={schema.id} value={schema.id}>
+                    {typeIcon} {schema.alias || schema.name} (v{schema.last_version || 'new'})
+                  </option>
+                );
+              })}
             </select>
             
+            {/* Version Selector (only show if schema selected) */}
+            {selectedSchema && schemaVersions.length > 0 && (
+              <select
+                value={selectedVersion?.id || ''}
+                onChange={(e) => {
+                  const versionId = parseInt(e.target.value);
+                  const version = schemaVersions.find(v => v.id === versionId);
+                  if (version && selectedSchema) {
+                    loadSchemaVersionWithSchema(selectedSchema, version);
+                  }
+                }}
+                className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
+              >
+                {schemaVersions.map(version => {
+                  const displayText = version.version_number && version.imported_at 
+                    ? `v${version.version_number} - ${new Date(version.imported_at).toLocaleDateString('de-DE')}`
+                    : version.version_name;
+                  return (
+                    <option key={version.id} value={version.id}>
+                      {displayText}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+            
             <button 
-              onClick={loadSchemaVersions}
+              onClick={handleRefresh}
               className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
-              disabled={loading}
+              disabled={loading || !selectedProject}
             >
               🔄 Refresh
             </button>
@@ -343,7 +815,7 @@ export default function PanelT2() {
             <button 
               onClick={() => setShowImportModal(true)}
               className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
-              disabled={loading}
+              disabled={loading || !selectedProject}
             >
               📥 Import SQL
             </button>
@@ -382,13 +854,71 @@ export default function PanelT2() {
             <ReactFlow
               nodes={nodes}
               edges={edges}
-              onNodesChange={onNodesChange}
+              onNodesChange={(changes) => {
+                // First apply the changes normally
+                onNodesChange(changes);
+                
+                // Check if we have position or dimension changes
+                const relevantChanges = changes.filter(change => 
+                  (change.type === 'position' && change.positionAbsolute) ||
+                  (change.type === 'dimensions' && change.dimensions)
+                );
+                
+                if (relevantChanges.length > 0) {
+                  // Debounce the save operation - clear any existing timeout
+                  if (window.layoutSaveTimeout) {
+                    clearTimeout(window.layoutSaveTimeout);
+                  }
+                  
+                  window.layoutSaveTimeout = setTimeout(() => {
+                    // Get current nodes with applied changes
+                    setNodes(currentNodes => {
+                      // Apply the changes to get updated positions and dimensions
+                      const updatedNodes = currentNodes.map(node => {
+                        const positionChange = changes.find(c => c.id === node.id && c.type === 'position');
+                        const dimensionChange = changes.find(c => c.id === node.id && c.type === 'dimensions');
+                        
+                        const updatedNode = { ...node };
+                        
+                        if (positionChange && 'positionAbsolute' in positionChange && positionChange.positionAbsolute) {
+                          updatedNode.position = positionChange.positionAbsolute;
+                        }
+                        
+                        if (dimensionChange && 'dimensions' in dimensionChange && dimensionChange.dimensions) {
+                          updatedNode.width = dimensionChange.dimensions.width;
+                          updatedNode.height = dimensionChange.dimensions.height;
+                        }
+                        
+                        return updatedNode;
+                      });
+                      
+                      // Save the layout with current node positions and sizes
+                      const nodesToSave = updatedNodes.filter(node => 
+                        node.data && node.data.tableName
+                      );
+                      
+                      if (nodesToSave.length > 0) {
+                        saveLayout(nodesToSave);
+                      }
+                      
+                      return currentNodes; // Return unchanged nodes (ReactFlow handles the state)
+                    });
+                  }, 1500);
+                }
+              }}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               nodeTypes={nodeTypes}
+              nodesDraggable={true}
+              nodesConnectable={false}
+              elementsSelectable={true}
+              selectNodesOnDrag={false}
               fitView
+              minZoom={0.05}
+              maxZoom={4}
+              defaultViewport={{ zoom: 0.8, x: 0, y: 0 }}
               className="bg-gray-800"
               proOptions={{ hideAttribution: true }}
               style={{ 
@@ -436,10 +966,17 @@ export default function PanelT2() {
                   <>
                     <div className="text-6xl mb-4">📊</div>
                     <h3 className="text-xl font-bold mb-2">No Schema Data</h3>
-                    <p className="text-sm">Select a schema version to visualize database structure</p>
-                    {schemaVersions.length === 0 && !loading && !error && (
+                    <p className="text-sm">
+                      {!selectedProject 
+                        ? 'Select a project to view schemas'
+                        : floatingSchemas.length === 0
+                          ? 'No schemas associated with this project'
+                          : 'Select a schema to visualize database structure'
+                      }
+                    </p>
+                    {selectedProject && floatingSchemas.length === 0 && !loading && !error && (
                       <p className="text-xs mt-2 text-gray-500">
-                        Import a SQL script first to create schema data
+                        Import a SQL script or associate an existing schema
                       </p>
                     )}
                   </>
@@ -482,6 +1019,21 @@ export default function PanelT2() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
+        preselectedSchemaId={selectedSchema?.id}
+      />
+
+      {/* Version Confirmation Modal */}
+      <VersionConfirmationModal
+        isOpen={showVersionModal}
+        onClose={() => {
+          setShowVersionModal(false);
+          setPendingDeleteTable(null);
+        }}
+        onNewVersion={handleVersionModalNewVersion}
+        onContinueEditing={handleVersionModalContinue}
+        actionDescription={`die Tabelle "${pendingDeleteTable?.table_name}" löschen`}
+        currentVersion={selectedVersion?.version_name || 'Current'}
+        tableName={pendingDeleteTable?.table_name}
       />
     </TabContent>
   );

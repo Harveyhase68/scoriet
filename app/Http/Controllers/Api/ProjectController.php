@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Team;
 use App\Models\SchemaVersion;
+use App\Models\FloatingSchema;
 
 class ProjectController extends Controller
 {
@@ -343,5 +344,119 @@ class ProjectController extends Controller
         $project->teams()->detach($team->id);
 
         return response()->json(['message' => 'Team removed from project successfully']);
+    }
+
+    /**
+     * Associate a schema with this project
+     */
+    public function associateSchema(Request $request, Project $project): JsonResponse
+    {
+        // Check if user owns the project
+        if ($project->owner_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'schema_id' => 'required|exists:schemas,id',
+            'association_type' => 'required|in:linked,cloned,imported',
+            'alias' => 'nullable|string|max:255',
+        ]);
+
+        $schema = FloatingSchema::findOrFail($validated['schema_id']);
+        
+        // Check if user can access the schema
+        if (!$schema->canBeAccessedBy(Auth::user())) {
+            return response()->json(['message' => 'Schema not found'], 404);
+        }
+
+        // Check if association already exists
+        if ($project->hasSchemaAccess($schema)) {
+            return response()->json(['message' => 'Schema is already associated with this project'], 422);
+        }
+
+        // Associate the schema
+        $project->associateSchema($schema, $validated['association_type'], $validated['alias']);
+
+        return response()->json(['message' => 'Schema associated successfully']);
+    }
+
+    /**
+     * Remove schema association from project
+     */
+    public function dissociateSchema(Project $project, FloatingSchema $schema): JsonResponse
+    {
+        // Check if user owns the project
+        if ($project->owner_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Check if association exists
+        if (!$project->hasSchemaAccess($schema)) {
+            return response()->json(['message' => 'Schema is not associated with this project'], 422);
+        }
+
+        // Remove association
+        $project->dissociateSchema($schema);
+
+        return response()->json(['message' => 'Schema association removed successfully']);
+    }
+
+    /**
+     * Get schemas associated with this project
+     */
+    public function getProjectSchemas(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+        
+        // Check if user has access to the project
+        if (!$project->visibleTo($user)->exists()) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        $schemas = $project->floatingSchemas()
+            ->with(['owner'])
+            ->get()
+            ->map(function ($schema) {
+                return array_merge($schema->toArray(), [
+                    'association_type' => $schema->pivot->association_type,
+                    'alias' => $schema->pivot->alias,
+                    'associated_at' => $schema->pivot->created_at,
+                ]);
+            });
+
+        return response()->json($schemas);
+    }
+
+    /**
+     * Get editable schemas for this project (cloned/imported only - no linked schemas)
+     */
+    public function getEditableSchemas(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+        
+        // Check if user has access to the project
+        if (!$project->visibleTo($user)->exists()) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        // Get only cloned and imported schemas (not linked)
+        $editableSchemas = $project->floatingSchemas()
+            ->with(['owner'])
+            ->whereIn('association_type', ['cloned', 'imported'])
+            ->get()
+            ->map(function ($schema) {
+                return [
+                    'id' => $schema->id,
+                    'name' => $schema->name,
+                    'description' => $schema->description,
+                    'current_version' => $schema->current_version,
+                    'last_version' => $schema->last_version,
+                    'association_type' => $schema->pivot->association_type,
+                    'alias' => $schema->pivot->alias,
+                    'owner' => $schema->owner->only(['id', 'name']),
+                ];
+            });
+
+        return response()->json($editableSchemas);
     }
 }

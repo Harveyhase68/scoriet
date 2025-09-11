@@ -24,6 +24,7 @@ const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplication
 const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
 const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
+const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -154,7 +155,7 @@ function findFirstTabset(layout: any): any {
 }
 
 // ✅ CORRECTED loadTab function with Lazy Loading!
-const loadTab = (data: any) => {
+const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void) => {
   const { id } = data;
 
   switch (id) {
@@ -175,10 +176,10 @@ const loadTab = (data: any) => {
     case 't2':
       return {
         id,
-        title: data.title || 'Main Tab',
+        title: data.title || 'Database Designer',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <PanelT2 />
+            <PanelT2 preSelectedSchemaId={data.preSelectedSchemaId} />
           </Suspense>
         ),
         closable: true,
@@ -311,6 +312,19 @@ const loadTab = (data: any) => {
         group: 'card custom'
       };
 
+    case 'database-management':
+      return {
+        id,
+        title: data.title || 'Database Management',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <DatabaseManagementPanel isActive={true} onOpenDesigner={handleOpenDesigner} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'team-management':
       return {
         id,
@@ -344,6 +358,41 @@ const loadTab = (data: any) => {
       };
 
     default:
+      // Handle schema-specific designer tabs (e.g., designer_schema_1, designer_schema_2)
+      if (id.startsWith('designer_schema_')) {
+        const schemaId = parseInt(id.split('_')[2]);
+        const displayTitle = data.schemaName ? 
+          `Database Designer (${data.schemaName})` : 
+          `Database Designer (Schema ${schemaId})`;
+        return {
+          id,
+          title: data.title || displayTitle,
+          content: (
+            <Suspense fallback={<PanelLoader />}>
+              <PanelT2 preSelectedSchemaId={schemaId} />
+            </Suspense>
+          ),
+          closable: true,
+          group: 'card custom'
+        };
+      }
+      
+      // Handle legacy t2_schema_ tabs (for backward compatibility)
+      if (id.startsWith('t2_schema_')) {
+        const schemaId = parseInt(id.split('_')[2]);
+        return {
+          id,
+          title: data.title || `Database Designer (Schema ${schemaId})`,
+          content: (
+            <Suspense fallback={<PanelLoader />}>
+              <PanelT2 preSelectedSchemaId={schemaId} />
+            </Suspense>
+          ),
+          closable: true,
+          group: 'card custom'
+        };
+      }
+      
       // Better fallback - still try to load reasonable content
       if (id.startsWith('t')) {
         return {
@@ -395,8 +444,22 @@ export default function Index(props: IndexProps = {}) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
   
-  // Auth Modal State - Add debug output
-  const [activeModal, setActiveModal] = useState<AuthModalType>(null);
+  // Auth Modal State - Initialize based on authentication status
+  const [activeModal, setActiveModal] = useState<AuthModalType>(() => {
+    // Check if user is authenticated on initial load
+    const localToken = localStorage.getItem('access_token');
+    const sessionToken = sessionStorage.getItem('access_token');
+    const isLoggingOut = localStorage.getItem('logout_in_progress');
+    const authenticated = !!(localToken || sessionToken);
+    
+    // Don't show login modal during logout process or if authenticated
+    if (isLoggingOut || authenticated) {
+      return null;
+    }
+    
+    // Show login modal immediately if not authenticated
+    return 'login';
+  });
   
   // Auth State Management
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -507,7 +570,7 @@ export default function Index(props: IndexProps = {}) {
     }
   };
 
-  const openPanel = useCallback((panelId: string) => {
+  const openPanel = useCallback((panelId: string, data?: any) => {
     // Check authentication first
     if (!isAuthenticated) {
       setActiveModal('login');
@@ -515,7 +578,7 @@ export default function Index(props: IndexProps = {}) {
     }
 
     if (!ref.current) {
-      setTimeout(() => openPanel(panelId), 100);
+      setTimeout(() => openPanel(panelId, data), 100);
       return;
     }
 
@@ -539,7 +602,7 @@ export default function Index(props: IndexProps = {}) {
         return;
       } else {
         // Create new tab
-        const newTab = loadTab({ id: panelId });
+        const newTab = loadTab({ id: panelId, ...data });
         
         if (newTab) {
           const currentLayout = ref.current.saveLayout();
@@ -638,6 +701,18 @@ export default function Index(props: IndexProps = {}) {
       }
     }, 50);
   }, [isAuthenticated, setActiveModal, ref, layout, setLayout]);
+
+  // Handle opening designer with pre-selected schema
+  const handleOpenDesigner = useCallback((schemaId: number, schemaName?: string) => {
+    if (!isAuthenticated) {
+      setActiveModal('login');
+      return;
+    }
+
+    // Simply use the existing openPanel function with a unique panel ID
+    const uniquePanelId = `designer_schema_${schemaId}`;
+    openPanel(uniquePanelId, { schemaName });
+  }, [isAuthenticated, openPanel]);
 
   // Auto-open Home tab on app start (must be after openPanel definition)
   React.useEffect(() => {
@@ -927,7 +1002,7 @@ useHotkeys('alt+n', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={loadTab}
+                  loadTab={(data: any) => loadTab(data, handleOpenDesigner)}
                   groups={groups}
                   style={{
                     position: 'absolute',
