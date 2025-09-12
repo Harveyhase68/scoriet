@@ -84,7 +84,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isTeamOwner(Team $team): bool
     {
-        return $team->project_owner_id === $this->id;
+        return (string)$team->project_owner_id === (string)$this->id;
     }
 
     public function getTeamRole(Team $team): ?string
