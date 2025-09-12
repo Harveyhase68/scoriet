@@ -25,8 +25,8 @@ class ProjectController extends Controller
             return false;
         }
         
-        // Owner has access  
-        if ($project->owner_id == $user->id) {
+        // Owner has access (force string comparison for cross-platform compatibility)
+        if ((string)$project->owner_id === (string)$user->id) {
             return true;
         }
         
