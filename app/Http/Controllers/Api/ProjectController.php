@@ -74,7 +74,7 @@ class ProjectController extends Controller
                 ->map(function ($project) use ($user) {
                     $counts = $project->getCounts();
                     return array_merge($project->toArray(), $counts, [
-                        'is_owner' => $project->owner_id === $user->id,
+                        'is_owner' => (string)$project->owner_id === (string)$user->id,
                     ]);
                 });
 
