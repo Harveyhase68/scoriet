@@ -353,7 +353,7 @@ class ProjectController extends Controller
         }
 
         // Check if team belongs to user
-        if ($team->project_owner_id !== Auth::id()) {
+        if ((string)$team->project_owner_id !== (string)Auth::id()) {
             return response()->json(['message' => 'Team does not belong to you'], 403);
         }
 
