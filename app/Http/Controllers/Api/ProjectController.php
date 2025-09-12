@@ -358,8 +358,15 @@ class ProjectController extends Controller
      */
     public function associateSchema(Request $request, Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        $user = Auth::user();
+        
+        // Check if user has access to this project (owner or team member)
+        $hasAccess = $project->owner_id === $user->id || 
+                    $project->teams()->whereHas('members', function($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })->exists();
+        
+        if (!$hasAccess) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
