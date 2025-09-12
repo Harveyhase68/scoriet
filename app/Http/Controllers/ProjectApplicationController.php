@@ -80,7 +80,7 @@ class ProjectApplicationController extends Controller
         $user = $request->user();
 
         // Only project owner can see applications
-        if ($project->owner_id !== $user->id) {
+        if ((string)$project->owner_id !== (string)$user->id) {
             return response()->json([
                 'message' => 'Keine Berechtigung'
             ], 403);

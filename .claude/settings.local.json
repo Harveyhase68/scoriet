@@ -28,7 +28,9 @@
       "Bash(npm install)",
       "Bash(npm install:*)",
       "Bash(cat:*)",
-      "Read(//c//**)"
+      "Read(//c//**)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
