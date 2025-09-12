@@ -15,6 +15,27 @@ use App\Models\FloatingSchema;
 class ProjectController extends Controller
 {
     /**
+     * Check if user has access to project (owner or team member)
+     */
+    private function userHasProjectAccess(Project $project, $user = null): bool
+    {
+        $user = $user ?? Auth::user();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Owner has access
+        if ($project->owner_id === $user->id) {
+            return true;
+        }
+        
+        // Team members have access
+        return $project->teams()->whereHas('members', function($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->exists();
+    }
+    /**
      * Display a listing of projects visible to the user
      */
     public function index(Request $request): JsonResponse
@@ -147,8 +168,8 @@ class ProjectController extends Controller
      */
     public function show(Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -163,8 +184,8 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -199,8 +220,8 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -215,8 +236,8 @@ class ProjectController extends Controller
      */
     public function forceDestroy(Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -230,8 +251,8 @@ class ProjectController extends Controller
      */
     public function restore(Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -245,8 +266,8 @@ class ProjectController extends Controller
      */
     public function getAvailableTeams(Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -289,8 +310,8 @@ class ProjectController extends Controller
      */
     public function assignTeams(Request $request, Project $project): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -332,8 +353,8 @@ class ProjectController extends Controller
      */
     public function removeTeam(Project $project, Team $team): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -360,11 +381,27 @@ class ProjectController extends Controller
     {
         $user = Auth::user();
         
+        // DEBUG: Log authentication details
+        \Log::info("🔍 associateSchema DEBUG", [
+            'user_id' => $user ? $user->id : 'NULL',
+            'user_email' => $user ? $user->email : 'NULL',
+            'project_id' => $project->id,
+            'project_owner_id' => $project->owner_id,
+            'is_owner' => $user && $project->owner_id === $user->id,
+            'request_url' => $request->fullUrl(),
+            'bearer_token_present' => $request->bearerToken() ? 'YES' : 'NO'
+        ]);
+        
         // Check if user has access to this project (owner or team member)
-        $hasAccess = $project->owner_id === $user->id || 
+        $hasAccess = $user && ($project->owner_id === $user->id || 
                     $project->teams()->whereHas('members', function($query) use ($user) {
                         $query->where('user_id', $user->id);
-                    })->exists();
+                    })->exists());
+        
+        \Log::info("🔍 Access check result", [
+            'hasAccess' => $hasAccess,
+            'user_exists' => !!$user
+        ]);
         
         if (!$hasAccess) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -399,8 +436,8 @@ class ProjectController extends Controller
      */
     public function dissociateSchema(Project $project, FloatingSchema $schema): JsonResponse
     {
-        // Check if user owns the project
-        if ($project->owner_id !== Auth::id()) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
