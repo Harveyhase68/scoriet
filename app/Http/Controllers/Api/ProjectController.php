@@ -386,7 +386,7 @@ class ProjectController extends Controller
         }
 
         $validated = $request->validate([
-            'schema_id' => 'required|exists:floating_schemas,id',
+            'schema_id' => 'required|exists:schemas,id',
             'association_type' => 'required|in:linked,cloned,imported',
             'alias' => 'nullable|string|max:255',
         ]);
