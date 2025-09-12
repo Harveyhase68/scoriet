@@ -460,31 +460,8 @@ class ProjectController extends Controller
      */
     public function associateSchema(Request $request, Project $project): JsonResponse
     {
-        $user = Auth::user();
-        
-        // DEBUG: Log authentication details
-        \Log::info("🔍 associateSchema DEBUG", [
-            'user_id' => $user ? $user->id : 'NULL',
-            'user_email' => $user ? $user->email : 'NULL',
-            'project_id' => $project->id,
-            'project_owner_id' => $project->owner_id,
-            'is_owner' => $user && $project->owner_id === $user->id,
-            'request_url' => $request->fullUrl(),
-            'bearer_token_present' => $request->bearerToken() ? 'YES' : 'NO'
-        ]);
-        
-        // Check if user has access to this project (owner or team member)
-        $hasAccess = $user && ($project->owner_id === $user->id || 
-                    $project->teams()->whereHas('members', function($query) use ($user) {
-                        $query->where('user_id', $user->id);
-                    })->exists());
-        
-        \Log::info("🔍 Access check result", [
-            'hasAccess' => $hasAccess,
-            'user_exists' => !!$user
-        ]);
-        
-        if (!$hasAccess) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
