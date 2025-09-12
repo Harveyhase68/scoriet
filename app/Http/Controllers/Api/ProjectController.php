@@ -289,15 +289,8 @@ class ProjectController extends Controller
      */
     public function getAssignedTeams(Project $project): JsonResponse
     {
-        $user = Auth::user();
-        
-        // Check if user has access to this project (owner or team member)
-        $hasAccess = $project->owner_id === $user->id || 
-                    $project->teams()->whereHas('members', function($query) use ($user) {
-                        $query->where('user_id', $user->id);
-                    })->exists();
-        
-        if (!$hasAccess) {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
