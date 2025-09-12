@@ -21,6 +21,15 @@ class ProjectController extends Controller
     {
         $user = $user ?? Auth::user();
         
+        \Log::info("🔍 Permission Check Debug", [
+            'user_id' => $user ? $user->id : 'NULL',
+            'user_type' => $user ? gettype($user->id) : 'NULL',
+            'project_id' => $project->id,
+            'project_owner_id' => $project->owner_id,
+            'project_owner_type' => gettype($project->owner_id),
+            'string_cast_equal' => $user ? ((string)$project->owner_id === (string)$user->id) : false
+        ]);
+        
         if (!$user) {
             return false;
         }
