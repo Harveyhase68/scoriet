@@ -178,7 +178,16 @@ class ProjectController extends Controller
     public function show(Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -194,7 +203,16 @@ class ProjectController extends Controller
     public function update(Request $request, Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -230,7 +248,16 @@ class ProjectController extends Controller
     public function destroy(Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -246,7 +273,16 @@ class ProjectController extends Controller
     public function forceDestroy(Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -261,7 +297,16 @@ class ProjectController extends Controller
     public function restore(Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -276,7 +321,16 @@ class ProjectController extends Controller
     public function getAvailableTeams(Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -320,7 +374,16 @@ class ProjectController extends Controller
     public function assignTeams(Request $request, Project $project): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -363,7 +426,16 @@ class ProjectController extends Controller
     public function removeTeam(Project $project, Team $team): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -446,7 +518,16 @@ class ProjectController extends Controller
     public function dissociateSchema(Project $project, FloatingSchema $schema): JsonResponse
     {
         // Check if user has access to this project
-        if (!$this->userHasProjectAccess($project)) {
+        $hasAccess = $this->userHasProjectAccess($project);
+        \Log::info("🔍 Final Permission Result", [
+            'endpoint' => $request->path(),
+            'method' => $request->method(), 
+            'hasAccess' => $hasAccess,
+            'will_return_403' => !$hasAccess
+        ]);
+        
+        if (!$hasAccess) {
+            \Log::error("❌ RETURNING 403 from userHasProjectAccess check");
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
