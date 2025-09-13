@@ -8,6 +8,7 @@ use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SchemaController;
 use App\Http\Controllers\ProjectApplicationController;
+use App\Http\Controllers\ProjectInvitationController;
 use Illuminate\Support\Facades\Route;
 
 // Manual OAuth token route for API with email verification check
@@ -44,6 +45,12 @@ Route::prefix('auth')->group(function () {
             return response()->json(['valid' => false, 'message' => 'This password reset token is invalid.'], 400);
         }
     });
+});
+
+// Public Project Invitation Routes (token-based, no auth required)
+Route::prefix('project-invitations')->name('project-invitations.')->group(function () {
+    Route::post('/accept/{token}', [ProjectInvitationController::class, 'acceptInvitation'])->name('accept');
+    Route::post('/decline/{token}', [ProjectInvitationController::class, 'declineInvitation'])->name('decline');
 });
 
 // Protected Routes (require authentication)
@@ -144,6 +151,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/applications', [ProjectApplicationController::class, 'getProjectApplications']);
     Route::post('/applications/{application}/review', [ProjectApplicationController::class, 'reviewApplication']);
     Route::get('/my-applications', [ProjectApplicationController::class, 'getMyApplications']);
+    
+    // Project Invitations
+    Route::post('/projects/{project}/invitations', [ProjectInvitationController::class, 'sendInvitation']);
+    Route::get('/projects/{project}/invitations', [ProjectInvitationController::class, 'getProjectInvitations']);
+    Route::delete('/projects/{project}/invitations/{invitation}', [ProjectInvitationController::class, 'cancelInvitation']);
+    Route::get('/my-invitations', [ProjectInvitationController::class, 'getMyInvitations']);
 });
 
 // JavaScript-Datei ausliefern
