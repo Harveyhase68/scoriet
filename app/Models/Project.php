@@ -264,4 +264,100 @@ class Project extends Model
         // Default: include all schemas, but this can be customized
         return true;
     }
+
+    /**
+     * Get all members of this project
+     */
+    public function members()
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    /**
+     * Get all invitations for this project
+     */
+    public function invitations()
+    {
+        return $this->hasMany(ProjectInvitation::class);
+    }
+
+    /**
+     * Get pending invitations
+     */
+    public function pendingInvitations()
+    {
+        return $this->invitations()->where('status', 'pending');
+    }
+
+    /**
+     * Check if a user is a member of this project
+     */
+    public function hasMember(User $user): bool
+    {
+        return $this->members()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Get a user's membership in this project
+     */
+    public function getMembership(User $user): ?ProjectMember
+    {
+        return $this->members()->where('user_id', $user->id)->first();
+    }
+
+    /**
+     * Check if a user can manage this project
+     */
+    public function userCanManage(User $user): bool
+    {
+        // Project owner can always manage
+        if ((string)$this->owner_id === (string)$user->id) {
+            return true;
+        }
+
+        // Project admins can manage
+        $membership = $this->getMembership($user);
+        return $membership && $membership->isAdmin();
+    }
+
+    /**
+     * Check if a user can access this project (owner, member, or team member)
+     */
+    public function userCanAccess(User $user): bool
+    {
+        // Project owner can always access
+        if ((string)$this->owner_id === (string)$user->id) {
+            return true;
+        }
+
+        // Direct project members can access
+        if ($this->hasMember($user)) {
+            return true;
+        }
+
+        // Team members can access
+        return $this->teams()->whereHas('members', function($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->exists();
+    }
+
+    /**
+     * Invite a user to this project
+     */
+    public function inviteUser(string $email, string $role = 'member', ?string $message = null, ?User $inviter = null): ProjectInvitation
+    {
+        $inviter = $inviter ?? auth()->user();
+        
+        if (!$inviter) {
+            throw new \Exception('No authenticated user to send invitation');
+        }
+
+        return ProjectInvitation::create([
+            'project_id' => $this->id,
+            'invited_by' => $inviter->id,
+            'invited_email' => $email,
+            'role' => $role,
+            'message' => $message,
+        ]);
+    }
 }

@@ -98,6 +98,58 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ProjectApplication::class);
     }
 
+    // Project memberships relationship
+    public function projectMemberships(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    // Project invitations received
+    public function projectInvitations(): HasMany
+    {
+        return $this->hasMany(ProjectInvitation::class, 'invited_user_id');
+    }
+
+    // Project invitations sent by this user
+    public function sentProjectInvitations(): HasMany
+    {
+        return $this->hasMany(ProjectInvitation::class, 'invited_by');
+    }
+
+    // Get all projects this user is a member of (not owner)
+    public function memberProjects()
+    {
+        return $this->belongsToMany(Project::class, 'project_members', 'user_id', 'project_id')
+                   ->withPivot(['role', 'joined_at', 'invited_by'])
+                   ->withTimestamps();
+    }
+
+    // Check if user is a member of a specific project
+    public function isMemberOf(Project $project): bool
+    {
+        return $this->projectMemberships()->where('project_id', $project->id)->exists();
+    }
+
+    // Get user's role in a specific project
+    public function getProjectRole(Project $project): ?string
+    {
+        $membership = $this->projectMemberships()->where('project_id', $project->id)->first();
+        return $membership ? $membership->role : null;
+    }
+
+    // Check if user can manage a specific project
+    public function canManageProject(Project $project): bool
+    {
+        // Project owner can always manage
+        if ((string)$project->owner_id === (string)$this->id) {
+            return true;
+        }
+
+        // Project admin members can manage
+        $membership = $this->projectMemberships()->where('project_id', $project->id)->first();
+        return $membership && $membership->isAdmin();
+    }
+
     // Premium user methods
     public function isPremium(): bool
     {
