@@ -25,12 +25,24 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
       const data = await response.json();
 
       if (response.ok) {
+        // Store the access token if provided
+        if (data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
         if (data.already_verified) {
           setStatus('already_verified');
         } else {
           setStatus('success');
         }
         setMessage(data.message);
+
+        // Auto-redirect to app after a short delay
+        // The app will automatically check for pending invitations after auto-login
+        setTimeout(() => {
+          window.location.href = '/app';
+        }, 2000);
       } else {
         setStatus('error');
         setMessage(data.message || 'Fehler bei der E-Mail-Bestätigung');
@@ -106,12 +118,12 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
               {(status === 'success' || status === 'already_verified') && (
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600">
-                    Sie können sich nun einloggen.
+                    You are now logged in and will be redirected to the app automatically.
                   </p>
                   <Button
-                    label="Zur Anmeldung"
-                    icon="pi pi-sign-in"
-                    onClick={handleGoToLogin}
+                    label="Go to App Now"
+                    icon="pi pi-arrow-right"
+                    onClick={() => window.location.href = '/app'}
                     className="w-full"
                   />
                 </div>

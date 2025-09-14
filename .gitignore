@@ -8,6 +8,7 @@
 /storage/pail
 /vendor
 .env
+.env.demo
 .env.backup
 .env.production
 .phpactor.json

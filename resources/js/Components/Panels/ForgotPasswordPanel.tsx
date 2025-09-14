@@ -16,10 +16,10 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
-  // Step 1: Email eingeben
+  // Step 1: Enter email
   const [email, setEmail] = useState('');
 
-  // Step 2: Token und neues Passwort
+  // Step 2: Token and new password
   const [resetData, setResetData] = useState({
     token: '',
     password: '',
@@ -27,8 +27,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
   });
 
   const steps = [
-    { label: 'E-Mail eingeben' },
-    { label: 'Passwort zurücksetzen' }
+    { label: 'Enter email' },
+    { label: 'Reset password' }
   ];
 
   const handleRequestReset = async (e: React.FormEvent) => {
@@ -50,14 +50,14 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Reset-Link konnte nicht gesendet werden');
+        throw new Error(data.message || 'Reset link could not be sent');
       }
 
-      setSuccess('Ein Reset-Link wurde an Ihre E-Mail-Adresse gesendet. Prüfen Sie Ihr Postfach.');
+      setSuccess('A reset link has been sent to your email address. Check your inbox.');
       setCurrentStep(1);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setError(err instanceof Error ? err.message : 'An error has occurred');
     } finally {
       setLoading(false);
     }
@@ -69,9 +69,9 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
     setError('');
     setSuccess('');
 
-    // Passwort-Bestätigung prüfen
+    // Check password confirmation
     if (resetData.password !== resetData.password_confirmation) {
-      setError('Passwörter stimmen nicht überein');
+      setError('Passwords do not match');
       setLoading(false);
       return;
     }
@@ -94,10 +94,10 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Passwort konnte nicht zurückgesetzt werden');
+        throw new Error(data.message || 'Password could not be reset');
       }
 
-      setSuccess('Passwort erfolgreich zurückgesetzt! Sie können sich jetzt mit dem neuen Passwort anmelden.');
+      setSuccess('Password successfully reset! You can now log in with your new password.');
       
       // Nach 3 Sekunden zum Login weiterleiten
       setTimeout(() => {
@@ -107,7 +107,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       }, 3000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setError(err instanceof Error ? err.message : 'An error has occurred');
     } finally {
       setLoading(false);
     }
@@ -163,8 +163,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
           <form onSubmit={handleRequestReset} className="space-y-4">
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-4">
-                Geben Sie Ihre E-Mail-Adresse ein, um einen Link zum Zurücksetzen 
-                Ihres Passworts zu erhalten.
+                Enter your email address to receive a link to reset your password.
               </p>
             </div>
 
@@ -186,7 +185,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
 
             <Button
               type="submit"
-              label={loading ? "Senden..." : "Reset-Link senden"}
+              label={loading ? "Send..." : "Send reset link"}
               icon={loading ? "pi pi-spinner pi-spin" : "pi pi-envelope"}
               className="w-full"
               disabled={loading}
@@ -196,7 +195,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               <div className="text-center mt-4">
                 <Button
                   type="button"
-                  label="Zurück zur Anmeldung"
+                  label="Back to Login"
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('login')}
                 />
@@ -209,7 +208,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
           <form onSubmit={handlePasswordReset} className="space-y-4">
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-4">
-                Geben Sie den Reset-Code aus der E-Mail und Ihr neues Passwort ein.
+                Enter the reset code from the email and your new password.
               </p>
             </div>
 
@@ -290,7 +289,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               <div className="text-center mt-4">
                 <Button
                   type="button"
-                  label="Zurück zur Anmeldung"
+                  label="Back to Login"
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('login')}
                 />

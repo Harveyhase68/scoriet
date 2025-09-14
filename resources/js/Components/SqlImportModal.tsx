@@ -49,7 +49,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   };
 
   // Load editable schemas when modal opens and project is available
-  const loadEditableSchemas = async () => {
+  const loadEditableSchemas = React.useCallback(async () => {
     if (!selectedProject) {
       setSchemas([]);
       return;
@@ -88,7 +88,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     } finally {
       setLoadingSchemas(false);
     }
-  };
+  }, [selectedProject, preselectedSchemaId, selectedSchemaId]);
 
   // Set preselected schema when modal opens or preselectedSchemaId changes
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       setError('No project selected. Please select a project first.');
       setSchemas([]);
     }
-  }, [isOpen, selectedProject]);
+  }, [isOpen, selectedProject, loadEditableSchemas]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useForm } from '@inertiajs/react';
 import { createPortal } from 'react-dom';
 
 interface ResetPasswordModalProps {
@@ -17,7 +16,7 @@ export default function ResetPasswordModal({
   email,
   onSwitchToLogin
 }: ResetPasswordModalProps) {
-  const { data, setData, post, processing, errors } = useForm({
+  const [data, setData] = useState({
     token: token,
     email: email,
     password: '',
@@ -25,10 +24,26 @@ export default function ResetPasswordModal({
   });
 
   const [success, setSuccess] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resetError, setResetError] = useState<string>('');
+  const [errors, setErrors] = useState<any>({});
   const [tokenValidated, setTokenValidated] = useState(false);
   const [validatingToken, setValidatingToken] = useState(true);
+
+  const updateData = (field: string, value: string) => {
+    setData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Update data when props change
+  React.useEffect(() => {
+    setData({
+      token: token,
+      email: email,
+      password: '',
+      password_confirmation: '',
+    });
+  }, [token, email]);
 
   // Token validation when loading modal
   React.useEffect(() => {
@@ -69,13 +84,27 @@ export default function ResetPasswordModal({
     }
   }, [visible, token, email]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setResetError('');
-    
-    post('/reset-password', {
-      onSuccess: () => {
+    setErrors({});
+    setProcessing(true);
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(data)
+      });
+
+      const responseData = await response.json();
+
+      if (response.ok) {
         setSuccess(true);
         setResetError('');
         // Switch to login after 2 seconds
@@ -83,20 +112,26 @@ export default function ResetPasswordModal({
           setSuccess(false);
           onSwitchToLogin();
         }, 2000);
-      },
-      onError: (errors) => {
-        // Show error message in UI
-        if (errors.email) {
-          setResetError(errors.email);
-        } else if (errors.password) {
-          setResetError('Password error: ' + errors.password);
-        } else if (errors.token) {
-          setResetError('Token error: ' + errors.token);
+      } else {
+        // Handle validation errors
+        if (responseData.errors) {
+          setErrors(responseData.errors);
+          if (responseData.errors.email) {
+            setResetError(Array.isArray(responseData.errors.email) ? responseData.errors.email[0] : responseData.errors.email);
+          } else if (responseData.errors.password) {
+            setResetError('Password error: ' + (Array.isArray(responseData.errors.password) ? responseData.errors.password[0] : responseData.errors.password));
+          } else if (responseData.errors.token) {
+            setResetError('Token error: ' + (Array.isArray(responseData.errors.token) ? responseData.errors.token[0] : responseData.errors.token));
+          }
         } else {
-          setResetError('An unknown error occurred. Please try again.');
+          setResetError(responseData.message || 'An unknown error occurred. Please try again.');
         }
       }
-    });
+    } catch {
+      setResetError('Network error - please try again later.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   if (!visible) return null;
@@ -229,7 +264,7 @@ export default function ResetPasswordModal({
                   type="password"
                   placeholder="Enter new password"
                   value={data.password}
-                  onChange={(e) => setData('password', e.target.value)}
+                  onChange={(e) => updateData('password', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                            focus:ring-blue-500 focus:border-blue-500
@@ -251,7 +286,7 @@ export default function ResetPasswordModal({
                   type="password"
                   placeholder="Repeat password"
                   value={data.password_confirmation}
-                  onChange={(e) => setData('password_confirmation', e.target.value)}
+                  onChange={(e) => updateData('password_confirmation', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
                            focus:ring-blue-500 focus:border-blue-500

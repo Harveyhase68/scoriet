@@ -11,6 +11,8 @@ import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
+import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal';
+import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -71,6 +73,8 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
   const [assigningTeams, setAssigningTeams] = useState(false);
   const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
+  const [showInvitationsModal, setShowInvitationsModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
 
   // Load projects when panel becomes active
   useEffect(() => {
@@ -459,6 +463,16 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
           onClick={() => openTeamsModal(project)}
         />
         <Button
+          icon="pi pi-user"
+          className="p-button-rounded p-button-text p-button-sm"
+          tooltip="Manage members"
+          onClick={() => {
+            console.log('Opening Members Modal for project:', project.name, 'ID:', project.id);
+            setSelectedProject(project);
+            setShowMembersModal(true);
+          }}
+        />
+        <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Edit project"
@@ -711,6 +725,13 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                 className="p-button-outlined flex-col h-20"
                 onClick={() => setShowApplicationsModal(true)}
                 disabled={!currentProject || !currentProject.allow_join_requests}
+              />
+              <Button
+                label="Invitations"
+                icon="pi pi-send"
+                className="p-button-outlined flex-col h-20"
+                onClick={() => setShowInvitationsModal(true)}
+                disabled={!currentProject}
               />
               <Button
                 label="Templates"
@@ -1105,6 +1126,21 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
         visible={showApplicationsModal}
         onHide={() => setShowApplicationsModal(false)}
         project={currentProject}
+      />
+
+      {/* Project Invitations Modal */}
+      <ProjectInvitationsModal
+        visible={showInvitationsModal}
+        onHide={() => setShowInvitationsModal(false)}
+        project={currentProject}
+        onSuccess={loadProjects}
+      />
+
+      {/* Project Members Modal */}
+      <ProjectMembersModal
+        visible={showMembersModal}
+        onHide={() => setShowMembersModal(false)}
+        project={selectedProject}
       />
     </div>
   );

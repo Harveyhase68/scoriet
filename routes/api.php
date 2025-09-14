@@ -48,7 +48,8 @@ Route::prefix('auth')->group(function () {
 });
 
 // Public Project Invitation Routes (token-based, no auth required)
-Route::prefix('project-invitations')->name('project-invitations.')->group(function () {
+Route::prefix('project-invitations')->name('api.project-invitations.')->group(function () {
+    Route::get('/info/{token}', [ProjectInvitationController::class, 'getInvitationInfo'])->name('info');
     Route::post('/accept/{token}', [ProjectInvitationController::class, 'acceptInvitation'])->name('accept');
     Route::post('/decline/{token}', [ProjectInvitationController::class, 'declineInvitation'])->name('decline');
 });
@@ -98,7 +99,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/teams/assigned', [ProjectController::class, 'getAssignedTeams']);
     Route::post('/projects/{project}/teams/assign', [ProjectController::class, 'assignTeams']);
     Route::delete('/projects/{project}/teams/{team}', [ProjectController::class, 'removeTeam']);
-    
+
+    // Project Member Management
+    Route::get('/projects/{project}/members', [ProjectController::class, 'getProjectMembers']);
+    Route::delete('/projects/{project}/members', [ProjectController::class, 'removeProjectMember']);
+    Route::put('/projects/{project}/members/role', [ProjectController::class, 'updateProjectMemberRole']);
+
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {
         $user = Auth::user();
@@ -157,6 +163,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/invitations', [ProjectInvitationController::class, 'getProjectInvitations']);
     Route::delete('/projects/{project}/invitations/{invitation}', [ProjectInvitationController::class, 'cancelInvitation']);
     Route::get('/my-invitations', [ProjectInvitationController::class, 'getMyInvitations']);
+
+    // Pending Invitation Management
+    Route::get('/my-pending-invitation', [ProjectInvitationController::class, 'getMyPendingInvitation']);
+    Route::post('/my-pending-invitation/accept', [ProjectInvitationController::class, 'acceptMyPendingInvitation']);
+    Route::post('/my-pending-invitation/decline', [ProjectInvitationController::class, 'declineMyPendingInvitation']);
 });
 
 // JavaScript-Datei ausliefern

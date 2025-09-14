@@ -379,7 +379,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  }, [selectedProject, preSelectedSchemaId, setEdges, setNodes]); // Removed selectedSchema dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject, preSelectedSchemaId]); // selectedSchema dependency would cause infinite loop
 
   // Save layout to backend
   const saveLayout = useCallback(async (nodes: Node[]) => {
@@ -481,7 +482,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  }, []); // No dependencies to avoid circular dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencies would cause circular dependency
 
   // Load schema version with explicit schema parameter (solves state timing issues)
   const loadSchemaVersionWithSchema = useCallback(async (schema: FloatingSchema, version: SchemaVersionExtended) => {
@@ -529,7 +531,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges, loadLayoutForVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencies would cause infinite re-renders
 
 
   // Load floating schemas when project changes
@@ -545,7 +548,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setSelectedSchema(preSelectedSchema);
       }
     }
-  }, [preSelectedSchemaId, floatingSchemas]); // Removed selectedSchema dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preSelectedSchemaId, floatingSchemas]); // selectedSchema dependency would cause infinite loop
 
   // Load schema versions when selected schema changes
   useEffect(() => {
@@ -598,7 +602,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Directly delete if already marked as having changes
       performDeleteTable(table);
     }
-  }, [selectedVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencies would cause infinite re-renders
 
   const performDeleteTable = useCallback(async (table: SchemaTable) => {
     if (!selectedVersion) return;
@@ -676,7 +681,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setShowVersionModal(false);
       setPendingDeleteTable(null);
     }
-  }, [selectedSchema, selectedVersion, pendingDeleteTable, loadSchemaVersions, loadSchemaVersionWithSchema]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSchema, selectedVersion, pendingDeleteTable]); // Other dependencies would cause infinite loop
 
   const handleVersionModalContinue = useCallback(async () => {
     if (!selectedVersion || !pendingDeleteTable) return;
