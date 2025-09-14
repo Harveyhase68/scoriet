@@ -481,4 +481,112 @@ class ProjectController extends Controller
 
         return response()->json($editableSchemas);
     }
+
+    /**
+     * Get project members
+     */
+    public function getProjectMembers(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user has access to the project
+        if (!$project->visibleTo($user)->exists()) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        // Get all project members with user details
+        $members = $project->members()
+            ->with(['user'])
+            ->orderBy('role', 'desc') // Owner first, then admin, then member
+            ->orderBy('joined_at', 'asc')
+            ->get()
+            ->map(function ($membership) {
+                return [
+                    'id' => $membership->id,
+                    'user_id' => $membership->user_id,
+                    'role' => $membership->role,
+                    'joined_at' => $membership->joined_at,
+                    'user' => [
+                        'id' => $membership->user->id,
+                        'name' => $membership->user->name,
+                        'email' => $membership->user->email,
+                        'username' => $membership->user->username,
+                    ]
+                ];
+            });
+
+        return response()->json($members);
+    }
+
+    /**
+     * Remove project member
+     */
+    public function removeProjectMember(Project $project, Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user is project owner or admin
+        $userMembership = $project->members()->where('user_id', $user->id)->first();
+        if (!$userMembership || !in_array($userMembership->role, ['owner', 'admin'])) {
+            return response()->json(['message' => 'Insufficient permissions'], 403);
+        }
+
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id'
+        ]);
+
+        $memberToRemove = $project->members()->where('user_id', $request->user_id)->first();
+
+        if (!$memberToRemove) {
+            return response()->json(['message' => 'User is not a member of this project'], 404);
+        }
+
+        // Prevent removing project owner
+        if ($memberToRemove->role === 'owner') {
+            return response()->json(['message' => 'Cannot remove project owner'], 400);
+        }
+
+        // Prevent non-owners from removing admins
+        if ($userMembership->role !== 'owner' && $memberToRemove->role === 'admin') {
+            return response()->json(['message' => 'Only project owner can remove admins'], 403);
+        }
+
+        $memberToRemove->delete();
+
+        return response()->json(['message' => 'Member removed successfully']);
+    }
+
+    /**
+     * Update project member role
+     */
+    public function updateProjectMemberRole(Project $project, Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user is project owner (only owners can change roles)
+        $userMembership = $project->members()->where('user_id', $user->id)->first();
+        if (!$userMembership || $userMembership->role !== 'owner') {
+            return response()->json(['message' => 'Only project owner can change member roles'], 403);
+        }
+
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+            'role' => 'required|in:member,admin'
+        ]);
+
+        $memberToUpdate = $project->members()->where('user_id', $request->user_id)->first();
+
+        if (!$memberToUpdate) {
+            return response()->json(['message' => 'User is not a member of this project'], 404);
+        }
+
+        // Prevent changing owner role
+        if ($memberToUpdate->role === 'owner') {
+            return response()->json(['message' => 'Cannot change owner role'], 400);
+        }
+
+        $memberToUpdate->update(['role' => $request->role]);
+
+        return response()->json(['message' => 'Member role updated successfully']);
+    }
 }

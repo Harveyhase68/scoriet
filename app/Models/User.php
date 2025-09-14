@@ -27,6 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'username', // GitHub-style unique username
         'user_type',
         'premium_expires_at',
+        'pending_project_invitation_id',
     ];
 
     /**
@@ -176,5 +177,29 @@ class User extends Authenticatable implements MustVerifyEmail
     public function canCreatePrivateProjects(): bool
     {
         return $this->isPremium() || $this->isAdmin();
+    }
+
+    /**
+     * Get the pending project invitation for this user
+     */
+    public function pendingProjectInvitation()
+    {
+        return $this->belongsTo(ProjectInvitation::class, 'pending_project_invitation_id');
+    }
+
+    /**
+     * Check if user has a pending project invitation
+     */
+    public function hasPendingInvitation(): bool
+    {
+        return $this->pending_project_invitation_id !== null;
+    }
+
+    /**
+     * Clear the pending project invitation
+     */
+    public function clearPendingInvitation(): void
+    {
+        $this->update(['pending_project_invitation_id' => null]);
     }
 }

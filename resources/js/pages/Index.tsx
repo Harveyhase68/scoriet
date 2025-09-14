@@ -30,6 +30,9 @@ const LandingPage = lazy(() => import('@/pages/LandingPage'));
 // Auth Modal System
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 
+// Pending Invitation Modal
+const PendingInvitationModal = lazy(() => import('@/Components/Modals/PendingInvitationModal'));
+
 // Project Context
 import { ProjectProvider } from '@/contexts/ProjectContext';
 
@@ -451,19 +454,102 @@ export default function Index(props: IndexProps = {}) {
     const sessionToken = sessionStorage.getItem('access_token');
     const isLoggingOut = localStorage.getItem('logout_in_progress');
     const authenticated = !!(localToken || sessionToken);
-    
+
     // Don't show login modal during logout process or if authenticated
     if (isLoggingOut || authenticated) {
       return null;
     }
-    
+
     // Show login modal immediately if not authenticated
     return 'login';
   });
   
-  // Auth State Management
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Auth State Management - Initialize based on token existence
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const localToken = localStorage.getItem('access_token');
+    const sessionToken = sessionStorage.getItem('access_token');
+    return !!(localToken || sessionToken);
+  });
   const [hasAutoOpenedHome, setHasAutoOpenedHome] = useState<boolean>(false);
+  const [showPendingInvitation, setShowPendingInvitation] = useState(false);
+
+  console.log('🚨 CACHE BUSTER: Index.tsx render - activeModal:', activeModal, 'TIMESTAMP:', new Date().toISOString());
+
+  // Modal management functions - defined early to ensure they're available
+  const handleSwitchModal = useCallback((modalType: AuthModalType) => {
+    console.log('Index.tsx handleSwitchModal called with:', modalType);
+    localStorage.setItem('auth_modal_interaction', 'true');
+    setActiveModal(modalType);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    const currentModal = activeModal;
+
+    // Prevent closing login modal if not authenticated (mandatory login)
+    if (currentModal === 'login' && !isAuthenticated) {
+      return; // Don't allow closing
+    }
+
+    setActiveModal(null);
+
+    // When the reset modal is closed and we come from a reset URL,
+    // redirect to main page
+    if (currentModal === 'reset' && resetToken) {
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+    }
+  }, [activeModal, isAuthenticated, resetToken]);
+
+  console.log('Index.tsx render - functions defined:', {
+    handleSwitchModal: typeof handleSwitchModal,
+    handleCloseModal: typeof handleCloseModal
+  });
+
+  // Direct event listener setup - outside useEffect
+  React.useEffect(() => {
+    console.log('🔧 Direct useEffect: Setting up auth modal event listener');
+
+    const directModalSwitchHandler = (event: CustomEvent) => {
+      const { modalType } = event.detail;
+      console.log('🚀 DIRECT: Auth modal switch event received:', modalType);
+      console.log('🚀 DIRECT: Current activeModal before switch:', activeModal);
+      localStorage.setItem('auth_modal_interaction', 'true');
+      setActiveModal(modalType);
+      console.log('🚀 DIRECT: setActiveModal called with:', modalType);
+    };
+
+    window.addEventListener('auth-modal-switch', directModalSwitchHandler as EventListener);
+
+    return () => {
+      window.removeEventListener('auth-modal-switch', directModalSwitchHandler as EventListener);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once
+
+  // Check for pending invitations
+  const checkPendingInvitation = useCallback(async () => {
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      if (!accessToken) return;
+
+      const response = await fetch('/api/my-pending-invitation', {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (response.ok) {
+        const invitation = await response.json();
+        if (invitation && invitation.status === 'pending') {
+          setShowPendingInvitation(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking pending invitation:', error);
+    }
+  }, []);
 
   // Initial setup for Reset Password
   React.useEffect(() => {
@@ -479,26 +565,78 @@ export default function Index(props: IndexProps = {}) {
 
   // Auth Status Monitoring
   React.useEffect(() => {
-    const checkAuthStatus = () => {
+    const checkAuthStatus = async () => {
       // Check both localStorage (Remember Me) and sessionStorage (Session only)
       const localToken = localStorage.getItem('access_token');
       const sessionToken = sessionStorage.getItem('access_token');
-      const authenticated = !!(localToken || sessionToken);
-      setIsAuthenticated(authenticated);
-      
-      // Auto-open login modal if not authenticated and no modal is open (but not during logout)
-      const isLoggingOut = localStorage.getItem('logout_in_progress');
-      if (!authenticated && !activeModal && !resetToken && !isLoggingOut) {
-        setActiveModal('login');
+      const token = localToken || sessionToken;
+
+      if (token) {
+        try {
+          // Validate token with API call
+          const response = await fetch('/api/user', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            // Token is valid - no need to change isAuthenticated if it's already true
+            if (!isAuthenticated) {
+              setIsAuthenticated(true);
+
+              // Check for pending invitations if just became authenticated
+              setTimeout(() => {
+                checkPendingInvitation();
+              }, 500);
+            }
+
+            // Close login modal if authenticated (but keep other modals open)
+            if (activeModal === 'login') {
+              setActiveModal(null);
+            }
+          } else {
+            // Token is invalid - clean up and set as not authenticated
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('remember_me');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('access_token');
+            sessionStorage.removeItem('refresh_token');
+            document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            setIsAuthenticated(false);
+
+            // Trigger storage event for other components
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('auth-change'));
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
       }
-      // Close login modal if authenticated (but keep other modals open)
-      else if (authenticated && activeModal === 'login') {
-        setActiveModal(null);
+
+      // Auto-open login modal if not authenticated and no modal is open (but not during logout)
+      // Only do this on initial load, not when switching between auth modals
+      const isLoggingOut = localStorage.getItem('logout_in_progress');
+      if (!isAuthenticated && !activeModal && !resetToken && !isLoggingOut &&
+          !localStorage.getItem('auth_modal_interaction')) {
+        setActiveModal('login');
       }
     };
 
-    // Initial check
-    checkAuthStatus();
+    // Initial check - only if we don't already know the user is authenticated
+    // This prevents the login modal from flashing when user is already logged in
+    const localToken = localStorage.getItem('access_token');
+    const sessionToken = sessionStorage.getItem('access_token');
+    const hasToken = !!(localToken || sessionToken);
+
+    if (!hasToken || !isAuthenticated) {
+      checkAuthStatus();
+    }
 
     // Listen for storage changes (login/logout events)
     const handleStorageChange = () => {
@@ -513,7 +651,34 @@ export default function Index(props: IndexProps = {}) {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+    window.addEventListener('auth-change', handleStorageChange);
+
+    // Listen for auth modal switch events
+    const handleAuthModalSwitch = (event: CustomEvent) => {
+      const { modalType } = event.detail;
+      console.log('🚀 Index.tsx: Auth modal switch event received:', modalType);
+      console.log('🚀 Current activeModal before switch:', activeModal);
+      localStorage.setItem('auth_modal_interaction', 'true');
+      setActiveModal(modalType);
+      console.log('🚀 setActiveModal called with:', modalType);
+    };
+
+    console.log('🔧 Index.tsx: Adding event listener for auth-modal-switch');
+    window.addEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
+
+    // Test the event listener immediately
+    console.log('🔧 Index.tsx: Testing event listener registration');
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('auth-modal-switch', {
+        detail: { modalType: 'test' }
+      }));
+    }, 1000);
+
+    // Periodic token validation (every 10 minutes)
+    const tokenCheckInterval = setInterval(() => {
+      checkAuthStatus();
+    }, 10 * 60 * 1000);
+
     // Also listen for manual localStorage changes
     const originalSetItem = localStorage.setItem;
     const originalRemoveItem = localStorage.removeItem;
@@ -534,10 +699,14 @@ export default function Index(props: IndexProps = {}) {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleStorageChange);
+      window.removeEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
+      clearInterval(tokenCheckInterval);
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
     };
-  }, [activeModal, resetToken]); // Add dependencies for auto-login logic
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, checkPendingInvitation]); // Dependencies would cause infinite loop
 
   // Function to close all panels
   const closeAllPanels = () => {
@@ -571,9 +740,14 @@ export default function Index(props: IndexProps = {}) {
   };
 
   const openPanel = useCallback((panelId: string, data?: any) => {
-    // Check authentication first
-    if (!isAuthenticated) {
+    // Don't override existing auth modals
+    if (!isAuthenticated && !activeModal) {
       setActiveModal('login');
+      return;
+    }
+
+    // If user is not authenticated and there's already a modal, just return
+    if (!isAuthenticated) {
       return;
     }
 
@@ -700,7 +874,8 @@ export default function Index(props: IndexProps = {}) {
         }
       }
     }, 50);
-  }, [isAuthenticated, setActiveModal, ref, layout, setLayout]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // Other dependencies would cause infinite loop
 
   // Handle opening designer with pre-selected schema
   const handleOpenDesigner = useCallback((schemaId: number, schemaName?: string) => {
@@ -921,31 +1096,6 @@ useHotkeys('alt+n', () => {
     setActiveModal(modalType);
   };
 
-  const handleCloseModal = () => {
-    const currentModal = activeModal;
-    
-    // Prevent closing login modal if not authenticated (mandatory login)
-    if (currentModal === 'login' && !isAuthenticated) {
-      return; // Don't allow closing
-    }
-    
-    setActiveModal(null);
-    
-    // When the reset modal is closed and we come from a reset URL,
-    // redirect to main page
-    if (currentModal === 'reset' && resetToken) {
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
-    }
-    
-    // If closing register/forgot modal and not authenticated, return to login
-    if ((currentModal === 'register' || currentModal === 'forgot') && !isAuthenticated) {
-      setTimeout(() => {
-        setActiveModal('login');
-      }, 100);
-    }
-  };
 
   return (
     <>
@@ -1022,9 +1172,7 @@ useHotkeys('alt+n', () => {
       {/* AUTH MODAL SYSTEM */}
       <AuthModalManager
         activeModal={activeModal}
-        onCloseModal={() => {
-          handleCloseModal();
-        }}
+        onCloseModal={handleCloseModal}
         resetPasswordToken={resetToken}
         resetPasswordEmail={resetEmail}
         isLoginClosable={isAuthenticated} // Login modal only closable when authenticated
@@ -1033,12 +1181,36 @@ useHotkeys('alt+n', () => {
           window.dispatchEvent(new Event('storage'));
           // Also dispatch custom auth event for ProjectContext
           window.dispatchEvent(new Event('auth-change'));
+          // Clear modal interaction flag after successful login
+          localStorage.removeItem('auth_modal_interaction');
           handleCloseModal();
+          // Check for pending invitations after login
+          setTimeout(() => {
+            checkPendingInvitation();
+          }, 500);
         }}
         onRegistrationSuccess={() => {
           handleCloseModal();
         }}
       />
+
+      {/* PENDING INVITATION MODAL */}
+      {showPendingInvitation && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <PendingInvitationModal
+            visible={showPendingInvitation}
+            onHide={() => setShowPendingInvitation(false)}
+            onAccepted={() => {
+              setShowPendingInvitation(false);
+              // Refresh the project context
+              window.dispatchEvent(new Event('auth-change'));
+            }}
+            onDeclined={() => {
+              setShowPendingInvitation(false);
+            }}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

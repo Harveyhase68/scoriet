@@ -36,11 +36,23 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Check if there's a pending invitation for this email
+        $pendingInvitationId = null;
+        $invitation = \App\Models\ProjectInvitation::where('invited_email', $request->email)
+            ->where('status', 'pending')
+            ->whereDate('expires_at', '>=', now())
+            ->first();
+
+        if ($invitation) {
+            $pendingInvitationId = $invitation->id;
+        }
+
         $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'pending_project_invitation_id' => $pendingInvitationId,
         ]);
 
         // Trigger the email verification
@@ -58,7 +70,8 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Benutzer erfolgreich registriert. Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.',
             'user' => $user,
-            'email_verification_required' => true
+            'email_verification_required' => true,
+            'has_pending_invitation' => $user->hasPendingInvitation()
         ], 201);
     }
 
@@ -96,16 +109,32 @@ class AuthController extends Controller
                 'email_verification_required' => true
             ], 403);
         }
+
+        // Check if user should have a pending invitation and doesn't already have one
+        if (!$user->hasPendingInvitation()) {
+            $invitation = \App\Models\ProjectInvitation::where('invited_email', $user->email)
+                ->where('status', 'pending')
+                ->whereDate('expires_at', '>=', now())
+                ->first();
+
+            if ($invitation) {
+                $user->update(['pending_project_invitation_id' => $invitation->id]);
+            }
+        }
         
         // Create a personal access token instead of OAuth token
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->accessToken;
 
+        // Refresh user to get updated pending invitation
+        $user->refresh();
+
         return response()->json([
             'message' => 'Login erfolgreich',
             'user' => $user,
             'access_token' => $token,
-            'token_type' => 'Bearer'
+            'token_type' => 'Bearer',
+            'has_pending_invitation' => $user->hasPendingInvitation()
         ]);
     }
 
@@ -268,20 +297,39 @@ class AuthController extends Controller
         }
 
         if ($user->hasVerifiedEmail()) {
+            // User already verified - still auto-login them
+            $tokenResult = $user->createToken('Personal Access Token');
+            $token = $tokenResult->accessToken;
+
             return response()->json([
                 'message' => 'E-Mail-Adresse bereits bestätigt',
-                'already_verified' => true
+                'already_verified' => true,
+                'user' => $user,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'has_pending_invitation' => $user->hasPendingInvitation()
             ]);
         }
 
         if ($user->markEmailAsVerified()) {
+            // Auto-login after successful verification
+            $tokenResult = $user->createToken('Personal Access Token');
+            $token = $tokenResult->accessToken;
+
+            // Refresh user to get any updated data
+            $user->refresh();
+
             return response()->json([
-                'message' => 'E-Mail-Adresse erfolgreich bestätigt'
+                'message' => 'Email address successfully confirmed',
+                'user' => $user,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'has_pending_invitation' => $user->hasPendingInvitation()
             ]);
         }
 
         return response()->json([
-            'message' => 'Fehler bei der E-Mail-Bestätigung'
+            'message' => 'Email confirmation error'
         ], 500);
     }
 

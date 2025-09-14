@@ -21,6 +21,21 @@ Route::get('/verify-email/{id}/{hash}', function ($id, $hash) {
     ]);
 })->name('verification.verify');
 
+// Project Invitation Routes (from email links)
+Route::get('/project-invitations/accept/{token}', function ($token) {
+    return Inertia::render('ProjectInvitationResponse', [
+        'token' => $token,
+        'action' => 'accept'
+    ]);
+})->name('project-invitations.accept');
+
+Route::get('/project-invitations/decline/{token}', function ($token) {
+    return Inertia::render('ProjectInvitationResponse', [
+        'token' => $token,
+        'action' => 'decline'
+    ]);
+})->name('project-invitations.decline');
+
 // Demo login route (for demo.scoriet.dev)
 Route::get('/demo-login', function () {
     $userType = request('user', 'demo-user');

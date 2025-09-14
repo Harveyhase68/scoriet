@@ -171,14 +171,16 @@ class Project extends Model
     public function scopeVisibleTo($query, $user = null)
     {
         if (!$user) {
-            return $query->where('is_public', true);
+            return $query->whereRaw('1 = 0'); // No projects visible to unauthenticated users
         }
 
         return $query->where(function ($q) use ($user) {
-            $q->where('is_public', true)
-              ->orWhere('owner_id', $user->id)
+            $q->where('owner_id', $user->id) // Projects owned by user
+              ->orWhereHas('members', function ($memberQuery) use ($user) {
+                  $memberQuery->where('user_id', $user->id); // Direct project members
+              })
               ->orWhereHas('teams.members', function ($teamQuery) use ($user) {
-                  $teamQuery->where('user_id', $user->id);
+                  $teamQuery->where('user_id', $user->id); // Team members of project teams
               });
         });
     }

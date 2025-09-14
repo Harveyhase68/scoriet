@@ -91,6 +91,43 @@ class ProjectInvitationController extends Controller
     }
 
     /**
+     * Get invitation information without accepting/declining
+     */
+    public function getInvitationInfo(string $token): JsonResponse
+    {
+        $invitation = ProjectInvitation::with(['project.owner', 'inviter'])
+            ->where('token', $token)
+            ->first();
+
+        if (!$invitation) {
+            return response()->json(['message' => 'Invalid invitation token'], 404);
+        }
+
+        if ($invitation->isExpired()) {
+            return response()->json(['message' => 'This invitation has expired'], 422);
+        }
+
+        if ($invitation->status !== 'pending') {
+            $statusMessage = match($invitation->status) {
+                'accepted' => 'This invitation has already been accepted',
+                'declined' => 'This invitation has already been declined',
+                'expired' => 'This invitation has expired',
+                default => 'This invitation is no longer valid'
+            };
+            
+            return response()->json(['message' => $statusMessage], 422);
+        }
+
+        // Check if user with this email exists
+        $userExists = \App\Models\User::where('email', $invitation->invited_email)->exists();
+
+        return response()->json([
+            'invitation' => $invitation,
+            'user_exists' => $userExists
+        ]);
+    }
+
+    /**
      * Accept a project invitation
      */
     public function acceptInvitation(Request $request, string $token): JsonResponse
@@ -215,5 +252,88 @@ class ProjectInvitationController extends Controller
         $invitation->update(['status' => 'expired']);
 
         return response()->json(['message' => 'Invitation cancelled successfully']);
+    }
+
+    /**
+     * Get the current user's pending invitation
+     */
+    public function getMyPendingInvitation(): JsonResponse
+    {
+        $user = Auth::user();
+        
+        if (!$user->hasPendingInvitation()) {
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        $invitation = $user->pendingProjectInvitation()
+            ->with(['project.owner', 'inviter'])
+            ->first();
+
+        if (!$invitation) {
+            // Clean up if invitation was deleted
+            $user->clearPendingInvitation();
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        return response()->json($invitation);
+    }
+
+    /**
+     * Accept the current user's pending invitation
+     */
+    public function acceptMyPendingInvitation(): JsonResponse
+    {
+        $user = Auth::user();
+        
+        if (!$user->hasPendingInvitation()) {
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        $invitation = $user->pendingProjectInvitation;
+        if (!$invitation) {
+            $user->clearPendingInvitation();
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        // Accept the invitation
+        $success = $invitation->accept();
+        
+        if (!$success) {
+            return response()->json(['message' => 'Failed to accept invitation'], 422);
+        }
+
+        // Clear pending invitation from user
+        $user->clearPendingInvitation();
+
+        return response()->json([
+            'message' => 'Invitation accepted successfully',
+            'project' => $invitation->project
+        ]);
+    }
+
+    /**
+     * Decline the current user's pending invitation
+     */
+    public function declineMyPendingInvitation(): JsonResponse
+    {
+        $user = Auth::user();
+        
+        if (!$user->hasPendingInvitation()) {
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        $invitation = $user->pendingProjectInvitation;
+        if (!$invitation) {
+            $user->clearPendingInvitation();
+            return response()->json(['message' => 'No pending invitation'], 404);
+        }
+
+        // Decline the invitation
+        $invitation->decline();
+
+        // Clear pending invitation from user
+        $user->clearPendingInvitation();
+
+        return response()->json(['message' => 'Invitation declined']);
     }
 }

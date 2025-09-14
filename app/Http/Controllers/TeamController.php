@@ -26,7 +26,7 @@ class TeamController extends Controller
         if ($showAll) {
             // Get ALL teams where user is owner or member (for Team Management)
             $ownedTeams = Team::where('project_owner_id', $user->id)
-                             ->with(['members.user', 'pendingInvitations'])
+                             ->with(['owner', 'members.user', 'pendingInvitations'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
@@ -38,7 +38,7 @@ class TeamController extends Controller
             // Get teams filtered by project (for Team Assignment)
             $ownedTeams = Team::where('project_owner_id', $user->id)
                              ->where('project_name', $projectName)
-                             ->with(['members.user', 'pendingInvitations'])
+                             ->with(['owner', 'members.user', 'pendingInvitations'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');

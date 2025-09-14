@@ -39,14 +39,19 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           setUserName(user.name || user.email);
           return true;
         } else {
+          // Token invalid - clean up and notify other components
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('remember_me');
+          localStorage.removeItem('user');
           sessionStorage.removeItem('access_token');
           sessionStorage.removeItem('refresh_token');
           document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           setIsLoggedIn(false);
           setUserName('');
+
+          // Trigger storage event to notify other components (like Index.tsx)
+          window.dispatchEvent(new Event('storage'));
           return false;
         }
       } catch {
@@ -74,8 +79,23 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
       updateAuthStatus();
     };
 
+    const handleAuthChange = () => {
+      updateAuthStatus();
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('auth-change', handleAuthChange);
+
+    // Periodic token validation (every 5 minutes)
+    const tokenCheckInterval = setInterval(() => {
+      updateAuthStatus();
+    }, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+      clearInterval(tokenCheckInterval);
+    };
   }, []);
 
   // Main navigation menu items for TieredMenu
@@ -245,6 +265,16 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           label: 'Profile',
           icon: 'pi pi-user-edit',
           command: () => onOpenModal?.('profile')
+        },
+        {
+          label: 'Change Plan',
+          icon: 'pi pi-credit-card',
+          command: () => console.log('Change plan - not implemented yet')
+        },
+        {
+          label: 'Go to App',
+          icon: 'pi pi-external-link',
+          command: () => window.location.href = '/app'
         },
         {
           separator: true

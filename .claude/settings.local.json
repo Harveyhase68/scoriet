@@ -30,7 +30,8 @@
       "Bash(cat:*)",
       "Read(//c//**)",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
