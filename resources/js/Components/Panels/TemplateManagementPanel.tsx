@@ -228,10 +228,10 @@ const TemplateManagementPanel: React.FC = () => {
             try {
                 const response = await api.getTemplate(template.id);
                 if (response.success) {
-                    console.log('Loaded template files:', response.template.files);
+                    
                     setTemplateFiles(response.template.files || []);
                 } else {
-                    console.log('No template files found');
+                    
                     setTemplateFiles([]);
                 }
             } catch (error) {
@@ -289,10 +289,7 @@ const TemplateManagementPanel: React.FC = () => {
                 }))
             };
 
-            console.log('Submitting template with files:', {
-                ...templateData,
-                filesCount: templateData.files.length
-            });
+            // Submitting template with files
 
             let response;
             if (editingTemplate) {
@@ -419,11 +416,7 @@ const TemplateManagementPanel: React.FC = () => {
                 }))
             };
 
-            console.log('Saving template with deleted file:', {
-                templateId: editingTemplate.id,
-                deletedFile: fileToDelete.file_name,
-                remainingFiles: templateData.files.length
-            });
+            // Saving template with deleted file
 
             const response = await api.updateTemplate(editingTemplate.id, templateData);
 
@@ -481,11 +474,7 @@ const TemplateManagementPanel: React.FC = () => {
                       })), fileData]
             };
 
-            console.log('Saving template with updated files:', {
-                templateId: editingTemplate.id,
-                filesCount: templateData.files.length,
-                newFile: editingFile ? 'Updated' : 'Added'
-            });
+            // Saving template with updated files
 
             const response = await api.updateTemplate(editingTemplate.id, templateData);
 

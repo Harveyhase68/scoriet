@@ -199,12 +199,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
             {
               label: 'Import .sql File',
               icon: 'pi pi-file',
-              command: () => console.log('Import SQL file')
+              command: () => {/* Import SQL file - not implemented */}
             },
             {
               label: 'Import Schema',
               icon: 'pi pi-sitemap',
-              command: () => console.log('Import schema')
+              command: () => {/* Import schema - not implemented */}
             }
           ]
         },
@@ -216,12 +216,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
             {
               label: 'Export Schema',
               icon: 'pi pi-file-export',
-              command: () => console.log('Export schema')
+              command: () => {/* Export schema - not implemented */}
             },
             {
               label: 'Export Data',
               icon: 'pi pi-table',
-              command: () => console.log('Export data')
+              command: () => {/* Export data - not implemented */}
             }
           ]
         }
@@ -240,7 +240,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
         {
           label: 'Query Builder',
           icon: 'pi pi-search',
-          command: () => console.log('Query builder')
+          command: () => {/* Query builder - not implemented */}
         },
         {
           separator: true
@@ -248,7 +248,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
         {
           label: 'Settings',
           icon: 'pi pi-cog',
-          command: () => console.log('Settings')
+          command: () => {/* Settings - not implemented */}
         }
       ]
     }
@@ -269,7 +269,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
         {
           label: 'Change Plan',
           icon: 'pi pi-credit-card',
-          command: () => console.log('Change plan - not implemented yet')
+          command: () => {/* Change plan - not implemented */}
         },
         {
           label: 'Go to App',

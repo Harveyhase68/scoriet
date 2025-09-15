@@ -32,7 +32,7 @@ export const loadFont = (fontName: keyof typeof fontConfig) => {
   fontLink.rel = 'stylesheet';
   fontLink.href = font.url;
   fontLink.onload = () => {
-    console.log(`Font ${font.family} loaded successfully`);
+    // Font loaded successfully
   };
   fontLink.onerror = () => {
     console.warn(`Failed to load font ${font.family}`);

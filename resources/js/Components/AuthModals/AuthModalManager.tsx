@@ -31,28 +31,18 @@ export default function AuthModalManager({
 
   // Update local state when prop changes - but don't override our local management
   React.useEffect(() => {
-    console.log('🎯 AuthModalManager: useEffect - activeModal changed from', currentModal, 'to', activeModal);
-
     // Only update if activeModal is not null or if we don't have a current modal
     if (activeModal !== null) {
-      console.log('🎯 AuthModalManager: useEffect - Setting currentModal to:', activeModal);
       setCurrentModal(activeModal);
     } else if (currentModal === null) {
-      console.log('🎯 AuthModalManager: useEffect - Both are null, keeping null');
       setCurrentModal(null);
     } else {
-      console.log('🎯 AuthModalManager: useEffect - activeModal is null but currentModal is', currentModal, '- keeping current');
       // Don't override - keep the current modal for proper closing
     }
   }, [activeModal, currentModal]);
 
-  console.log('AuthModalManager props:', { activeModal, currentModal });
-
   const handleSwitchModal = (modalType: AuthModalType) => {
-    console.log('🎯 AuthModalManager: handleSwitchModal called with:', modalType);
-
     // DIRECT APPROACH: Set local state immediately
-    console.log('🎯 AuthModalManager: DIRECT - Setting currentModal to:', modalType);
     setCurrentModal(modalType);
     localStorage.setItem('auth_modal_interaction', 'true');
 
@@ -60,26 +50,18 @@ export default function AuthModalManager({
     const event = new CustomEvent('auth-modal-switch', {
       detail: { modalType }
     });
-    console.log('🎯 AuthModalManager: Dispatching event:', event.type, 'with detail:', event.detail);
     window.dispatchEvent(event);
-    console.log('🎯 AuthModalManager: Event dispatched successfully');
   };
 
   const handleCloseModal = () => {
-    console.log('🎯 AuthModalManager: handleCloseModal called for modal:', currentModal, 'isLoginClosable:', isLoginClosable);
-
     // Only prevent closing if it's DIRECTLY the login modal and not closable
     // Don't prevent closing other modals (register, forgot password)
     if (currentModal === 'login' && !isLoginClosable) {
-      console.log('🎯 AuthModalManager: Login modal not closable - blocking close');
       return;
     }
 
-    console.log('🎯 AuthModalManager: Closing all modals - BEFORE setCurrentModal(null)');
     setCurrentModal(null);
-    console.log('🎯 AuthModalManager: setCurrentModal(null) called - BEFORE onCloseModal()');
     onCloseModal();
-    console.log('🎯 AuthModalManager: onCloseModal() called - DONE');
   };
 
   return (

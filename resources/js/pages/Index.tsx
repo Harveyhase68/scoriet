@@ -473,14 +473,8 @@ export default function Index(props: IndexProps = {}) {
   const [hasAutoOpenedHome, setHasAutoOpenedHome] = useState<boolean>(false);
   const [showPendingInvitation, setShowPendingInvitation] = useState(false);
 
-  console.log('🚨 CACHE BUSTER: Index.tsx render - activeModal:', activeModal, 'TIMESTAMP:', new Date().toISOString());
 
   // Modal management functions - defined early to ensure they're available
-  const handleSwitchModal = useCallback((modalType: AuthModalType) => {
-    console.log('Index.tsx handleSwitchModal called with:', modalType);
-    localStorage.setItem('auth_modal_interaction', 'true');
-    setActiveModal(modalType);
-  }, []);
 
   const handleCloseModal = useCallback(() => {
     const currentModal = activeModal;
@@ -501,22 +495,13 @@ export default function Index(props: IndexProps = {}) {
     }
   }, [activeModal, isAuthenticated, resetToken]);
 
-  console.log('Index.tsx render - functions defined:', {
-    handleSwitchModal: typeof handleSwitchModal,
-    handleCloseModal: typeof handleCloseModal
-  });
 
   // Direct event listener setup - outside useEffect
   React.useEffect(() => {
-    console.log('🔧 Direct useEffect: Setting up auth modal event listener');
-
     const directModalSwitchHandler = (event: CustomEvent) => {
       const { modalType } = event.detail;
-      console.log('🚀 DIRECT: Auth modal switch event received:', modalType);
-      console.log('🚀 DIRECT: Current activeModal before switch:', activeModal);
       localStorage.setItem('auth_modal_interaction', 'true');
       setActiveModal(modalType);
-      console.log('🚀 DIRECT: setActiveModal called with:', modalType);
     };
 
     window.addEventListener('auth-modal-switch', directModalSwitchHandler as EventListener);
@@ -524,7 +509,7 @@ export default function Index(props: IndexProps = {}) {
     return () => {
       window.removeEventListener('auth-modal-switch', directModalSwitchHandler as EventListener);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Empty dependency array - only run once
 
   // Check for pending invitations
@@ -656,23 +641,11 @@ export default function Index(props: IndexProps = {}) {
     // Listen for auth modal switch events
     const handleAuthModalSwitch = (event: CustomEvent) => {
       const { modalType } = event.detail;
-      console.log('🚀 Index.tsx: Auth modal switch event received:', modalType);
-      console.log('🚀 Current activeModal before switch:', activeModal);
       localStorage.setItem('auth_modal_interaction', 'true');
       setActiveModal(modalType);
-      console.log('🚀 setActiveModal called with:', modalType);
     };
 
-    console.log('🔧 Index.tsx: Adding event listener for auth-modal-switch');
     window.addEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
-
-    // Test the event listener immediately
-    console.log('🔧 Index.tsx: Testing event listener registration');
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('auth-modal-switch', {
-        detail: { modalType: 'test' }
-      }));
-    }, 1000);
 
     // Periodic token validation (every 10 minutes)
     const tokenCheckInterval = setInterval(() => {
@@ -849,8 +822,8 @@ export default function Index(props: IndexProps = {}) {
                 };
                 setLayout(updatedLayout);
               }
-            } catch (error) {
-              console.error('Error in layout modification:', error);
+            } catch {
+              // Error in layout modification
               // Final fallback
               const updatedLayout = {
                 ...layout,

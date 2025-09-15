@@ -332,7 +332,7 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
       const available = await availableRes.json();
       const assigned = await assignedRes.json();
 
-      console.log('Teams data loaded:', { available: available.length, assigned: assigned.length });
+      
 
       setAvailableTeams(available);
       setAssignedTeams(assigned);
@@ -467,7 +467,7 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Manage members"
           onClick={() => {
-            console.log('Opening Members Modal for project:', project.name, 'ID:', project.id);
+            
             setSelectedProject(project);
             setShowMembersModal(true);
           }}
@@ -737,13 +737,13 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                 label="Templates"
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-20"
-                onClick={() => console.log('Open Templates')}
+                onClick={() => {/* Open Templates - not implemented */}}
               />
               <Button
                 label="Database"
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-20"
-                onClick={() => console.log('Open Database')}
+                onClick={() => {/* Open Database - not implemented */}}
               />
             </div>
           </Card>
@@ -979,7 +979,7 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                         checked={allSelected}
                         indeterminate={someSelected && !allSelected}
                         onChange={(e) => {
-                          console.log('Header checkbox clicked:', e.checked);
+                          
                           if (e.checked) {
                             // Select all available teams
                             setSelectedTeamIds(availableTeamIds);
@@ -1007,23 +1007,23 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                     } else {
                       // Show checkbox for available teams
                       const isChecked = selectedTeamIds.includes(team.id);
-                      console.log(`Team ${team.id} (${team.name}): isChecked = ${isChecked}, selectedTeamIds:`, selectedTeamIds);
+                      
                       
                       return (
                         <Checkbox
                           checked={isChecked}
                           onChange={(e) => {
-                            console.log('Checkbox clicked:', team.id, 'new state:', e.checked, 'current selectedTeamIds:', selectedTeamIds);
+                            
                             if (e.checked) {
                               setSelectedTeamIds(prev => {
                                 const newIds = [...prev, team.id];
-                                console.log('Adding team, new selectedTeamIds:', newIds);
+                                
                                 return newIds;
                               });
                             } else {
                               setSelectedTeamIds(prev => {
                                 const newIds = prev.filter(id => id !== team.id);
-                                console.log('Removing team, new selectedTeamIds:', newIds);
+                                
                                 return newIds;
                               });
                             }

@@ -31,7 +31,9 @@
       "Read(//c//**)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(rm:*)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": []

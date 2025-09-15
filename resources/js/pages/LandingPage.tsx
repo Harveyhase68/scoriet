@@ -430,7 +430,7 @@ export default function LandingPage() {
                           }
                         } else {
                           // Handle premium/patron signup
-                          console.log(`Subscribe to ${tier.name}`);
+                          // Subscribe to ${tier.name}
                         }
                       }}
                     />
