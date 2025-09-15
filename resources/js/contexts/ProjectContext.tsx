@@ -71,7 +71,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       // Check both localStorage and sessionStorage for the token
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        console.log('ProjectContext - No auth token found, skipping project load');
+        // No auth token found, skipping project load
         setProjects([]);
         setSelectedProject(null);
         return;

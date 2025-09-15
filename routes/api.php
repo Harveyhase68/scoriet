@@ -115,6 +115,7 @@ Route::middleware('auth:api')->group(function () {
             'timestamp' => now()
         ]);
     });
+
     
     Route::resource('teams', TeamController::class);
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);

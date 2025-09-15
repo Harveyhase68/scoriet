@@ -55,8 +55,8 @@ const FileModal: React.FC<FileModalProps> = ({
             const values = await form.validateFields();
             await onSubmit(values);
             form.resetFields();
-        } catch (error) {
-            console.log('Form validation failed:', error);
+        } catch {
+            // Form validation failed
         }
     };
 

@@ -58,7 +58,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       }
 
       const data = await response.json();
-      console.log('Project Members API Response:', data);
+      
       setMembers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading project members');
@@ -157,7 +157,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
   };
 
   const userTemplate = (member: ProjectMember) => {
-    console.log('Rendering user template for:', member.user.name);
+    
     return (
       <div className="flex items-center space-x-3">
         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
