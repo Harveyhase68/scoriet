@@ -53,12 +53,28 @@ return new class extends Migration
         }
 
         // Update schema_tables to remove floating_schema_version_id column
-        Schema::table('schema_tables', function (Blueprint $table) {
-            if (Schema::hasColumn('schema_tables', 'floating_schema_version_id')) {
-                $table->dropForeign(['floating_schema_version_id']);
-                $table->dropColumn('floating_schema_version_id');
+        if (Schema::hasColumn('schema_tables', 'floating_schema_version_id')) {
+            // For SQLite, we need to handle the index drop more carefully
+            try {
+                Schema::table('schema_tables', function (Blueprint $table) {
+                    $table->dropIndex('schema_tables_floating_schema_version_id_index');
+                });
+            } catch (\Exception $e) {
+                // Index might not exist or have a different name, continue
             }
-        });
+
+            try {
+                Schema::table('schema_tables', function (Blueprint $table) {
+                    $table->dropForeign(['floating_schema_version_id']);
+                });
+            } catch (\Exception $e) {
+                // Foreign key might not exist, continue
+            }
+
+            Schema::table('schema_tables', function (Blueprint $table) {
+                $table->dropColumn('floating_schema_version_id');
+            });
+        }
 
         // Drop the floating_schema_versions table
         Schema::dropIfExists('floating_schema_versions');
