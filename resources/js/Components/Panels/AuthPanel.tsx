@@ -8,9 +8,10 @@ type AuthPanelType = 'login' | 'register' | 'profile' | 'forgot';
 
 interface AuthPanelProps {
   initialPanel?: AuthPanelType;
+  onLoginSuccess?: () => void;
 }
 
-export default function AuthPanel({ initialPanel = 'login' }: AuthPanelProps) {
+export default function AuthPanel({ initialPanel = 'login', onLoginSuccess }: AuthPanelProps) {
   const [currentPanel, setCurrentPanel] = useState<AuthPanelType>(initialPanel);
 
   const handleSwitchPanel = (panelType: string) => {
@@ -19,7 +20,7 @@ export default function AuthPanel({ initialPanel = 'login' }: AuthPanelProps) {
 
   switch (currentPanel) {
     case 'login':
-      return <LoginPanel onSwitchPanel={handleSwitchPanel} />;
+      return <LoginPanel onSwitchPanel={handleSwitchPanel} onLoginSuccess={onLoginSuccess} />;
     case 'register':
       return <RegisterPanel onSwitchPanel={handleSwitchPanel} />;
     case 'profile':

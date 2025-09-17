@@ -80,6 +80,22 @@ class ProjectApplication extends Model
             'reviewed_at' => now(),
             'review_notes' => $notes,
         ]);
+
+        // Add user as project member if not already a member
+        $existingMember = ProjectMember::where('project_id', $this->project_id)
+                                     ->where('user_id', $this->user_id)
+                                     ->first();
+
+        if (!$existingMember) {
+            ProjectMember::create([
+                'project_id' => $this->project_id,
+                'user_id' => $this->user_id,
+                'role' => 'member',
+                'joined_at' => now(),
+                'invited_by' => $reviewerId,
+                'notes' => 'Added via application approval'
+            ]);
+        }
     }
 
     /**

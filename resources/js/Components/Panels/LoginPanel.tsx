@@ -51,12 +51,20 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
       localStorage.setItem('refresh_token', tokenData.refresh_token);
 
       // Get user data
-      await fetch('/api/user', {
+      const userResponse = await fetch('/api/user', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
           'Accept': 'application/json',
         },
       });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        console.log('User data from API:', userData); // Debug
+        // Store user_id in localStorage for later use
+        localStorage.setItem('user_id', userData.id.toString());
+        console.log('Stored user_id in localStorage:', userData.id); // Debug
+      }
 
       // Success - close panel or redirect
       if (onLoginSuccess) {

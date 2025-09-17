@@ -515,7 +515,24 @@ class ProjectController extends Controller
                 ];
             });
 
-        return response()->json($members);
+        // Add project owner if not already in members list
+        $ownerAlreadyInList = $members->where('user_id', $project->owner_id)->isNotEmpty();
+        if (!$ownerAlreadyInList && $project->owner) {
+            $members->prepend([
+                'id' => 0, // Special ID for owner
+                'user_id' => $project->owner->id,
+                'role' => 'owner',
+                'joined_at' => $project->created_at,
+                'user' => [
+                    'id' => $project->owner->id,
+                    'name' => $project->owner->name,
+                    'email' => $project->owner->email,
+                    'username' => $project->owner->username,
+                ]
+            ]);
+        }
+
+        return response()->json($members->values());
     }
 
     /**

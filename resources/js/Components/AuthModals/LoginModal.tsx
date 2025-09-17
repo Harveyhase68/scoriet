@@ -92,16 +92,22 @@ export default function LoginModal({
       }
 
       // Call user update with token from correct storage
-      const accessToken = formData.rememberMe ? 
-        localStorage.getItem('access_token') : 
+      const accessToken = formData.rememberMe ?
+        localStorage.getItem('access_token') :
         sessionStorage.getItem('access_token');
-        
-      await fetch('/api/user', {
+
+      const userResponse = await fetch('/api/user', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
         },
       });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        // Store user_id in localStorage for later use
+        localStorage.setItem('user_id', userData.id.toString());
+      }
 
       // Success - close modal
       onLoginSuccess?.();

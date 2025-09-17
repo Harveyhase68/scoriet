@@ -391,9 +391,9 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
                 </div>
                 
                 {selectedApplication.message && (
-                  <div className="p-3 bg-gray-50 rounded text-sm">
-                    <strong>Message:</strong>
-                    <p className="mt-1">{selectedApplication.message}</p>
+                  <div className="p-3 bg-gray-50 rounded text-sm text-gray-800">
+                    <strong className="text-gray-700">Message:</strong>
+                    <p className="mt-1 text-gray-800">{selectedApplication.message}</p>
                   </div>
                 )}
               </div>

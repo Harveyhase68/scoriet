@@ -112,7 +112,12 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
       setStep('applied');
       setSuccess('Application submitted successfully! The project owner will review your request.');
-      
+
+      // Auto-close modal after 2 seconds
+      setTimeout(() => {
+        handleClose();
+      }, 2000);
+
       if (onSuccess) {
         onSuccess();
       }
