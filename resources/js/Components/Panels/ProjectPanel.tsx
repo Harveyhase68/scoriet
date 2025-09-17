@@ -16,6 +16,7 @@ import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
 
 interface TabPanelProps {
   isActive: boolean;
+  onOpenPanel?: (panelId: string, data?: any) => void;
 }
 
 interface Project {
@@ -36,12 +37,13 @@ interface Project {
   created_at: string;
   updated_at: string;
   teams_count?: number;
+  members_count?: number;
   templates_count?: number;
   databases_count?: number;
   applications_count?: number;
 }
 
-export default function ProjectPanel({ isActive }: TabPanelProps) {
+export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -503,50 +505,55 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <i className="pi pi-briefcase text-2xl text-blue-600"></i>
-          <h1 className="text-2xl font-bold text-white">Project Management</h1>
+    <div className="flex flex-col h-full bg-gray-900 text-white">
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 p-6 pb-4">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <i className="pi pi-briefcase text-2xl text-blue-600"></i>
+            <h1 className="text-2xl font-bold text-white">Project Management</h1>
+          </div>
+          <div className="flex space-x-2 gap-2">
+            <Button
+              icon="pi pi-plus"
+              label="New Project"
+              className="p-button-text"
+              style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+              onClick={() => setShowCreateModal(true)}
+              disabled={loading}
+            />
+            <Button
+              icon="pi pi-sign-in"
+              label="Join Project"
+              className="p-button-text"
+              style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+              onClick={() => setShowJoinCodeModal(true)}
+              disabled={loading}
+            />
+            <Button
+              icon="pi pi-refresh"
+              label="Refresh"
+              className="p-button-text"
+              style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+              onClick={loadProjects}
+              disabled={loading}
+            />
+          </div>
         </div>
-        <div className="flex space-x-2 gap-2">
-          <Button
-            icon="pi pi-plus"
-            label="New Project"
-            className="p-button-text"
-            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={() => setShowCreateModal(true)}
-            disabled={loading}
-          />
-          <Button
-            icon="pi pi-sign-in"
-            label="Join Project"
-            className="p-button-text"
-            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={() => setShowJoinCodeModal(true)}
-            disabled={loading}
-          />
-          <Button
-            icon="pi pi-refresh"
-            label="Refresh"
-            className="p-button-text"
-            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={loadProjects}
-            disabled={loading}
-          />
-        </div>
+
+        {error && (
+          <Message severity="error" text={error} className="mb-4" />
+        )}
+
+        {success && (
+          <Message severity="success" text={success} className="mb-4" />
+        )}
       </div>
 
-      {error && (
-        <Message severity="error" text={error} className="mb-4" />
-      )}
-
-      {success && (
-        <Message severity="success" text={success} className="mb-4" />
-      )}
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-1">
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 pb-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Current Project */}
         <div className="space-y-4">
           <Card
@@ -665,12 +672,18 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-4 gap-4 pt-3 border-t border-gray-600">
+                    <div className="grid grid-cols-5 gap-4 pt-3 border-t border-gray-600">
                       <div className="text-center">
                         <div className="text-xl font-bold text-blue-400">
                           {currentProject.teams_count || 0}
                         </div>
                         <div className="text-xs text-gray-400">Teams</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-cyan-400">
+                          {currentProject.members_count || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Members</div>
                       </div>
                       <div className="text-center">
                         <div className="text-xl font-bold text-green-400">
@@ -737,13 +750,15 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
                 label="Templates"
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-20"
-                onClick={() => {/* Open Templates - not implemented */}}
+                onClick={() => onOpenPanel?.('template-management', { title: `Templates - ${currentProject?.name}` })}
+                disabled={!currentProject || !onOpenPanel}
               />
               <Button
                 label="Database"
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-20"
-                onClick={() => {/* Open Database - not implemented */}}
+                onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}` })}
+                disabled={!currentProject || !onOpenPanel}
               />
             </div>
           </Card>
@@ -786,6 +801,8 @@ export default function ProjectPanel({ isActive }: TabPanelProps) {
               />
             </DataTable>
           </Card>
+        </div>
+          </div>
         </div>
       </div>
 

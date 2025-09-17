@@ -158,7 +158,7 @@ function findFirstTabset(layout: any): any {
 }
 
 // ✅ CORRECTED loadTab function with Lazy Loading!
-const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void) => {
+const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, openPanelFn?: (panelId: string, data?: any) => void) => {
   const { id } = data;
 
   switch (id) {
@@ -234,7 +234,7 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void) => 
         title: data.title || 'Project',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <ProjectPanel isActive={true} />
+            <ProjectPanel isActive={true} onOpenPanel={openPanelFn} />
           </Suspense>
         ),
         closable: true,
@@ -1125,7 +1125,7 @@ useHotkeys('alt+n', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={(data: any) => loadTab(data, handleOpenDesigner)}
+                  loadTab={(data: any) => loadTab(data, handleOpenDesigner, openPanel)}
                   groups={groups}
                   style={{
                     position: 'absolute',

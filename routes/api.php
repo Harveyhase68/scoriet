@@ -118,6 +118,7 @@ Route::middleware('auth:api')->group(function () {
 
     
     Route::resource('teams', TeamController::class);
+    Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);
     
@@ -169,6 +170,44 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/my-pending-invitation', [ProjectInvitationController::class, 'getMyPendingInvitation']);
     Route::post('/my-pending-invitation/accept', [ProjectInvitationController::class, 'acceptMyPendingInvitation']);
     Route::post('/my-pending-invitation/decline', [ProjectInvitationController::class, 'declineMyPendingInvitation']);
+});
+
+// DEBUG: Test route to check if ProjectApplicationController is accessible
+Route::get('/test-join-code/{joinCode}', function ($joinCode) {
+    return response()->json([
+        'message' => 'Test route works',
+        'joinCode' => $joinCode,
+        'timestamp' => now()
+    ]);
+});
+
+// DEBUG: Show all projects and their join codes
+Route::get('/debug-projects', function () {
+    $projects = \App\Models\Project::select('id', 'name', 'join_code', 'allow_join_requests', 'is_public')
+                                   ->get();
+    return response()->json([
+        'message' => 'All projects in database',
+        'projects' => $projects,
+        'count' => $projects->count()
+    ]);
+});
+
+// DEBUG: Test the exact same join-code logic without auth
+Route::get('/debug-join-code/{joinCode}', function ($joinCode) {
+    $project = \App\Models\Project::where('join_code', $joinCode)
+                      ->where('allow_join_requests', true)
+                      ->with(['owner', 'teams'])
+                      ->first();
+
+    return response()->json([
+        'message' => 'Debug join code lookup',
+        'joinCode' => $joinCode,
+        'project_found' => !!$project,
+        'project_id' => $project?->id,
+        'project_name' => $project?->name,
+        'allow_join_requests' => $project?->allow_join_requests,
+        'all_projects_with_this_code' => \App\Models\Project::where('join_code', $joinCode)->get(['id', 'name', 'join_code', 'allow_join_requests'])
+    ]);
 });
 
 // JavaScript-Datei ausliefern

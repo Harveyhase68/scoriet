@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -9,7 +8,6 @@ import { Badge } from 'primereact/badge';
 import { Message } from 'primereact/message';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Toolbar } from 'primereact/toolbar';
 
 interface TeamMember {
   id: number;
@@ -44,23 +42,34 @@ interface Team {
 }
 
 
+interface ProjectMember {
+  id: number;
+  user_id: number;
+  role: string;
+  joined_at: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    username?: string;
+  };
+}
+
 interface MemberModalProps {
   visible: boolean;
   onHide: () => void;
   team?: Team | null;
+  projectId?: number;
   onSave?: () => void;
 }
 
-export default function MemberModal({ visible, onHide, team, onSave }: MemberModalProps) {
-  const [members, setMembers] = useState<TeamMember[]>([]);
+export default function MemberModal({ visible, onHide, team, projectId, onSave }: MemberModalProps) {
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Invitation form
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('member');
-  const [inviting, setInviting] = useState(false);
-  
+  const [assigning, setAssigning] = useState(false);
+
   const toast = useRef<Toast>(null);
 
   // Dark theme modal styles
@@ -149,9 +158,13 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
     }
   }, [visible]);
 
-  const loadTeamMembers = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!team) return;
-    
+
+    // Get projectId from team if not provided as prop
+    const currentProjectId = projectId || team.project_owner_id;
+    if (!currentProjectId) return;
+
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -159,45 +172,127 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/teams/${team.id}`, {
+      // Load team members
+      const teamResponse = await fetch(`/api/teams/${team.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
       });
 
-      if (!response.ok) {
+      if (!teamResponse.ok) {
         throw new Error('Failed to load team details');
       }
 
-      const data = await response.json();
-      setMembers(data.team.members || []);
+      const teamData = await teamResponse.json();
+      setTeamMembers(teamData.team.members || []);
+
+      // Load project members using team's project info
+      // We need to find the project that this team belongs to
+      // Since team has project_owner_id, we can find the project by owner
+      try {
+
+        const projectsResponse = await fetch('/api/projects', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (projectsResponse.ok) {
+          const projectsData = await projectsResponse.json();
+
+          // Extract projects array from response
+          const projects = projectsData.projects || [];
+
+          // Find project where this team belongs (same project_owner_id)
+          const matchingProject = projects.find((p: any) => p.owner_id === team.project_owner_id);
+
+          if (matchingProject) {
+
+            const projectMembersResponse = await fetch(`/api/projects/${matchingProject.id}/members`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+            });
+
+            if (projectMembersResponse.ok) {
+              const projectMembersData = await projectMembersResponse.json();
+              setProjectMembers(projectMembersData || []);
+            } else {
+              console.error('Failed to load project members:', projectMembersResponse.status);
+            }
+          } else {
+            console.warn('No matching project found for team owner:', team.project_owner_id);
+          }
+        } else {
+          console.error('Failed to load projects:', projectsResponse.status);
+        }
+      } catch (projectError) {
+        console.error('Error loading project members:', projectError);
+        setProjectMembers([]);
+      }
+
     } catch (error) {
-      console.error('Error loading team members:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load team members');
+      console.error('Error loading data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [team]);
+  }, [team, projectId]);
 
   useEffect(() => {
     if (visible && team) {
-      loadTeamMembers();
+      loadData();
     }
-  }, [visible, team, loadTeamMembers]);
+  }, [visible, team, loadData]);
 
-  const handleInviteMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!team || !inviteEmail.trim()) return;
+  // Helper function to combine and categorize all members
+  const getAllMembers = () => {
+    const allMembers: any[] = [];
 
-    setInviting(true);
+
+    // Add team members (already in team)
+    teamMembers.forEach(teamMember => {
+      allMembers.push({
+        ...teamMember,
+        membershipType: 'team_member',
+        isInTeam: true
+      });
+    });
+
+    // Add project members not in team (available to assign)
+    projectMembers.forEach(projectMember => {
+      const isAlreadyInTeam = teamMembers.some(tm => tm.user_id === projectMember.user_id);
+      if (!isAlreadyInTeam) {
+        allMembers.push({
+          id: `project_${projectMember.id}`,
+          user_id: projectMember.user_id,
+          role: 'available',
+          joined_at: projectMember.joined_at,
+          user: projectMember.user,
+          membershipType: 'project_member',
+          isInTeam: false
+        });
+      }
+    });
+
+    return allMembers;
+  };
+
+  const handleAddMemberToTeam = async (member: any, role: string = 'member') => {
+    if (!team) return;
+
+
+    setAssigning(true);
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/teams/${team.id}/invitations`, {
+      const response = await fetch(`/api/teams/${team.id}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,37 +300,40 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          email: inviteEmail,
-          role: inviteRole
+          user_id: member.user_id,
+          role: role
         }),
       });
 
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send invitation');
+        console.error('Add member error:', errorData);
+        throw new Error(errorData.message || 'Failed to add member to team');
       }
+
+      await response.json();
 
       toast.current?.show({
         severity: 'success',
         summary: 'Success',
-        detail: 'Invitation sent successfully',
+        detail: `${member.user.name} added to team successfully`,
         life: 3000
       });
 
-      setInviteEmail('');
-      setInviteRole('member');
-      loadTeamMembers();
+      // Refresh data
+      loadData();
       onSave?.();
     } catch (error) {
-      console.error('Error inviting member:', error);
+      console.error('Error adding member to team:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: error instanceof Error ? error.message : 'Failed to send invitation',
+        detail: error instanceof Error ? error.message : 'Failed to add member to team',
         life: 3000
       });
     } finally {
-      setInviting(false);
+      setAssigning(false);
     }
   };
 
@@ -283,7 +381,7 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
             life: 3000
           });
 
-          loadTeamMembers();
+          loadData();
           onSave?.();
         } catch (error) {
           console.error('Error removing member:', error);
@@ -370,10 +468,20 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
     );
   };
 
-  const roleBodyTemplate = (member: TeamMember) => {
+  const roleBodyTemplate = (member: any) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
     const isTeamOwner = team?.project_owner_id === currentUserId;
-    
+
+    // For project members not in team, show "Available"
+    if (!member.isInTeam) {
+      return (
+        <Badge
+          value="Available"
+          severity="success"
+        />
+      );
+    }
+
     if (member.role === 'owner' || !isTeamOwner) {
       return (
         <Badge
@@ -401,62 +509,47 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
     });
   };
 
-  const actionsBodyTemplate = (member: TeamMember) => {
+  const actionsBodyTemplate = (member: any) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
     const isTeamOwner = team?.project_owner_id === currentUserId;
-    
-    if (member.role === 'owner' || !isTeamOwner) {
+
+
+    if (!isTeamOwner) {
       return null;
     }
 
-    return (
-      <Button
-        icon="pi pi-trash"
-        className="p-button-rounded p-button-text p-button-sm p-button-danger"
-        tooltip="Remove Member"
-        onClick={() => handleRemoveMember(member)}
-      />
-    );
-  };
+    // Owner cannot be removed
+    if (member.role === 'owner') {
+      return <span className="text-gray-400 text-xs">Owner</span>;
+    }
 
-  // Toolbar template
-  const leftToolbarTemplate = () => {
-    const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-    const isTeamOwner = team?.project_owner_id === currentUserId;
-    
-    if (!isTeamOwner) return null;
-
-    return (
-      <form onSubmit={handleInviteMember} className="flex gap-2 items-end">
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-100">Email</label>
-          <InputText
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="Enter email address"
-            className="w-64"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-100">Role</label>
-          <Dropdown
-            value={inviteRole}
-            options={roleOptions}
-            onChange={(e) => setInviteRole(e.value)}
-            className="w-32"
-          />
-        </div>
+    // If member is in team, show Remove button
+    if (member.isInTeam) {
+      return (
         <Button
-          type="submit"
-          label="Invite"
-          icon="pi pi-send"
-          loading={inviting}
-          className="p-button-success"
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-sm p-button-danger"
+          tooltip="Remove from Team"
+          onClick={() => handleRemoveMember(member)}
+          disabled={assigning}
         />
-      </form>
-    );
+      );
+    }
+
+    // If member is not in team (project member), show Assign button
+    else {
+      return (
+        <Button
+          icon="pi pi-plus"
+          className="p-button-rounded p-button-text p-button-sm p-button-success"
+          tooltip="Assign to Team"
+          onClick={() => handleAddMemberToTeam(member)}
+          disabled={assigning}
+        />
+      );
+    }
   };
+
 
   return (
     <>
@@ -477,13 +570,16 @@ export default function MemberModal({ visible, onHide, team, onSave }: MemberMod
             <Message severity="error" text={error} className="mb-4" />
           )}
 
-          {/* Toolbar for inviting members */}
-          <Toolbar left={leftToolbarTemplate} className="mb-4" />
+          {/* Info message */}
+          <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+            <i className="pi pi-info-circle mr-2"></i>
+            Team members are shown with remove buttons. Available project members can be assigned to this team.
+          </div>
 
           {/* Members Table */}
           <div className="flex-1">
             <DataTable
-              value={members}
+              value={getAllMembers()}
               loading={loading}
               emptyMessage="No members found"
               className="p-datatable-sm"

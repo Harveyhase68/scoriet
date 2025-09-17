@@ -168,10 +168,23 @@ class ProjectApplicationController extends Controller
      */
     public function getProjectByJoinCode(Request $request, $joinCode)
     {
+        // Debug log
+        \Log::info('ProjectApplicationController: getProjectByJoinCode called', [
+            'joinCode' => $joinCode,
+            'user_id' => $request->user()?->id,
+        ]);
+
         $project = Project::where('join_code', $joinCode)
                           ->where('allow_join_requests', true)
                           ->with(['owner', 'teams'])
                           ->first();
+
+        \Log::info('ProjectApplicationController: Project lookup result', [
+            'joinCode' => $joinCode,
+            'project_found' => !!$project,
+            'project_id' => $project?->id,
+            'allow_join_requests' => $project?->allow_join_requests,
+        ]);
 
         if (!$project) {
             return response()->json([

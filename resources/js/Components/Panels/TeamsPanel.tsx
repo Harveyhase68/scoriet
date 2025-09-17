@@ -127,7 +127,7 @@ export default function TeamsPanel() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/teams', {
+      const response = await fetch('/api/teams?all=true', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -139,7 +139,6 @@ export default function TeamsPanel() {
       }
 
       const data = await response.json();
-      
       // Teams API might return { owned_teams: [], member_teams: [] }
       let teamsArray = [];
       if (data.owned_teams || data.member_teams) {

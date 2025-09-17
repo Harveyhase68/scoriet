@@ -256,4 +256,50 @@ class TeamController extends Controller
             'member' => $member->load('user')
         ]);
     }
+
+    /**
+     * Add a project member to this team
+     */
+    public function addMember(Request $request, Team $team): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user is team owner
+        if ($team->project_owner_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id',
+            'role' => 'required|string|in:member,admin',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if user is already a team member
+        $existingMember = $team->members()->where('user_id', $request->user_id)->first();
+        if ($existingMember) {
+            return response()->json([
+                'message' => 'User is already a member of this team'
+            ], 409);
+        }
+
+        // Add the user to the team
+        $member = TeamMember::create([
+            'team_id' => $team->id,
+            'user_id' => $request->user_id,
+            'role' => $request->role,
+            'joined_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Member added to team successfully',
+            'member' => $member->load('user')
+        ], 201);
+    }
 }

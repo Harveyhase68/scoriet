@@ -200,6 +200,7 @@ class Project extends Model
     {
         return [
             'teams_count' => $this->teams()->count(),
+            'members_count' => $this->members()->count(),
             'applications_count' => $this->pendingApplications()->count(),
             'templates_count' => 0, // TODO: Fix template relationship for new schema system
             'schemas_count' => $this->floatingSchemas()->count(),
