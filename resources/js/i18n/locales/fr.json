@@ -1,0 +1,100 @@
+{
+  "auth": {
+    "login": "Se connecter",
+    "register": "S'inscrire",
+    "logout": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "name": "Nom",
+    "username": "Nom d'utilisateur",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oublié ?",
+    "dontHaveAccount": "Pas de compte ? S'inscrire",
+    "alreadyHaveAccount": "Déjà un compte ? Se connecter",
+    "loginSuccess": "Connexion réussie",
+    "registerSuccess": "Inscription réussie",
+    "invalidCredentials": "Identifiants invalides",
+    "language": "Langue"
+  },
+  "profile": {
+    "title": "Profil",
+    "edit": "Modifier le profil",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "personalInformation": "Informations personnelles",
+    "preferences": "Préférences",
+    "language": "Langue préférée",
+    "languageDescription": "Choisissez votre langue préférée pour l'interface",
+    "updateSuccess": "Profil mis à jour avec succès",
+    "updateError": "Échec de la mise à jour du profil",
+    "tabs": {
+      "profile": "Profil",
+      "password": "Mot de passe",
+      "danger": "Zone de danger"
+    },
+    "fields": {
+      "name": "Nom complet",
+      "username": "Nom d'utilisateur",
+      "email": "Adresse e-mail",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe"
+    },
+    "actions": {
+      "updateProfile": "Mettre à jour le profil",
+      "updatePassword": "Mettre à jour le mot de passe",
+      "deleteAccount": "Supprimer le compte"
+    },
+    "messages": {
+      "emailVerified": "E-mail vérifié",
+      "emailNotVerified": "E-mail non vérifié",
+      "memberSince": "Membre depuis",
+      "passwordUpdateSuccess": "Mot de passe mis à jour avec succès",
+      "passwordUpdateError": "Échec de la mise à jour du mot de passe",
+      "deleteWarning": "Cette action ne peut pas être annulée",
+      "deleteConfirmText": "Tapez SUPPRIMER pour confirmer"
+    }
+  },
+  "navigation": {
+    "home": "Accueil",
+    "projects": "Projets",
+    "teams": "Équipes",
+    "settings": "Paramètres",
+    "profile": "Profil"
+  },
+  "teams": {
+    "title": "Gestion d'équipe",
+    "create": "Créer une équipe",
+    "edit": "Modifier l'équipe",
+    "delete": "Supprimer l'équipe",
+    "members": "Membres",
+    "manageMembers": "Gérer les membres",
+    "assign": "Assigner",
+    "remove": "Supprimer",
+    "owner": "Propriétaire",
+    "admin": "Administrateur",
+    "member": "Membre",
+    "active": "Actif",
+    "inactive": "Inactif"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "languages": {
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français"
+  }
+}

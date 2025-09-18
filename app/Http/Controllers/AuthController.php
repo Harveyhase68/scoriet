@@ -27,6 +27,7 @@ class AuthController extends Controller
             'username' => 'required|string|max:30|unique:users|regex:/^[a-z0-9_-]+$/',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'language' => 'nullable|string|in:en,de,fr',
         ]);
 
         if ($validator->fails()) {
@@ -52,6 +53,7 @@ class AuthController extends Controller
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'language' => $request->language ?? 'en',
             'pending_project_invitation_id' => $pendingInvitationId,
         ]);
 
@@ -408,5 +410,37 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Erfolgreich abgemeldet'
         ]);
+    }
+
+    /**
+     * Update user's preferred language
+     */
+    public function updateLanguage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'language' => 'required|string|in:en,de,fr'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid language selection',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = Auth::user();
+            $user->language = $request->language;
+            $user->save();
+
+            return response()->json([
+                'message' => 'Language preference updated successfully',
+                'language' => $user->language
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update language preference'
+            ], 500);
+        }
     }
 }

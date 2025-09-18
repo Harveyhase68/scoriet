@@ -60,6 +60,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::put('/profile/password', [AuthController::class, 'updatePassword']);
+    Route::put('/profile/language', [AuthController::class, 'updateLanguage']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
     
@@ -76,13 +77,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-versions/by-name/{name}', [SqlParserController::class, 'getSchemaVersionByName']);
     
     // Templates API
-    Route::get('/templates', [TemplateController::class, 'index']);
-    Route::get('/templates/{id}', [TemplateController::class, 'show']);
-    Route::post('/templates', [TemplateController::class, 'store']);
-    Route::put('/templates/{id}', [TemplateController::class, 'update']);
-    Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
-    Route::get('/templates/{id}/export', [TemplateController::class, 'export']);
-    Route::post('/templates/import', [TemplateController::class, 'import']);
+    Route::get('/templates', [App\Http\Controllers\Api\TemplateController::class, 'index']);
+    Route::post('/templates/link', [App\Http\Controllers\Api\TemplateController::class, 'linkToProject']);
+    Route::post('/templates/clone', [App\Http\Controllers\Api\TemplateController::class, 'cloneToProject']);
+    Route::get('/projects/{project}/template-usages', [App\Http\Controllers\Api\TemplateController::class, 'projectUsages']);
+    Route::delete('/template-usage', [App\Http\Controllers\Api\TemplateController::class, 'removeUsage']);
     
     // Project Template Assignments
     Route::get('/schema-versions/{id}/templates', [TemplateController::class, 'getProjectTemplates']);
@@ -135,7 +134,9 @@ Route::middleware('auth:api')->group(function () {
     // Floating Schema Version Management
     Route::get('/floating-schemas/{schema}/versions', [SchemaController::class, 'getSchemaVersions']);
     Route::post('/floating-schemas/{schema}/versions', [SchemaController::class, 'createNewVersion']);
+    Route::post('/floating-schemas/{schema}/create-version-and-table', [SchemaController::class, 'createVersionAndTable']);
     Route::get('/schema-versions/{version}/tables', [SchemaController::class, 'getVersionTables']);
+    Route::post('/schema-versions/{version}/tables', [SchemaController::class, 'createTable']);
     Route::delete('/schema-versions/{version}/tables/{table}', [SchemaController::class, 'deleteTable']);
     Route::post('/schema-versions/{version}/tables/{table}/delete-with-copy', [SchemaController::class, 'deleteTableWithVersionCopy']);
     Route::put('/schema-versions/{version}/unsaved-changes', [SchemaController::class, 'markUnsavedChanges']);

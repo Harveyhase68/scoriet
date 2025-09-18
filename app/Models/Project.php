@@ -285,6 +285,38 @@ class Project extends Model
     }
 
     /**
+     * Get all template usages for this project
+     */
+    public function templateUsages()
+    {
+        return $this->hasMany(ProjectTemplateUsage::class);
+    }
+
+    /**
+     * Get linked templates (read-only references)
+     */
+    public function linkedTemplates()
+    {
+        return $this->templateUsages()->linked()->with('template');
+    }
+
+    /**
+     * Get cloned templates (editable copies)
+     */
+    public function clonedTemplates()
+    {
+        return $this->templateUsages()->cloned()->with('template');
+    }
+
+    /**
+     * Get all used templates (both linked and cloned)
+     */
+    public function usedTemplates()
+    {
+        return $this->templateUsages()->active()->with('template');
+    }
+
+    /**
      * Get pending invitations
      */
     public function pendingInvitations()
@@ -362,5 +394,92 @@ class Project extends Model
             'role' => $role,
             'message' => $message,
         ]);
+    }
+
+    /**
+     * Link a template to this project (read-only usage)
+     */
+    public function linkTemplate(Template $template, ?string $alias = null, ?array $config = null): ProjectTemplateUsage
+    {
+        return ProjectTemplateUsage::create([
+            'project_id' => $this->id,
+            'template_id' => $template->id,
+            'usage_type' => 'linked',
+            'alias' => $alias,
+            'config' => $config,
+            'used_at' => now(),
+        ]);
+    }
+
+    /**
+     * Clone a template for this project (editable copy)
+     */
+    public function cloneTemplate(Template $template, ?string $newName = null, string $visibility = 'public'): array
+    {
+        // Create the cloned template
+        $clonedTemplate = $template->cloneForProject($this, $newName, $visibility);
+
+        // Record the usage
+        $usage = ProjectTemplateUsage::create([
+            'project_id' => $this->id,
+            'template_id' => $clonedTemplate->id,
+            'usage_type' => 'cloned',
+            'used_at' => now(),
+        ]);
+
+        return [
+            'template' => $clonedTemplate,
+            'usage' => $usage
+        ];
+    }
+
+    /**
+     * Check if project is using a specific template
+     */
+    public function isUsingTemplate(Template $template): bool
+    {
+        return $this->templateUsages()
+            ->where('template_id', $template->id)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Get template usage for a specific template
+     */
+    public function getTemplateUsage(Template $template): ?ProjectTemplateUsage
+    {
+        return $this->templateUsages()
+            ->where('template_id', $template->id)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Validate project name format (lowercase, numbers, underscores for snake_case)
+     */
+    public static function validateProjectName(string $name): bool
+    {
+        return preg_match('/^[a-z0-9]+(_[a-z0-9]+)*$/', $name) === 1;
+    }
+
+    /**
+     * Sanitize project name to valid format
+     */
+    public static function sanitizeProjectName(string $name): string
+    {
+        // Convert to lowercase
+        $name = strtolower($name);
+
+        // Replace spaces and special chars with underscore
+        $name = preg_replace('/[^a-z0-9_]/', '_', $name);
+
+        // Replace multiple underscores with single underscore
+        $name = preg_replace('/_+/', '_', $name);
+
+        // Remove leading/trailing underscores
+        $name = trim($name, '_');
+
+        return $name;
     }
 }

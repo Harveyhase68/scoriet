@@ -106,6 +106,7 @@ class ProjectController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9]+(_[a-z0-9]+)*$/', // Lowercase letters, numbers, and underscores for snake_case
                 Rule::unique('projects')->where(function ($query) use ($user) {
                     return $query->where('owner_id', $user->id);
                 })
@@ -137,6 +138,13 @@ class ProjectController extends Controller
         if ($project->allow_join_requests) {
             $project->generateJoinCode();
         }
+
+        // Add the owner as the first project member with 'owner' role
+        $project->members()->create([
+            'user_id' => $user->id,
+            'role' => 'owner',
+            'joined_at' => now(),
+        ]);
 
         // Create a default schema version for this project
         // Try to create with project ID, if it fails, let auto-increment handle it
@@ -195,14 +203,69 @@ class ProjectController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9]+(_[a-z0-9]+)*$/', // Lowercase letters, numbers, and underscores for snake_case
                 Rule::unique('projects')->ignore($project->id)->where(function ($query) use ($project) {
                     return $query->where('owner_id', $project->owner_id);
                 })
             ],
             'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
+            'join_code' => 'nullable|string|max:50|unique:projects,join_code,' . $project->id,
+            'new_owner_id' => 'nullable|integer|exists:users,id',
         ]);
 
+        // Handle owner transfer first if requested
+        if (isset($validated['new_owner_id']) && $validated['new_owner_id']) {
+            // Only current owner can transfer ownership
+            $user = Auth::user();
+            if ($project->owner_id !== $user->id) {
+                return response()->json(['message' => 'Only the project owner can transfer ownership'], 403);
+            }
+
+            // Check if new owner is a project member
+            $newOwnerMembership = $project->members()->where('user_id', $validated['new_owner_id'])->first();
+            if (!$newOwnerMembership) {
+                return response()->json(['message' => 'New owner must be a project member'], 400);
+            }
+
+            // Transfer ownership
+            $project->update(['owner_id' => $validated['new_owner_id']]);
+
+            // Update memberships: new owner becomes owner, old owner becomes admin
+            $newOwnerMembership->update(['role' => 'owner']);
+            $oldOwnerMembership = $project->members()->where('user_id', $user->id)->first();
+            if ($oldOwnerMembership) {
+                $oldOwnerMembership->update(['role' => 'admin']);
+            }
+
+            // Transfer all teams associated with this project to the new owner
+            $projectTeams = $project->teams()->get();
+            foreach ($projectTeams as $team) {
+                // Only transfer teams that belong to the old owner
+                if ($team->project_owner_id == $user->id) {
+                    $team->update(['project_owner_id' => $validated['new_owner_id']]);
+                }
+            }
+
+            // Transfer all floating schemas associated with this project to the new owner
+            $projectSchemas = $project->floatingSchemas()->get();
+            foreach ($projectSchemas as $schema) {
+                // Only transfer schemas that belong to the old owner
+                if ($schema->owner_id == $user->id) {
+                    $schema->update(['owner_id' => $validated['new_owner_id']]);
+                }
+            }
+
+            // Transfer all project templates to the new owner
+            // Note: creator_user_id stays the same (preserves original creator attribution)
+            // Only project ownership changes via project_id relationship
+            $projectTemplates = \App\Models\Template::where('project_id', $project->id)->get();
+            // Templates automatically belong to new owner via project relationship
+            // No additional updates needed for templates
+        }
+
+        // Remove new_owner_id from validated data before updating other fields
+        unset($validated['new_owner_id']);
         $project->update($validated);
 
         // Refresh the project with owner
@@ -515,7 +578,7 @@ class ProjectController extends Controller
                 ];
             });
 
-        // Add project owner if not already in members list
+        // Add project owner if not already in members list (fallback for old projects)
         $ownerAlreadyInList = $members->where('user_id', $project->owner_id)->isNotEmpty();
         if (!$ownerAlreadyInList && $project->owner) {
             $members->prepend([

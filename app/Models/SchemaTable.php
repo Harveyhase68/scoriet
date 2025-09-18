@@ -14,6 +14,7 @@ class SchemaTable extends Model
         'schema_version_id', // Updated to work with both legacy and floating schemas
         'schema_id', // New floating schema reference
         'table_name',
+        'comment',
     ];
 
     public function schemaVersion(): BelongsTo

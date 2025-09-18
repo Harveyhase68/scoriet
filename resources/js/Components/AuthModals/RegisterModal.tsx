@@ -18,13 +18,16 @@ export default function RegisterModal({
   onSwitchToLogin,
   onRegistrationSuccess 
 }: RegisterModalProps) {
+
   const [formData, setFormData] = useState({
     name: '',
     username: '',
     email: '',
     password: '',
-    password_confirmation: ''
+    password_confirmation: '',
+    language: 'en' // Default language
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -164,7 +167,7 @@ export default function RegisterModal({
             maxLength={30}
           />
           <small className="text-gray-500">
-            Nur Kleinbuchstaben, Zahlen, Unterstriche und Bindestriche. Kann später nicht geändert werden.
+            Only lowercase letters, numbers, underscores, and hyphens. Cannot be changed later.
           </small>
         </div>
 

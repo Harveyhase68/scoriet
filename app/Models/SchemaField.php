@@ -19,6 +19,7 @@ class SchemaField extends Model
         'default_value',
         'is_auto_increment',
         'field_order',
+        'comment',
     ];
 
     protected $casts = [

@@ -53,7 +53,9 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
-    description: ''
+    description: '',
+    join_code: '',
+    new_owner_id: null as number | null
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -71,6 +73,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [assignedTeams, setAssignedTeams] = useState<any[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [assigningTeams, setAssigningTeams] = useState(false);
   const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
@@ -118,21 +121,53 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (currentProject) {
       setEditForm({
         name: currentProject.name,
-        description: currentProject.description
+        description: currentProject.description,
+        join_code: currentProject.join_code || '',
+        new_owner_id: null
       });
       setIsEditing(true);
       setError('');
       setSuccess('');
+
+      // Load project members for owner transfer
+      await loadProjectMembers(currentProject.id);
+    }
+  };
+
+  const loadProjectMembers = async (projectId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/projects/${projectId}/members`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjectMembers(data);
+      }
+    } catch (error) {
+      console.error('Error loading project members:', error);
     }
   };
 
   const handleSave = async () => {
     if (!currentProject) return;
-    
+
+    // Confirm ownership transfer if requested
+    if (editForm.new_owner_id) {
+      const newOwner = projectMembers.find(member => member.user_id === editForm.new_owner_id);
+      if (!confirm(`Are you sure you want to transfer ownership to ${newOwner?.user.name} (${newOwner?.user.email})?\n\nThis action cannot be undone and you will lose owner privileges!`)) {
+        return;
+      }
+    }
+
     setSaving(true);
     setError('');
     setSuccess('');
@@ -160,12 +195,21 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
       const updatedProject = await response.json();
       setCurrentProject(updatedProject);
-      
-      // Update the editForm with the new values
-      setEditForm({
-        name: updatedProject.name,
-        description: updatedProject.description || ''
-      });
+
+      // If ownership was transferred, exit edit mode since user is no longer owner
+      if (editForm.new_owner_id) {
+        setIsEditing(false);
+        setSuccess('Project ownership transferred successfully');
+      } else {
+        // Update the editForm with the new values
+        setEditForm({
+          name: updatedProject.name,
+          description: updatedProject.description || '',
+          join_code: updatedProject.join_code || '',
+          new_owner_id: null
+        });
+        setSuccess('Project updated successfully');
+      }
       
       // Update the projects array in state to reflect the changes in the table
       setProjects(prevProjects => 
@@ -603,6 +647,50 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                         placeholder="Enter project description"
                       />
                     </div>
+
+                    <div className="field">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Join Code
+                      </label>
+                      <div className="flex gap-2">
+                        <InputText
+                          value={editForm.join_code}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, join_code: e.target.value }))}
+                          className="flex-1"
+                          placeholder="Enter join code (optional)"
+                        />
+                        <Button
+                          icon="pi pi-refresh"
+                          className="p-button-outlined"
+                          onClick={() => setEditForm(prev => ({ ...prev, join_code: 'PROJ-' + Math.random().toString(36).substring(2, 10).toUpperCase() }))}
+                          tooltip="Generate random join code"
+                        />
+                      </div>
+                      <small className="text-gray-500">Users can join this project using this code</small>
+                    </div>
+
+                    {currentProject?.is_owner && (
+                      <div className="field">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Transfer Ownership
+                        </label>
+                        <select
+                          value={editForm.new_owner_id || ''}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, new_owner_id: e.target.value ? parseInt(e.target.value) : null }))}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        >
+                          <option value="">Keep current owner ({currentProject.owner.name})</option>
+                          {projectMembers.filter(member => member.user_id !== currentProject.owner.id).map(member => (
+                            <option key={member.user_id} value={member.user_id}>
+                              Transfer to {member.user.name} ({member.user.email}) - {member.role}
+                            </option>
+                          ))}
+                        </select>
+                        <small className="text-yellow-500">
+                          ⚠️ Warning: You will lose owner privileges after transfer!
+                        </small>
+                      </div>
+                    )}
 
                     <div className="flex space-x-2 pt-2">
                       <Button

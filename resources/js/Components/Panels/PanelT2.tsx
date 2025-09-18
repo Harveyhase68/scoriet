@@ -27,6 +27,7 @@ import { TabContentProps } from '@/types';
 import { SchemaTable } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
 import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
+import CreateTableModal from '@/Components/Modals/CreateTableModal';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface FloatingSchema {
@@ -46,6 +47,7 @@ interface SchemaVersionExtended {
   description?: string;
   imported_at?: string;
   display_name?: string;
+  has_unsaved_changes?: boolean;
 }
 
 interface DatabaseNodeData {
@@ -305,7 +307,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
+  const [showCreateTableModal, setShowCreateTableModal] = useState(false);
   const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
+  const [pendingAction, setPendingAction] = useState<'delete' | 'create' | null>(null);
 
   const loadFloatingSchemas = useCallback(async (preserveSchemaId?: number) => {
     if (!selectedProject) {
@@ -591,10 +595,150 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     });
   };
 
+  // Handle creating a new table with smart version detection
+  const handleCreateNewTable = useCallback(() => {
+    if (!selectedProject) return;
+
+    // Case 1: No versions exist yet - this shouldn't happen, but handle gracefully
+    if (!selectedVersion) {
+      setError('No version available. Please create a schema version first.');
+      return;
+    }
+
+    // Case 2: Version exists but has unsaved changes - open modal directly
+    if (selectedVersion.has_unsaved_changes === true) {
+      setShowCreateTableModal(true);
+      return;
+    }
+
+    // Case 3: Clean version exists - ask user about creating new version
+    setPendingAction('create');
+    setShowVersionModal(true);
+    setPendingDeleteTable(null); // Clear any pending delete action
+  }, [selectedProject, selectedVersion]);
+
+  // Create a new table with modal data
+  const handleCreateTable = useCallback(async (tableName: string, tableComment: string, fields: any[]) => {
+    if (!selectedProject || !selectedVersion || !selectedVersion.id) {
+      setError('No version selected or version ID missing. Please select a schema version first.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const columns = fields.map(field => ({
+        column_name: field.name,
+        data_type: field.type,
+        is_nullable: field.nullable,
+        is_auto_increment: field.autoIncrement,
+        comment: field.comment
+      }));
+
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: tableName,
+          comment: tableComment,
+          columns: columns
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create table');
+      }
+
+      // Close modal and refresh the schema to show the new table
+      setShowCreateTableModal(false);
+      if (selectedSchema) {
+        await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create table');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject]);
+
+  // Create a new table in a new version
+  const handleCreateTableWithNewVersion = useCallback(async () => {
+    if (!selectedSchema || !selectedSchema.id || !selectedVersion) {
+      setError('No schema or version selected. Please select a schema first.');
+      return;
+    }
+
+    try {
+      // Create new version only
+      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create new version');
+      }
+
+      // Reload the schema and versions to get the new version
+      await loadFloatingSchemas(selectedSchema.id);
+
+      // Open the table creation modal
+      setShowCreateTableModal(true);
+
+    } catch (error) {
+      console.error('Error creating new version:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create new version');
+    } finally {
+      setShowVersionModal(false);
+      setPendingAction(null);
+    }
+  }, [selectedSchema, selectedVersion, loadFloatingSchemas]);
+
+  // Continue creating table in current version
+  const handleContinueWithCreateTable = useCallback(async () => {
+    if (!selectedVersion || !selectedVersion.id) {
+      setError('No version selected. Please select a schema version first.');
+      return;
+    }
+
+    try {
+      // Mark version as having unsaved changes
+      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Update local state
+      setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
+
+      // Open the table creation modal
+      setShowCreateTableModal(true);
+
+    } catch (error) {
+      console.error('Error marking unsaved changes:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update version');
+    } finally {
+      setShowVersionModal(false);
+      setPendingAction(null);
+    }
+  }, [selectedVersion]);
+
   const handleDeleteTable = useCallback((table: SchemaTable) => {
-    
+
     setPendingDeleteTable(table);
-    
+    setPendingAction('delete');
+
     // Check if we should show version confirmation modal
     if (!selectedVersion?.has_unsaved_changes) {
       setShowVersionModal(true);
@@ -632,84 +776,111 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema]);
 
   const handleVersionModalNewVersion = useCallback(async () => {
-    if (!selectedSchema || !selectedVersion || !pendingDeleteTable) return;
+    if (!selectedSchema || !selectedVersion) return;
 
-
-    // SAFETY CHECK: Double confirm which table we're about to delete
-    const confirmMessage = `Sie sind dabei die Tabelle "${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id}) zu löschen. Ist das korrekt?`;
-    if (!confirm(confirmMessage)) {
+    // Handle different actions
+    if (pendingAction === 'create') {
+      await handleCreateTableWithNewVersion();
       return;
     }
 
-    try {
-      // Use the new API endpoint that creates version copy AND deletes table in one operation
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          description: `Table deletion: ${pendingDeleteTable.table_name}`
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create version and delete table');
+    if (pendingAction === 'delete') {
+      if (!pendingDeleteTable) {
+        setError('No table selected for deletion');
+        return;
       }
 
-      const result = await response.json();
-      
-      if (result.success && result.new_version_number) {
-        // Reload floating schemas to update last_version
-        await loadFloatingSchemas();
-        
-        // Reload schema versions to get the new version
-        const newVersions = await loadSchemaVersions(selectedSchema);
-        const newVersion = newVersions?.find(v => v.version_number === result.new_version_number);
-        
-        if (newVersion) {
-          setSelectedVersion(newVersion);
-          // Refresh the table view for the new version
-          loadSchemaVersionWithSchema(selectedSchema, newVersion);
+      // SAFETY CHECK: Double confirm which table we're about to delete
+      const confirmMessage = `Sie sind dabei die Tabelle "${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id}) zu löschen. Ist das korrekt?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+        try {
+          // Use the new API endpoint that creates version copy AND deletes table in one operation
+          const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              description: `Table deletion: ${pendingDeleteTable.table_name}`
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to create version and delete table');
+          }
+
+          const result = await response.json();
+
+          if (result.success && result.new_version_number) {
+            // Reload floating schemas to update last_version
+            await loadFloatingSchemas();
+
+            // Reload schema versions to get the new version
+            const newVersions = await loadSchemaVersions(selectedSchema);
+            const newVersion = newVersions?.find(v => v.version_number === result.new_version_number);
+
+            if (newVersion) {
+              setSelectedVersion(newVersion);
+              // Refresh the table view for the new version
+              loadSchemaVersionWithSchema(selectedSchema, newVersion);
+            }
+          }
+        } catch (error) {
+          console.error('Error creating new version and deleting table:', error);
+          setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
+        } finally {
+          setShowVersionModal(false);
+          setPendingDeleteTable(null);
+          setPendingAction(null);
         }
       }
-    } catch (error) {
-      console.error('Error creating new version and deleting table:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
-    } finally {
-      setShowVersionModal(false);
-      setPendingDeleteTable(null);
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSchema, selectedVersion, pendingDeleteTable]); // Other dependencies would cause infinite loop
+  }, [selectedSchema, selectedVersion, pendingDeleteTable, pendingAction, handleCreateTableWithNewVersion]); // Other dependencies would cause infinite loop
 
   const handleVersionModalContinue = useCallback(async () => {
-    if (!selectedVersion || !pendingDeleteTable) return;
+    if (!selectedVersion) return;
 
-    try {
-      // Mark version as having unsaved changes
-      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      // Update local state
-      setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
-
-      // Delete the table
-      await performDeleteTable(pendingDeleteTable);
-    } catch (error) {
-      console.error('Error marking unsaved changes:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update version');
-    } finally {
-      setShowVersionModal(false);
-      setPendingDeleteTable(null);
+    // Handle different actions
+    if (pendingAction === 'create') {
+      await handleContinueWithCreateTable();
+      return;
     }
-  }, [selectedVersion, pendingDeleteTable, performDeleteTable]);
+
+    if (pendingAction === 'delete') {
+      if (!pendingDeleteTable) {
+        setError('No table selected for deletion');
+        return;
+      }
+
+      try {
+        // Mark version as having unsaved changes
+        await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        // Update local state
+        setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
+
+        // Delete the table
+        await performDeleteTable(pendingDeleteTable);
+      } catch (error) {
+        console.error('Error deleting table:', error);
+        setError(error instanceof Error ? error.message : 'Failed to delete table');
+      } finally {
+        setShowVersionModal(false);
+        setPendingDeleteTable(null);
+        setPendingAction(null);
+      }
+    }
+  }, [selectedVersion, pendingDeleteTable, performDeleteTable, handleContinueWithCreateTable, pendingAction]);
 
   const handleRefresh = useCallback(async () => {
     // Store current selections to preserve them
@@ -818,12 +989,20 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               🔄 Refresh
             </button>
             
-            <button 
+            <button
               onClick={() => setShowImportModal(true)}
               className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
             >
               📥 Import SQL
+            </button>
+
+            <button
+              onClick={handleCreateNewTable}
+              className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm transition-colors"
+              disabled={loading || !selectedProject}
+            >
+              ✨ New Table
             </button>
           </div>
         </div>
@@ -1034,12 +1213,25 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         onClose={() => {
           setShowVersionModal(false);
           setPendingDeleteTable(null);
+          setPendingAction(null);
         }}
         onNewVersion={handleVersionModalNewVersion}
         onContinueEditing={handleVersionModalContinue}
-        actionDescription={`die Tabelle "${pendingDeleteTable?.table_name}" löschen`}
+        actionDescription={
+          pendingAction === 'create'
+            ? 'eine neue Tabelle erstellen'
+            : `die Tabelle "${pendingDeleteTable?.table_name}" löschen`
+        }
         currentVersion={selectedVersion?.version_name || 'Current'}
         tableName={pendingDeleteTable?.table_name}
+      />
+
+      {/* Create Table Modal */}
+      <CreateTableModal
+        isOpen={showCreateTableModal}
+        onClose={() => setShowCreateTableModal(false)}
+        onTableCreated={handleCreateTable}
+        loading={loading}
       />
     </TabContent>
   );

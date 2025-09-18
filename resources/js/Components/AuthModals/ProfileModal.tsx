@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
@@ -7,6 +7,9 @@ import { Message } from 'primereact/message';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
+import { Dropdown } from 'primereact/dropdown';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '@/i18n';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -18,16 +21,26 @@ interface UserData {
   name: string;
   username?: string;
   email: string;
+  language?: string;
   email_verified_at?: string;
   created_at?: string;
   updated_at?: string;
 }
 
 export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
+  const { t, i18n } = useTranslation();
+
   const [userData, setUserData] = useState<UserData>({
     name: '',
-    email: ''
+    email: '',
+    language: 'en'
   });
+
+  const languageOptions = [
+    { label: t('languages.en'), value: 'en' },
+    { label: t('languages.de'), value: 'de' },
+    { label: t('languages.fr'), value: 'fr' }
+  ];
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     password: '',
@@ -52,9 +65,9 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
     if (visible) {
       loadUserData();
     }
-  }, [visible]);
+  }, [visible, loadUserData]);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
@@ -74,11 +87,19 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       }
 
       const user = await response.json();
-      setUserData(user);
+      setUserData({
+        ...user,
+        language: user.language || 'en'
+      });
+
+      // Set UI language to user's preference
+      if (user.language && i18n.language !== user.language) {
+        await changeLanguage(user.language);
+      }
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Error loading');
     }
-  };
+  }, [i18n.language]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +123,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         body: JSON.stringify({
           name: userData.name,
           email: userData.email,
+          language: userData.language,
         }),
       });
 
@@ -110,12 +132,38 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         throw new Error(errorData.message || 'Error updating');
       }
 
-      setProfileSuccess('Profile updated successfully');
-      
+      setProfileSuccess(t('profile.updateSuccess'));
+
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'An error occurred');
+      setProfileError(err instanceof Error ? err.message : t('profile.updateError'));
     } finally {
       setLoadingProfile(false);
+    }
+  };
+
+  // Handle language change immediately
+  const handleLanguageChange = async (language: string) => {
+    setUserData(prev => ({ ...prev, language }));
+
+    try {
+      // Change UI language immediately
+      await changeLanguage(language);
+
+      // Also save to backend
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        await fetch('/api/profile/language', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ language }),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update language:', error);
     }
   };
 
@@ -257,7 +305,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
   return (
     <Dialog
-      header="My Profile"
+      header={t('profile.title')}
       visible={visible}
       onHide={handleHide}
       style={{ width: '700px' }}
@@ -268,7 +316,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       className="p-dialog-custom"
     >
       <TabView>
-        <TabPanel header="Edit Profile" leftIcon="pi pi-user">
+        <TabPanel header={t('profile.tabs.profile')} leftIcon="pi pi-user">
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             {profileError && (
               <Message 
@@ -315,13 +363,13 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
                 style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
               />
               <small className="text-gray-500">
-                Der Username kann nach der Registrierung nicht mehr geändert werden.
+                The username cannot be changed after registration.
               </small>
             </div>
 
             <div className="field">
               <label htmlFor="profile-name" className="block text-sm font-medium mb-2">
-                Name
+                {t('profile.fields.name')}
               </label>
               <InputText
                 id="profile-name"
@@ -337,7 +385,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="profile-email" className="block text-sm font-medium mb-2">
-                E-Mail
+                {t('profile.fields.email')}
               </label>
               <InputText
                 id="profile-email"
@@ -351,9 +399,26 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
               />
             </div>
 
+            <div className="field">
+              <label htmlFor="profile-language" className="block text-sm font-medium mb-2">
+                {t('profile.language')}
+              </label>
+              <Dropdown
+                id="profile-language"
+                value={userData.language}
+                options={languageOptions}
+                onChange={(e) => handleLanguageChange(e.value)}
+                placeholder={t('profile.languageDescription')}
+                className="w-full"
+              />
+              <small className="text-gray-500">
+                {t('profile.languageDescription')}
+              </small>
+            </div>
+
             <Button
               type="submit"
-              label={loadingProfile ? "Saving..." : "Save Profile"}
+              label={loadingProfile ? t('common.loading') : t('profile.actions.updateProfile')}
               icon={loadingProfile ? "pi pi-spinner pi-spin" : "pi pi-save"}
               className="w-full"
               disabled={loadingProfile}
@@ -361,7 +426,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
           </form>
         </TabPanel>
 
-        <TabPanel header="Change Password" leftIcon="pi pi-lock">
+        <TabPanel header={t('profile.tabs.password')} leftIcon="pi pi-lock">
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             {passwordError && (
               <Message 
@@ -381,7 +446,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="current-password" className="block text-sm font-medium mb-2">
-                Current Password
+                {t('profile.fields.currentPassword')}
               </label>
               <Password
                 id="current-password"
@@ -399,7 +464,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="new-password" className="block text-sm font-medium mb-2">
-                New Password
+                {t('profile.fields.newPassword')}
               </label>
               <Password
                 id="new-password"
@@ -417,7 +482,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="confirm-password" className="block text-sm font-medium mb-2">
-                Confirm New Password
+                {t('profile.fields.confirmPassword')}
               </label>
               <Password
                 id="confirm-password"
@@ -523,7 +588,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
           </div>
         </TabPanel>
 
-        <TabPanel header="Delete Account" leftIcon="pi pi-trash">
+        <TabPanel header={t('profile.tabs.danger')} leftIcon="pi pi-trash">
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
             {deleteError && (
               <Message 
@@ -595,7 +660,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <Button
               type="submit"
-              label={loadingDelete ? "Account will be deleted..." : "Permanently delete account"}
+              label={loadingDelete ? t('common.loading') : t('profile.actions.deleteAccount')}
               icon={loadingDelete ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               className="w-full p-button-danger"
               disabled={loadingDelete || deleteData.confirmText !== 'DELETE'}
