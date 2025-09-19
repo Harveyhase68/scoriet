@@ -4,19 +4,24 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { Dropdown } from 'primereact/dropdown';
+import { SupportedLanguage, supportedLanguages, getStoredLanguage } from '@/utils/i18n';
+import CSSFlag from '@/Components/CSSFlag';
 
 interface RegisterModalProps {
   visible: boolean;
   onHide: () => void;
   onSwitchToLogin: () => void;
   onRegistrationSuccess?: () => void;
+  currentLanguage?: SupportedLanguage;
 }
 
-export default function RegisterModal({ 
-  visible, 
-  onHide, 
+export default function RegisterModal({
+  visible,
+  onHide,
   onSwitchToLogin,
-  onRegistrationSuccess 
+  onRegistrationSuccess,
+  currentLanguage
 }: RegisterModalProps) {
 
   const [formData, setFormData] = useState({
@@ -25,12 +30,22 @@ export default function RegisterModal({
     email: '',
     password: '',
     password_confirmation: '',
-    language: 'en' // Default language
+    language: currentLanguage || getStoredLanguage() // Use current lobby language or detect browser language
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+
+  // Update language when currentLanguage prop changes
+  React.useEffect(() => {
+    if (currentLanguage && visible) {
+      setFormData(prev => ({
+        ...prev,
+        language: currentLanguage
+      }));
+    }
+  }, [currentLanguage, visible]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +114,14 @@ export default function RegisterModal({
 
   const handleHide = () => {
     // Reset form when closing
-    setFormData({ name: '', username: '', email: '', password: '', password_confirmation: '' });
+    setFormData({
+      name: '',
+      username: '',
+      email: '',
+      password: '',
+      password_confirmation: '',
+      language: currentLanguage || getStoredLanguage() // Keep the current lobby language or detected/stored language
+    });
     setError('');
     setSuccess('');
     setLoading(false);
@@ -107,17 +129,81 @@ export default function RegisterModal({
   };
 
   return (
-    <Dialog
-      header="Register"
-      visible={visible}
-      onHide={handleHide}
-      style={{ width: '450px' }}
-      modal
-      closable
-      draggable={false}
-      resizable={false}
-      className="p-dialog-custom"
-    >
+    <>
+      <style>{`
+        /* Language dropdown specific styles - DARK THEME */
+        .language-dropdown-panel {
+          max-height: 240px !important;
+          overflow-y: auto !important;
+          z-index: 9999 !important;
+          background: #374151 !important;
+          border: 1px solid #4b5563 !important;
+          border-radius: 6px !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-items {
+          padding: 0 !important;
+          background: #374151 !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-item {
+          padding: 0.75rem 1rem !important;
+          min-height: 48px !important;
+          height: auto !important;
+          display: flex !important;
+          align-items: center !important;
+          border: none !important;
+          border-bottom: 1px solid #4b5563 !important;
+          background: #374151 !important;
+          color: #f3f4f6 !important;
+          transition: background-color 0.2s ease !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-item:last-child {
+          border-bottom: none !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-item:hover {
+          background-color: #4b5563 !important;
+          color: #ffffff !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-item:focus {
+          background-color: #1f2937 !important;
+          color: #60a5fa !important;
+          outline: none !important;
+        }
+
+        .language-dropdown-panel .p-dropdown-item.p-highlight {
+          background-color: #1e40af !important;
+          color: #ffffff !important;
+        }
+
+        /* Ensure flag icons are visible */
+        .flag-icon-simple {
+          display: inline-block !important;
+          font-style: normal !important;
+          font-variant: normal !important;
+          text-rendering: optimizeLegibility !important;
+          line-height: 1 !important;
+          font-family: system-ui, -apple-system, "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", sans-serif !important;
+          min-width: 18px !important;
+          text-align: center !important;
+          user-select: none !important;
+          vertical-align: middle !important;
+        }
+      `}</style>
+      <Dialog
+        header="Register"
+        visible={visible}
+        onHide={handleHide}
+        style={{ width: '450px' }}
+        modal
+        closable
+        draggable={false}
+        resizable={false}
+        className="p-dialog-custom"
+      >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <Message 
@@ -148,6 +234,7 @@ export default function RegisterModal({
             className="w-full"
             disabled={loading}
             required
+            autoComplete="name"
           />
         </div>
 
@@ -165,6 +252,7 @@ export default function RegisterModal({
             disabled={loading}
             required
             maxLength={30}
+            autoComplete="username"
           />
           <small className="text-gray-500">
             Only lowercase letters, numbers, underscores, and hyphens. Cannot be changed later.
@@ -184,6 +272,7 @@ export default function RegisterModal({
             className="w-full"
             disabled={loading}
             required
+            autoComplete="email"
           />
         </div>
 
@@ -202,6 +291,7 @@ export default function RegisterModal({
             feedback={true}
             toggleMask
             required
+            autoComplete="new-password"
           />
         </div>
 
@@ -220,7 +310,62 @@ export default function RegisterModal({
             feedback={false}
             toggleMask
             required
+            autoComplete="new-password"
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="register-language" className="block text-sm font-medium mb-2">
+            Preferred Language
+          </label>
+          <Dropdown
+            id="register-language"
+            value={formData.language}
+            onChange={(e) => handleInputChange('language', e.value)}
+            options={supportedLanguages.map(lang => ({
+              label: lang.nativeName,
+              value: lang.code
+            }))}
+            placeholder="Select Language"
+            className="w-full"
+            disabled={loading}
+            itemTemplate={(option: any) => {
+              const lang = supportedLanguages.find(l => l.code === option.value);
+              return (
+                <div className="flex items-center w-full" style={{ minHeight: '48px', padding: '0.75rem 1rem' }}>
+                  <span className="mr-3 flex-shrink-0" style={{ width: '20px', textAlign: 'center' }}>
+                    <CSSFlag country={option.value === 'en' ? 'us' : option.value} size="md" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-100">{lang?.nativeName}</span>
+                </div>
+              );
+            }}
+            valueTemplate={(selectedOption: any) => {
+              if (!selectedOption) {
+                return <span className="text-sm text-gray-500">Select Language</span>;
+              }
+
+              // Extract the actual value from the option object
+              const languageCode = selectedOption.value || selectedOption;
+              const lang = supportedLanguages.find(l => l.code === languageCode);
+
+              return lang ? (
+                <div className="flex items-center py-2">
+                  <span className="mr-2 flex-shrink-0" style={{ width: '18px', textAlign: 'center' }}>
+                    <CSSFlag country={lang.code === 'en' ? 'us' : lang.code} size="sm" />
+                  </span>
+                  <span className="text-sm font-medium">{lang.nativeName}</span>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">Select Language</span>
+              );
+            }}
+            panelClassName="language-dropdown-panel"
+            dropdownIcon="pi pi-chevron-down"
+          />
+          <small className="text-gray-500">
+            This will be your default language in the application.
+          </small>
         </div>
 
         <Button
@@ -244,5 +389,6 @@ export default function RegisterModal({
         </div>
       </form>
     </Dialog>
+    </>
   );
 }

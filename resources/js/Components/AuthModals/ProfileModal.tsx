@@ -60,13 +60,6 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
   const [passwordSuccess, setPasswordSuccess] = useState<string>('');
   const [deleteSuccess, setDeleteSuccess] = useState<string>('');
 
-  // Load user data when opening
-  useEffect(() => {
-    if (visible) {
-      loadUserData();
-    }
-  }, [visible, loadUserData]);
-
   const loadUserData = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -100,6 +93,13 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       setProfileError(err instanceof Error ? err.message : 'Error loading');
     }
   }, [i18n.language]);
+
+  // Load user data when opening
+  useEffect(() => {
+    if (visible) {
+      loadUserData();
+    }
+  }, [visible, loadUserData]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -59,6 +59,7 @@ export default function LoginModal({
           client_secret: import.meta.env.VITE_PASSPORT_CLIENT_SECRET || '',
           username: formData.email,
           password: formData.password,
+          remember_me: formData.rememberMe,
         }),
       });
 

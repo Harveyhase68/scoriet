@@ -137,6 +137,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/floating-schemas/{schema}/create-version-and-table', [SchemaController::class, 'createVersionAndTable']);
     Route::get('/schema-versions/{version}/tables', [SchemaController::class, 'getVersionTables']);
     Route::post('/schema-versions/{version}/tables', [SchemaController::class, 'createTable']);
+    Route::put('/schema-versions/{version}/tables/{table}', [SchemaController::class, 'updateTable']);
     Route::delete('/schema-versions/{version}/tables/{table}', [SchemaController::class, 'deleteTable']);
     Route::post('/schema-versions/{version}/tables/{table}/delete-with-copy', [SchemaController::class, 'deleteTableWithVersionCopy']);
     Route::put('/schema-versions/{version}/unsaved-changes', [SchemaController::class, 'markUnsavedChanges']);

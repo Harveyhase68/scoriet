@@ -582,7 +582,7 @@ export default function Index(props: IndexProps = {}) {
               setActiveModal(null);
             }
           } else {
-            // Token is invalid - clean up and set as not authenticated
+            // Token is invalid (401, 404, etc.) - clean up and set as not authenticated
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('remember_me');
@@ -592,13 +592,30 @@ export default function Index(props: IndexProps = {}) {
             document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             setIsAuthenticated(false);
 
+            // Show login modal for invalid tokens (but not during explicit logout)
+            const isLoggingOut = localStorage.getItem('logout_in_progress');
+            if (!isLoggingOut && !activeModal) {
+              setActiveModal('login');
+            }
+
             // Trigger storage event for other components
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
           }
         } catch (error) {
           console.error('Auth check failed:', error);
+          // Network error or other issue - clean up tokens and set unauthenticated
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('remember_me');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
           setIsAuthenticated(false);
+
+          // Trigger storage event for other components
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('auth-change'));
         }
       } else {
         setIsAuthenticated(false);

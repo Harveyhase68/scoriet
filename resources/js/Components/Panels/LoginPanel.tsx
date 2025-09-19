@@ -60,10 +60,8 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        console.log('User data from API:', userData); // Debug
         // Store user_id in localStorage for later use
         localStorage.setItem('user_id', userData.id.toString());
-        console.log('Stored user_id in localStorage:', userData.id); // Debug
       }
 
       // Success - close panel or redirect

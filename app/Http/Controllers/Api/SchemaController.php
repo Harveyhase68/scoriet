@@ -360,6 +360,77 @@ class SchemaController extends Controller
     }
 
     /**
+     * Update an existing table in a schema version
+     */
+    public function updateTable(Request $request, SchemaVersion $version, \App\Models\SchemaTable $table): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if this schema version has a schema and user can edit it
+        if ($version->hasSchema()) {
+            $schema = $version->schema;
+            if (!$schema->canBeEditedBy($user)) {
+                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            }
+        }
+
+        // Validate that the table belongs to this version
+        if ($table->schema_version_id !== $version->id) {
+            return response()->json(['message' => 'Table does not belong to this schema version'], 404);
+        }
+
+        $request->validate([
+            'table_name' => 'required|string|max:255',
+            'comment' => 'nullable|string',
+            'columns' => 'array',
+            'columns.*.column_name' => 'required|string|max:255',
+            'columns.*.data_type' => 'required|string|max:255',
+            'columns.*.is_nullable' => 'boolean',
+            'columns.*.is_auto_increment' => 'boolean',
+            'columns.*.comment' => 'nullable|string',
+        ]);
+
+        try {
+            // Update the table
+            $table->update([
+                'table_name' => $request->table_name,
+                'comment' => $request->comment,
+            ]);
+
+            // Delete existing fields and recreate them
+            \App\Models\SchemaField::where('table_id', $table->id)->delete();
+
+            // Create new columns if provided
+            if ($request->has('columns')) {
+                foreach ($request->columns as $index => $columnData) {
+                    \App\Models\SchemaField::create([
+                        'table_id' => $table->id,
+                        'field_name' => $columnData['column_name'],
+                        'field_type' => $columnData['data_type'],
+                        'is_nullable' => $columnData['is_nullable'] ?? true,
+                        'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
+                        'comment' => $columnData['comment'] ?? null,
+                        'field_order' => $index, // Logical order: 0, 1, 2, 3...
+                    ]);
+                }
+            }
+
+            $table->load(['fields', 'constraints']);
+
+            return response()->json([
+                'message' => 'Table updated successfully',
+                'table' => $table
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update table',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Delete a table from a schema version
      */
     public function deleteTable(SchemaVersion $version, \App\Models\SchemaTable $table): JsonResponse

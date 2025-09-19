@@ -28,6 +28,7 @@ import { SchemaTable } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
 import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
 import CreateTableModal from '@/Components/Modals/CreateTableModal';
+import EditTableModal from '@/Components/Modals/EditTableModal';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface FloatingSchema {
@@ -65,6 +66,7 @@ interface DatabaseNodeData {
   }>;
   table?: SchemaTable;
   onDelete?: (table: SchemaTable) => void;
+  onEdit?: (table: SchemaTable) => void;
   isLatestVersion?: boolean;
 }
 
@@ -124,18 +126,32 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
             <div className="text-lg mr-2">🗃️</div>
             <div className="text-sm font-bold text-white">{data.tableName}</div>
           </div>
-          {data.onDelete && data.isLatestVersion && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onDelete(data.table);
-              }}
-              className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
-              title="Tabelle löschen"
-            >
-              🗑️
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {data.onEdit && data.isLatestVersion && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onEdit(data.table);
+                }}
+                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                title="Tabelle bearbeiten"
+              >
+                ✏️
+              </button>
+            )}
+            {data.onDelete && data.isLatestVersion && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onDelete(data.table);
+                }}
+                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                title="Tabelle löschen"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
@@ -183,7 +199,7 @@ const nodeTypes = {
 };
 
 // Helper functions
-const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
+const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
   return tables.map((table, index) => {
     // Primary Keys finden
     const primaryKeyFields = table.constraints
@@ -210,6 +226,7 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
       })) || [],
       table: table,
       onDelete: onDeleteTable,
+      onEdit: onEditTable,
       isLatestVersion: isLatestVersion,
     };
 
@@ -229,14 +246,47 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
       width = savedLayout.width ? parseFloat(savedLayout.width) : 280;
       height = savedLayout.height ? parseFloat(savedLayout.height) : undefined;
     } else {
-      // Calculate default grid position
-      const cols = Math.ceil(Math.sqrt(tables.length));
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      position = { 
-        x: col * 350 + 50, 
-        y: row * 300 + 50 
-      };
+      // Smart positioning: Find optimal position for new table
+      if (index > 0) {
+        // Find existing table positions (excluding current table)
+        const existingTables = tables.slice(0, index);
+        const existingPositions = existingTables.map((t, i) => {
+          const savedPos = savedLayouts[t.table_name];
+          if (savedPos) {
+            return {
+              x: parseFloat(savedPos.x_position) || 0,
+              y: parseFloat(savedPos.y_position) || 0,
+              width: parseFloat(savedPos.width) || 280
+            };
+          } else {
+            // Calculate grid position for previous tables
+            const cols = Math.ceil(Math.sqrt(tables.length));
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            return {
+              x: col * 350 + 50,
+              y: row * 300 + 50,
+              width: 280
+            };
+          }
+        });
+
+        if (existingPositions.length > 0) {
+          // Find highest Y position (smallest Y value) and rightmost X position
+          const minY = Math.min(...existingPositions.map(p => p.y));
+          const maxX = Math.max(...existingPositions.map(p => p.x + p.width));
+
+          position = {
+            x: maxX + 50, // Rightmost position + gap
+            y: minY       // Same height as highest table
+          };
+        } else {
+          position = { x: 50, y: 50 }; // Fallback
+        }
+      } else {
+        // First table - default position
+        position = { x: 50, y: 50 };
+      }
       width = 280; // Default width
     }
 
@@ -308,8 +358,10 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showCreateTableModal, setShowCreateTableModal] = useState(false);
+  const [showEditTableModal, setShowEditTableModal] = useState(false);
   const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
-  const [pendingAction, setPendingAction] = useState<'delete' | 'create' | null>(null);
+  const [pendingEditTable, setPendingEditTable] = useState<SchemaTable | null>(null);
+  const [pendingAction, setPendingAction] = useState<'delete' | 'create' | 'edit' | null>(null);
 
   const loadFloatingSchemas = useCallback(async (preserveSchemaId?: number) => {
     if (!selectedProject) {
@@ -519,7 +571,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           version.version_number === schema.last_version;
         
         
-        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, isLatestVersion);
+        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, isLatestVersion);
         const newEdges = convertSchemaToEdges(tables);
         
         setNodes(newNodes);
@@ -666,6 +718,92 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     }
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject]);
 
+  // Update an existing table with modal data
+  const handleUpdateTable = useCallback(async (tableName: string, tableComment: string, fields: any[]) => {
+    if (!selectedProject || !selectedVersion || !selectedVersion.id || !pendingEditTable) {
+      setError('No version selected or table to edit. Please select a schema version first.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const columns = fields.map(field => ({
+        column_name: field.name,
+        data_type: field.type,
+        is_nullable: field.nullable,
+        is_auto_increment: field.autoIncrement,
+        comment: field.comment
+      }));
+
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingEditTable.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: tableName,
+          comment: tableComment,
+          columns: columns
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update table');
+      }
+
+      // Close modal and refresh the schema to show the updated table
+      setShowEditTableModal(false);
+      setPendingEditTable(null);
+      if (selectedSchema) {
+        await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update table');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject, pendingEditTable]);
+
+  // Edit a table in a new version
+  const handleEditTableWithNewVersion = useCallback(async () => {
+    if (!selectedSchema || !selectedSchema.id || !selectedVersion) {
+      setError('No schema or version selected. Please select a schema first.');
+      return;
+    }
+
+    try {
+      // Create new version only
+      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create new version');
+      }
+
+      // Reload the schema and versions to get the new version
+      await loadFloatingSchemas(selectedSchema.id);
+
+      // Open the table edit modal
+      setShowEditTableModal(true);
+
+    } catch (error) {
+      console.error('Error creating new version:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create new version');
+    } finally {
+      setShowVersionModal(false);
+      setPendingAction(null);
+    }
+  }, [selectedSchema, selectedVersion, loadFloatingSchemas]);
+
   // Create a new table in a new version
   const handleCreateTableWithNewVersion = useCallback(async () => {
     if (!selectedSchema || !selectedSchema.id || !selectedVersion) {
@@ -701,6 +839,38 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setPendingAction(null);
     }
   }, [selectedSchema, selectedVersion, loadFloatingSchemas]);
+
+  // Continue editing table in current version
+  const handleContinueWithEditTable = useCallback(async () => {
+    if (!selectedVersion || !selectedVersion.id) {
+      setError('No version selected. Please select a schema version first.');
+      return;
+    }
+
+    try {
+      // Mark version as having unsaved changes
+      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Update local state
+      setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
+
+      // Open the table edit modal
+      setShowEditTableModal(true);
+
+    } catch (error) {
+      console.error('Error marking unsaved changes:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update version');
+    } finally {
+      setShowVersionModal(false);
+      setPendingAction(null);
+    }
+  }, [selectedVersion]);
 
   // Continue creating table in current version
   const handleContinueWithCreateTable = useCallback(async () => {
@@ -749,6 +919,20 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Dependencies would cause infinite re-renders
 
+  const handleEditTable = useCallback((table: SchemaTable) => {
+    setPendingEditTable(table);
+    setPendingAction('edit');
+
+    // Check if we should show version confirmation modal
+    if (!selectedVersion?.has_unsaved_changes) {
+      setShowVersionModal(true);
+    } else {
+      // Directly open edit modal if already marked as having changes
+      setShowEditTableModal(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencies would cause infinite re-renders
+
   const performDeleteTable = useCallback(async (table: SchemaTable) => {
     if (!selectedVersion) return;
 
@@ -781,6 +965,11 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     // Handle different actions
     if (pendingAction === 'create') {
       await handleCreateTableWithNewVersion();
+      return;
+    }
+
+    if (pendingAction === 'edit') {
+      await handleEditTableWithNewVersion();
       return;
     }
 
@@ -850,6 +1039,11 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       return;
     }
 
+    if (pendingAction === 'edit') {
+      await handleContinueWithEditTable();
+      return;
+    }
+
     if (pendingAction === 'delete') {
       if (!pendingDeleteTable) {
         setError('No table selected for deletion');
@@ -880,7 +1074,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setPendingAction(null);
       }
     }
-  }, [selectedVersion, pendingDeleteTable, performDeleteTable, handleContinueWithCreateTable, pendingAction]);
+  }, [selectedVersion, pendingDeleteTable, performDeleteTable, handleContinueWithCreateTable, handleContinueWithEditTable, pendingAction]);
 
   const handleRefresh = useCallback(async () => {
     // Store current selections to preserve them
@@ -1213,6 +1407,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         onClose={() => {
           setShowVersionModal(false);
           setPendingDeleteTable(null);
+          setPendingEditTable(null);
           setPendingAction(null);
         }}
         onNewVersion={handleVersionModalNewVersion}
@@ -1220,7 +1415,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         actionDescription={
           pendingAction === 'create'
             ? 'eine neue Tabelle erstellen'
-            : `die Tabelle "${pendingDeleteTable?.table_name}" löschen`
+            : pendingAction === 'edit'
+              ? `die Tabelle "${pendingEditTable?.table_name}" bearbeiten`
+              : `die Tabelle "${pendingDeleteTable?.table_name}" löschen`
         }
         currentVersion={selectedVersion?.version_name || 'Current'}
         tableName={pendingDeleteTable?.table_name}
@@ -1231,6 +1428,18 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         isOpen={showCreateTableModal}
         onClose={() => setShowCreateTableModal(false)}
         onTableCreated={handleCreateTable}
+        loading={loading}
+      />
+
+      {/* Edit Table Modal */}
+      <EditTableModal
+        isOpen={showEditTableModal}
+        onClose={() => {
+          setShowEditTableModal(false);
+          setPendingEditTable(null);
+        }}
+        onTableUpdated={handleUpdateTable}
+        table={pendingEditTable}
         loading={loading}
       />
     </TabContent>

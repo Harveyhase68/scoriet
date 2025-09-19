@@ -24,8 +24,10 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
     {
 
         $this->registerPolicies();
-        Passport::tokensExpireIn(now()->addHour());
-        Passport::refreshTokensExpireIn(now()->addDays(30));
+
+        // Default token expiry (will be overridden in CustomTokenController for remember_me)
+        Passport::tokensExpireIn(now()->addHours(2));
+        Passport::refreshTokensExpireIn(now()->addDays(7));
         Passport::personalAccessTokensExpireIn(CarbonInterval::months(6));
         
         // Enable Password Grant Type
