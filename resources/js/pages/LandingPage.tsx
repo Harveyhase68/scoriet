@@ -6,15 +6,17 @@ import { Badge } from 'primereact/badge';
 import { Divider } from 'primereact/divider';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
-import { 
-  CodeBracketIcon as CodeIcon, 
-  CircleStackIcon as DatabaseIcon, 
-  DocumentTextIcon as TemplateIcon, 
+import {
+  CodeBracketIcon as CodeIcon,
+  CircleStackIcon as DatabaseIcon,
+  DocumentTextIcon as TemplateIcon,
   SparklesIcon,
   CheckIcon,
   HeartIcon
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+import LanguageSelector from '@/Components/LanguageSelector';
+import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/utils/i18n';
 
 interface UserData {
   id?: number;
@@ -33,6 +35,16 @@ export default function LandingPage() {
     const setting = localStorage.getItem('open_home_on_start');
     return setting === null || setting === 'true';
   });
+
+  // Language state
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
+  // Handle language change
+  const handleLanguageChange = (language: SupportedLanguage) => {
+    setCurrentLanguage(language);
+    setStoredLanguage(language);
+  };
 
   // Check if this is a demo installation
   const isDemoMode = import.meta.env.VITE_SCORIET_DEMO === 'true';
@@ -79,44 +91,44 @@ export default function LandingPage() {
   const features = [
     {
       icon: <DatabaseIcon className="w-8 h-8 text-blue-500" />,
-      title: "SQL Parser",
-      description: "Intelligent MySQL database schema parsing with support for complex relationships and constraints."
+      title: t.sqlParserTitle,
+      description: t.sqlParserDesc
     },
     {
       icon: <TemplateIcon className="w-8 h-8 text-green-500" />,
-      title: "Template System",
-      description: "Powerful templating engine with JavaScript execution for dynamic code generation."
+      title: t.templateSystemTitle,
+      description: t.templateSystemDesc
     },
     {
       icon: <CodeIcon className="w-8 h-8 text-purple-500" />,
-      title: "Multi-Language Support",
-      description: "Generate code for PHP, JavaScript, TypeScript, Python and more with customizable templates."
+      title: t.multiLanguageTitle,
+      description: t.multiLanguageDesc
     },
     {
       icon: <SparklesIcon className="w-8 h-8 text-yellow-500" />,
-      title: "Modern Interface",
-      description: "Intuitive dock-based MDI interface with tab stacking and floating panels."
+      title: t.modernInterfaceTitle,
+      description: t.modernInterfaceDesc
     }
   ];
 
   const pricingTiers = [
     {
-      name: "Free",
+      name: t.freeLabel,
       price: "€0",
       period: "forever",
       description: "Perfect for personal projects",
       features: [
         "Up to 3 projects",
-        "Basic templates", 
+        "Basic templates",
         "SQL schema parsing",
         "Community support"
       ],
-      buttonText: "Start Free",
+      buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
       popular: false
     },
     {
-      name: "Premium", 
+      name: t.premiumLabel,
       price: "€2.99",
       period: "/month",
       yearlyPrice: "€29.99/year",
@@ -129,12 +141,12 @@ export default function LandingPage() {
         "Advanced SQL features",
         "Team collaboration"
       ],
-      buttonText: "Go Premium",
+      buttonText: t.goPremium,
       buttonClass: "p-button-primary",
       popular: true
     },
     {
-      name: "Patron",
+      name: t.patronLabel,
       price: "€5+",
       period: "/month",
       description: "Support the community",
@@ -145,7 +157,7 @@ export default function LandingPage() {
         "Community Discord access",
         "Custom amount (€5-50+)"
       ],
-      buttonText: "Become Patron",
+      buttonText: t.becomePatron,
       buttonClass: "p-button-help",
       popular: false
     }
@@ -255,17 +267,25 @@ export default function LandingPage() {
               </div>
               
               <div className="flex items-center gap-2">
+                {/* Language Selector */}
+                <LanguageSelector
+                  currentLanguage={currentLanguage}
+                  onLanguageChange={handleLanguageChange}
+                  variant="compact"
+                  size="small"
+                />
+
                 {!isAuthenticated ? (
                   <>
-                    <Button 
-                      label="Login" 
+                    <Button
+                      label={t.login}
                       className="p-button-text"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => handleOpenModal('login')}
                     />
                     {!isDemoMode && (
-                      <Button 
-                        label="Register" 
+                      <Button
+                        label={t.register}
                         className="p-button-outlined"
                         style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                         onClick={() => handleOpenModal('register')}
@@ -274,22 +294,22 @@ export default function LandingPage() {
                   </>
                 ) : (
                   <>
-                    <Button 
-                      label="Profile"
+                    <Button
+                      label={t.profile}
                       icon="pi pi-user"
                       className="p-button-text"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => setActiveModal('profile')}
                     />
-                    <Button 
-                      label="Change Plan"
+                    <Button
+                      label={t.changePlan}
                       icon="pi pi-credit-card"
                       className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => setShowPlanModal(true)}
                     />
-                    <Button 
-                      label="Logout"
+                    <Button
+                      label={t.logout}
                       icon="pi pi-sign-out"
                       className="p-button-outlined"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
@@ -297,9 +317,9 @@ export default function LandingPage() {
                     />
                   </>
                 )}
-                
-                <Button 
-                  label="Goto App" 
+
+                <Button
+                  label={t.gotoApp}
                   icon="pi pi-arrow-right"
                   className="p-button-primary"
                   style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
@@ -314,31 +334,30 @@ export default function LandingPage() {
         <section className="py-20 bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl font-bold mb-6">
-              Enterprise <span className="text-blue-400">Code Generator</span>
+              <span className="text-blue-400">{t.title}</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              Transform your database schemas into production-ready code with intelligent templates. 
-              Reduce development time by 80% with automated code generation.
+              {t.subtitle}
             </p>
-            
+
             <div className="flex justify-center gap-2">
               {!isDemoMode ? (
-              <Button 
-                label="Start Free" 
-                className="p-button-primary"
-                style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                onClick={() => handleOpenModal('register')}
-              />
-            ) : (
-              <Button 
-                label="Try Demo" 
-                className="p-button-primary"
-                style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                onClick={() => handleOpenModal('login')}
-              />
-            )}
-              <Button 
-                label="Watch Demo" 
+                <Button
+                  label={t.startFree}
+                  className="p-button-primary"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={() => handleOpenModal('register')}
+                />
+              ) : (
+                <Button
+                  label={t.tryDemo}
+                  className="p-button-primary"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={() => handleOpenModal('login')}
+                />
+              )}
+              <Button
+                label={t.watchDemo}
                 icon="pi pi-play"
                 className="p-button-outlined p-button-primary"
                 style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
@@ -352,7 +371,7 @@ export default function LandingPage() {
         <section className="py-20 bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center mb-12">
-              Powerful Features for Modern Development
+              {t.featuresTitle}
             </h2>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -373,10 +392,10 @@ export default function LandingPage() {
         <section className="py-20 bg-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center mb-4">
-              Choose Your Plan
+              {t.pricingTitle}
             </h2>
             <p className="text-gray-400 text-center mb-12">
-              Start free, upgrade when you're ready to scale
+              {t.pricingSubtitle}
             </p>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -445,29 +464,29 @@ export default function LandingPage() {
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
           <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold mb-4">
-              Ready to 10x Your Development Speed?
+              {t.ctaTitle}
             </h2>
             <p className="text-xl mb-8 text-blue-100">
-              Join thousands of developers who are already using Scoriet to build better software faster.
+              {t.ctaSubtitle}
             </p>
             <div className="flex justify-center gap-2">
               {!isDemoMode ? (
-                <Button 
-                  label="Start Free Trial"
+                <Button
+                  label={t.startFreeTrial}
                   className="p-button-secondary"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('register')}
                 />
               ) : (
-                <Button 
-                  label="Try Demo Now"
+                <Button
+                  label={t.tryDemoNow}
                   className="p-button-secondary"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('login')}
                 />
               )}
-              <Button 
-                label="Contact Sales"
+              <Button
+                label={t.contactSales}
                 className="p-button-outlined"
                 style={{ borderColor: 'white', color: 'white', borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
               />
@@ -481,12 +500,12 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-white mb-4">
-                  Welcome back, {userData?.name || 'User'}! 👋
+                  {t.welcomeBack}, {userData?.name || 'User'}! 👋
                 </h2>
                 <p className="text-xl text-gray-300 mb-4">
-                  You're currently on the <span className="text-blue-400 font-semibold">Free Plan</span>
+                  {t.currentPlan} <span className="text-blue-400 font-semibold">{t.freeLabel} Plan</span>
                 </p>
-                <Badge value="Free Tier" severity="info" className="text-lg px-4 py-2" />
+                <Badge value={t.freeTier} severity="info" className="text-lg px-4 py-2" />
               </div>
               
               <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -518,12 +537,12 @@ export default function LandingPage() {
                       ))}
                     </ul>
                     
-                    <Button 
-                      label={plan.name === 'Free' ? 'Current Plan' : `Upgrade to ${plan.name}`}
-                      className={plan.name === 'Free' ? 'p-button-secondary' : plan.buttonClass}
+                    <Button
+                      label={plan.name === t.freeLabel ? t.currentPlanButton : `${t.upgradeTo} ${plan.name}`}
+                      className={plan.name === t.freeLabel ? 'p-button-secondary' : plan.buttonClass}
                       style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                      disabled={plan.name === 'Free'}
-                      onClick={() => plan.name !== 'Free' && alert(`Upgrading to ${plan.name} - Coming Soon!`)}
+                      disabled={plan.name === t.freeLabel}
+                      onClick={() => plan.name !== t.freeLabel && alert(`Upgrading to ${plan.name} - Coming Soon!`)}
                     />
                   </Card>
                 ))}
@@ -549,32 +568,32 @@ export default function LandingPage() {
               </div>
               
               <div>
-                <h4 className="font-semibold mb-4 text-white">Product</h4>
+                <h4 className="font-semibold mb-4 text-white">{t.productLabel}</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">Features</a></li>
-                  <li><a href="#" className="hover:text-white">Pricing</a></li>
-                  <li><a href="#" className="hover:text-white">Templates</a></li>
-                  <li><a href="#" className="hover:text-white">Examples</a></li>
+                  <li><a href="#" className="hover:text-white">{t.featuresLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.pricingLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.templatesLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.examplesLink}</a></li>
                 </ul>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold mb-4 text-white">Resources</h4>
+                <h4 className="font-semibold mb-4 text-white">{t.resourcesLabel}</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">Documentation</a></li>
-                  <li><a href="#" className="hover:text-white">API Reference</a></li>
-                  <li><a href="#" className="hover:text-white">Tutorials</a></li>
-                  <li><a href="#" className="hover:text-white">Blog</a></li>
+                  <li><a href="#" className="hover:text-white">{t.documentationLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.apiReferenceLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.tutorialsLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.blogLink}</a></li>
                 </ul>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold mb-4 text-white">Support</h4>
+                <h4 className="font-semibold mb-4 text-white">{t.supportLabel}</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">Help Center</a></li>
-                  <li><a href="#" className="hover:text-white">Community</a></li>
-                  <li><a href="#" className="hover:text-white">Contact Us</a></li>
-                  <li><a href="#" className="hover:text-white">Status</a></li>
+                  <li><a href="#" className="hover:text-white">{t.helpCenterLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.communityLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.contactUsLink}</a></li>
+                  <li><a href="#" className="hover:text-white">{t.statusLink}</a></li>
                 </ul>
               </div>
             </div>
@@ -582,10 +601,10 @@ export default function LandingPage() {
             <Divider />
             
             <div className="flex justify-between items-center text-gray-400">
-              <p>&copy; 2025 Scoriet. All rights reserved.</p>
+              <p>&copy; 2025 Scoriet. {t.allRightsReserved}.</p>
               <div className="flex space-x-6">
-                <a href="#" className="hover:text-white">Privacy Policy</a>
-                <a href="#" className="hover:text-white">Terms of Service</a>
+                <a href="#" className="hover:text-white">{t.privacyPolicy}</a>
+                <a href="#" className="hover:text-white">{t.termsOfService}</a>
               </div>
             </div>
           </div>
@@ -705,6 +724,7 @@ export default function LandingPage() {
           handleCloseModal();
           // Could redirect to welcome flow or stay on landing
         }}
+        currentLanguage={currentLanguage}
       />
     </>
   );

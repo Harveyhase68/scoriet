@@ -26,6 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'username', // GitHub-style unique username
         'user_type',
+        'language', // User's preferred language
         'premium_expires_at',
         'pending_project_invitation_id',
     ];

@@ -4,6 +4,7 @@ import RegisterModal from './RegisterModal';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import ProfileModal from './ProfileModal';
 import ResetPasswordModal from './ResetPasswordModal';
+import { SupportedLanguage } from '@/utils/i18n';
 
 export type AuthModalType = 'login' | 'register' | 'forgot' | 'profile' | 'reset' | null;
 
@@ -15,6 +16,7 @@ interface AuthModalManagerProps {
   resetPasswordToken?: string;
   resetPasswordEmail?: string;
   isLoginClosable?: boolean;
+  currentLanguage?: SupportedLanguage;
 }
 
 export default function AuthModalManager({
@@ -24,7 +26,8 @@ export default function AuthModalManager({
   onRegistrationSuccess,
   resetPasswordToken,
   resetPasswordEmail,
-  isLoginClosable = true
+  isLoginClosable = true,
+  currentLanguage
 }: AuthModalManagerProps) {
 
   const [currentModal, setCurrentModal] = React.useState<AuthModalType>(activeModal);
@@ -80,6 +83,7 @@ export default function AuthModalManager({
         onHide={handleCloseModal} // X button closes modal completely
         onSwitchToLogin={() => handleSwitchModal('login')}
         onRegistrationSuccess={onRegistrationSuccess}
+        currentLanguage={currentLanguage}
       />
 
       <ForgotPasswordModal

@@ -32,12 +32,16 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 ### ✅ **Completed Features** (Alpha Ready)
 - ✅ **Modern UI/UX**: Professional dark theme with dockable panels
 - ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
+- ✅ **Internationalization (i18n)**: 5 languages with automatic browser detection
+- ✅ **CSS Flag Icons**: Beautiful country flags using pure CSS gradients
+- ✅ **Language Selector**: Elegant dropdown with flag icons and smooth UX
 - ✅ **Demo System**: Instant demo access with `demo-admin` and `demo-user`
 - ✅ **Professional Landing Page**: Marketing site with pricing tiers
 - ✅ **Maintenance Mode**: Professional 503 page for updates
 - ✅ **Responsive Design**: Works on desktop, tablet, and mobile
 - ✅ **Environment-based Features**: Demo vs. Production mode
 - ✅ **Development Tooling**: Full CI/CD, linting, testing setup
+- ✅ **Accessibility**: WCAG compliant forms with proper autocomplete attributes
 
 ### 🚧 **In Progress** (Coming Soon)
 - 🚧 **SQL Parser Engine**: MySQL schema parsing and analysis
@@ -60,6 +64,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 
 ### ✨ Key Features
 
+- **🌍 Internationalization** - 5 languages (English, German, French, Spanish, Italian) with automatic browser detection
+- **🎨 CSS Flag Icons** - Beautiful country flags created with pure CSS gradients (no image dependencies)
 - **🗄️ Advanced SQL Parser** - Parse MySQL schemas with intelligent relationship detection
 - **🎯 Template Engine** - Powerful client-side template execution with JavaScript integration
 - **🖥️ Modern MDI Interface** - Professional dock-based UI with floating panels
@@ -68,6 +74,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **🔐 JWT Token Authentication** - Secure API access with Bearer tokens
 - **⚡ Real-time Generation** - Instant code generation without server processing
 - **🔧 Flexible Templates** - Stack multiple templates for complex application scaffolding
+- **♿ Accessibility First** - WCAG compliant with screen reader support and proper form attributes
 
 ### 🏗️ Architecture
 
@@ -247,6 +254,32 @@ curl -X GET http://10.0.0.8:8000/api/user \
 - `PUT /api/profile/password` - Change password
 - `POST /api/auth/forgot-password` - Password reset request
 - `POST /api/auth/reset-password` - Password reset confirmation
+
+### 🌍 Internationalization Features
+
+Scoriet includes comprehensive multilingual support:
+
+#### Supported Languages
+- **🇺🇸 English** (en) - Default language
+- **🇩🇪 German** (de) - Deutsch
+- **🇫🇷 French** (fr) - Français
+- **🇪🇸 Spanish** (es) - Español
+- **🇮🇹 Italian** (it) - Italiano
+
+#### Language Features
+- **🔍 Automatic Detection** - Browser language detected on first visit
+- **💾 Persistent Selection** - Language choice saved in localStorage
+- **🎨 CSS Flag Icons** - Beautiful flags using pure CSS gradients (no external images)
+- **🖱️ Smooth UX** - Elegant language selector with instant switching
+- **📱 Responsive Flags** - Scalable flags that work on all screen sizes
+- **♿ Accessible** - Screen reader support with proper ARIA labels
+
+#### Implementation Details
+- Client-side translation system with TypeScript support
+- Language data stored in `resources/js/utils/i18n.ts`
+- Custom CSS flag components in `Components/CSSFlag.tsx`
+- Language selector component with PrimeReact integration
+- Automatic lobby language inheritance in registration forms
 
 ### Development Features
 - ⚡ **Hot Reload** - Instant UI updates
@@ -444,7 +477,13 @@ scoriet/
 ├── resources/
 │   ├── js/
 │   │   ├── Components/      # React components
+│   │   │   ├── AuthModals/  # Authentication modals
+│   │   │   ├── Panels/      # RC Dock panels
+│   │   │   ├── CSSFlag.tsx  # CSS-based flag icons
+│   │   │   └── LanguageSelector.tsx  # i18n language picker
 │   │   ├── pages/          # Inertia.js pages
+│   │   ├── utils/          # Utility functions
+│   │   │   └── i18n.ts     # Internationalization system
 │   │   └── types/          # TypeScript definitions
 │   └── css/                # Stylesheets
 ├── routes/                 # Laravel routes

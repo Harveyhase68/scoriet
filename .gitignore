@@ -31,3 +31,5 @@ run.ps1
 scoriet.code-workspace
 test.bat
 git_up.bat
+large_test.sql
+small.sql

@@ -11,9 +11,13 @@ class Template extends Model
 
     protected $fillable = [
         'name',
+        'full_name',
         'description',
-        'owner_id',
+        'creator_user_id',
+        'project_id',
         'visibility',
+        'is_system_template',
+        'original_template_id',
         'template_files',
         'category',
         'language',
@@ -26,6 +30,7 @@ class Template extends Model
         'template_files' => 'array',
         'tags' => 'array',
         'is_active' => 'boolean',
+        'is_system_template' => 'boolean',
         'file_count' => 'integer',
     ];
 
@@ -46,11 +51,43 @@ class Template extends Model
     }
 
     /**
-     * Get the owner of this template
+     * Get the creator/author of this template
      */
-    public function owner()
+    public function creator()
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'creator_user_id');
+    }
+
+    /**
+     * Get the current owner via project relationship
+     */
+    public function currentOwner()
+    {
+        return $this->project ? $this->project->owner : $this->creator;
+    }
+
+    /**
+     * Get the project this template belongs to
+     */
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    /**
+     * Get the original template this was cloned from
+     */
+    public function originalTemplate()
+    {
+        return $this->belongsTo(Template::class, 'original_template_id');
+    }
+
+    /**
+     * Get all templates that were cloned from this template
+     */
+    public function clones()
+    {
+        return $this->hasMany(Template::class, 'original_template_id');
     }
 
     /**
@@ -111,16 +148,61 @@ class Template extends Model
     }
 
     /**
-     * Scope to get accessible templates for a user (public + their private)
+     * Scope to get system templates
      */
-    public function scopeAccessibleByUser($query, $userId)
+    public function scopeSystemTemplates($query)
     {
-        return $query->where(function($q) use ($userId) {
-            $q->where('visibility', 'public')
-              ->orWhere(function($subQ) use ($userId) {
-                  $subQ->where('visibility', 'private')
-                       ->where('owner_id', $userId);
-              });
+        return $query->where('is_system_template', true);
+    }
+
+    /**
+     * Scope to get project templates
+     */
+    public function scopeProjectTemplates($query)
+    {
+        return $query->where('is_system_template', false)->whereNotNull('project_id');
+    }
+
+    /**
+     * Scope to get templates for a specific project
+     */
+    public function scopeForProject($query, $projectId)
+    {
+        return $query->where('project_id', $projectId);
+    }
+
+    /**
+     * Scope to get accessible templates for a user based on project access
+     */
+    public function scopeAccessibleByUser($query, $userId, $projectId = null)
+    {
+        return $query->where(function($q) use ($userId, $projectId) {
+            // System templates (always accessible if public)
+            $q->where(function($systemQ) {
+                $systemQ->where('is_system_template', true)
+                        ->where('visibility', 'public');
+            })
+            // Project templates from user's accessible projects
+            ->orWhere(function($projectQ) use ($userId) {
+                $projectQ->where('is_system_template', false)
+                         ->whereHas('project', function($projectAccessQ) use ($userId) {
+                             $projectAccessQ->visibleTo(\App\Models\User::find($userId));
+                         })
+                         ->where('visibility', 'public');
+            })
+            // User's own private templates (for projects they have access to)
+            ->orWhere(function($privateQ) use ($userId) {
+                $privateQ->where('is_system_template', false)
+                         ->where('visibility', 'private')
+                         ->whereHas('project', function($ownProjectQ) use ($userId) {
+                             $ownProjectQ->visibleTo(\App\Models\User::find($userId));
+                         });
+            });
+
+            // If specific project context, also include templates from that project
+            if ($projectId) {
+                $q->orWhere('project_id', $projectId);
+            }
         });
     }
 
@@ -137,7 +219,59 @@ class Template extends Model
      */
     public function canBeEditedBy($user): bool
     {
-        return $this->owner_id === $user->id;
+        // System templates cannot be edited by anyone (read-only)
+        if ($this->is_system_template) {
+            return false;
+        }
+
+        // Project templates can only be edited by project members
+        if ($this->project_id) {
+            return $this->project && $this->project->userCanAccess($user);
+        }
+
+        // Fallback to creator check
+        return $this->creator_user_id === $user->id;
+    }
+
+    /**
+     * Check if template can be cloned
+     */
+    public function canBeClonedBy($user): bool
+    {
+        // Anyone can clone public templates
+        if ($this->visibility === 'public') {
+            return true;
+        }
+
+        // Private templates can only be cloned by users with project access
+        if ($this->project_id) {
+            return $this->project && $this->project->userCanAccess($user);
+        }
+
+        // Fallback to creator check
+        return $this->creator_user_id === $user->id;
+    }
+
+    /**
+     * Check if template can be linked/used
+     */
+    public function canBeUsedBy($user): bool
+    {
+        // System templates can always be used (if public)
+        if ($this->is_system_template) {
+            return $this->visibility === 'public';
+        }
+
+        // Same logic as cloning for project templates
+        return $this->canBeClonedBy($user);
+    }
+
+    /**
+     * Check if this is a read-only template
+     */
+    public function isReadOnly(): bool
+    {
+        return $this->is_system_template;
     }
 
     /**
@@ -162,5 +296,97 @@ class Template extends Model
         }
         
         return true;
+    }
+
+    /**
+     * Validate template name format (lowercase, numbers, max one underscore)
+     */
+    public static function validateTemplateName(string $name): bool
+    {
+        // Check if name matches pattern: lowercase letters, numbers, max one underscore anywhere
+        $underscoreCount = substr_count($name, '_');
+        return preg_match('/^[a-z0-9_]+$/', $name) === 1 && $underscoreCount <= 1;
+    }
+
+    /**
+     * Sanitize template name to valid format
+     */
+    public static function sanitizeTemplateName(string $name): string
+    {
+        // Convert to lowercase
+        $name = strtolower($name);
+
+        // Replace spaces and special chars with underscore
+        $name = preg_replace('/[^a-z0-9_]/', '_', $name);
+
+        // Replace multiple underscores with single underscore
+        $name = preg_replace('/_+/', '_', $name);
+
+        // Remove leading/trailing underscores
+        $name = trim($name, '_');
+
+        // If still contains more than one underscore, take only first two parts
+        $parts = explode('_', $name);
+        if (count($parts) > 2) {
+            $name = $parts[0] . '_' . $parts[1];
+        }
+
+        return $name;
+    }
+
+    /**
+     * Clone this template for a project with new name
+     */
+    public function cloneForProject($project, $newName = null, $visibility = 'public'): Template
+    {
+        $newTemplateName = $newName ?: $this->name;
+
+        // Ensure template name follows validation rules
+        if (!self::validateTemplateName($newTemplateName)) {
+            $newTemplateName = self::sanitizeTemplateName($newTemplateName);
+        }
+
+        $fullName = $project->name . '/' . $newTemplateName;
+
+        // Check if user can create private templates
+        $canCreatePrivate = $project->owner && in_array($project->owner->user_type, ['premium', 'admin']);
+        $finalVisibility = ($visibility === 'private' && $canCreatePrivate) ? 'private' : 'public';
+
+        $clonedTemplate = Template::create([
+            'name' => $newTemplateName,
+            'full_name' => $fullName,
+            'description' => $this->description,
+            'project_id' => $project->id,
+            'creator_user_id' => $project->owner_id, // Current project owner becomes creator
+            'visibility' => $finalVisibility,
+            'is_system_template' => false,
+            'original_template_id' => $this->id,
+            'template_files' => $this->template_files,
+            'category' => $this->category,
+            'language' => $this->language,
+            'is_active' => true,
+            'tags' => $this->tags,
+            'file_count' => $this->file_count,
+        ]);
+
+        // Clone template files
+        foreach ($this->files as $file) {
+            $clonedTemplate->files()->create([
+                'filename' => $file->filename,
+                'content' => $file->content,
+                'file_type' => $file->file_type,
+                'order_index' => $file->order_index,
+            ]);
+        }
+
+        // Clone schema dependencies
+        foreach ($this->schemasDependencies as $schema) {
+            $clonedTemplate->schemasDependencies()->attach($schema->id, [
+                'is_required' => $schema->pivot->is_required,
+                'alias' => $schema->pivot->alias,
+            ]);
+        }
+
+        return $clonedTemplate;
     }
 }

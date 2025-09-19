@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
 use Illuminate\Http\Request;
 use GuzzleHttp\Psr7\ServerRequest;
+use Laravel\Passport\Passport;
+use Illuminate\Support\Facades\Hash;
 
 class CustomTokenController extends AccessTokenController
 {
@@ -59,11 +61,37 @@ class CustomTokenController extends AccessTokenController
                     }
                 }
             }
-            
+
+            // Handle remember_me functionality with custom token creation
+            if (isset($requestData['remember_me']) && $requestData['remember_me'] && isset($user)) {
+                // Custom token creation for remember_me with 30-day expiry
+                if (!Hash::check($requestData['password'], $user->password)) {
+                    return response()->json([
+                        'error' => 'invalid_credentials',
+                        'message' => 'The provided credentials are incorrect.'
+                    ], 401);
+                }
+
+                // Create custom token with extended expiry
+                $tokenResult = $user->createToken('RememberMe Token');
+                $token = $tokenResult->token;
+
+                // Set 30-day expiry for remember me
+                $token->expires_at = now()->addDays(30);
+                $token->save();
+
+                return response()->json([
+                    'access_token' => $tokenResult->accessToken,
+                    'refresh_token' => null, // Not implemented for custom tokens yet
+                    'token_type' => 'Bearer',
+                    'expires_in' => 30 * 24 * 60 * 60, // 30 days in seconds
+                ]);
+            }
+
             // Update the parsed body with the modified request data
             $psrRequest = $psrRequest->withParsedBody($requestData);
-            
-            // Continue with normal token issuance
+
+            // Continue with normal token issuance for non-remember-me logins
             return parent::issueToken($psrRequest, $psrResponse);
             
         } catch (\Exception $e) {
