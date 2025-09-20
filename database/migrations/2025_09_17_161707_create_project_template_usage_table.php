@@ -24,13 +24,48 @@ return new class extends Migration
                 $table->timestamp('used_at')->useCurrent();
                 $table->timestamps();
 
-                // Ensure unique template usage per project
-                $table->unique(['project_id', 'template_id'], 'project_template_unique');
-
                 // Indexes for performance
                 $table->index(['project_id', 'usage_type']);
                 $table->index(['template_id', 'usage_type']);
             });
+
+            // Add unique constraint separately with existence check
+            $indexName = 'project_template_unique';
+            if (!$this->indexExists('project_template_usage', $indexName)) {
+                Schema::table('project_template_usage', function (Blueprint $table) use ($indexName) {
+                    $table->unique(['project_id', 'template_id'], $indexName);
+                });
+            }
+        }
+    }
+
+    /**
+     * Check if an index exists on a table
+     */
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $connection = Schema::getConnection();
+
+        switch ($connection->getDriverName()) {
+            case 'sqlite':
+                $indexes = $connection->select("PRAGMA index_list($table)");
+                foreach ($indexes as $index) {
+                    if ($index->name === $indexName) {
+                        return true;
+                    }
+                }
+                return false;
+
+            case 'mysql':
+                $indexes = $connection->select("SHOW INDEX FROM $table WHERE Key_name = ?", [$indexName]);
+                return count($indexes) > 0;
+
+            case 'pgsql':
+                $indexes = $connection->select("SELECT indexname FROM pg_indexes WHERE tablename = ? AND indexname = ?", [$table, $indexName]);
+                return count($indexes) > 0;
+
+            default:
+                return false;
         }
     }
 

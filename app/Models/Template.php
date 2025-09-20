@@ -91,13 +91,21 @@ class Template extends Model
     }
 
     /**
-     * Get schemas that this template depends on
+     * Get DB schemas that this template depends on
      */
-    public function schemasDependencies()
+    public function dbSchemasDependencies()
     {
         return $this->belongsToMany(FloatingSchema::class, 'template_schema_dependencies', 'template_id', 'schema_id')
             ->withPivot(['is_required', 'alias'])
             ->withTimestamps();
+    }
+
+    /**
+     * Get the dependencies as relationship objects
+     */
+    public function dbSchemaDependencies()
+    {
+        return $this->hasMany(TemplateDbSchemaDependency::class);
     }
 
     /**
@@ -275,11 +283,11 @@ class Template extends Model
     }
 
     /**
-     * Check if template has all required schema dependencies satisfied
+     * Check if template has all required DB schema dependencies satisfied
      */
-    public function hasRequiredSchemasDependenciesSatisfied($availableSchemas): bool
+    public function hasRequiredDbSchemasDependenciesSatisfied($availableSchemas): bool
     {
-        $requiredSchemas = $this->schemasDependencies()->wherePivot('is_required', true)->get();
+        $requiredSchemas = $this->dbSchemasDependencies()->wherePivot('is_required', true)->get();
         
         foreach ($requiredSchemas as $requiredSchema) {
             $found = false;
@@ -379,9 +387,9 @@ class Template extends Model
             ]);
         }
 
-        // Clone schema dependencies
-        foreach ($this->schemasDependencies as $schema) {
-            $clonedTemplate->schemasDependencies()->attach($schema->id, [
+        // Clone DB schema dependencies
+        foreach ($this->dbSchemasDependencies as $schema) {
+            $clonedTemplate->dbSchemasDependencies()->attach($schema->id, [
                 'is_required' => $schema->pivot->is_required,
                 'alias' => $schema->pivot->alias,
             ]);

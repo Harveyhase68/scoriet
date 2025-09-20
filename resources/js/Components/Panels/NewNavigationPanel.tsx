@@ -155,6 +155,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
               label: 'Template Editor',
               icon: 'pi pi-code',
               command: () => onOpenPanel('t3')
+            },
+            {
+              separator: true
+            },
+            {
+              label: 'DB Schema Dependencies',
+              icon: 'pi pi-link',
+              command: () => onOpenPanel('template-db-schema-dependencies')
             }
           ]
         },
@@ -419,6 +427,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                         <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-code"></i>
                           <span>Template Editor</span>
+                        </button>
+                        <div className="border-t border-gray-600 my-1"></div>
+                        <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-link"></i>
+                          <span>DB Schema Dependencies</span>
                         </button>
                       </div>
                     </div>

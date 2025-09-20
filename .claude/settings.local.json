@@ -34,7 +34,8 @@
       "Bash(dir:*)",
       "Bash(rm:*)",
       "Bash(mysql:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

@@ -25,6 +25,7 @@ const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProject
 const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
+const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -335,6 +336,19 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TeamManagementPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'template-db-schema-dependencies':
+      return {
+        id,
+        title: data.title || 'Template - DB Schema Dependencies',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TemplateDbSchemaDependenciesPanel />
           </Suspense>
         ),
         closable: true,
