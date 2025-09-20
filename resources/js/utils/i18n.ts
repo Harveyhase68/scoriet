@@ -68,6 +68,27 @@ export interface Translations {
   currentPlanButton: string;
   upgradeTo: string;
 
+  // Profile Modal
+  profileTitle: string;
+  profileTab: string;
+  passwordTab: string;
+  deleteTab: string;
+  fullName: string;
+  emailAddress: string;
+  preferredLanguage: string;
+  languageDescription: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  updateProfile: string;
+  updating: string;
+  changePassword: string;
+  changing: string;
+  deleteAccount: string;
+  deleting: string;
+  profileUpdateSuccess: string;
+  passwordChangeSuccess: string;
+
   // Footer
   productLabel: string;
   featuresLink: string;
@@ -135,6 +156,27 @@ const translations: Record<SupportedLanguage, Translations> = {
     currentPlanButton: 'Current Plan',
     upgradeTo: 'Upgrade to',
 
+    // Profile Modal
+    profileTitle: 'Profile Settings',
+    profileTab: 'Profile',
+    passwordTab: 'Change Password',
+    deleteTab: 'Delete Account',
+    fullName: 'Full Name',
+    emailAddress: 'Email Address',
+    preferredLanguage: 'Preferred Language',
+    languageDescription: 'Choose your preferred language for the application interface',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    confirmPassword: 'Confirm New Password',
+    updateProfile: 'Update Profile',
+    updating: 'Updating...',
+    changePassword: 'Change Password',
+    changing: 'Changing...',
+    deleteAccount: 'Delete Account',
+    deleting: 'Deleting...',
+    profileUpdateSuccess: 'Profile updated successfully',
+    passwordChangeSuccess: 'Password changed successfully',
+
     productLabel: 'Product',
     featuresLink: 'Features',
     pricingLink: 'Pricing',
@@ -198,6 +240,27 @@ const translations: Record<SupportedLanguage, Translations> = {
     freeTier: 'Kostenlos Plan',
     currentPlanButton: 'Aktueller Plan',
     upgradeTo: 'Upgrade auf',
+
+    // Profile Modal
+    profileTitle: 'Profil Einstellungen',
+    profileTab: 'Profil',
+    passwordTab: 'Passwort ändern',
+    deleteTab: 'Konto löschen',
+    fullName: 'Vollständiger Name',
+    emailAddress: 'E-Mail-Adresse',
+    preferredLanguage: 'Bevorzugte Sprache',
+    languageDescription: 'Wählen Sie Ihre bevorzugte Sprache für die Anwendungsoberfläche',
+    currentPassword: 'Aktuelles Passwort',
+    newPassword: 'Neues Passwort',
+    confirmPassword: 'Neues Passwort bestätigen',
+    updateProfile: 'Profil aktualisieren',
+    updating: 'Wird aktualisiert...',
+    changePassword: 'Passwort ändern',
+    changing: 'Wird geändert...',
+    deleteAccount: 'Konto löschen',
+    deleting: 'Wird gelöscht...',
+    profileUpdateSuccess: 'Profil erfolgreich aktualisiert',
+    passwordChangeSuccess: 'Passwort erfolgreich geändert',
 
     productLabel: 'Produkt',
     featuresLink: 'Features',
@@ -263,6 +326,27 @@ const translations: Record<SupportedLanguage, Translations> = {
     currentPlanButton: 'Plan Actuel',
     upgradeTo: 'Passer à',
 
+    // Profile Modal
+    profileTitle: 'Paramètres du profil',
+    profileTab: 'Profil',
+    passwordTab: 'Changer le mot de passe',
+    deleteTab: 'Supprimer le compte',
+    fullName: 'Nom complet',
+    emailAddress: 'Adresse e-mail',
+    preferredLanguage: 'Langue préférée',
+    languageDescription: 'Choisissez votre langue préférée pour l\'interface de l\'application',
+    currentPassword: 'Mot de passe actuel',
+    newPassword: 'Nouveau mot de passe',
+    confirmPassword: 'Confirmer le nouveau mot de passe',
+    updateProfile: 'Mettre à jour le profil',
+    updating: 'Mise à jour...',
+    changePassword: 'Changer le mot de passe',
+    changing: 'Changement...',
+    deleteAccount: 'Supprimer le compte',
+    deleting: 'Suppression...',
+    profileUpdateSuccess: 'Profil mis à jour avec succès',
+    passwordChangeSuccess: 'Mot de passe changé avec succès',
+
     productLabel: 'Produit',
     featuresLink: 'Fonctionnalités',
     pricingLink: 'Tarifs',
@@ -327,6 +411,27 @@ const translations: Record<SupportedLanguage, Translations> = {
     currentPlanButton: 'Plan Actual',
     upgradeTo: 'Actualizar a',
 
+    // Profile Modal
+    profileTitle: 'Configuración del perfil',
+    profileTab: 'Perfil',
+    passwordTab: 'Cambiar contraseña',
+    deleteTab: 'Eliminar cuenta',
+    fullName: 'Nombre completo',
+    emailAddress: 'Dirección de correo',
+    preferredLanguage: 'Idioma preferido',
+    languageDescription: 'Elija su idioma preferido para la interfaz de la aplicación',
+    currentPassword: 'Contraseña actual',
+    newPassword: 'Nueva contraseña',
+    confirmPassword: 'Confirmar nueva contraseña',
+    updateProfile: 'Actualizar perfil',
+    updating: 'Actualizando...',
+    changePassword: 'Cambiar contraseña',
+    changing: 'Cambiando...',
+    deleteAccount: 'Eliminar cuenta',
+    deleting: 'Eliminando...',
+    profileUpdateSuccess: 'Perfil actualizado exitosamente',
+    passwordChangeSuccess: 'Contraseña cambiada exitosamente',
+
     productLabel: 'Producto',
     featuresLink: 'Características',
     pricingLink: 'Precios',
@@ -390,6 +495,27 @@ const translations: Record<SupportedLanguage, Translations> = {
     freeTier: 'Piano Gratuito',
     currentPlanButton: 'Piano Attuale',
     upgradeTo: 'Aggiorna a',
+
+    // Profile Modal
+    profileTitle: 'Impostazioni profilo',
+    profileTab: 'Profilo',
+    passwordTab: 'Cambia password',
+    deleteTab: 'Elimina account',
+    fullName: 'Nome completo',
+    emailAddress: 'Indirizzo email',
+    preferredLanguage: 'Lingua preferita',
+    languageDescription: 'Scegli la tua lingua preferita per l\'interfaccia dell\'applicazione',
+    currentPassword: 'Password attuale',
+    newPassword: 'Nuova password',
+    confirmPassword: 'Conferma nuova password',
+    updateProfile: 'Aggiorna profilo',
+    updating: 'Aggiornamento...',
+    changePassword: 'Cambia password',
+    changing: 'Cambiando...',
+    deleteAccount: 'Elimina account',
+    deleting: 'Eliminando...',
+    profileUpdateSuccess: 'Profilo aggiornato con successo',
+    passwordChangeSuccess: 'Password cambiata con successo',
 
     productLabel: 'Prodotto',
     featuresLink: 'Funzionalità',

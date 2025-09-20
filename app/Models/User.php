@@ -180,6 +180,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->isPremium() || $this->isAdmin();
     }
 
+    public function canCreatePrivateSchemas(): bool
+    {
+        return $this->isPremium() || $this->isAdmin();
+    }
+
     /**
      * Get the pending project invitation for this user
      */

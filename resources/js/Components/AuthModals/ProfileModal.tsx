@@ -8,8 +8,8 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
 import { Dropdown } from 'primereact/dropdown';
-import { useTranslation } from 'react-i18next';
-import { changeLanguage } from '@/i18n';
+import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/utils/i18n';
+import CSSFlag from '@/Components/CSSFlag';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -28,19 +28,52 @@ interface UserData {
 }
 
 export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
-  const { t, i18n } = useTranslation();
+  // Get current language for translations
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
+  // Add CSS for dark theme dropdown styling
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .profile-language-dropdown-panel {
+        background: #374151 !important;
+        border: 1px solid #4b5563 !important;
+        border-radius: 6px !important;
+      }
+      .profile-language-dropdown-panel .p-dropdown-item {
+        background: transparent !important;
+        color: #f3f4f6 !important;
+        border: none !important;
+        padding: 0 !important;
+      }
+      .profile-language-dropdown-panel .p-dropdown-item:hover {
+        background: #4b5563 !important;
+        color: #ffffff !important;
+      }
+      .profile-language-dropdown-panel .p-dropdown-item.p-highlight {
+        background: #3b82f6 !important;
+        color: #ffffff !important;
+      }
+      .profile-language-dropdown-panel .p-dropdown-item-group {
+        background: #374151 !important;
+        color: #9ca3af !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
   const [userData, setUserData] = useState<UserData>({
     name: '',
     email: '',
-    language: 'en'
+    language: getStoredLanguage()
   });
 
-  const languageOptions = [
-    { label: t('languages.en'), value: 'en' },
-    { label: t('languages.de'), value: 'de' },
-    { label: t('languages.fr'), value: 'fr' }
-  ];
+  // Create language options with our 5 languages
+  const languageOptions = supportedLanguages.map(lang => ({
+    label: lang.nativeName,
+    value: lang.code
+  }));
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     password: '',
@@ -82,17 +115,17 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       const user = await response.json();
       setUserData({
         ...user,
-        language: user.language || 'en'
+        language: user.language || getStoredLanguage()
       });
 
-      // Set UI language to user's preference
-      if (user.language && i18n.language !== user.language) {
-        await changeLanguage(user.language);
+      // Update stored language to user's preference
+      if (user.language) {
+        setStoredLanguage(user.language as SupportedLanguage);
       }
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Error loading');
     }
-  }, [i18n.language]);
+  }, []);
 
   // Load user data when opening
   useEffect(() => {
@@ -132,34 +165,40 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         throw new Error(errorData.message || 'Error updating');
       }
 
-      setProfileSuccess(t('profile.updateSuccess'));
+      setProfileSuccess(t.profileUpdateSuccess);
 
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : t('profile.updateError'));
+      setProfileError(err instanceof Error ? err.message : 'Profile update error');
     } finally {
       setLoadingProfile(false);
     }
   };
 
   // Handle language change immediately
-  const handleLanguageChange = async (language: string) => {
+  const handleLanguageChange = async (language: SupportedLanguage) => {
     setUserData(prev => ({ ...prev, language }));
 
     try {
-      // Change UI language immediately
-      await changeLanguage(language);
+      // Update stored language immediately
+      setStoredLanguage(language);
+      // Update current language for immediate UI update
+      setCurrentLanguage(language);
 
       // Also save to backend
       const token = localStorage.getItem('access_token');
       if (token) {
-        await fetch('/api/profile/language', {
+        await fetch('/api/profile/update', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
           },
-          body: JSON.stringify({ language }),
+          body: JSON.stringify({
+            name: userData.name,
+            email: userData.email,
+            language
+          }),
         });
       }
     } catch (error) {
@@ -205,7 +244,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         throw new Error(errorData.message || 'Error changing password');
       }
 
-      setPasswordSuccess('Password changed successfully');
+      setPasswordSuccess(t.passwordChangeSuccess);
       setPasswordData({ current_password: '', password: '', password_confirmation: '' });
       
     } catch (err) {
@@ -305,7 +344,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
   return (
     <Dialog
-      header={t('profile.title')}
+      header={t.profileTitle}
       visible={visible}
       onHide={handleHide}
       style={{ width: '700px' }}
@@ -316,7 +355,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       className="p-dialog-custom"
     >
       <TabView>
-        <TabPanel header={t('profile.tabs.profile')} leftIcon="pi pi-user">
+        <TabPanel header={t.profileTab} leftIcon="pi pi-user">
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             {profileError && (
               <Message 
@@ -369,7 +408,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="profile-name" className="block text-sm font-medium mb-2">
-                {t('profile.fields.name')}
+                {t.fullName}
               </label>
               <InputText
                 id="profile-name"
@@ -385,7 +424,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="profile-email" className="block text-sm font-medium mb-2">
-                {t('profile.fields.email')}
+                {t.emailAddress}
               </label>
               <InputText
                 id="profile-email"
@@ -401,24 +440,56 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="profile-language" className="block text-sm font-medium mb-2">
-                {t('profile.language')}
+                {t.preferredLanguage}
               </label>
               <Dropdown
                 id="profile-language"
                 value={userData.language}
                 options={languageOptions}
                 onChange={(e) => handleLanguageChange(e.value)}
-                placeholder={t('profile.languageDescription')}
+                placeholder={t.languageDescription}
                 className="w-full"
+                panelClassName="profile-language-dropdown-panel"
+                itemTemplate={(option: any) => {
+                  const lang = supportedLanguages.find(l => l.code === option.value);
+                  return (
+                    <div className="flex items-center w-full" style={{ minHeight: '40px', padding: '0.5rem 0.75rem' }}>
+                      <span className="mr-3 flex-shrink-0" style={{ width: '24px', textAlign: 'center' }}>
+                        <CSSFlag country={option.value === 'en' ? 'us' : option.value} size="md" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-100">{lang?.nativeName}</div>
+                        <div className="text-xs text-gray-400">{lang?.name}</div>
+                      </div>
+                    </div>
+                  );
+                }}
+                valueTemplate={(selectedOption: any) => {
+                  if (!selectedOption) {
+                    return <span className="text-sm text-gray-500">Select Language</span>;
+                  }
+                  const languageCode = selectedOption.value || selectedOption;
+                  const lang = supportedLanguages.find(l => l.code === languageCode);
+                  return lang ? (
+                    <div className="flex items-center py-1">
+                      <span className="mr-2 flex-shrink-0" style={{ width: '20px', textAlign: 'center' }}>
+                        <CSSFlag country={lang.code === 'en' ? 'us' : lang.code} size="sm" />
+                      </span>
+                      <span className="text-sm font-medium">{lang.nativeName}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">Select Language</span>
+                  );
+                }}
               />
               <small className="text-gray-500">
-                {t('profile.languageDescription')}
+                {t.languageDescription}
               </small>
             </div>
 
             <Button
               type="submit"
-              label={loadingProfile ? t('common.loading') : t('profile.actions.updateProfile')}
+              label={loadingProfile ? t.updating : t.updateProfile}
               icon={loadingProfile ? "pi pi-spinner pi-spin" : "pi pi-save"}
               className="w-full"
               disabled={loadingProfile}
@@ -426,7 +497,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
           </form>
         </TabPanel>
 
-        <TabPanel header={t('profile.tabs.password')} leftIcon="pi pi-lock">
+        <TabPanel header={t.passwordTab} leftIcon="pi pi-lock">
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             {passwordError && (
               <Message 
@@ -446,7 +517,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="current-password" className="block text-sm font-medium mb-2">
-                {t('profile.fields.currentPassword')}
+                {t.currentPassword}
               </label>
               <Password
                 id="current-password"
@@ -464,7 +535,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="new-password" className="block text-sm font-medium mb-2">
-                {t('profile.fields.newPassword')}
+                {t.newPassword}
               </label>
               <Password
                 id="new-password"
@@ -482,7 +553,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <div className="field">
               <label htmlFor="confirm-password" className="block text-sm font-medium mb-2">
-                {t('profile.fields.confirmPassword')}
+                {t.confirmPassword}
               </label>
               <Password
                 id="confirm-password"
@@ -500,7 +571,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <Button
               type="submit"
-              label={loadingPassword ? "Changing..." : "Change Password"}
+              label={loadingPassword ? t.changing : t.changePassword}
               icon={loadingPassword ? "pi pi-spinner pi-spin" : "pi pi-key"}
               className="w-full"
               disabled={loadingPassword}
@@ -588,7 +659,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
           </div>
         </TabPanel>
 
-        <TabPanel header={t('profile.tabs.danger')} leftIcon="pi pi-trash">
+        <TabPanel header={t.deleteTab} leftIcon="pi pi-trash">
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
             {deleteError && (
               <Message 
@@ -660,7 +731,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
             <Button
               type="submit"
-              label={loadingDelete ? t('common.loading') : t('profile.actions.deleteAccount')}
+              label={loadingDelete ? t.deleting : t.deleteAccount}
               icon={loadingDelete ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               className="w-full p-button-danger"
               disabled={loadingDelete || deleteData.confirmText !== 'DELETE'}

@@ -31,6 +31,16 @@ class TemplateController extends Controller
                 $query->active();
             }
 
+            // Filter by system templates
+            if ($request->has('is_system_template')) {
+                $query->where('is_system_template', $request->boolean('is_system_template'));
+            }
+
+            // Filter by visibility
+            if ($request->has('visibility')) {
+                $query->where('visibility', $request->visibility);
+            }
+
             // Get templates with file count
             $templates = $query->withCount('files as file_count')->get();
 
@@ -442,6 +452,259 @@ class TemplateController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 400);
+        }
+    }
+
+    /**
+     * Get DB schemas that this template depends on
+     */
+    public function getTemplateDependencies($id)
+    {
+        try {
+            $template = Template::with(['dbSchemaDependencies.dbSchema.owner'])->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'template' => $template,
+                'dependencies' => $template->dbSchemaDependencies,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Template not found',
+            ], 404);
+        }
+    }
+
+    /**
+     * Add a DB schema dependency to a template
+     */
+    public function addDbSchemaDependency(Request $request, $id)
+    {
+        try {
+            // Debug: Log the request data
+            \Log::info('Add DB Schema Dependency Request', [
+                'template_id' => $id,
+                'request_data' => $request->all(),
+                'content_type' => $request->header('Content-Type'),
+            ]);
+
+            $template = Template::findOrFail($id);
+            $user = auth()->user();
+
+            // For DB schema dependencies, allow linking to public/system templates
+            // Only restrict completely private templates owned by others
+            if (!$template->canBeEditedBy($user) &&
+                $template->visibility !== 'public' &&
+                !$template->is_system_template) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'You cannot add dependencies to this template',
+                ], 403);
+            }
+
+            try {
+                $validated = $request->validate([
+                    'schema_id' => 'required|exists:schemas,id',
+                    'is_required' => 'nullable|boolean',
+                    'alias' => 'nullable|string|max:255',
+                ]);
+
+                // Ensure is_required is a boolean
+                $validated['is_required'] = $validated['is_required'] ?? true;
+
+                \Log::info('Validation passed', ['validated_data' => $validated]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('Validation failed', [
+                    'errors' => $e->errors(),
+                    'request_data' => $request->all()
+                ]);
+                throw $e;
+            }
+
+            $schema = \App\Models\FloatingSchema::findOrFail($validated['schema_id']);
+            \Log::info('Found schema', ['schema' => $schema->toArray()]);
+
+            // Check if user can access this schema (owner or public)
+            if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
+                \Log::error('Schema access denied', [
+                    'schema_owner_id' => $schema->owner_id,
+                    'user_id' => $user->id,
+                    'schema_visibility' => $schema->visibility
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Access denied to this DB schema',
+                ], 403);
+            }
+
+            // Check if dependency already exists
+            $existingDependency = \App\Models\TemplateDbSchemaDependency::where('template_id', $template->id)
+                ->where('schema_id', $schema->id)
+                ->first();
+
+            \Log::info('Dependency check', [
+                'existing_dependency' => $existingDependency ? $existingDependency->toArray() : null
+            ]);
+
+            if ($existingDependency) {
+                \Log::error('Dependency already exists');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Template already depends on this DB schema',
+                ], 409);
+            }
+
+            \Log::info('Creating dependency', [
+                'template_id' => $template->id,
+                'schema_id' => $schema->id,
+                'is_required' => $validated['is_required'] ?? true,
+                'alias' => $validated['alias'] ?? null,
+            ]);
+
+            $dependency = \App\Models\TemplateDbSchemaDependency::create([
+                'template_id' => $template->id,
+                'schema_id' => $schema->id,
+                'is_required' => $validated['is_required'] ?? true,
+                'alias' => $validated['alias'] ?? null,
+            ]);
+
+            \Log::info('Dependency created successfully', ['dependency_id' => $dependency->id]);
+
+            return response()->json([
+                'success' => true,
+                'dependency' => $dependency->load(['template', 'dbSchema']),
+                'message' => 'DB schema dependency added successfully',
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Exception in addDbSchemaDependency', [
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Remove a DB schema dependency from a template
+     */
+    public function removeDbSchemaDependency($templateId, $schemaId)
+    {
+        try {
+            $template = Template::findOrFail($templateId);
+            $user = auth()->user();
+
+            // For DB schema dependencies, allow linking to public/system templates
+            // Only restrict completely private templates owned by others
+            if (!$template->canBeEditedBy($user) &&
+                $template->visibility !== 'public' &&
+                !$template->is_system_template) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'You cannot remove dependencies from this template',
+                ], 403);
+            }
+
+            $dependency = \App\Models\TemplateDbSchemaDependency::where('template_id', $template->id)
+                ->where('schema_id', $schemaId)
+                ->firstOrFail();
+
+            $dependency->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'DB schema dependency removed successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Dependency not found',
+            ], 404);
+        }
+    }
+
+    /**
+     * Update a DB schema dependency
+     */
+    public function updateDbSchemaDependency(Request $request, $templateId, $schemaId)
+    {
+        try {
+            $template = Template::findOrFail($templateId);
+            $user = auth()->user();
+
+            // For DB schema dependencies, allow linking to public/system templates
+            // Only restrict completely private templates owned by others
+            if (!$template->canBeEditedBy($user) &&
+                $template->visibility !== 'public' &&
+                !$template->is_system_template) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'You cannot update dependencies for this template',
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'is_required' => 'boolean',
+                'alias' => 'nullable|string|max:255',
+            ]);
+
+            $dependency = \App\Models\TemplateDbSchemaDependency::where('template_id', $template->id)
+                ->where('schema_id', $schemaId)
+                ->firstOrFail();
+
+            $dependency->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'dependency' => $dependency->load(['template', 'dbSchema']),
+                'message' => 'DB schema dependency updated successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Dependency not found',
+            ], 404);
+        }
+    }
+
+    /**
+     * Get templates by DB schema dependencies
+     */
+    public function getTemplatesByDbSchema($schemaId)
+    {
+        try {
+            $user = auth()->user();
+            $schema = \App\Models\FloatingSchema::findOrFail($schemaId);
+
+            // Check if user can access this schema (owner or public)
+            if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Access denied to this DB schema',
+                ], 403);
+            }
+
+            $templates = Template::whereHas('dbSchemaDependencies', function($query) use ($schemaId) {
+                $query->where('schema_id', $schemaId);
+            })->with(['creator', 'dbSchemaDependencies' => function($query) use ($schemaId) {
+                $query->where('schema_id', $schemaId);
+            }])->get();
+
+            return response()->json([
+                'success' => true,
+                'schema' => $schema,
+                'templates' => $templates,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'DB schema not found',
+            ], 404);
         }
     }
 }

@@ -1,5 +1,6 @@
 import '../css/app.css';
 import './styles/fonts';
+import '@ant-design/v5-patch-for-react-19';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

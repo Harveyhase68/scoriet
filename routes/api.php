@@ -3,6 +3,7 @@
 use App\Http\Controllers\SqlParserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\DbSchemaController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
@@ -87,6 +88,30 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-versions/{id}/templates', [TemplateController::class, 'getProjectTemplates']);
     Route::post('/schema-versions/{id}/templates', [TemplateController::class, 'assignToProject']);
     Route::delete('/schema-versions/{schemaId}/templates/{templateId}', [TemplateController::class, 'removeFromProject']);
+
+    // Template-DB Schema Dependencies Management
+    Route::prefix('template-db-schema')->group(function () {
+        // Global DB Schemas (public schemas from system)
+        Route::get('/global-schemas', [DbSchemaController::class, 'getGlobalSchemas']);
+
+        // DB Schema Management
+        Route::get('/schemas', [DbSchemaController::class, 'index']);
+        Route::get('/schemas/{id}', [DbSchemaController::class, 'show']);
+
+        // DB Schema Dependencies
+        Route::get('/schemas/{id}/templates', [DbSchemaController::class, 'getDependentTemplates']);
+        Route::post('/schemas/{id}/link-template', [DbSchemaController::class, 'linkTemplate']);
+        Route::delete('/schemas/{id}/templates/{templateId}', [DbSchemaController::class, 'unlinkTemplate']);
+
+        // Template Dependencies
+        Route::get('/templates/{id}/dependencies', [TemplateController::class, 'getTemplateDependencies']);
+        Route::post('/templates/{id}/add-db-schema', [TemplateController::class, 'addDbSchemaDependency']);
+        Route::put('/templates/{templateId}/db-schemas/{schemaId}', [TemplateController::class, 'updateDbSchemaDependency']);
+        Route::delete('/templates/{templateId}/db-schemas/{schemaId}', [TemplateController::class, 'removeDbSchemaDependency']);
+
+        // Cross-reference queries
+        Route::get('/templates/by-db-schema/{schemaId}', [TemplateController::class, 'getTemplatesByDbSchema']);
+    });
     
     // Projects Management
     Route::apiResource('projects', ProjectController::class);
