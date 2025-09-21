@@ -62,6 +62,54 @@ export default function DebugManualGeneratorPanel() {
   const [executedResult, setExecutedResult] = useState<string>('');
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
+  // Helper functions (defined early to avoid hoisting issues)
+  const getFileGenerationType = (): 'project_file' | 'db_table_file' | 'static_file' | 'static_directory' | null => {
+    if (!templateFiles || templateFiles.length === 0 || selectedFile === null || selectedFile === undefined) {
+      return null;
+    }
+
+    const file = templateFiles.find(f => f.id === selectedFile);
+    if (!file) return null;
+
+    // Direkte Typen-Zuordnung (bevorzugt)
+    if (file.generation_type) {
+      return file.generation_type as 'project_file' | 'db_table_file' | 'static_file' | 'static_directory';
+    }
+
+    if (file.file_type) {
+      // Datenbank-spezifische Template-Typen
+      const dbFileTypes = ['template', 'db_table_file', 'model', 'controller', 'view', 'migration'];
+      // Projekt-spezifische Template-Typen
+      const projectFileTypes = ['project_file', 'config', 'helper', 'static_file', 'static_directory'];
+
+      if (dbFileTypes.includes(file.file_type.toLowerCase())) {
+        return 'db_table_file';
+      } else if (projectFileTypes.includes(file.file_type.toLowerCase())) {
+        return 'project_file';
+      }
+    }
+
+    // Fallback anhand Dateiname
+    const fileName = file.file_name.toLowerCase();
+    if (fileName.includes('table') || fileName.includes('model') || fileName.includes('entity')) {
+      return 'db_table_file';
+    } else if (fileName.includes('project') || fileName.includes('config') || fileName.includes('main')) {
+      return 'project_file';
+    }
+
+    return null; // Unbekannt/Static
+  };
+
+  const shouldShowProjectDropdown = (): boolean => {
+    const fileType = getFileGenerationType();
+    return fileType === 'project_file';
+  };
+
+  const shouldShowTableDropdown = (): boolean => {
+    const fileType = getFileGenerationType();
+    return fileType === 'db_table_file';
+  };
+
   // Load templates on component mount
   useEffect(() => {
     loadTemplates();
@@ -542,45 +590,7 @@ export default function DebugManualGeneratorPanel() {
     return file?.file_name || '';
   };
 
-  const getFileGenerationType = (): 'project_file' | 'db_table_file' | 'static_file' | 'static_directory' | null => {
-    const file = templateFiles.find(f => f.id === selectedFile);
-    if (!file) return null;
-
-    // Wenn generation_type explizit gesetzt ist, verwenden
-    if (file.generation_type) {
-      return file.generation_type as 'project_file' | 'db_table_file' | 'static_file' | 'static_directory';
-    }
-
-    // Fallback: Bestimme anhand des file_type
-    const tableFileTypes = ['model', 'controller', 'view', 'migration', 'entity'];
-    const projectFileTypes = ['config', 'helper', 'main', 'index', 'project'];
-
-    if (tableFileTypes.includes(file.file_type.toLowerCase())) {
-      return 'db_table_file';
-    } else if (projectFileTypes.includes(file.file_type.toLowerCase())) {
-      return 'project_file';
-    }
-
-    // Fallback anhand Dateiname
-    const fileName = file.file_name.toLowerCase();
-    if (fileName.includes('table') || fileName.includes('model') || fileName.includes('entity')) {
-      return 'db_table_file';
-    } else if (fileName.includes('project') || fileName.includes('config') || fileName.includes('main')) {
-      return 'project_file';
-    }
-
-    return null; // Unbekannt/Static
-  };
-
-  const shouldShowProjectDropdown = (): boolean => {
-    const fileType = getFileGenerationType();
-    return fileType === 'project_file';
-  };
-
-  const shouldShowTableDropdown = (): boolean => {
-    const fileType = getFileGenerationType();
-    return fileType === 'db_table_file';
-  };
+  // Functions moved up to avoid hoisting issues
 
   const generateGTreeData = () => {
     const fileType = getFileGenerationType();
