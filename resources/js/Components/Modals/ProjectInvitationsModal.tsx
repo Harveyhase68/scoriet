@@ -286,7 +286,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
       header={`Project Invitations - ${project?.name || ''}`}
       style={{ width: '800px' }}
       footer={dialogFooter}
-      className="p-fluid"
+      className="p-fluid p-dialog-custom"
     >
       <div className="space-y-6">
         {error && <Message severity="error" text={error} />}

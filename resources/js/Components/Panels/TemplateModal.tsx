@@ -75,6 +75,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             footer={null}
             width={800}
             className="dark-modal"
+            modalRender={(modal) => (
+                <div className="dark-modal">
+                    {modal}
+                </div>
+            )}
         >
             <Form
                 form={form}

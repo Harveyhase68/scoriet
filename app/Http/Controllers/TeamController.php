@@ -26,26 +26,26 @@ class TeamController extends Controller
         if ($showAll) {
             // Get ALL teams where user is owner or member (for Team Management)
             $ownedTeams = Team::where('project_owner_id', $user->id)
-                             ->with(['owner', 'members.user', 'pendingInvitations'])
+                             ->with(['owner', 'members.user'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
             $memberTeams = Team::whereIn('id', $memberTeamIds)
                                ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
-                               ->with(['owner', 'members.user', 'pendingInvitations'])
+                               ->with(['owner', 'members.user'])
                                ->get();
         } else {
             // Get teams filtered by project (for Team Assignment)
             $ownedTeams = Team::where('project_owner_id', $user->id)
                              ->where('project_name', $projectName)
-                             ->with(['owner', 'members.user', 'pendingInvitations'])
+                             ->with(['owner', 'members.user'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
             $memberTeams = Team::whereIn('id', $memberTeamIds)
                                ->where('project_name', $projectName)
                                ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
-                               ->with(['owner', 'members.user', 'pendingInvitations'])
+                               ->with(['owner', 'members.user'])
                                ->get();
         }
 
@@ -101,7 +101,7 @@ class TeamController extends Controller
 
         return response()->json([
             'message' => 'Team created successfully',
-            'team' => $team->load(['members.user', 'pendingInvitations'])
+            'team' => $team->load(['members.user'])
         ], 201);
     }
 
@@ -118,7 +118,7 @@ class TeamController extends Controller
         }
 
         return response()->json([
-            'team' => $team->load(['owner', 'members.user', 'invitations.inviter'])
+            'team' => $team->load(['owner', 'members.user'])
         ]);
     }
 
@@ -160,7 +160,7 @@ class TeamController extends Controller
 
         return response()->json([
             'message' => 'Team updated successfully',
-            'team' => $team->load(['members.user', 'pendingInvitations'])
+            'team' => $team->load(['members.user'])
         ]);
     }
 

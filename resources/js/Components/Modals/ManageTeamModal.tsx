@@ -255,24 +255,23 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
       }}
       onClick={onClose}
     >
-      <div 
-        className="bg-gray-800 rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden border border-gray-700 shadow-2xl" 
+      <div
+        className="portal-modal-content rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-700">
+        <div className="portal-modal-header flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold text-white flex items-center">
-              <i className="pi pi-cog mr-2 text-blue-400"></i>
+            <h2 className="flex items-center">
+              <i className="pi pi-cog mr-2"></i>
               Manage Team: {team.name}
             </h2>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-gray-300 text-sm mt-1">
               {team.members?.length || 0} members • Project: {team.project_name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-2"
           >
             <i className="pi pi-times"></i>
           </button>

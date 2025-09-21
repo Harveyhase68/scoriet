@@ -26,6 +26,8 @@ const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateM
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
+const DebugManualGeneratorPanel = lazy(() => import('@/Components/Panels/DebugManualGeneratorPanel'));
+const CodeGenerationPanel = lazy(() => import('@/Components/Panels/CodeGenerationPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -349,6 +351,32 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateDbSchemaDependenciesPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'debug-manual-generator':
+      return {
+        id,
+        title: data.title || '🔧 Debug Manual Generator',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <DebugManualGeneratorPanel isActive={true} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'code-generation':
+      return {
+        id,
+        title: data.title || 'Code Generation Test Panel',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <CodeGenerationPanel isActive={true} />
           </Suspense>
         ),
         closable: true,

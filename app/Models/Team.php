@@ -31,15 +31,16 @@ class Team extends Model
         return $this->hasMany(TeamMember::class);
     }
 
-    public function invitations(): HasMany
-    {
-        return $this->hasMany(TeamInvitation::class);
-    }
+    // Team invitations functionality removed
+    // public function invitations(): HasMany
+    // {
+    //     return $this->hasMany(TeamInvitation::class);
+    // }
 
-    public function pendingInvitations(): HasMany
-    {
-        return $this->hasMany(TeamInvitation::class)->where('status', 'pending');
-    }
+    // public function pendingInvitations(): HasMany
+    // {
+    //     return $this->hasMany(TeamInvitation::class)->where('status', 'pending');
+    // }
 
     public function getMemberCount(): int
     {

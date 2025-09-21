@@ -35,7 +35,10 @@
       "Bash(rm:*)",
       "Bash(mysql:*)",
       "Bash(git restore:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(findstr:*)",
+      "Bash(python:*)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": []

@@ -192,7 +192,7 @@ export default function PendingInvitationModal({
       footer={dialogFooter}
       closable={!processing}
       dismissableMask={!processing}
-      className="p-fluid"
+      className="p-fluid p-dialog-custom"
     >
       <div className="space-y-4">
         {loading && (

@@ -247,7 +247,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
         onHide={onHide}
         header={modalHeader}
         style={{ width: '800px' }}
-        className="p-fluid"
+        className="p-fluid p-dialog-custom"
         modal
       >
         <div className="space-y-4">

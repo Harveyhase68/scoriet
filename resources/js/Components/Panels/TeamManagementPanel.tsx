@@ -331,7 +331,7 @@ export default function TeamManagementPanel() {
       <div className="h-full flex flex-col">
         {/* Header Card */}
         <Card title="Team Management" className="m-4 mb-2">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-400">
             Create, manage, and organize your teams. Assign team members and control access permissions.
           </div>
         </Card>
