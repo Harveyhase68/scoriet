@@ -140,18 +140,17 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
       onClick={handleClose}
     >
       <div
-        className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="portal-modal-content rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-white flex items-center">
-            <i className="pi pi-pencil mr-2 text-green-400"></i>
+        <div className="portal-modal-header flex justify-between items-center">
+          <h2 className="flex items-center">
+            <i className="pi pi-pencil mr-2"></i>
             Edit Table: {table?.table_name}
           </h2>
           <button
             onClick={handleClose}
             disabled={loading}
-            className="text-gray-400 hover:text-white"
           >
             <i className="pi pi-times"></i>
           </button>

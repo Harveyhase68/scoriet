@@ -67,56 +67,7 @@ interface TemplateFile {
 }
 
 const TemplateManagementPanel: React.FC = () => {
-    // Dark theme styles for Ant Design Modals
-    const darkModalStyles = `
-        .dark-modal .ant-modal-content {
-            background: #374151 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-modal-header {
-            background: #4b5563 !important;
-            border-bottom: 1px solid #6b7280 !important;
-        }
-        .dark-modal .ant-modal-title {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-form-item-label > label {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-input,
-        .dark-modal .ant-input-affix-wrapper,
-        .dark-modal .ant-select-selector {
-            background: #4b5563 !important;
-            border-color: #6b7280 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-input::placeholder,
-        .dark-modal .ant-input-affix-wrapper input::placeholder {
-            color: #9ca3af !important;
-        }
-        .dark-modal .ant-select-arrow {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-btn-default {
-            background: #4b5563 !important;
-            border-color: #6b7280 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-btn-default:hover {
-            background: #6b7280 !important;
-            border-color: #9ca3af !important;
-        }
-        .dark-modal .ant-modal-close {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-modal-close:hover {
-            color: #ffffff !important;
-            background: #6b7280 !important;
-        }
-        .dark-modal .ant-modal-close-x {
-            color: inherit !important;
-        }
-    `;
+    // Using centralized CSS styles from auth-modals.css
 
     // State variables
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -133,54 +84,8 @@ const TemplateManagementPanel: React.FC = () => {
     
     // Forms are now handled by separate modal components
 
-    // Inject modal styles and suppress Ant Design React 19 warnings
-    React.useEffect(() => {
-        const styleElement = document.createElement('style');
-        styleElement.textContent = darkModalStyles;
-        document.head.appendChild(styleElement);
-        
-        // Comprehensive Ant Design React 19 warning suppression
-        const originalWarn = console.warn;
-        const originalError = console.error;
-        
-        console.warn = (...args) => {
-            if (args[0] && typeof args[0] === 'string' && 
-                (args[0].includes('[antd: compatible]') || 
-                 args[0].includes('antd v5 support React is 16 ~ 18'))) {
-                return; // Suppress these warnings
-            }
-            originalWarn.apply(console, args);
-        };
-        
-        console.error = (...args) => {
-            if (args[0] && typeof args[0] === 'string' && 
-                (args[0].includes('[antd: compatible]') || 
-                 args[0].includes('antd v5 support React is 16 ~ 18'))) {
-                return; // Suppress these errors too
-            }
-            originalError.apply(console, args);
-        };
-        
-        // Also patch any internal warning system that Ant Design might use
-        if ((window as any).antdWarning) {
-            const originalAntdWarn = (window as any).antdWarning;
-            (window as any).antdWarning = (valid: any, component: any, message: any) => {
-                if (message && typeof message === 'string' && 
-                    (message.includes('[antd: compatible]') || 
-                     message.includes('antd v5 support React is 16 ~ 18'))) {
-                    return; // Suppress antd warnings
-                }
-                originalAntdWarn(valid, component, message);
-            };
-        }
-        
-        return () => {
-            document.head.removeChild(styleElement);
-            console.warn = originalWarn;
-            console.error = originalError;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // No need to inject styles - using centralized CSS
+    // Ant Design React 19 warnings are handled by @ant-design/v5-patch-for-react-19
 
     const categories = ['All', 'Web', 'Mobile', 'API', 'Desktop', 'Database'];
     const fileTypes = [
@@ -699,6 +604,18 @@ const TemplateManagementPanel: React.FC = () => {
                     </Button>
                 ]}
                 width={800}
+                style={{ top: 20 }}
+                bodyStyle={{
+                    maxHeight: 'calc(100vh - 200px)',
+                    overflowY: 'auto',
+                    padding: '24px'
+                }}
+                className="dark-modal"
+                modalRender={(modal) => (
+                    <div className="dark-modal">
+                        {modal}
+                    </div>
+                )}
             >
                 {viewingTemplate && (
                     <div className="space-y-4">
@@ -724,12 +641,12 @@ const TemplateManagementPanel: React.FC = () => {
                             {viewingTemplate.files && viewingTemplate.files.length > 0 ? (
                                 <div className="mt-2 space-y-2">
                                     {viewingTemplate.files.map((file) => (
-                                        <div key={file.id} className="border p-3 rounded">
+                                        <div key={file.id} className="border border-gray-600 bg-gray-800 p-3 rounded">
                                             <div className="flex justify-between items-center mb-2">
                                                 <strong>{file.file_name}</strong>
                                                 <Tag>{file.file_type}</Tag>
                                             </div>
-                                            <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                                            <pre className="text-xs bg-gray-800 text-gray-200 p-2 rounded overflow-x-auto">
                                                 {file.file_content.substring(0, 500)}
                                                 {file.file_content.length > 500 && '...'}
                                             </pre>

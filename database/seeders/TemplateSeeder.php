@@ -23,6 +23,7 @@ class TemplateSeeder extends Seeder
                 'files' => [
                     [
                         'file_name' => 'CrudComponent.tsx',
+                        'output_path' => '/components/',
                         'file_content' => '// React CRUD Component Template
 import React, { useState, useEffect } from "react";
 
@@ -66,23 +67,24 @@ export default function {projectname}Crud() {
                     ],
                     [
                         'file_name' => 'api.ts',
+                        'output_path' => '/services/',
                         'file_content' => '// API Helper for {projectname}
 export const {tablename}Api = {
-  getAll: () => fetch("/api/{tablename}").then(r => r.json()),
-  getById: (id: number) => fetch(`/api/{tablename}/${id}`).then(r => r.json()),
-  create: (data: any) => fetch("/api/{tablename}", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
-  update: (id: number, data: any) => fetch(`/api/{tablename}/${id}`, {
-    method: "PUT", 
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
-  delete: (id: number) => fetch(`/api/{tablename}/${id}`, {
-    method: "DELETE"
-  }).then(r => r.json())
+§INDENT2§getAll: () => fetch("/api/{tablename}").then(r => r.json()),
+§INDENT2§getById: (id: number) => fetch(`/api/{tablename}/${id}`).then(r => r.json()),
+§INDENT2§create: (data: any) => fetch("/api/{tablename}", {
+§INDENT4§method: "POST",
+§INDENT4§headers: { "Content-Type": "application/json" },
+§INDENT4§body: JSON.stringify(data)
+§INDENT2§}).then(r => r.json()),
+§INDENT2§update: (id: number, data: any) => fetch(`/api/{tablename}/${id}`, {
+§INDENT4§method: "PUT",
+§INDENT4§headers: { "Content-Type": "application/json" },
+§INDENT4§body: JSON.stringify(data)
+§INDENT2§}).then(r => r.json()),
+§INDENT2§delete: (id: number) => fetch(`/api/{tablename}/${id}`, {
+§INDENT4§method: "DELETE"
+§INDENT2§}).then(r => r.json())
 };',
                         'file_type' => 'helper',
                         'file_order' => 1,
@@ -99,6 +101,7 @@ export const {tablename}Api = {
                 'files' => [
                     [
                         'file_name' => '{Tablename}Controller.php',
+                        'output_path' => '/app/Http/Controllers/',
                         'file_content' => '<?php
 
 namespace App\Http\Controllers;
@@ -231,6 +234,7 @@ class {Tablename}Controller extends Controller
                 'files' => [
                     [
                         'file_name' => 'Dashboard.vue',
+                        'output_path' => '/components/views/',
                         'file_content' => '<template>
   <div class="dashboard">
     <h1>{projectname} Dashboard</h1>
@@ -309,6 +313,7 @@ export default {
                 'files' => [
                     [
                         'file_name' => 'create_{tablename}_table.sql',
+                        'output_path' => '/database/migrations/',
                         'file_content' => '-- {projectname} - {tablename} Table
 CREATE TABLE `{tablename}` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -356,6 +361,7 @@ CREATE INDEX `idx_{tablename}_{index.name}` ON `{tablename}` ({index.columns});
                 'files' => [
                     [
                         'file_name' => '{tablename}_screen.dart',
+                        'output_path' => '/lib/screens/',
                         'file_content' => 'import "package:flutter/material.dart";
 import "package:http/http.dart" as http;
 import "dart:convert";
@@ -441,6 +447,87 @@ class _{Tablename}ScreenState extends State<{Tablename}Screen> {
                     ],
                 ],
             ],
+            // New React CRUD Template with proper indent placeholders
+            [
+                'name' => 'react_crud_new',
+                'description' => 'React CRUD Template with proper indentation',
+                'category' => 'React',
+                'language' => 'TypeScript',
+                'files' => [
+                    [
+                        'file_name' => 'api.ts',
+                        'output_path' => '/services/',
+                        'file_content' => '// API Helper for {projectname}
+export const {tablename}Api = {
+§INDENT2§getAll: () => fetch("/api/{tablename}").then(r => r.json()),
+§INDENT2§getById: (id: number) => fetch(`/api/{tablename}/${id}`).then(r => r.json()),
+§INDENT2§create: (data: any) => fetch("/api/{tablename}", {
+§INDENT4§method: "POST",
+§INDENT4§headers: { "Content-Type": "application/json" },
+§INDENT4§body: JSON.stringify(data)
+§INDENT2§}).then(r => r.json()),
+§INDENT2§update: (id: number, data: any) => fetch(`/api/{tablename}/${id}`, {
+§INDENT4§method: "PUT",
+§INDENT4§headers: { "Content-Type": "application/json" },
+§INDENT4§body: JSON.stringify(data)
+§INDENT2§}).then(r => r.json()),
+§INDENT2§delete: (id: number) => fetch(`/api/{tablename}/${id}`, {
+§INDENT4§method: "DELETE"
+§INDENT2§}).then(r => r.json())
+};',
+                        'file_type' => 'db_table_file',
+                        'file_order' => 1,
+                    ],
+                ],
+            ],
+            // Template demonstrating if/else/endif and switch functionality
+            [
+                'name' => 'PHP Variable Declaration with Conditionals',
+                'description' => 'Demonstrates if/else/endif and switch template processing',
+                'category' => 'Demo',
+                'language' => 'PHP',
+                'tags' => ['PHP', 'Conditionals', 'Demo'],
+                'is_active' => true,
+                'files' => [
+                    [
+                        'file_name' => '{tablename}_variables.php',
+                        'output_path' => '/demo/',
+                        'file_content' => '<?php
+// {projectname} - {tablename} Variable Declarations
+
+{for {nmaxitemsnokey}}
+{if {item.typecast}=="(int)"}
+$p_{item.name} = {item.typecast}0;
+{else}
+$p_{item.name} = {item.typecast}"";
+{endif}
+
+{switch {item.controltype}}
+{case 14}
+// Integer field: {item.name}
+echo "Processing integer field: {item.name}";
+{break}
+{case 24}
+// String field: {item.name}
+echo "Processing string field: {item.name}";
+{break}
+{case 28}
+// Date field: {item.name}
+echo "Processing date field: {item.name}";
+{break}
+{default}
+// Other field type: {item.name}
+echo "Processing other field: {item.name}";
+{break}
+{endswitch}
+
+{endfor}
+?>',
+                        'file_type' => 'template',
+                        'file_order' => 0,
+                    ],
+                ],
+            ],
         ];
 
         foreach ($templates as $templateData) {
@@ -455,6 +542,7 @@ class _{Tablename}ScreenState extends State<{Tablename}Screen> {
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
                     'file_path' => "templates/{$template->id}/{$fileData['file_name']}",
+                    'output_path' => $fileData['output_path'] ?? '/',
                     'file_content' => $fileData['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'],

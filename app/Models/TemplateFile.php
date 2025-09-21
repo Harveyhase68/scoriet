@@ -13,8 +13,11 @@ class TemplateFile extends Model
         'template_id',
         'file_name',
         'file_path',
+        'output_path',
         'file_content',
         'file_type',
+        'content_type',
+        'zip_filename',
         'file_order',
     ];
 

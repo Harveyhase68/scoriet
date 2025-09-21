@@ -5,6 +5,271 @@
   border-radius: 6px 6px 0 0;
 }
 
+/* Standard modal styling for consistency */
+.standard-modal .p-dialog-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 6px 6px 0 0;
+}
+
+/* Dark Ant Design modal styling - High specificity */
+/* Remove black outer border/container */
+.dark-modal.ant-modal,
+.ant-modal.dark-modal {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Also target the modal wrapper/mask */
+.dark-modal .ant-modal-wrap,
+.ant-modal-wrap .dark-modal {
+  background: transparent !important;
+}
+
+.dark-modal .ant-modal-mask,
+.ant-modal-mask + .dark-modal {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-header,
+.dark-modal .ant-modal-content .ant-modal-header,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-bottom: none !important;
+  border-radius: 6px 6px 0 0 !important;
+  margin: 0 !important;
+  padding: 16px 24px !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-title,
+.dark-modal .ant-modal-content .ant-modal-title,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-title {
+  color: white !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-close,
+.dark-modal .ant-modal-content .ant-modal-close,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-close {
+  color: white !important;
+  top: 16px !important;
+  right: 16px !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-close:hover,
+.dark-modal .ant-modal-content .ant-modal-close:hover,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-close .ant-modal-close-x,
+.dark-modal .ant-modal-content .ant-modal-close .ant-modal-close-x,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-close .ant-modal-close-x {
+  color: white !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content,
+.dark-modal .ant-modal-content,
+.ant-modal.dark-modal .ant-modal-content {
+  background-color: #1f1f1f !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: none !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-body,
+.dark-modal .ant-modal-content .ant-modal-body,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-body {
+  background-color: #1f1f1f !important;
+  color: white !important;
+  padding: 24px !important;
+}
+
+.dark-modal.ant-modal .ant-modal-content .ant-modal-footer,
+.dark-modal .ant-modal-content .ant-modal-footer,
+.ant-modal.dark-modal .ant-modal-content .ant-modal-footer {
+  background-color: #1f1f1f !important;
+  border-top: 1px solid #434343 !important;
+  border-radius: 0 0 6px 6px !important;
+}
+
+/* Form elements in dark modals */
+.dark-modal .ant-form-item-label > label {
+  color: white !important;
+}
+
+.dark-modal .ant-select-selector {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-select-arrow {
+  color: white !important;
+}
+
+.dark-modal .ant-input,
+.dark-modal .ant-input-affix-wrapper {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-input::placeholder,
+.dark-modal .ant-input-affix-wrapper input::placeholder {
+  color: #9ca3af !important;
+}
+
+.dark-modal .ant-checkbox-wrapper {
+  color: white !important;
+}
+
+.dark-modal .ant-checkbox-inner {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+}
+
+.dark-modal .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #1890ff !important;
+  border-color: #1890ff !important;
+}
+
+.dark-modal .ant-btn-default {
+  background: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-btn-default:hover {
+  background: #3a3a3a !important;
+  border-color: #555555 !important;
+}
+
+/* Radio button styling */
+.dark-modal .ant-radio-group .ant-radio-button-wrapper {
+  background: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-radio-group .ant-radio-button-wrapper:hover {
+  background: #3a3a3a !important;
+  border-color: #555555 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-radio-group .ant-radio-button-wrapper-checked {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.dark-modal .ant-radio-group .ant-radio-button-wrapper-checked:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+/* Tag styling in dark modals */
+.dark-modal .ant-tag {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-tag-blue {
+  background-color: #1e40af !important;
+  border-color: #2563eb !important;
+}
+
+.dark-modal .ant-tag-green {
+  background-color: #166534 !important;
+  border-color: #16a34a !important;
+}
+
+.dark-modal .ant-tag-orange {
+  background-color: #c2410c !important;
+  border-color: #ea580c !important;
+}
+
+/* Button styling in dark modals */
+.dark-modal .ant-btn-primary {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.dark-modal .ant-btn-primary:hover {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+/* Space component styling */
+.dark-modal .ant-space {
+  color: white !important;
+}
+
+/* Custom scrollbar for dark modals */
+.dark-modal .ant-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.dark-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+.dark-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Custom Portal Modal Styling (for consistency) */
+.portal-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 6px 6px 0 0;
+  padding: 1rem 1.5rem;
+  margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+}
+
+.portal-modal-header h2 {
+  color: white;
+  font-weight: 600;
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.portal-modal-header button {
+  color: white;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.portal-modal-header button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.portal-modal-content {
+  background-color: #1f1f1f;
+  border-radius: 6px;
+  border: 1px solid #434343;
+}
+
 .p-dialog-custom .p-dialog-header .p-dialog-title {
   color: white;
   font-weight: 600;

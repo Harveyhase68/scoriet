@@ -236,14 +236,19 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
       ]
     },
     {
-      label: 'Tools',
-      icon: 'pi pi-wrench',
+      label: 'Generator',
+      icon: 'pi pi-cog',
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Code Generator',
-          icon: 'pi pi-code',
-          command: () => onOpenPanel('t3')
+          label: 'Debug Manual Generator',
+          icon: 'pi pi-wrench',
+          command: () => onOpenPanel('debug-manual-generator')
+        },
+        {
+          label: 'Code Generation Panel',
+          icon: 'pi pi-play',
+          command: () => onOpenPanel('code-generation')
         },
         {
           label: 'Query Builder',
@@ -280,9 +285,9 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           command: () => {/* Change plan - not implemented */}
         },
         {
-          label: 'Go to App',
+          label: 'Back to Lobby',
           icon: 'pi pi-external-link',
-          command: () => window.location.href = '/app'
+          command: () => window.location.href = '/'
         },
         {
           separator: true
@@ -511,14 +516,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
 
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-wrench text-gray-300" title="Tools"></i>
+                <i className="pi pi-cog text-gray-300" title="Generator"></i>
               </button>
-              {/* Popup submenu for Tools */}
+              {/* Popup submenu for Generator */}
               <div className="absolute left-full top-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-code"></i>
-                    <span>Code Generator</span>
+                  <button onClick={() => onOpenPanel('debug-manual-generator')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-wrench"></i>
+                    <span>Debug Manual Generator</span>
+                  </button>
+                  <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-play"></i>
+                    <span>Code Generation Panel</span>
                   </button>
                   <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-search"></i>

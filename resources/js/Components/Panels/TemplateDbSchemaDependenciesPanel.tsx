@@ -210,71 +210,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
 };
 
 const TemplateDbSchemaDependenciesPanel: React.FC = () => {
-    // Dark theme styles for Ant Design Modals
-    const darkModalStyles = `
-        .dark-modal .ant-modal-content {
-            background: #374151 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-modal-header {
-            background: #4b5563 !important;
-            border-bottom: 1px solid #6b7280 !important;
-        }
-        .dark-modal .ant-modal-title {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-form-item-label > label {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-input,
-        .dark-modal .ant-input-affix-wrapper,
-        .dark-modal .ant-select-selector {
-            background: #4b5563 !important;
-            border-color: #6b7280 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-input::placeholder,
-        .dark-modal .ant-input-affix-wrapper input::placeholder {
-            color: #9ca3af !important;
-        }
-        .dark-modal .ant-select-arrow {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-btn-default {
-            background: #4b5563 !important;
-            border-color: #6b7280 !important;
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-btn-default:hover {
-            background: #6b7280 !important;
-            border-color: #9ca3af !important;
-        }
-        .dark-modal .ant-modal-close {
-            color: #f3f4f6 !important;
-        }
-        .dark-modal .ant-modal-close:hover {
-            color: #ffffff !important;
-            background: #6b7280 !important;
-        }
-        .ant-radio-group .ant-radio-button-wrapper {
-            background: #4b5563 !important;
-            border-color: #6b7280 !important;
-            color: #f3f4f6 !important;
-        }
-        .ant-radio-group .ant-radio-button-wrapper:hover {
-            background: #6b7280 !important;
-            border-color: #9ca3af !important;
-        }
-        .ant-radio-group .ant-radio-button-wrapper-checked {
-            background: #3b82f6 !important;
-            border-color: #3b82f6 !important;
-            color: #ffffff !important;
-        }
-        .ant-radio-group .ant-radio-button-wrapper-checked:hover {
-            background: #2563eb !important;
-            border-color: #2563eb !important;
-        }
-    `;
+    // Using centralized CSS styles from auth-modals.css
 
     // State variables
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -286,16 +222,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [templateFilter, setTemplateFilter] = useState<'all' | 'system' | 'public' | 'project'>('all');
 
-    // Inject modal styles
-    React.useEffect(() => {
-        const styleElement = document.createElement('style');
-        styleElement.textContent = darkModalStyles;
-        document.head.appendChild(styleElement);
-
-        return () => {
-            document.head.removeChild(styleElement);
-        };
-    }, [darkModalStyles]);
+    // No need to inject styles - using centralized CSS
 
     const loadTemplates = useCallback(async () => {
         setLoading(true);

@@ -908,7 +908,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       >
         <div className="space-y-4">
           <div className="field">
-            <label htmlFor="create-name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="create-name" className="block text-sm font-medium text-white mb-2">
               Project Name *
             </label>
             <InputText
@@ -923,7 +923,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           </div>
 
           <div className="field">
-            <label htmlFor="create-description" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="create-description" className="block text-sm font-medium text-white mb-2">
               Description
             </label>
             <InputTextarea
@@ -945,14 +945,14 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.checked || false }))}
                 disabled={creating}
               />
-              <label htmlFor="create-is-public" className="text-sm font-medium text-gray-700">
+              <label htmlFor="create-is-public" className="text-sm font-medium text-white">
                 Public Project
               </label>
             </div>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-gray-400 mb-3">
               Public projects are visible to all users and can be discovered in the project gallery.
             </p>
-            
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="create-allow-join"
@@ -960,11 +960,11 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.checked || false }))}
                 disabled={creating}
               />
-              <label htmlFor="create-allow-join" className="text-sm font-medium text-gray-700">
+              <label htmlFor="create-allow-join" className="text-sm font-medium text-white">
                 Allow Join Requests
               </label>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               Users can request to join this project using a join code.
             </p>
           </div>
