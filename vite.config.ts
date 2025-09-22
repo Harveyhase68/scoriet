@@ -33,66 +33,22 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
+                // ULTIMATE SOLUTION: No chunking for node_modules
+                // This ensures perfect load order but creates one big vendor chunk
                 manualChunks: (id) => {
-                    if (id.includes('node_modules')) {
-                        // SOLUTION: React core + Ant Design (including icons) together
-                        if (id.includes('react/') || id.includes('react-dom/')) {
-                            return 'react-foundation';
+                    // Only split our app code, not vendor libraries
+                    if (!id.includes('node_modules')) {
+                        if (id.includes('/Components/Panels/')) {
+                            return 'panels';
                         }
-                        if (id.includes('antd/') || id.includes('@ant-design/icons')) {
-                            return 'react-foundation'; // Icons also need React context!
+                        if (id.includes('/Components/Modals/')) {
+                            return 'modals';
                         }
-
-                        // React 19 compatibility
-                        if (id.includes('@ant-design/v5-patch-for-react-19')) {
-                            return 'react-foundation';
+                        if (id.includes('/Components/AuthModals/')) {
+                            return 'auth';
                         }
-
-                        // Inertia with React context
-                        if (id.includes('@inertiajs/react')) {
-                            return 'react-foundation';
-                        }
-
-                        // Other React-based libraries (use React context)
-                        if (id.includes('react-hook-form') || id.includes('react-hotkeys-hook')) {
-                            return 'react-foundation';
-                        }
-
-                        // Large UI libraries separate
-                        if (id.includes('primereact') || id.includes('primeicons')) {
-                            return 'ui-prime';
-                        }
-                        if (id.includes('rc-dock')) {
-                            return 'dock';
-                        }
-                        if (id.includes('reactflow')) {
-                            return 'flowchart';
-                        }
-
-                        // i18n libraries
-                        if (id.includes('i18next')) {
-                            return 'i18n';
-                        }
-
-                        // Utility libraries
-                        if (id.includes('clsx') || id.includes('tailwind-merge') || id.includes('class-variance-authority')) {
-                            return 'utils';
-                        }
-
-                        // Everything else
-                        return 'vendor';
                     }
-
-                    // App chunks
-                    if (id.includes('/Components/Panels/')) {
-                        return 'panels';
-                    }
-                    if (id.includes('/Components/Modals/')) {
-                        return 'modals';
-                    }
-                    if (id.includes('/Components/AuthModals/')) {
-                        return 'auth';
-                    }
+                    // All node_modules go into default vendor chunk (no explicit return)
                 },
             },
         },
