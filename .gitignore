@@ -31,5 +31,6 @@ run.ps1
 scoriet.code-workspace
 test.bat
 git_up.bat
+nuclear-reset.bat
 large_test.sql
 small.sql
