@@ -35,17 +35,12 @@ export default defineConfig({
             output: {
                 manualChunks: (id) => {
                     if (id.includes('node_modules')) {
-                        // SOLUTION: React core + Ant Design core together (but icons separate)
+                        // SOLUTION: React core + Ant Design (including icons) together
                         if (id.includes('react/') || id.includes('react-dom/')) {
                             return 'react-foundation';
                         }
-                        if (id.includes('antd/') && !id.includes('icons')) {
-                            return 'react-foundation'; // Share React context
-                        }
-
-                        // Ant Design Icons separate (large but not critical for context)
-                        if (id.includes('@ant-design/icons')) {
-                            return 'antd-icons';
+                        if (id.includes('antd/') || id.includes('@ant-design/icons')) {
+                            return 'react-foundation'; // Icons also need React context!
                         }
 
                         // React 19 compatibility
