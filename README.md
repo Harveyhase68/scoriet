@@ -42,21 +42,30 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Environment-based Features**: Demo vs. Production mode
 - ✅ **Development Tooling**: Full CI/CD, linting, testing setup
 - ✅ **Accessibility**: WCAG compliant forms with proper autocomplete attributes
+- ✅ **Database Designer**: Visual SQL schema creation and editing
+- ✅ **SQL Parser Engine**: Advanced MySQL schema parsing with relationship detection
+- ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
+- ✅ **Debug Manual Generator**: Real-time template debugging and testing
+- ✅ **ZIP Template Upload**: Upload complete template structures as ZIP files
+- ✅ **File Path Organization**: Automatic directory structure for generated code
+- ✅ **Project Management**: Teams, projects, and collaboration tools
+- ✅ **Public Projects Gallery**: Clone and share projects with credit system
 
 ### 🚧 **In Progress** (Coming Soon)
-- 🚧 **SQL Parser Engine**: MySQL schema parsing and analysis
-- 🚧 **Template System**: JavaScript-based code generation
-- 🚧 **Database Designer**: Visual schema creation tools
-- 🚧 **Project Management**: Teams, projects, and collaboration
+- 🚧 **Multi-Language Templates**: Support for more programming languages
+- 🚧 **Advanced Template Variables**: Custom template placeholders and helpers
 - 🚧 **Payment Integration**: PayPal and Stripe subscription handling
 - 🚧 **AI Integration**: Claude API for enhanced code generation
+- 🚧 **Team Permissions**: Advanced role-based access control
+- 🚧 **Version Control**: Template and project versioning system
 
 ### 📅 **Planned Features** (Roadmap)
-- 📅 **Multi-Database Support**: PostgreSQL, SQLite, SQL Server
-- 📅 **Advanced Templates**: Loop constructs and complex generation
-- 📅 **Team Collaboration**: Multi-user projects and sharing
+- 📅 **Multi-Database Support**: PostgreSQL, SQLite, SQL Server support
+- 📅 **Advanced Code Analysis**: Static analysis and code quality metrics
+- 📅 **Template Marketplace**: Share and download community templates
 - 📅 **API Ecosystem**: Public API for third-party integrations
 - 📅 **Plugin System**: Extensible architecture for custom generators
+- 📅 **Cloud Deployment**: One-click deployment to major cloud providers
 
 ### 🧪 **Try It Now**
 - **Live Demo**: [demo.scoriet.dev](https://demo.scoriet.dev) - Full featured demo environment
@@ -68,12 +77,18 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **🎨 CSS Flag Icons** - Beautiful country flags created with pure CSS gradients (no image dependencies)
 - **🗄️ Advanced SQL Parser** - Parse MySQL schemas with intelligent relationship detection
 - **🎯 Template Engine** - Powerful client-side template execution with JavaScript integration
+- **📋 Database Designer** - Visual schema creation with drag-and-drop table editing
+- **🔧 Debug Manual Generator** - Real-time template debugging with live preview
+- **📦 ZIP Template Upload** - Upload complete template structures as ZIP files
+- **📁 File Path Organization** - Automatic directory structure for generated code (/components/, /services/, etc.)
 - **🖥️ Modern MDI Interface** - Professional dock-based UI with floating panels
 - **🔒 Enterprise Security** - Laravel Passport OAuth2 with Password Grant authentication
 - **👤 User Management** - Complete registration, login, and profile management system
 - **🔐 JWT Token Authentication** - Secure API access with Bearer tokens
 - **⚡ Real-time Generation** - Instant code generation without server processing
 - **🔧 Flexible Templates** - Stack multiple templates for complex application scaffolding
+- **🏢 Project Management** - Teams, projects, and collaboration with credit system
+- **🌐 Public Gallery** - Clone and share projects with the community
 - **♿ Accessibility First** - WCAG compliant with screen reader support and proper form attributes
 
 ### 🏗️ Architecture
@@ -92,10 +107,15 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - Multi-database support (MySQL, PostgreSQL, SQLite, SQL Server)
 
 **Template System:**
-- Client-side JavaScript execution
-- Flexible placeholder system (`{projectname}`, `{tablename}`)
-- Advanced loop constructs (`{for %}{endfor}`)
-- Stackable template composition
+- Client-side JavaScript execution with full ES6+ support
+- Advanced placeholder system (`{projectname}`, `{tablename}`, `{item.name}`, `{item.type}`)
+- Powerful loop constructs (`{for {nmaxitemsnokey}}`, `{endfor}`)
+- Conditional logic (`{if condition}`, `{else}`, `{endif}`)
+- Switch statements (`{switch variable}`, `{case value}`, `{break}`, `{endswitch}`)
+- ZIP template upload for complete project structures
+- Automatic file path organization (/components/, /services/, /data/, etc.)
+- Real-time debugging with live preview
+- Stackable template composition for complex scaffolding
 
 ## 📋 Requirements
 
@@ -217,6 +237,149 @@ npm run dev                                       # Frontend
 - **Application**: http://10.0.0.8:8000
 - **Vite Dev Server**: http://10.0.0.8:5173
 - **Hot Module Replacement**: Enabled automatically
+
+## 🎨 Template Engine Features
+
+Scoriet's template engine is one of its most powerful features, offering advanced code generation capabilities:
+
+### 🔧 Debug Manual Generator
+
+The Debug Manual Generator provides real-time template debugging and testing:
+
+- **Live Preview**: See generated code instantly as you edit templates
+- **File Type Detection**: Automatically determines if templates need database or project context
+- **Dynamic UI**: Shows/hides relevant dropdowns based on template requirements
+- **Database Integration**: Select specific tables for database-driven templates
+- **Project Context**: Choose projects for project-specific generation
+- **Error Handling**: Clear error messages and validation feedback
+
+### 📦 Template Features
+
+#### Template Variables
+```javascript
+{projectname}        // Current project name
+{tablename}          // Database table name
+{item.name}          // Field name from database schema
+{item.type}          // Field data type (VARCHAR, INT, etc.)
+{item.typecast}      // PHP typecast ((int), (string), etc.)
+{item.controltype}   // UI control type (14=int, 24=string, etc.)
+```
+
+#### Loop Constructs
+```javascript
+{for {nmaxitemsnokey}}
+  // Loop through all database fields without key
+  $p_{item.name} = {item.typecast}0;
+{endfor}
+```
+
+#### Conditional Logic
+```javascript
+{if {item.typecast}=="(int)"}
+  $p_{item.name} = {item.typecast}0;
+{else}
+  $p_{item.name} = {item.typecast}"";
+{endif}
+```
+
+#### Switch Statements
+```javascript
+{switch {item.controltype}}
+{case 14}
+  // Integer field processing
+  echo "Processing integer field: {item.name}";
+{break}
+{case 24}
+  // String field processing
+  echo "Processing string field: {item.name}";
+{break}
+{default}
+  // Default processing
+  echo "Processing other field: {item.name}";
+{break}
+{endswitch}
+```
+
+### 📁 File Organization
+
+Templates now support automatic file organization with output paths:
+
+```javascript
+// Template files can specify target directories
+Output Path: /components/     // React components
+Output Path: /services/       // API helpers
+Output Path: /app/Http/Controllers/  // Laravel controllers
+Output Path: /database/migrations/   // Database migrations
+Output Path: /data/           // Data models
+Output Path: /meta/           // Metadata files
+```
+
+### 📦 ZIP Template Upload
+
+Upload complete template structures as ZIP files:
+
+- **Drag & Drop Interface**: Easy file upload with visual feedback
+- **Structure Preservation**: Maintains directory structure from ZIP
+- **Base64 Storage**: Secure storage in database as Base64-encoded text
+- **Validation**: Ensures only valid ZIP files are accepted
+- **Preview**: Shows uploaded file information and size
+
+## 📋 Database Designer
+
+Scoriet includes a powerful visual database designer for creating and editing schemas:
+
+### 🎨 Visual Schema Creation
+
+- **Drag & Drop Interface**: Create tables with intuitive drag-and-drop functionality
+- **Field Management**: Add, edit, and remove database fields with ease
+- **Data Type Selection**: Support for all common MySQL data types
+- **Constraint Management**: Define primary keys, foreign keys, and indexes
+- **Relationship Visualization**: See table relationships at a glance
+- **Real-time Validation**: Instant feedback on schema validity
+
+### 🔧 Advanced Features
+
+- **SQL Export**: Generate CREATE TABLE statements from visual designs
+- **Schema Import**: Import existing database schemas for editing
+- **Version Control**: Track schema changes over time
+- **Team Collaboration**: Share schemas with team members
+- **Template Integration**: Use schemas directly in template generation
+
+### 🗄️ SQL Parser Engine
+
+Advanced MySQL schema parsing capabilities:
+
+- **Intelligent Analysis**: Automatically detect table relationships
+- **Field Type Detection**: Recognize and categorize field types
+- **Constraint Extraction**: Parse primary keys, foreign keys, and indexes
+- **Metadata Generation**: Create rich metadata for template systems
+- **Error Handling**: Graceful handling of malformed SQL
+- **Performance Optimization**: Efficient parsing of large schemas
+
+## 🏢 Project & Team Management
+
+Comprehensive project and team collaboration features:
+
+### 👥 Team Features
+
+- **Team Creation**: Create and manage development teams
+- **Member Management**: Invite users and assign roles
+- **Project Assignment**: Organize projects within teams
+- **Access Control**: Role-based permissions for team resources
+
+### 📂 Project Management
+
+- **Project Creation**: Set up new development projects
+- **Schema Attachment**: Link database schemas to projects
+- **Template Libraries**: Organize templates within projects
+- **Collaboration Tools**: Share projects with team members
+
+### 🌐 Public Gallery
+
+- **Project Sharing**: Make projects publicly available
+- **Cloning System**: Clone interesting projects to your account
+- **Credit System**: Original creators receive credit for clones
+- **Discovery**: Browse community projects and templates
 
 ### 🔐 Authentication System
 

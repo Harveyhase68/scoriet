@@ -34,13 +34,14 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: (id) => {
-                    // Vendor libraries in separate chunks
                     if (id.includes('node_modules')) {
+                        // Critical: Keep React, React-DOM and Ant Design together
+                        if (id.includes('react') || id.includes('antd') || id.includes('@ant-design/')) {
+                            return 'react-ui';
+                        }
+                        // PrimeReact separate (has different React usage)
                         if (id.includes('primereact') || id.includes('primeicons')) {
                             return 'ui-prime';
-                        }
-                        if (id.includes('antd') || id.includes('@ant-design/icons')) {
-                            return 'ui-ant';
                         }
                         if (id.includes('rc-dock')) {
                             return 'dock';
@@ -48,10 +49,10 @@ export default defineConfig({
                         if (id.includes('reactflow')) {
                             return 'flowchart';
                         }
-                        // Keep React together with other core vendors for compatibility
+                        // All other vendor libraries
                         return 'vendor';
                     }
-                    
+
                     // App chunks
                     if (id.includes('/Components/Panels/')) {
                         return 'panels';
@@ -65,7 +66,6 @@ export default defineConfig({
                 },
             },
         },
-        // Increase chunk size warning limit since we now have proper splitting
-        chunkSizeWarningLimit: 1000,
+        chunkSizeWarningLimit: 1200,
     }
 });
