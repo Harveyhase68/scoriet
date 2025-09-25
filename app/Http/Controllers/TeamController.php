@@ -20,32 +20,32 @@ class TeamController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
-        $projectName = $request->get('project', 'default');
+        $projectId = $request->get('project', 0);
         $showAll = $request->get('all', false);
 
         if ($showAll) {
             // Get ALL teams where user is owner or member (for Team Management)
             $ownedTeams = Team::where('project_owner_id', $user->id)
-                             ->with(['owner', 'members.user'])
+                             ->with(['owner', 'members.user', 'project'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
             $memberTeams = Team::whereIn('id', $memberTeamIds)
                                ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
-                               ->with(['owner', 'members.user'])
+                               ->with(['owner', 'members.user', 'project'])
                                ->get();
         } else {
             // Get teams filtered by project (for Team Assignment)
             $ownedTeams = Team::where('project_owner_id', $user->id)
-                             ->where('project_name', $projectName)
-                             ->with(['owner', 'members.user'])
+                             ->where('project_id', $projectId)
+                             ->with(['owner', 'members.user', 'project'])
                              ->get();
 
             $memberTeamIds = TeamMember::where('user_id', $user->id)->pluck('team_id');
             $memberTeams = Team::whereIn('id', $memberTeamIds)
-                               ->where('project_name', $projectName)
+                               ->where('project_id', $projectId)
                                ->where('project_owner_id', '!=', $user->id) // Exclude owned teams
-                               ->with(['owner', 'members.user'])
+                               ->with(['owner', 'members.user', 'project'])
                                ->get();
         }
 
@@ -61,7 +61,7 @@ class TeamController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
-        
+
         $validator = Validator::make($request->all(), [
             'name' => [
                 'required',
@@ -69,11 +69,11 @@ class TeamController extends Controller
                 'max:255',
                 Rule::unique('teams')->where(function ($query) use ($request, $user) {
                     return $query->where('project_owner_id', $user->id)
-                                ->where('project_name', $request->project_name);
+                                ->where('project_id', $request->project_id);
                 })
             ],
             'description' => 'nullable|string|max:1000',
-            'project_name' => 'required|string|max:255',
+            'project_id' => 'required|integer|exists:projects,id',
         ]);
 
         if ($validator->fails()) {
@@ -88,7 +88,7 @@ class TeamController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'project_owner_id' => $user->id,
-            'project_name' => $request->project_name,
+            'project_id' => $request->project_id,
         ]);
 
         // Add the creator as owner
@@ -101,7 +101,7 @@ class TeamController extends Controller
 
         return response()->json([
             'message' => 'Team created successfully',
-            'team' => $team->load(['members.user'])
+            'team' => $team->load(['members.user', 'project'])
         ], 201);
     }
 
@@ -118,7 +118,7 @@ class TeamController extends Controller
         }
 
         return response()->json([
-            'team' => $team->load(['owner', 'members.user'])
+            'team' => $team->load(['owner', 'members.user', 'project'])
         ]);
     }
 
@@ -143,10 +143,11 @@ class TeamController extends Controller
                 'max:255',
                 Rule::unique('teams')->ignore($team->id)->where(function ($query) use ($team) {
                     return $query->where('project_owner_id', $team->project_owner_id)
-                                ->where('project_name', $team->project_name);
+                                ->where('project_id', $team->project_id);
                 })
             ],
             'description' => 'nullable|string|max:1000',
+            'project_id' => 'sometimes|integer|exists:projects,id',
         ]);
 
         if ($validator->fails()) {
@@ -156,11 +157,11 @@ class TeamController extends Controller
             ], 422);
         }
 
-        $team->update($request->only(['name', 'description']));
+        $team->update($request->only(['name', 'description', 'project_id']));
 
         return response()->json([
             'message' => 'Team updated successfully',
-            'team' => $team->load(['members.user'])
+            'team' => $team->load(['members.user', 'project'])
         ]);
     }
 

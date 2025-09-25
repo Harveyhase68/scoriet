@@ -1,5 +1,6 @@
 // resources/js/Components/SqlImportModal.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { Dialog } from 'primereact/dialog';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface SqlImportModalProps {
@@ -205,25 +206,32 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-600">
-          <div>
-            <h2 className="text-xl font-bold text-white">📥 Import SQL Schema</h2>
-            <p className="text-sm text-gray-400">Import database schema from SQL script</p>
-          </div>
-          <button
-            onClick={handleClose}
-            disabled={loading}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog
+      header="📥 Import SQL Schema"
+      visible={isOpen}
+      onHide={handleClose}
+      style={{ width: '50vw', maxWidth: '800px' }}
+      modal
+      closable={!loading}
+      draggable={false}
+      resizable={false}
+      className="sql-import-modal"
+      contentStyle={{
+        padding: '0',
+        backgroundColor: '#1f2937',
+        color: 'white',
+        maxHeight: '80vh',
+        overflow: 'hidden'
+      }}
+      headerStyle={{
+        backgroundColor: '#1f2937',
+        color: 'white',
+        borderBottom: '1px solid #374151'
+      }}
+    >
+      <div className="bg-gray-800 h-full">
+        <p className="text-sm text-gray-400 px-6 pt-4 pb-2">Import database schema from SQL script</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           {/* Tabs */}
@@ -418,6 +426,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

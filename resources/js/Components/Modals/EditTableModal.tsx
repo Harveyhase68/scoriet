@@ -214,7 +214,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                   <div className="grid grid-cols-1 lg:grid-cols-6 gap-3">
                     {/* Field Name */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Name</label>
+                      <label className="block text-xs text-gray-200 mb-1">Name</label>
                       <input
                         type="text"
                         value={field.name}
@@ -227,7 +227,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
                     {/* Data Type */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Type</label>
+                      <label className="block text-xs text-gray-200 mb-1">Type</label>
                       <select
                         value={field.type}
                         onChange={(e) => updateField(field.id, { type: e.target.value })}
@@ -242,7 +242,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
                     {/* Checkboxes */}
                     <div className="flex flex-col space-y-1">
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
                           checked={field.nullable}
@@ -252,7 +252,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                         />
                         Nullable
                       </label>
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
                           checked={field.primaryKey}
@@ -265,7 +265,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
                           checked={field.autoIncrement}
@@ -279,7 +279,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
                     {/* Comment */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Comment</label>
+                      <label className="block text-xs text-gray-200 mb-1">Comment</label>
                       <input
                         type="text"
                         value={field.comment}

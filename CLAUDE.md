@@ -159,3 +159,5 @@ The application is designed around a template-based code generation system:
 - Loop constructs: `{for %}{endfor}` and `{for {nmaxitems}}{item.name}{endfor}`
 - JavaScript integration for complex generation logic
 - Client-side execution for security and performance
+- "wenn du curl verwendest, immer 10.0.0.8 verwenden, localhost geht auf meinem computer nicht"
+- "Always remmeber: we are developing on Windows not Linux"

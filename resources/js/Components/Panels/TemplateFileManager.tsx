@@ -88,7 +88,6 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch (saveError) {
-            console.error('Save file error:', saveError);
             message.error(`Fehler beim ${editingFile ? 'Aktualisieren' : 'Erstellen'} der Datei`);
         }
     };
@@ -101,7 +100,6 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch (deleteError) {
-            console.error('Delete file error:', deleteError);
             message.error('Fehler beim Löschen der Datei');
         }
     };
@@ -113,7 +111,6 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch (moveError) {
-            console.error('Move file error:', moveError);
             message.error('Fehler beim Verschieben der Datei');
         }
     };
@@ -244,7 +241,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                             rules={[{ required: true, message: 'Bitte Dateinamen eingeben!' }]}
                             className="flex-1"
                         >
-                            <Input placeholder="z.B. Model.php, component.tsx" />
+                            <Input placeholder="e.g., Model.php, component.tsx" />
                         </Form.Item>
 
                         <Form.Item

@@ -54,22 +54,28 @@ export default function LandingPage() {
     const checkAuth = () => {
       // Clear logout flag when arriving at lobby
       localStorage.removeItem('logout_in_progress');
-      
-      const token = localStorage.getItem('access_token');
+
+      // Check both localStorage and sessionStorage for token
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      console.log('🔍 Token check - localStorage:', localStorage.getItem('access_token'));
+      console.log('🔍 Token check - sessionStorage:', sessionStorage.getItem('access_token'));
+      console.log('🔍 Final token:', token);
+
       const isAuth = !!token;
       setIsAuthenticated(isAuth);
       if (isAuth && !userData) {
         loadUserData();
       }
     };
-    
+
     checkAuth();
   }, [userData]);
 
 
   const loadUserData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      // Check both localStorage and sessionStorage for token
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/user', {
@@ -84,7 +90,7 @@ export default function LandingPage() {
         setUserData(user);
       }
     } catch (err) {
-      console.error('Error loading user data:', err);
+      // Error loading user data
     }
   };
 
@@ -182,21 +188,26 @@ export default function LandingPage() {
   };
 
   const handleLogout = () => {
+    // Clear tokens from both storages
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('auth_token'); // if using different key
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
     setUserData(null);
     setIsAuthenticated(false);
     window.location.reload();
   };
 
   const handleLoginSuccess = () => {
-    // After successful login, check auth state
-    const token = localStorage.getItem('access_token');
+    // After successful login, check auth state from both storages
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    console.log('🔍 LoginSuccess - Token found:', !!token);
     if (token) {
       setIsAuthenticated(true);
       loadUserData();
       setActiveModal(null);
-      
+
       // Check if we should redirect after login
       const redirectUrl = localStorage.getItem('redirect_after_login');
       if (redirectUrl) {

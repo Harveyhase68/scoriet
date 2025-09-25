@@ -13,7 +13,7 @@ class Team extends Model
         'name',
         'description',
         'project_owner_id',
-        'project_name',
+        'project_id',
         'is_active'
     ];
 
@@ -24,6 +24,11 @@ class Team extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'project_owner_id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class, 'project_id');
     }
 
     public function members(): HasMany

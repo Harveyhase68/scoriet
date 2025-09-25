@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Select, Button, Upload, message } from 'antd';
+import { Modal, Form, Input, Select, Upload, message } from 'antd';
+import { Button } from 'primereact/button';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -121,7 +122,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         rules={[{ required: true, message: 'Bitte Dateinamen eingeben!' }]}
                         className="flex-1"
                     >
-                        <Input placeholder="z.B. Model.php, component.tsx, config.json" />
+                        <Input placeholder="e.g., Model.php, component.tsx, config.json" />
                     </Form.Item>
 
                     <Form.Item
@@ -144,10 +145,10 @@ const FileModal: React.FC<FileModalProps> = ({
                     name="output_path"
                     label="Zielverzeichnis"
                     rules={[{ required: true, message: 'Bitte Zielverzeichnis eingeben!' }]}
-                    tooltip="Das Verzeichnis, in dem die generierte Datei gespeichert werden soll (z.B. /components/, /services/, /data/)"
+                    tooltip="The directory where the generated file should be saved (e.g., /components/, /services/, /data/)"
                 >
                     <Input
-                        placeholder="z.B. /components/, /services/, /app/Http/Controllers/"
+                        placeholder="e.g., /components/, /services/, /app/Http/Controllers/"
                         addonBefore="Pfad:"
                     />
                 </Form.Item>
@@ -269,15 +270,13 @@ Schleifen und Logik:
                     </ul>
                 </div>
 
-                <div className="flex gap-2 justify-between">
-                    <Button onClick={onCancel} className="bg-green-600 hover:bg-green-700 text-white border-green-600">
-                        Fertig - Zurück zum Template
+                <div className="flex gap-2 justify-end">
+                    <Button onClick={onCancel}>
+                        Cancel
                     </Button>
-                    <div className="flex gap-2">
-                        <Button onClick={handleSubmit}>
-                            {editingFile ? 'Aktualisieren' : 'Hinzufügen'}
-                        </Button>
-                    </div>
+                    <Button type="primary" onClick={handleSubmit}>
+                        {editingFile ? 'Aktualisieren' : 'Hinzufügen'}
+                    </Button>
                 </div>
             </Form>
         </Modal>

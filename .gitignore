@@ -34,3 +34,4 @@ git_up.bat
 nuclear-reset.bat
 large_test.sql
 small.sql
+empty_database.sql

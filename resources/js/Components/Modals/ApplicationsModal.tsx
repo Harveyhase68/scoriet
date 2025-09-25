@@ -128,9 +128,15 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       setShowReviewModal(false);
       setSelectedApplication(null);
       setReviewNotes('');
-      
+
       // Refresh applications
       await loadApplications();
+
+      // Notify TopBar about application changes so it can update the notification bell
+      const event = new CustomEvent('applicationsUpdated', {
+        detail: { projectId: project?.id }
+      });
+      window.dispatchEvent(event);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error reviewing application');

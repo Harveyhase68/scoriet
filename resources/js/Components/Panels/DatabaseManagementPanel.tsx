@@ -140,7 +140,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       const data = await response.json();
       setProjects(data.projects || []);
     } catch (err) {
-      console.error('Error loading projects:', err);
+      // Error loading projects
     }
   };
 
@@ -485,6 +485,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 20]}
+          scrollable
+          scrollHeight="500px"
         >
           <Column field="name" header="Schema Name" sortable />
           <Column field="description" header="Description" />
@@ -534,7 +536,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       >
         <div className="space-y-4">
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Schema Name *
             </label>
             <InputText
@@ -548,7 +550,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Description
             </label>
             <InputTextarea
@@ -562,7 +564,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Visibility
             </label>
             <Dropdown
@@ -610,7 +612,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       >
         <div className="space-y-4">
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Schema Name *
             </label>
             <InputText
@@ -624,7 +626,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Description
             </label>
             <InputTextarea
@@ -638,7 +640,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Visibility
             </label>
             <Dropdown

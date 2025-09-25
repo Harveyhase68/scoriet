@@ -210,6 +210,7 @@ class ProjectController extends Controller
             ],
             'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
+            'is_public' => 'sometimes|boolean',
             'join_code' => 'nullable|string|max:50|unique:projects,join_code,' . $project->id,
             'new_owner_id' => 'nullable|integer|exists:users,id',
         ]);
@@ -631,9 +632,21 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Only project owner can remove admins'], 403);
         }
 
+        // Get the user ID before deleting the membership
+        $userIdToRemove = $memberToRemove->user_id;
+
+        // Remove the project membership
         $memberToRemove->delete();
 
-        return response()->json(['message' => 'Member removed successfully']);
+        // Also remove the user from all teams associated with this project
+        $projectTeams = $project->teams;
+        foreach ($projectTeams as $team) {
+            $team->members()->where('user_id', $userIdToRemove)->delete();
+        }
+
+        return response()->json([
+            'message' => 'Member removed successfully from project and all associated teams'
+        ]);
     }
 
     /**

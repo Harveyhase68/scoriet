@@ -4,7 +4,52 @@ import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Message } from 'primereact/message';
+import { ErrorBoundary } from 'react-error-boundary';
 import { useProject } from '@/contexts/ProjectContext';
+import Editor from 'react-simple-code-editor';
+import ErrorFallback from '@/Components/ErrorFallback';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/themes/prism-tomorrow.css';
+
+// Professional JavaScript syntax highlighter using Prism.js
+const highlightCode = (code: string) => {
+  try {
+    return Prism.highlight(code, Prism.languages.javascript, 'javascript');
+  } catch (error) {
+    // Fallback to plain text if highlighting fails
+    console.warn('Syntax highlighting failed:', error);
+    return code;
+  }
+};
+
+// Fallback function for clipboard access in older browsers
+const copyToClipboardFallback = (text: string) => {
+  try {
+    // Create temporary textarea element
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    // Try to copy using execCommand
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    if (successful) {
+      // Successfully copied
+    } else {
+      // Last resort: show alert with text to copy manually
+      alert('Clipboard-API nicht verfügbar. Bitte manuell kopieren:\n\n' + text.substring(0, 500) + '...');
+    }
+  } catch (err) {
+    alert('Clipboard-Zugriff nicht möglich. Bitte prüfen Sie Browser-Einstellungen.');
+  }
+};
 
 // interface TabPanelProps {
 //   isActive: boolean;
@@ -42,12 +87,12 @@ interface SchemaTable {
 }
 
 export default function DebugManualGeneratorPanel() {
-  const { currentProject, projects } = useProject();
+  const { selectedProject, projects } = useProject();
 
   // Selection States
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<number | null>(null);
-  const [selectedProject, setSelectedProject] = useState<number | null>(currentProject?.id || null);
+  const [selectedProjectForGenerator, setSelectedProjectForGenerator] = useState<number | null>(selectedProject?.id || null);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
 
   // Data States
@@ -116,37 +161,23 @@ export default function DebugManualGeneratorPanel() {
     loadSchemaTables();
   }, []);
 
-  // Update selected project when current project changes
+  // Update selected project when global project changes
   useEffect(() => {
-    if (currentProject) {
-      setSelectedProject(currentProject.id);
+    if (selectedProject) {
+      setSelectedProjectForGenerator(selectedProject.id);
+      // Reload schema tables when project changes
+      loadSchemaTables();
     }
-  }, [currentProject]);
+  }, [selectedProject]);
 
-  // Debug selectedTable changes
+  // Update button state when dependencies change
   useEffect(() => {
-    console.log('selectedTable changed:', selectedTable, typeof selectedTable);
-
-    const projectCondition = !(shouldShowProjectDropdown() && !selectedProject);
+    const projectCondition = !(shouldShowProjectDropdown() && !selectedProjectForGenerator);
     // FIXED: 0 is a valid table index, don't treat it as falsy!
     const tableCondition = !shouldShowTableDropdown() || (selectedTable !== null && selectedTable !== undefined);
 
-    console.log('Debug conditions:', {
-      loading,
-      selectedTemplate,
-      selectedFile,
-      shouldShowProject: shouldShowProjectDropdown(),
-      shouldShowTable: shouldShowTableDropdown(),
-      projectCondition,
-      tableCondition,
-      selectedTable,
-      selectedTableIsValid: selectedTable !== null && selectedTable !== undefined
-    });
-
-    const result = Boolean(!loading && selectedTemplate && (selectedFile !== null && selectedFile !== undefined) && projectCondition && tableCondition);
-    console.log('🔥 NEW VERSION - Button should be enabled now:', result);
-    console.log('🔥 Version timestamp:', new Date().toISOString());
-  }, [selectedTable, loading, selectedTemplate, selectedFile, selectedProject, shouldShowProjectDropdown, shouldShowTableDropdown]);
+    Boolean(!loading && selectedTemplate && (selectedFile !== null && selectedFile !== undefined) && projectCondition && tableCondition);
+  }, [selectedTable, loading, selectedTemplate, selectedFile, selectedProjectForGenerator, shouldShowProjectDropdown, shouldShowTableDropdown]);
 
   // Load template files when template changes
   useEffect(() => {
@@ -159,11 +190,8 @@ export default function DebugManualGeneratorPanel() {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        console.log('No auth token found');
         return;
       }
-
-      console.log('Loading templates...');
       const response = await fetch('/api/templates', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -171,11 +199,8 @@ export default function DebugManualGeneratorPanel() {
         }
       });
 
-      console.log('Templates response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('API Response for templates:', data);
 
         let templatesArray = [];
         if (Array.isArray(data.data)) {
@@ -186,19 +211,15 @@ export default function DebugManualGeneratorPanel() {
           templatesArray = data.templates;
         }
 
-        console.log('Setting templates to:', templatesArray);
         setTemplates(templatesArray);
 
         if (templatesArray.length === 0) {
           setError('Keine Templates gefunden. Bitte erstellen Sie zuerst Templates im Template Management.');
         }
       } else {
-        const errorData = await response.text();
-        console.error('Templates API error:', response.status, errorData);
         setError(`Fehler beim Laden der Templates: ${response.status}`);
       }
     } catch (err) {
-      console.error('Error loading templates:', err);
       setError('Fehler beim Laden der Templates');
     }
   };
@@ -206,7 +227,6 @@ export default function DebugManualGeneratorPanel() {
   const loadTemplateFiles = async (templateId: number) => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      console.log(`Loading template files for template ${templateId}...`);
 
       const response = await fetch(`/api/template-output/${templateId}`, {
         headers: {
@@ -215,11 +235,8 @@ export default function DebugManualGeneratorPanel() {
         }
       });
 
-      console.log(`Template files response status: ${response.status}`);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Template files API response:', data);
 
         let filesArray = [];
         if (data.files && Array.isArray(data.files)) {
@@ -230,17 +247,8 @@ export default function DebugManualGeneratorPanel() {
           filesArray = data.template_files;
         }
 
-        console.log('Files array before filtering:', filesArray);
-
-        // Check first file structure
-        if (filesArray.length > 0) {
-          console.log('First file structure:', filesArray[0]);
-          console.log('First file keys:', Object.keys(filesArray[0]));
-        }
-
         // More lenient filtering - accept any object with some identifier
-        const validFiles = filesArray.map((file, index) => {
-          console.log('Processing file:', file);
+        const validFiles = filesArray.map((file: any, index: number) => {
 
           // Create a normalized file object
           const normalizedFile = {
@@ -253,11 +261,9 @@ export default function DebugManualGeneratorPanel() {
             ...file
           };
 
-          console.log('Normalized file:', normalizedFile);
           return normalizedFile;
-        }).filter(file => file.id !== undefined);
+        }).filter((file: any) => file.id !== undefined);
 
-        console.log('Valid template files:', validFiles);
         setTemplateFiles(validFiles);
 
         // Auto-select first valid file
@@ -268,12 +274,9 @@ export default function DebugManualGeneratorPanel() {
           setError(`Keine gültigen Template-Dateien für Template ${templateId} gefunden`);
         }
       } else {
-        const errorText = await response.text();
-        console.error('Template files API error:', response.status, errorText);
         setError(`Fehler beim Laden der Template-Dateien: ${response.status}`);
       }
     } catch (err) {
-      console.error('Error loading template files:', err);
       setError('Fehler beim Laden der Template-Dateien');
     }
   };
@@ -283,92 +286,169 @@ export default function DebugManualGeneratorPanel() {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      console.log('Loading schema tables...');
       let allTables: SchemaTable[] = [];
 
-      // Versuche verschiedene API-Endpunkte um die echten Datenbanken zu finden
-      const apiEndpoints = [
-        '/api/schemas',
-        '/api/schema-versions',
-        '/api/template-db-schema/schemas',
-        '/api/sql-schemas',
-        '/api/database-schemas'
-      ];
-
-      for (const endpoint of apiEndpoints) {
+      // If we have a selected project, load its schemas
+      if (selectedProject) {
         try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const response = await fetch(endpoint, {
+          const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/json',
             }
           });
 
-          console.log(`${endpoint} response status:`, response.status);
+          if (!response.ok) {
+            // API call failed - continue to fallback
+          }
 
           if (response.ok) {
             const data = await response.json();
-            console.log(`${endpoint} response:`, data);
 
-            // Parse different response formats
-            let items = [];
-            if (Array.isArray(data.data)) {
-              items = data.data;
+            // Parse schemas from project
+            let schemas = [];
+            if (Array.isArray(data.schemas)) {
+              schemas = data.schemas;
+            } else if (Array.isArray(data.data)) {
+              schemas = data.data;
             } else if (Array.isArray(data)) {
-              items = data;
-            } else if (data.schemas && Array.isArray(data.schemas)) {
-              items = data.schemas;
-            } else if (data.databases && Array.isArray(data.databases)) {
-              items = data.databases;
+              schemas = data;
             }
 
-            console.log(`Processing ${items.length} items from ${endpoint}:`, items);
+            // Process each schema to extract tables
+            for (const schema of schemas) {
 
-            items.forEach((item: any, index: number) => {
-              console.log(`Processing item ${index}:`, item);
+              const schemaName = schema.name || schema.schema_name || schema.title || `Schema ${schema.id}`;
 
-              const dbName = item.name || item.database_name || item.schema_name || item.title || `Database ${item.id || index + 1}`;
+              // Get schema versions to find latest one with tables
+              if (schema.id) {
+                try {
+                  const versionsResponse = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Accept': 'application/json',
+                    }
+                  });
 
-              // Parse tables from different structures
-              let tables = [];
-              if (item.tables && Array.isArray(item.tables)) {
-                tables = item.tables;
-              } else if (item.parsed_tables && Array.isArray(item.parsed_tables)) {
-                tables = item.parsed_tables;
-              } else if (item.schema_tables && Array.isArray(item.schema_tables)) {
-                tables = item.schema_tables;
+                  if (versionsResponse.ok) {
+                    const versionsData = await versionsResponse.json();
+
+                    // Get the latest version - API returns array directly OR wrapped in object
+                    const versions = Array.isArray(versionsData) ? versionsData : (versionsData.versions || versionsData.data || []);
+
+                    if (versions.length > 0) {
+                      const latestVersion = versions[versions.length - 1]; // Assume last is latest
+
+                      // Get tables for this version
+                      const tablesResponse = await fetch(`/api/schema-versions/${latestVersion.id}/tables`, {
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Accept': 'application/json',
+                        }
+                      });
+
+                      if (!tablesResponse.ok) {
+                        // Tables API failed for this version
+                      }
+
+                      if (tablesResponse.ok) {
+                        const tablesData = await tablesResponse.json();
+
+                        // API returns tables directly as array OR wrapped in object
+                        const tables = Array.isArray(tablesData) ? tablesData : (tablesData.tables || tablesData.data || []);
+
+                        tables.forEach((table: any) => {
+                          const tableName = table.table_name || table.name || table.tablename || 'Unknown Table';
+
+                          // Get field count from table structure
+                          let fieldCount = 0;
+                          let tableFields = [];
+
+                          if (table.fields && Array.isArray(table.fields)) {
+                            fieldCount = table.fields.length;
+                            tableFields = table.fields.map((field: any) => ({
+                              name: field.field_name || field.name,
+                              type: field.field_type || field.type,
+                              controltype: field.controltype || 24,
+                            }));
+                          } else if (table.columns && Array.isArray(table.columns)) {
+                            fieldCount = table.columns.length;
+                            tableFields = table.columns.map((col: any) => ({
+                              name: col.column_name || col.name,
+                              type: col.data_type || col.type,
+                              controltype: 24,
+                            }));
+                          }
+
+                          allTables.push({
+                            tablename: tableName,
+                            nmaxitems: fieldCount,
+                            database_name: schemaName,
+                            schema_id: schema.id,
+                            items: tableFields
+                          });
+
+                        });
+                      }
+                    }
+                  }
+                } catch (versionErr) {
+                  // Error loading versions for this schema
+                }
               }
+            }
+          }
+        } catch (projectErr) {
+          // Error loading project schemas
+        }
+      }
 
-              console.log(`Found ${tables.length} tables in ${dbName}:`, tables);
+      // Only use fallback if we have no project selected or no project schemas found
+
+      // WICHTIG: Nur Fallback verwenden wenn kein Projekt ausgewählt ist
+      // Wenn ein Projekt ausgewählt ist, aber keine Schemas hat, dann ist das okay (leere Liste)
+      if (allTables.length === 0 && !selectedProject) {
+
+        try {
+          const globalResponse = await fetch('/api/template-db-schema/schemas', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            }
+          });
+
+          if (globalResponse.ok) {
+            const globalData = await globalResponse.json();
+
+            const globalSchemas = globalData.schemas || globalData.data || [];
+
+            globalSchemas.forEach((schema: any) => {
+              const schemaName = schema.name || schema.schema_name || `Demo Schema ${schema.id}`;
+              const tables = schema.tables || schema.parsed_tables || [];
 
               tables.forEach((table: any) => {
-                const tableName = table.name || table.tablename || table.table_name || 'Unknown Table';
-                const fieldCount = table.fields?.length || table.columns?.length || table.nmaxitems || 0;
+                const tableName = table.table_name || table.name || table.tablename || 'Unknown Table';
+                const fieldCount = table.fields?.length || table.columns?.length || 0;
 
                 allTables.push({
                   tablename: tableName,
                   nmaxitems: fieldCount,
-                  database_name: dbName,
-                  schema_id: item.id,
-                  items: table.fields || table.columns || table.items || []
+                  database_name: `${schemaName} (Demo)`,
+                  schema_id: schema.id,
+                  items: table.fields || table.columns || []
                 });
               });
             });
-
-            if (allTables.length > 0) {
-              console.log(`Successfully loaded ${allTables.length} tables from ${endpoint}`);
-              break; // Stop trying other endpoints if we found tables
-            }
           }
-        } catch (apiErr) {
-          console.log(`${endpoint} error:`, apiErr);
+        } catch (globalErr) {
+          // Error loading global schemas
         }
+      } else if (selectedProject && allTables.length === 0) {
+        // Project selected but no linked schemas found - this is acceptable
       }
 
-      // Fallback: gtree-test API falls keine anderen Tabellen gefunden
-      if (allTables.length === 0) {
-        console.log('No tables from schemas API, trying gtree-test...');
+      // Last fallback: gtree-test API (nur wenn gar kein Projekt ausgewählt)
+      if (allTables.length === 0 && !selectedProject) {
 
         const gtreeResponse = await fetch('/api/gtree-test/1', {
           headers: {
@@ -379,22 +459,27 @@ export default function DebugManualGeneratorPanel() {
 
         if (gtreeResponse.ok) {
           const gtreeData = await gtreeResponse.json();
-          console.log('GTree API response:', gtreeData);
 
           if (gtreeData.gtree && gtreeData.gtree[0] && gtreeData.gtree[0].project[0]) {
             const tables = gtreeData.gtree[0].project[0].tables || [];
-            allTables = tables.map((table: any) => ({
+
+            const fallbackTables = tables.map((table: any) => ({
               ...table,
-              database_name: 'Test Schema' // Besserer Default-Name
+              database_name: 'Demo Schema (Fallback)'
             }));
+
+            allTables.push(...fallbackTables);
           }
         }
       }
 
       setSchemaTables(allTables);
-      console.log('Final loaded schema tables:', allTables);
+
+      // Reset table selection when schemas change
+      setSelectedTable(null);
+
     } catch (err) {
-      console.error('Error loading schema tables:', err);
+      setSchemaTables([]);
     }
   };
 
@@ -406,18 +491,15 @@ export default function DebugManualGeneratorPanel() {
 
     const fileGenerationType = getFileGenerationType();
 
-    if (fileGenerationType === 'project_file' && !selectedProject) {
+    if (fileGenerationType === 'project_file' && !selectedProjectForGenerator) {
       setError('Bitte Projekt auswählen');
       return;
     }
 
     if (fileGenerationType === 'db_table_file' && (selectedTable === null || selectedTable === undefined)) {
       setError('Bitte Tabelle auswählen');
-      console.log('DB table validation failed:', { fileGenerationType, selectedTable, type: typeof selectedTable });
       return;
     }
-
-    console.log('Validation passed, proceeding with code fetch:', { fileGenerationType, selectedProject, selectedTable });
 
     if (!fileGenerationType || ['static_file', 'static_directory'].includes(fileGenerationType)) {
       setError('Diese Datei unterstützt keine Code-Generierung (Static File)');
@@ -429,7 +511,14 @@ export default function DebugManualGeneratorPanel() {
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/template-process/${selectedTemplate}`, {
+
+      // Build URL with project parameter to ensure backend uses only linked schemas
+      const url = new URL(`/api/template-process/${selectedTemplate}`, window.location.origin);
+      if (selectedProject) {
+        url.searchParams.set('project_id', selectedProject.id.toString());
+      }
+
+      const response = await fetch(url.toString(), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -458,15 +547,29 @@ export default function DebugManualGeneratorPanel() {
         }
 
         if (targetFile) {
-          // Generate gtree data for the selected context
-          const gtreeData = generateGTreeData();
+          // Use backend gtree data (contains full database structure)
+          const gtreeData = data.gtree || [];
+
+          // Store gtree in localStorage for efficient access during execution
+          localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+
+          // Trigger re-render for button state
+          setTimeout(() => {
+            // Force component update to enable GTree copy button
+          }, 100);
 
           const originalCode = targetFile.content; // Use content (with \\u000A) not content_clean
 
-          // 🔍 DEBUG: Show raw content to see if INDENT placeholders exist
-          console.log('🔍 Raw targetFile.content:', originalCode.substring(0, 500));
-          console.log('🔍 §INDENT2§ found?', originalCode.includes('§INDENT2§'));
-          console.log('🔍 §INDENT4§ found?', originalCode.includes('§INDENT4§'));
+          // Check backend-generated template size before processing
+          const originalSizeKB = Math.round(originalCode.length / 1024);
+          const maxOriginalSizeKB = 150; // Conservative limit for backend content
+
+          if (originalCode.length > maxOriginalSizeKB * 1024) {
+            setError(`Backend-Template zu umfangreich (${originalSizeKB}KB von max. ${maxOriginalSizeKB}KB). Template enthält zu viele Tabellen oder komplexe Strukturen.`);
+            setLoading(false);
+            return;
+          }
+
 
           // First: Convert JavaScript structure \n to real newlines
           let cleanedCode = originalCode.replace(/\\n/g, '\n');
@@ -475,8 +578,6 @@ export default function DebugManualGeneratorPanel() {
           cleanedCode = cleanedCode.replace(/§INDENT2§/g, '\\u0020\\u0020');
           cleanedCode = cleanedCode.replace(/§INDENT4§/g, '\\u0020\\u0020\\u0020\\u0020');
 
-          // 🔍 DEBUG: Show after INDENT replacement
-          console.log('🔍 After INDENT replacement:', cleanedCode.substring(0, 500));
 
           // Convert Unicode newlines to \n text for template content
           cleanedCode = cleanedCode.replace(/\\u000A/g, '\\n');
@@ -487,9 +588,23 @@ export default function DebugManualGeneratorPanel() {
           // Convert Unicode spaces back to regular spaces for indentation
           cleanedCode = cleanedCode.replace(/\\u0020/g, ' ');
 
-          // Add gtree with proper formatting (keep real newlines for readability)
-          const gtreeCode = `// Generated GTree Data for Template Execution\nconst gtree = ${JSON.stringify(gtreeData, null, 2)};\n\n`;
+          // Add lightweight gtree loader instead of embedding huge JSON
+          const gtreeCode = `// GTree Data loaded efficiently from localStorage
+const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
+
+`;
           const codeWithGTree = gtreeCode + cleanedCode;
+
+          // Check code size limit (200KB)
+          const codeSizeKB = Math.round(codeWithGTree.length / 1024);
+          const maxSizeKB = 200;
+
+          if (codeWithGTree.length > maxSizeKB * 1024) {
+            setError(`Template-Code zu groß (${codeSizeKB}KB von max. ${maxSizeKB}KB). Bitte Template vereinfachen oder weniger Tabellen verwenden.`);
+            setLoading(false);
+            return;
+          }
+
 
           setPreparedCode(codeWithGTree);
           setActiveTabIndex(0); // Switch to prepared code tab
@@ -502,7 +617,6 @@ export default function DebugManualGeneratorPanel() {
         setError(errorData.message || 'Fehler beim Laden des Codes');
       }
     } catch (err) {
-      console.error('Error fetching code:', err);
       setError('Fehler beim Laden des Codes');
     } finally {
       setLoading(false);
@@ -515,13 +629,93 @@ export default function DebugManualGeneratorPanel() {
       return;
     }
 
+    // Performance monitoring
+    const startTime = performance.now();
+    const startMemory = (performance as any).memory?.usedJSHeapSize || 0;
+
+    // Memory check before execution
+    if ((performance as any).memory) {
+      const availableMemory = (performance as any).memory.jsHeapSizeLimit || 0;
+      const currentMemory = (performance as any).memory.usedJSHeapSize || 0;
+      const memoryUsagePercent = Math.round((currentMemory / availableMemory) * 100);
+
+
+      if (memoryUsagePercent > 80) {
+        setError(`⚠️ Speicher-Warnung: ${memoryUsagePercent}% Speicher belegt. Template könnte zu komplex für sicheren Betrieb sein.`);
+        return;
+      }
+    }
+
     try {
-      // Parse the JavaScript function
-      const functionMatch = preparedCode.match(/function\s+(\w+)\s*\([^)]*\)\s*\{([\s\S]*)\}/);
-      if (functionMatch) {
-        const [, , functionBody] = functionMatch;
-        const lines = functionBody.split('\n');
-        let sContentResult = '';
+
+      // Try to execute the JavaScript function directly using eval
+      // This is safe since we control the code generation
+      let result = '';
+        // Execute the prepared code which includes gtree definition and function
+        // Make function available in global scope
+        const globalEval = eval;
+        globalEval(`
+          ${preparedCode}
+          // Make function globally available
+          window.currentGeneratorFunction = ${preparedCode.match(/function\s+(\w+)\s*\(/)?.[1] || 'generate_project_template'};
+        `);
+
+        // Try to find and call the generated function
+        const functionMatch = preparedCode.match(/function\s+(\w+)\s*\([^)]*\)\s*\{/);
+        if (functionMatch) {
+          const functionName = functionMatch[1];
+
+          // Call the function from global scope
+          const execResult = (window as any).currentGeneratorFunction();
+          result = execResult || '';
+        } else {
+          // No function found, try fallback interpretation
+          throw new Error('No function found in generated code');
+        }
+
+      // Performance reporting
+      const endTime = performance.now();
+      const endMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      const executionTime = Math.round(endTime - startTime);
+      const memoryUsed = Math.round((endMemory - startMemory) / 1024); // KB
+
+
+      // Warning for long execution times
+      if (executionTime > 5000) {
+        result += `\n\n⚠️ WARNUNG: Template-Ausführung dauerte ${executionTime}ms (>5s). Erwägen Sie Template-Vereinfachung.`;
+      }
+
+      // Performance stats
+      result += `\n\n📊 Performance: ${executionTime}ms, Speicher: ${memoryUsed}KB`;
+
+      // Set the final result
+      setExecutedResult(result);
+      setActiveTabIndex(1); // Switch to result tab
+    } catch (err) {
+
+      // Enhanced error handling based on error type
+      let errorMessage = '';
+      const error = err as Error;
+      if (error.name === 'SyntaxError') {
+        errorMessage = `❌ JavaScript-Syntax-Fehler im Template:\n${error.message}\n\nBitte prüfen Sie Template-Syntax und Sonderzeichen.`;
+      } else if (error.name === 'ReferenceError') {
+        errorMessage = `❌ Template-Variable nicht gefunden:\n${error.message}\n\nBitte prüfen Sie {variablename} Platzhalter.`;
+      } else if (error.name === 'TypeError') {
+        errorMessage = `❌ Typ-Fehler im Template:\n${error.message}\n\nBitte prüfen Sie Datenstrukturen und Zugriffe.`;
+      } else {
+        errorMessage = `❌ Template-Ausführungsfehler:\n${error.message || 'Unbekannter Fehler'}`;
+      }
+
+      // Try fallback interpretation before giving up
+
+      // Fallback to simple interpretation
+      try {
+        let result = '';
+        const functionMatch = preparedCode.match(/function\s+(\w+)\s*\([^)]*\)\s*\{([\s\S]*)\}/);
+        if (functionMatch) {
+            const [, , functionBody] = functionMatch;
+            const lines = functionBody.split('\n');
+            let sContentResult = '';
 
         // Get gtree data for execution (commented out as not used in simple interpretation)
         // const gtree = schemaTables.length > 0 ? [{
@@ -568,20 +762,26 @@ export default function DebugManualGeneratorPanel() {
           }
         }
 
-        // Normalize final output line endings and handle all placeholders
-        const normalizedResult = sContentResult
-          .replace(/\\u000A/g, '\n')       // Convert Unicode newlines to actual newlines
-          .replace(/\r\n/g, '\n')          // Convert Windows CRLF to LF
-          .replace(/\r/g, '\n')            // Convert standalone CR to LF
-          .replace(/\{n\}/g, '\n')         // Convert {n} placeholder to newlines (legacy)
-          .replace(/§/g, '\n');            // Convert § placeholder to newlines (legacy)
-        setExecutedResult(normalizedResult);
+          // Normalize final output line endings and handle all placeholders
+          const normalizedResult = sContentResult
+            .replace(/\\u000A/g, '\n')       // Convert Unicode newlines to actual newlines
+            .replace(/\r\n/g, '\n')          // Convert Windows CRLF to LF
+            .replace(/\r/g, '\n')            // Convert standalone CR to LF
+            .replace(/\{n\}/g, '\n')         // Convert {n} placeholder to newlines (legacy)
+            .replace(/§/g, '\n');            // Convert § placeholder to newlines (legacy)
+          result = normalizedResult;
+        } else {
+          result = 'Fehler: Konnte JavaScript-Funktion nicht parsen\n\n' + preparedCode;
+        }
+
+        // Set the fallback result
+        setExecutedResult(result);
         setActiveTabIndex(1); // Switch to result tab
-      } else {
-        setExecutedResult('Fehler: Konnte JavaScript-Funktion nicht parsen\n\n' + preparedCode);
+      } catch (fallbackErr) {
+        // Use the enhanced error message from the main catch block
+        const fallbackError = fallbackErr as Error;
+        setExecutedResult(`${errorMessage}\n\n🔧 Fallback-Interpretation ebenfalls fehlgeschlagen:\n${fallbackError.message || 'Unbekannter Fallback-Fehler'}\n\nOriginal Code (erste 500 Zeichen):\n${preparedCode.substring(0, 500)}...`);
       }
-    } catch (err) {
-      setExecutedResult(`Ausführungsfehler: ${err}\n\nCode:\n${preparedCode}`);
     }
   };
 
@@ -595,14 +795,14 @@ export default function DebugManualGeneratorPanel() {
   const generateGTreeData = () => {
     const fileType = getFileGenerationType();
 
-    if (fileType === 'project_file' && selectedProject) {
+    if (fileType === 'project_file' && selectedProjectForGenerator) {
       // Generate project-level gtree
-      const project = projects.find(p => p.id === selectedProject);
+      const project = projects.find(p => p.id === selectedProjectForGenerator);
       return [{
         project: [{
           projectname: project?.name || 'Unknown Project',
           nmaxfiles: 1,
-          project_id: selectedProject,
+          project_id: selectedProjectForGenerator,
           tables: [] // Könnte erweitert werden wenn das Projekt Tabellen hat
         }]
       }];
@@ -636,7 +836,6 @@ export default function DebugManualGeneratorPanel() {
   };
 
   // Dropdown Options
-  console.log('Templates before map:', templates, 'Type:', typeof templates, 'IsArray:', Array.isArray(templates));
   const templateOptions = Array.isArray(templates) ? templates.map(t => ({
     label: `${t.id}: ${t.name}`,
     value: t.id
@@ -645,10 +844,8 @@ export default function DebugManualGeneratorPanel() {
   const fileOptions = Array.isArray(templateFiles) ? templateFiles
     .filter(f => f && f.id !== undefined && f.id !== null) // Filter invalid entries first
     .map(f => {
-      const fileName = f.file_name || f.name || f.filename || f.template_file_name || 'Unbenannt';
-      const fileType = f.file_type || f.type || f.template_file_type || 'Unbekannt';
-
-      console.log('Creating option for file:', { f, fileName, fileType });
+      const fileName = f.file_name || (f as any).name || (f as any).filename || (f as any).template_file_name || 'Unbenannt';
+      const fileType = f.file_type || (f as any).type || (f as any).template_file_type || 'Unbekannt';
 
       return {
         label: `${fileName} (${fileType})`,
@@ -658,7 +855,6 @@ export default function DebugManualGeneratorPanel() {
     .filter(f => f.label && !f.label.includes('undefined') && f.label !== 'Unbenannt (Unbekannt)') // Remove any remaining undefined labels
     : [];
 
-  console.log('File options created:', fileOptions);
 
   // Debug button state
   const fileType = getFileGenerationType();
@@ -682,7 +878,7 @@ export default function DebugManualGeneratorPanel() {
     : [];
 
   // Check if button should be enabled
-  const projectConditionResult = !(shouldShowProjectDropdown() && !selectedProject);
+  const projectConditionResult = !(shouldShowProjectDropdown() && !selectedProjectForGenerator);
   // FIXED: 0 is a valid table index!
   const tableConditionResult = !shouldShowTableDropdown() || (selectedTable !== null && selectedTable !== undefined);
 
@@ -694,36 +890,16 @@ export default function DebugManualGeneratorPanel() {
     tableConditionResult
   );
 
-  console.log('Button debug v2:', {
-    selectedTemplate,
-    selectedFile,
-    fileType,
-    shouldShowProject: shouldShowProjectDropdown(),
-    shouldShowTable: shouldShowTableDropdown(),
-    selectedProject,
-    selectedTable,
-    selectedTableType: typeof selectedTable,
-    loading,
-    isButtonEnabled,
-    projectConditionResult,
-    tableConditionResult,
-    allConditions: {
-      notLoading: !loading,
-      hasTemplate: !!selectedTemplate,
-      hasFile: !!selectedFile,
-      hasFileExplicit: (selectedFile !== null && selectedFile !== undefined),
-      projectOk: projectConditionResult,
-      tableOk: tableConditionResult,
-      finalResult: isButtonEnabled
-    }
-  });
-
-  console.log('Schema tables loaded:', schemaTables);
-  console.log('Table options:', tableOptions);
 
   return (
-    <div className="h-full bg-gray-800 text-gray-100 p-4">
-      <Card className="h-full bg-gray-700 border-gray-600">
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={(error, errorInfo) => {
+        console.error('DebugManualGenerator Error:', error, errorInfo);
+      }}
+    >
+      <div className="h-full bg-gray-800 text-gray-100 p-4">
+        <Card className="h-full bg-gray-700 border-gray-600">
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-white mb-4">🔧 Debug Manual Generator</h2>
           <p className="text-sm text-gray-300 mb-4">
@@ -753,7 +929,6 @@ export default function DebugManualGeneratorPanel() {
                 value={selectedFile}
                 options={fileOptions}
                 onChange={(e) => {
-                  console.log('File dropdown onChange:', e.value);
                   setSelectedFile(e.value);
                   // Reset table selection when changing file type
                   setSelectedTable(null);
@@ -771,9 +946,9 @@ export default function DebugManualGeneratorPanel() {
                   Projekt
                 </label>
                 <Dropdown
-                  value={selectedProject}
+                  value={selectedProjectForGenerator}
                   options={projectOptions}
-                  onChange={(e) => setSelectedProject(e.value)}
+                  onChange={(e) => setSelectedProjectForGenerator(e.value)}
                   placeholder="Projekt wählen"
                   className="w-full"
                 />
@@ -790,21 +965,7 @@ export default function DebugManualGeneratorPanel() {
                   value={selectedTable}
                   options={tableOptions}
                   onChange={(e) => {
-                    console.log('Table dropdown onChange:', e.value, typeof e.value);
                     setSelectedTable(e.value);
-
-                    // Force debug the button state immediately after setting
-                    setTimeout(() => {
-                      console.log('POST-UPDATE Button debug:', {
-                        selectedTable: e.value,
-                        loading,
-                        selectedTemplate,
-                        selectedFile,
-                        shouldShowTable: shouldShowTableDropdown(),
-                        isTableConditionMet: !(shouldShowTableDropdown() && (e.value === null || e.value === undefined)),
-                        finalResult: !loading && selectedTemplate && selectedFile && (!shouldShowTableDropdown() || (e.value !== null && e.value !== undefined))
-                      });
-                    }, 0);
                   }}
                   placeholder="Tabelle wählen"
                   className="w-full"
@@ -845,7 +1006,7 @@ export default function DebugManualGeneratorPanel() {
                 Template: {selectedTemplate} |
                 Datei: {getSelectedFileName()} |
                 Typ: {getFileGenerationType()}<br/>
-                {shouldShowProjectDropdown() && `Projekt: ${projectOptions.find(p => p.value === selectedProject)?.label || 'Nicht gewählt'}`}
+                {shouldShowProjectDropdown() && `Projekt: ${projectOptions.find(p => p.value === selectedProjectForGenerator)?.label || 'Nicht gewählt'}`}
                 {shouldShowTableDropdown() && `Tabelle: ${selectedTable !== null ? tableOptions.find(t => t.value === selectedTable)?.label : 'Nicht gewählt'}`}
                 {shouldShowTableDropdown() && <br/>}
                 {shouldShowTableDropdown() && `Verfügbare Tabellen: ${tableOptions.length}`}
@@ -861,24 +1022,186 @@ export default function DebugManualGeneratorPanel() {
               className="bg-gray-700"
             >
               <TabPanel header="1. Vorbereiteter Code" className="text-gray-100">
-                <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
-                  <pre className="text-sm text-blue-400 whitespace-pre-wrap font-mono">
-                    {preparedCode}
-                  </pre>
+                <div className="bg-gray-900 p-4 rounded border border-gray-600">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-400">Editierbarer JavaScript-Code</span>
+                    <div className="flex gap-2">
+                      <Button
+                        label="GTree kopieren"
+                        icon="pi pi-database"
+                        size="small"
+                        onClick={() => {
+                          const gtreeData = localStorage.getItem('scoriet_gtree');
+                          if (gtreeData) {
+                            const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                            const formattedGTree = `const gtree = ${jsonData};`;
+
+                            // Try modern clipboard API first
+                            if (navigator.clipboard && window.isSecureContext) {
+                              navigator.clipboard.writeText(formattedGTree).then(() => {
+                                // Successfully copied
+                              }).catch(() => {
+                                // Fallback to legacy method
+                                copyToClipboardFallback(formattedGTree);
+                              });
+                            } else {
+                              // Fallback for older browsers or non-secure contexts
+                              copyToClipboardFallback(formattedGTree);
+                            }
+                          }
+                        }}
+                        disabled={!localStorage.getItem('scoriet_gtree')}
+                        className="p-button-outlined p-button-sm p-button-secondary"
+                      />
+                      <Button
+                        label="GTree downloaden"
+                        icon="pi pi-download"
+                        size="small"
+                        onClick={() => {
+                          const gtreeData = localStorage.getItem('scoriet_gtree');
+                          if (gtreeData) {
+                            try {
+                              const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                              const formattedGTree = `const gtree = ${jsonData};`;
+                              const blob = new Blob([formattedGTree], { type: 'application/javascript' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `gtree-${selectedProject?.name || 'export'}-${new Date().toISOString().split('T')[0]}.js`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            } catch (error) {
+                              console.error('GTree Download failed:', error);
+                              alert('Download fehlgeschlagen. Bitte prüfen Sie die GTree-Daten.');
+                            }
+                          }
+                        }}
+                        disabled={!localStorage.getItem('scoriet_gtree')}
+                        className="p-button-outlined p-button-sm p-button-success"
+                      />
+                      <Button
+                        label="Code kopieren"
+                        icon="pi pi-copy"
+                        size="small"
+                        onClick={() => {
+                          const codeText = preparedCode || '';
+
+                          // Try modern clipboard API first
+                          if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(codeText).then(() => {
+                              // Successfully copied
+                            }).catch(() => {
+                              copyToClipboardFallback(codeText);
+                            });
+                          } else {
+                            copyToClipboardFallback(codeText);
+                          }
+                        }}
+                        disabled={!preparedCode}
+                        className="p-button-outlined p-button-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Code Editor with Syntax Highlighting */}
+                  <div className="w-full bg-gray-900 border border-gray-600 rounded code-editor-container" style={{height: '400px', overflowY: 'scroll', overflowX: 'auto'}}>
+                    <ErrorBoundary
+                      fallback={
+                        <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
+                          <div className="text-center">
+                            <div className="text-4xl mb-2">⚠️</div>
+                            <p>Code Editor konnte nicht geladen werden</p>
+                            <p className="text-sm text-gray-400">Verwenden Sie eine einfache Textarea als Fallback</p>
+                          </div>
+                        </div>
+                      }
+                      onError={(error) => console.error('Code Editor Error:', error)}
+                    >
+                      <Editor
+                        value={preparedCode || 'Klicken Sie auf "Code abrufen" um den Code zu sehen...'}
+                        onValueChange={(code) => setPreparedCode(code)}
+                        highlight={highlightCode}
+                        padding={10}
+                        style={{
+                          fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+                          fontSize: 14,
+                          lineHeight: 1.4,
+                          minHeight: '400px',
+                          width: '100%',
+                          backgroundColor: '#1a1a1a',
+                          color: '#d4d4d4',
+                        }}
+                        className="code-editor"
+                        placeholder="Hier erscheint der generierte JavaScript-Code..."
+                      />
+                    </ErrorBoundary>
+                  </div>
+
+                  {/* Custom Syntax Highlighting Styles */}
+                  <style>{`
+                    .code-editor-container {
+                      scrollbar-width: auto;
+                      scrollbar-color: #555 #2d2d2d;
+                    }
+                    .code-editor-container::-webkit-scrollbar {
+                      width: 20px;
+                      height: 20px;
+                      -webkit-appearance: none;
+                    }
+                    .code-editor-container::-webkit-scrollbar-track {
+                      background: #2d2d2d;
+                      border-radius: 4px;
+                    }
+                    .code-editor-container::-webkit-scrollbar-thumb {
+                      background: #555;
+                      border-radius: 6px;
+                      border: 3px solid #2d2d2d;
+                      min-height: 30px;
+                    }
+                    .code-editor-container::-webkit-scrollbar-thumb:hover {
+                      background: #777;
+                    }
+                    .code-editor-container::-webkit-scrollbar-corner {
+                      background: #2d2d2d;
+                    }
+                    .code-editor {
+                      caret-color: #d4d4d4;
+                      background-color: #1a1a1a !important;
+                    }
+                    .code-editor textarea {
+                      color: #d4d4d4 !important;
+                      background: transparent !important;
+                      resize: none;
+                    }
+                    .code-editor pre {
+                      background: transparent !important;
+                      margin: 0;
+                    }
+                  `}</style>
                 </div>
               </TabPanel>
 
               <TabPanel header="2. Ausgeführtes Ergebnis" className="text-gray-100">
                 <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
-                  <pre className="text-sm text-green-400 whitespace-pre-wrap font-mono">
+                  <div
+                    className="text-sm whitespace-pre-wrap font-mono"
+                    style={{
+                      fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+                      color: '#d4d4d4',
+                      lineHeight: 1.4
+                    }}
+                  >
                     {executedResult || 'Klicken Sie auf "Code ausführen" um das Ergebnis zu sehen...'}
-                  </pre>
+                  </div>
                 </div>
               </TabPanel>
             </TabView>
           )}
-        </div>
-      </Card>
-    </div>
+          </div>
+        </Card>
+      </div>
+    </ErrorBoundary>
   );
 }

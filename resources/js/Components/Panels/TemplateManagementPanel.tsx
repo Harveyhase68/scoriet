@@ -89,10 +89,10 @@ const TemplateManagementPanel: React.FC = () => {
 
     const categories = ['All', 'Web', 'Mobile', 'API', 'Desktop', 'Database'];
     const fileTypes = [
-        { label: 'Static File', value: 'static_file', description: 'Einzelne statische Datei (z.B. config.json)' },
-        { label: 'Static Directory (.zip)', value: 'static_directory', description: 'Statisches Verzeichnis als ZIP-Archiv' },
-        { label: 'Project File', value: 'project_file', description: 'Projektspezifische Datei mit Platzhaltern' },
-        { label: 'DB Table File', value: 'db_table_file', description: 'Datei pro Datenbank-Tabelle (Model, Controller, etc.)' }
+        { label: 'Static File', value: 'static_file', description: 'Single static file (e.g. config.json)' },
+        { label: 'Static Directory (.zip)', value: 'static_directory', description: 'Static directory as ZIP archive' },
+        { label: 'Project File', value: 'project_file', description: 'Project-specific file with placeholders' },
+        { label: 'DB Table File', value: 'db_table_file', description: 'File per database table (model, controller, etc.)' }
     ];
 
     useEffect(() => {
@@ -111,7 +111,7 @@ const TemplateManagementPanel: React.FC = () => {
             });
             setTemplates(templates);
         } catch (loadError: any) {
-            console.error('Error loading templates:', loadError);
+            // Error loading templates
             message.error('Fehler beim Laden der Templates. Bitte zuerst einloggen.');
             setTemplates([]);
         } finally {
@@ -140,7 +140,7 @@ const TemplateManagementPanel: React.FC = () => {
                     setTemplateFiles([]);
                 }
             } catch (error) {
-                console.error('Error loading template files:', error);
+                // Error loading template files
                 setTemplateFiles([]);
             }
         } else {
@@ -159,7 +159,7 @@ const TemplateManagementPanel: React.FC = () => {
                 setViewModalVisible(true);
             }
         } catch (viewError) {
-            console.error('Error loading template details:', viewError);
+            // Error loading template details
             message.error('Fehler beim Laden der Template-Details');
         }
     };
@@ -172,7 +172,7 @@ const TemplateManagementPanel: React.FC = () => {
                 loadTemplates();
             }
         } catch (deleteError) {
-            console.error('Error deleting template:', deleteError);
+            // Error deleting template
             message.error('Fehler beim Löschen des Templates');
         }
     };
@@ -210,7 +210,7 @@ const TemplateManagementPanel: React.FC = () => {
                 loadTemplates();
             }
         } catch (error: any) {
-            console.error('Template submission error:', error);
+            // Template submission error
             const errorMessage = error.response?.data?.error || error.response?.data?.message || `Fehler beim ${editingTemplate ? 'Aktualisieren' : 'Erstellen'} des Templates`;
             message.error(errorMessage);
         }
@@ -247,14 +247,14 @@ const TemplateManagementPanel: React.FC = () => {
                                     loadTemplates();
                                 }
                             } catch (retryError) {
-                                console.error('Error overwriting template:', retryError);
+                                // Error overwriting template
                                 message.error('Fehler beim Überschreiben des Templates');
                             }
                         }
                     });
                 } else {
                     message.error('Fehler beim Importieren des Templates');
-                    console.error('Import error:', error);
+                    // Import error
                 }
             }
         };
@@ -280,7 +280,7 @@ const TemplateManagementPanel: React.FC = () => {
             }
         } catch (error) {
             message.error('Fehler beim Exportieren des Templates');
-            console.error('Export error:', error);
+            // Export error
         }
     };
 
@@ -333,7 +333,7 @@ const TemplateManagementPanel: React.FC = () => {
                 message.error('Fehler beim Löschen der Datei');
             }
         } catch (error: any) {
-            console.error('File delete error:', error);
+            // File delete error
             message.error('Fehler beim Löschen der Datei: ' + (error.response?.data?.message || error.message));
         }
     };
@@ -387,8 +387,8 @@ const TemplateManagementPanel: React.FC = () => {
                 // Update local state with new file data
                 if (editingFile) {
                     // Update existing file
-                    const newFiles = templateFiles.map(f => 
-                        f.id === editingFile.id 
+                    const newFiles = templateFiles.map(f =>
+                        f.id === editingFile.id
                             ? { ...fileData, id: editingFile.id, file_path: '' }
                             : f
                     );
@@ -406,7 +406,7 @@ const TemplateManagementPanel: React.FC = () => {
                 message.error('Fehler beim Speichern der Datei');
             }
         } catch (error: any) {
-            console.error('File save error:', error);
+            // File save error
             message.error('Fehler beim Speichern der Datei: ' + (error.response?.data?.message || error.message));
         }
 
@@ -465,17 +465,18 @@ const TemplateManagementPanel: React.FC = () => {
                         </div>
                     </div>
 
-                    <DataTable 
-                        value={templates} 
+                    <DataTable
+                        value={templates}
                         loading={loading}
-                        paginator 
-                        rows={10} 
+                        paginator
+                        rows={10}
                         rowsPerPageOptions={[10, 25, 50]}
                         sortMode="multiple"
                         className="p-datatable-sm"
                         emptyMessage="Keine Templates gefunden"
                         paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
                         currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                        scrollable
                     >
                         <Column field="name" header="Name" sortable />
                         <Column 

@@ -35,7 +35,7 @@ export const loadFont = (fontName: keyof typeof fontConfig) => {
     // Font loaded successfully
   };
   fontLink.onerror = () => {
-    console.warn(`Failed to load font ${font.family}`);
+    // Failed to load font
   };
   
   document.head.appendChild(fontLink);

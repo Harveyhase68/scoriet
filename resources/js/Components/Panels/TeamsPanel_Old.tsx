@@ -107,8 +107,6 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       });
 
       if (!teamsResponse.ok) {
-        const errorText = await teamsResponse.text();
-        console.error('Teams API Error:', teamsResponse.status, errorText);
         throw new Error(`Failed to fetch teams: ${teamsResponse.status} ${teamsResponse.statusText}`);
       }
 
@@ -125,7 +123,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
 
       if (!invitationsResponse.ok) {
         const errorText = await invitationsResponse.text();
-        console.error('Invitations API Error:', invitationsResponse.status, errorText);
+        // Invitations API Error
         throw new Error(`Failed to fetch invitations: ${invitationsResponse.status} ${invitationsResponse.statusText}`);
       }
 
@@ -146,7 +144,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       }
 
     } catch (err) {
-      console.error('Error fetching data:', err);
+      // Error fetching data
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -191,7 +189,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         alert(`Error: ${error.message}`);
       }
     } catch (err) {
-      console.error('Error accepting invitation:', err);
+      // Error accepting invitation
       alert('Failed to accept invitation');
     }
   };
@@ -215,7 +213,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         alert(`Error: ${error.message}`);
       }
     } catch (err) {
-      console.error('Error declining invitation:', err);
+      // Error declining invitation
       alert('Failed to decline invitation');
     }
   };

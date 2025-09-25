@@ -31,9 +31,39 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
+            $errors = $validator->errors();
+
+            // Create user-friendly error messages
+            $friendlyMessage = '';
+
+            if ($errors->has('email')) {
+                if (str_contains($errors->first('email'), 'has already been taken')) {
+                    $friendlyMessage = 'Diese E-Mail-Adresse ist bereits registriert. Möchten Sie sich einloggen?';
+                } else {
+                    $friendlyMessage = 'Bitte geben Sie eine gültige E-Mail-Adresse ein.';
+                }
+            } elseif ($errors->has('username')) {
+                if (str_contains($errors->first('username'), 'has already been taken')) {
+                    $friendlyMessage = 'Dieser Benutzername ist bereits vergeben. Bitte wählen Sie einen anderen.';
+                } else {
+                    $friendlyMessage = 'Der Benutzername darf nur Kleinbuchstaben, Zahlen, _ und - enthalten.';
+                }
+            } elseif ($errors->has('password')) {
+                if (str_contains($errors->first('password'), 'confirmation')) {
+                    $friendlyMessage = 'Die Passwörter stimmen nicht überein.';
+                } else {
+                    $friendlyMessage = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+                }
+            } elseif ($errors->has('name')) {
+                $friendlyMessage = 'Bitte geben Sie Ihren Namen ein.';
+            } else {
+                $friendlyMessage = 'Bitte überprüfen Sie Ihre Eingaben.';
+            }
+
             return response()->json([
-                'message' => 'Validierungsfehler',
-                'errors' => $validator->errors()
+                'message' => $friendlyMessage,
+                'errors' => $errors,
+                'field_errors' => $errors->toArray()
             ], 422);
         }
 

@@ -29,7 +29,11 @@ interface Team {
   created_at: string;
   updated_at: string;
   project_owner_id: number;
-  project_name: string;
+  project_id: number;
+  project?: {
+    id: number;
+    name: string;
+  };
   owner: {
     id: number;
     name: string;
@@ -52,87 +56,26 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    project_name: 'default',
+    project_id: 0,
     is_active: true
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Dark theme modal styles
-  useEffect(() => {
-    if (visible) {
-      const style = document.createElement('style');
-      style.id = 'team-modal-dark-theme';
-      style.textContent = `
-        .p-dialog .p-dialog-header {
-          background: #1f2937 !important;
-          border-bottom: 1px solid #374151 !important;
-        }
-        .p-dialog .p-dialog-content {
-          background: #1f2937 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-dialog .p-dialog-footer {
-          background: #1f2937 !important;
-          border-top: 1px solid #374151 !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-title {
-          color: #f3f4f6 !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-header-icon {
-          color: #9ca3af !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-header-icon:hover {
-          color: #f3f4f6 !important;
-          background: #374151 !important;
-        }
-        .p-inputtext, .p-inputtextarea, .p-dropdown {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-inputtext:focus, .p-inputtextarea:focus, .p-dropdown:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2) !important;
-        }
-        .p-dropdown-label {
-          color: #f3f4f6 !important;
-        }
-        .p-dropdown-panel {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-        }
-        .p-dropdown-item {
-          color: #f3f4f6 !important;
-        }
-        .p-dropdown-item:hover {
-          background: #4b5563 !important;
-        }
-      `;
-      document.head.appendChild(style);
-
-      return () => {
-        const existingStyle = document.getElementById('team-modal-dark-theme');
-        if (existingStyle) {
-          existingStyle.remove();
-        }
-      };
-    }
-  }, [visible]);
 
   useEffect(() => {
     if (visible && team) {
       setFormData({
         name: team.name,
         description: team.description || '',
-        project_name: team.project_name || 'default',
+        project_id: team.project_id || 0,
         is_active: team.is_active
       });
     } else if (visible && !team) {
       setFormData({
         name: '',
         description: '',
-        project_name: 'default',
+        project_id: 0,
         is_active: true
       });
     }
@@ -181,7 +124,6 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
       onSave();
     } catch (error) {
-      console.error('Error saving team:', error);
       setError(error instanceof Error ? error.message : 'Failed to save team');
     } finally {
       setLoading(false);
@@ -191,10 +133,10 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   if (!visible) return null;
 
   const projectOptions = [
-    { label: 'Default', value: 'default' },
+    { label: 'Select Project', value: 0 },
     ...projects.map(project => ({
       label: project.name,
-      value: project.name
+      value: project.id
     }))
   ];
 
@@ -240,14 +182,14 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           </div>
 
           <div className="field">
-            <label htmlFor="project_name" className="block text-sm font-medium mb-2 text-gray-100">
+            <label htmlFor="project_id" className="block text-sm font-medium mb-2 text-gray-100">
               Project
             </label>
             <Dropdown
-              id="project_name"
-              value={formData.project_name}
+              id="project_id"
+              value={formData.project_id}
               options={projectOptions}
-              onChange={(e) => setFormData(prev => ({ ...prev, project_name: e.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, project_id: e.value }))}
               placeholder="Select project"
             />
           </div>
@@ -283,6 +225,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           />
         </div>
       </form>
+
     </Dialog>
   );
 }

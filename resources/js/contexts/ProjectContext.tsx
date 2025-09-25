@@ -33,6 +33,7 @@ interface ProjectContextType {
   loadProjects: () => Promise<void>;
   loading: boolean;
   clearSavedProject: () => void;
+  setPreferredProject: (project: Project) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -45,6 +46,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
+  const [preferredProject, setPreferredProject] = useState<Project | null>(null);
 
   // Load saved project from localStorage on mount
   useEffect(() => {
@@ -66,6 +68,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   }, [selectedProject]);
 
   const loadProjects = useCallback(async () => {
+    console.log('🌍 ProjectContext: loadProjects called from:', new Error().stack?.split('\n')[2]);
     try {
       setLoading(true);
       // Check both localStorage and sessionStorage for the token
@@ -90,12 +93,21 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         const projectsArray = data.projects || [];
         setProjects(projectsArray);
         
-        // Try to restore saved project, otherwise auto-select first
+        // Try to restore saved project, use preferred project, or auto-select first
         const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
         let projectToSelect = null;
-        
-        if (savedProjectId) {
-          // Find the saved project in the loaded projects
+
+        // Priority 1: Use preferred project (e.g., newly created project)
+        if (preferredProject) {
+          const foundPreferred = projectsArray.find((p: Project) => p.id === preferredProject.id);
+          if (foundPreferred) {
+            projectToSelect = foundPreferred;
+            setPreferredProject(null); // Clear after using
+          }
+        }
+
+        // Priority 2: Try to restore saved project
+        if (!projectToSelect && savedProjectId) {
           const savedProject = projectsArray.find((p: Project) => p.id.toString() === savedProjectId);
           if (savedProject) {
             projectToSelect = savedProject;
@@ -103,19 +115,35 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
             localStorage.removeItem('scoriet_selected_project_id');
           }
         }
-        
-        // If no saved project or saved project not found, select first available
+
+        // Priority 3: If no saved project or saved project not found, select first available
         if (!projectToSelect && projectsArray.length > 0) {
           projectToSelect = projectsArray[0];
         }
         
         // Always set the project if we have one to select (either restored or first)
-        if (projectToSelect) {
+        // But don't override if this is right after a project update
+        const currentTime = Date.now();
+        const isRecentUpdate = currentTime - ((window as any).lastProjectUpdate || 0) < 2000; // Within 2 seconds
+
+        console.log('🌍 ProjectContext: Project selection decision:', {
+          projectToSelect: projectToSelect ? { id: projectToSelect.id, name: projectToSelect.name } : null,
+          isRecentUpdate,
+          currentTime,
+          lastProjectUpdate: (window as any).lastProjectUpdate,
+          timeDiff: currentTime - ((window as any).lastProjectUpdate || 0),
+          currentSelectedProject: selectedProject ? { id: selectedProject.id, name: selectedProject.name } : null
+        });
+
+        if (projectToSelect && !isRecentUpdate) {
+          console.log('🌍 ProjectContext: Setting selected project to:', projectToSelect.name);
           setSelectedProject(projectToSelect);
+        } else if (isRecentUpdate) {
+          console.log('🌍 ProjectContext: Skipping project selection due to recent update');
         }
       }
     } catch (err) {
-      console.error('ProjectContext - Error loading projects:', err);
+      // Error loading projects
     } finally {
       setLoading(false);
     }
@@ -162,6 +190,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     loadProjects,
     loading,
     clearSavedProject,
+    setPreferredProject,
   };
 
   return (

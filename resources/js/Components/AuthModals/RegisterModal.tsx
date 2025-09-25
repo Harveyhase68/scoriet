@@ -73,12 +73,18 @@ export default function RegisterModal({
           email: formData.email,
           password: formData.password,
           password_confirmation: formData.password_confirmation,
+          language: formData.language,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
+        console.error('Registration error details:', errorData);
+
+        // Display the user-friendly message from the backend
+        setError(errorData.message || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+        setLoading(false);
+        return;
       }
 
       const registrationData = await response.json();

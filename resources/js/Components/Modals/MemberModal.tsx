@@ -221,21 +221,19 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
               const projectMembersData = await projectMembersResponse.json();
               setProjectMembers(projectMembersData || []);
             } else {
-              console.error('Failed to load project members:', projectMembersResponse.status);
+              // Failed to load project members
             }
           } else {
-            console.warn('No matching project found for team owner:', team.project_owner_id);
+            // No matching project found for team owner
           }
         } else {
-          console.error('Failed to load projects:', projectsResponse.status);
+          // Failed to load projects
         }
       } catch (projectError) {
-        console.error('Error loading project members:', projectError);
         setProjectMembers([]);
       }
 
     } catch (error) {
-      console.error('Error loading data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setLoading(false);
@@ -308,7 +306,6 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Add member error:', errorData);
         throw new Error(errorData.message || 'Failed to add member to team');
       }
 
@@ -325,7 +322,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       loadData();
       onSave?.();
     } catch (error) {
-      console.error('Error adding member to team:', error);
+      // Error adding member to team
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -384,7 +381,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           loadData();
           onSave?.();
         } catch (error) {
-          console.error('Error removing member:', error);
+          // Error removing member
           toast.current?.show({
             severity: 'error',
             summary: 'Error',
@@ -438,7 +435,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       loadTeamMembers();
       onSave?.();
     } catch (error) {
-      console.error('Error updating role:', error);
+      // Error updating role
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -573,7 +570,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           {/* Info message */}
           <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
             <i className="pi pi-info-circle mr-2"></i>
-            Team members are shown with remove buttons. Available project members can be assigned to this team.
+            
+            
           </div>
 
           {/* Members Table */}
@@ -624,6 +622,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           </div>
         </div>
       </Dialog>
+
     </>
   );
 }

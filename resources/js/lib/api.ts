@@ -171,41 +171,106 @@ class ApiClient {
 
   // Template CRUD methods
   async createTemplate(templateData: any): Promise<any> {
-    return this.request('/templates', {
-      method: 'POST',
-      body: JSON.stringify(templateData),
-    });
+    try {
+      const response = await this.request('/templates', {
+        method: 'POST',
+        body: JSON.stringify(templateData),
+      });
+      return {
+        success: true,
+        template: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async updateTemplate(id: number, templateData: any): Promise<any> {
-    return this.request(`/templates/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(templateData),
-    });
+    try {
+      const response = await this.request(`/templates/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(templateData),
+      });
+      return {
+        success: true,
+        template: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async deleteTemplate(id: number): Promise<any> {
-    return this.request(`/templates/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      await this.request(`/templates/${id}`, {
+        method: 'DELETE',
+      });
+      return {
+        success: true
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async getTemplate(id: number): Promise<any> {
-    return this.request(`/templates/${id}`);
+    try {
+      const response = await this.request(`/templates/${id}`);
+      return {
+        success: true,
+        template: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async exportTemplate(id: number): Promise<any> {
-    return this.request(`/templates/${id}/export`);
+    try {
+      const response = await this.request(`/templates/${id}/export`);
+      return {
+        success: true,
+        export_data: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async importTemplate(templateData: any, overwriteExisting: boolean = false): Promise<any> {
-    return this.request('/templates/import', {
-      method: 'POST',
-      body: JSON.stringify({
-        template_data: templateData,
-        overwrite_existing: overwriteExisting,
-      }),
-    });
+    try {
+      const response = await this.request('/templates/import', {
+        method: 'POST',
+        body: JSON.stringify({
+          template_data: templateData,
+          overwrite_existing: overwriteExisting,
+        }),
+      });
+      return {
+        success: true,
+        template: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 }
 
