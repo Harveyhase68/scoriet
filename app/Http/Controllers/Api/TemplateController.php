@@ -9,6 +9,7 @@ use App\Models\ProjectTemplateUsage;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class TemplateController extends Controller
@@ -181,5 +182,154 @@ class TemplateController extends Controller
         $usage->update(['is_active' => false]);
 
         return response()->json(['message' => 'Template usage removed successfully']);
+    }
+
+    /**
+     * Store a newly created template
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9]+(_[a-z0-9]+)*$/', // Lowercase letters, numbers, and underscores for snake_case
+                Rule::unique('templates')->where(function ($query) use ($user) {
+                    return $query->where('creator_user_id', $user->id);
+                })
+            ],
+            'description' => 'nullable|string',
+            'category' => 'required|string|max:100',
+            'language' => 'required|string|max:50',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'is_active' => 'boolean',
+            'files' => 'array',
+            'files.*.file_name' => 'required|string',
+            'files.*.file_content' => 'required|string',
+            'files.*.file_type' => 'required|string',
+            'files.*.file_order' => 'integer',
+        ]);
+
+        $template = Template::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'category' => $validated['category'],
+            'language' => $validated['language'],
+            'tags' => $validated['tags'] ?? [],
+            'creator_user_id' => $user->id,
+            'is_active' => $validated['is_active'] ?? true,
+            'is_system_template' => false,
+        ]);
+
+        // Add files if provided
+        if (isset($validated['files'])) {
+            foreach ($validated['files'] as $fileData) {
+                $template->files()->create([
+                    'file_name' => $fileData['file_name'],
+                    'file_content' => $fileData['file_content'],
+                    'file_type' => $fileData['file_type'],
+                    'file_order' => $fileData['file_order'] ?? 0,
+                ]);
+            }
+        }
+
+        return response()->json($template->load('files'), 201);
+    }
+
+    /**
+     * Display the specified template
+     */
+    public function show(Template $template): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user can view this template
+        if (!$template->canBeViewedBy($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json($template->load(['files', 'creator']));
+    }
+
+    /**
+     * Update the specified template
+     */
+    public function update(Request $request, Template $template): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user can edit this template
+        if (!$template->canBeEditedBy($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9]+(_[a-z0-9]+)*$/', // Lowercase letters, numbers, and underscores for snake_case
+                Rule::unique('templates')->ignore($template->id)->where(function ($query) use ($user) {
+                    return $query->where('creator_user_id', $user->id);
+                })
+            ],
+            'description' => 'nullable|string',
+            'category' => 'required|string|max:100',
+            'language' => 'required|string|max:50',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'is_active' => 'boolean',
+            'files' => 'array',
+            'files.*.file_name' => 'required|string',
+            'files.*.file_content' => 'required|string',
+            'files.*.file_type' => 'required|string',
+            'files.*.file_order' => 'integer',
+        ]);
+
+        $template->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'category' => $validated['category'],
+            'language' => $validated['language'],
+            'tags' => $validated['tags'] ?? [],
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        // Update files - delete existing and recreate
+        if (isset($validated['files'])) {
+            $template->files()->delete();
+
+            foreach ($validated['files'] as $fileData) {
+                $template->files()->create([
+                    'file_name' => $fileData['file_name'],
+                    'file_content' => $fileData['file_content'],
+                    'file_type' => $fileData['file_type'],
+                    'file_order' => $fileData['file_order'] ?? 0,
+                ]);
+            }
+        }
+
+        return response()->json($template->load('files'));
+    }
+
+    /**
+     * Remove the specified template
+     */
+    public function destroy(Template $template): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user can delete this template
+        if (!$template->canBeEditedBy($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $template->update(['is_active' => false]);
+
+        return response()->json(['message' => 'Template deactivated successfully']);
     }
 }

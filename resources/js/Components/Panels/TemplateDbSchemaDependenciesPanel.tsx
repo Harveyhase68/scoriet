@@ -97,7 +97,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 setSchemas(response.schemas);
             }
         } catch (error) {
-            console.error('Failed to load DB schemas:', error);
+            // Failed to load DB schemas
             message.error('Failed to load DB schemas');
         }
     };
@@ -120,7 +120,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 message.error(response.error || 'Failed to add dependency');
             }
         } catch (error: any) {
-            console.error('Failed to add dependency:', error);
+            // Failed to add dependency
             const errorMessage = error.response?.data?.error || 'Failed to add dependency';
             message.error(errorMessage);
         } finally {
@@ -242,7 +242,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
 
             setTemplates(filteredTemplates);
         } catch (error) {
-            console.error('Failed to load templates:', error);
+            // Failed to load templates
             message.error('Failed to load templates');
         } finally {
             setLoading(false);
@@ -264,7 +264,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 message.error('Failed to load template dependencies');
             }
         } catch (error) {
-            console.error('Failed to load template dependencies:', error);
+            // Failed to load template dependencies
             message.error('Failed to load template dependencies');
         } finally {
             setDependenciesLoading(false);
@@ -290,7 +290,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 message.error('Failed to remove dependency');
             }
         } catch (error) {
-            console.error('Failed to remove dependency:', error);
+            // Failed to remove dependency
             message.error('Failed to remove dependency');
         }
     };

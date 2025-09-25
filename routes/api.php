@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SchemaController;
 use App\Http\Controllers\ProjectApplicationController;
 use App\Http\Controllers\ProjectInvitationController;
+use App\Http\Controllers\SchemaExportController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Manual OAuth token route for API with email verification check
@@ -179,7 +181,13 @@ Route::middleware('auth:api')->group(function () {
     // Schema Designer Layout Management
     Route::post('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'saveLayout']);
     Route::get('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'getLayout']);
-    
+
+    // Schema Export API - NEW! Uses real table data from schema_tables + schema_fields
+    Route::get('/schemas/{schema}/export', [SchemaExportController::class, 'exportSchema']);
+    Route::get('/schemas/{schema}/export/mysql', [SchemaExportController::class, 'exportAsMySQL']);
+    Route::get('/schemas/{schema}/table-count', [SchemaExportController::class, 'getTableCount']);
+
+
     // Team Invitations
     Route::post('/teams/{team}/invitations', [TeamInvitationController::class, 'store']);
     Route::get('/teams/{team}/invitations', [TeamInvitationController::class, 'teamInvitations']);
@@ -227,6 +235,741 @@ Route::get('/debug-projects', function () {
         'count' => $projects->count()
     ]);
 });
+
+// DEBUG: Test SchemaExportController without auth - REAL DATA (keep for debugging)
+Route::get('/debug-schema-export/{schema}', [SchemaExportController::class, 'debug']);
+
+// TEMPORARY: Debug specific export issue
+Route::get('/debug-export-error/{schema}', function($schema) {
+    try {
+        $version = request()->input('version', 1);
+
+        // Mirror the exact production logic
+        $schemaModel = \App\Models\FloatingSchema::findOrFail($schema);
+
+        // Find the correct schema_version_id
+        $schemaVersion = \Illuminate\Support\Facades\DB::table('schema_versions')
+            ->where('schema_id', $schema)
+            ->where('version_number', $version)
+            ->first();
+
+        if (!$schemaVersion) {
+            return response()->json([
+                'error' => 'Schema version not found',
+                'schema_id' => $schema,
+                'requested_version' => $version,
+                'available_versions' => \Illuminate\Support\Facades\DB::table('schema_versions')
+                    ->where('schema_id', $schema)
+                    ->select('id', 'version_number', 'version_name')
+                    ->get()
+            ], 404);
+        }
+
+        // Get tables with full debugging info
+        $tables = \App\Models\SchemaTable::with([
+            'fields' => function($query) {
+                $query->orderBy('field_order');
+            },
+            'constraints.constraintColumns.field',
+            'constraints.foreignKeyReference.referenceColumns.referencedField'
+        ])
+        ->where(function($query) use ($schema, $schemaVersion) {
+            $query->where('schema_id', $schema)
+                  ->orWhere('schema_version_id', $schemaVersion->id);
+        })
+        ->orderBy('table_name')
+        ->get();
+
+        // Try to generate SQL to see where it fails
+        try {
+            $controller = app(\App\Http\Controllers\SchemaExportController::class);
+            $reflection = new ReflectionClass($controller);
+            $method = $reflection->getMethod('generateMySQLScript');
+            $method->setAccessible(true);
+            $sql = $method->invoke($controller, $schemaModel, $tables, $schemaVersion->version_number);
+
+            return response()->json([
+                'success' => true,
+                'schema' => $schemaModel,
+                'schema_version' => $schemaVersion,
+                'tables_count' => $tables->count(),
+                'table_names' => $tables->pluck('table_name')->take(10),
+                'sql_generation' => 'SUCCESS',
+                'sql_length' => strlen($sql),
+                'sql_preview' => substr($sql, 0, 500) . '...'
+            ]);
+
+        } catch (\Exception $sqlError) {
+            return response()->json([
+                'success' => false,
+                'schema' => $schemaModel,
+                'schema_version' => $schemaVersion,
+                'tables_count' => $tables->count(),
+                'sql_generation_error' => $sqlError->getMessage(),
+                'sql_trace' => $sqlError->getTraceAsString()
+            ], 500);
+        }
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Debug failed: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], 500);
+    }
+});
+
+// DEBUG: Raw SQL constraint column test
+Route::get('/debug-raw-constraints/{schema}', function($schema) {
+    try {
+        // Get first constraint from primaPOS
+        $constraint = \Illuminate\Support\Facades\DB::table('schema_constraints')
+            ->join('schema_tables', 'schema_constraints.table_id', '=', 'schema_tables.id')
+            ->where('schema_tables.schema_version_id', 3)
+            ->select('schema_constraints.*', 'schema_tables.table_name')
+            ->first();
+
+        if (!$constraint) {
+            return response()->json(['error' => 'No constraints found']);
+        }
+
+        // Try the RAW SQL approach
+        $constraintColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+            ->join('schema_fields', 'schema_constraint_columns.field_id', '=', 'schema_fields.id')
+            ->where('schema_constraint_columns.constraint_id', $constraint->id)
+            ->orderBy('schema_constraint_columns.column_order')
+            ->get(['schema_fields.field_name', 'schema_constraint_columns.*']);
+
+        return response()->json([
+            'constraint' => $constraint,
+            'raw_sql_columns' => $constraintColumns,
+            'column_names' => $constraintColumns->pluck('field_name')->toArray(),
+            'raw_sql_works' => $constraintColumns->count() > 0
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// Debug specific constraint column data
+Route::get('/debug-specific-constraint/{constraintId}', function($constraintId) {
+    try {
+        $constraint = \App\Models\SchemaConstraint::findOrFail($constraintId);
+
+        // Raw SQL check for constraint columns
+        $rawColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+            ->join('schema_fields', 'schema_constraint_columns.field_id', '=', 'schema_fields.id')
+            ->where('schema_constraint_columns.constraint_id', $constraintId)
+            ->select('schema_constraint_columns.*', 'schema_fields.field_name')
+            ->get();
+
+        return response()->json([
+            'constraint_id' => $constraintId,
+            'constraint_name' => $constraint->constraint_name,
+            'constraint_type' => $constraint->constraint_type,
+            'table_id' => $constraint->table_id,
+            'raw_column_count' => $rawColumns->count(),
+            'raw_columns' => $rawColumns->toArray()
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+// Debug project join codes
+Route::get('/debug-projects-join-codes', function() {
+    try {
+        $projects = \App\Models\Project::select('id', 'name', 'join_code', 'allow_join_requests', 'is_public', 'is_active')
+            ->where('is_active', true)
+            ->get();
+
+        return response()->json([
+            'projects' => $projects->map(function($project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'join_code' => $project->join_code,
+                    'allow_join_requests' => $project->allow_join_requests,
+                    'is_public' => $project->is_public,
+                    'is_active' => $project->is_active,
+                    'should_be_findable' => $project->join_code && $project->allow_join_requests
+                ];
+            })
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+// Debug constraint column data for both versions
+Route::get('/debug-constraint-columns/{schema}', function($schema) {
+    try {
+        // Get Version 1 data
+        $version1 = \App\Models\SchemaVersion::where('schema_id', $schema)
+            ->where('version_number', 1)
+            ->first();
+
+        // Get Version 2 data
+        $version2 = \App\Models\SchemaVersion::where('schema_id', $schema)
+            ->where('version_number', 2)
+            ->first();
+
+        // Get Version 3 data
+        $version3 = \App\Models\SchemaVersion::where('schema_id', $schema)
+            ->where('version_number', 3)
+            ->first();
+
+        $debug = [
+            'schema_id' => $schema,
+            'version1' => null,
+            'version2' => null,
+            'version3' => null
+        ];
+
+        if ($version1) {
+            $v1Tables = \App\Models\SchemaTable::where('schema_version_id', $version1->id)->count();
+            $v1Constraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version1->id)->pluck('id')
+            )->count();
+
+            // Sample a few constraints to check column data
+            $sampleConstraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version1->id)->pluck('id')
+            )->take(5)->get();
+
+            $constraintSamples = [];
+            foreach ($sampleConstraints as $constraint) {
+                $columnCount = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->where('constraint_id', $constraint->id)
+                    ->count();
+                $constraintSamples[] = [
+                    'id' => $constraint->id,
+                    'name' => $constraint->constraint_name,
+                    'type' => $constraint->constraint_type,
+                    'column_count' => $columnCount
+                ];
+            }
+
+            $debug['version1'] = [
+                'schema_version_id' => $version1->id,
+                'table_count' => $v1Tables,
+                'constraint_count' => $v1Constraints,
+                'constraint_samples' => $constraintSamples
+            ];
+        }
+
+        if ($version2) {
+            $v2Tables = \App\Models\SchemaTable::where('schema_version_id', $version2->id)->count();
+            $v2Constraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version2->id)->pluck('id')
+            )->count();
+
+            // Sample a few constraints to check column data
+            $sampleConstraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version2->id)->pluck('id')
+            )->take(5)->get();
+
+            $constraintSamples = [];
+            foreach ($sampleConstraints as $constraint) {
+                $columnCount = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->where('constraint_id', $constraint->id)
+                    ->count();
+                $constraintSamples[] = [
+                    'id' => $constraint->id,
+                    'name' => $constraint->constraint_name,
+                    'type' => $constraint->constraint_type,
+                    'column_count' => $columnCount
+                ];
+            }
+
+            $debug['version2'] = [
+                'schema_version_id' => $version2->id,
+                'table_count' => $v2Tables,
+                'constraint_count' => $v2Constraints,
+                'constraint_samples' => $constraintSamples
+            ];
+        }
+
+        if ($version3) {
+            $v3Tables = \App\Models\SchemaTable::where('schema_version_id', $version3->id)->count();
+            $v3Constraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version3->id)->pluck('id')
+            )->count();
+
+            // Sample a few constraints to check column data
+            $sampleConstraints = \App\Models\SchemaConstraint::whereIn('table_id',
+                \App\Models\SchemaTable::where('schema_version_id', $version3->id)->pluck('id')
+            )->take(5)->get();
+
+            $constraintSamples = [];
+            foreach ($sampleConstraints as $constraint) {
+                $columnCount = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->where('constraint_id', $constraint->id)
+                    ->count();
+                $constraintSamples[] = [
+                    'id' => $constraint->id,
+                    'name' => $constraint->constraint_name,
+                    'type' => $constraint->constraint_type,
+                    'column_count' => $columnCount
+                ];
+            }
+
+            $debug['version3'] = [
+                'schema_version_id' => $version3->id,
+                'table_count' => $v3Tables,
+                'constraint_count' => $v3Constraints,
+                'constraint_samples' => $constraintSamples
+            ];
+        }
+
+        return response()->json($debug);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+// NEW: Working MySQL export with constraints - FRESH ROUTE
+Route::get('/temp-mysql-export-fixed/{schema}', function($schema) {
+    try {
+        $version = request()->input('version', 1);
+
+        $schemaModel = \App\Models\FloatingSchema::findOrFail($schema);
+
+        // Find the correct schema_version_id
+        $schemaVersion = \Illuminate\Support\Facades\DB::table('schema_versions')
+            ->where('schema_id', $schema)
+            ->where('version_number', $version)
+            ->first();
+
+        if (!$schemaVersion) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No version found for this schema',
+            ], 404);
+        }
+
+        // Get all tables with proper eager loading - FIXED: Use exact same logic as debug route
+        $tables = \App\Models\SchemaTable::with([
+            'fields' => function($query) {
+                $query->orderBy('field_order');
+            },
+            'constraints'  // Simple constraint loading, we'll do raw SQL for columns
+        ])
+        ->where('schema_version_id', $schemaVersion->id)  // FIXED: Only use schema_version_id like debug route
+        ->orderBy('table_name')
+        ->get();
+
+        // DEBUG: Log which constraints we're actually loading AND check constraint columns
+        \Log::info("Loading tables for schema_version_id: {$schemaVersion->id} (version_number: {$schemaVersion->version_number})");
+        $firstTable = $tables->first();
+        if ($firstTable && $firstTable->constraints->first()) {
+            $firstConstraint = $firstTable->constraints->first();
+            \Log::info("First table: {$firstTable->table_name}, first constraint ID: {$firstConstraint->id}");
+
+            // Test if this constraint has columns using our working raw SQL
+            $testColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                ->where('constraint_id', $firstConstraint->id)
+                ->count();
+            \Log::info("First constraint has {$testColumns} columns in database");
+        }
+
+        if ($tables->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tables found in this schema',
+            ], 404);
+        }
+
+        // Check for data integrity issues BEFORE generating SQL
+        $totalConstraintsInSchema = 0;
+        $brokenConstraints = 0;
+        foreach ($tables as $table) {
+            foreach ($table->constraints as $constraint) {
+                $totalConstraintsInSchema++;
+                $columnCount = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->where('constraint_id', $constraint->id)
+                    ->count();
+                if ($columnCount == 0) {
+                    $brokenConstraints++;
+                }
+            }
+        }
+
+        $constraintIntegrityCheck = [
+            'total_constraints' => $totalConstraintsInSchema,
+            'total_broken' => $brokenConstraints
+        ];
+
+        // Generate MySQL SQL script with working constraints
+        $lines = [];
+        $lines[] = '-- MySQL Database Export';
+        $lines[] = '-- Schema: ' . $schemaModel->name;
+        $lines[] = '-- Version: ' . $schemaVersion->version_number . ($schemaVersion->version_name ? ' (' . $schemaVersion->version_name . ')' : '');
+        $lines[] = '-- Generated: ' . now()->format('Y-m-d H:i:s');
+
+        // Add data integrity warnings if found
+        if ($constraintIntegrityCheck['total_broken'] > 0) {
+            $lines[] = '-- WARNING: Data integrity issues detected!';
+            $lines[] = '-- ' . $constraintIntegrityCheck['total_broken'] . ' constraints have missing column data';
+            $lines[] = '-- These constraints will be skipped from export';
+            $lines[] = '-- Consider re-parsing this schema version or contact support';
+        }
+
+        $lines[] = '';
+        $lines[] = 'SET FOREIGN_KEY_CHECKS = 0;';
+        $lines[] = '';
+
+        $totalConstraints = 0;
+
+        foreach ($tables as $table) {
+            $lines[] = '-- Table structure for table `' . $table->table_name . '`';
+            $lines[] = 'DROP TABLE IF EXISTS `' . $table->table_name . '`;';
+            $lines[] = 'CREATE TABLE `' . $table->table_name . '` (';
+
+            // Add field definitions
+            $fieldLines = [];
+            foreach ($table->fields as $field) {
+                $fieldDef = '  `' . $field->field_name . '` ' . strtoupper($field->field_type);
+
+                if ($field->field_length && !in_array(strtolower($field->field_type), ['text', 'longtext', 'mediumtext', 'tinytext'])) {
+                    if ($field->field_scale && in_array(strtolower($field->field_type), ['decimal', 'numeric', 'float', 'double'])) {
+                        $fieldDef .= '(' . $field->field_length . ',' . $field->field_scale . ')';
+                    } else {
+                        $fieldDef .= '(' . $field->field_length . ')';
+                    }
+                }
+
+                if (!$field->is_nullable) {
+                    $fieldDef .= ' NOT NULL';
+                }
+
+                if ($field->field_default !== null) {
+                    if (in_array(strtolower($field->field_type), ['varchar', 'char', 'text', 'longtext', 'mediumtext', 'tinytext'])) {
+                        $fieldDef .= ' DEFAULT \'' . addslashes($field->field_default) . '\'';
+                    } else {
+                        $fieldDef .= ' DEFAULT ' . $field->field_default;
+                    }
+                }
+
+                $fieldLines[] = $fieldDef;
+            }
+
+            // Add constraint definitions using WORKING Raw SQL approach
+            $constraintLines = [];
+
+            foreach ($table->constraints as $constraint) {
+                // DEBUG: Log each constraint processing
+                \Log::info("Processing constraint ID {$constraint->id} for table {$table->table_name}");
+
+                // Use the PROVEN working Raw SQL approach
+                $constraintColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->join('schema_fields', 'schema_constraint_columns.field_id', '=', 'schema_fields.id')
+                    ->where('schema_constraint_columns.constraint_id', $constraint->id)
+                    ->orderBy('schema_constraint_columns.column_order')
+                    ->get(['schema_fields.field_name']);
+
+                \Log::info("Found {$constraintColumns->count()} columns for constraint {$constraint->id}");
+
+                if ($constraintColumns->isEmpty()) {
+                    \Log::info("Skipping constraint {$constraint->id} - no columns found");
+                    continue; // Skip constraints without columns
+                }
+
+                $columnNames = $constraintColumns->pluck('field_name')->toArray();
+                $totalConstraints++;
+
+                switch (strtoupper($constraint->constraint_type)) {
+                    case 'PRIMARY':
+                    case 'PRIMARY KEY':
+                        $constraintLines[] = '  PRIMARY KEY (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'UNIQUE':
+                        $constraintName = $constraint->constraint_name ?: 'unique_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  UNIQUE KEY `' . $constraintName . '` (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'INDEX':
+                    case 'KEY':
+                        $constraintName = $constraint->constraint_name ?: 'idx_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  KEY `' . $constraintName . '` (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'FOREIGN KEY':
+                        // For now, simplified foreign key - we'll improve this later
+                        $constraintName = $constraint->constraint_name ?: 'fk_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  CONSTRAINT `' . $constraintName . '` FOREIGN KEY (`' . implode('`, `', $columnNames) . '`) REFERENCES `referenced_table` (`referenced_column`)';
+                        break;
+                }
+            }
+
+            // Combine fields and constraints
+            $allLines = array_merge($fieldLines, $constraintLines);
+            $lines[] = implode(",\n", $allLines);
+            $lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;';
+            $lines[] = '';
+        }
+
+        $lines[] = 'SET FOREIGN_KEY_CHECKS = 1;';
+        $lines[] = '';
+        $lines[] = '-- Export completed successfully';
+        $lines[] = '-- Total tables exported: ' . $tables->count();
+        $lines[] = '-- Total constraints exported: ' . $totalConstraints;
+
+        $sql = implode("\n", $lines);
+
+        return response()->json([
+            'success' => true,
+            'sql' => $sql,
+            'schema_name' => $schemaModel->name,
+            'version' => $schemaVersion->version_number,
+            'version_name' => $schemaVersion->version_name,
+            'table_count' => $tables->count(),
+            'constraint_count' => $totalConstraints,
+            'constraint_integrity' => [
+                'total_constraints_in_schema' => $constraintIntegrityCheck['total_constraints'],
+                'constraints_with_missing_columns' => $constraintIntegrityCheck['total_broken'],
+                'constraints_exported' => $totalConstraints,
+                'has_integrity_issues' => $constraintIntegrityCheck['total_broken'] > 0
+            ],
+            'generated_at' => now()->toISOString(),
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Export failed: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
+// DEBUG: Constraint relationship issue
+Route::get('/debug-constraints/{schema}', function($schema) {
+    try {
+        // Find a specific constraint from primaPOS
+        $constraint = \App\Models\SchemaConstraint::whereHas('table', function($query) use ($schema) {
+            $query->where('schema_id', $schema)->orWhere('schema_version_id', 3);
+        })->first();
+
+        if (!$constraint) {
+            return response()->json(['error' => 'No constraints found']);
+        }
+
+        // Check relationship
+        $constraintColumns = $constraint->constraintColumns;
+        $constraintColumnsCount = $constraintColumns->count();
+
+        // Raw query check
+        $rawConstraintColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+            ->where('constraint_id', $constraint->id)
+            ->get();
+
+        return response()->json([
+            'constraint_id' => $constraint->id,
+            'constraint_name' => $constraint->constraint_name,
+            'constraint_type' => $constraint->constraint_type,
+            'eloquent_relationship_count' => $constraintColumnsCount,
+            'raw_query_count' => $rawConstraintColumns->count(),
+            'eloquent_columns' => $constraintColumns->take(3),
+            'raw_columns' => $rawConstraintColumns->take(3),
+            'relationship_issue' => $constraintColumnsCount !== $rawConstraintColumns->count()
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+// TEMPORARY: Full MySQL export without auth for testing
+Route::get('/temp-mysql-export/{schema}', function($schema) {
+    try {
+        $version = request()->input('version', 1);
+
+        $schemaModel = \App\Models\FloatingSchema::findOrFail($schema);
+
+        // Find the correct schema_version_id
+        $schemaVersion = \Illuminate\Support\Facades\DB::table('schema_versions')
+            ->where('schema_id', $schema)
+            ->where('version_number', $version)
+            ->first();
+
+        if (!$schemaVersion) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No version found for this schema',
+            ], 404);
+        }
+
+        // Get all tables - FIXED: Load constraint columns properly
+        $tables = \App\Models\SchemaTable::with([
+            'fields' => function($query) {
+                $query->orderBy('field_order');
+            },
+            'constraints' => function($query) {
+                $query->with([
+                    'constraintColumns' => function($query) {
+                        $query->with('field')->orderBy('column_order');
+                    },
+                    'foreignKeyReference.referenceColumns.referencedField'
+                ]);
+            }
+        ])
+        ->where(function($query) use ($schema, $schemaVersion) {
+            $query->where('schema_id', $schema)
+                  ->orWhere('schema_version_id', $schemaVersion->id);
+        })
+        ->orderBy('table_name')
+        ->get();
+
+        if ($tables->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tables found in this schema',
+            ], 404);
+        }
+
+        // DEBUG: Check constraints before SQL generation - ENHANCED
+        $constraintDebug = [];
+        foreach ($tables as $table) {
+            $constraintDebug[$table->table_name] = [
+                'constraint_count' => $table->constraints->count(),
+                'constraints' => $table->constraints->map(function($constraint) {
+                    // Force reload constraintColumns to check if relationship works
+                    $constraint->load('constraintColumns.field');
+                    return [
+                        'name' => $constraint->constraint_name,
+                        'type' => $constraint->constraint_type,
+                        'columns_count' => $constraint->constraintColumns->count(),
+                        'first_column' => $constraint->constraintColumns->first() ? $constraint->constraintColumns->first()->field?->field_name : 'NO_FIELD'
+                    ];
+                })
+            ];
+        }
+
+        // Generate MySQL SQL script - DIRECT IMPLEMENTATION
+        $lines = [];
+        $lines[] = '-- MySQL Database Export';
+        $lines[] = '-- Schema: ' . $schemaModel->name;
+        $lines[] = '-- Version: ' . $schemaVersion->version_number . ($schemaVersion->version_name ? ' (' . $schemaVersion->version_name . ')' : '');
+        $lines[] = '-- Generated: ' . now()->format('Y-m-d H:i:s');
+        $lines[] = '';
+        $lines[] = 'SET FOREIGN_KEY_CHECKS = 0;';
+        $lines[] = '';
+
+        foreach ($tables as $table) {
+            $lines[] = '-- Table structure for table `' . $table->table_name . '`';
+            $lines[] = 'DROP TABLE IF EXISTS `' . $table->table_name . '`;';
+            $lines[] = 'CREATE TABLE `' . $table->table_name . '` (';
+
+            // Add field definitions
+            $fieldLines = [];
+            foreach ($table->fields as $field) {
+                $fieldDef = '  `' . $field->field_name . '` ' . strtoupper($field->field_type);
+
+                if ($field->field_length && !in_array(strtolower($field->field_type), ['text', 'longtext', 'mediumtext', 'tinytext'])) {
+                    if ($field->field_scale && in_array(strtolower($field->field_type), ['decimal', 'numeric', 'float', 'double'])) {
+                        $fieldDef .= '(' . $field->field_length . ',' . $field->field_scale . ')';
+                    } else {
+                        $fieldDef .= '(' . $field->field_length . ')';
+                    }
+                }
+
+                if (!$field->is_nullable) {
+                    $fieldDef .= ' NOT NULL';
+                }
+
+                if ($field->field_default !== null) {
+                    if (in_array(strtolower($field->field_type), ['varchar', 'char', 'text', 'longtext', 'mediumtext', 'tinytext'])) {
+                        $fieldDef .= ' DEFAULT \'' . addslashes($field->field_default) . '\'';
+                    } else {
+                        $fieldDef .= ' DEFAULT ' . $field->field_default;
+                    }
+                }
+
+                $fieldLines[] = $fieldDef;
+            }
+
+            // Add constraint definitions - SIMPLE DIRECT APPROACH
+            $constraintLines = [];
+
+            // Get constraint columns directly from database - bypass Eloquent
+            foreach ($table->constraints as $constraint) {
+                $constraintColumns = \Illuminate\Support\Facades\DB::table('schema_constraint_columns')
+                    ->join('schema_fields', 'schema_constraint_columns.field_id', '=', 'schema_fields.id')
+                    ->where('schema_constraint_columns.constraint_id', $constraint->id)
+                    ->orderBy('schema_constraint_columns.column_order')
+                    ->get(['schema_fields.field_name']);
+
+                if ($constraintColumns->isEmpty()) {
+                    continue; // Skip constraints without columns
+                }
+
+                $columnNames = $constraintColumns->pluck('field_name')->toArray();
+
+                switch (strtoupper($constraint->constraint_type)) {
+                    case 'PRIMARY':
+                    case 'PRIMARY KEY':
+                        $constraintLines[] = '  PRIMARY KEY (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'UNIQUE':
+                        $constraintName = $constraint->constraint_name ?: 'unique_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  UNIQUE KEY `' . $constraintName . '` (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'INDEX':
+                    case 'KEY':
+                        $constraintName = $constraint->constraint_name ?: 'idx_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  KEY `' . $constraintName . '` (`' . implode('`, `', $columnNames) . '`)';
+                        break;
+
+                    case 'FOREIGN KEY':
+                        // Handle foreign keys - simplified for now
+                        $constraintName = $constraint->constraint_name ?: 'fk_' . $table->table_name . '_' . implode('_', $columnNames);
+                        $constraintLines[] = '  CONSTRAINT `' . $constraintName . '` FOREIGN KEY (`' . implode('`, `', $columnNames) . '`) REFERENCES `referenced_table` (`referenced_column`)';
+                        break;
+                }
+            }
+
+            // Combine fields and constraints
+            $allLines = array_merge($fieldLines, $constraintLines);
+            $lines[] = implode(",\n", $allLines);
+            $lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;';
+            $lines[] = '';
+        }
+
+        $lines[] = 'SET FOREIGN_KEY_CHECKS = 1;';
+        $lines[] = '';
+        $lines[] = '-- Export completed successfully';
+        $lines[] = '-- Total tables exported: ' . $tables->count();
+
+        $sql = implode("\n", $lines);
+
+        return response()->json([
+            'success' => true,
+            'sql' => $sql,
+            'schema_name' => $schemaModel->name,
+            'version' => $schemaVersion->version_number,
+            'version_name' => $schemaVersion->version_name,
+            'table_count' => $tables->count(),
+            'constraint_debug' => $constraintDebug,
+            'generated_at' => now()->toISOString(),
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Export failed: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 
 // GTREE GLOBAL CACHE - Working version
 Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
@@ -386,8 +1129,11 @@ Route::get('/template-output/{templateId}', function ($templateId) {
 });
 
 // TEMPLATE PROCESSING ENGINE - Optimized gtree[] based on template type
-Route::get('/template-process/{templateId}', function ($templateId) {
+Route::get('/template-process/{templateId}', function (Request $request, $templateId) {
     try {
+        // Get project filter from query parameter
+        $projectId = $request->query('project_id');
+
         // Find template with its files
         $template = \App\Models\Template::with('files')->find($templateId);
 
@@ -396,6 +1142,13 @@ Route::get('/template-process/{templateId}', function ($templateId) {
                 'error' => 'Template not found',
                 'template_id' => $templateId
             ], 404);
+        }
+
+        // Log project filtering
+        if ($projectId) {
+            \Log::info("Template processing with project filter: {$projectId}");
+        } else {
+            \Log::info("Template processing without project filter (demo mode)");
         }
 
         // Analyze template files to determine optimization strategy
@@ -425,15 +1178,60 @@ Route::get('/template-process/{templateId}', function ($templateId) {
             }
         }
 
-        // Use global gtree structure from gtree-test route (optimized)
-        $schemaVersionId = 1; // TODO: später dynamisch aus Project/Template-Dependencies
+        // Load project-specific schemas or fallback to demo data
+        $schemaTables = collect();
 
-        // Load complete gtree for template processing (use same logic as gtree-test)
-        $schemaTables = \App\Models\SchemaTable::where('schema_version_id', $schemaVersionId)
-            ->with(['fields' => function($query) {
-                $query->orderBy('field_order');
-            }, 'constraints'])
-            ->get();
+        if ($projectId) {
+            // Get schemas linked to this project
+            $project = \App\Models\Project::find($projectId);
+
+            if ($project) {
+                \Log::info("Loading schemas for project: {$project->name}");
+
+                // Get floating schemas linked to this project through project_schemas table
+                $linkedSchemas = \App\Models\FloatingSchema::whereHas('projects', function ($query) use ($projectId) {
+                    $query->where('projects.id', $projectId);
+                })->get();
+
+                \Log::info("Found {$linkedSchemas->count()} linked schemas for project {$projectId}");
+
+                foreach ($linkedSchemas as $schema) {
+                    // Get latest version of each linked schema
+                    $latestVersion = \App\Models\SchemaVersion::where('schema_id', $schema->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($latestVersion) {
+                        $versionTables = \App\Models\SchemaTable::where('schema_version_id', $latestVersion->id)
+                            ->with(['fields' => function($query) {
+                                $query->orderBy('field_order');
+                            }, 'constraints'])
+                            ->get();
+
+                        $schemaTables = $schemaTables->merge($versionTables);
+                        \Log::info("Added {$versionTables->count()} tables from schema '{$schema->name}' (version {$latestVersion->id})");
+                    }
+                }
+
+                \Log::info("Total project-linked tables: {$schemaTables->count()}");
+            }
+        }
+
+        // Fallback to demo data if no project or no linked schemas
+        if ($schemaTables->isEmpty()) {
+            if ($projectId) {
+                \Log::warning("Project {$projectId} has no linked schemas - this is normal if no databases are connected to the project");
+                // Return empty gtree for projects with no linked schemas
+            } else {
+                \Log::info("No project specified, using demo data (schema_version_id=1)");
+
+                $schemaTables = \App\Models\SchemaTable::where('schema_version_id', 1)
+                    ->with(['fields' => function($query) {
+                        $query->orderBy('field_order');
+                    }, 'constraints'])
+                    ->get();
+            }
+        }
 
         // Build gtree[] array structure (identical to gtree-test)
         $projectData = [
@@ -500,8 +1298,11 @@ Route::get('/template-process/{templateId}', function ($templateId) {
             $content = $templateFile->file_content;
 
 
-            // Check if template contains table-specific variables
-            $hasTableSpecificContent = (
+            // Check file type first - project_file should always be treated as project-level
+            $isProjectFile = ($templateFile->file_type === 'project_file');
+
+            // Only check for table-specific content if it's NOT a project file
+            $hasTableSpecificContent = !$isProjectFile && (
                 strpos($content, '{tablename}') !== false ||
                 strpos($content, '{for {nmaxitems}}') !== false ||
                 strpos($content, '{item.name}') !== false ||
@@ -688,25 +1489,54 @@ Route::get('/template-process/{templateId}', function ($templateId) {
                     ];
                 }
             } else {
-                // Project-level file (no table-specific content)
-                $generatedContent = str_replace('{projectname}', $projectData['projectname'], $content);
+                // Project-level file - Use SAME JavaScript template engine as table files
+                $jsFunction = "function generate_project_template() {\n";
+                $jsFunction .= "  let sContentResult = '';\n";
 
-                // Replace escaped \n with Unicode newlines for project files too
+                // Split content into lines for processing
+                $lines = explode("\n", $content);
+                foreach ($lines as $line) {
+                    // Escape quotes for JavaScript string
+                    $escapedLine = str_replace(['\\', '"', "\r"], ['\\\\', '\\"', ''], $line);
+
+                    // Handle template placeholders like table files
+                    if (strpos($line, '{projectname}') !== false) {
+                        $escapedLine = str_replace('{projectname}', '" + gtree[0].project[0].projectname + "', $escapedLine);
+                    }
+
+                    // Add line to function with newline
+                    $jsFunction .= '  sContentResult += "' . $escapedLine . '\\n";' . "\n";
+                }
+
+                $jsFunction .= "  return sContentResult;\n";
+                $jsFunction .= "}\n";
+
+                // Apply same Unicode transformations as table files
+                $generatedContent = $jsFunction;
+
+                // Clean content for better readability
+                $cleanContent = str_replace(['\n', '\r\n', '\r'], "\n", $generatedContent);
+                $cleanContent = preg_replace('/\n\s*\n/', "\n", $cleanContent);
+
+                // Replace escaped \n and \t with Unicode (same as table files)
                 $generatedContent = str_replace('\\n', '\\u000A', $generatedContent);
-
-                // Replace escaped \t with Unicode tabs for project files too
+                $cleanContent = str_replace('\\n', '\\u000A', $cleanContent);
                 $generatedContent = str_replace('\\t', '\\u0009', $generatedContent);
-
-                // Indent placeholder replacement is now handled in the frontend
+                $cleanContent = str_replace('\\t', '\\u0009', $cleanContent);
 
                 $generatedFiles[] = [
                     'filename' => str_replace('{projectname}', $projectData['projectname'], $templateFile->file_name),
                     'output_path' => $templateFile->output_path ?? '/',
                     'content' => $generatedContent,
+                    'content_clean' => $cleanContent,
                     'type' => $templateFile->file_type,
                     'table' => null,
                     'generated_from_template' => $templateFile->file_name,
-                    'is_project_file' => true
+                    'is_project_file' => true,
+                    'template_variables_converted' => [
+                        'projectname' => $projectData['projectname'],
+                        'uses_js_template_engine' => true
+                    ]
                 ];
             }
         }

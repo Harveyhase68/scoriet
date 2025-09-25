@@ -670,8 +670,22 @@ class SchemaController extends Controller
         ]);
 
         try {
-            $newVersion = SchemaVersion::createNewVersion($schema, $request->input('description'));
-            
+            // Get the latest version number to copy from
+            $latestVersion = $schema->versions()->orderByDesc('version_number')->first();
+
+            if ($latestVersion) {
+                // Create new version WITH COPY of existing tables
+                $nextVersionNumber = $latestVersion->version_number + 1;
+                $newVersion = SchemaVersion::createNewVersionWithCopy(
+                    $schema,
+                    $latestVersion->version_number,
+                    $request->input('description', "Version {$nextVersionNumber}")
+                );
+            } else {
+                // First version - create empty version
+                $newVersion = SchemaVersion::createNewVersion($schema, $request->input('description'));
+            }
+
             return response()->json($newVersion);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -702,13 +716,35 @@ class SchemaController extends Controller
         ]);
 
         try {
-            // Create new version
-            $newVersion = SchemaVersion::createNewVersion(
-                $schema,
-                $request->input('description', "New table: {$request->table_name}")
-            );
+            // Get the latest version to copy from
+            $latestVersion = $schema->versions()->orderByDesc('version_number')->first();
 
-            // Create the table in the new version
+            if ($latestVersion) {
+                // Create new version WITH COPY of existing tables from latest version
+                $newVersion = SchemaVersion::createNewVersionWithCopy(
+                    $schema,
+                    $latestVersion->version_number,
+                    $request->input('description', "New table: {$request->table_name}")
+                );
+            } else {
+                // First version - create empty version
+                $newVersion = SchemaVersion::createNewVersion(
+                    $schema,
+                    $request->input('description', "New table: {$request->table_name}")
+                );
+            }
+
+            // Check if table with same name already exists in this version
+            $existingTable = $newVersion->tables()->where('table_name', $request->table_name)->first();
+
+            if ($existingTable) {
+                return response()->json([
+                    'message' => 'A table with this name already exists in this schema version',
+                    'error' => "Table '{$request->table_name}' already exists"
+                ], 422);
+            }
+
+            // Create the new table in the new version
             $table = \App\Models\SchemaTable::create([
                 'schema_version_id' => $newVersion->id,
                 'table_name' => $request->table_name,

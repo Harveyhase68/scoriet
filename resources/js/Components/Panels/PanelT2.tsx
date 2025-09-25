@@ -464,10 +464,10 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       );
 
       if (!response.ok) {
-        console.error('Failed to save layout:', response.status, response.statusText);
+        // Failed to save layout
       }
     } catch (error) {
-      console.error('Error saving layout:', error);
+      // Error saving layout
     }
   }, [selectedSchema, selectedVersion]);
 
@@ -492,7 +492,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         return layouts;
       }
     } catch (error) {
-      console.error('Error loading layout:', error);
+      // Error loading layout
     }
     
     return {};
@@ -796,7 +796,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setShowEditTableModal(true);
 
     } catch (error) {
-      console.error('Error creating new version:', error);
+      // Error creating new version
       setError(error instanceof Error ? error.message : 'Failed to create new version');
     } finally {
       setShowVersionModal(false);
@@ -832,7 +832,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setShowCreateTableModal(true);
 
     } catch (error) {
-      console.error('Error creating new version:', error);
+      // Error creating new version
       setError(error instanceof Error ? error.message : 'Failed to create new version');
     } finally {
       setShowVersionModal(false);
@@ -864,7 +864,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setShowEditTableModal(true);
 
     } catch (error) {
-      console.error('Error marking unsaved changes:', error);
+      // Error marking unsaved changes
       setError(error instanceof Error ? error.message : 'Failed to update version');
     } finally {
       setShowVersionModal(false);
@@ -896,7 +896,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setShowCreateTableModal(true);
 
     } catch (error) {
-      console.error('Error marking unsaved changes:', error);
+      // Error marking unsaved changes
       setError(error instanceof Error ? error.message : 'Failed to update version');
     } finally {
       setShowVersionModal(false);
@@ -954,7 +954,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
     } catch (error) {
-      console.error('Error deleting table:', error);
+      // Error deleting table
       setError(error instanceof Error ? error.message : 'Failed to delete table');
     }
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema]);
@@ -1019,7 +1019,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
             }
           }
         } catch (error) {
-          console.error('Error creating new version and deleting table:', error);
+          // Error creating new version and deleting table
           setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
         } finally {
           setShowVersionModal(false);
@@ -1066,7 +1066,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         // Delete the table
         await performDeleteTable(pendingDeleteTable);
       } catch (error) {
-        console.error('Error deleting table:', error);
+        // Error deleting table
         setError(error instanceof Error ? error.message : 'Failed to delete table');
       } finally {
         setShowVersionModal(false);

@@ -38,7 +38,9 @@
       "WebSearch",
       "Bash(findstr:*)",
       "Bash(python:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "WebFetch(domain:dgreene1.github.io)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

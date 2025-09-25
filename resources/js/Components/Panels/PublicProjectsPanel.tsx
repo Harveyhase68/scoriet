@@ -71,7 +71,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         setCurrentUserId(userData.id);
       }
     } catch (err) {
-      console.error('Error loading current user:', err);
+      // Error loading current user
     }
   };
 
@@ -183,7 +183,6 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         setCloneError(errorData.message || 'Failed to clone project');
       }
     } catch (err) {
-      console.error('Error cloning project:', err);
       setCloneError('Failed to clone project');
     } finally {
       setCloning(null);

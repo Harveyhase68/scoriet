@@ -77,19 +77,22 @@ export default function LoginModal({
       }
 
       const tokenData = await tokenResponse.json();
-      
+      console.log('🔐 Token Response:', tokenData);
+
       // Save token - depending on 'Remember Me' option
       if (formData.rememberMe) {
         // Long-term storage - token available even after browser closing
         localStorage.setItem('access_token', tokenData.access_token);
         localStorage.setItem('refresh_token', tokenData.refresh_token);
         localStorage.setItem('remember_me', 'true');
-        
+        console.log('🔐 Saved to localStorage:', tokenData.access_token);
+
       } else {
         // Only for session - deleted when browser closes
         sessionStorage.setItem('access_token', tokenData.access_token);
         sessionStorage.setItem('refresh_token', tokenData.refresh_token);
         localStorage.setItem('remember_me', 'false');
+        console.log('🔐 Saved to sessionStorage:', tokenData.access_token);
       }
 
       // Call user update with token from correct storage
@@ -299,14 +302,16 @@ export default function LoginModal({
         </div>
 
         <div className="field">
-          <div className="flex items-center">
-            <Checkbox
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
               id="remember-me"
               checked={formData.rememberMe}
-              onChange={(e) => handleInputChange('rememberMe', e.checked || false)}
+              onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
               disabled={loading}
+              className="w-4 h-4"
             />
-            <label htmlFor="remember-me" className="ml-2 text-sm cursor-pointer">
+            <label htmlFor="remember-me" className="text-sm cursor-pointer">
               Stay logged in (30 days)
             </label>
           </div>

@@ -73,7 +73,6 @@ export default function CodeGenerationPanel() {
         setError(errorData.message || 'Failed to generate code');
       }
     } catch (err) {
-      console.error('Error generating code:', err);
       setError('Failed to generate code');
     } finally {
       setLoading(false);

@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Select } from 'antd';
 import { Button } from 'primereact/button';
+import { Message } from 'primereact/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, FileOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -10,6 +11,7 @@ interface TemplateModalProps {
     visible: boolean;
     onCancel: () => void;
     onSubmit: (values: any) => Promise<void>;
+    onSave?: (values: any) => Promise<any>;
     editingTemplate: any;
     categories: string[];
     templateFiles: any[];
@@ -23,6 +25,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     visible,
     onCancel,
     onSubmit,
+    onSave,
     editingTemplate,
     categories,
     templateFiles,
@@ -32,36 +35,84 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     fileTypes
 }) => {
     const [form] = Form.useForm();
+    const [isSaved, setIsSaved] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasFormChanges, setHasFormChanges] = useState(false);
+    const [originalFormValues, setOriginalFormValues] = useState<any>(null);
 
     // All hooks must be called before any early returns
     useEffect(() => {
         if (visible && editingTemplate) {
-            // Set form values when editing
-            form.setFieldsValue({
+            const initialValues = {
                 name: editingTemplate.name,
                 description: editingTemplate.description,
                 category: editingTemplate.category,
                 language: editingTemplate.language,
                 tags: editingTemplate.tags,
                 is_active: editingTemplate.is_active,
-            });
+            };
+            // Set form values when editing
+            form.setFieldsValue(initialValues);
+            setOriginalFormValues(initialValues);
+            setIsSaved(true); // Existing templates are considered "saved"
+            setHasFormChanges(false); // Reset form changes
         } else if (visible && !editingTemplate) {
             // Reset form for new template
             form.resetFields();
-            form.setFieldsValue({
-                is_active: true
-            });
+            const initialValues = { is_active: true };
+            form.setFieldsValue(initialValues);
+            setOriginalFormValues(initialValues);
+            setIsSaved(false); // New templates start as unsaved
+            setHasFormChanges(false); // Reset form changes
         }
     }, [visible, editingTemplate, form]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
 
+    // Check for form changes (excluding files)
+    const checkFormChanges = () => {
+        if (!originalFormValues) return;
+
+        const currentValues = form.getFieldsValue();
+        const fieldsToCheck = ['name', 'description', 'category', 'language', 'tags', 'is_active'];
+
+        const hasChanges = fieldsToCheck.some(field => {
+            const original = originalFormValues[field];
+            const current = currentValues[field];
+
+            // Handle arrays (tags) comparison
+            if (Array.isArray(original) && Array.isArray(current)) {
+                return JSON.stringify(original) !== JSON.stringify(current);
+            }
+
+            return original !== current;
+        });
+
+        setHasFormChanges(hasChanges);
+    };
+
+    const handleSave = async () => {
+        try {
+            setIsLoading(true);
+            const values = await form.validateFields();
+            if (onSave) {
+                await onSave(values);
+                setIsSaved(true);
+            }
+        } catch {
+            // Form validation failed
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
             await onSubmit(values);
             form.resetFields();
+            setIsSaved(false);
         } catch {
             // Form validation failed
         }
@@ -84,14 +135,27 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             <Form
                 form={form}
                 layout="vertical"
+                onValuesChange={checkFormChanges}
             >
                 <Form.Item
                     name="name"
                     label="Name"
-                    rules={[{ required: true, message: 'Bitte Template-Name eingeben!' }]}
+                    rules={[
+                        { required: true, message: 'Bitte Template-Name eingeben!' },
+                        {
+                            pattern: /^[a-z0-9]+(_[a-z0-9]+)*$/,
+                            message: 'Template-Name darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten (z.B. my_template_123)'
+                        }
+                    ]}
                 >
-                    <Input placeholder="Template Name" />
+                    <Input
+                        placeholder="my_template_name"
+                        className="font-mono"
+                    />
                 </Form.Item>
+                <div className="text-xs text-gray-500 -mt-4 mb-4">
+                    Template-Namen werden später für URLs verwendet (username/template_name)
+                </div>
 
                 <Form.Item
                     name="description"
@@ -110,7 +174,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         rules={[{ required: true, message: 'Bitte Kategorie auswählen!' }]}
                         className="flex-1"
                     >
-                        <Select placeholder="Kategorie auswählen">
+                        <Select placeholder="Kategorie auswählen" className="placeholder-gray-400">
                             {categories.filter(cat => cat !== 'All').map(cat => (
                                 <Option key={cat} value={cat}>{cat}</Option>
                             ))}
@@ -123,7 +187,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         rules={[{ required: true, message: 'Bitte Sprache eingeben!' }]}
                         className="flex-1"
                     >
-                        <Input placeholder="z.B. PHP, JavaScript, TypeScript" />
+                        <Input placeholder="e.g., PHP, JavaScript, TypeScript" />
                     </Form.Item>
                 </div>
 
@@ -134,6 +198,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     <Select
                         mode="tags"
                         placeholder="Tags hinzufügen"
+                        className="placeholder-gray-400"
                         tokenSeparators={[',']}
                     />
                 </Form.Item>
@@ -141,11 +206,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Template Files Section */}
                 <div className="border-t pt-4 mt-4">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold">Template Dateien</h3>
-                        <Button 
-                            type="primary" 
+                        <h3 className="text-lg font-semibold text-gray-300">Template Dateien</h3>
+                        <Button
+                            type="primary"
                             size="small"
                             icon={<PlusOutlined />}
+                            disabled={!isSaved && !editingTemplate}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
@@ -155,6 +221,26 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             Datei hinzufügen
                         </Button>
                     </div>
+
+                    {!isSaved && !editingTemplate && (
+                        <div className="mb-4">
+                            <Message
+                                severity="info"
+                                text="Bitte speichern Sie das Template, erst dann können Sie Dateien zum Template hinzufügen"
+                                className="w-full"
+                            />
+                        </div>
+                    )}
+
+                    {editingTemplate && (
+                        <div className="mb-4">
+                            <Message
+                                severity="info"
+                                text="Hinweis: Dateien werden sofort dem Template zugewiesen. Änderungen an Template-Details (Name, Beschreibung, etc.) müssen separat gespeichert werden."
+                                className="w-full"
+                            />
+                        </div>
+                    )}
                     
                     {templateFiles.length > 0 ? (
                         <div className="max-h-60 overflow-y-auto border border-gray-600 rounded bg-gray-700">
@@ -228,7 +314,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     initialValue={true}
                     className="mt-4"
                 >
-                    <label className="flex items-center">
+                    <label className="flex items-center text-gray-300">
                         <input type="checkbox" className="mr-2" />
                         Template ist aktiv
                     </label>
@@ -238,8 +324,28 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     <Button onClick={onCancel}>
                         Abbrechen
                     </Button>
-                    <Button onClick={handleSubmit}>
-                        {editingTemplate ? 'Aktualisieren' : 'Erstellen'}
+
+                    {/* Save button - only for new templates */}
+                    {!editingTemplate && (
+                        <Button
+                            onClick={handleSave}
+                            loading={isLoading}
+                            disabled={isSaved}
+                            className={isSaved ? 'opacity-50' : ''}
+                        >
+                            {isSaved ? 'Gespeichert ✓' : 'Speichern'}
+                        </Button>
+                    )}
+
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={editingTemplate && !hasFormChanges}
+                        className={editingTemplate && !hasFormChanges ? 'opacity-50' : ''}
+                    >
+                        {editingTemplate ?
+                            (hasFormChanges ? 'Aktualisieren' : 'Keine Änderungen') :
+                            'Erstellen'
+                        }
                     </Button>
                 </div>
             </Form>

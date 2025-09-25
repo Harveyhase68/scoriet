@@ -66,7 +66,7 @@ export default function PanelT3() {
       try {
         await loadAllTemplates(); // Load templates first
       } catch (err) {
-        console.error('Error loading data:', err);
+        // Error loading data
       } finally {
         setLoading(false);
       }
@@ -110,7 +110,7 @@ export default function PanelT3() {
         setSelectedTemplateIds([]);
       }
     } catch (err) {
-      console.error('Error loading project templates:', err);
+      // Error loading project templates
     }
   }, [templates]);
 

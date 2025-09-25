@@ -174,23 +174,39 @@ class ProjectApplicationController extends Controller
             'user_id' => $request->user()?->id,
         ]);
 
-        $project = Project::where('join_code', $joinCode)
-                          ->where('allow_join_requests', true)
-                          ->with(['owner', 'teams'])
-                          ->first();
+        // First check if project exists with this join code (regardless of allow_join_requests)
+        $projectExists = Project::where('join_code', $joinCode)
+                                ->with(['owner', 'teams'])
+                                ->first();
 
         \Log::info('ProjectApplicationController: Project lookup result', [
             'joinCode' => $joinCode,
-            'project_found' => !!$project,
-            'project_id' => $project?->id,
-            'allow_join_requests' => $project?->allow_join_requests,
+            'project_exists' => !!$projectExists,
+            'project_id' => $projectExists?->id,
+            'allow_join_requests' => $projectExists?->allow_join_requests,
+            'is_active' => $projectExists?->is_active,
         ]);
 
-        if (!$project) {
+        // Provide specific error messages for different scenarios
+        if (!$projectExists) {
             return response()->json([
-                'message' => 'Ungültiger Join-Code'
+                'message' => 'Ungültiger Join-Code. Bitte überprüfen Sie den Code.'
             ], 404);
         }
+
+        if (!$projectExists->is_active) {
+            return response()->json([
+                'message' => 'Dieses Projekt ist nicht mehr aktiv.'
+            ], 400);
+        }
+
+        if (!$projectExists->allow_join_requests) {
+            return response()->json([
+                'message' => 'Dieses Projekt akzeptiert derzeit keine Beitrittsanfragen.'
+            ], 403);
+        }
+
+        $project = $projectExists;
 
         // Check if user already applied
         $user = $request->user();

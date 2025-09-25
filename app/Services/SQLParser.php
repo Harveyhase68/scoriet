@@ -165,8 +165,35 @@ class SQLParser
             'fields' => $fields,
             'constraints' => $constraints,
         ];
-        $this->tables[] = $table;
-        $this->table_map[$table_name] = &$this->tables[count($this->tables) - 1];
+
+        // Check if table already exists - merge instead of duplicate
+        if (isset($this->table_map[$table_name])) {
+            // Merge fields and constraints with existing table (avoid duplicates)
+            $existingTable = &$this->table_map[$table_name];
+
+            // Merge fields (only add if field name doesn't exist)
+            foreach ($fields as $newField) {
+                $fieldExists = false;
+                foreach ($existingTable['fields'] as $existingField) {
+                    if ($existingField['name'] === $newField['name']) {
+                        $fieldExists = true;
+                        break;
+                    }
+                }
+                if (!$fieldExists) {
+                    $existingTable['fields'][] = $newField;
+                }
+            }
+
+            // Merge constraints (avoid duplicates)
+            foreach ($constraints as $newConstraint) {
+                $existingTable['constraints'][] = $newConstraint;
+            }
+        } else {
+            // Add new table
+            $this->tables[] = $table;
+            $this->table_map[$table_name] = &$this->tables[count($this->tables) - 1];
+        }
     }
 
     private function parseTableDefinition()
@@ -325,6 +352,7 @@ class SQLParser
 
         return [
             'type' => 'PRIMARY KEY',
+            'name' => 'PRIMARY', // Standard name for PRIMARY KEY constraints
             'columns' => $columns,
         ];
     }

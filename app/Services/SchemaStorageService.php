@@ -44,7 +44,17 @@ class SchemaStorageService
 
     private function storeTable(SchemaVersion $schemaVersion, array $tableData): SchemaTable
     {
+        // Check if table already exists in this schema version
+        $existingTable = SchemaTable::where('schema_version_id', $schemaVersion->id)
+            ->where('table_name', $tableData['table_name'])
+            ->first();
+
+        if ($existingTable) {
+            return $existingTable; // Return existing table instead of creating duplicate
+        }
+
         return SchemaTable::create([
+            'schema_id' => $schemaVersion->schema_id, // ← ADD: Direct schema relationship
             'schema_version_id' => $schemaVersion->id,
             'table_name' => $tableData['table_name'],
         ]);
@@ -53,25 +63,38 @@ class SchemaStorageService
     private function storeFields(SchemaTable $table, array $fields): void
     {
         foreach ($fields as $index => $fieldData) {
-            SchemaField::create([
-                'table_id' => $table->id,
-                'field_name' => $fieldData['name'],
-                'field_type' => $fieldData['type'],
-                'is_unsigned' => $fieldData['unsigned'] ?? false,
-                'is_nullable' => $fieldData['nullable'] ?? true,
-                'default_value' => $this->normalizeDefaultValue($fieldData['default'] ?? null),
-                'is_auto_increment' => $fieldData['auto_increment'] ?? false,
-                'field_order' => $index + 1,
-            ]);
+            // Check if field already exists in this table
+            $existingField = SchemaField::where('table_id', $table->id)
+                ->where('field_name', $fieldData['name'])
+                ->first();
+
+            if (!$existingField) {
+                SchemaField::create([
+                    'table_id' => $table->id,
+                    'field_name' => $fieldData['name'],
+                    'field_type' => $fieldData['type'],
+                    'is_unsigned' => $fieldData['unsigned'] ?? false,
+                    'is_nullable' => $fieldData['nullable'] ?? true,
+                    'default_value' => $this->normalizeDefaultValue($fieldData['default'] ?? null),
+                    'is_auto_increment' => $fieldData['auto_increment'] ?? false,
+                    'field_order' => $index + 1,
+                ]);
+            }
         }
     }
 
     private function storeConstraints(SchemaTable $table, array $constraints, array $tableMap): void
     {
         foreach ($constraints as $constraintData) {
+            // Generate a name if none provided
+            $constraintName = $constraintData['name'] ?? null;
+            if (empty($constraintName)) {
+                $constraintName = $this->generateConstraintName($constraintData, $table);
+            }
+
             $constraint = SchemaConstraint::create([
                 'table_id' => $table->id,
-                'constraint_name' => $constraintData['name'] ?? null,
+                'constraint_name' => $constraintName,
                 'constraint_type' => $constraintData['type'],
             ]);
 
@@ -199,5 +222,37 @@ class SchemaStorageService
 
             return $schemaVersion;
         });
+    }
+
+    private function generateConstraintName(array $constraintData, SchemaTable $table): string
+    {
+        $type = $constraintData['type'];
+        $tableName = $table->table_name;
+
+        switch ($type) {
+            case 'PRIMARY KEY':
+                return 'pk_' . $tableName;
+
+            case 'FOREIGN KEY':
+                $columns = implode('_', $constraintData['columns'] ?? []);
+                if (isset($constraintData['references']['table'])) {
+                    $refTable = $constraintData['references']['table'];
+                    return "fk_{$tableName}_{$columns}_{$refTable}";
+                }
+                return "fk_{$tableName}_{$columns}";
+
+            case 'UNIQUE':
+                $columns = implode('_', $constraintData['columns'] ?? []);
+                return "uk_{$tableName}_{$columns}";
+
+            case 'KEY':
+            case 'INDEX':
+                $columns = implode('_', $constraintData['columns'] ?? []);
+                return "idx_{$tableName}_{$columns}";
+
+            default:
+                $columns = implode('_', $constraintData['columns'] ?? []);
+                return strtolower($type) . "_{$tableName}_{$columns}";
+        }
     }
 }

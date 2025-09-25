@@ -90,7 +90,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         setTeamInvitations(data.invitations || []);
       }
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      // Error fetching invitations
     }
   }, [team, isAdmin]);
 

@@ -62,7 +62,7 @@ export default function TeamsPanel() {
       try {
         await loadAllTeams();
       } catch (err) {
-        console.error('Error loading data:', err);
+        // Error loading data
       } finally {
         setLoading(false);
       }
@@ -103,7 +103,7 @@ export default function TeamsPanel() {
         setSelectedTeamIds([]);
       }
     } catch (err) {
-      console.error('Error loading project teams:', err);
+      // Error loading project teams
     }
   }, [teams]);
 
@@ -321,7 +321,7 @@ export default function TeamsPanel() {
                     rows={10}
                     rowsPerPageOptions={[5, 10, 20]}
                     scrollable
-                    scrollHeight="400px"
+                    scrollHeight="500px"
                     header={
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold">

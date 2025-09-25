@@ -9,10 +9,13 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
+import { Tree } from 'primereact/tree';
+import ClassicTreeView from '@/Components/ClassicTreeView';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
 import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal';
 import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -44,17 +47,42 @@ interface Project {
 }
 
 export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
+  // Use global project context
+  const {
+    projects: globalProjects,
+    selectedProject: globalSelectedProject,
+    setSelectedProject: setGlobalSelectedProject,
+    loadProjects: loadProjectsFromContext,
+    setPreferredProject,
+    loading: contextLoading
+  } = useProject();
+
+  // Map to local project state for compatibility
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // Keep track of original selected project for returning after edit
+  const [originalSelectedProject, setOriginalSelectedProject] = useState<Project | null>(null);
+
+  // All other state definitions first
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // Sync with global project context
+  useEffect(() => {
+    setProjects(globalProjects);
+    // Only update currentProject if we're not editing
+    if (!isEditing) {
+      setCurrentProject(globalSelectedProject);
+    }
+  }, [globalProjects, globalSelectedProject, isEditing]);
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
     join_code: '',
+    is_public: false,
     new_owner_id: null as number | null
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,65 +96,59 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [showTeamsModal, setShowTeamsModal] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [availableTeams, setAvailableTeams] = useState<any[]>([]);
-  const [assignedTeams, setAssignedTeams] = useState<any[]>([]);
-  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
-  const [projectMembers, setProjectMembers] = useState<any[]>([]);
-  const [loadingTeams, setLoadingTeams] = useState(false);
-  const [assigningTeams, setAssigningTeams] = useState(false);
   const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
   const [showInvitationsModal, setShowInvitationsModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [localSelectedProject, setLocalSelectedProject] = useState<Project | null>(null);
+  const [showProjectOverviewModal, setShowProjectOverviewModal] = useState(false);
+  const [selectedProjectForOverview, setSelectedProjectForOverview] = useState<Project | null>(null);
+  const [projectTeamsTree, setProjectTeamsTree] = useState<any[]>([]);
+  const [loadingTeamsData, setLoadingTeamsData] = useState(false);
+  const [projectSchemasTree, setProjectSchemasTree] = useState<any[]>([]);
+  const [loadingSchemasData, setLoadingSchemasData] = useState(false);
+  const [projectTemplatesTree, setProjectTemplatesTree] = useState<any[]>([]);
+  const [loadingTemplatesData, setLoadingTemplatesData] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const [loadingMembersData, setLoadingMembersData] = useState(false);
 
-  // Load projects when panel becomes active
+  // Load projects when panel becomes active (but not during editing to avoid conflicts)
   useEffect(() => {
-    if (isActive) {
-      loadProjects();
+    if (isActive && !isEditing) {
+      loadProjectsFromContext();
     }
-  }, [isActive]);
+  }, [isActive, loadProjectsFromContext]);
 
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load projects');
-      }
-
-      const data = await response.json();
-      setProjects(data.projects || []);
-      setCurrentProject(data.current_project || null);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading projects');
-    } finally {
-      setLoading(false);
+  // Ensure currentProject is synced with globalSelectedProject when panel becomes active
+  useEffect(() => {
+    if (isActive && globalSelectedProject && !isEditing) {
+      setCurrentProject(globalSelectedProject);
     }
-  };
+  }, [isActive, globalSelectedProject, isEditing]);
 
-  const handleEdit = async () => {
-    if (currentProject) {
+  // Listen for notification bell click to open Applications Modal
+  useEffect(() => {
+    const handleOpenApplicationsModal = () => {
+      console.log('📧 ProjectPanel: Received openApplicationsModalInPanel event, opening modal');
+      setShowApplicationsModal(true);
+    };
+
+    window.addEventListener('openApplicationsModalInPanel', handleOpenApplicationsModal as EventListener);
+
+    return () => {
+      window.removeEventListener('openApplicationsModalInPanel', handleOpenApplicationsModal as EventListener);
+    };
+  }, []);
+
+
+  const handleEdit = async (projectToEdit?: Project) => {
+    const project = projectToEdit || currentProject;
+    if (project) {
       setEditForm({
-        name: currentProject.name,
-        description: currentProject.description,
-        join_code: currentProject.join_code || '',
+        name: project.name,
+        description: project.description,
+        join_code: project.join_code || '',
+        is_public: project.is_public,
         new_owner_id: null
       });
       setIsEditing(true);
@@ -134,11 +156,12 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       setSuccess('');
 
       // Load project members for owner transfer
-      await loadProjectMembers(currentProject.id);
+      await loadProjectMembers(project.id);
     }
   };
 
   const loadProjectMembers = async (projectId: number) => {
+    setLoadingMembersData(true);
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${projectId}/members`, {
@@ -154,6 +177,9 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       }
     } catch (error) {
       console.error('Error loading project members:', error);
+      setProjectMembers([]);
+    } finally {
+      setLoadingMembersData(false);
     }
   };
 
@@ -194,7 +220,33 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       }
 
       const updatedProject = await response.json();
+      console.log('🔧 Save: Updated project from API:', updatedProject);
       setCurrentProject(updatedProject);
+
+      // Only update global context if we're editing the current global project
+      // If we have originalSelectedProject, we'll return to that one instead
+      if (!originalSelectedProject) {
+        console.log('🔧 Save: Setting global project to updated project:', updatedProject);
+        console.log('🔧 Save: Current globalSelectedProject before update:', globalSelectedProject);
+        setGlobalSelectedProject(updatedProject);
+
+        // Verify the structure is compatible
+        console.log('🔧 Save: Updated project structure check:', {
+          id: updatedProject.id,
+          name: updatedProject.name,
+          hasRequiredFields: !!(updatedProject.id && updatedProject.name)
+        });
+      } else {
+        console.log('🔧 Save: Will return to original project, not updating global yet');
+      }
+
+      // Mark this as a recent update to prevent loadProjects from overriding it
+      window.lastProjectUpdate = Date.now();
+
+      // Debug: Check if global project was actually set
+      setTimeout(() => {
+        console.log('🔧 Save: Global project after timeout:', globalSelectedProject);
+      }, 100);
 
       // If ownership was transferred, exit edit mode since user is no longer owner
       if (editForm.new_owner_id) {
@@ -206,20 +258,47 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           name: updatedProject.name,
           description: updatedProject.description || '',
           join_code: updatedProject.join_code || '',
+          is_public: updatedProject.is_public,
           new_owner_id: null
         });
         setSuccess('Project updated successfully');
       }
       
       // Update the projects array in state to reflect the changes in the table
-      setProjects(prevProjects => 
-        prevProjects.map(p => 
+      setProjects(prevProjects =>
+        prevProjects.map(p =>
           p.id === updatedProject.id ? updatedProject : p
         )
       );
-      
+
       setIsEditing(false);
       setSuccess('Project updated successfully');
+
+      // Make sure global project stays updated even if external forces try to change it
+      // But only if we're not returning to an original project
+      if (!originalSelectedProject) {
+        setTimeout(() => {
+          if (globalSelectedProject?.id === updatedProject.id) {
+            setGlobalSelectedProject(updatedProject);
+          }
+        }, 200);
+      }
+
+      // Return to the originally selected project after editing
+      if (originalSelectedProject) {
+        console.log('🔄 Save: Returning to original project:', originalSelectedProject);
+        // Find the current version of the original project from the projects list
+        const currentVersionOfOriginalProject = projects.find(p => p.id === originalSelectedProject.id);
+        const projectToSelect = currentVersionOfOriginalProject || originalSelectedProject;
+        console.log('🔄 Save: Project to select:', projectToSelect);
+
+        setGlobalSelectedProject(projectToSelect);
+        setCurrentProject(projectToSelect);
+        setOriginalSelectedProject(null);
+        console.log('🔄 Save: Set global and current project to original');
+      } else {
+        console.log('🔄 Save: No original project to return to');
+      }
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating project');
@@ -232,12 +311,31 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     setIsEditing(false);
     setError('');
     setSuccess('');
+
+    // Return to the originally selected project after canceling edit
+    if (originalSelectedProject) {
+      // Find the current version of the original project from the projects list
+      const currentVersionOfOriginalProject = projects.find(p => p.id === originalSelectedProject.id);
+      const projectToSelect = currentVersionOfOriginalProject || originalSelectedProject;
+
+      setGlobalSelectedProject(projectToSelect);
+      setCurrentProject(projectToSelect);
+      setOriginalSelectedProject(null);
+    }
   };
 
   const handleCreateProject = async () => {
     setCreating(true);
     setError('');
     setSuccess('');
+
+    // Frontend validation first
+    const namePattern = /^[a-z0-9]+(_[a-z0-9]+)*$/;
+    if (!namePattern.test(createForm.name)) {
+      setError('Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024');
+      setCreating(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('access_token');
@@ -260,17 +358,31 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         
         // Handle Laravel validation errors
         if (errorData.errors && errorData.errors.name) {
-          throw new Error(errorData.errors.name[0]);
+          // Check if it's a regex validation error and provide better message
+          const backendError = errorData.errors.name[0];
+          if (backendError.includes('regex') || backendError.includes('format')) {
+            throw new Error('Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024');
+          }
+          throw new Error(backendError);
         }
-        
+
         throw new Error(errorData.message || 'Failed to create project');
       }
 
-      await response.json();
-      
-      // Refresh the projects list
-      await loadProjects();
-      
+      const newProject = await response.json();
+
+      // Remember if there was no project selected before (for auto-selection)
+      const wasNoProjectSelected = !globalSelectedProject;
+
+      // Set the new project as preferred if no project was selected before
+      if (wasNoProjectSelected && newProject) {
+        console.log('🎯 Setting newly created project as preferred for auto-selection:', newProject.name);
+        setPreferredProject(newProject);
+      }
+
+      // Refresh the projects list (this will auto-select the preferred project)
+      await loadProjectsFromContext();
+
       setShowCreateModal(false);
       setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
       setSuccess('Project created successfully');
@@ -285,7 +397,8 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const handleCreateModalHide = () => {
     setShowCreateModal(false);
     setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
-    setError('');
+    setError(''); // Clear errors when modal closes
+    setSuccess('');
   };
 
   const handleDeleteProject = async () => {
@@ -314,7 +427,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       }
 
       // Refresh the projects list
-      await loadProjects();
+      await loadProjectsFromContext();
 
       setShowDeleteModal(false);
       setProjectToDelete(null);
@@ -337,140 +450,6 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     setShowDeleteModal(true);
   };
 
-  const openTeamsModal = async (project: Project) => {
-    setSelectedProject(project);
-    setShowTeamsModal(true);
-    setLoadingTeams(true);
-    setError('');
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      // Load available and assigned teams in parallel
-      const [availableRes, assignedRes] = await Promise.all([
-        fetch(`/api/projects/${project.id}/teams/available`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        }),
-        fetch(`/api/projects/${project.id}/teams/assigned`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        })
-      ]);
-
-      if (!availableRes.ok || !assignedRes.ok) {
-        console.error('API Response Error:', {
-          availableStatus: availableRes.status,
-          assignedStatus: assignedRes.status,
-          availableStatusText: availableRes.statusText,
-          assignedStatusText: assignedRes.statusText
-        });
-        throw new Error(`Failed to load teams (Available: ${availableRes.status}, Assigned: ${assignedRes.status})`);
-      }
-
-      const available = await availableRes.json();
-      const assigned = await assignedRes.json();
-
-      
-
-      setAvailableTeams(available);
-      setAssignedTeams(assigned);
-
-    } catch (err) {
-      console.error('Error in openTeamsModal:', err);
-      setError(err instanceof Error ? err.message : 'Error loading teams');
-    } finally {
-      setLoadingTeams(false);
-    }
-  };
-
-  const handleAssignTeams = async () => {
-    if (!selectedProject || selectedTeamIds.length === 0) return;
-
-    setAssigningTeams(true);
-    setError('');
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/projects/${selectedProject.id}/teams/assign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          team_ids: selectedTeamIds
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to assign teams');
-      }
-
-      // Refresh teams data
-      await openTeamsModal(selectedProject);
-      setSelectedTeamIds([]);
-      setSuccess('Teams assigned successfully');
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error assigning teams');
-    } finally {
-      setAssigningTeams(false);
-    }
-  };
-
-  const handleRemoveTeam = async (teamId: number) => {
-    if (!selectedProject) return;
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/projects/${selectedProject.id}/teams/${teamId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to remove team');
-      }
-
-      // Refresh teams data
-      await openTeamsModal(selectedProject);
-      setSuccess('Team removed successfully');
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error removing team');
-    }
-  };
-
-  const handleTeamsModalHide = () => {
-    setShowTeamsModal(false);
-    setSelectedProject(null);
-    setAvailableTeams([]);
-    setAssignedTeams([]);
-    setSelectedTeamIds([]);
-    setError('');
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('de-DE', {
@@ -480,6 +459,145 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Load teams data for project overview
+  const loadTeamsForProject = async (projectId: number) => {
+    setLoadingTeamsData(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/teams?all=true`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load teams');
+      }
+
+      const data = await response.json();
+
+      // Filter teams for this project and build tree structure
+      const allTeams = [...(data.owned_teams || []), ...(data.member_teams || [])];
+      const projectTeams = allTeams.filter(team => team.project_id === projectId);
+
+      // Build tree structure for classic TreeView
+      const treeData = projectTeams.map(team => ({
+        id: `team-${team.id}`,
+        name: `${team.name} (${team.members?.length || 0} members)`,
+        type: 'team',
+        children: team.members?.map((member: any) => ({
+          id: `member-${team.id}-${member.id}`,
+          name: `${member.user.name} (${member.role})`,
+          type: 'member',
+          memberRole: member.role
+        })) || []
+      }));
+
+      setProjectTeamsTree(treeData);
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      setProjectTeamsTree([]);
+    } finally {
+      setLoadingTeamsData(false);
+    }
+  };
+
+  const loadSchemasForProject = async (projectId: number) => {
+    setLoadingSchemasData(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/projects/${projectId}/schemas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load schemas');
+      }
+
+      const projectSchemas = await response.json();
+
+      // Build tree structure for schemas (ClassicTreeView format)
+      const treeData = projectSchemas.map((schema: any) => ({
+        id: `schema-${schema.id}`,
+        name: `${schema.name}${schema.version_number ? ` (v${schema.version_number})` : schema.version ? ` (v${schema.version})` : ''}`,
+        type: 'schema',
+        children: schema.tables?.map((table: any) => ({
+          id: `table-${schema.id}-${table.id}`,
+          name: `${table.name} (${table.field_count || table.fields?.length || 0} fields)`,
+          type: 'table'
+        })) || []
+      }));
+
+      setProjectSchemasTree(treeData);
+    } catch (error) {
+      console.error('Error loading schemas:', error);
+      setProjectSchemasTree([]);
+    } finally {
+      setLoadingSchemasData(false);
+    }
+  };
+
+  const loadTemplatesForProject = async (projectId: number) => {
+    setLoadingTemplatesData(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/projects/${projectId}/template-usages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load templates: ${response.status}`);
+      }
+
+      const projectTemplates = await response.json();
+
+      // Extract templates from usages array (API returns {usages: [], linked_count: 0, cloned_count: 0})
+      const templatesArray = projectTemplates.usages || [];
+
+      // Build tree structure for templates (ClassicTreeView format)
+      // Note: API returns usage objects with nested template data
+      const treeData = templatesArray.map((usage: any) => {
+        const template = usage.template; // Extract nested template object
+        return {
+          id: `template-${template.id}`,
+          name: `${template.name} (${template.category || 'template'})`,
+          type: 'template',
+          children: template.files?.map((file: any) => ({
+            id: `file-${template.id}-${file.id}`,
+            name: `${file.file_name} (${file.file_type})`,
+            type: 'template_file'
+          })) || []
+        };
+      });
+
+      setProjectTemplatesTree(treeData);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      setProjectTemplatesTree([]);
+    } finally {
+      setLoadingTemplatesData(false);
+    }
   };
 
   const statusTemplate = () => {
@@ -503,10 +621,18 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     return (
       <div className="flex space-x-1">
         <Button
-          icon="pi pi-users"
-          className="p-button-rounded p-button-text p-button-sm"
-          tooltip="Manage teams"
-          onClick={() => openTeamsModal(project)}
+          icon="pi pi-eye"
+          className="p-button-rounded p-button-sm"
+          style={{ backgroundColor: '#1976d2', borderColor: '#1976d2', color: 'white' }}
+          tooltip="Project Overview"
+          onClick={() => {
+            setSelectedProjectForOverview(project);
+            setShowProjectOverviewModal(true);
+            loadProjectMembers(project.id);
+            loadTeamsForProject(project.id);
+            loadSchemasForProject(project.id);
+            loadTemplatesForProject(project.id);
+          }}
         />
         <Button
           icon="pi pi-user"
@@ -514,7 +640,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           tooltip="Manage members"
           onClick={() => {
             
-            setSelectedProject(project);
+            setLocalSelectedProject(project);
             setShowMembersModal(true);
           }}
         />
@@ -523,8 +649,13 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Edit project"
           onClick={() => {
+            // Remember the currently selected project to return to after editing
+            setOriginalSelectedProject(globalSelectedProject);
+            // Set the project to edit
             setCurrentProject(project);
-            handleEdit();
+            setGlobalSelectedProject(project); // Temporarily update global context for header
+            // Pass the project directly to avoid race condition
+            handleEdit(project);
           }}
         />
         <Button
@@ -537,7 +668,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     );
   };
 
-  if (loading) {
+  if (contextLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -555,7 +686,14 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <i className="pi pi-briefcase text-2xl text-blue-600"></i>
-            <h1 className="text-2xl font-bold text-white">Project Management</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Project Management</h1>
+              {currentProject && (
+                <p className="text-sm text-gray-300">
+                  Current: <span className="text-blue-400 font-medium">{currentProject.name}</span>
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex space-x-2 gap-2">
             <Button
@@ -564,7 +702,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
               onClick={() => setShowCreateModal(true)}
-              disabled={loading}
+              disabled={contextLoading}
             />
             <Button
               icon="pi pi-sign-in"
@@ -572,15 +710,15 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
               onClick={() => setShowJoinCodeModal(true)}
-              disabled={loading}
+              disabled={contextLoading}
             />
             <Button
               icon="pi pi-refresh"
               label="Refresh"
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-              onClick={loadProjects}
-              disabled={loading}
+              onClick={loadProjectsFromContext}
+              disabled={contextLoading}
             />
           </div>
         </div>
@@ -611,7 +749,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                   <Button
                     icon="pi pi-pencil"
                     className="p-button-sm p-button-outlined"
-                    onClick={handleEdit}
+                    onClick={() => handleEdit()}
                     tooltip="Edit project"
                   />
                 )}
@@ -630,9 +768,15 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                       <InputText
                         value={editForm.name}
                         onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full"
-                        placeholder="Enter project name"
+                        className="w-full font-mono"
+                        placeholder="my_project_name"
                       />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Projekt-Namen werden später für URLs verwendet (username/project_name)
+                      </div>
+                      <div className="text-xs text-orange-400 mt-1">
+                        ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
+                      </div>
                     </div>
                     
                     <div className="field">
@@ -667,6 +811,23 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                         />
                       </div>
                       <small className="text-gray-500">Users can join this project using this code</small>
+                    </div>
+
+                    <div className="field">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="edit-is-public"
+                          checked={editForm.is_public}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, is_public: e.target.checked }))}
+                          disabled={saving}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                        />
+                        <label htmlFor="edit-is-public" className="text-sm font-medium text-gray-300">
+                          Public Project
+                        </label>
+                      </div>
+                      <small className="text-gray-500">Make this project visible to all users</small>
                     </div>
 
                     {currentProject?.is_owner && (
@@ -814,37 +975,44 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           <Card title="Quick Actions" className="h-fit">
             <div className="grid grid-cols-2 gap-3">
               <Button
-                label="Teams"
-                icon="pi pi-users"
-                className="p-button-outlined flex-col h-20"
-                onClick={() => currentProject && openTeamsModal(currentProject)}
-                disabled={!currentProject}
-              />
-              <Button
                 label="Applications"
                 icon="pi pi-user-plus"
-                className="p-button-outlined flex-col h-20"
+                className="p-button-outlined flex-col h-14"
                 onClick={() => setShowApplicationsModal(true)}
                 disabled={!currentProject || !currentProject.allow_join_requests}
               />
               <Button
+                label="Project Members"
+                icon="pi pi-users"
+                className="p-button-outlined flex-col h-14"
+                onClick={() => setShowMembersModal(true)}
+                disabled={!currentProject}
+              />
+              <Button
+                label="Teams Management"
+                icon="pi pi-users"
+                className="p-button-outlined flex-col h-14"
+                onClick={() => onOpenPanel?.('team-management', { title: `Teams - ${currentProject?.name}` })}
+                disabled={!currentProject || !onOpenPanel}
+              />
+              <Button
                 label="Invitations"
                 icon="pi pi-send"
-                className="p-button-outlined flex-col h-20"
+                className="p-button-outlined flex-col h-14"
                 onClick={() => setShowInvitationsModal(true)}
                 disabled={!currentProject}
               />
               <Button
                 label="Templates"
                 icon="pi pi-cog"
-                className="p-button-outlined flex-col h-20"
+                className="p-button-outlined flex-col h-14"
                 onClick={() => onOpenPanel?.('template-management', { title: `Templates - ${currentProject?.name}` })}
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
                 label="Database"
                 icon="pi pi-database"
-                className="p-button-outlined flex-col h-20"
+                className="p-button-outlined flex-col h-14"
                 onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}` })}
                 disabled={!currentProject || !onOpenPanel}
               />
@@ -914,12 +1082,21 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
             <InputText
               id="create-name"
               value={createForm.name}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter project name"
-              className="w-full"
+              onChange={(e) => {
+                setCreateForm(prev => ({ ...prev, name: e.target.value }));
+                setError(''); // Clear error when user types
+              }}
+              placeholder="my_project_name"
+              className="w-full font-mono"
               disabled={creating}
               required
             />
+            <div className="text-xs text-gray-400 mt-1">
+              Projekt-Namen werden später für URLs verwendet (username/project_name)
+            </div>
+            <div className="text-xs text-orange-400 mt-1">
+              ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
+            </div>
           </div>
 
           <div className="field">
@@ -939,13 +1116,15 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
           <div className="field">
             <div className="flex items-center space-x-2 mb-3">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="create-is-public"
                 checked={createForm.is_public}
-                onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.checked || false }))}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.target.checked }))}
                 disabled={creating}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               />
-              <label htmlFor="create-is-public" className="text-sm font-medium text-white">
+              <label htmlFor="create-is-public" className="text-sm font-medium text-white cursor-pointer">
                 Public Project
               </label>
             </div>
@@ -954,13 +1133,15 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
             </p>
 
             <div className="flex items-center space-x-2">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="create-allow-join"
                 checked={createForm.allow_join_requests}
-                onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.checked || false }))}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.target.checked }))}
                 disabled={creating}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               />
-              <label htmlFor="create-allow-join" className="text-sm font-medium text-white">
+              <label htmlFor="create-allow-join" className="text-sm font-medium text-white cursor-pointer">
                 Allow Join Requests
               </label>
             </div>
@@ -968,6 +1149,17 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
               Users can request to join this project using a join code.
             </p>
           </div>
+
+          {/* Error message in modal */}
+          {error && (
+            <div className="mt-4">
+              <Message
+                severity="error"
+                text={error}
+                className="w-full"
+              />
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
@@ -1035,195 +1227,12 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         </div>
       </Dialog>
 
-      {/* Teams Assignment Modal */}
-      <Dialog
-        header={`Manage Teams - ${selectedProject?.name || ''}`}
-        visible={showTeamsModal}
-        onHide={handleTeamsModalHide}
-        style={{ width: '800px' }}
-        modal
-        closable
-        draggable={false}
-        resizable={false}
-        className="p-dialog-custom"
-      >
-        <div className="space-y-4">
-          {loadingTeams ? (
-            <div className="flex items-center justify-center py-8">
-              <i className="pi pi-spinner pi-spin text-2xl text-blue-500"></i>
-            </div>
-          ) : (
-            <>
-              {/* Teams Table */}
-              <DataTable
-                key={`teams-table-${selectedTeamIds.join('-')}`}
-                value={[...assignedTeams, ...availableTeams]}
-                className="p-datatable-sm"
-                emptyMessage="No teams found"
-                paginator
-                rows={10}
-                rowsPerPageOptions={[5, 10, 20]}
-                header={
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold">Teams ({assignedTeams.length + availableTeams.length})</span>
-                    <div className="text-sm text-gray-500">
-                      {selectedTeamIds.length > 0 && `${selectedTeamIds.length} selected`}
-                    </div>
-                  </div>
-                }
-              >
-                <Column 
-                  headerStyle={{ width: '3rem' }}
-                  header={() => {
-                    const availableTeamIds = availableTeams.map(team => team.id);
-                    const allSelected = availableTeamIds.length > 0 && availableTeamIds.every(id => selectedTeamIds.includes(id));
-                    const someSelected = availableTeamIds.some(id => selectedTeamIds.includes(id));
-                    
-                    return (
-                      <Checkbox
-                        checked={allSelected}
-                        indeterminate={someSelected && !allSelected}
-                        onChange={(e) => {
-                          
-                          if (e.checked) {
-                            // Select all available teams
-                            setSelectedTeamIds(availableTeamIds);
-                          } else {
-                            // Deselect all
-                            setSelectedTeamIds([]);
-                          }
-                        }}
-                      />
-                    );
-                  }}
-                  body={(team) => {
-                    const isAssigned = assignedTeams.some(t => t.id === team.id);
-                    
-                    if (isAssigned) {
-                      // Show remove button for assigned teams
-                      return (
-                        <Button
-                          icon="pi pi-times"
-                          className="p-button-rounded p-button-text p-button-sm p-button-danger"
-                          tooltip="Remove from project"
-                          onClick={() => handleRemoveTeam(team.id)}
-                        />
-                      );
-                    } else {
-                      // Show checkbox for available teams
-                      const isChecked = selectedTeamIds.includes(team.id);
-                      
-                      
-                      return (
-                        <Checkbox
-                          checked={isChecked}
-                          onChange={(e) => {
-                            
-                            if (e.checked) {
-                              setSelectedTeamIds(prev => {
-                                const newIds = [...prev, team.id];
-                                
-                                return newIds;
-                              });
-                            } else {
-                              setSelectedTeamIds(prev => {
-                                const newIds = prev.filter(id => id !== team.id);
-                                
-                                return newIds;
-                              });
-                            }
-                          }}
-                        />
-                      );
-                    }
-                  }}
-                />
-                
-                <Column 
-                  field="name" 
-                  header="Team Name" 
-                  sortable
-                  body={(team) => {
-                    const isAssigned = assignedTeams.some(t => t.id === team.id);
-                    return (
-                      <div className="flex items-center space-x-2">
-                        <i className={`pi pi-users ${isAssigned ? 'text-green-600' : 'text-blue-600'}`}></i>
-                        <span className={isAssigned ? 'font-medium' : ''}>{team.name}</span>
-                        {isAssigned && <i className="pi pi-check-circle text-green-500 text-sm"></i>}
-                      </div>
-                    );
-                  }}
-                />
-                
-                <Column 
-                  field="description" 
-                  header="Description"
-                  body={(team) => {
-                    const description = team.description || 'No description';
-                    if (description.length <= 50) {
-                      return <span className="text-gray-600">{description}</span>;
-                    }
-                    
-                    return (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600">{description.substring(0, 47)}...</span>
-                        <Button
-                          icon="pi pi-info-circle"
-                          className="p-button-rounded p-button-text p-button-sm"
-                          tooltip={description}
-                        />
-                      </div>
-                    );
-                  }}
-                />
-                
-                <Column 
-                  field="status" 
-                  header="Status"
-                  body={(team) => {
-                    const isAssigned = assignedTeams.some(t => t.id === team.id);
-                    return (
-                      <Tag 
-                        value={isAssigned ? 'Assigned' : 'Available'} 
-                        severity={isAssigned ? 'success' : 'info'}
-                      />
-                    );
-                  }}
-                />
-              </DataTable>
-
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-500">
-                  {assignedTeams.length} assigned • {availableTeams.length} available
-                  {selectedTeamIds.length > 0 && ` • ${selectedTeamIds.length} selected for assignment`}
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    label="Cancel"
-                    icon="pi pi-times"
-                    onClick={handleTeamsModalHide}
-                    className="p-button-text"
-                    disabled={assigningTeams}
-                  />
-                  <Button
-                    label={assigningTeams ? "Assigning..." : `Assign Selected (${selectedTeamIds.length})`}
-                    icon={assigningTeams ? "pi pi-spinner pi-spin" : "pi pi-check"}
-                    onClick={handleAssignTeams}
-                    disabled={assigningTeams || selectedTeamIds.length === 0}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </Dialog>
 
       {/* Join Code Modal */}
       <JoinCodeModal
         visible={showJoinCodeModal}
         onHide={() => setShowJoinCodeModal(false)}
-        onSuccess={loadProjects}
+        onSuccess={loadProjectsFromContext}
       />
 
       {/* Applications Modal */}
@@ -1238,15 +1247,194 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         visible={showInvitationsModal}
         onHide={() => setShowInvitationsModal(false)}
         project={currentProject}
-        onSuccess={loadProjects}
+        onSuccess={loadProjectsFromContext}
       />
 
       {/* Project Members Modal */}
       <ProjectMembersModal
         visible={showMembersModal}
         onHide={() => setShowMembersModal(false)}
-        project={selectedProject}
+        project={currentProject}
       />
+
+      {/* Project Overview Modal */}
+      <Dialog
+        header={`Project Overview: ${selectedProjectForOverview?.name || ''}`}
+        visible={showProjectOverviewModal}
+        onHide={() => setShowProjectOverviewModal(false)}
+        style={{ width: '800px' }}
+        modal
+        className="p-fluid"
+      >
+        {selectedProjectForOverview && (
+          <div className="space-y-6">
+            {/* Project Properties */}
+            <div className="bg-gray-50 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800">📋 Project Properties</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-medium text-gray-700">Name:</span>
+                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.name}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Owner:</span>
+                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.owner.name}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Created:</span>
+                  <span className="ml-2 text-gray-900">{formatDate(selectedProjectForOverview.created_at)}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Join Code:</span>
+                  <span className="ml-2 text-blue-600 font-mono">{selectedProjectForOverview.join_code || 'None'}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="font-medium text-gray-700">Description:</span>
+                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.description || 'No description'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Project Members Section */}
+            <div className="bg-indigo-50 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-indigo-800">👤 Project Members</h3>
+              {loadingMembersData ? (
+                <div className="flex items-center justify-center py-4">
+                  <i className="pi pi-spinner pi-spin text-indigo-600 mr-2"></i>
+                  <span className="text-indigo-700">Loading members...</span>
+                </div>
+              ) : projectMembers.length > 0 ? (
+                <div className="bg-white p-3 rounded border" style={{ maxHeight: '200px', overflow: 'auto' }}>
+                  <div className="space-y-2">
+                    {projectMembers.map((member, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <i className="pi pi-user text-indigo-600"></i>
+                          <div>
+                            <div className="font-medium text-gray-900">{member.user?.name || 'Unknown User'}</div>
+                            <div className="text-sm text-gray-600">{member.user?.email || 'No email'}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            member.role === 'owner' ? 'bg-purple-100 text-purple-800' :
+                            member.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {member.role || 'Member'}
+                          </span>
+                          {member.joined_at && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Joined: {new Date(member.joined_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-600 italic text-center p-4">
+                  <i className="pi pi-users mr-2"></i>
+                  No project members loaded yet.
+                </div>
+              )}
+            </div>
+
+            {/* Teams Section with TreeView */}
+            <div className="bg-blue-50 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-blue-800">👥 Teams & Members</h3>
+              {loadingTeamsData ? (
+                <div className="flex items-center justify-center py-4">
+                  <i className="pi pi-spinner pi-spin text-blue-600 mr-2"></i>
+                  <span className="text-blue-700">Loading teams...</span>
+                </div>
+              ) : projectTeamsTree.length > 0 ? (
+                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                  <ClassicTreeView
+                    data={projectTeamsTree}
+                    onNodeClick={(node) => console.log('Node clicked:', node)}
+                  />
+                </div>
+              ) : (
+                <div className="text-gray-600 italic">
+                  <i className="pi pi-info-circle mr-2"></i>
+                  No teams assigned to this project yet.
+                </div>
+              )}
+            </div>
+
+            {/* Database Schemas Section */}
+            <div className="bg-green-50 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-green-800">🗄️ Database Schemas</h3>
+              {loadingSchemasData ? (
+                <div className="flex items-center justify-center p-4">
+                  <i className="pi pi-spin pi-spinner mr-2"></i>
+                  <span>Loading schemas...</span>
+                </div>
+              ) : projectSchemasTree.length > 0 ? (
+                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                  <ClassicTreeView
+                    data={projectSchemasTree}
+                    onNodeClick={(node) => console.log('Schema node clicked:', node)}
+                  />
+                </div>
+              ) : (
+                <div className="text-gray-600 italic text-center p-4">
+                  No database schemas linked to this project yet.
+                </div>
+              )}
+            </div>
+
+            {/* Templates Section */}
+            <div className="bg-purple-50 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-purple-800">📄 Linked Templates</h3>
+              {loadingTemplatesData ? (
+                <div className="flex items-center justify-center p-4">
+                  <i className="pi pi-spin pi-spinner mr-2"></i>
+                  <span>Loading templates...</span>
+                </div>
+              ) : projectTemplatesTree.length > 0 ? (
+                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                  <ClassicTreeView
+                    data={projectTemplatesTree}
+                    onNodeClick={(node) => console.log('Template node clicked:', node)}
+                  />
+                </div>
+              ) : (
+                <div className="text-gray-600 italic text-center p-4">
+                  No templates linked to this project yet.
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end items-center pt-4 border-t border-gray-200">
+              <div className="flex gap-2">
+                <Button
+                  label="Close"
+                  icon="pi pi-times"
+                  className="p-button-text"
+                  onClick={() => setShowProjectOverviewModal(false)}
+                />
+              <Button
+                label="Manage Project"
+                icon="pi pi-cog"
+                className="min-w-fit whitespace-nowrap"
+                onClick={() => {
+                  setShowProjectOverviewModal(false);
+                  // Switch to current project and start editing
+                  setOriginalSelectedProject(globalSelectedProject);
+                  setCurrentProject(selectedProjectForOverview);
+                  setGlobalSelectedProject(selectedProjectForOverview);
+                  handleEdit(selectedProjectForOverview);
+                }}
+              />
+              </div>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

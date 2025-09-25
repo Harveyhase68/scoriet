@@ -52,7 +52,11 @@ interface Team {
   created_at: string;
   updated_at: string;
   project_owner_id: number;
-  project_name: string;
+  project_id: number;
+  project?: {
+    id: number;
+    name: string;
+  };
   owner: {
     id: number;
     name: string;
@@ -100,7 +104,7 @@ export default function TeamManagementPanel() {
       }
 
       const data = await response.json();
-      
+
       // Teams API returns { owned_teams: [], member_teams: [] }
       let teamsArray = [];
       if (data.owned_teams || data.member_teams) {
@@ -110,10 +114,9 @@ export default function TeamManagementPanel() {
       } else if (Array.isArray(data)) {
         teamsArray = data;
       }
-      
+
       setTeams(teamsArray);
     } catch (error) {
-      console.error('Error loading teams:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -171,7 +174,7 @@ export default function TeamManagementPanel() {
 
           loadTeams();
         } catch (error) {
-          console.error('Error deleting team:', error);
+          // Error deleting team
           toast.current?.show({
             severity: 'error',
             summary: 'Error',
@@ -276,7 +279,7 @@ export default function TeamManagementPanel() {
     return (
       <div className="flex items-center gap-2">
         <i className="pi pi-briefcase text-gray-500"></i>
-        <span>{team.project_name || 'Default'}</span>
+        <span>{team.project?.name || 'No Project'}</span>
       </div>
     );
   };
@@ -391,7 +394,7 @@ export default function TeamManagementPanel() {
                   className="w-24"
                 />
                 <Column
-                  field="project_name"
+                  field="project.name"
                   header="Project"
                   body={projectBodyTemplate}
                   sortable

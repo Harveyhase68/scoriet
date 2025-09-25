@@ -4,6 +4,155 @@
 @import 'primereact/resources/primereact.css';
 @import './auth-modals.css';
 
+/* Fix Ant Design placeholder text colors for dark theme */
+.ant-select-selector .ant-select-selection-placeholder,
+.ant-input::placeholder {
+  color: #9ca3af !important;
+}
+
+.ant-select-selection-placeholder {
+  color: #9ca3af !important;
+}
+
+/* Fix Ant Design form labels for dark theme */
+.ant-form-item-label > label {
+  color: #e5e7eb !important;
+}
+
+/* Fix Ant Design Input addon (like "Pfad:") text color for dark theme */
+.ant-input-group-addon {
+  color: #e5e7eb !important;
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+/* React Accessible TreeView Styles - Classic Windows Style */
+.tree {
+  --tree-line-color: #9ca3af;
+  --tree-bg-color: transparent;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.tree-node {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.tree-node:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.tree-node_selected {
+  background-color: #dbeafe !important;
+  border-radius: 4px;
+}
+
+/* Classic TreeView Lines */
+.tree-node-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+}
+
+/* Vertical line for parent nodes */
+.tree-node-content::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--tree-line-color);
+}
+
+/* Horizontal line connecting to content */
+.tree-node-content::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  background-color: var(--tree-line-color);
+}
+
+/* Root level - no lines */
+.tree-level-1 .tree-node-content::before,
+.tree-level-1 .tree-node-content::after {
+  display: none;
+}
+
+/* Branch connector styles */
+.tree-branch {
+  position: relative;
+}
+
+.tree-branch::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 50%;
+  width: 1px;
+  background-color: var(--tree-line-color);
+}
+
+.tree-branch::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background-color: var(--tree-line-color);
+}
+
+/* Last child - L-shaped connector */
+.tree-branch.tree-last::before {
+  bottom: 100%;
+}
+
+/* Expand/collapse buttons */
+.tree-expand-button {
+  position: relative;
+  z-index: 1;
+  background: white;
+  border: 1px solid var(--tree-line-color);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+/* Hide checkboxes in TreeView */
+.tree input[type="checkbox"],
+.tree-node input[type="checkbox"],
+.tree-checkbox,
+.tree-view-container input[type="checkbox"],
+.tree-view-container .p-checkbox {
+  display: none !important;
+}
+
+/* Hide any checkbox-related elements */
+.tree .p-checkbox,
+.tree-node .p-checkbox,
+.tree-view-container .p-checkbox {
+  display: none !important;
+}
+
+/* Hide all checkboxes in project overview modal */
+.p-dialog .p-checkbox {
+  display: none !important;
+}
+
 /* ==============================================
    FONT CONFIGURATION - Tailwind 4.0 Style
    ============================================== */
@@ -236,4 +385,159 @@ html {
     background: rgba(239, 68, 68, 0.1) !important; /* bg-red-500/10 */
     border: 1px solid rgba(239, 68, 68, 0.3) !important;
     color: #fca5a5 !important; /* text-red-300 */
+}
+
+/* ==============================================
+   DIALOG DARK THEME WITH BLUE/VIOLET GRADIENT
+   ============================================== */
+
+/* Dialog Header with Blue/Violet Gradient - Override Arya-Blue Theme */
+.p-dialog .p-dialog-header {
+    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    background-color: transparent !important;
+    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    color: white !important;
+    border-bottom: 1px solid #4b5563 !important;
+}
+
+/* Even more specific - override any theme */
+html body .p-dialog-mask .p-dialog .p-dialog-header,
+html body .p-component .p-dialog .p-dialog-header,
+html body div.p-dialog .p-dialog-header,
+html body .p-dialog.p-dialog .p-dialog-header,
+html body .p-dialog .p-dialog-header.p-dialog-header {
+    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    background-color: transparent !important;
+    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    color: white !important;
+    border-bottom: 1px solid #4b5563 !important;
+}
+
+/* Arya-Blue theme specific override */
+.p-theme-arya-blue .p-dialog .p-dialog-header {
+    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    background-color: transparent !important;
+    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
+    color: white !important;
+}
+
+/* Dialog Content Dark Theme */
+.p-dialog .p-dialog-content {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    padding-top: 1.5rem !important; /* More space from header */
+    padding-bottom: 1.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+
+/* Dialog Footer Dark Theme */
+.p-dialog .p-dialog-footer {
+    background-color: #1f2937 !important;
+    border-top: 1px solid #4b5563 !important;
+}
+
+/* Dialog Mask/Overlay Dark Theme */
+.p-dialog-mask {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Input Elements in Dialogs */
+.p-dialog .p-inputtext {
+    background-color: #374151 !important;
+    border: 1px solid #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+.p-dialog .p-inputtext:focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25) !important;
+}
+
+.p-dialog .p-inputtextarea {
+    background-color: #374151 !important;
+    border: 1px solid #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+.p-dialog .p-inputtextarea:focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Dropdown in Dialogs */
+.p-dialog .p-dropdown {
+    background-color: #374151 !important;
+    border: 1px solid #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+.p-dialog .p-dropdown:focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25) !important;
+}
+
+.p-dialog .p-dropdown-label {
+    color: #f3f4f6 !important;
+}
+
+/* Checkbox in Dialogs */
+.p-dialog .p-checkbox .p-checkbox-box {
+    background-color: #374151 !important;
+    border: 1px solid #4b5563 !important;
+}
+
+.p-dialog .p-checkbox .p-checkbox-box.p-highlight {
+    background-color: #7c3aed !important;
+    border-color: #7c3aed !important;
+}
+
+/* DataTable in Dialogs Dark Theme */
+.p-dialog .p-datatable .p-datatable-header {
+    background-color: #374151 !important;
+    color: #f3f4f6 !important;
+    border: 1px solid #4b5563 !important;
+}
+
+.p-dialog .p-datatable .p-datatable-thead > tr > th {
+    background-color: #4b5563 !important;
+    color: #f3f4f6 !important;
+    border: 1px solid #6b7280 !important;
+}
+
+.p-dialog .p-datatable .p-datatable-tbody > tr {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+}
+
+.p-dialog .p-datatable .p-datatable-tbody > tr:nth-child(even) {
+    background-color: #374151 !important;
+}
+
+.p-dialog .p-datatable .p-datatable-tbody > tr > td {
+    border: 1px solid #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+.p-dialog .p-datatable .p-datatable-tbody > tr:hover {
+    background-color: #4b5563 !important;
+}
+
+/* ==============================================
+   SPECIFIC MODAL CONTENT SPACING
+   ============================================== */
+
+/* Info message spacing in MemberModal */
+.p-dialog .p-dialog-content > div:first-child {
+    margin-top: 0.5rem !important;
+}
+
+/* Form spacing in dialogs */
+.p-dialog .p-dialog-content form {
+    margin-top: 0.5rem !important;
+}
+
+/* First element in dialog content gets extra top margin */
+.p-dialog .p-dialog-content > *:first-child {
+    margin-top: 0.5rem !important;
 }

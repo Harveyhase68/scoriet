@@ -1,11 +1,13 @@
 //resources/js/pages/Index.tsx
-import React, { useRef, useState, useCallback, lazy, Suspense } from 'react';
+import React, { useRef, useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Head } from '@inertiajs/react';
 import { DockLayout } from 'rc-dock';
 import "rc-dock/dist/rc-dock.css";
-import { ExpandOutlined, CompressOutlined, CloseOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { ExpandOutlined, CompressOutlined, CloseOutlined, CaretDownOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { ErrorBoundary } from 'react-error-boundary';
 import { TabContentProps } from '@/types';
+import ErrorFallback from '@/Components/ErrorFallback';
 
 // Always-loaded components (small and critical)
 import NewNavigationPanel from '@/Components/Panels/NewNavigationPanel';
@@ -36,6 +38,12 @@ import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthMod
 // Pending Invitation Modal
 const PendingInvitationModal = lazy(() => import('@/Components/Modals/PendingInvitationModal'));
 
+// SQL Import Modal
+const SqlImportModal = lazy(() => import('@/Components/SqlImportModal'));
+
+// Database Export Modal
+const DatabaseExportModal = lazy(() => import('@/Components/DatabaseExportModal'));
+
 // Project Context
 import { ProjectProvider } from '@/contexts/ProjectContext';
 
@@ -62,28 +70,10 @@ const icons = {
   restore: <CompressOutlined style={{ fontSize: '12px' }} />,
   close: <CloseOutlined style={{ fontSize: '12px' }} />,
   more: <CaretDownOutlined style={{ fontSize: '9px' }} />,
+  closeAll: <DeleteOutlined style={{ fontSize: '12px', color: '#ff4d4f' }} />,
 };
 
-// Group definition - only for movable panels
-const groups = {
-  'card custom': {
-    floatable: true,
-    closable: true,
-    panelExtra: (panelData: any, context: any) => {
-      return (
-        <>
-          <span
-            className='my-panel-extra-btn'
-            onClick={() => context.dockMove(panelData, null, 'maximize')}
-            style={{ cursor: 'pointer', padding: '4px' }}
-          >
-            {panelData.parent.mode === 'maximize' ? icons.restore : icons.maximize}
-          </span>
-        </>
-      );
-    }
-  }
-};
+// Group definition will be moved inside the component
 
 // EMPTY LAYOUT - starts without panels
 const initialLayout: any = {
@@ -234,7 +224,7 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
     case 'project':
       return {
         id,
-        title: data.title || 'Project',
+        title: data.title || 'Project Management',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectPanel isActive={true} onOpenPanel={openPanelFn} />
@@ -513,6 +503,12 @@ export default function Index(props: IndexProps = {}) {
     return !!(localToken || sessionToken);
   });
   const [hasAutoOpenedHome, setHasAutoOpenedHome] = useState<boolean>(false);
+
+  // SQL Import Modal state
+  const [showSqlImportModal, setShowSqlImportModal] = useState<boolean>(false);
+
+  // Database Export Modal state
+  const [showDatabaseExportModal, setShowDatabaseExportModal] = useState<boolean>(false);
   const [showPendingInvitation, setShowPendingInvitation] = useState(false);
 
 
@@ -557,8 +553,16 @@ export default function Index(props: IndexProps = {}) {
   // Check for pending invitations
   const checkPendingInvitation = useCallback(async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
-      if (!accessToken) return;
+      // Multiple auth checks to prevent race conditions
+      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!accessToken) {
+        return;
+      }
+
+      // Additional guard: only check if we're actually authenticated
+      if (!isAuthenticated) {
+        return;
+      }
 
       const response = await fetch('/api/my-pending-invitation', {
         headers: {
@@ -567,16 +571,17 @@ export default function Index(props: IndexProps = {}) {
         }
       });
 
-      if (response.ok) {
+      // Only process if response is OK and we're still authenticated
+      if (response.ok && isAuthenticated) {
         const invitation = await response.json();
         if (invitation && invitation.status === 'pending') {
           setShowPendingInvitation(true);
         }
       }
     } catch (error) {
-      console.error('Error checking pending invitation:', error);
+      // Silently handle errors (e.g., 404 when not authenticated)
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Initial setup for Reset Password
   React.useEffect(() => {
@@ -598,6 +603,16 @@ export default function Index(props: IndexProps = {}) {
       const sessionToken = sessionStorage.getItem('access_token');
       const token = localToken || sessionToken;
 
+      // If no token at all, immediately set as not authenticated and show login
+      if (!token) {
+        setIsAuthenticated(false);
+        if (window.location.pathname === '/app') {
+          // User is on /app but has no token - redirect to home
+          window.location.href = '/';
+        }
+        return;
+      }
+
       if (token) {
         try {
           // Validate token with API call
@@ -614,9 +629,12 @@ export default function Index(props: IndexProps = {}) {
               setIsAuthenticated(true);
 
               // Check for pending invitations if just became authenticated
+              // Add delay to ensure all auth state is stable
               setTimeout(() => {
-                checkPendingInvitation();
-              }, 500);
+                if (isAuthenticated && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
+                  checkPendingInvitation();
+                }
+              }, 1000);
             }
 
             // Close login modal if authenticated (but keep other modals open)
@@ -645,7 +663,6 @@ export default function Index(props: IndexProps = {}) {
             window.dispatchEvent(new Event('auth-change'));
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
           // Network error or other issue - clean up tokens and set unauthenticated
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
@@ -768,6 +785,94 @@ export default function Index(props: IndexProps = {}) {
           "children": []
         }
       });
+    }
+  };
+
+  // Function to close all tabs except protected ones
+  const closeAllTabs = () => {
+    if (!ref.current) return;
+
+    const currentLayout = ref.current.saveLayout();
+    const protectedTabs = ['navigation', 't1', 'protect1'];
+
+    const removeTabsFromNode = (node: any): any => {
+      if (node.tabs && Array.isArray(node.tabs)) {
+        // Filter out non-protected tabs
+        const filteredTabs = node.tabs.filter((tab: any) =>
+          protectedTabs.includes(tab.id)
+        );
+
+        return {
+          ...node,
+          tabs: filteredTabs,
+          activeId: filteredTabs.length > 0 ? filteredTabs[0].id : undefined
+        };
+      }
+
+      if (node.children) {
+        const filteredChildren = node.children
+          .map((child: any) => removeTabsFromNode(child))
+          .filter((child: any) => {
+            // Keep nodes that have tabs or children
+            return (child.tabs && child.tabs.length > 0) ||
+                   (child.children && child.children.length > 0);
+          });
+
+        return {
+          ...node,
+          children: filteredChildren
+        };
+      }
+
+      return node;
+    };
+
+    const newLayout = {
+      ...currentLayout,
+      dockbox: removeTabsFromNode(currentLayout.dockbox),
+      floatbox: removeTabsFromNode(currentLayout.floatbox),
+      windowbox: removeTabsFromNode(currentLayout.windowbox),
+      maxbox: removeTabsFromNode(currentLayout.maxbox)
+    };
+
+    setLayout(newLayout);
+  };
+
+  // Group definition - only for movable panels (moved inside component for closeAllTabs access)
+  const groups = {
+    'card custom': {
+      floatable: true,
+      closable: true,
+      panelExtra: (panelData: any, context: any) => {
+        // DEBUG: Show Close All button in every tab + log the tab ID
+        console.log('Tab ID:', panelData.id, 'Title:', panelData.title);
+        const showCloseAllButton = true; // panelData.id === 'project';
+
+        return (
+          <>
+            <span
+              className='my-panel-extra-btn'
+              onClick={() => context.dockMove(panelData, null, 'maximize')}
+              style={{ cursor: 'pointer', padding: '4px' }}
+            >
+              {panelData.parent.mode === 'maximize' ? icons.restore : icons.maximize}
+            </span>
+            {showCloseAllButton && (
+              <span
+                className='my-panel-extra-btn'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeAllTabs();
+                }}
+                style={{ cursor: 'pointer', padding: '4px' }}
+                title="Close All Tabs"
+              >
+                {icons.closeAll}
+              </span>
+            )}
+          </>
+        );
+      }
     }
   };
 
@@ -938,6 +1043,39 @@ export default function Index(props: IndexProps = {}) {
     }
   }, [isAuthenticated, activeModal, openPanel, hasAutoOpenedHome]);
 
+  // Listen for notification bell click to open Applications Modal via ProjectPanel
+  useEffect(() => {
+    const handleOpenApplicationsModal = () => {
+      console.log('📧 Index: Received openApplicationsModal event, opening ProjectPanel and Applications modal');
+
+      // First, ensure ProjectPanel is open
+      openPanel('project');
+
+      // Multiple attempts to trigger the modal - try different timings
+      const tryTriggerModal = (attempt: number) => {
+        console.log(`📧 Index: Attempt ${attempt} - Dispatching openApplicationsModalInPanel event`);
+        const event = new CustomEvent('openApplicationsModalInPanel', {
+          detail: { fromTopBar: true, attempt }
+        });
+        window.dispatchEvent(event);
+
+        // If this is the first few attempts, try again in case the panel isn't ready yet
+        if (attempt < 3) {
+          setTimeout(() => tryTriggerModal(attempt + 1), 200);
+        }
+      };
+
+      // Start the first attempt after initial delay
+      setTimeout(() => tryTriggerModal(1), 300);
+    };
+
+    window.addEventListener('openApplicationsModal', handleOpenApplicationsModal as EventListener);
+
+    return () => {
+      window.removeEventListener('openApplicationsModal', handleOpenApplicationsModal as EventListener);
+    };
+  }, [openPanel]);
+
   // Helper function to clean layout for export
   const cleanLayoutForExport = (layout: any) => {
     const cleanLayout = JSON.parse(JSON.stringify(layout));
@@ -1080,6 +1218,68 @@ useHotkeys('alt+n', () => {
     }
   });
 
+  // Function to find the active tab in the current layout
+  const findActiveTab = useCallback(() => {
+    if (!ref.current) return null;
+
+    const currentLayout = ref.current.saveLayout();
+
+    const findActiveInNode = (node: any): string | null => {
+      if (node.tabs && Array.isArray(node.tabs)) {
+        // Find the active tab in this tabset
+        for (const tab of node.tabs) {
+          if (tab.id && node.activeId === tab.id) {
+            return tab.id;
+          }
+        }
+      }
+
+      // Search children
+      if (node.children) {
+        for (const child of node.children) {
+          const activeTab = findActiveInNode(child);
+          if (activeTab) return activeTab;
+        }
+      }
+
+      return null;
+    };
+
+    return findActiveInNode(currentLayout?.dockbox);
+  }, []);
+
+  // ESC to close active tab
+  useHotkeys('escape', () => {
+    // Check if there are any open modals first
+    const hasOpenModal = document.querySelector('.p-dialog:not([style*="display: none"])') ||
+                        document.querySelector('.ant-modal:not(.ant-modal-hidden)');
+
+    if (hasOpenModal) {
+      // If there's an open modal, let it handle the ESC key
+      return;
+    }
+
+    // Find and close the active tab if no modals are open
+    if (ref.current) {
+      const activeTabId = findActiveTab();
+
+      if (activeTabId) {
+        const activeTab = ref.current.find(activeTabId);
+
+        if (activeTab && activeTab.parent) {
+          // Don't close protected tabs (like navigation)
+          const protectedTabs = ['navigation', 't1', 'protect1'];
+
+          if (!protectedTabs.includes(activeTabId)) {
+            ref.current.dockMove(activeTab, null, 'remove');
+          }
+        }
+      }
+    }
+  }, {
+    enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT']  // Allow ESC even when focused on form elements
+  });
+
   const onLayoutChange = useCallback((newLayout: any, currentTabId?: string, direction?: string) => {
     if (currentTabId === 'protect1' && direction === 'remove') {
       alert('Removal of this tab is rejected!');
@@ -1128,12 +1328,43 @@ useHotkeys('alt+n', () => {
     setActiveModal(modalType);
   };
 
+  // SQL Import Modal handlers
+  const handleOpenSqlImport = () => {
+    setShowSqlImportModal(true);
+  };
+
+  const handleCloseSqlImport = () => {
+    setShowSqlImportModal(false);
+  };
+
+  const handleSqlImportSuccess = (result: any) => {
+    console.log('SQL Import Success:', result);
+    setShowSqlImportModal(false);
+    // Optional: Show success message or refresh relevant panels
+  };
+
+  // Database Export Modal handlers
+  const handleOpenDatabaseExport = () => {
+    setShowDatabaseExportModal(true);
+  };
+
+  const handleCloseDatabaseExport = () => {
+    setShowDatabaseExportModal(false);
+  };
+
 
   return (
     <>
       <Head title={resetToken ? "Reset Password - Scoriet" : "Scoriet - Enterprise Code Generator"} />
-      
-      <ProjectProvider>
+
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onError={(error, errorInfo) => {
+          // Log error for debugging (you can add external logging service here)
+          console.error('Application Error:', error, errorInfo);
+        }}
+      >
+        <ProjectProvider>
         <div 
           style={{ 
             height: '100vh', 
@@ -1149,7 +1380,7 @@ useHotkeys('alt+n', () => {
           {/* HAUPTBEREICH */}
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
             {/* NEUE NAVIGATION LINKS */}
-            <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} />
+            <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} onOpenSqlImport={handleOpenSqlImport} onOpenDatabaseExport={handleOpenDatabaseExport} />
 
             {/* ARBEITSBEREICH MIT LINKEM PANEL UND MDI */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
@@ -1199,7 +1430,29 @@ useHotkeys('alt+n', () => {
             </div>
           </div>
         </div>
-      </ProjectProvider>
+
+        {/* SQL IMPORT MODAL - Must be inside ProjectProvider */}
+        {showSqlImportModal && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <SqlImportModal
+              isOpen={showSqlImportModal}
+              onClose={handleCloseSqlImport}
+              onSuccess={handleSqlImportSuccess}
+            />
+          </Suspense>
+        )}
+
+        {/* DATABASE EXPORT MODAL - Must be inside ProjectProvider */}
+        {showDatabaseExportModal && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <DatabaseExportModal
+              isOpen={showDatabaseExportModal}
+              onClose={handleCloseDatabaseExport}
+            />
+          </Suspense>
+        )}
+        </ProjectProvider>
+      </ErrorBoundary>
 
       {/* AUTH MODAL SYSTEM */}
       <AuthModalManager

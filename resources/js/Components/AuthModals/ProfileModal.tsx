@@ -202,7 +202,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         });
       }
     } catch (error) {
-      console.error('Failed to update language:', error);
+      // Failed to update language
     }
   };
 

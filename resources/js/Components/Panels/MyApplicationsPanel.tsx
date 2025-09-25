@@ -241,6 +241,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
             rows={10}
             rowsPerPageOptions={[5, 10, 20]}
             emptyMessage="No applications found"
+            scrollable
+            scrollHeight="500px"
           >
             <Column 
               field="project" 

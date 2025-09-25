@@ -7,9 +7,11 @@ import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
+  onOpenSqlImport?: () => void;
+  onOpenDatabaseExport?: () => void;
 }
 
-export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNavigationPanelProps) {
+export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSqlImport, onOpenDatabaseExport }: ExtendedNavigationPanelProps) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -109,7 +111,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
       separator: true
     },
     {
-      label: 'Home',
+      label: 'Welcome',
       icon: 'pi pi-home',
       command: () => onOpenPanel('home')
     },
@@ -122,9 +124,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Overview',
+          label: 'Project Management',
           icon: 'pi pi-home',
           command: () => onOpenPanel('project')
+        },
+        {
+          label: 'Database Management',
+          icon: 'pi pi-database',
+          command: () => onOpenPanel('database-management')
         },
         {
           label: 'Teams',
@@ -135,11 +142,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
               icon: 'pi pi-cog',
               command: () => onOpenPanel('team-management')
             },
-            {
-              label: 'Team Assignment',
-              icon: 'pi pi-link',
-              command: () => onOpenPanel('teams')
-            }
           ]
         },
         {
@@ -152,8 +154,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
               command: () => onOpenPanel('template-management')
             },
             {
-              label: 'Template Editor',
-              icon: 'pi pi-code',
+              label: 'Template Assignment',
+              icon: 'pi pi-link',
               command: () => onOpenPanel('t3')
             },
             {
@@ -200,38 +202,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
           separator: true
         },
         {
-          label: 'Import',
+          label: 'Import SQL',
           icon: 'pi pi-upload',
-          // No command here - parent items should not execute
-          items: [
-            {
-              label: 'Import .sql File',
-              icon: 'pi pi-file',
-              command: () => {/* Import SQL file - not implemented */}
-            },
-            {
-              label: 'Import Schema',
-              icon: 'pi pi-sitemap',
-              command: () => {/* Import schema - not implemented */}
-            }
-          ]
+          command: () => onOpenSqlImport && onOpenSqlImport()
         },
         {
-          label: 'Export',
+          label: 'Export SQL',
           icon: 'pi pi-download',
-          // No command here - parent items should not execute
-          items: [
-            {
-              label: 'Export Schema',
-              icon: 'pi pi-file-export',
-              command: () => {/* Export schema - not implemented */}
-            },
-            {
-              label: 'Export Data',
-              icon: 'pi pi-table',
-              command: () => {/* Export data - not implemented */}
-            }
-          ]
+          command: () => onOpenDatabaseExport && onOpenDatabaseExport()
         }
       ]
     },
@@ -379,7 +357,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
               <button 
                 onClick={() => onOpenPanel('home')}
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
-                title="Home"
+                title="Welcome"
               >
                 <i className="pi pi-home text-gray-300"></i>
               </button>
@@ -390,11 +368,15 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                 <i className="pi pi-briefcase text-gray-300" title="Project"></i>
               </button>
               {/* Popup submenu for Project */}
-              <div className="absolute left-full top-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('project')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-home"></i>
-                    <span>Overview</span>
+                    <span>Project Management</span>
+                  </button>
+                  <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-database"></i>
+                    <span>Database Management</span>
                   </button>
                   <div className="relative group/teams">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
@@ -403,15 +385,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Teams */}
-                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-cog"></i>
                           <span>Team Management</span>
-                        </button>
-                        <button onClick={() => onOpenPanel('teams')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-link"></i>
-                          <span>Team Assignment</span>
                         </button>
                       </div>
                     </div>
@@ -423,15 +401,15 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Templates */}
-                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-list"></i>
                           <span>Template Verwaltung</span>
                         </button>
                         <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-code"></i>
-                          <span>Template Editor</span>
+                          <i className="pi pi-link"></i>
+                          <span>Template Assignment</span>
                         </button>
                         <div className="border-t border-gray-600 my-1"></div>
                         <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
@@ -459,7 +437,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                 <i className="pi pi-database text-gray-300" title="Database"></i>
               </button>
               {/* Popup submenu for Database */}
-              <div className="absolute left-full top-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-cog"></i>
@@ -470,46 +448,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                     <span>Designer</span>
                   </button>
                   <div className="border-t border-gray-600 my-2"></div>
-                  <div className="relative group/import">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                      <i className="pi pi-upload"></i>
-                      <span>Import</span>
-                      <i className="pi pi-angle-right ml-auto text-xs"></i>
-                    </button>
-                    {/* Sub-submenu for Import */}
-                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/import:opacity-100 group-hover/import:visible transition-all duration-200 z-50">
-                      <div className="p-2">
-                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-file"></i>
-                          <span>Import .sql File</span>
-                        </button>
-                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-sitemap"></i>
-                          <span>Import Schema</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="relative group/export">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                      <i className="pi pi-download"></i>
-                      <span>Export</span>
-                      <i className="pi pi-angle-right ml-auto text-xs"></i>
-                    </button>
-                    {/* Sub-submenu for Export */}
-                    <div className="absolute left-full top-0 ml-1 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all duration-200 z-50">
-                      <div className="p-2">
-                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-file-export"></i>
-                          <span>Export Schema</span>
-                        </button>
-                        <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-table"></i>
-                          <span>Export Data</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-upload"></i>
+                    <span>Import SQL</span>
+                  </button>
+                  <button onClick={() => onOpenDatabaseExport && onOpenDatabaseExport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-download"></i>
+                    <span>Export SQL</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -519,7 +465,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal }: Extende
                 <i className="pi pi-cog text-gray-300" title="Generator"></i>
               </button>
               {/* Popup submenu for Generator */}
-              <div className="absolute left-full top-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('debug-manual-generator')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-wrench"></i>
