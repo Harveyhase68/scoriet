@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Message } from 'primereact/message';
+import { TabPanel } from 'primereact/tabview';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useProject } from '@/contexts/ProjectContext';
 import Editor from 'react-simple-code-editor';
@@ -11,16 +10,132 @@ import ErrorFallback from '@/Components/ErrorFallback';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/plugins/line-numbers/prism-line-numbers.css';
+import 'prismjs/plugins/line-numbers/prism-line-numbers';
 
 // Professional JavaScript syntax highlighter using Prism.js
 const highlightCode = (code: string) => {
   try {
     return Prism.highlight(code, Prism.languages.javascript, 'javascript');
-  } catch (error) {
+  } catch {
     // Fallback to plain text if highlighting fails
-    console.warn('Syntax highlighting failed:', error);
     return code;
   }
+};
+
+// Line Numbers Component for Syntax Highlighting
+const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
+  code: string;
+  readOnly?: boolean;
+  onChange?: (newCode: string) => void;
+}) => {
+  const lines = code.split('\n');
+  const maxLineNumberWidth = String(lines.length).length;
+
+  if (readOnly) {
+    // 🔧 SAUBERE LÖSUNG: Double-escaped Unicode für Display konvertieren
+    // Replace \\uXXXX (2 backslashes in string) with readable \n\r\t (1 backslash)
+    const displayCode = code
+      .replace(/\\\\u000A/g, '\\n')   // \\u000A (2 BS) → \n (1 BS for display)
+      .replace(/\\\\u000D/g, '\\r')   // \\u000D (2 BS) → \r (1 BS for display)
+      .replace(/\\\\u0009/g, '\\t');  // \\u0009 (2 BS) → \t (1 BS for display)
+
+    const highlightedCode = highlightCode(displayCode);
+    const codeLines = highlightedCode.split('\n');
+
+    return (
+      <div className="line-numbers-container" style={{
+        display: 'flex',
+        backgroundColor: '#1a1a1a',
+        color: '#d4d4d4',
+        fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+        fontSize: '14px',
+        lineHeight: '20px', // Fixed line height in pixels
+        minHeight: '100%', // Fill parent height
+        width: '100%'
+      }}>
+        {/* Line Numbers */}
+        <div className="line-numbers" style={{
+          padding: '10px 8px 10px 4px',
+          backgroundColor: '#0d1117',
+          color: '#6e7681',
+          borderRight: '1px solid #30363d',
+          textAlign: 'right',
+          userSelect: 'none',
+          minWidth: `${maxLineNumberWidth * 0.8 + 1}em`,
+          flexShrink: 0
+        }}>
+          {lines.map((_, index) => (
+            <div key={index} style={{
+              height: '20px', // Same as lineHeight
+              lineHeight: '20px',
+              fontSize: '14px'
+            }}>
+              {index + 1}
+            </div>
+          ))}
+        </div>
+
+        {/* Code Content */}
+        <div className="code-content" style={{
+          flex: 1,
+          padding: '10px',
+          overflow: 'visible',
+          fontFamily: 'inherit'
+        }}>
+          {codeLines.map((line, index) => (
+            <div key={index} style={{
+              height: '20px', // Same as lineHeight
+              lineHeight: '20px',
+              fontSize: '14px',
+              whiteSpace: 'pre',
+              margin: 0
+            }}>
+              <span dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Editable version - convert Unicode escapes for editing
+  const displayCodeForEdit = code
+    .replace(/\\u000A/g, '\\n')   // \u000A → \n (for display)
+    .replace(/\\u000D/g, '\\r')   // \u000D → \r (for display)
+    .replace(/\\u0009/g, '\\t');  // \u0009 → \t (for display)
+
+  const handleChange = (newCode: string) => {
+    // Convert back to Unicode escapes before saving
+    const restoredCode = newCode
+      .replace(/\\n/g, '\\u000A')   // \n → \u000A
+      .replace(/\\r/g, '\\u000D')   // \r → \u000D
+      .replace(/\\t/g, '\\u0009');  // \t → \u0009
+
+    if (onChange) {
+      onChange(restoredCode);
+    }
+  };
+
+  return (
+    <Editor
+      value={displayCodeForEdit}
+      onValueChange={handleChange}
+      highlight={highlightCode}
+      padding={10}
+      style={{
+        fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+        fontSize: 14,
+        lineHeight: 1.4,
+        minHeight: '400px',
+        width: '100%',
+        backgroundColor: '#1a1a1a',
+        color: '#d4d4d4',
+      }}
+      className="code-editor"
+      placeholder="Hier erscheint der generierte JavaScript-Code..."
+    />
+  );
 };
 
 // Fallback function for clipboard access in older browsers
@@ -46,7 +161,7 @@ const copyToClipboardFallback = (text: string) => {
       // Last resort: show alert with text to copy manually
       alert('Clipboard-API nicht verfügbar. Bitte manuell kopieren:\n\n' + text.substring(0, 500) + '...');
     }
-  } catch (err) {
+  } catch {
     alert('Clipboard-Zugriff nicht möglich. Bitte prüfen Sie Browser-Einstellungen.');
   }
 };
@@ -94,11 +209,13 @@ export default function DebugManualGeneratorPanel() {
   const [selectedFile, setSelectedFile] = useState<number | null>(null);
   const [selectedProjectForGenerator, setSelectedProjectForGenerator] = useState<number | null>(selectedProject?.id || null);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
 
   // Data States
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateFiles, setTemplateFiles] = useState<TemplateFile[]>([]);
   const [schemaTables, setSchemaTables] = useState<SchemaTable[]>([]);
+  const [languageOptions, setLanguageOptions] = useState<Array<{label: string, value: string}>>([]);
 
   // Content States
   const [loading, setLoading] = useState(false);
@@ -106,9 +223,12 @@ export default function DebugManualGeneratorPanel() {
   const [preparedCode, setPreparedCode] = useState<string>('');
   const [executedResult, setExecutedResult] = useState<string>('');
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [includeTemplateSource, setIncludeTemplateSource] = useState(false);
+  const [downloadFilename, setDownloadFilename] = useState<string>('generated.php');
 
   // Helper functions (defined early to avoid hoisting issues)
-  const getFileGenerationType = (): 'project_file' | 'db_table_file' | 'static_file' | 'static_directory' | null => {
+  const getFileGenerationType = (): 'project_file' | 'db_table_file' | 'project_file_languages' | 'db_table_file_languages' | 'static_file' | 'static_directory' | null => {
     if (!templateFiles || templateFiles.length === 0 || selectedFile === null || selectedFile === undefined) {
       return null;
     }
@@ -118,18 +238,26 @@ export default function DebugManualGeneratorPanel() {
 
     // Direkte Typen-Zuordnung (bevorzugt)
     if (file.generation_type) {
-      return file.generation_type as 'project_file' | 'db_table_file' | 'static_file' | 'static_directory';
+      return file.generation_type as 'project_file' | 'db_table_file' | 'project_file_languages' | 'db_table_file_languages' | 'static_file' | 'static_directory';
     }
 
     if (file.file_type) {
       // Datenbank-spezifische Template-Typen
-      const dbFileTypes = ['template', 'db_table_file', 'model', 'controller', 'view', 'migration'];
+      const dbFileTypes = ['template', 'db_table_file', 'db_table_file_languages', 'model', 'controller', 'view', 'migration'];
       // Projekt-spezifische Template-Typen
-      const projectFileTypes = ['project_file', 'config', 'helper', 'static_file', 'static_directory'];
+      const projectFileTypes = ['project_file', 'project_file_languages', 'config', 'helper', 'static_file', 'static_directory'];
 
       if (dbFileTypes.includes(file.file_type.toLowerCase())) {
+        // Check if it's a language-enabled variant
+        if (file.file_type.toLowerCase().includes('languages')) {
+          return 'db_table_file_languages';
+        }
         return 'db_table_file';
       } else if (projectFileTypes.includes(file.file_type.toLowerCase())) {
+        // Check if it's a language-enabled variant
+        if (file.file_type.toLowerCase().includes('languages')) {
+          return 'project_file_languages';
+        }
         return 'project_file';
       }
     }
@@ -137,9 +265,9 @@ export default function DebugManualGeneratorPanel() {
     // Fallback anhand Dateiname
     const fileName = file.file_name.toLowerCase();
     if (fileName.includes('table') || fileName.includes('model') || fileName.includes('entity')) {
-      return 'db_table_file';
+      return fileName.includes('language') ? 'db_table_file_languages' : 'db_table_file';
     } else if (fileName.includes('project') || fileName.includes('config') || fileName.includes('main')) {
-      return 'project_file';
+      return fileName.includes('language') ? 'project_file_languages' : 'project_file';
     }
 
     return null; // Unbekannt/Static
@@ -147,18 +275,29 @@ export default function DebugManualGeneratorPanel() {
 
   const shouldShowProjectDropdown = (): boolean => {
     const fileType = getFileGenerationType();
-    return fileType === 'project_file';
+    return fileType === 'project_file' || fileType === 'project_file_languages';
   };
 
   const shouldShowTableDropdown = (): boolean => {
     const fileType = getFileGenerationType();
-    return fileType === 'db_table_file';
+    return fileType === 'db_table_file' || fileType === 'db_table_file_languages';
+  };
+
+  const shouldShowLanguageDropdown = (): boolean => {
+    const fileType = getFileGenerationType();
+    return fileType === 'project_file_languages' || fileType === 'db_table_file_languages';
+  };
+
+  const getSelectedFileName = () => {
+    const file = templateFiles.find(f => f.id === selectedFile);
+    return file?.file_name || '';
   };
 
   // Load templates on component mount
   useEffect(() => {
     loadTemplates();
     loadSchemaTables();
+    loadLanguages();
   }, []);
 
   // Update selected project when global project changes
@@ -175,9 +314,10 @@ export default function DebugManualGeneratorPanel() {
     const projectCondition = !(shouldShowProjectDropdown() && !selectedProjectForGenerator);
     // FIXED: 0 is a valid table index, don't treat it as falsy!
     const tableCondition = !shouldShowTableDropdown() || (selectedTable !== null && selectedTable !== undefined);
+    const languageCondition = !shouldShowLanguageDropdown() || (selectedLanguage !== null && selectedLanguage !== undefined);
 
-    Boolean(!loading && selectedTemplate && (selectedFile !== null && selectedFile !== undefined) && projectCondition && tableCondition);
-  }, [selectedTable, loading, selectedTemplate, selectedFile, selectedProjectForGenerator, shouldShowProjectDropdown, shouldShowTableDropdown]);
+    Boolean(!loading && selectedTemplate && (selectedFile !== null && selectedFile !== undefined) && projectCondition && tableCondition && languageCondition);
+  }, [selectedTable, selectedLanguage, loading, selectedTemplate, selectedFile, selectedProjectForGenerator, shouldShowProjectDropdown, shouldShowTableDropdown, shouldShowLanguageDropdown]);
 
   // Load template files when template changes
   useEffect(() => {
@@ -219,7 +359,7 @@ export default function DebugManualGeneratorPanel() {
       } else {
         setError(`Fehler beim Laden der Templates: ${response.status}`);
       }
-    } catch (err) {
+    } catch {
       setError('Fehler beim Laden der Templates');
     }
   };
@@ -249,7 +389,6 @@ export default function DebugManualGeneratorPanel() {
 
         // More lenient filtering - accept any object with some identifier
         const validFiles = filesArray.map((file: any, index: number) => {
-
           // Create a normalized file object
           const normalizedFile = {
             id: file.id || file.file_id || file.template_file_id || index,
@@ -276,7 +415,7 @@ export default function DebugManualGeneratorPanel() {
       } else {
         setError(`Fehler beim Laden der Template-Dateien: ${response.status}`);
       }
-    } catch (err) {
+    } catch {
       setError('Fehler beim Laden der Template-Dateien');
     }
   };
@@ -286,7 +425,7 @@ export default function DebugManualGeneratorPanel() {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      let allTables: SchemaTable[] = [];
+      const allTables: SchemaTable[] = [];
 
       // If we have a selected project, load its schemas
       if (selectedProject) {
@@ -319,7 +458,6 @@ export default function DebugManualGeneratorPanel() {
             for (const schema of schemas) {
 
               const schemaName = schema.name || schema.schema_name || schema.title || `Schema ${schema.id}`;
-
               // Get schema versions to find latest one with tables
               if (schema.id) {
                 try {
@@ -346,10 +484,6 @@ export default function DebugManualGeneratorPanel() {
                           'Accept': 'application/json',
                         }
                       });
-
-                      if (!tablesResponse.ok) {
-                        // Tables API failed for this version
-                      }
 
                       if (tablesResponse.ok) {
                         const tablesData = await tablesResponse.json();
@@ -387,28 +521,23 @@ export default function DebugManualGeneratorPanel() {
                             schema_id: schema.id,
                             items: tableFields
                           });
-
                         });
                       }
                     }
                   }
-                } catch (versionErr) {
+                } catch {
                   // Error loading versions for this schema
                 }
               }
             }
           }
-        } catch (projectErr) {
+        } catch {
           // Error loading project schemas
         }
       }
 
       // Only use fallback if we have no project selected or no project schemas found
-
-      // WICHTIG: Nur Fallback verwenden wenn kein Projekt ausgewählt ist
-      // Wenn ein Projekt ausgewählt ist, aber keine Schemas hat, dann ist das okay (leere Liste)
       if (allTables.length === 0 && !selectedProject) {
-
         try {
           const globalResponse = await fetch('/api/template-db-schema/schemas', {
             headers: {
@@ -440,7 +569,7 @@ export default function DebugManualGeneratorPanel() {
               });
             });
           }
-        } catch (globalErr) {
+        } catch {
           // Error loading global schemas
         }
       } else if (selectedProject && allTables.length === 0) {
@@ -449,7 +578,6 @@ export default function DebugManualGeneratorPanel() {
 
       // Last fallback: gtree-test API (nur wenn gar kein Projekt ausgewählt)
       if (allTables.length === 0 && !selectedProject) {
-
         const gtreeResponse = await fetch('/api/gtree-test/1', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -478,8 +606,42 @@ export default function DebugManualGeneratorPanel() {
       // Reset table selection when schemas change
       setSelectedTable(null);
 
-    } catch (err) {
+    } catch {
       setSchemaTables([]);
+    }
+  };
+
+  const loadLanguages = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        return;
+      }
+      const response = await fetch('/api/active-languages', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const languages = Array.isArray(data) ? data : (data.languages || data.data || []);
+
+        const languageOpts = languages.map((lang: any) => ({
+          label: `${lang.flag} ${lang.name}`,
+          value: lang.code
+        }));
+
+        setLanguageOptions(languageOpts);
+
+        // Auto-select first language if available and none selected
+        if (languageOpts.length > 0 && !selectedLanguage) {
+          setSelectedLanguage(languageOpts[0].value);
+        }
+      }
+    } catch {
+      setLanguageOptions([]);
     }
   };
 
@@ -491,13 +653,18 @@ export default function DebugManualGeneratorPanel() {
 
     const fileGenerationType = getFileGenerationType();
 
-    if (fileGenerationType === 'project_file' && !selectedProjectForGenerator) {
+    if ((fileGenerationType === 'project_file' || fileGenerationType === 'project_file_languages') && !selectedProjectForGenerator) {
       setError('Bitte Projekt auswählen');
       return;
     }
 
-    if (fileGenerationType === 'db_table_file' && (selectedTable === null || selectedTable === undefined)) {
+    if ((fileGenerationType === 'db_table_file' || fileGenerationType === 'db_table_file_languages') && (selectedTable === null || selectedTable === undefined)) {
       setError('Bitte Tabelle auswählen');
+      return;
+    }
+
+    if ((fileGenerationType === 'project_file_languages' || fileGenerationType === 'db_table_file_languages') && !selectedLanguage) {
+      setError('Bitte Sprache auswählen');
       return;
     }
 
@@ -513,9 +680,27 @@ export default function DebugManualGeneratorPanel() {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
       // Build URL with project parameter to ensure backend uses only linked schemas
-      const url = new URL(`/api/template-process/${selectedTemplate}`, window.location.origin);
+      const url = new URL(`/api/ultimate-template/${selectedTemplate}`, window.location.origin);
       if (selectedProject) {
         url.searchParams.set('project_id', selectedProject.id.toString());
+      }
+
+      // Add table parameter for db_table_file types
+      if ((fileGenerationType === 'db_table_file' || fileGenerationType === 'db_table_file_languages') && selectedTable !== null) {
+        const selectedTableData = schemaTables[selectedTable];
+        if (selectedTableData) {
+          url.searchParams.set('table_name', selectedTableData.tablename);
+        }
+      }
+
+      // Add language parameter for language-enabled types
+      if ((fileGenerationType === 'project_file_languages' || fileGenerationType === 'db_table_file_languages') && selectedLanguage) {
+        url.searchParams.set('language_code', selectedLanguage);
+      }
+
+      // Add include_source parameter if checkbox is enabled
+      if (includeTemplateSource) {
+        url.searchParams.set('include_source', '1');
       }
 
       const response = await fetch(url.toString(), {
@@ -532,18 +717,49 @@ export default function DebugManualGeneratorPanel() {
         let targetFile = null;
         const fileGenerationType = getFileGenerationType();
 
-        if (fileGenerationType === 'db_table_file' && selectedTable !== null) {
+        if ((fileGenerationType === 'db_table_file' || fileGenerationType === 'db_table_file_languages') && selectedTable !== null) {
           // Find file for specific table
-          targetFile = data.generated_files.find((file: any) =>
-            file.table_index === selectedTable &&
-            file.generated_from_template === getSelectedFileName()
-          );
-        } else if (fileGenerationType === 'project_file') {
+          const selectedTableData = schemaTables[selectedTable];
+          const expectedFileName = getSelectedFileName();
+
+          // Try multiple matching strategies
+          targetFile = data.processed_files?.find((file: any) => {
+            const matchesTableName = file.table_name === selectedTableData?.tablename;
+            const matchesFileName = file.generated_from_template === expectedFileName || file.filename === expectedFileName;
+            const matchesOriginalTemplate = file.original_template === expectedFileName;
+
+            const shouldMatch = matchesTableName && (matchesFileName || matchesOriginalTemplate);
+
+            return shouldMatch;
+          });
+
+          // Fallback: try to find any file with matching template name
+          if (!targetFile) {
+            targetFile = data.processed_files?.find((file: any) => {
+              const matchesFileName = file.generated_from_template === expectedFileName || file.filename === expectedFileName || file.original_template === expectedFileName;
+              return matchesFileName;
+            });
+          }
+
+        } else if ((fileGenerationType === 'project_file' || fileGenerationType === 'project_file_languages')) {
           // Find project-level file
-          targetFile = data.generated_files.find((file: any) =>
-            file.is_project_file &&
-            file.generated_from_template === getSelectedFileName()
-          );
+          const expectedFileName = getSelectedFileName();
+
+          targetFile = data.processed_files?.find((file: any) => {
+            const matchesProjectFile = file.is_project_file;
+            const matchesFileName = file.generated_from_template === expectedFileName || file.filename === expectedFileName || file.original_template === expectedFileName;
+            const shouldMatch = matchesProjectFile && matchesFileName;
+
+            return shouldMatch;
+          });
+
+          // Fallback: try to find any file with matching template name
+          if (!targetFile) {
+            targetFile = data.processed_files?.find((file: any) => {
+              const matchesFileName = file.generated_from_template === expectedFileName || file.filename === expectedFileName || file.original_template === expectedFileName;
+              return matchesFileName;
+            });
+          }
         }
 
         if (targetFile) {
@@ -553,12 +769,15 @@ export default function DebugManualGeneratorPanel() {
           // Store gtree in localStorage for efficient access during execution
           localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
 
+          // Store processed filename for download
+          setDownloadFilename(targetFile.filename || 'generated.php');
+
           // Trigger re-render for button state
           setTimeout(() => {
             // Force component update to enable GTree copy button
           }, 100);
 
-          const originalCode = targetFile.content; // Use content (with \\u000A) not content_clean
+          const originalCode = targetFile.compiled_content; // Use compiled_content from new API
 
           // Check backend-generated template size before processing
           const originalSizeKB = Math.round(originalCode.length / 1024);
@@ -570,20 +789,19 @@ export default function DebugManualGeneratorPanel() {
             return;
           }
 
-
-          // First: Convert JavaScript structure \n to real newlines
-          let cleanedCode = originalCode.replace(/\\n/g, '\n');
+          // 🔧 REMOVED: DO NOT convert \n to real newlines for display!
+          // This was breaking the code display by converting escape sequences
+          // let cleanedCode = originalCode.replace(/\\n/g, '\n');
+          let cleanedCode = originalCode; // Keep \n as text for proper display
 
           // Convert indent placeholders to Unicode spaces BEFORE Unicode conversion
           cleanedCode = cleanedCode.replace(/§INDENT2§/g, '\\u0020\\u0020');
           cleanedCode = cleanedCode.replace(/§INDENT4§/g, '\\u0020\\u0020\\u0020\\u0020');
 
 
-          // Convert Unicode newlines to \n text for template content
-          cleanedCode = cleanedCode.replace(/\\u000A/g, '\\n');
-
-          // Convert Unicode tabs to \t text for template content
-          cleanedCode = cleanedCode.replace(/\\u0009/g, '\\t');
+          // 🔧 DO NOT convert \\uXXXX here! Keep them as-is for preparedCode
+          // They will be converted ONLY for display (not for execution)
+          // This prevents JS from interpreting them as real tabs/newlines during eval
 
           // Convert Unicode spaces back to regular spaces for indentation
           cleanedCode = cleanedCode.replace(/\\u0020/g, ' ');
@@ -593,6 +811,7 @@ export default function DebugManualGeneratorPanel() {
 const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
 `;
+
           const codeWithGTree = gtreeCode + cleanedCode;
 
           // Check code size limit (200KB)
@@ -605,18 +824,45 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             return;
           }
 
-
           setPreparedCode(codeWithGTree);
           setActiveTabIndex(0); // Switch to prepared code tab
           setExecutedResult(''); // Clear previous result
         } else {
-          setError('Datei für ausgewählte Konfiguration nicht gefunden');
+          // Enhanced error message with debug info
+          let errorMsg = '❌ Datei für ausgewählte Konfiguration nicht gefunden\\n\\n';
+          errorMsg += `🔍 Gesuchte Konfiguration:\\n`;
+          errorMsg += `  Template: ${selectedTemplate}\\n`;
+          errorMsg += `  Datei: ${getSelectedFileName()}\\n`;
+          errorMsg += `  Typ: ${fileGenerationType}\\n`;
+
+          if (fileGenerationType === 'db_table_file' || fileGenerationType === 'db_table_file_languages') {
+            const selectedTableData = schemaTables[selectedTable!];
+            errorMsg += `  Tabelle: ${selectedTableData?.tablename || 'Unknown'}\\n`;
+          }
+
+          if (fileGenerationType === 'project_file_languages' || fileGenerationType === 'db_table_file_languages') {
+            errorMsg += `  Sprache: ${selectedLanguage || 'Unknown'}\\n`;
+          }
+
+          errorMsg += `\\n📋 Verfügbare Dateien (${data.processed_files?.length || 0}):\\n`;
+          if (data.processed_files?.length > 0) {
+            data.processed_files.slice(0, 5).forEach((file: any, idx: number) => {
+              errorMsg += `  ${idx + 1}. ${file.filename || file.generated_from_template || 'Unknown'} ${file.table_name ? `(${file.table_name})` : ''}\\n`;
+            });
+            if (data.processed_files.length > 5) {
+              errorMsg += `  ... und ${data.processed_files.length - 5} weitere\\n`;
+            }
+          }
+
+          errorMsg += '\\n💡 Lösung: Prüfen Sie Template-Konfiguration und Backend-Response.';
+
+          setError(errorMsg);
         }
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Fehler beim Laden des Codes');
       }
-    } catch (err) {
+    } catch {
       setError('Fehler beim Laden des Codes');
     } finally {
       setLoading(false);
@@ -639,7 +885,6 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       const currentMemory = (performance as any).memory.usedJSHeapSize || 0;
       const memoryUsagePercent = Math.round((currentMemory / availableMemory) * 100);
 
-
       if (memoryUsagePercent > 80) {
         setError(`⚠️ Speicher-Warnung: ${memoryUsagePercent}% Speicher belegt. Template könnte zu komplex für sicheren Betrieb sein.`);
         return;
@@ -647,27 +892,39 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
     }
 
     try {
-
       // Try to execute the JavaScript function directly using eval
       // This is safe since we control the code generation
       let result = '';
-        // Execute the prepared code which includes gtree definition and function
-        // Make function available in global scope
+        // 🔧 Convert Unicode escapes - SIMPLE string replace (no regex!)
+        let executableCode = preparedCode;
+
+        // preparedCode has 4 backslashes in string content (shown as \\\\u0009 in console)
+        // We need to match 4 backslashes + u0009: split('\\\\\\\\u0009')
+        // (8 backslashes in code literal = 4 backslashes in string content)
+
+        // 1. Convert \\\\u0009 to real Tab character (removes all backslashes, replaces with tab)
+        executableCode = executableCode.split('\\\\\\\\u0009').join('\t');
+
+        // 2. Convert \\\\u000D/A to \\r/n (4 BS → 2 BS, eval will parse 2 BS as 1 BS + r/n TEXT)
+        executableCode = executableCode.split('\\\\\\\\u000D').join('\\\\r');
+        executableCode = executableCode.split('\\\\\\\\u000A').join('\\\\n');
+
         const globalEval = eval;
-        globalEval(`
-          ${preparedCode}
-          // Make function globally available
-          window.currentGeneratorFunction = ${preparedCode.match(/function\s+(\w+)\s*\(/)?.[1] || 'generate_project_template'};
-        `);
+        // Use indirect eval (not template literal) to avoid escape sequence interpretation
+        globalEval(executableCode);
 
         // Try to find and call the generated function
-        const functionMatch = preparedCode.match(/function\s+(\w+)\s*\([^)]*\)\s*\{/);
+        const functionMatch = executableCode.match(/function\s+(\w+)\s*\(/);
         if (functionMatch) {
           const functionName = functionMatch[1];
 
-          // Call the function from global scope
-          const execResult = (window as any).currentGeneratorFunction();
-          result = execResult || '';
+          // Get function from global scope and call it
+          const generatedFunction = (window as any)[functionName];
+          if (generatedFunction) {
+            result = generatedFunction() || '';
+          } else {
+            throw new Error(`Function ${functionName} not found in global scope`);
+          }
         } else {
           // No function found, try fallback interpretation
           throw new Error('No function found in generated code');
@@ -678,7 +935,6 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       const endMemory = (performance as any).memory?.usedJSHeapSize || 0;
       const executionTime = Math.round(endTime - startTime);
       const memoryUsed = Math.round((endMemory - startMemory) / 1024); // KB
-
 
       // Warning for long execution times
       if (executionTime > 5000) {
@@ -691,25 +947,73 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       // Set the final result
       setExecutedResult(result);
       setActiveTabIndex(1); // Switch to result tab
-    } catch (err) {
+    } catch {
+      // Set error result when execution fails
+      setExecutedResult(`❌ Ausführung fehlgeschlagen!\n\nBitte kontrollieren Sie den "Debug Helper" Tab für Details.\n\nFehler: ${(_ as Error).message || 'Unbekannter Fehler'}`);
+      setActiveTabIndex(1); // Switch to result tab to show error
 
-      // Enhanced error handling based on error type
+      // Enhanced error handling with line number detection
       let errorMessage = '';
-      const error = err as Error;
-      if (error.name === 'SyntaxError') {
-        errorMessage = `❌ JavaScript-Syntax-Fehler im Template:\n${error.message}\n\nBitte prüfen Sie Template-Syntax und Sonderzeichen.`;
-      } else if (error.name === 'ReferenceError') {
-        errorMessage = `❌ Template-Variable nicht gefunden:\n${error.message}\n\nBitte prüfen Sie {variablename} Platzhalter.`;
-      } else if (error.name === 'TypeError') {
-        errorMessage = `❌ Typ-Fehler im Template:\n${error.message}\n\nBitte prüfen Sie Datenstrukturen und Zugriffe.`;
-      } else {
-        errorMessage = `❌ Template-Ausführungsfehler:\n${error.message || 'Unbekannter Fehler'}`;
+      const error = _ as Error;
+
+      // Try to extract line number from error stack and convert to template line number
+      let lineNumber = '';
+      if (error.stack) {
+        const lineMatch = error.stack.match(/:(\d+):\d+/);
+        if (lineMatch) {
+          const jsLineNumber = parseInt(lineMatch[1]);
+
+          // Debug: Show the actual code that was executed
+          if (preparedCode) {
+            const codeLines = preparedCode.split('\n');
+
+            // Find where the function starts (gtree ends)
+            let gtreeLines = 0;
+            for (let i = 0; i < codeLines.length; i++) {
+              const line = codeLines[i].trim();
+              if (line.startsWith('function ') || line.includes('function ')) {
+                gtreeLines = i;
+                break;
+              }
+            }
+
+            // Since the error line number seems unrelated to our small code,
+            // let's try a different approach: find the error line in our actual code
+            if (jsLineNumber > codeLines.length) {
+              // Error line is beyond our code - probably from eval context
+              lineNumber = ` (Error may be in line ~${jsLineNumber % codeLines.length || 1} of template)`;
+            } else if (jsLineNumber > gtreeLines) {
+              const templateLineNumber = jsLineNumber - gtreeLines;
+              lineNumber = ` (Template Line ${templateLineNumber}, JS Line ${jsLineNumber})`;
+            } else {
+              lineNumber = ` (JS Line ${jsLineNumber} - in gtree setup)`;
+            }
+          } else {
+            lineNumber = ` (JS Line ${jsLineNumber})`;
+          }
+        }
       }
 
-      // Try fallback interpretation before giving up
+      if (error.name === 'SyntaxError') {
+        errorMessage = `❌ JavaScript-Syntax-Fehler im Template${lineNumber}:\n\n🔍 Problem: ${error.message}\n\n💡 Häufige Ursachen:\n• Fehlende oder extra Anführungszeichen\n• Unvollständige Variablen wie {item.\n• Falsche Klammern in Schleifen\n• Sonderzeichen die escapt werden müssen\n\n🛠️ Lösung: Prüfen Sie Template-Syntax und {variablename} Platzhalter.`;
 
-      // Fallback to simple interpretation
-      try {
+      } else if (error.name === 'ReferenceError') {
+        // Extract variable name if possible
+        const variableMatch = error.message.match(/(\w+) is not defined/);
+        const variable = variableMatch ? variableMatch[1] : 'unknown';
+
+        errorMessage = `❌ Template-Variable nicht gefunden${lineNumber}:\n\n🔍 Problem: Variable "${variable}" ist nicht definiert\n📄 Details: ${error.message}\n\n💡 Mögliche Ursachen:\n• gtree wurde nicht geladen\n• Tabelle/Projekt nicht ausgewählt\n• Variable existiert nicht in der Datenstruktur\n• Tippfehler in Variablenname\n\n🛠️ Lösung: Prüfen Sie die {${variable}} Variable oder wählen Sie Tabelle/Projekt aus.`;
+
+      } else if (error.name === 'TypeError') {
+        errorMessage = `❌ Typ-Fehler im Template${lineNumber}:\n\n🔍 Problem: ${error.message}\n\n💡 Häufige Ursachen:\n• Zugriff auf undefined/null Werte\n• Falsche Array-Zugriffe wie tables[]\n• Fehlende lang-Arrays in gtree\n• Falsche selectedlanguageindex\n\n🛠️ Lösung: Prüfen Sie Datenstrukturen und Array-Zugriffe.`;
+
+      } else {
+        errorMessage = `❌ Template-Ausführungsfehler${lineNumber}:\n\n🔍 Problem: ${error.message || 'Unbekannter Fehler'}\n📝 Typ: ${error.name || 'Unknown'}\n\n💡 Debug-Tipps:\n• Öffnen Sie Browser Console (F12) für Details\n• Prüfen Sie das generierte JavaScript\n• Vereinfachen Sie das Template zum Testen\n\n🛠️ Bei wiederholten Problemen: Template-Syntax vereinfachen.`;
+      }
+
+      // Only try fallback for SyntaxError, not for runtime errors
+      if (error.name === 'SyntaxError') {
+        try {
         let result = '';
         const functionMatch = preparedCode.match(/function\s+(\w+)\s*\([^)]*\)\s*\{([\s\S]*)\}/);
         if (functionMatch) {
@@ -774,65 +1078,20 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           result = 'Fehler: Konnte JavaScript-Funktion nicht parsen\n\n' + preparedCode;
         }
 
-        // Set the fallback result
-        setExecutedResult(result);
+          // Set the fallback result with a note about fallback
+          setExecutedResult(`⚠️ Fallback-Interpretation aktiviert (SyntaxError):\n\n${result}\n\n🔧 Original Fehler:\n${errorMessage}`);
+          setActiveTabIndex(1); // Switch to result tab
+        } catch {
+          // Use the enhanced error message from the main catch block
+          const fallbackError = fallbackErr as Error;
+          setExecutedResult(`${errorMessage}\n\n🔧 Fallback-Interpretation ebenfalls fehlgeschlagen:\n${fallbackError.message || 'Unbekannter Fallback-Fehler'}\n\nOriginal Code (erste 500 Zeichen):\n${preparedCode.substring(0, 500)}...`);
+        }
+      } else {
+        // For non-SyntaxErrors (ReferenceError, TypeError, etc.), show error immediately without fallback
+        setExecutedResult(`${errorMessage}\n\n🔍 Debug-Tipp: Verwenden Sie den Debug Helper Tab für detaillierte Analyse.`);
         setActiveTabIndex(1); // Switch to result tab
-      } catch (fallbackErr) {
-        // Use the enhanced error message from the main catch block
-        const fallbackError = fallbackErr as Error;
-        setExecutedResult(`${errorMessage}\n\n🔧 Fallback-Interpretation ebenfalls fehlgeschlagen:\n${fallbackError.message || 'Unbekannter Fallback-Fehler'}\n\nOriginal Code (erste 500 Zeichen):\n${preparedCode.substring(0, 500)}...`);
       }
     }
-  };
-
-  const getSelectedFileName = () => {
-    const file = templateFiles.find(f => f.id === selectedFile);
-    return file?.file_name || '';
-  };
-
-  // Functions moved up to avoid hoisting issues
-
-  const generateGTreeData = () => {
-    const fileType = getFileGenerationType();
-
-    if (fileType === 'project_file' && selectedProjectForGenerator) {
-      // Generate project-level gtree
-      const project = projects.find(p => p.id === selectedProjectForGenerator);
-      return [{
-        project: [{
-          projectname: project?.name || 'Unknown Project',
-          nmaxfiles: 1,
-          project_id: selectedProjectForGenerator,
-          tables: [] // Könnte erweitert werden wenn das Projekt Tabellen hat
-        }]
-      }];
-    } else if (fileType === 'db_table_file' && selectedTable !== null) {
-      // Generate table-specific gtree
-      const table = schemaTables[selectedTable];
-      if (table) {
-        return [{
-          project: [{
-            projectname: table.database_name || 'Unknown Database',
-            nmaxfiles: 1,
-            tables: [{
-              tablename: table.tablename,
-              nmaxitems: table.nmaxitems,
-              tableIndex: selectedTable,
-              items: table.items || []
-            }]
-          }]
-        }];
-      }
-    }
-
-    // Fallback: empty gtree
-    return [{
-      project: [{
-        projectname: 'Debug Session',
-        nmaxfiles: 0,
-        tables: []
-      }]
-    }];
   };
 
   // Dropdown Options
@@ -857,7 +1116,6 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
 
   // Debug button state
-  const fileType = getFileGenerationType();
   // const shouldShowProject = shouldShowProjectDropdown();
   // const shouldShowTable = shouldShowTableDropdown();
 
@@ -881,22 +1139,21 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
   const projectConditionResult = !(shouldShowProjectDropdown() && !selectedProjectForGenerator);
   // FIXED: 0 is a valid table index!
   const tableConditionResult = !shouldShowTableDropdown() || (selectedTable !== null && selectedTable !== undefined);
+  const languageConditionResult = !shouldShowLanguageDropdown() || (selectedLanguage !== null && selectedLanguage !== undefined);
 
   const isButtonEnabled = Boolean(
     !loading &&
     selectedTemplate &&
     (selectedFile !== null && selectedFile !== undefined) &&
     projectConditionResult &&
-    tableConditionResult
+    tableConditionResult &&
+    languageConditionResult
   );
 
 
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
-      onError={(error, errorInfo) => {
-        console.error('DebugManualGenerator Error:', error, errorInfo);
-      }}
     >
       <div className="h-full bg-gray-800 text-gray-100 p-4">
         <Card className="h-full bg-gray-700 border-gray-600">
@@ -973,6 +1230,40 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               </div>
             )}
 
+            {/* Language Dropdown - nur sichtbar bei language templates */}
+            {shouldShowLanguageDropdown() && (
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Sprache
+                </label>
+                <Dropdown
+                  value={selectedLanguage}
+                  options={languageOptions}
+                  onChange={(e) => {
+                    setSelectedLanguage(e.value);
+                  }}
+                  placeholder="Sprache wählen"
+                  className="w-full"
+                />
+              </div>
+            )}
+
+          </div>
+
+          {/* Options */}
+          <div className="mt-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="includeTemplateSource"
+                checked={includeTemplateSource}
+                onChange={(e) => setIncludeTemplateSource(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <label htmlFor="includeTemplateSource" className="text-sm text-gray-300 cursor-pointer">
+                Template-Quelle im Code einschließen
+              </label>
+            </div>
           </div>
 
           {/* Action Button */}
@@ -992,6 +1283,129 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               disabled={!preparedCode}
               className="bg-green-600 hover:bg-green-700"
             />
+
+            <Button
+              label="🔍 Debug Helper"
+              icon="pi pi-search"
+              onClick={() => {
+                try {
+                  let debugOutput = '';
+
+                  debugOutput += `🔠🔠🔠 Scoriet Template Debug Analysis 🔠🔠🔠\n`;
+                  debugOutput += `⏰ Analysis started at: ${new Date().toLocaleTimeString()}\n\n`;
+
+                  debugOutput += `⚙️ CONFIGURATION ANALYSIS\n`;
+                  debugOutput += `==============================\n`;
+                  debugOutput += `Template: ${selectedTemplate || 'Not selected'}\n`;
+                  debugOutput += `File: ${getSelectedFileName() || 'Not selected'}\n`;
+                  debugOutput += `Type: ${getFileGenerationType() || 'Unknown'}\n`;
+                  debugOutput += `Project: ${selectedProjectForGenerator || 'Not selected'}\n`;
+                  debugOutput += `Table: ${selectedTable !== null ? selectedTable : 'Not selected'}\n`;
+                  debugOutput += `Available Tables: ${tableOptions.length}\n\n`;
+
+                  if (preparedCode) {
+                    const codeLines = preparedCode.split('\n');
+                    debugOutput += `📄 GENERATED JAVASCRIPT ANALYSIS\n`;
+                    debugOutput += `====================================\n`;
+                    debugOutput += `Total Lines: ${codeLines.length}\n`;
+                    debugOutput += `Code Size: ${(preparedCode.length / 1024).toFixed(2)} KB\n\n`;
+
+                    // JavaScript Syntax Analysis (ESLint4B-style)
+                    debugOutput += `🔍 JAVASCRIPT SYNTAX ANALYSIS\n`;
+                    debugOutput += `==============================\n`;
+
+                    const syntaxIssues = [];
+                    codeLines.forEach((line, index) => {
+                      const lineNum = index + 1;
+                      const trimmed = line.trim();
+
+                      if (trimmed) {
+                        // Check for common syntax issues
+                        if (trimmed.includes('tables[]')) {
+                          syntaxIssues.push(`Line ${lineNum}: ❌ Empty array access 'tables[]' - missing index`);
+                        }
+
+                        if (trimmed.includes("'") && !trimmed.includes("\\\\'")) {
+                          const singleQuotes = (trimmed.match(/'/g) || []).length;
+                          if (singleQuotes % 2 !== 0) {
+                            syntaxIssues.push(`Line ${lineNum}: ⚠️  Unmatched single quote - may cause string termination issues`);
+                          }
+                        }
+
+                        if (trimmed.includes('undefined')) {
+                          syntaxIssues.push(`Line ${lineNum}: 🟡 Contains 'undefined' - check variable initialization`);
+                        }
+
+                        if (trimmed.includes('gtree[0].project[0].tables[') && !trimmed.includes('gtree[0].project[0].tables[0]') && !trimmed.includes('gtree[0].project[0].tables[i]')) {
+                          syntaxIssues.push(`Line ${lineNum}: 🔴 Dynamic table index may be problematic`);
+                        }
+
+                        if (trimmed.includes('sContentResult +=') && trimmed.includes('\\n') && !trimmed.includes('\\\\u000A')) {
+                          syntaxIssues.push(`Line ${lineNum}: ⚠️  Raw \\n in string - should use \\\\u000A for consistency`);
+                        }
+
+                        // Check for bracket balance in the line
+                        const openBrackets = (trimmed.match(/\{/g) || []).length;
+                        const closeBrackets = (trimmed.match(/\}/g) || []).length;
+                        const openParens = (trimmed.match(/\(/g) || []).length;
+                        const closeParens = (trimmed.match(/\)/g) || []).length;
+
+                        if (openBrackets !== closeBrackets && !trimmed.endsWith('{') && !trimmed.startsWith('}')) {
+                          syntaxIssues.push(`Line ${lineNum}: 🔴 Unbalanced curly braces { } in line`);
+                        }
+
+                        if (openParens !== closeParens && !trimmed.includes('for (')) {
+                          syntaxIssues.push(`Line ${lineNum}: 🔴 Unbalanced parentheses ( ) in line`);
+                        }
+                      }
+                    });
+
+                    if (syntaxIssues.length === 0) {
+                      debugOutput += `✅ No syntax issues detected\n`;
+                    } else {
+                      debugOutput += `Found ${syntaxIssues.length} potential syntax issues:\n\n`;
+                      syntaxIssues.forEach(issue => {
+                        debugOutput += `${issue}\n`;
+                      });
+                    }
+                    debugOutput += `\n`;
+                  }
+
+                  const issues = [];
+                  if (!selectedProjectForGenerator && shouldShowProjectDropdown()) {
+                    issues.push('🔴 No project selected for project_file template');
+                  }
+                  if ((selectedTable === null || selectedTable === undefined) && shouldShowTableDropdown()) {
+                    issues.push('🔴 No table selected for db_table_file template');
+                  }
+                  if (!selectedLanguage && shouldShowLanguageDropdown()) {
+                    issues.push('🟡 No language selected for language-enabled template');
+                  }
+                  if (preparedCode && preparedCode.includes('tables[]')) {
+                    issues.push('🔴 Found tables[] - missing table index');
+                  }
+
+                  debugOutput += `⚠️ POTENTIAL ISSUES ANALYSIS\n`;
+                  debugOutput += `==============================\n`;
+                  if (issues.length === 0) {
+                    debugOutput += `✅ No issues detected\n`;
+                  } else {
+                    issues.forEach(issue => debugOutput += `${issue}\n`);
+                  }
+
+                  debugOutput += `\n=== Debug Analysis Complete ===`;
+
+                  setDebugInfo(debugOutput);
+                  setActiveTabIndex(2); // Switch to debug tab
+
+                } catch {
+                  setDebugInfo(`❌ Fehler beim Debug Helper: ${(error as Error).message}\n\nDetails: ${error}`);
+                  setActiveTabIndex(2);
+                }
+              }}
+              disabled={!preparedCode}
+              className="bg-blue-600 hover:bg-blue-700"
+            />
           </div>
 
           {error && (
@@ -1010,11 +1424,13 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                 {shouldShowTableDropdown() && `Tabelle: ${selectedTable !== null ? tableOptions.find(t => t.value === selectedTable)?.label : 'Nicht gewählt'}`}
                 {shouldShowTableDropdown() && <br/>}
                 {shouldShowTableDropdown() && `Verfügbare Tabellen: ${tableOptions.length}`}
+                {shouldShowLanguageDropdown() && <br/>}
+                {shouldShowLanguageDropdown() && `Sprache: ${selectedLanguage ? languageOptions.find(l => l.value === selectedLanguage)?.label || selectedLanguage : 'Nicht gewählt'}`}
               </div>
             </div>
           )}
 
-          {/* 2-Tab System */}
+          {/* 3-Tab System */}
           {preparedCode && (
             <TabView
               activeIndex={activeTabIndex}
@@ -1072,8 +1488,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                               a.click();
                               document.body.removeChild(a);
                               URL.revokeObjectURL(url);
-                            } catch (error) {
-                              console.error('GTree Download failed:', error);
+                            } catch {
                               alert('Download fehlgeschlagen. Bitte prüfen Sie die GTree-Daten.');
                             }
                           }
@@ -1105,8 +1520,8 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                     </div>
                   </div>
 
-                  {/* Code Editor with Syntax Highlighting */}
-                  <div className="w-full bg-gray-900 border border-gray-600 rounded code-editor-container" style={{height: '400px', overflowY: 'scroll', overflowX: 'auto'}}>
+                  {/* Code Editor with Line Numbers and Syntax Highlighting */}
+                  <div className="w-full bg-gray-900 border border-gray-600 rounded code-editor-container" style={{height: '400px', overflow: 'auto'}}>
                     <ErrorBoundary
                       fallback={
                         <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
@@ -1117,24 +1532,11 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                           </div>
                         </div>
                       }
-                      onError={(error) => console.error('Code Editor Error:', error)}
                     >
-                      <Editor
-                        value={preparedCode || 'Klicken Sie auf "Code abrufen" um den Code zu sehen...'}
-                        onValueChange={(code) => setPreparedCode(code)}
-                        highlight={highlightCode}
-                        padding={10}
-                        style={{
-                          fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
-                          fontSize: 14,
-                          lineHeight: 1.4,
-                          minHeight: '400px',
-                          width: '100%',
-                          backgroundColor: '#1a1a1a',
-                          color: '#d4d4d4',
-                        }}
-                        className="code-editor"
-                        placeholder="Hier erscheint der generierte JavaScript-Code..."
+                      <LineNumbersCodeDisplay
+                        code={preparedCode || 'Klicken Sie auf "Code abrufen" um den Code zu sehen...'}
+                        readOnly={false}
+                        onChange={(newCode) => setPreparedCode(newCode)}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1184,6 +1586,77 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               </TabPanel>
 
               <TabPanel header="2. Ausgeführtes Ergebnis" className="text-gray-100">
+                <div className="bg-gray-900 rounded border border-gray-600">
+                  {/* Button Bar */}
+                  <div className="flex justify-between items-center p-2 border-b border-gray-600 bg-gray-800">
+                    <div className="text-sm text-gray-400">Generierter PHP-Code</div>
+                    <div className="flex gap-2">
+                      <Button
+                        label="Code kopieren"
+                        icon="pi pi-copy"
+                        size="small"
+                        onClick={() => {
+                          const codeText = executedResult || '';
+
+                          // Try modern clipboard API first
+                          if (navigator.clipboard && window.isSecureContext) {
+                            navigator.clipboard.writeText(codeText).then(() => {
+                              // Successfully copied
+                            }).catch(() => {
+                              copyToClipboardFallback(codeText);
+                            });
+                          } else {
+                            copyToClipboardFallback(codeText);
+                          }
+                        }}
+                        disabled={!executedResult}
+                        className="p-button-outlined p-button-sm"
+                      />
+                      <Button
+                        label="Code downloaden"
+                        icon="pi pi-download"
+                        size="small"
+                        onClick={() => {
+                          if (executedResult) {
+                            try {
+                              // Use the processed filename from backend (with %1-%9 replaced)
+                              const blob = new Blob([executedResult], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = downloadFilename;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            } catch {
+                              alert('Download fehlgeschlagen.');
+                            }
+                          }
+                        }}
+                        disabled={!executedResult}
+                        className="p-button-outlined p-button-sm p-button-success"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Code Display */}
+                  <div className="p-4 max-h-96 overflow-auto">
+                    <div
+                      className="text-sm whitespace-pre-wrap font-mono"
+                      style={{
+                        fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+                        color: '#d4d4d4',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {executedResult || 'Klicken Sie auf "Code ausführen" um das Ergebnis zu sehen...'}
+                    </div>
+                  </div>
+                </div>
+              </TabPanel>
+
+              <TabPanel header="3. 🔍 Debug Helper" className="text-gray-100">
                 <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
                   <div
                     className="text-sm whitespace-pre-wrap font-mono"
@@ -1193,7 +1666,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                       lineHeight: 1.4
                     }}
                   >
-                    {executedResult || 'Klicken Sie auf "Code ausführen" um das Ergebnis zu sehen...'}
+                    {debugInfo || 'Klicken Sie auf "🔍 Debug Helper" um die Debug-Informationen zu sehen...'}
                   </div>
                 </div>
               </TabPanel>

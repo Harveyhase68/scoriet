@@ -419,8 +419,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setSelectedSchema(preSelectedSchema);
         }
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load schemas';
+    } catch {
+      const errorMessage = _ instanceof Error ? _.message : 'Failed to load schemas';
       setError(errorMessage);
       
       // If it's an auth error, clear the state
@@ -466,7 +466,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       if (!response.ok) {
         // Failed to save layout
       }
-    } catch (error) {
+    } catch {
       // Error saving layout
     }
   }, [selectedSchema, selectedVersion]);
@@ -491,7 +491,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         const layouts = await response.json();
         return layouts;
       }
-    } catch (error) {
+    } catch {
       // Error loading layout
     }
     
@@ -531,8 +531,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }
       
       return versions;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schema versions');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Failed to load schema versions');
       setSchemaVersions([]);
       return [];
     } finally {
@@ -582,8 +582,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setEdges([]);
         setError(null); // Clear error, empty version is valid
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schema version');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Failed to load schema version');
     } finally {
       setLoading(false);
     }
@@ -670,7 +670,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   }, [selectedProject, selectedVersion]);
 
   // Create a new table with modal data
-  const handleCreateTable = useCallback(async (tableName: string, tableComment: string, fields: any[]) => {
+  const handleCreateTable = useCallback(async (tableName: string, fileKeyName: string, fileNameRenamed: string, fileNameShort: string, fields: any[]) => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id) {
       setError('No version selected or version ID missing. Please select a schema version first.');
       return;
@@ -683,7 +683,16 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         data_type: field.type,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
-        comment: field.comment
+        is_primary_key: field.constraintType === 'primary',
+        is_index: field.constraintType === 'index',
+        is_unique: field.constraintType === 'unique',
+        // Control Type & Link fields for ComboBox, ListBox, etc.
+        control_type: field.controlType || 'TEXT',
+        link_table: field.linkTable || null,
+        link_field: field.linkField || null,
+        link_display_field: field.linkDisplayField || null,
+        link_order_field: field.linkOrderField || null,
+        link_order_direction: field.linkOrderDirection || 'ASC'
       }));
 
       const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
@@ -695,7 +704,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         },
         body: JSON.stringify({
           table_name: tableName,
-          comment: tableComment,
+          filekeyname: fileKeyName,
+          file_name_renamed: fileNameRenamed,
+          file_name_short: fileNameShort,
           columns: columns
         }),
       });
@@ -711,15 +722,15 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create table');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Failed to create table');
     } finally {
       setLoading(false);
     }
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject]);
 
   // Update an existing table with modal data
-  const handleUpdateTable = useCallback(async (tableName: string, tableComment: string, fields: any[]) => {
+  const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id || !pendingEditTable) {
       setError('No version selected or table to edit. Please select a schema version first.');
       return;
@@ -732,7 +743,17 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         data_type: field.type,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
-        comment: field.comment
+        is_primary_key: field.primaryKey,
+        is_index: field.index,
+        is_unique: field.unique,
+        comment: field.comment || null,
+        // Control Type & Link fields for ComboBox, ListBox, etc.
+        control_type: field.controlType || 'TEXT',
+        link_table: field.linkTable || null,
+        link_field: field.linkField || null,
+        link_display_field: field.linkDisplayField || null,
+        link_order_field: field.linkOrderField || null,
+        link_order_direction: field.linkOrderDirection || 'ASC'
       }));
 
       const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingEditTable.id}`, {
@@ -744,7 +765,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         },
         body: JSON.stringify({
           table_name: tableName,
-          comment: tableComment,
+          filekeyname: fileKeyName,
+          file_name_renamed: fileNameRenamed,
+          file_name_short: fileNameShort,
           columns: columns
         }),
       });
@@ -761,8 +784,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update table');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Failed to update table');
     } finally {
       setLoading(false);
     }
@@ -795,7 +818,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table edit modal
       setShowEditTableModal(true);
 
-    } catch (error) {
+    } catch {
       // Error creating new version
       setError(error instanceof Error ? error.message : 'Failed to create new version');
     } finally {
@@ -831,7 +854,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table creation modal
       setShowCreateTableModal(true);
 
-    } catch (error) {
+    } catch {
       // Error creating new version
       setError(error instanceof Error ? error.message : 'Failed to create new version');
     } finally {
@@ -863,7 +886,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table edit modal
       setShowEditTableModal(true);
 
-    } catch (error) {
+    } catch {
       // Error marking unsaved changes
       setError(error instanceof Error ? error.message : 'Failed to update version');
     } finally {
@@ -895,7 +918,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table creation modal
       setShowCreateTableModal(true);
 
-    } catch (error) {
+    } catch {
       // Error marking unsaved changes
       setError(error instanceof Error ? error.message : 'Failed to update version');
     } finally {
@@ -953,7 +976,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       if (selectedSchema && selectedVersion) {
         loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
-    } catch (error) {
+    } catch {
       // Error deleting table
       setError(error instanceof Error ? error.message : 'Failed to delete table');
     }
@@ -1018,7 +1041,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               loadSchemaVersionWithSchema(selectedSchema, newVersion);
             }
           }
-        } catch (error) {
+        } catch {
           // Error creating new version and deleting table
           setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
         } finally {
@@ -1065,7 +1088,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
         // Delete the table
         await performDeleteTable(pendingDeleteTable);
-      } catch (error) {
+      } catch {
         // Error deleting table
         setError(error instanceof Error ? error.message : 'Failed to delete table');
       } finally {
@@ -1429,6 +1452,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         onClose={() => setShowCreateTableModal(false)}
         onTableCreated={handleCreateTable}
         loading={loading}
+        schemaVersionId={selectedVersion?.id}
       />
 
       {/* Edit Table Modal */}

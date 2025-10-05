@@ -12,19 +12,12 @@ class SchemaDesignerLayout extends Model
 
     protected $fillable = [
         'schema_id',
-        'version_number', 
-        'table_name',
-        'x_position',
-        'y_position',
-        'width',
-        'height'
+        'version_number',
+        'layout_data'
     ];
 
     protected $casts = [
-        'x_position' => 'float',
-        'y_position' => 'float', 
-        'width' => 'float',
-        'height' => 'float'
+        'layout_data' => 'array'
     ];
 
     /**
@@ -40,21 +33,26 @@ class SchemaDesignerLayout extends Model
      */
     public static function saveLayoutForVersion(int $schemaId, int $versionNumber, array $layoutData): void
     {
+        // Convert layout data to table_name => layout format
+        $layouts = [];
         foreach ($layoutData as $tableLayout) {
-            static::updateOrCreate(
-                [
-                    'schema_id' => $schemaId,
-                    'version_number' => $versionNumber,
-                    'table_name' => $tableLayout['table_name']
-                ],
-                [
-                    'x_position' => $tableLayout['x_position'],
-                    'y_position' => $tableLayout['y_position'],
-                    'width' => $tableLayout['width'] ?? null,
-                    'height' => $tableLayout['height'] ?? null
-                ]
-            );
+            $layouts[$tableLayout['table_name']] = [
+                'x_position' => $tableLayout['x_position'],
+                'y_position' => $tableLayout['y_position'],
+                'width' => $tableLayout['width'] ?? null,
+                'height' => $tableLayout['height'] ?? null
+            ];
         }
+
+        static::updateOrCreate(
+            [
+                'schema_id' => $schemaId,
+                'version_number' => $versionNumber
+            ],
+            [
+                'layout_data' => $layouts
+            ]
+        );
     }
 
     /**
@@ -62,10 +60,10 @@ class SchemaDesignerLayout extends Model
      */
     public static function getLayoutForVersion(int $schemaId, int $versionNumber): array
     {
-        return static::where('schema_id', $schemaId)
+        $layout = static::where('schema_id', $schemaId)
             ->where('version_number', $versionNumber)
-            ->get()
-            ->keyBy('table_name')
-            ->toArray();
+            ->first();
+
+        return $layout ? $layout->layout_data : [];
     }
 }

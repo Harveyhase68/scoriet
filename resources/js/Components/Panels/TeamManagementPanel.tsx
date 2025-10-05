@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { TabContentProps } from '@/types';
+import { useProject } from '@/contexts/ProjectContext';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -67,7 +68,15 @@ interface Team {
   members_count?: number;
 }
 
-export default function TeamManagementPanel() {
+interface TeamManagementPanelProps {
+  filterByProject?: boolean;
+  updateTabTitle?: (newTitle: string) => void;
+}
+
+export default function TeamManagementPanel({ filterByProject = false, updateTabTitle }: TeamManagementPanelProps) {
+  // Use Project Context to get current project
+  const { selectedProject } = useProject();
+  const projectId = filterByProject ? selectedProject?.id : undefined;
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -82,7 +91,14 @@ export default function TeamManagementPanel() {
 
   useEffect(() => {
     loadTeams();
-  }, []);
+  }, [projectId]);
+
+  // Update tab title when project changes (only for filtered panels)
+  useEffect(() => {
+    if (filterByProject && updateTabTitle && selectedProject) {
+      updateTabTitle(`Teams - ${selectedProject.name}`);
+    }
+  }, [filterByProject, updateTabTitle, selectedProject]);
 
   const loadTeams = async () => {
     try {
@@ -92,7 +108,8 @@ export default function TeamManagementPanel() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/teams?all=true', {
+      const url = projectId ? `/api/teams?project=${projectId}` : '/api/teams?all=true';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -116,7 +133,7 @@ export default function TeamManagementPanel() {
       }
 
       setTeams(teamsArray);
-    } catch (error) {
+    } catch {
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -173,7 +190,7 @@ export default function TeamManagementPanel() {
           });
 
           loadTeams();
-        } catch (error) {
+        } catch {
           // Error deleting team
           toast.current?.show({
             severity: 'error',

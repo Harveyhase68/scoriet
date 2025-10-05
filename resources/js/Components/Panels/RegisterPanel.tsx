@@ -3,7 +3,6 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
-import { Message } from 'primereact/message';
 
 interface RegisterPanelProps {
   onSwitchPanel?: (panelType: string) => void;
@@ -71,8 +70,8 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
         }
       }, 2000);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setLoading(false);
     }

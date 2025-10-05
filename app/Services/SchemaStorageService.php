@@ -13,13 +13,55 @@ use Illuminate\Support\Facades\DB;
 
 class SchemaStorageService
 {
+    /**
+     * Generate short file name from table name
+     * Examples: "customer_custody_value" -> "ccv", "customers" -> "cus"
+     */
+    private function generateFileNameShort(string $tableName): string
+    {
+        if (empty(trim($tableName))) {
+            return '';
+        }
+
+        // Remove numbers and underscores, split by underscore
+        $cleanName = preg_replace('/[0-9_]/', ' ', $tableName);
+        $cleanName = trim($cleanName);
+        $words = array_filter(preg_split('/\s+/', $cleanName));
+
+        if (empty($words)) {
+            return '';
+        }
+
+        if (count($words) === 1) {
+            // Single word: take first 3 characters
+            return strtolower(substr($words[0], 0, 3));
+        } else {
+            // Multiple words: take first letter of each word, max 3
+            $firstLetters = array_slice(array_map(function($word) {
+                return strtolower(substr($word, 0, 1));
+            }, $words), 0, 3);
+            return implode('', $firstLetters);
+        }
+    }
+
     public function storeSchema(array $parsedTables, string $versionName, ?string $description = null)
     {
         return DB::transaction(function () use ($parsedTables, $versionName, $description) {
-            // Schema Version erstellen
+            // Create floating schema first
+            $schema = \App\Models\FloatingSchema::create([
+                'name' => $versionName,
+                'description' => $description,
+                'owner_id' => 1, // Default owner for testing
+                'visibility' => 'private',
+                'last_version' => 0, // Start at 0, will be incremented to 1 when first version is created
+            ]);
+
+            // Schema Version erstellen (erste Version ist 0)
             $schemaVersion = SchemaVersion::create([
                 'version_name' => $versionName,
                 'description' => $description,
+                'schema_id' => $schema->id,
+                'version_number' => 0, // Start bei 0
             ]);
 
             $tableMap = []; // For foreign key references
@@ -38,6 +80,9 @@ class SchemaStorageService
                 $this->storeConstraints($table, $tableData['constraints'], $tableMap);
             }
 
+            // Update schema's last_version to match the created version
+            $schema->update(['last_version' => $schemaVersion->version_number]);
+
             return $schemaVersion;
         });
     }
@@ -53,10 +98,22 @@ class SchemaStorageService
             return $existingTable; // Return existing table instead of creating duplicate
         }
 
+        // Detect primary key if not provided
+        $primaryKey = $tableData['primarykeyfield'] ?? $this->detectPrimaryKeyFromFields($tableData['fields']) ?? 'id';
+        $fileKey = $tableData['filekeyname'] ?? $primaryKey;
+
+        // Auto-generate file name short and renamed if not provided
+        $fileNameShort = !empty($tableData['file_name_short']) ? $tableData['file_name_short'] : $this->generateFileNameShort($tableData['table_name']);
+        $fileNameRenamed = $tableData['file_name_renamed'] ?? '';
+
         return SchemaTable::create([
             'schema_id' => $schemaVersion->schema_id, // ← ADD: Direct schema relationship
             'schema_version_id' => $schemaVersion->id,
             'table_name' => $tableData['table_name'],
+            'primarykeyfield' => $primaryKey, // 🔧 Primary key migration
+            'filekeyname' => $fileKey, // 🔧 File key for templates
+            'file_name_renamed' => $fileNameRenamed, // Auto-generated or provided
+            'file_name_short' => $fileNameShort, // Auto-generated or provided
         ]);
     }
 
@@ -100,6 +157,34 @@ class SchemaStorageService
 
             // Constraint Columns speichern
             $this->storeConstraintColumns($constraint, $constraintData['columns'], $table);
+
+            // 🎯 UPDATE FIELDS: Set is_primary_key, is_unique and is_index flags based on constraint type
+            $constraintType = $constraintData['type'];
+            foreach ($constraintData['columns'] as $columnName) {
+                $field = SchemaField::where('table_id', $table->id)
+                    ->where('field_name', $columnName)
+                    ->first();
+
+                if ($field) {
+                    // PRIMARY KEY sets both is_primary_key and is_unique = true
+                    if ($constraintType === 'PRIMARY KEY') {
+                        $field->update([
+                            'is_primary_key' => true,
+                            'is_unique' => true
+                        ]);
+                    }
+
+                    // UNIQUE constraints set is_unique = true
+                    if ($constraintType === 'UNIQUE') {
+                        $field->update(['is_unique' => true]);
+                    }
+
+                    // INDEX and KEY constraints set is_index = true
+                    if ($constraintType === 'INDEX' || $constraintType === 'KEY') {
+                        $field->update(['is_index' => true]);
+                    }
+                }
+            }
 
             // Foreign Key Referenzen speichern
             if ($constraintData['type'] === 'FOREIGN KEY' && isset($constraintData['references'])) {
@@ -204,6 +289,9 @@ class SchemaStorageService
             // Clear existing tables for this version
             $schemaVersion->tables()->delete();
 
+            // 🔧 PRIMARY KEY MIGRATION - Preserve {filekeyname} across versions
+            $parsedTables = $this->migratePrimaryKeysFromPreviousVersion($schemaVersion, $parsedTables);
+
             $tableMap = []; // For foreign key references
 
             // First phase: Save tables and fields
@@ -224,6 +312,195 @@ class SchemaStorageService
         });
     }
 
+    /**
+     * 🔧 PRIMARY KEY MIGRATION - Preserve {filekeyname} across schema versions
+     *
+     * Ensures that primary key configurations survive SQL imports by:
+     * 1. Reading primary keys from previous version
+     * 2. Auto-detecting primary keys from new SQL
+     * 3. Merging the information intelligently
+     */
+    private function migratePrimaryKeysFromPreviousVersion(SchemaVersion $schemaVersion, array $parsedTables): array
+    {
+        // Get previous version primary keys
+        $previousVersion = SchemaVersion::where('schema_id', $schemaVersion->schema_id)
+            ->where('version_number', '<', $schemaVersion->version_number)
+            ->orderBy('version_number', 'desc')
+            ->first();
+
+        $previousPrimaryKeys = [];
+        $previousFileKeys = [];
+        $previousFileNamesRenamed = [];
+        $previousFileNamesShort = [];
+        if ($previousVersion) {
+            $previousTables = SchemaTable::where('schema_version_id', $previousVersion->id)
+                ->whereNotNull('primarykeyfield')
+                ->get(['table_name', 'primarykeyfield', 'filekeyname', 'file_name_renamed', 'file_name_short']);
+
+            foreach ($previousTables as $table) {
+                $previousPrimaryKeys[$table->table_name] = $table->primarykeyfield;
+                $previousFileKeys[$table->table_name] = $table->filekeyname ?? $table->primarykeyfield;
+                $previousFileNamesRenamed[$table->table_name] = $table->file_name_renamed ?? '';
+                $previousFileNamesShort[$table->table_name] = $table->file_name_short ?? '';
+            }
+        }
+
+        // Process each table for primary key migration
+        foreach ($parsedTables as $tableName => &$tableData) {
+            $detectedPrimaryKey = $this->detectPrimaryKeyFromFields($tableData['fields']);
+            $previousPrimaryKey = $previousPrimaryKeys[$tableName] ?? null;
+            $previousFileKey = $previousFileKeys[$tableName] ?? null;
+            $previousFileNameRenamed = $previousFileNamesRenamed[$tableName] ?? null;
+            $previousFileNameShort = $previousFileNamesShort[$tableName] ?? null;
+
+            // Priority: Previous version > SQL-detected > fallback to 'id'
+            if ($previousPrimaryKey && $this->fieldExistsInTable($previousPrimaryKey, $tableData['fields'])) {
+                // Previous primary key still exists in new structure - use it
+                $tableData['primarykeyfield'] = $previousPrimaryKey;
+                \Log::info("🔧 Primary key migrated", [
+                    'table' => $tableName,
+                    'primary_key' => $previousPrimaryKey,
+                    'source' => 'previous_version'
+                ]);
+            } elseif ($detectedPrimaryKey) {
+                // Use SQL-detected primary key
+                $tableData['primarykeyfield'] = $detectedPrimaryKey;
+                \Log::info("🔧 Primary key detected from SQL", [
+                    'table' => $tableName,
+                    'primary_key' => $detectedPrimaryKey,
+                    'source' => 'sql_detection'
+                ]);
+            } else {
+                // Fallback to 'id' or first field
+                $fallbackKey = $this->getFallbackPrimaryKey($tableData['fields']);
+                $tableData['primarykeyfield'] = $fallbackKey;
+                \Log::info("🔧 Primary key fallback", [
+                    'table' => $tableName,
+                    'primary_key' => $fallbackKey,
+                    'source' => 'fallback'
+                ]);
+            }
+
+            // 🔧 FILEKEYNAME MIGRATION - Preserve template key selection
+            if ($previousFileKey && $this->fieldExistsInTable($previousFileKey, $tableData['fields'])) {
+                // Previous filekeyname still exists - use it
+                $tableData['filekeyname'] = $previousFileKey;
+                \Log::info("🔧 File key migrated", [
+                    'table' => $tableName,
+                    'file_key' => $previousFileKey,
+                    'source' => 'previous_version'
+                ]);
+            } else {
+                // Default filekeyname to primarykeyfield
+                $tableData['filekeyname'] = $tableData['primarykeyfield'];
+                \Log::info("🔧 File key defaulted to primary key", [
+                    'table' => $tableName,
+                    'file_key' => $tableData['primarykeyfield'],
+                    'source' => 'primary_key_default'
+                ]);
+            }
+
+            // 🔧 FILE NAME RENAMED MIGRATION - Preserve custom file names
+            if ($previousFileNameRenamed) {
+                // Previous file name renamed exists - preserve it
+                $tableData['file_name_renamed'] = $previousFileNameRenamed;
+                \Log::info("🔧 File name renamed migrated", [
+                    'table' => $tableName,
+                    'file_name_renamed' => $previousFileNameRenamed,
+                    'source' => 'previous_version'
+                ]);
+            } else {
+                // Leave empty or use provided value
+                $tableData['file_name_renamed'] = $tableData['file_name_renamed'] ?? '';
+            }
+
+            // 🔧 FILE NAME SHORT MIGRATION - Preserve or auto-generate
+            if ($previousFileNameShort) {
+                // Previous file name short exists - preserve it
+                $tableData['file_name_short'] = $previousFileNameShort;
+                \Log::info("🔧 File name short migrated", [
+                    'table' => $tableName,
+                    'file_name_short' => $previousFileNameShort,
+                    'source' => 'previous_version'
+                ]);
+            } else {
+                // Auto-generate file name short
+                $autoGeneratedShort = $this->generateFileNameShort($tableName);
+                $tableData['file_name_short'] = $autoGeneratedShort;
+                \Log::info("🔧 File name short auto-generated", [
+                    'table' => $tableName,
+                    'file_name_short' => $autoGeneratedShort,
+                    'source' => 'auto_generation'
+                ]);
+            }
+        }
+
+        return $parsedTables;
+    }
+
+    /**
+     * Detect primary key from SQL field definitions
+     */
+    private function detectPrimaryKeyFromFields(array $fields): ?string
+    {
+        foreach ($fields as $field) {
+            // Look for explicit PRIMARY KEY declaration
+            if (isset($field['is_primary']) && $field['is_primary']) {
+                return $field['name'];
+            }
+
+            // Look for AUTO_INCREMENT (usually indicates primary key)
+            if (isset($field['auto_increment']) && $field['auto_increment']) {
+                return $field['name'];
+            }
+        }
+
+        // Look for 'id' field
+        foreach ($fields as $field) {
+            if ($field['name'] === 'id') {
+                return 'id';
+            }
+        }
+
+        // Look for fields ending with '_id'
+        foreach ($fields as $field) {
+            if (str_ends_with($field['name'], '_id')) {
+                return $field['name'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if a field exists in the table structure
+     */
+    private function fieldExistsInTable(string $fieldName, array $fields): bool
+    {
+        foreach ($fields as $field) {
+            if ($field['name'] === $fieldName) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get fallback primary key when nothing else works
+     */
+    private function getFallbackPrimaryKey(array $fields): string
+    {
+        // Prefer 'id' if it exists
+        foreach ($fields as $field) {
+            if ($field['name'] === 'id') {
+                return 'id';
+            }
+        }
+
+        // Otherwise use first field
+        return $fields[0]['name'] ?? 'id';
+    }
+
     private function generateConstraintName(array $constraintData, SchemaTable $table): string
     {
         $type = $constraintData['type'];
@@ -231,7 +508,8 @@ class SchemaStorageService
 
         switch ($type) {
             case 'PRIMARY KEY':
-                return 'pk_' . $tableName;
+                $columns = implode('_', $constraintData['columns'] ?? []);
+                return $columns ? "pk_{$tableName}_{$columns}" : "pk_{$tableName}";
 
             case 'FOREIGN KEY':
                 $columns = implode('_', $constraintData['columns'] ?? []);

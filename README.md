@@ -37,12 +37,16 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Language Selector**: Elegant dropdown with flag icons and smooth UX
 - ✅ **Demo System**: Instant demo access with `demo-admin` and `demo-user`
 - ✅ **Professional Landing Page**: Marketing site with pricing tiers
+- ✅ **CMS System**: Inertia-based CMS pages (Impressum, Help) with React components
 - ✅ **Maintenance Mode**: Professional 503 page for updates
 - ✅ **Responsive Design**: Works on desktop, tablet, and mobile
 - ✅ **Environment-based Features**: Demo vs. Production mode
 - ✅ **Development Tooling**: Full CI/CD, linting, testing setup
 - ✅ **Accessibility**: WCAG compliant forms with proper autocomplete attributes
-- ✅ **Database Designer**: Visual SQL schema creation and editing
+- ✅ **Database Designer**: Visual SQL schema creation and editing with control type detection
+- ✅ **Control Type System**: Automatic UI control type detection (TEXT, COMBOBOX, DATEPICKER, etc.)
+- ✅ **Link Fields**: Complete foreign key relationship support with display fields and ordering
+- ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **SQL Parser Engine**: Advanced MySQL schema parsing with relationship detection
 - ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
 - ✅ **Debug Manual Generator**: Real-time template debugging and testing
@@ -50,6 +54,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **File Path Organization**: Automatic directory structure for generated code
 - ✅ **Project Management**: Teams, projects, and collaboration tools
 - ✅ **Public Projects Gallery**: Clone and share projects with credit system
+- ✅ **Production Ready**: Clean codebase with all debug statements removed
 
 ### 🚧 **In Progress** (Coming Soon)
 - 🚧 **Multi-Language Templates**: Support for more programming languages
@@ -78,6 +83,10 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **🗄️ Advanced SQL Parser** - Parse MySQL schemas with intelligent relationship detection
 - **🎯 Template Engine** - Powerful client-side template execution with JavaScript integration
 - **📋 Database Designer** - Visual schema creation with drag-and-drop table editing
+- **🎛️ Control Type System** - Automatic UI control detection (TEXT, COMBOBOX, DATEPICKER, CHECKBOX, etc.)
+- **🔗 Link Fields** - Complete foreign key support with display fields, ordering, and relationship management
+- **🌐 Schema Translation** - Multi-language descriptions for tables and fields
+- **📄 CMS Pages** - Inertia-based content management with React components
 - **🔧 Debug Manual Generator** - Real-time template debugging with live preview
 - **📦 ZIP Template Upload** - Upload complete template structures as ZIP files
 - **📁 File Path Organization** - Automatic directory structure for generated code (/components/, /services/, etc.)
@@ -336,6 +345,69 @@ Scoriet includes a powerful visual database designer for creating and editing sc
 - **Constraint Management**: Define primary keys, foreign keys, and indexes
 - **Relationship Visualization**: See table relationships at a glance
 - **Real-time Validation**: Instant feedback on schema validity
+
+### 🎛️ Control Type System
+
+Automatic UI control type detection for intelligent form generation:
+
+**Supported Control Types:**
+- `TEXT` - Single-line text input
+- `TEXTAREA` - Multi-line text input
+- `CHECKBOX` - Boolean toggle
+- `COMBOBOX` - Dropdown select with foreign key support
+- `LISTBOX` - Multi-select list
+- `RADIOBUTTONS` - Radio button group
+- `DATEPICKER` - Date selection
+- `DATETIMEPICKER` - Date and time selection
+- `TIMEPICKER` - Time selection
+- `COLORPICKER` - Color selection
+- `FILEUPLOAD` - File upload control
+
+**Auto-Detection Rules:**
+- `LONGTEXT/TEXT` types → TEXTAREA
+- `BOOLEAN/TINYINT(1)` → CHECKBOX
+- `DATETIME/TIMESTAMP` → DATETIMEPICKER
+- `DATE` → DATEPICKER
+- `TIME` → TIMEPICKER
+- Fields ending with `_id` → COMBOBOX
+- Fields containing "color" → COLORPICKER
+- Fields containing "file/upload" → FILEUPLOAD
+
+### 🔗 Link Field System
+
+Complete foreign key relationship management:
+
+**Link Field Properties:**
+- **Link Table**: Target table for foreign key
+- **Link Field** (Value Field): Primary key field in target table
+- **Link Display Field**: Human-readable field to display (e.g., `name`, `title`)
+- **Link Order Field**: Field to sort results by
+- **Link Order Direction**: ASC or DESC sorting
+
+**Example Usage:**
+```typescript
+{
+  field_name: "category_id",
+  control_type: "COMBOBOX",
+  link_table: "categories",
+  link_field: "id",              // Value to store
+  link_display_field: "name",     // Value to show user
+  link_order_field: "name",       // Sort by name
+  link_order_direction: "ASC"     // A-Z order
+}
+```
+
+This enables automatic generation of dropdown selects with proper foreign key relationships and user-friendly displays.
+
+### 🌐 Schema Translation
+
+Multi-language support for database schemas:
+
+- **Table Translations**: Translate table names and descriptions
+- **Field Translations**: Translate field labels and help text
+- **Language Support**: All 5 supported languages (EN, DE, FR, ES, IT)
+- **Fallback System**: Automatic fallback to default language
+- **Template Integration**: Access translated names in code generation
 
 ### 🔧 Advanced Features
 

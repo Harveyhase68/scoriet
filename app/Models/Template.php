@@ -18,7 +18,6 @@ class Template extends Model
         'visibility',
         'is_system_template',
         'original_template_id',
-        'template_files',
         'category',
         'language',
         'is_active',
@@ -27,7 +26,6 @@ class Template extends Model
     ];
 
     protected $casts = [
-        'template_files' => 'array',
         'tags' => 'array',
         'is_active' => 'boolean',
         'is_system_template' => 'boolean',
@@ -48,6 +46,14 @@ class Template extends Model
     public function projectAssignments()
     {
         return $this->hasMany(ProjectTemplate::class);
+    }
+
+    /**
+     * Get the project usages for the template.
+     */
+    public function projectUsages()
+    {
+        return $this->hasMany(ProjectTemplateUsage::class);
     }
 
     /**
@@ -190,21 +196,26 @@ class Template extends Model
                 $systemQ->where('is_system_template', true)
                         ->where('visibility', 'public');
             })
-            // Project templates from user's accessible projects
+            // User's own templates (regardless of project)
+            ->orWhere(function($ownQ) use ($userId) {
+                $ownQ->where('creator_user_id', $userId)
+                     ->where('is_system_template', false);
+            })
+            // Public project templates from user's accessible projects
             ->orWhere(function($projectQ) use ($userId) {
                 $projectQ->where('is_system_template', false)
                          ->whereHas('project', function($projectAccessQ) use ($userId) {
                              $projectAccessQ->visibleTo(\App\Models\User::find($userId));
                          })
-                         ->where('visibility', 'public');
+                         ->where('visibility', 'public')
+                         ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             })
-            // User's own private templates (for projects they have access to)
-            ->orWhere(function($privateQ) use ($userId) {
-                $privateQ->where('is_system_template', false)
-                         ->where('visibility', 'private')
-                         ->whereHas('project', function($ownProjectQ) use ($userId) {
-                             $ownProjectQ->visibleTo(\App\Models\User::find($userId));
-                         });
+            // Other users' public templates without project association
+            ->orWhere(function($publicQ) use ($userId) {
+                $publicQ->where('is_system_template', false)
+                        ->where('visibility', 'public')
+                        ->whereNull('project_id')
+                        ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             });
 
             // If specific project context, also include templates from that project
@@ -227,9 +238,9 @@ class Template extends Model
      */
     public function canBeEditedBy($user): bool
     {
-        // System templates cannot be edited by anyone (read-only)
+        // System templates can only be edited by system users (the creator)
         if ($this->is_system_template) {
-            return false;
+            return $user->user_type === 'system' && $this->creator_user_id === $user->id;
         }
 
         // Project templates can only be edited by project members
@@ -343,6 +354,30 @@ class Template extends Model
     }
 
     /**
+     * Check if user can view this template
+     */
+    public function canBeViewedBy($user): bool
+    {
+        // System templates are public
+        if ($this->is_system_template) {
+            return true;
+        }
+
+        // Creator can always view
+        if ($this->creator_user_id == $user->id) {
+            return true;
+        }
+
+        // Public templates can be viewed by anyone
+        if ($this->visibility === 'public') {
+            return true;
+        }
+
+        // Private templates can only be viewed by creator
+        return false;
+    }
+
+    /**
      * Clone this template for a project with new name
      */
     public function cloneForProject($project, $newName = null, $visibility = 'public'): Template
@@ -369,7 +404,6 @@ class Template extends Model
             'visibility' => $finalVisibility,
             'is_system_template' => false,
             'original_template_id' => $this->id,
-            'template_files' => $this->template_files,
             'category' => $this->category,
             'language' => $this->language,
             'is_active' => true,
@@ -386,6 +420,9 @@ class Template extends Model
                 'order_index' => $file->order_index,
             ]);
         }
+
+        // Update file_count after cloning files
+        $clonedTemplate->update(['file_count' => $clonedTemplate->files()->count()]);
 
         // Clone DB schema dependencies
         foreach ($this->dbSchemasDependencies as $schema) {

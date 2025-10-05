@@ -18,14 +18,27 @@ class SchemaField extends Model
         'is_nullable',
         'default_value',
         'is_auto_increment',
+        'is_primary_key',
+        'is_index',
+        'is_unique',
         'field_order',
         'comment',
+        // Control Type & Link-Felder für ComboBox, ListBox, etc.
+        'control_type',
+        'link_table',
+        'link_field',
+        'link_display_field',
+        'link_order_field',
+        'link_order_direction',
     ];
 
     protected $casts = [
         'is_unsigned' => 'boolean',
         'is_nullable' => 'boolean',
         'is_auto_increment' => 'boolean',
+        'is_primary_key' => 'boolean',
+        'is_index' => 'boolean',
+        'is_unique' => 'boolean',
     ];
 
     public function table(): BelongsTo

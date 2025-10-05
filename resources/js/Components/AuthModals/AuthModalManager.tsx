@@ -4,9 +4,10 @@ import RegisterModal from './RegisterModal';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import ProfileModal from './ProfileModal';
 import ResetPasswordModal from './ResetPasswordModal';
+import PlanModal from './PlanModal';
 import { SupportedLanguage } from '@/utils/i18n';
 
-export type AuthModalType = 'login' | 'register' | 'forgot' | 'profile' | 'reset' | null;
+export type AuthModalType = 'login' | 'register' | 'forgot' | 'profile' | 'plan' | 'reset' | null;
 
 interface AuthModalManagerProps {
   activeModal: AuthModalType;
@@ -94,6 +95,12 @@ export default function AuthModalManager({
 
       <ProfileModal
         visible={currentModal === 'profile'}
+        onHide={handleCloseModal}
+        defaultTab={0}
+      />
+
+      <PlanModal
+        visible={currentModal === 'plan'}
         onHide={handleCloseModal}
       />
 

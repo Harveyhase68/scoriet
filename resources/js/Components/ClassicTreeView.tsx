@@ -97,7 +97,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   return (
     <>
       <div
-        className="relative flex items-center py-1 cursor-pointer hover:bg-gray-50"
+        className="relative flex items-center py-1 cursor-pointer hover:bg-blue-500/20"
         style={{ paddingLeft: `${20 * level + 25}px` }}
         onClick={handleClick}
       >
@@ -105,7 +105,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
 
         {hasChildren && (
           <div
-            className="absolute w-4 h-4 bg-white border border-gray-400 flex items-center justify-center text-xs cursor-pointer z-10 text-gray-800 font-bold hover:bg-gray-100"
+            className="absolute w-4 h-4 bg-gray-600 border border-gray-400 flex items-center justify-center text-xs cursor-pointer z-10 text-white font-bold hover:bg-gray-500"
             style={{ left: `${20 * level + 12}px` }}
             onClick={handleToggle}
           >
@@ -115,32 +115,32 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
 
         <div className="flex items-center">
           {node.type === 'team' ? (
-            <i className="pi pi-users text-blue-600 mr-2"></i>
+            <i className="pi pi-users text-blue-400 mr-2"></i>
           ) : node.type === 'schema' ? (
-            <i className="pi pi-database text-green-600 mr-2"></i>
+            <i className="pi pi-database text-green-400 mr-2"></i>
           ) : node.type === 'table' ? (
-            <i className="pi pi-table text-green-700 mr-2"></i>
+            <i className="pi pi-table text-green-300 mr-2"></i>
           ) : node.type === 'template' ? (
-            <i className="pi pi-file-edit text-purple-600 mr-2"></i>
+            <i className="pi pi-file-edit text-purple-400 mr-2"></i>
           ) : node.type === 'template_file' ? (
-            <i className="pi pi-file text-purple-700 mr-2"></i>
+            <i className="pi pi-file text-purple-300 mr-2"></i>
           ) : (
             <i className={`mr-2 ${
-              node.memberRole === 'owner' ? 'pi pi-crown text-yellow-600' :
-              node.memberRole === 'admin' ? 'pi pi-shield text-blue-600' :
-              'pi pi-user text-gray-500'
+              node.memberRole === 'owner' ? 'pi pi-crown text-yellow-400' :
+              node.memberRole === 'admin' ? 'pi pi-shield text-blue-400' :
+              'pi pi-user text-gray-300'
             }`}></i>
           )}
 
           <span className={`${
-            node.memberRole === 'owner' ? 'text-yellow-700 font-medium' :
-            node.memberRole === 'admin' ? 'text-blue-700' :
-            node.type === 'team' ? 'text-blue-800 font-medium' :
-            node.type === 'schema' ? 'text-green-800 font-medium' :
-            node.type === 'table' ? 'text-green-700' :
-            node.type === 'template' ? 'text-purple-800 font-medium' :
-            node.type === 'template_file' ? 'text-purple-700' :
-            'text-gray-600'
+            node.memberRole === 'owner' ? 'text-yellow-300 font-medium' :
+            node.memberRole === 'admin' ? 'text-blue-300' :
+            node.type === 'team' ? 'text-blue-300 font-medium' :
+            node.type === 'schema' ? 'text-green-300 font-medium' :
+            node.type === 'table' ? 'text-green-200' :
+            node.type === 'template' ? 'text-purple-300 font-medium' :
+            node.type === 'template_file' ? 'text-purple-200' :
+            'text-gray-200'
           }`}>
             {node.name}
           </span>

@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\SqlParserController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\DbSchemaController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
@@ -11,6 +11,10 @@ use App\Http\Controllers\Api\SchemaController;
 use App\Http\Controllers\ProjectApplicationController;
 use App\Http\Controllers\ProjectInvitationController;
 use App\Http\Controllers\SchemaExportController;
+use App\Http\Controllers\Api\UltimateTemplateController;
+use App\Http\Controllers\Api\TranslationExportController;
+use App\Http\Controllers\Api\AutoTranslateController;
+use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -80,7 +84,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-versions/by-name/{name}', [SqlParserController::class, 'getSchemaVersionByName']);
     
     // Template Management (for Template Management Panel)
+    Route::get('/templates/check-name', [TemplateController::class, 'checkTemplateName']); // Check if name exists (MUST be before apiResource)
     Route::apiResource('templates', TemplateController::class);
+    Route::delete('/templates/{template}/force', [TemplateController::class, 'forceDestroy']); // Hard delete
+    Route::patch('/templates/{template}/toggle', [TemplateController::class, 'toggleActive']); // Toggle active status
+    Route::post('/templates/{template}/clone', [TemplateController::class, 'cloneTemplate']); // Clone template
     Route::get('/templates/{id}/files', [TemplateController::class, 'getTemplateFiles']);
     Route::post('/templates/{id}/files', [TemplateController::class, 'addTemplateFile']);
     Route::put('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'updateTemplateFile']);
@@ -90,6 +98,58 @@ Route::middleware('auth:api')->group(function () {
 
     // Templates API (for Project Assignment)
     Route::get('/project-templates', [App\Http\Controllers\Api\TemplateController::class, 'index']);
+
+    // 🚀 ULTIMATE TEMPLATE ENGINE - Enhanced template processing with 50+ variables
+    Route::get('/ultimate-template/{templateId}', [UltimateTemplateController::class, 'processTemplate'])
+        ->name('api.ultimate-template.process');
+    Route::get('/ultimate-template/{templateId}/export/{format}', [UltimateTemplateController::class, 'processTemplate'])
+        ->where('format', 'json|js|javascript|php')
+        ->name('api.ultimate-template.export');
+
+    // 🔧 TEMPLATE FIX DEMO - Show corrected template processing
+    Route::get('/template-fix-demo', function () {
+        return response()->json([
+            'fixed_template' => \App\Services\TemplateFixService::demoFixedTemplate(),
+            'message' => 'This shows how the template should be processed correctly',
+            'original_issue' => 'The loop was not properly closed and variables not replaced',
+            'fixed_issues' => [
+                'Loop properly processes all items',
+                'Variables are correctly replaced',
+                'Syntax is clean and valid PHP'
+            ]
+        ]);
+    });
+
+    // 🎯 SIMPLE TEMPLATE ENGINE DEMO - Löst dein SQL-Problem
+    Route::get('/simple-template-demo', function () {
+        return response()->json([
+            'generated_javascript' => \App\Services\SimpleTemplateEngine::fixYourSqlProblem(),
+            'message' => 'Simple Template Engine - KEINE REGEX, wartbar und stabil',
+            'your_problem_solved' => [
+                '{filekeyname} wird korrekt zu accl_id',
+                'Keine verschachtelten Konstrukte in einer Zeile',
+                'Loops werden sauber geschlossen',
+                'Kein Regex - nur einfache string operations'
+            ],
+            'features' => [
+                'Zeile-für-Zeile Verarbeitung',
+                'Einfache Variable-Replacement',
+                'Wartbarer Code ohne Regex',
+                'Sichere JavaScript-Escaping'
+            ]
+        ]);
+    });
+
+    // 🔧 STEP-BY-STEP ENGINE DEMO - Löst dein Geister-} Problem
+    Route::get('/step-by-step-demo', function () {
+        return response()->json(\App\Services\StepByStepTemplateEngine::solveSqlProblemStepByStep());
+    });
+
+    // 🎯 SIMPLE FIXED ENGINE - Folgt GENAU deinem Vorschlag
+    Route::get('/simple-fixed-demo', function () {
+        return response()->json(\App\Services\SimpleFixedTemplateEngine::solvYourExactProblem());
+    });
+
     Route::post('/templates/link', [App\Http\Controllers\Api\TemplateController::class, 'linkToProject']);
     Route::post('/templates/clone', [App\Http\Controllers\Api\TemplateController::class, 'cloneToProject']);
     Route::get('/projects/{project}/template-usages', [App\Http\Controllers\Api\TemplateController::class, 'projectUsages']);
@@ -115,10 +175,10 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/schemas/{id}/templates/{templateId}', [DbSchemaController::class, 'unlinkTemplate']);
 
         // Template Dependencies
-        Route::get('/templates/{id}/dependencies', [TemplateController::class, 'getTemplateDependencies']);
-        Route::post('/templates/{id}/add-db-schema', [TemplateController::class, 'addDbSchemaDependency']);
+        Route::get('/templates/{template}/dependencies', [TemplateController::class, 'getTemplateDependencies']);
+        Route::post('/templates/{template}/add-db-schema', [TemplateController::class, 'addDbSchemaDependency']);
         Route::put('/templates/{templateId}/db-schemas/{schemaId}', [TemplateController::class, 'updateDbSchemaDependency']);
-        Route::delete('/templates/{templateId}/db-schemas/{schemaId}', [TemplateController::class, 'removeDbSchemaDependency']);
+        Route::delete('/templates/{template}/db-schemas/{schemaId}', [TemplateController::class, 'removeDbSchemaDependency']);
 
         // Cross-reference queries
         Route::get('/templates/by-db-schema/{schemaId}', [TemplateController::class, 'getTemplatesByDbSchema']);
@@ -139,6 +199,10 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/members', [ProjectController::class, 'getProjectMembers']);
     Route::delete('/projects/{project}/members', [ProjectController::class, 'removeProjectMember']);
     Route::put('/projects/{project}/members/role', [ProjectController::class, 'updateProjectMemberRole']);
+
+    // Project Settings
+    Route::get('/projects/{project}/settings', [ProjectController::class, 'getSettings']);
+    Route::put('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
 
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {
@@ -214,6 +278,33 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/my-pending-invitation', [ProjectInvitationController::class, 'getMyPendingInvitation']);
     Route::post('/my-pending-invitation/accept', [ProjectInvitationController::class, 'acceptMyPendingInvitation']);
     Route::post('/my-pending-invitation/decline', [ProjectInvitationController::class, 'declineMyPendingInvitation']);
+
+    // Language Management (System Admin Only)
+    Route::apiResource('languages', \App\Http\Controllers\Api\LanguageController::class);
+    Route::patch('/languages/{language}/toggle-active', [\App\Http\Controllers\Api\LanguageController::class, 'toggleActive']);
+    Route::patch('/languages/{language}/set-default', [\App\Http\Controllers\Api\LanguageController::class, 'setDefault']);
+
+    // Public endpoint for active languages (available to all users)
+    Route::get('/active-languages', [\App\Http\Controllers\Api\LanguageController::class, 'getActiveLanguages']);
+
+    // System Settings (System Admin Only)
+    Route::get('/settings', [\App\Http\Controllers\Api\SettingsController::class, 'show']);
+    Route::put('/settings', [\App\Http\Controllers\Api\SettingsController::class, 'update']);
+
+    // Schema Translation Management
+    Route::apiResource('schema-translations', \App\Http\Controllers\Api\SchemaTranslationController::class);
+    Route::patch('/schema-translations/{schemaTranslation}/toggle-active', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'toggleActive']);
+    Route::get('/schema-available-items', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'getAvailableItems']);
+    Route::get('/schema-translation', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'getTranslation']);
+    Route::get('/schema-translations/item/{itemName}', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'getItemTranslations']);
+    Route::post('/schema-translations/bulk-update', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'bulkUpdate']);
+
+    // Translation Export/Import
+    Route::get('/translations/export', [\App\Http\Controllers\Api\TranslationExportController::class, 'export']);
+    Route::post('/translations/import', [\App\Http\Controllers\Api\TranslationExportController::class, 'import']);
+
+    // Auto-Translate
+    Route::post('/translations/auto-translate', [\App\Http\Controllers\Api\AutoTranslateController::class, 'translate']);
 });
 
 // DEBUG: Test route to check if ProjectApplicationController is accessible
@@ -1021,12 +1112,51 @@ Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
                 ];
             })->toArray();
 
+            // Map constraints/keys for template variables
+            $mappedKeys = $constraints->map(function($constraint, $index) {
+                return [
+                    'name' => $constraint->constraint_name ?? 'key_' . ($index + 1),
+                    'id' => $index + 1,
+                    'key' => $constraint->column_name ?? '',
+                    'type' => $constraint->constraint_type ?? 'INDEX',
+                    'typecast' => '' // Default empty
+                ];
+            })->toArray();
+
             $projectData['tables'][] = [
+                // Basic table info
                 'tablename' => $table->table_name,
                 'nmaxitems' => $fields->count(),
-                'items' => $mappedFields,
+                'nmaxsearchkeys' => $fields->count(), // For now, all fields are searchable
+                'nmaxitemsnokey' => $fields->where('field_name', '!=', 'id')->count(), // Items without primary key
                 'nmaxkeys' => $constraints->count(),
-                'keys' => []
+                'nmaxforeignkeys' => 0, // TODO: Add foreign keys support
+
+                // Table data arrays
+                'fields' => $mappedFields,
+                'keys' => $mappedKeys,
+
+                // File generation info
+                'filename' => $table->table_name,
+                'filenameshort' => substr($table->table_name, 0, 8), // 8 char limit
+                'fileid' => $table->table_name,
+                'filenamecc' => ucwords(str_replace('_', '', $table->table_name)), // CamelCase
+                'filegeneratemasterdetail' => false, // Default false
+                'filedetailfileid' => '',
+                'filedetailfilename' => '',
+                'filedetailkey' => '',
+
+                // Primary key info for template variables
+                'primarykeyfield' => $fields->where('field_name', 'id')->first()?->field_name
+                                 ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                                 ?? $fields->first()?->field_name
+                                 ?? 'id',
+
+                // File key for templates - defaults to primary key for now
+                'filekeyname' => $fields->where('field_name', 'id')->first()?->field_name
+                             ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                             ?? $fields->first()?->field_name
+                             ?? 'id'
             ];
         }
 
@@ -1134,6 +1264,9 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
         // Get project filter from query parameter
         $projectId = $request->query('project_id');
 
+        // Get specific table filter from query parameter
+        $tableName = $request->query('table_name');
+
         // Find template with its files
         $template = \App\Models\Template::with('files')->find($templateId);
 
@@ -1149,6 +1282,11 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
             \Log::info("Template processing with project filter: {$projectId}");
         } else {
             \Log::info("Template processing without project filter (demo mode)");
+        }
+
+        // Log table filtering
+        if ($tableName) {
+            \Log::info("Template processing with table filter: {$tableName}");
         }
 
         // Analyze template files to determine optimization strategy
@@ -1221,7 +1359,41 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
         if ($schemaTables->isEmpty()) {
             if ($projectId) {
                 \Log::warning("Project {$projectId} has no linked schemas - this is normal if no databases are connected to the project");
-                // Return empty gtree for projects with no linked schemas
+
+                // SPECIAL CASE: If table_name is specified but project has no schemas, create a dummy table
+                if ($tableName) {
+                    \Log::info("Creating dummy table '{$tableName}' for project {$projectId} because table_name was specified");
+
+                    // Create a dummy table with basic fields for template processing
+                    $dummyTable = new \App\Models\SchemaTable();
+                    $dummyTable->table_name = $tableName;
+                    $dummyTable->id = 999999; // Dummy ID
+
+                    // Create basic dummy fields
+                    $dummyFields = collect([
+                        (object)[
+                            'field_name' => 'id',
+                            'field_type' => 'int',
+                            'is_nullable' => false,
+                            'field_order' => 1,
+                            'default_value' => null
+                        ],
+                        (object)[
+                            'field_name' => 'name',
+                            'field_type' => 'varchar(255)',
+                            'is_nullable' => false,
+                            'field_order' => 2,
+                            'default_value' => null
+                        ]
+                    ]);
+
+                    $dummyTable->setRelation('fields', $dummyFields);
+                    $dummyTable->setRelation('constraints', collect());
+
+                    $schemaTables = collect([$dummyTable]);
+                    \Log::info("Created dummy table with {$dummyFields->count()} fields");
+                }
+                // Return empty gtree for projects with no linked schemas (when no table_name specified)
             } else {
                 \Log::info("No project specified, using demo data (schema_version_id=1)");
 
@@ -1233,10 +1405,41 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
             }
         }
 
-        // Build gtree[] array structure (identical to gtree-test)
+        // Build gtree[] array structure with real project data
+        $actualProject = null;
+        if ($projectId) {
+            $actualProject = \App\Models\Project::find($projectId);
+        }
+
+        // Get project information or fallback to demo values
+        $projectName = $actualProject ? $actualProject->name : 'ScorietDemo';
+        $projectId = $actualProject ? $actualProject->id : 1;
+
         $projectData = [
-            'projectname' => 'TestProject',
+            // Basic project info
+            'projectname' => $projectName,
+            'projectdirectory' => $actualProject ? ($actualProject->project_directory ?? 'C:\\Users\\Public\\Documents\\' . $projectName) : 'C:\\Users\\Public\\Documents\\ScorietDemo',
+            'projecturl' => $actualProject ? ($actualProject->project_url ?? 'http://localhost/' . strtolower($projectName)) : 'http://localhost/scorietdemo',
+            'projectdatabase' => $actualProject ? ($actualProject->database_name ?? $projectName . '_db') : 'scoriet_demo',
+            'projectid' => $projectId,
+            'projecttemplateid' => $templateId,
+            'projectdbid' => 1, // Default connection ID
+            'projectdbtype' => $actualProject ? ($actualProject->database_type ?? 'MySQL') : 'MySQL',
+            'projectdbdesc' => $actualProject ? ($actualProject->description ?? 'Project database') : 'Demo project database',
+            'projectdbpassword' => $actualProject ? ($actualProject->database_password ?? '') : '', // Security: Don't expose real passwords if empty
+            'projectdbusername' => $actualProject ? ($actualProject->database_username ?? 'root') : 'root',
+            'projectdbserver' => $actualProject ? ($actualProject->database_server ?? '127.0.0.1') : '127.0.0.1',
+            'projectdbport' => $actualProject ? ($actualProject->database_port ?? '3306') : '3306',
+
+            // Counts and metrics
             'nmaxfiles' => $schemaTables->count(),
+            'nmaxlanguages' => 1, // Default to 1 language
+
+            // Template info
+            'templatename' => $template->name,
+            'templatefolder' => 'Templates\\' . $template->name,
+
+            // Tables array (will be filled below)
             'tables' => []
         ];
 
@@ -1244,16 +1447,16 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
             $fields = $table->fields;
             $constraints = $table->constraints;
 
-            $mappedFields = $fields->map(function($field) {
+            $mappedFields = $fields->map(function($field, $index) use ($table, $projectId) {
                 $controltype = match($field->field_type) {
-                    'int', 'integer', 'bigint', 'smallint', 'tinyint' => 14,
+                    'int', 'integer', 'bigint', 'smallint', 'tinyint' => 24,
                     'varchar', 'char' => 24,
-                    'string' => 25,
-                    'text', 'longtext', 'mediumtext' => 26,
-                    'decimal', 'float', 'double' => 27,
-                    'date' => 28,
-                    'datetime', 'timestamp' => 29,
-                    'boolean', 'bool', 'tinyint(1)' => 30,
+                    'string' => 24,
+                    'text', 'longtext', 'mediumtext' => 24,
+                    'decimal', 'float', 'double' => 24,
+                    'date' => 24,
+                    'datetime', 'timestamp' => 24,
+                    'boolean', 'bool', 'tinyint(1)' => 24,
                     default => 24
                 };
 
@@ -1265,22 +1468,86 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                     default => '' // No cast for strings, dates, etc.
                 };
 
+                // Check if field is auto increment (primary key with int type)
+                $isAutoIncrement = ($field->field_name === 'id' || str_ends_with($field->field_name, '_id')) &&
+                                   in_array($field->field_type, ['int', 'integer', 'bigint']);
+
+                // Extract field size from type (e.g., VARCHAR(50) -> 50)
+                $size = 0;
+                if (preg_match('/\((\d+)\)/', $field->field_type, $matches)) {
+                    $size = (int)$matches[1];
+                }
+
                 return [
+                    // Core template variables
                     'name' => $field->field_name,
-                    'type' => $field->field_type,
+                    'type' => strtoupper($field->field_type),
                     'controltype' => $controltype,
                     'typecast' => $typecast,
                     'is_nullable' => $field->is_nullable,
-                    'order' => $field->field_order
+                    'order' => $field->field_order,
+
+                    // Extended Scoriet template variables
+                    'filename' => $table->table_name, // Table name for file reference
+                    'default' => $field->default_value ?? '',
+                    'id' => $index + 1, // 1-based field ID
+                    'sortindex' => $field->field_order,
+                    'caption' => ucwords(str_replace('_', ' ', $field->field_name)),
+                    'editmask' => '', // Default empty
+                    'size' => $size,
+                    'notnull' => !$field->is_nullable,
+                    'autoincrement' => $isAutoIncrement,
+                    'unsigned' => false, // Default false
+                    'visible' => true, // Default visible
+                    'projectid' => $projectId ?? 1
+                ];
+            })->toArray();
+
+            // Map constraints/keys for template variables
+            $mappedKeys = $constraints->map(function($constraint, $index) {
+                return [
+                    'name' => $constraint->constraint_name ?? 'key_' . ($index + 1),
+                    'id' => $index + 1,
+                    'key' => $constraint->column_name ?? '',
+                    'type' => $constraint->constraint_type ?? 'INDEX',
+                    'typecast' => '' // Default empty
                 ];
             })->toArray();
 
             $projectData['tables'][] = [
+                // Basic table info
                 'tablename' => $table->table_name,
                 'nmaxitems' => $fields->count(),
-                'items' => $mappedFields,
+                'nmaxsearchkeys' => $fields->count(), // For now, all fields are searchable
+                'nmaxitemsnokey' => $fields->where('field_name', '!=', 'id')->count(), // Items without primary key
                 'nmaxkeys' => $constraints->count(),
-                'keys' => []
+                'nmaxforeignkeys' => 0, // TODO: Add foreign keys support
+
+                // Table data arrays
+                'fields' => $mappedFields,
+                'keys' => $mappedKeys,
+
+                // File generation info
+                'filename' => $table->table_name,
+                'filenameshort' => substr($table->table_name, 0, 8), // 8 char limit
+                'fileid' => $table->table_name,
+                'filenamecc' => ucwords(str_replace('_', '', $table->table_name)), // CamelCase
+                'filegeneratemasterdetail' => false, // Default false
+                'filedetailfileid' => '',
+                'filedetailfilename' => '',
+                'filedetailkey' => '',
+
+                // Primary key info for template variables
+                'primarykeyfield' => $fields->where('field_name', 'id')->first()?->field_name
+                                 ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                                 ?? $fields->first()?->field_name
+                                 ?? 'id',
+
+                // File key for templates - defaults to primary key for now
+                'filekeyname' => $fields->where('field_name', 'id')->first()?->field_name
+                             ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                             ?? $fields->first()?->field_name
+                             ?? 'id'
             ];
         }
 
@@ -1301,161 +1568,57 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
             // Check file type first - project_file should always be treated as project-level
             $isProjectFile = ($templateFile->file_type === 'project_file');
 
-            // Only check for table-specific content if it's NOT a project file
-            $hasTableSpecificContent = !$isProjectFile && (
+            // OVERRIDE: If table_name parameter is provided, force table-specific treatment for files with table placeholders
+            \Log::info("🔍 Checking override for file '{$templateFile->file_name}': tableName={$tableName}, has_%1=" . (strpos($templateFile->file_name, '%1') !== false ? 'true' : 'false') . ", has_tablename=" . (strpos($content, '{tablename}') !== false ? 'true' : 'false') . ", isProjectFile={$isProjectFile}");
+
+            $overrideTriggered = false;
+            if ($tableName && (strpos($templateFile->file_name, '%1') !== false || strpos($content, '{tablename}') !== false)) {
+                $isProjectFile = false; // Force it to be treated as table-specific
+                $overrideTriggered = true;
+                \Log::info("🔧 Override: Treating '{$templateFile->file_name}' as table-specific due to table_name parameter: {$tableName}");
+            } else {
+                \Log::info("❌ Override NOT triggered for '{$templateFile->file_name}'");
+            }
+
+            // Check for table-specific content OR if override was triggered
+            $hasTableSpecificContent = $overrideTriggered || (!$isProjectFile && (
                 strpos($content, '{tablename}') !== false ||
                 strpos($content, '{for {nmaxitems}}') !== false ||
                 strpos($content, '{item.name}') !== false ||
                 strpos($content, '{item.type}') !== false ||
                 strpos($content, '{item.controltype}') !== false
-            );
+            ));
 
             if ($hasTableSpecificContent) {
-                // Generate one file per table
-                foreach ($projectData['tables'] as $tableIndex => $table) {
+                // Filter tables if specific table requested
+                $tablesToProcess = $projectData['tables'];
+                if ($tableName) {
+                    $tablesToProcess = array_filter($projectData['tables'], function($table) use ($tableName) {
+                        return $table['tablename'] === $tableName;
+                    });
+
+                    if (empty($tablesToProcess)) {
+                        // Table not found, return error
+                        return response()->json([
+                            'error' => 'Table not found',
+                            'table_name' => $tableName,
+                            'available_tables' => array_column($projectData['tables'], 'tablename')
+                        ], 404);
+                    }
+                }
+
+                // Generate one file per filtered table
+                foreach ($tablesToProcess as $originalIndex => $table) {
+                    // Find the real table index in the original tables array for gtree access
+                    $tableIndex = array_search($table, $projectData['tables'], true);
                     // Simple template variable replacement for now
                     $generatedContent = $content;
                     $generatedContent = str_replace('{projectname}', $projectData['projectname'], $generatedContent);
                     $generatedContent = str_replace('{tablename}', $table['tablename'], $generatedContent);
 
-                    // Convert template to JavaScript function that returns a string
-                    $functionName = "generate" . ucfirst($templateFile->file_type) . "For" . ucfirst($table['tablename']);
-                    $functionName = preg_replace('/[^a-zA-Z0-9]/', '', $functionName); // Clean function name
-
-                    $jsFunction = "function {$functionName}() {\n";
-                    $jsFunction .= "  var sContentResult = '';\n";
-                    $jsFunction .= "  \n";
-
-                    // Process template content line by line and convert to string concatenation
-                    $lines = explode("\n", $generatedContent);
-                    foreach ($lines as $lineIndex => $line) {
-                        // Check if original line is empty or only whitespace before trimming
-                        $originalLine = $line;
-                        // Only trim trailing whitespace, preserve leading spaces for indentation
-                        $line = rtrim($line);
-
-                        // If original line was empty or only whitespace, treat as empty line
-                        if (trim($originalLine) === '') {
-                            $jsFunction .= "  sContentResult += '\\n';\n";
-                            continue;
-                        }
-
-                        // Handle template loops
-                        if (strpos($line, '{for %}') !== false) {
-                            $jsFunction .= "  // Loop over fields\n";
-                            $jsFunction .= "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{for {nmaxitems}}') !== false) {
-                            $jsFunction .= "  // Loop over items\n";
-                            $jsFunction .= "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{for {nmaxitemsnokey}}') !== false) {
-                            $jsFunction .= "  // Loop over items (no key)\n";
-                            $jsFunction .= "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{endfor}') !== false) {
-                            $jsFunction .= "  }\n";
-                            continue;
-                        }
-
-                        // Handle conditional statements (if/else/endif)
-                        if (preg_match('/\{if\s+(.+?)\}/', $line, $matches)) {
-                            $condition = trim($matches[1]);
-                            // Convert template condition to JavaScript
-                            $jsCondition = $condition;
-
-                            // Replace template variables in condition
-                            $jsCondition = str_replace('{item.typecast}', "gtree[0].project[0].tables[{$tableIndex}].items[i].typecast", $jsCondition);
-                            $jsCondition = str_replace('{item.name}', "gtree[0].project[0].tables[{$tableIndex}].items[i].name", $jsCondition);
-                            $jsCondition = str_replace('{item.type}', "gtree[0].project[0].tables[{$tableIndex}].items[i].type", $jsCondition);
-                            $jsCondition = str_replace('{item.controltype}', "gtree[0].project[0].tables[{$tableIndex}].items[i].controltype", $jsCondition);
-
-                            $jsFunction .= "  if ({$jsCondition}) {\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{else}') !== false) {
-                            $jsFunction .= "  } else {\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{endif}') !== false) {
-                            $jsFunction .= "  }\n";
-                            continue;
-                        }
-
-                        // Handle switch statements
-                        if (preg_match('/\{switch\s+(.+?)\}/', $line, $matches)) {
-                            $switchVar = trim($matches[1]);
-                            // Convert template variable to JavaScript
-                            $jsSwitchVar = $switchVar;
-                            $jsSwitchVar = str_replace('{item.typecast}', "gtree[0].project[0].tables[{$tableIndex}].items[i].typecast", $jsSwitchVar);
-                            $jsSwitchVar = str_replace('{item.name}', "gtree[0].project[0].tables[{$tableIndex}].items[i].name", $jsSwitchVar);
-                            $jsSwitchVar = str_replace('{item.type}', "gtree[0].project[0].tables[{$tableIndex}].items[i].type", $jsSwitchVar);
-                            $jsSwitchVar = str_replace('{item.controltype}', "gtree[0].project[0].tables[{$tableIndex}].items[i].controltype", $jsSwitchVar);
-
-                            $jsFunction .= "  switch ({$jsSwitchVar}) {\n";
-                            continue;
-                        }
-
-                        if (preg_match('/\{case\s+(.+?)\}/', $line, $matches)) {
-                            $caseValue = trim($matches[1]);
-                            $jsFunction .= "    case {$caseValue}:\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{break}') !== false) {
-                            $jsFunction .= "      break;\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{default}') !== false) {
-                            $jsFunction .= "    default:\n";
-                            continue;
-                        }
-
-                        if (strpos($line, '{endswitch}') !== false) {
-                            $jsFunction .= "  }\n";
-                            continue;
-                        }
-
-                        // Convert line to string concatenation
-                        $escapedLine = addslashes($line);
-
-                        // Handle template variables in the line
-                        if (strpos($line, '{field.') !== false || strpos($line, '{item.') !== false) {
-                            // This line contains field variables - needs to be inside a loop
-                            $processedLine = $escapedLine;
-
-                            // Replace field variables
-                            $processedLine = str_replace('{field.name}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].name + '", $processedLine);
-                            $processedLine = str_replace('{field.type}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].type + '", $processedLine);
-
-                            // Replace item variables
-                            $processedLine = str_replace('{item.name}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].name + '", $processedLine);
-                            $processedLine = str_replace('{item.type}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].type + '", $processedLine);
-                            $processedLine = str_replace('{item.controltype}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].controltype + '", $processedLine);
-                            $processedLine = str_replace('{item.typecast}', "' + gtree[0].project[0].tables[{$tableIndex}].items[i].typecast + '", $processedLine);
-
-                            $jsFunction .= "    sContentResult += '{$processedLine}\\n';\n";
-                        } else {
-                            // Static line
-                            $jsFunction .= "  sContentResult += '{$escapedLine}\\n';\n";
-                        }
-                    }
-
-                    $jsFunction .= "  \n";
-                    $jsFunction .= "  return sContentResult;\n";
-                    $jsFunction .= "}\n";
-
-                    // Store the original content AND the JavaScript function
-                    $generatedContent = $jsFunction;
+                    // 🎯 USE SIMPLE FIXED TEMPLATE ENGINE - Folgt GENAU deinem Vorschlag
+                    $simpleEngine = new \App\Services\SimpleFixedTemplateEngine($gtree, $tableIndex, $table['tablename']);
+                    $generatedContent = $simpleEngine->processTemplate($content);
 
                     // Clean content for better readability and replace escaped newlines with placeholders
                     $cleanContent = str_replace(['\n', '\r\n', '\r'], "\n", $generatedContent);
@@ -1471,48 +1634,32 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
 
                     // Indent placeholder replacement is now handled in the frontend
 
-                    $generatedFiles[] = [
+                    $fileData = [
                         'filename' => str_replace(['{tablename}', '{projectname}'], [$table['tablename'], $projectData['projectname']], $templateFile->file_name),
                         'output_path' => $templateFile->output_path ?? '/',
                         'content' => $generatedContent,
                         'content_clean' => $cleanContent,
                         'type' => $templateFile->file_type,
+                        'generation_type' => 'db_table_file', // Actual generation type based on content analysis
                         'table' => $table['tablename'],
                         'generated_from_template' => $templateFile->file_name,
                         'table_index' => $tableIndex,
-                        'fields_count' => count($table['items']),
+                        'is_project_file' => false, // This is a table-specific file
+                        'fields_count' => count($table['fields']),
                         'template_variables_converted' => [
                             'projectname' => $projectData['projectname'],
                             'tablename' => $table['tablename'],
                             'loops_converted' => strpos($generatedContent, 'for (let i = 0;') !== false
                         ]
                     ];
+
+                    \Log::info("📝 Generated file data for table '{$table['tablename']}': table_index={$tableIndex}, filename='{$fileData['filename']}', generated_from_template='{$fileData['generated_from_template']}'");
+                    $generatedFiles[] = $fileData;
                 }
             } else {
-                // Project-level file - Use SAME JavaScript template engine as table files
-                $jsFunction = "function generate_project_template() {\n";
-                $jsFunction .= "  let sContentResult = '';\n";
-
-                // Split content into lines for processing
-                $lines = explode("\n", $content);
-                foreach ($lines as $line) {
-                    // Escape quotes for JavaScript string
-                    $escapedLine = str_replace(['\\', '"', "\r"], ['\\\\', '\\"', ''], $line);
-
-                    // Handle template placeholders like table files
-                    if (strpos($line, '{projectname}') !== false) {
-                        $escapedLine = str_replace('{projectname}', '" + gtree[0].project[0].projectname + "', $escapedLine);
-                    }
-
-                    // Add line to function with newline
-                    $jsFunction .= '  sContentResult += "' . $escapedLine . '\\n";' . "\n";
-                }
-
-                $jsFunction .= "  return sContentResult;\n";
-                $jsFunction .= "}\n";
-
-                // Apply same Unicode transformations as table files
-                $generatedContent = $jsFunction;
+                // Project-level file - Use SAME SimpleFixedTemplateEngine
+                $simpleEngine = new \App\Services\SimpleFixedTemplateEngine($gtree, 0); // Use table index 0 for project files
+                $generatedContent = $simpleEngine->processTemplate($content);
 
                 // Clean content for better readability
                 $cleanContent = str_replace(['\n', '\r\n', '\r'], "\n", $generatedContent);
@@ -1530,6 +1677,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                     'content' => $generatedContent,
                     'content_clean' => $cleanContent,
                     'type' => $templateFile->file_type,
+                    'generation_type' => 'project_file', // Actual generation type based on content analysis
                     'table' => null,
                     'generated_from_template' => $templateFile->file_name,
                     'is_project_file' => true,

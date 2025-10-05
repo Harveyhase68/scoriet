@@ -3,18 +3,18 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Message } from 'primereact/message';
 import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
-import { Checkbox } from 'primereact/checkbox';
-import { Tree } from 'primereact/tree';
+import { TabView, TabPanel } from 'primereact/tabview';
+import { Dropdown } from 'primereact/dropdown';
 import ClassicTreeView from '@/Components/ClassicTreeView';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
 import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal';
 import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
+// import EditProjectModal from '@/Components/Modals/EditProjectModal'; // Replaced by ProjectSettingsPanel
 import { useProject } from '@/contexts/ProjectContext';
 
 interface TabPanelProps {
@@ -44,6 +44,23 @@ interface Project {
   templates_count?: number;
   databases_count?: number;
   applications_count?: number;
+  // Database connection fields
+  database_name?: string;
+  database_type?: string;
+  database_server?: string;
+  database_port?: string;
+  database_username?: string;
+  database_password?: string;
+  // Project paths
+  project_directory?: string;
+  project_url?: string;
+  // Localization settings
+  decimal_separator?: string;
+  thousands_separator?: string;
+  date_format?: string;
+  time_format?: string;
+  currency_symbol?: string;
+  timezone?: string;
 }
 
 export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
@@ -62,35 +79,44 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   // Keep track of original selected project for returning after edit
-  const [originalSelectedProject, setOriginalSelectedProject] = useState<Project | null>(null);
-
   // All other state definitions first
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-  const [isEditing, setIsEditing] = useState(false);
+
 
   // Sync with global project context
   useEffect(() => {
     setProjects(globalProjects);
-    // Only update currentProject if we're not editing
-    if (!isEditing) {
-      setCurrentProject(globalSelectedProject);
-    }
-  }, [globalProjects, globalSelectedProject, isEditing]);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    description: '',
-    join_code: '',
-    is_public: false,
-    new_owner_id: null as number | null
-  });
+    // Always update currentProject since we don't have inline editing anymore
+    setCurrentProject(globalSelectedProject);
+  }, [globalProjects, globalSelectedProject]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
     description: '',
     is_public: true,
-    allow_join_requests: false
+    allow_join_requests: false,
+    // Database connection fields
+    database_name: '',
+    database_type: 'MySQL',
+    database_server: '127.0.0.1',
+    database_port: '3306',
+    database_username: '',
+    database_password: '',
+    // Project paths
+    project_directory: '',
+    project_url: '',
+    // Project properties
+    start_page: 'index.php',
+    default_language: 'en',
+    filename_short_length: 2,
+    // Localization settings
+    decimal_separator: ',',
+    thousands_separator: '.',
+    date_format: 'd.m.Y',
+    time_format: 'H:i:s',
+    currency_symbol: '€',
+    timezone: 'Europe/Vienna'
   });
   const [creating, setCreating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -100,7 +126,6 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
   const [showInvitationsModal, setShowInvitationsModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
-  const [localSelectedProject, setLocalSelectedProject] = useState<Project | null>(null);
   const [showProjectOverviewModal, setShowProjectOverviewModal] = useState(false);
   const [selectedProjectForOverview, setSelectedProjectForOverview] = useState<Project | null>(null);
   const [projectTeamsTree, setProjectTeamsTree] = useState<any[]>([]);
@@ -112,24 +137,23 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [loadingMembersData, setLoadingMembersData] = useState(false);
 
-  // Load projects when panel becomes active (but not during editing to avoid conflicts)
+  // Load projects when panel becomes active
   useEffect(() => {
-    if (isActive && !isEditing) {
+    if (isActive) {
       loadProjectsFromContext();
     }
   }, [isActive, loadProjectsFromContext]);
 
   // Ensure currentProject is synced with globalSelectedProject when panel becomes active
   useEffect(() => {
-    if (isActive && globalSelectedProject && !isEditing) {
+    if (isActive && globalSelectedProject) {
       setCurrentProject(globalSelectedProject);
     }
-  }, [isActive, globalSelectedProject, isEditing]);
+  }, [isActive, globalSelectedProject]);
 
   // Listen for notification bell click to open Applications Modal
   useEffect(() => {
     const handleOpenApplicationsModal = () => {
-      console.log('📧 ProjectPanel: Received openApplicationsModalInPanel event, opening modal');
       setShowApplicationsModal(true);
     };
 
@@ -143,20 +167,16 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
   const handleEdit = async (projectToEdit?: Project) => {
     const project = projectToEdit || currentProject;
-    if (project) {
-      setEditForm({
-        name: project.name,
-        description: project.description,
-        join_code: project.join_code || '',
-        is_public: project.is_public,
-        new_owner_id: null
+    if (project && onOpenPanel) {
+      // Set the project as the current project first
+      setGlobalSelectedProject(project);
+      // Open the project settings panel with unique ID and project name in title
+      onOpenPanel(`project-settings-${project.id}`, {
+        type: 'project-settings',
+        title: `Project Settings (${project.name})`,
+        projectId: project.id,
+        projectName: project.name
       });
-      setIsEditing(true);
-      setError('');
-      setSuccess('');
-
-      // Load project members for owner transfer
-      await loadProjectMembers(project.id);
     }
   };
 
@@ -175,154 +195,13 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         const data = await response.json();
         setProjectMembers(data);
       }
-    } catch (error) {
-      console.error('Error loading project members:', error);
+    } catch {
       setProjectMembers([]);
     } finally {
       setLoadingMembersData(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!currentProject) return;
-
-    // Confirm ownership transfer if requested
-    if (editForm.new_owner_id) {
-      const newOwner = projectMembers.find(member => member.user_id === editForm.new_owner_id);
-      if (!confirm(`Are you sure you want to transfer ownership to ${newOwner?.user.name} (${newOwner?.user.email})?\n\nThis action cannot be undone and you will lose owner privileges!`)) {
-        return;
-      }
-    }
-
-    setSaving(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/projects/${currentProject.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update project');
-      }
-
-      const updatedProject = await response.json();
-      console.log('🔧 Save: Updated project from API:', updatedProject);
-      setCurrentProject(updatedProject);
-
-      // Only update global context if we're editing the current global project
-      // If we have originalSelectedProject, we'll return to that one instead
-      if (!originalSelectedProject) {
-        console.log('🔧 Save: Setting global project to updated project:', updatedProject);
-        console.log('🔧 Save: Current globalSelectedProject before update:', globalSelectedProject);
-        setGlobalSelectedProject(updatedProject);
-
-        // Verify the structure is compatible
-        console.log('🔧 Save: Updated project structure check:', {
-          id: updatedProject.id,
-          name: updatedProject.name,
-          hasRequiredFields: !!(updatedProject.id && updatedProject.name)
-        });
-      } else {
-        console.log('🔧 Save: Will return to original project, not updating global yet');
-      }
-
-      // Mark this as a recent update to prevent loadProjects from overriding it
-      window.lastProjectUpdate = Date.now();
-
-      // Debug: Check if global project was actually set
-      setTimeout(() => {
-        console.log('🔧 Save: Global project after timeout:', globalSelectedProject);
-      }, 100);
-
-      // If ownership was transferred, exit edit mode since user is no longer owner
-      if (editForm.new_owner_id) {
-        setIsEditing(false);
-        setSuccess('Project ownership transferred successfully');
-      } else {
-        // Update the editForm with the new values
-        setEditForm({
-          name: updatedProject.name,
-          description: updatedProject.description || '',
-          join_code: updatedProject.join_code || '',
-          is_public: updatedProject.is_public,
-          new_owner_id: null
-        });
-        setSuccess('Project updated successfully');
-      }
-      
-      // Update the projects array in state to reflect the changes in the table
-      setProjects(prevProjects =>
-        prevProjects.map(p =>
-          p.id === updatedProject.id ? updatedProject : p
-        )
-      );
-
-      setIsEditing(false);
-      setSuccess('Project updated successfully');
-
-      // Make sure global project stays updated even if external forces try to change it
-      // But only if we're not returning to an original project
-      if (!originalSelectedProject) {
-        setTimeout(() => {
-          if (globalSelectedProject?.id === updatedProject.id) {
-            setGlobalSelectedProject(updatedProject);
-          }
-        }, 200);
-      }
-
-      // Return to the originally selected project after editing
-      if (originalSelectedProject) {
-        console.log('🔄 Save: Returning to original project:', originalSelectedProject);
-        // Find the current version of the original project from the projects list
-        const currentVersionOfOriginalProject = projects.find(p => p.id === originalSelectedProject.id);
-        const projectToSelect = currentVersionOfOriginalProject || originalSelectedProject;
-        console.log('🔄 Save: Project to select:', projectToSelect);
-
-        setGlobalSelectedProject(projectToSelect);
-        setCurrentProject(projectToSelect);
-        setOriginalSelectedProject(null);
-        console.log('🔄 Save: Set global and current project to original');
-      } else {
-        console.log('🔄 Save: No original project to return to');
-      }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error updating project');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setError('');
-    setSuccess('');
-
-    // Return to the originally selected project after canceling edit
-    if (originalSelectedProject) {
-      // Find the current version of the original project from the projects list
-      const currentVersionOfOriginalProject = projects.find(p => p.id === originalSelectedProject.id);
-      const projectToSelect = currentVersionOfOriginalProject || originalSelectedProject;
-
-      setGlobalSelectedProject(projectToSelect);
-      setCurrentProject(projectToSelect);
-      setOriginalSelectedProject(null);
-    }
-  };
 
   const handleCreateProject = async () => {
     setCreating(true);
@@ -376,7 +255,6 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
       // Set the new project as preferred if no project was selected before
       if (wasNoProjectSelected && newProject) {
-        console.log('🎯 Setting newly created project as preferred for auto-selection:', newProject.name);
         setPreferredProject(newProject);
       }
 
@@ -384,11 +262,33 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       await loadProjectsFromContext();
 
       setShowCreateModal(false);
-      setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
+      setCreateForm({
+        name: '',
+        description: '',
+        is_public: true,
+        allow_join_requests: false,
+        database_name: '',
+        database_type: 'MySQL',
+        database_server: '127.0.0.1',
+        database_port: '3306',
+        database_username: '',
+        database_password: '',
+        project_directory: '',
+        project_url: '',
+        start_page: 'index.php',
+        default_language: 'en',
+        filename_short_length: 2,
+        decimal_separator: ',',
+        thousands_separator: '.',
+        date_format: 'd.m.Y',
+        time_format: 'H:i:s',
+        currency_symbol: '€',
+        timezone: 'Europe/Vienna'
+      });
       setSuccess('Project created successfully');
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creating project');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error creating project');
     } finally {
       setCreating(false);
     }
@@ -396,7 +296,29 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
   const handleCreateModalHide = () => {
     setShowCreateModal(false);
-    setCreateForm({ name: '', description: '', is_public: true, allow_join_requests: false });
+    setCreateForm({
+      name: '',
+      description: '',
+      is_public: true,
+      allow_join_requests: false,
+      database_name: '',
+      database_type: 'MySQL',
+      database_server: '127.0.0.1',
+      database_port: '3306',
+      database_username: '',
+      database_password: '',
+      project_directory: '',
+      project_url: '',
+      start_page: 'index.php',
+      default_language: 'en',
+      filename_short_length: 2,
+      decimal_separator: ',',
+      thousands_separator: '.',
+      date_format: 'd.m.Y',
+      time_format: 'H:i:s',
+      currency_symbol: '€',
+      timezone: 'Europe/Vienna'
+    });
     setError(''); // Clear errors when modal closes
     setSuccess('');
   };
@@ -433,8 +355,8 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       setProjectToDelete(null);
       setSuccess('Project deleted successfully');
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error deleting project');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error deleting project');
     } finally {
       setDeleting(false);
     }
@@ -501,8 +423,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       }));
 
       setProjectTeamsTree(treeData);
-    } catch (error) {
-      console.error('Error loading teams:', error);
+    } catch {
       setProjectTeamsTree([]);
     } finally {
       setLoadingTeamsData(false);
@@ -543,8 +464,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       }));
 
       setProjectSchemasTree(treeData);
-    } catch (error) {
-      console.error('Error loading schemas:', error);
+    } catch {
       setProjectSchemasTree([]);
     } finally {
       setLoadingSchemasData(false);
@@ -577,23 +497,25 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
 
       // Build tree structure for templates (ClassicTreeView format)
       // Note: API returns usage objects with nested template data
-      const treeData = templatesArray.map((usage: any) => {
-        const template = usage.template; // Extract nested template object
-        return {
-          id: `template-${template.id}`,
-          name: `${template.name} (${template.category || 'template'})`,
-          type: 'template',
-          children: template.files?.map((file: any) => ({
-            id: `file-${template.id}-${file.id}`,
-            name: `${file.file_name} (${file.file_type})`,
-            type: 'template_file'
-          })) || []
-        };
-      });
+      // Filter out usages where template is null (deleted templates)
+      const treeData = templatesArray
+        .filter((usage: any) => usage.template !== null)
+        .map((usage: any) => {
+          const template = usage.template; // Extract nested template object
+          return {
+            id: `template-${template.id}`,
+            name: `${template.name} (${template.category || 'template'})`,
+            type: 'template',
+            children: template.files?.map((file: any) => ({
+              id: `file-${template.id}-${file.id}`,
+              name: `${file.file_name} (${file.file_type})`,
+              type: 'template_file'
+            })) || []
+          };
+        });
 
       setProjectTemplatesTree(treeData);
-    } catch (error) {
-      console.error('Error loading templates:', error);
+    } catch {
       setProjectTemplatesTree([]);
     } finally {
       setLoadingTemplatesData(false);
@@ -639,8 +561,6 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Manage members"
           onClick={() => {
-            
-            setLocalSelectedProject(project);
             setShowMembersModal(true);
           }}
         />
@@ -648,15 +568,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Edit project"
-          onClick={() => {
-            // Remember the currently selected project to return to after editing
-            setOriginalSelectedProject(globalSelectedProject);
-            // Set the project to edit
-            setCurrentProject(project);
-            setGlobalSelectedProject(project); // Temporarily update global context for header
-            // Pass the project directly to avoid race condition
-            handleEdit(project);
-          }}
+          onClick={() => handleEdit(project)}
         />
         <Button
           icon="pi pi-trash"
@@ -745,7 +657,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                   <i className="pi pi-star-fill text-yellow-500"></i>
                   <span>Current Project</span>
                 </span>
-                {currentProject && !isEditing && (
+                {currentProject && (
                   <Button
                     icon="pi pi-pencil"
                     className="p-button-sm p-button-outlined"
@@ -758,203 +670,89 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
             className="h-fit"
           >
             {currentProject ? (
-              <div className="space-y-4">
-                {isEditing ? (
-                  <div className="space-y-4">
-                    <div className="field">
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Project Name
-                      </label>
-                      <InputText
-                        value={editForm.name}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full font-mono"
-                        placeholder="my_project_name"
-                      />
-                      <div className="text-xs text-gray-500 mt-1">
-                        Projekt-Namen werden später für URLs verwendet (username/project_name)
-                      </div>
-                      <div className="text-xs text-orange-400 mt-1">
-                        ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
-                      </div>
-                    </div>
-                    
-                    <div className="field">
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Description
-                      </label>
-                      <InputTextarea
-                        value={editForm.description}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full"
-                        rows={3}
-                        placeholder="Enter project description"
-                      />
-                    </div>
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    {currentProject.name}
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    {currentProject.description || 'No description provided'}
+                  </p>
+                </div>
 
-                    <div className="field">
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Join Code
-                      </label>
-                      <div className="flex gap-2">
-                        <InputText
-                          value={editForm.join_code}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, join_code: e.target.value }))}
-                          className="flex-1"
-                          placeholder="Enter join code (optional)"
-                        />
-                        <Button
-                          icon="pi pi-refresh"
-                          className="p-button-outlined"
-                          onClick={() => setEditForm(prev => ({ ...prev, join_code: 'PROJ-' + Math.random().toString(36).substring(2, 10).toUpperCase() }))}
-                          tooltip="Generate random join code"
-                        />
-                      </div>
-                      <small className="text-gray-500">Users can join this project using this code</small>
-                    </div>
-
-                    <div className="field">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="edit-is-public"
-                          checked={editForm.is_public}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, is_public: e.target.checked }))}
-                          disabled={saving}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        />
-                        <label htmlFor="edit-is-public" className="text-sm font-medium text-gray-300">
-                          Public Project
-                        </label>
-                      </div>
-                      <small className="text-gray-500">Make this project visible to all users</small>
-                    </div>
-
-                    {currentProject?.is_owner && (
-                      <div className="field">
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                          Transfer Ownership
-                        </label>
-                        <select
-                          value={editForm.new_owner_id || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, new_owner_id: e.target.value ? parseInt(e.target.value) : null }))}
-                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-                        >
-                          <option value="">Keep current owner ({currentProject.owner.name})</option>
-                          {projectMembers.filter(member => member.user_id !== currentProject.owner.id).map(member => (
-                            <option key={member.user_id} value={member.user_id}>
-                              Transfer to {member.user.name} ({member.user.email}) - {member.role}
-                            </option>
-                          ))}
-                        </select>
-                        <small className="text-yellow-500">
-                          ⚠️ Warning: You will lose owner privileges after transfer!
-                        </small>
-                      </div>
-                    )}
-
-                    <div className="flex space-x-2 pt-2">
-                      <Button
-                        label="Save"
-                        icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex-1"
-                      />
-                      <Button
-                        label="Cancel"
-                        icon="pi pi-times"
-                        onClick={handleCancel}
-                        className="flex-1 p-button-secondary"
-                      />
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-300">Owner:</span>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <i className="pi pi-user text-blue-400"></i>
+                      <span className="text-gray-200">{currentProject.owner.name}</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {currentProject.name}
-                      </h3>
-                      <p className="text-gray-300 text-sm">
-                        {currentProject.description || 'No description provided'}
-                      </p>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-300">Owner:</span>
-                        <div className="flex items-center space-x-1 mt-1">
-                          <i className="pi pi-user text-blue-400"></i>
-                          <span className="text-gray-200">{currentProject.owner.name}</span>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <span className="font-medium text-gray-300">Created:</span>
-                        <div className="mt-1 text-gray-200">{formatDate(currentProject.created_at)}</div>
-                      </div>
-                    </div>
+                  <div>
+                    <span className="font-medium text-gray-300">Created:</span>
+                    <div className="mt-1 text-gray-200">{formatDate(currentProject.created_at)}</div>
+                  </div>
+                </div>
 
-                    {/* Join Code Section */}
-                    {currentProject.join_code && (
-                      <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium text-gray-300 mb-1">Join Code</div>
-                            <div className="flex items-center space-x-2">
-                              <code className="px-2 py-1 bg-gray-700 rounded text-blue-300 font-mono text-sm">
-                                {currentProject.join_code}
-                              </code>
-                              <Button
-                                icon="pi pi-copy"
-                                className="p-button-rounded p-button-text p-button-sm"
-                                tooltip="Copy join code"
-                                onClick={() => navigator.clipboard.writeText(currentProject.join_code!)}
-                              />
-                            </div>
-                          </div>
-                          <Tag 
-                            value={currentProject.is_public ? "Public" : "Private"} 
-                            severity={currentProject.is_public ? "success" : "warning"}
+                {/* Join Code Section */}
+                {currentProject.join_code && (
+                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-300 mb-1">Join Code</div>
+                        <div className="flex items-center space-x-2">
+                          <code className="px-2 py-1 bg-gray-700 rounded text-blue-300 font-mono text-sm">
+                            {currentProject.join_code}
+                          </code>
+                          <Button
+                            icon="pi pi-copy"
+                            className="p-button-rounded p-button-text p-button-sm"
+                            tooltip="Copy join code"
+                            onClick={() => navigator.clipboard.writeText(currentProject.join_code!)}
                           />
                         </div>
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-5 gap-4 pt-3 border-t border-gray-600">
-                      <div className="text-center">
-                        <div className="text-xl font-bold text-blue-400">
-                          {currentProject.teams_count || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Teams</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xl font-bold text-cyan-400">
-                          {currentProject.members_count || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Members</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xl font-bold text-green-400">
-                          {currentProject.templates_count || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Templates</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xl font-bold text-purple-400">
-                          {currentProject.databases_count || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Databases</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xl font-bold text-orange-400">
-                          {currentProject.applications_count || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Applications</div>
-                      </div>
+                      <Tag
+                        value={currentProject.is_public ? "Public" : "Private"}
+                        severity={currentProject.is_public ? "success" : "warning"}
+                      />
                     </div>
                   </div>
                 )}
+
+                <div className="grid grid-cols-5 gap-4 pt-3 border-t border-gray-600">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-400">
+                      {currentProject.teams_count || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">Teams</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-cyan-400">
+                      {currentProject.members_count || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">Members</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-400">
+                      {currentProject.templates_count || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">Templates</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-purple-400">
+                      {currentProject.databases_count || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">Databases</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-orange-400">
+                      {currentProject.applications_count || 0}
+                    </div>
+                    <div className="text-xs text-gray-400">Applications</div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
@@ -992,7 +790,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 label="Teams Management"
                 icon="pi pi-users"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('team-management', { title: `Teams - ${currentProject?.name}` })}
+                onClick={() => onOpenPanel?.('team-management', { title: `Teams - ${currentProject?.name}`, filterByProject: true })}
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
@@ -1006,14 +804,16 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 label="Templates"
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('template-management', { title: `Templates - ${currentProject?.name}` })}
+                onClick={() => {
+                  onOpenPanel?.('template-management', { title: `Templates - ${currentProject?.name}`, filterByProject: true });
+                }}
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
                 label="Database"
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}` })}
+                onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}`, filterByProject: true })}
                 disabled={!currentProject || !onOpenPanel}
               />
             </div>
@@ -1062,120 +862,453 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         </div>
       </div>
 
-      {/* Create Project Modal */}
+      {/* Create Project Modal with Tabs */}
       <Dialog
         header="Create New Project"
         visible={showCreateModal}
         onHide={handleCreateModalHide}
-        style={{ width: '450px' }}
+        style={{ width: '800px' }}
         modal
         closable
         draggable={false}
         resizable={false}
         className="p-dialog-custom"
       >
-        <div className="space-y-4">
-          <div className="field">
-            <label htmlFor="create-name" className="block text-sm font-medium text-white mb-2">
-              Project Name *
-            </label>
-            <InputText
-              id="create-name"
-              value={createForm.name}
-              onChange={(e) => {
-                setCreateForm(prev => ({ ...prev, name: e.target.value }));
-                setError(''); // Clear error when user types
-              }}
-              placeholder="my_project_name"
-              className="w-full font-mono"
-              disabled={creating}
-              required
-            />
-            <div className="text-xs text-gray-400 mt-1">
-              Projekt-Namen werden später für URLs verwendet (username/project_name)
-            </div>
-            <div className="text-xs text-orange-400 mt-1">
-              ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
-            </div>
-          </div>
+        <TabView>
+          {/* Tab 1: Project Settings */}
+          <TabPanel header="Project Settings" leftIcon="pi pi-cog">
+            <div className="space-y-4">
+              <div className="field">
+                <label htmlFor="create-name" className="block text-sm font-medium text-white mb-2">
+                  Project Name *
+                </label>
+                <InputText
+                  id="create-name"
+                  value={createForm.name}
+                  onChange={(e) => {
+                    setCreateForm(prev => ({ ...prev, name: e.target.value }));
+                    setError(''); // Clear error when user types
+                  }}
+                  placeholder="my_project_name"
+                  className="w-full font-mono"
+                  disabled={creating}
+                  required
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Projekt-Namen werden später für URLs verwendet (username/project_name)
+                </div>
+                <div className="text-xs text-orange-400 mt-1">
+                  ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
+                </div>
+              </div>
 
-          <div className="field">
-            <label htmlFor="create-description" className="block text-sm font-medium text-white mb-2">
-              Description
-            </label>
-            <InputTextarea
-              id="create-description"
-              value={createForm.description}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter project description (optional)"
+              <div className="field">
+                <label htmlFor="create-description" className="block text-sm font-medium text-white mb-2">
+                  Description
+                </label>
+                <InputTextarea
+                  id="create-description"
+                  value={createForm.description}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter project description (optional)"
+                  className="w-full"
+                  rows={3}
+                  disabled={creating}
+                />
+              </div>
+
+              <div className="field">
+                <div className="flex items-center space-x-2 mb-3">
+                  <input
+                    type="checkbox"
+                    id="create-is-public"
+                    checked={createForm.is_public}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.target.checked }))}
+                    disabled={creating}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label htmlFor="create-is-public" className="text-sm font-medium text-white cursor-pointer">
+                    Public Project
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Public projects are visible to all users and can be discovered in the project gallery.
+                </p>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="create-allow-join"
+                    checked={createForm.allow_join_requests}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.target.checked }))}
+                    disabled={creating}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label htmlFor="create-allow-join" className="text-sm font-medium text-white cursor-pointer">
+                    Allow Join Requests
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Users can request to join this project using a join code.
+                </p>
+              </div>
+            </div>
+          </TabPanel>
+
+          {/* Tab 2: Database Connection */}
+          <TabPanel header="Database Connection" leftIcon="pi pi-database">
+            <div className="space-y-4">
+              <div className="field">
+                <label htmlFor="create-db-name" className="block text-sm font-medium text-white mb-2">
+                  Database Name
+                </label>
+                <InputText
+                  id="create-db-name"
+                  value={createForm.database_name}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, database_name: e.target.value }))}
+                  placeholder="project_database"
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Name der Datenbank für dieses Projekt
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-db-type" className="block text-sm font-medium text-white mb-2">
+                  Database Type
+                </label>
+                <Dropdown
+                  id="create-db-type"
+                  value={createForm.database_type}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, database_type: e.target.value }))}
+                  options={[
+                    { label: 'MySQL', value: 'MySQL' },
+                    { label: 'PostgreSQL', value: 'PostgreSQL' },
+                    { label: 'SQLite', value: 'SQLite' },
+                    { label: 'SQL Server', value: 'MSSQL' }
+                  ]}
+                  className="w-full"
+                  disabled={creating}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="field">
+                  <label htmlFor="create-db-server" className="block text-sm font-medium text-white mb-2">
+                    Server
+                  </label>
+                  <InputText
+                    id="create-db-server"
+                    value={createForm.database_server}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, database_server: e.target.value }))}
+                    placeholder="127.0.0.1"
+                    className="w-full"
+                    disabled={creating}
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="create-db-port" className="block text-sm font-medium text-white mb-2">
+                    Port
+                  </label>
+                  <InputText
+                    id="create-db-port"
+                    value={createForm.database_port}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, database_port: e.target.value }))}
+                    placeholder="3306"
+                    className="w-full"
+                    disabled={creating}
+                  />
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-db-username" className="block text-sm font-medium text-white mb-2">
+                  Username
+                </label>
+                <InputText
+                  id="create-db-username"
+                  value={createForm.database_username}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, database_username: e.target.value }))}
+                  placeholder="database_user"
+                  className="w-full"
+                  disabled={creating}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-db-password" className="block text-sm font-medium text-white mb-2">
+                  Password
+                </label>
+                <InputText
+                  id="create-db-password"
+                  type="password"
+                  value={createForm.database_password}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, database_password: e.target.value }))}
+                  placeholder="database_password"
+                  className="w-full"
+                  disabled={creating}
+                />
+              </div>
+            </div>
+          </TabPanel>
+
+          {/* Tab 3: Project Properties */}
+          <TabPanel header="Project Properties" leftIcon="pi pi-file">
+            <div className="space-y-4">
+              <div className="field">
+                <label htmlFor="create-project-directory" className="block text-sm font-medium text-white mb-2">
+                  Project Directory
+                </label>
+                <InputText
+                  id="create-project-directory"
+                  value={createForm.project_directory}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, project_directory: e.target.value }))}
+                  placeholder="C:\Users\Public\Documents\my_project"
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Pfad wo generierte Dateien gespeichert werden sollen
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-project-url" className="block text-sm font-medium text-white mb-2">
+                  Project URL
+                </label>
+                <InputText
+                  id="create-project-url"
+                  value={createForm.project_url}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, project_url: e.target.value }))}
+                  placeholder="http://localhost/my_project"
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  URL für den Zugriff auf das Projekt
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-start-page" className="block text-sm font-medium text-white mb-2">
+                  Start Page
+                </label>
+                <InputText
+                  id="create-start-page"
+                  value={createForm.start_page}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, start_page: e.target.value }))}
+                  placeholder="index.php"
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Haupt-Einstiegsdatei (z.B. index.php, main.py, app.js)
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-default-language" className="block text-sm font-medium text-white mb-2">
+                  Default Language
+                </label>
+                <Dropdown
+                  id="create-default-language"
+                  value={createForm.default_language}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, default_language: e.target.value }))}
+                  options={[
+                    { label: 'English', value: 'en' },
+                    { label: 'Deutsch', value: 'de' },
+                    { label: 'Français', value: 'fr' },
+                    { label: 'Español', value: 'es' },
+                    { label: 'Italiano', value: 'it' }
+                  ]}
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Standard-Sprache für Projekt-Generierung
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="create-filename-short-length" className="block text-sm font-medium text-white mb-2">
+                  Filename Short Length
+                </label>
+                <Dropdown
+                  id="create-filename-short-length"
+                  value={createForm.filename_short_length}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, filename_short_length: e.target.value }))}
+                  options={[
+                    { label: '2 characters', value: 2 },
+                    { label: '3 characters', value: 3 },
+                    { label: '4 characters', value: 4 },
+                    { label: '5 characters', value: 5 }
+                  ]}
+                  className="w-full"
+                  disabled={creating}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Länge der kurzen Dateinamen im Database Designer (z.B. "us" für users)
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+
+          {/* Tab 4: Localization Settings */}
+          <TabPanel header="Localization Settings" leftIcon="pi pi-globe">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="field">
+                  <label htmlFor="create-decimal-separator" className="block text-sm font-medium text-white mb-2">
+                    Decimal Separator
+                  </label>
+                  <InputText
+                    id="create-decimal-separator"
+                    value={createForm.decimal_separator}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, decimal_separator: e.target.value }))}
+                    placeholder=","
+                    className="w-full"
+                    disabled={creating}
+                    maxLength={1}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    Dezimaltrennzeichen (z.B. 1,50 oder 1.50)
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="create-thousands-separator" className="block text-sm font-medium text-white mb-2">
+                    Thousands Separator
+                  </label>
+                  <InputText
+                    id="create-thousands-separator"
+                    value={createForm.thousands_separator}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, thousands_separator: e.target.value }))}
+                    placeholder="."
+                    className="w-full"
+                    disabled={creating}
+                    maxLength={1}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    Tausendertrennzeichen (z.B. 1.000 oder 1,000)
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="field">
+                  <label htmlFor="create-date-format" className="block text-sm font-medium text-white mb-2">
+                    Date Format
+                  </label>
+                  <InputText
+                    id="create-date-format"
+                    value={createForm.date_format}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, date_format: e.target.value }))}
+                    placeholder="d.m.Y"
+                    className="w-full"
+                    disabled={creating}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    PHP-Datumsformat (d.m.Y = 31.12.2024)
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="create-time-format" className="block text-sm font-medium text-white mb-2">
+                    Time Format
+                  </label>
+                  <InputText
+                    id="create-time-format"
+                    value={createForm.time_format}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, time_format: e.target.value }))}
+                    placeholder="H:i:s"
+                    className="w-full"
+                    disabled={creating}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    PHP-Zeitformat (H:i:s = 23:59:59)
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="field">
+                  <label htmlFor="create-currency-symbol" className="block text-sm font-medium text-white mb-2">
+                    Currency Symbol
+                  </label>
+                  <InputText
+                    id="create-currency-symbol"
+                    value={createForm.currency_symbol}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, currency_symbol: e.target.value }))}
+                    placeholder="€"
+                    className="w-full"
+                    disabled={creating}
+                    maxLength={5}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    Währungssymbol (€, $, CHF, etc.)
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="create-timezone" className="block text-sm font-medium text-white mb-2">
+                    Timezone
+                  </label>
+                  <Dropdown
+                    id="create-timezone"
+                    value={createForm.timezone}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, timezone: e.target.value }))}
+                    options={[
+                      { label: 'Europe/Vienna', value: 'Europe/Vienna' },
+                      { label: 'Europe/Berlin', value: 'Europe/Berlin' },
+                      { label: 'Europe/Zurich', value: 'Europe/Zurich' },
+                      { label: 'Europe/London', value: 'Europe/London' },
+                      { label: 'Europe/Paris', value: 'Europe/Paris' },
+                      { label: 'America/New_York', value: 'America/New_York' },
+                      { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
+                      { label: 'Asia/Tokyo', value: 'Asia/Tokyo' },
+                      { label: 'Australia/Sydney', value: 'Australia/Sydney' },
+                      { label: 'UTC', value: 'UTC' }
+                    ]}
+                    className="w-full"
+                    disabled={creating}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    Standard-Zeitzone für Projekt
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+        </TabView>
+
+        {/* Error message in modal */}
+        {error && (
+          <div className="mt-4">
+            <Message
+              severity="error"
+              text={error}
               className="w-full"
-              rows={3}
-              disabled={creating}
             />
           </div>
+        )}
 
-          <div className="field">
-            <div className="flex items-center space-x-2 mb-3">
-              <input
-                type="checkbox"
-                id="create-is-public"
-                checked={createForm.is_public}
-                onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.target.checked }))}
-                disabled={creating}
-                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <label htmlFor="create-is-public" className="text-sm font-medium text-white cursor-pointer">
-                Public Project
-              </label>
-            </div>
-            <p className="text-xs text-gray-400 mb-3">
-              Public projects are visible to all users and can be discovered in the project gallery.
-            </p>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="create-allow-join"
-                checked={createForm.allow_join_requests}
-                onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.target.checked }))}
-                disabled={creating}
-                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <label htmlFor="create-allow-join" className="text-sm font-medium text-white cursor-pointer">
-                Allow Join Requests
-              </label>
-            </div>
-            <p className="text-xs text-gray-400">
-              Users can request to join this project using a join code.
-            </p>
-          </div>
-
-          {/* Error message in modal */}
-          {error && (
-            <div className="mt-4">
-              <Message
-                severity="error"
-                text={error}
-                className="w-full"
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              label="Cancel"
-              icon="pi pi-times"
-              onClick={handleCreateModalHide}
-              className="p-button-text"
-              disabled={creating}
-            />
-            <Button
-              label={creating ? "Creating..." : "Create Project"}
-              icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
-              onClick={handleCreateProject}
-              disabled={creating || !createForm.name.trim()}
-            />
-          </div>
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            onClick={handleCreateModalHide}
+            className="p-button-text"
+            disabled={creating}
+          />
+          <Button
+            label={creating ? "Creating..." : "Create Project"}
+            icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
+            onClick={handleCreateProject}
+            disabled={creating || !createForm.name.trim()}
+          />
         </div>
       </Dialog>
 
@@ -1257,6 +1390,15 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         project={currentProject}
       />
 
+      {/* Edit Project Modal - Replaced by ProjectSettingsPanel */}
+      {/* <EditProjectModal
+        visible={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        project={projectToEdit}
+        onSuccess={handleEditModalSuccess}
+        projectMembers={projectMembers}
+      /> */}
+
       {/* Project Overview Modal */}
       <Dialog
         header={`Project Overview: ${selectedProjectForOverview?.name || ''}`}
@@ -1269,50 +1411,50 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         {selectedProjectForOverview && (
           <div className="space-y-6">
             {/* Project Properties */}
-            <div className="bg-gray-50 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">📋 Project Properties</h3>
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">📋 Project Properties</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-medium text-gray-700">Name:</span>
-                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.name}</span>
+                  <span className="font-medium text-gray-300">Name:</span>
+                  <span className="ml-2 text-white">{selectedProjectForOverview.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700">Owner:</span>
-                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.owner.name}</span>
+                  <span className="font-medium text-gray-300">Owner:</span>
+                  <span className="ml-2 text-white">{selectedProjectForOverview.owner.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700">Created:</span>
-                  <span className="ml-2 text-gray-900">{formatDate(selectedProjectForOverview.created_at)}</span>
+                  <span className="font-medium text-gray-300">Created:</span>
+                  <span className="ml-2 text-white">{formatDate(selectedProjectForOverview.created_at)}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700">Join Code:</span>
-                  <span className="ml-2 text-blue-600 font-mono">{selectedProjectForOverview.join_code || 'None'}</span>
+                  <span className="font-medium text-gray-300">Join Code:</span>
+                  <span className="ml-2 text-blue-400 font-mono">{selectedProjectForOverview.join_code || 'None'}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="font-medium text-gray-700">Description:</span>
-                  <span className="ml-2 text-gray-900">{selectedProjectForOverview.description || 'No description'}</span>
+                  <span className="font-medium text-gray-300">Description:</span>
+                  <span className="ml-2 text-white">{selectedProjectForOverview.description || 'No description'}</span>
                 </div>
               </div>
             </div>
 
             {/* Project Members Section */}
-            <div className="bg-indigo-50 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-indigo-800">👤 Project Members</h3>
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">👤 Project Members</h3>
               {loadingMembersData ? (
                 <div className="flex items-center justify-center py-4">
-                  <i className="pi pi-spinner pi-spin text-indigo-600 mr-2"></i>
-                  <span className="text-indigo-700">Loading members...</span>
+                  <i className="pi pi-spinner pi-spin text-indigo-400 mr-2"></i>
+                  <span className="text-indigo-300">Loading members...</span>
                 </div>
               ) : projectMembers.length > 0 ? (
-                <div className="bg-white p-3 rounded border" style={{ maxHeight: '200px', overflow: 'auto' }}>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '200px', overflow: 'auto' }}>
                   <div className="space-y-2">
                     {projectMembers.map((member, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100">
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-600 rounded hover:bg-gray-500">
                         <div className="flex items-center space-x-3">
-                          <i className="pi pi-user text-indigo-600"></i>
+                          <i className="pi pi-user text-indigo-400"></i>
                           <div>
-                            <div className="font-medium text-gray-900">{member.user?.name || 'Unknown User'}</div>
-                            <div className="text-sm text-gray-600">{member.user?.email || 'No email'}</div>
+                            <div className="font-medium text-white">{member.user?.name || 'Unknown User'}</div>
+                            <div className="text-sm text-gray-300">{member.user?.email || 'No email'}</div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -1324,7 +1466,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                             {member.role || 'Member'}
                           </span>
                           {member.joined_at && (
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-gray-400 mt-1">
                               Joined: {new Date(member.joined_at).toLocaleDateString()}
                             </div>
                           )}
@@ -1334,7 +1476,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-600 italic text-center p-4">
+                <div className="text-gray-300 italic text-center p-4">
                   <i className="pi pi-users mr-2"></i>
                   No project members loaded yet.
                 </div>
@@ -1342,22 +1484,21 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
             </div>
 
             {/* Teams Section with TreeView */}
-            <div className="bg-blue-50 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-blue-800">👥 Teams & Members</h3>
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">👥 Teams & Members</h3>
               {loadingTeamsData ? (
                 <div className="flex items-center justify-center py-4">
-                  <i className="pi pi-spinner pi-spin text-blue-600 mr-2"></i>
-                  <span className="text-blue-700">Loading teams...</span>
+                  <i className="pi pi-spinner pi-spin text-blue-400 mr-2"></i>
+                  <span className="text-blue-300">Loading teams...</span>
                 </div>
               ) : projectTeamsTree.length > 0 ? (
-                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectTeamsTree}
-                    onNodeClick={(node) => console.log('Node clicked:', node)}
                   />
                 </div>
               ) : (
-                <div className="text-gray-600 italic">
+                <div className="text-gray-300 italic">
                   <i className="pi pi-info-circle mr-2"></i>
                   No teams assigned to this project yet.
                 </div>
@@ -1365,51 +1506,49 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
             </div>
 
             {/* Database Schemas Section */}
-            <div className="bg-green-50 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-green-800">🗄️ Database Schemas</h3>
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">🗄️ Database Schemas</h3>
               {loadingSchemasData ? (
                 <div className="flex items-center justify-center p-4">
-                  <i className="pi pi-spin pi-spinner mr-2"></i>
-                  <span>Loading schemas...</span>
+                  <i className="pi pi-spin pi-spinner text-green-400 mr-2"></i>
+                  <span className="text-green-300">Loading schemas...</span>
                 </div>
               ) : projectSchemasTree.length > 0 ? (
-                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectSchemasTree}
-                    onNodeClick={(node) => console.log('Schema node clicked:', node)}
                   />
                 </div>
               ) : (
-                <div className="text-gray-600 italic text-center p-4">
+                <div className="text-gray-300 italic text-center p-4">
                   No database schemas linked to this project yet.
                 </div>
               )}
             </div>
 
             {/* Templates Section */}
-            <div className="bg-purple-50 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-purple-800">📄 Linked Templates</h3>
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">📄 Linked Templates</h3>
               {loadingTemplatesData ? (
                 <div className="flex items-center justify-center p-4">
-                  <i className="pi pi-spin pi-spinner mr-2"></i>
-                  <span>Loading templates...</span>
+                  <i className="pi pi-spin pi-spinner text-purple-400 mr-2"></i>
+                  <span className="text-purple-300">Loading templates...</span>
                 </div>
               ) : projectTemplatesTree.length > 0 ? (
-                <div className="bg-white p-3 rounded border" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectTemplatesTree}
-                    onNodeClick={(node) => console.log('Template node clicked:', node)}
                   />
                 </div>
               ) : (
-                <div className="text-gray-600 italic text-center p-4">
+                <div className="text-gray-300 italic text-center p-4">
                   No templates linked to this project yet.
                 </div>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end items-center pt-4 border-t border-gray-200">
+            <div className="flex justify-end items-center pt-4 border-t border-gray-600">
               <div className="flex gap-2">
                 <Button
                   label="Close"
@@ -1423,10 +1562,6 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 className="min-w-fit whitespace-nowrap"
                 onClick={() => {
                   setShowProjectOverviewModal(false);
-                  // Switch to current project and start editing
-                  setOriginalSelectedProject(globalSelectedProject);
-                  setCurrentProject(selectedProjectForOverview);
-                  setGlobalSelectedProject(selectedProjectForOverview);
                   handleEdit(selectedProjectForOverview);
                 }}
               />

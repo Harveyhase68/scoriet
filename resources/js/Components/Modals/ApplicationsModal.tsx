@@ -4,7 +4,6 @@ import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
-import { Message } from 'primereact/message';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
 
@@ -81,8 +80,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       const data = await response.json();
       setApplications(data.applications || []);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading applications');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading applications');
     } finally {
       setLoading(false);
     }
@@ -138,8 +137,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       });
       window.dispatchEvent(event);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error reviewing application');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error reviewing application');
     } finally {
       setReviewing(false);
     }

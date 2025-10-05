@@ -3,7 +3,6 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Message } from 'primereact/message';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
@@ -70,7 +69,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         const userData = await response.json();
         setCurrentUserId(userData.id);
       }
-    } catch (err) {
+    } catch {
       // Error loading current user
     }
   };
@@ -100,8 +99,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       const data = await response.json();
       setProjects(data.projects || []);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading public projects');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading public projects');
     } finally {
       setLoading(false);
     }
@@ -182,7 +181,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         const errorData = await response.json();
         setCloneError(errorData.message || 'Failed to clone project');
       }
-    } catch (err) {
+    } catch {
       setCloneError('Failed to clone project');
     } finally {
       setCloning(null);

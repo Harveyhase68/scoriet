@@ -15,6 +15,9 @@ class SchemaConstraintColumn extends Model
         'column_order',
     ];
 
+    // Make sure the accessor is included in JSON serialization
+    protected $appends = ['field_name'];
+
     public function constraint(): BelongsTo
     {
         return $this->belongsTo(SchemaConstraint::class, 'constraint_id');
@@ -23,5 +26,13 @@ class SchemaConstraintColumn extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo(SchemaField::class, 'field_id');
+    }
+
+    /**
+     * Accessor to get field_name from related field
+     */
+    public function getFieldNameAttribute()
+    {
+        return $this->field?->field_name;
     }
 }

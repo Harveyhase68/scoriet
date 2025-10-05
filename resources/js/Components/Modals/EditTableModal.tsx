@@ -9,13 +9,22 @@ interface TableField {
   nullable: boolean;
   primaryKey: boolean;
   autoIncrement: boolean;
+  index: boolean;
+  unique: boolean;
   comment: string;
+  // Control Type & Link Fields
+  controlType: string;
+  linkTable: string;
+  linkField: string;
+  linkDisplayField: string;
+  linkOrderField: string;
+  linkOrderDirection: 'ASC' | 'DESC';
 }
 
 interface EditTableModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTableUpdated: (tableName: string, comment: string, fields: TableField[]) => void;
+  onTableUpdated: (tableName: string, fields: TableField[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => void;
   table: SchemaTable | null;
   loading?: boolean;
 }
@@ -28,25 +37,134 @@ const DATA_TYPES = [
   'boolean', 'json', 'enum'
 ];
 
+const CONTROL_TYPES = [
+  'TEXT',
+  'TEXTAREA',
+  'CHECKBOX',
+  'COMBOBOX',
+  'LISTBOX',
+  'RADIOBUTTONS',
+  'DATEPICKER',
+  'DATETIMEPICKER',
+  'TIMEPICKER',
+  'COLORPICKER',
+  'FILEUPLOAD'
+];
+
+/**
+ * Auto-detect control type based on field type and name
+ */
+function detectControlType(fieldType: string, fieldName: string, linkTable: string): string {
+  // Explicit link? → COMBOBOX
+  if (linkTable && linkTable.trim() !== '') return 'COMBOBOX';
+
+  const lowerType = fieldType.toLowerCase();
+  const lowerName = fieldName.toLowerCase();
+
+  // By field type
+  if (lowerType.includes('longtext')) return 'TEXTAREA';
+  if (lowerType.includes('text') && !lowerType.includes('tinytext')) return 'TEXTAREA';
+  if (lowerType === 'boolean' || lowerType === 'tinyint(1)') return 'CHECKBOX';
+  if (lowerType.includes('datetime') || lowerType.includes('timestamp')) return 'DATETIMEPICKER';
+  if (lowerType.includes('date')) return 'DATEPICKER';
+  if (lowerType.includes('time') && !lowerType.includes('datetime')) return 'TIMEPICKER';
+
+  // By field name pattern
+  if (lowerName.endsWith('_id') && (lowerType === 'bigint' || lowerType === 'int')) return 'COMBOBOX';
+  if (lowerName.includes('color') || lowerName.includes('colour')) return 'COLORPICKER';
+  if (lowerName.includes('file') || lowerName.includes('upload') || lowerName.includes('attachment')) return 'FILEUPLOAD';
+
+  // Default
+  return 'TEXT';
+}
+
 export default function EditTableModal({ isOpen, onClose, onTableUpdated, table, loading = false }: EditTableModalProps) {
   const [tableName, setTableName] = useState('');
-  const [tableComment, setTableComment] = useState('');
+  const [fileKeyName, setFileKeyName] = useState('');
+  const [fileNameRenamed, setFileNameRenamed] = useState('');
+  const [fileNameShort, setFileNameShort] = useState('');
   const [fields, setFields] = useState<TableField[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [availableTables, setAvailableTables] = useState<string[]>([]);
+  const [linkFieldOptions, setLinkFieldOptions] = useState<{[key: string]: string[]}>({});
 
   // Initialize form with table data when table changes
   useEffect(() => {
     if (table) {
       setTableName(table.table_name);
-      setTableComment(table.comment || '');
+      setFileKeyName(table.filekeyname || table.primarykeyfield || '');
+      setFileNameRenamed(table.file_name_renamed || '');
+      setFileNameShort(table.file_name_short || '');
 
       // Convert table fields to form fields
       const formFields: TableField[] = table.fields?.map((field, index) => {
-        // Check if this field is a primary key
-        const isPrimaryKey = table.constraints?.some(constraint =>
-          constraint.constraint_type === 'PRIMARY KEY' &&
-          constraint.columns?.some(col => col.field_name === field.field_name)
-        ) || false;
+        // Check if this field is a primary key - use stored database value first, then constraints, then fallback
+        let isPrimaryKey = false;
+
+        // 1. First priority: Check if is_primary_key is explicitly stored in the field
+        if (field.is_primary_key !== undefined && field.is_primary_key !== null) {
+          isPrimaryKey = field.is_primary_key;
+        } else {
+          // 2. Second priority: Check constraints
+          isPrimaryKey = table.constraints?.some(constraint =>
+            constraint.constraint_type === 'PRIMARY KEY' &&
+            constraint.columns?.some(col => col.field_name === field.field_name)
+          ) || false;
+
+          // 3. Fallback: Use field name patterns (only for initial import)
+          if (!isPrimaryKey) {
+            isPrimaryKey = (field.field_name.toLowerCase() === 'id') ||
+                          (field.field_name.toLowerCase().endsWith('_id')) ||
+                          (table.primarykeyfield === field.field_name);
+          }
+        }
+
+        // Check for auto increment - use stored value first, then fallback
+        let isAutoIncrement = false;
+
+        // 1. First priority: Check if is_auto_increment is explicitly stored in the field
+        if (field.is_auto_increment !== undefined && field.is_auto_increment !== null) {
+          isAutoIncrement = field.is_auto_increment;
+        } else {
+          // 2. Fallback: Check extra field or use field name patterns
+          isAutoIncrement = field.extra?.includes('auto_increment') ||
+                           // Fallback: if it's a primary key and named *_id or id, likely auto increment
+                           (isPrimaryKey && (field.field_name.toLowerCase() === 'id' || field.field_name.toLowerCase().endsWith('_id')));
+        }
+
+        // Check for index - use stored value first, then fallback
+        let isIndex = false;
+        if (field.is_index !== undefined && field.is_index !== null) {
+          isIndex = field.is_index;
+        } else {
+          // Fallback: Check constraints for INDEX/KEY types
+          isIndex = table.constraints?.some(constraint =>
+            (constraint.constraint_type === 'INDEX' || constraint.constraint_type === 'KEY') &&
+            constraint.columns?.some(col => col.field_name === field.field_name)
+          ) || false;
+        }
+
+        // Check for unique - use stored value first, then fallback
+        let isUnique = false;
+        if (field.is_unique !== undefined && field.is_unique !== null) {
+          isUnique = field.is_unique;
+        } else {
+          // Fallback: Check constraints for UNIQUE type
+          isUnique = table.constraints?.some(constraint =>
+            constraint.constraint_type === 'UNIQUE' &&
+            constraint.columns?.some(col => col.field_name === field.field_name)
+          ) || false;
+        }
+
+        // Load link fields from database
+        const linkTable = field.link_table || '';
+        const linkField = field.link_field || '';
+        const linkDisplayField = field.link_display_field || '';
+        const linkOrderField = field.link_order_field || '';
+        const linkOrderDirection = (field.link_order_direction || 'ASC') as 'ASC' | 'DESC';
+
+        // Use control_type from database, or auto-detect if not set
+        const controlType = field.control_type || detectControlType(field.field_type, field.field_name, linkTable);
 
         return {
           id: field.id?.toString() || index.toString(),
@@ -54,16 +172,109 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
           type: field.field_type,
           nullable: field.is_nullable,
           primaryKey: isPrimaryKey,
-          autoIncrement: field.extra?.includes('auto_increment') || false,
-          comment: field.comment || ''
+          autoIncrement: isAutoIncrement,
+          index: isIndex,
+          unique: isUnique,
+          comment: field.comment || '',
+          // Control Type & Link Fields
+          controlType: controlType,
+          linkTable: linkTable,
+          linkField: linkField,
+          linkDisplayField: linkDisplayField,
+          linkOrderField: linkOrderField,
+          linkOrderDirection: linkOrderDirection
         };
       }) || [];
 
       setFields(formFields);
+
+      // Load available tables from schema version
+      if (table.schema_version_id) {
+        fetchAvailableTables(table.schema_version_id);
+      }
     } else {
       resetForm();
     }
   }, [table]);
+
+  // Fetch available tables from schema version
+  const fetchAvailableTables = async (schemaVersionId: number) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/schema-versions/${schemaVersionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        const schemaVersion = data.schema_version || data;
+        const tables = schemaVersion.tables?.map((t: any) => t.table_name) || [];
+        setAvailableTables(tables);
+
+        // Build field options for each table
+        const fieldOpts: {[key: string]: string[]} = {};
+        schemaVersion.tables?.forEach((t: any) => {
+          fieldOpts[t.table_name] = t.fields?.map((f: any) => f.field_name) || [];
+        });
+        setLinkFieldOptions(fieldOpts);
+      }
+    } catch {
+      // Error fetching tables
+    }
+  };
+
+  // Auto-select first field as filekeyname if none selected and fields exist
+  useEffect(() => {
+    if (!fileKeyName && fields.length > 0) {
+      // Try to find primary key, auto increment, or field ending with _id first
+      const primaryKeyField = fields.find(field => field.primaryKey);
+      const autoIncField = fields.find(field => field.autoIncrement);
+      const idField = fields.find(field => field.name.toLowerCase().endsWith('_id') || field.name.toLowerCase() === 'id');
+
+      if (primaryKeyField) {
+        setFileKeyName(primaryKeyField.name);
+      } else if (autoIncField) {
+        setFileKeyName(autoIncField.name);
+      } else if (idField) {
+        setFileKeyName(idField.name);
+      } else {
+        setFileKeyName(fields[0].name);
+      }
+    }
+  }, [fields, fileKeyName]);
+
+  // Filter fields to show only those suitable for file keys (primary, unique, index)
+  const getSuitableFileKeyFields = (): TableField[] => {
+    if (!table) return fields;
+
+    const suitableFields: TableField[] = [];
+
+    // Add primary key fields
+    fields.forEach(field => {
+      if (field.primaryKey) {
+        suitableFields.push(field);
+      }
+    });
+
+    // Add fields that are part of UNIQUE constraints
+    table.constraints?.forEach(constraint => {
+      if (constraint.constraint_type === 'UNIQUE' || constraint.constraint_type === 'KEY' || constraint.constraint_type === 'INDEX') {
+        constraint.columns?.forEach(constraintCol => {
+          const field = fields.find(f => f.name === constraintCol.field_name);
+          if (field && !suitableFields.some(sf => sf.id === field.id)) {
+            suitableFields.push(field);
+          }
+        });
+      }
+    });
+
+    // If no suitable fields found, return all fields as fallback
+    return suitableFields.length > 0 ? suitableFields : fields;
+  };
 
   const addField = () => {
     const newField: TableField = {
@@ -73,7 +284,16 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
       nullable: true,
       primaryKey: false,
       autoIncrement: false,
-      comment: ''
+      index: false,
+      unique: false,
+      comment: '',
+      // Control Type & Link Fields
+      controlType: 'TEXT',
+      linkTable: '',
+      linkField: '',
+      linkDisplayField: '',
+      linkOrderField: '',
+      linkOrderDirection: 'ASC'
     };
     setFields([...fields, newField]);
   };
@@ -112,12 +332,27 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
       return;
     }
 
-    onTableUpdated(tableName, tableComment, fields);
+    // Validate filekeyname
+    if (!fileKeyName.trim()) {
+      setError('File key name is required');
+      return;
+    }
+
+    // Check if selected filekeyname exists in suitable fields
+    const suitableFields = getSuitableFileKeyFields();
+    if (!suitableFields.some(field => field.name === fileKeyName)) {
+      setError('Selected file key name must be a primary key, unique key, or indexed field');
+      return;
+    }
+
+    onTableUpdated(tableName, fields, fileKeyName, fileNameRenamed, fileNameShort);
   };
 
   const resetForm = () => {
     setTableName('');
-    setTableComment('');
+    setFileKeyName('');
+    setFileNameRenamed('');
+    setFileNameShort('');
     setFields([]);
     setError(null);
   };
@@ -140,7 +375,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
       onClick={handleClose}
     >
       <div
-        className="portal-modal-content rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="portal-modal-content rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         <div className="portal-modal-header flex justify-between items-center">
@@ -156,9 +391,10 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-6 pr-2">
           {/* Table Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Table Name *
@@ -177,17 +413,62 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Comment
+                File Key Name *
               </label>
-              <input
-                type="text"
-                value={tableComment}
-                onChange={(e) => setTableComment(e.target.value)}
+              <select
+                value={fileKeyName}
+                onChange={(e) => setFileKeyName(e.target.value)}
                 disabled={loading}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Description of this table"
-                maxLength={255}
-              />
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="">Select key field...</option>
+                {getSuitableFileKeyFields().map(field => (
+                  <option key={field.id} value={field.name}>
+                    {field.name} ({field.type}){field.primaryKey ? ' - Primary Key' : ''}{field.autoIncrement ? ' - Auto Inc' : ''}
+                  </option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-400 mt-1">
+                Field used for template {'{filekeyname}'} variable
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  File Name Renamed
+                </label>
+                <input
+                  type="text"
+                  value={fileNameRenamed}
+                  onChange={(e) => setFileNameRenamed(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="e.g., CustomUser, ProductCatalog"
+                  maxLength={100}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Used for template {'{file_name_renamed}'} variable
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  File Name Short
+                </label>
+                <input
+                  type="text"
+                  value={fileNameShort}
+                  onChange={(e) => setFileNameShort(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="e.g., usr, prod"
+                  maxLength={50}
+                />
+                <div className="text-xs text-gray-400 mt-1">
+                  Used for template {'{file_name_short}'} variable
+                </div>
+              </div>
             </div>
           </div>
 
@@ -211,7 +492,8 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {fields.map((field) => (
                 <div key={field.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                  <div className="grid grid-cols-1 lg:grid-cols-6 gap-3">
+                  {/* Row 1: Main field properties */}
+                  <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
                     {/* Field Name */}
                     <div>
                       <label className="block text-xs text-gray-200 mb-1">Name</label>
@@ -230,11 +512,43 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                       <label className="block text-xs text-gray-200 mb-1">Type</label>
                       <select
                         value={field.type}
-                        onChange={(e) => updateField(field.id, { type: e.target.value })}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          // Only auto-detect control type if no link table is set
+                          if (!field.linkTable || field.linkTable.trim() === '') {
+                            const newControlType = detectControlType(newType, field.name, '');
+                            updateField(field.id, { type: newType, controlType: newControlType });
+                          } else {
+                            updateField(field.id, { type: newType });
+                          }
+                        }}
                         disabled={loading}
                         className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                       >
                         {DATA_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Control Type */}
+                    <div>
+                      <label className="block text-xs text-gray-200 mb-1">Control</label>
+                      <select
+                        value={field.controlType}
+                        onChange={(e) => {
+                          const newControlType = e.target.value;
+                          // Clear link fields when switching away from COMBOBOX/LISTBOX/RADIOBUTTONS
+                          if (newControlType !== 'COMBOBOX' && newControlType !== 'LISTBOX' && newControlType !== 'RADIOBUTTONS') {
+                            updateField(field.id, { controlType: newControlType, linkTable: '', linkField: '', linkDisplayField: '', linkOrderField: '', linkOrderDirection: 'ASC' });
+                          } else {
+                            updateField(field.id, { controlType: newControlType });
+                          }
+                        }}
+                        disabled={loading}
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                      >
+                        {CONTROL_TYPES.map(type => (
                           <option key={type} value={type}>{type}</option>
                         ))}
                       </select>
@@ -275,6 +589,26 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                         />
                         Auto Inc.
                       </label>
+                      <label className="flex items-center text-xs text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={field.index}
+                          onChange={(e) => updateField(field.id, { index: e.target.checked })}
+                          disabled={loading}
+                          className="mr-1"
+                        />
+                        Index
+                      </label>
+                      <label className="flex items-center text-xs text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={field.unique}
+                          onChange={(e) => updateField(field.id, { unique: e.target.checked })}
+                          disabled={loading}
+                          className="mr-1"
+                        />
+                        Unique
+                      </label>
                     </div>
 
                     {/* Comment */}
@@ -303,6 +637,89 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                       </button>
                     </div>
                   </div>
+
+                  {/* Row 2: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
+                  {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2 border-t border-gray-600">
+                      {/* Link Table */}
+                      <div>
+                        <label className="block text-xs text-gray-200 mb-1">Link Table</label>
+                        <select
+                          value={field.linkTable}
+                          onChange={(e) => updateField(field.id, { linkTable: e.target.value, linkField: '', linkDisplayField: '', linkOrderField: '' })}
+                          disabled={loading}
+                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">-- Select Table --</option>
+                          {availableTables.map(tableName => (
+                            <option key={tableName} value={tableName}>{tableName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Link Field (Value) */}
+                      <div>
+                        <label className="block text-xs text-gray-200 mb-1">Value Field</label>
+                        <select
+                          value={field.linkField}
+                          onChange={(e) => updateField(field.id, { linkField: e.target.value })}
+                          disabled={loading || !field.linkTable}
+                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">-- Value Field --</option>
+                          {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
+                            <option key={fieldName} value={fieldName}>{fieldName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Link Display Field */}
+                      <div>
+                        <label className="block text-xs text-gray-200 mb-1">Display Field</label>
+                        <select
+                          value={field.linkDisplayField}
+                          onChange={(e) => updateField(field.id, { linkDisplayField: e.target.value })}
+                          disabled={loading || !field.linkTable}
+                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">-- Display Field --</option>
+                          {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
+                            <option key={fieldName} value={fieldName}>{fieldName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Link Order Field */}
+                      <div>
+                        <label className="block text-xs text-gray-200 mb-1">Order Field</label>
+                        <select
+                          value={field.linkOrderField}
+                          onChange={(e) => updateField(field.id, { linkOrderField: e.target.value })}
+                          disabled={loading || !field.linkTable}
+                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="">-- Order Field --</option>
+                          {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
+                            <option key={fieldName} value={fieldName}>{fieldName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Link Order Direction */}
+                      <div>
+                        <label className="block text-xs text-gray-200 mb-1">Direction</label>
+                        <select
+                          value={field.linkOrderDirection}
+                          onChange={(e) => updateField(field.id, { linkOrderDirection: e.target.value as 'ASC' | 'DESC' })}
+                          disabled={loading}
+                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          <option value="ASC">ASC</option>
+                          <option value="DESC">DESC</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -313,8 +730,9 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
               <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
+          </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700 mt-4">
             <button
               type="button"
               onClick={handleClose}

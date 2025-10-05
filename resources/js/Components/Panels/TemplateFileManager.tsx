@@ -87,7 +87,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 setModalVisible(false);
                 onFilesUpdate();
             }
-        } catch (saveError) {
+        } catch {
             message.error(`Fehler beim ${editingFile ? 'Aktualisieren' : 'Erstellen'} der Datei`);
         }
     };
@@ -99,7 +99,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 message.success('Datei erfolgreich gelöscht');
                 onFilesUpdate();
             }
-        } catch (deleteError) {
+        } catch {
             message.error('Fehler beim Löschen der Datei');
         }
     };
@@ -110,7 +110,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
             if (response.data.success) {
                 onFilesUpdate();
             }
-        } catch (moveError) {
+        } catch {
             message.error('Fehler beim Verschieben der Datei');
         }
     };

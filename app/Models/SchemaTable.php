@@ -14,7 +14,10 @@ class SchemaTable extends Model
         'schema_version_id', // Updated to work with both legacy and floating schemas
         'schema_id', // New floating schema reference
         'table_name',
-        'comment',
+        'primarykeyfield', // Primary key field name for template {primarykey} variable
+        'filekeyname', // File key field name for template {filekeyname} variable
+        'file_name_renamed', // Renamed file name for template {file_name_renamed} variable
+        'file_name_short', // Short file name for template {file_name_short} variable
     ];
 
     public function schemaVersion(): BelongsTo

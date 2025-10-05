@@ -122,7 +122,6 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       });
 
       if (!invitationsResponse.ok) {
-        const errorText = await invitationsResponse.text();
         // Invitations API Error
         throw new Error(`Failed to fetch invitations: ${invitationsResponse.status} ${invitationsResponse.statusText}`);
       }
@@ -143,9 +142,9 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         setCurrentUser(userData);
       }
 
-    } catch (err) {
+    } catch {
       // Error fetching data
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(_ instanceof Error ? _.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -188,7 +187,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
-    } catch (err) {
+    } catch {
       // Error accepting invitation
       alert('Failed to accept invitation');
     }
@@ -212,7 +211,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
-    } catch (err) {
+    } catch {
       // Error declining invitation
       alert('Failed to decline invitation');
     }

@@ -421,7 +421,7 @@ class SchemaExportController extends Controller
             }
 
             // Get current version from schema
-            $version = $schema->current_version ?? 1;
+            $version = $schema->last_version ?? 0;
 
             // Check database models and relationships
             $allSchemas = FloatingSchema::select('id', 'name')->get()->toArray();

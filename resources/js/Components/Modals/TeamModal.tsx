@@ -5,7 +5,6 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
-import { Message } from 'primereact/message';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface TeamMember {
@@ -123,7 +122,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       }
 
       onSave();
-    } catch (error) {
+    } catch {
       setError(error instanceof Error ? error.message : 'Failed to save team');
     } finally {
       setLoading(false);

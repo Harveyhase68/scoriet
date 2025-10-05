@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\FloatingSchema;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Team;
-use App\Models\SchemaVersion;
-use App\Models\FloatingSchema;
 
 class ProjectController extends Controller
 {
@@ -65,16 +64,23 @@ class ProjectController extends Controller
                     ];
                 });
         } else {
-            // User's own projects + projects they're team members of
+            // Simple approach: just get projects owned by the user for now
             $projects = Project::with(['owner'])
-                ->visibleTo($user)
+                ->where('owner_id', $user->id)
                 ->active()
                 ->latest()
                 ->get()
                 ->map(function ($project) use ($user) {
+                    // Get actual counts using the Project model's getCounts() method
                     $counts = $project->getCounts();
-                    return array_merge($project->toArray(), $counts, [
-                        'is_owner' => (string)$project->owner_id === (string)$user->id,
+                    return array_merge($project->toArray(), [
+                        'teams_count' => $counts['teams_count'],
+                        'members_count' => $counts['members_count'],
+                        'applications_count' => $counts['applications_count'],
+                        'templates_count' => $counts['templates_count'],
+                        'schemas_count' => $counts['schemas_count'],
+                        'databases_count' => $counts['databases_count'],
+                        'is_owner' => true, // Since we only get owned projects
                     ]);
                 });
 
@@ -100,7 +106,7 @@ class ProjectController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
-        
+
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -114,6 +120,29 @@ class ProjectController extends Controller
             'description' => 'nullable|string|max:1000',
             'is_public' => 'boolean',
             'allow_join_requests' => 'boolean',
+            // Database connection fields
+            'database_name' => 'nullable|string|max:255',
+            'database_type' => 'nullable|string|max:50',
+            'database_server' => 'nullable|string|max:255',
+            'database_port' => 'nullable|string|max:10',
+            'database_username' => 'nullable|string|max:255',
+            'database_password' => 'nullable|string|max:255',
+            // Project paths
+            'project_directory' => 'nullable|string|max:500',
+            'project_url' => 'nullable|string|max:500',
+            // Project properties
+            'start_page' => 'nullable|string|max:255',
+            'default_language' => 'nullable|string|max:10',
+            'filename_short_length' => 'nullable|integer|min:2|max:5',
+            // Localization settings
+            'decimal_separator' => 'nullable|string|max:1',
+            'thousands_separator' => 'nullable|string|max:1',
+            'date_format' => 'nullable|string|max:20',
+            'time_format' => 'nullable|string|max:20',
+            'currency_symbol' => 'nullable|string|max:5',
+            'timezone' => 'nullable|string|max:50',
+            // API Keys
+            'google_translate_api_key' => 'nullable|string|max:500',
         ]);
 
         // Check if user can create private projects
@@ -132,6 +161,29 @@ class ProjectController extends Controller
             'is_active' => true,
             'is_public' => $validated['is_public'] ?? true,
             'allow_join_requests' => $validated['allow_join_requests'] ?? false,
+            // Database connection settings
+            'database_name' => $validated['database_name'] ?? null,
+            'database_type' => $validated['database_type'] ?? 'MySQL',
+            'database_server' => $validated['database_server'] ?? '127.0.0.1',
+            'database_port' => $validated['database_port'] ?? '3306',
+            'database_username' => $validated['database_username'] ?? null,
+            'database_password' => $validated['database_password'] ?? null,
+            // Project paths
+            'project_directory' => $validated['project_directory'] ?? null,
+            'project_url' => $validated['project_url'] ?? null,
+            // Project properties
+            'start_page' => $validated['start_page'] ?? 'index.php',
+            'default_language' => $validated['default_language'] ?? 'en',
+            'filename_short_length' => $validated['filename_short_length'] ?? 2,
+            // Localization settings
+            'decimal_separator' => $validated['decimal_separator'] ?? ',',
+            'thousands_separator' => $validated['thousands_separator'] ?? '.',
+            'date_format' => $validated['date_format'] ?? 'd.m.Y',
+            'time_format' => $validated['time_format'] ?? 'H:i:s',
+            'currency_symbol' => $validated['currency_symbol'] ?? '€',
+            'timezone' => $validated['timezone'] ?? 'Europe/Vienna',
+            // API Keys
+            'google_translate_api_key' => $validated['google_translate_api_key'] ?? null,
         ]);
 
         // Generate join code if join requests are allowed
@@ -146,21 +198,9 @@ class ProjectController extends Controller
             'joined_at' => now(),
         ]);
 
-        // Create a default schema version for this project
-        // Try to create with project ID, if it fails, let auto-increment handle it
-        try {
-            SchemaVersion::create([
-                'id' => $project->id, // Use project ID as schema version ID
-                'version_name' => $project->name,
-                'description' => 'Default schema version for ' . $project->name,
-            ]);
-        } catch (\Exception $e) {
-            // If explicit ID fails, let auto-increment handle it
-            SchemaVersion::create([
-                'version_name' => $project->name,
-                'description' => 'Default schema version for ' . $project->name,
-            ]);
-        }
+        // Note: Projects no longer create automatic schema versions
+        // Schema versions are now created when schemas are associated with projects
+        // via the project_schemas relationship
 
         // Load the owner relationship
         $project->load('owner');
@@ -213,6 +253,29 @@ class ProjectController extends Controller
             'is_public' => 'sometimes|boolean',
             'join_code' => 'nullable|string|max:50|unique:projects,join_code,' . $project->id,
             'new_owner_id' => 'nullable|integer|exists:users,id',
+            // Database connection fields
+            'database_name' => 'nullable|string|max:255',
+            'database_type' => 'nullable|string|max:50',
+            'database_server' => 'nullable|string|max:255',
+            'database_port' => 'nullable|string|max:10',
+            'database_username' => 'nullable|string|max:255',
+            'database_password' => 'nullable|string|max:255',
+            // Project paths
+            'project_directory' => 'nullable|string|max:500',
+            'project_url' => 'nullable|string|max:500',
+            // Project properties
+            'start_page' => 'nullable|string|max:255',
+            'default_language' => 'nullable|string|max:10',
+            'filename_short_length' => 'nullable|integer|min:2|max:5',
+            // Localization settings
+            'decimal_separator' => 'nullable|string|max:1',
+            'thousands_separator' => 'nullable|string|max:1',
+            'date_format' => 'nullable|string|max:20',
+            'time_format' => 'nullable|string|max:20',
+            'currency_symbol' => 'nullable|string|max:5',
+            'timezone' => 'nullable|string|max:50',
+            // API Keys
+            'google_translate_api_key' => 'nullable|string|max:500',
         ]);
 
         // Handle owner transfer first if requested
@@ -514,34 +577,50 @@ class ProjectController extends Controller
     }
 
     /**
-     * Get editable schemas for this project (cloned/imported only - no linked schemas)
+     * Get editable schemas for this project (cloned/imported/linked if owner)
      */
     public function getEditableSchemas(Project $project): JsonResponse
     {
         $user = Auth::user();
-        
+
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        // Get only cloned and imported schemas (not linked)
-        $editableSchemas = $project->floatingSchemas()
+        // Get all schemas associated with the project
+        $allSchemas = $project->floatingSchemas()
             ->with(['owner'])
-            ->whereIn('association_type', ['cloned', 'imported'])
-            ->get()
-            ->map(function ($schema) {
-                return [
-                    'id' => $schema->id,
-                    'name' => $schema->name,
-                    'description' => $schema->description,
-                    'current_version' => $schema->current_version,
-                    'last_version' => $schema->last_version,
-                    'association_type' => $schema->pivot->association_type,
-                    'alias' => $schema->pivot->alias,
-                    'owner' => $schema->owner->only(['id', 'name']),
-                ];
-            });
+            ->get();
+
+        // Filter to only include editable schemas:
+        // - cloned and imported schemas are always editable
+        // - linked schemas are editable only if user is the owner
+        $editableSchemas = $allSchemas->filter(function ($schema) use ($user) {
+            $associationType = $schema->pivot->association_type;
+
+            // Cloned and imported schemas are always editable
+            if (in_array($associationType, ['cloned', 'imported'])) {
+                return true;
+            }
+
+            // Linked schemas are editable only if user is the owner
+            if ($associationType === 'linked' && (string)$schema->owner_id === (string)$user->id) {
+                return true;
+            }
+
+            return false;
+        })->map(function ($schema) {
+            return [
+                'id' => $schema->id,
+                'name' => $schema->name,
+                'description' => $schema->description,
+                'last_version' => $schema->last_version,
+                'association_type' => $schema->pivot->association_type,
+                'alias' => $schema->pivot->alias,
+                'owner' => $schema->owner->only(['id', 'name']),
+            ];
+        })->values(); // Re-index the collection
 
         return response()->json($editableSchemas);
     }
@@ -681,5 +760,52 @@ class ProjectController extends Controller
         $memberToUpdate->update(['role' => $request->role]);
 
         return response()->json(['message' => 'Member role updated successfully']);
+    }
+
+    /**
+     * Update project settings (language settings)
+     */
+    public function updateSettings(Request $request, Project $project)
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'enabled_languages' => 'nullable|array',
+            'enabled_languages.*' => 'string|max:10',
+            'default_language' => 'nullable|string|max:10',
+        ]);
+
+        $project->update([
+            'enabled_languages' => $validated['enabled_languages'] ?? [],
+            'default_language' => $validated['default_language'] ?? $project->default_language,
+        ]);
+
+        return response()->json([
+            'message' => 'Project settings updated successfully',
+            'project' => $project
+        ]);
+    }
+
+    /**
+     * Get project settings
+     */
+    public function getSettings(Project $project)
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'enabled_languages' => $project->enabled_languages ?? [],
+            'default_language' => $project->default_language,
+        ]);
     }
 }

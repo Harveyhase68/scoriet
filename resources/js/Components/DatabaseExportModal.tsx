@@ -3,8 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
-import { Message } from 'primereact/message';
-import { TabView, TabPanel } from 'primereact/tabview';
 import { useProject } from '@/contexts/ProjectContext';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
@@ -34,8 +32,8 @@ interface SchemaVersion {
 const highlightSQL = (code: string) => {
   try {
     return Prism.highlight(code, Prism.languages.sql, 'sql');
-  } catch (error) {
-    console.warn('SQL syntax highlighting failed:', error);
+  } catch {
+    // SQL syntax highlighting failed
     return code;
   }
 };
@@ -107,7 +105,6 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
 
       const data = await response.json();
-      console.log('🗄️ Export Modal: Schema versions response:', data);
 
       // Handle different possible response formats
       let versionsArray = [];
@@ -118,8 +115,6 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       } else if (data.data) {
         versionsArray = data.data;
       }
-
-      console.log('🗄️ Export Modal: Processed versions:', versionsArray);
       setSchemaVersions(versionsArray);
 
       // Auto-select the highest version number (newest version)
@@ -129,11 +124,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
           return current.version_number > max.version_number ? current : max;
         });
 
-        console.log('🗄️ Export Modal: Auto-selecting highest version:', highestVersion.version_number);
         setSelectedVersion(highestVersion.version_number);
       }
-    } catch (err) {
-      console.error('🗄️ Export Modal: Error loading schema versions:', err);
+    } catch {
+      // Error loading schema versions
       setError(err instanceof Error ? err.message : 'Failed to load schema versions');
       setSchemaVersions([]);
     } finally {
@@ -161,7 +155,6 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
 
       const data = await response.json();
-      console.log('🗄️ Export Modal: Schemas response:', data);
 
       // Handle different possible response formats
       let schemasArray = [];
@@ -172,16 +165,14 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       } else if (data.data) {
         schemasArray = data.data;
       }
-
-      console.log('🗄️ Export Modal: Processed schemas:', schemasArray);
       setSchemas(schemasArray);
 
       // Auto-select first schema if available
       if (schemasArray && schemasArray.length > 0) {
         setSelectedSchemaId(schemasArray[0].id);
       }
-    } catch (err) {
-      console.error('🗄️ Export Modal: Error loading schemas:', err);
+    } catch {
+      // Error loading schemas
       setError(err instanceof Error ? err.message : 'Failed to load schemas');
       setSchemas([]);
     } finally {
@@ -209,10 +200,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
       // Use the NEW SchemaExportController MySQL export API
-      console.log('🗄️ Export Modal: Using new MySQL export API...');
       // NEW: Use FIXED export route with working constraints
       const response = await fetch(`/api/temp-mysql-export-fixed/${selectedSchemaId}?version=${selectedVersion}`, {
         method: 'GET',
@@ -232,18 +220,6 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
 
       const data = await response.json();
-      console.log('🗄️ Export Modal: New API response:', data);
-
-      if (data.constraint_debug) {
-        console.log('🔗 Export Modal: Constraint Debug Info:', data.constraint_debug);
-
-        // Show detailed constraint info for first few tables
-        const tableNames = Object.keys(data.constraint_debug);
-        console.log('🔗 First 5 tables constraint details:');
-        tableNames.slice(0, 5).forEach(tableName => {
-          console.log(`  ${tableName}:`, data.constraint_debug[tableName]);
-        });
-      }
 
       if (!data.success) {
         throw new Error(data.error || 'Export failed');
@@ -252,15 +228,13 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       const sqlContent = data.sql || '-- No SQL generated';
       setExportedSQL(sqlContent);
 
-      console.log(`🗄️ Export Modal: Successfully exported ${data.table_count} tables from schema "${data.schema_name}"`);
-
       if (downloadMode) {
         // Download mode - trigger download immediately
         downloadSQL(sqlContent);
       }
       // View mode - just set the SQL content, user can see it below
-    } catch (err) {
-      console.error('🗄️ Export Modal: Export error:', err);
+    } catch {
+      // Export error
       setError(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setLoading(false);
@@ -301,8 +275,8 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     try {
       await navigator.clipboard.writeText(exportedSQL);
       // Could add toast notification here
-    } catch (err) {
-      console.warn('Failed to copy to clipboard:', err);
+    } catch {
+      // Failed to copy to clipboard
     }
   };
 

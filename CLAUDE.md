@@ -161,3 +161,7 @@ The application is designed around a template-based code generation system:
 - Client-side execution for security and performance
 - "wenn du curl verwendest, immer 10.0.0.8 verwenden, localhost geht auf meinem computer nicht"
 - "Always remmeber: we are developing on Windows not Linux"
+- wenn dein code irgendwo nicht ganz funktioniert, bitte füge keinen "hack" code ein, der nur das aktuelle problem löst, sondern analysiere das problem akademisch und löse das problem, so dass es in 10 jahren immer noch keine probleme mehr macht, erstelle einen stabilen code ohne einen "hack" und der unter allen umständen funktioniert und dann später beim debuggen nicht zu problemen führt
+- neue fenster oder panele, nimm immer als vorlage ein bestehendes fenster oder panel als vorlage, das spart zeit und nerven, auch sehen die panele und fenster dann gleich aus und wir müssen nicht das rad neu erfinden
+- keine regex bitte verwenden, das ist nicht effizient und auch die fehlersuche ist der horror, bitte vermeide regex, bzw. nur wenn es kleine bereiche sind, die wirklich sinn machen oder den code an dieser stelle kürzer machen
+- wenn du neue tabellen erstellst, bitte schau, dass die tabellen untereinander mit foreign keys verbunden sind, die master tabelle nur mit BIGINT auto-increment als foreign key verwenden, keine textkeys

@@ -3,7 +3,6 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
-import { Message } from 'primereact/message';
 import { Steps } from 'primereact/steps';
 
 interface ForgotPasswordPanelProps {
@@ -56,8 +55,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       setSuccess('A reset link has been sent to your email address. Check your inbox.');
       setCurrentStep(1);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error has occurred');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'An error has occurred');
     } finally {
       setLoading(false);
     }
@@ -106,8 +105,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
         }
       }, 3000);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error has occurred');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'An error has occurred');
     } finally {
       setLoading(false);
     }

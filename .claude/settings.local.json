@@ -40,7 +40,12 @@
       "Bash(python:*)",
       "Bash(/dev/null)",
       "WebFetch(domain:dgreene1.github.io)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(TOKEN=\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIwMTk5ODFmYS03ZmU1LTcwNzEtODE0Yy1jZDYzNDZhMzA3MjAiLCJqdGkiOiJlMzJiZGFhZTYxZGRlMWZjYmE2YWVlY2M2YjFhMWQ0ZjkwMTQ1MTViZjhjYmQ5YmQ4NjllZmE3NTVhZWU5NmFkMWFlMTYyYzUyNzU4NjA5YyIsImlhdCI6MTc1OTE0MDg1NC42MTQwMTksIm5iZiI6MTc1OTE0MDg1NC42MTQwMjEsImV4cCI6MTc3NDc3OTI1NC42MDM2MTcsInN1YiI6IjQiLCJzY29wZXMiOltdfQ.G0xYuv8Pba0jCaubHJB47iSHMxRcS8DtD-UD7Q7pnzpS-pFsNTqWNqJ85TcoeeQkKcW3Q06ao7BDTMdCc10ZFjT0aFImIzT2BQ90WwsDFsI8QwHQWIuy1p27-SNBBxw89Ui9m-UouUmG-deNhm1hGr8w4HirDkELY3Yj9ZX81XpSqaN05Gda0Y5xoqcV3nP5XchRmru3rxS0oF2AiZVSsMSFfb2JqBLJjl3UavPvLGPOS-AiFJEXOxCC8JPFceKKBLIXnZtT38icWkqJrqoNcBXri9UMzzHViiiYxPbuy8c0beCRxrBGiLUXazVR9iGQsgs-8p-QuX4JPXmWzVAi45SAyFxAGzZnt7zz_3tH8uQqj0pXdmmaMsbZxjBfNXgcIG4JdhOU8K1f_b1t_0zFiWn2bQrS7PMIcdy-3hviIZqh3qO8jKVT0e_vunU_R07REeQQW7ixAOqiHM5vyG89s9dWRzJWIp9MrtBfPhmceAUu6HpnztL6cObyUerDHX2106EwUZg-V2J4bYXi-3diiyoDzAWVXEo5XrBVbpzqfjYbppLNsn65TCu8HPQV9WtDmPiEklwWxF7pcQ5WZk_uC1EcCEDGMBumPLa7kqnCdu73uJ90aIi8KWacl8QXj-ngVZ7Er2ZIgUq8BwXHGWE16cCHlDMASzPGriSro4rP4Sc\")",
+      "Bash(git checkout:*)",
+      "Bash(npx tsc:*)",
+      "Bash(sed:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

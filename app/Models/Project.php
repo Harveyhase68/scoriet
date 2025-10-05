@@ -21,6 +21,25 @@ class Project extends Model
         'join_code',
         'allow_join_requests',
         'settings',
+        'database_name',
+        'database_type',
+        'database_server',
+        'database_port',
+        'database_username',
+        'database_password',
+        'project_directory',
+        'project_url',
+        'start_page',
+        'default_language',
+        'filename_short_length',
+        'decimal_separator',
+        'thousands_separator',
+        'date_format',
+        'time_format',
+        'currency_symbol',
+        'timezone',
+        'enabled_languages',
+        'google_translate_api_key',
     ];
 
     protected $casts = [
@@ -28,6 +47,7 @@ class Project extends Model
         'is_public' => 'boolean',
         'allow_join_requests' => 'boolean',
         'settings' => 'array',
+        'enabled_languages' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -198,14 +218,31 @@ class Project extends Model
      */
     public function getCounts()
     {
-        return [
-            'teams_count' => $this->teams()->count(),
-            'members_count' => $this->members()->count(),
-            'applications_count' => $this->pendingApplications()->count(),
-            'templates_count' => 0, // TODO: Fix template relationship for new schema system
-            'schemas_count' => $this->floatingSchemas()->count(),
-            'databases_count' => $this->floatingSchemas()->count(), // For backward compatibility
-        ];
+        try {
+            // Count teams owned by project owner (more logical than requiring manual assignment)
+            $teamsCount = \App\Models\Team::where('project_owner_id', $this->owner_id)
+                                         ->where('is_active', true)
+                                         ->count();
+
+            return [
+                'teams_count' => $teamsCount,
+                'members_count' => $this->members()->count(),
+                'applications_count' => $this->pendingApplications()->count(),
+                'templates_count' => $this->templateUsages()->active()->count(),
+                'schemas_count' => $this->floatingSchemas()->count(),
+                'databases_count' => $this->floatingSchemas()->count(), // For backward compatibility
+            ];
+        } catch (\Exception $e) {
+            // Return safe defaults if relationships fail
+            return [
+                'teams_count' => 0,
+                'members_count' => 0,
+                'applications_count' => 0,
+                'templates_count' => 0,
+                'schemas_count' => 0,
+                'databases_count' => 0,
+            ];
+        }
     }
 
     /**
@@ -313,7 +350,7 @@ class Project extends Model
      */
     public function usedTemplates()
     {
-        return $this->templateUsages()->active()->with('template');
+        return $this->templateUsages()->active()->with('template.files');
     }
 
     /**

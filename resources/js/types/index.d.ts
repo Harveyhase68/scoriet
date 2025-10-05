@@ -32,7 +32,7 @@ export interface TabContentProps {
 }
 
 export interface NavigationPanelProps {
-    onOpenPanel: (panelId: string) => void;
+    onOpenPanel: (panelId: string, data?: any) => void;
 }
 
 export interface TreeNodeData {
