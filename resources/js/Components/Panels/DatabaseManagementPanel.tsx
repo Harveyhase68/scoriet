@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useProject } from '@/contexts/ProjectContext';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Message } from 'primereact/message';
 import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
+import { FileUpload } from 'primereact/fileupload';
 
 interface TabPanelProps {
   isActive: boolean;
   onOpenDesigner?: (schemaId: number, schemaName?: string) => void;
+  filterByProject?: boolean;
+  updateTabTitle?: (newTitle: string) => void;
 }
 
 interface FloatingSchema {
@@ -50,12 +54,23 @@ interface Project {
   };
 }
 
-export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: TabPanelProps) {
+export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, updateTabTitle }: TabPanelProps) {
+  // Use Project Context to get current project
+  const { selectedProject: contextSelectedProject } = useProject();
+  const projectId = filterByProject ? contextSelectedProject?.id : undefined;
   const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+
+  // Translation Export/Import
+  const [languages, setLanguages] = useState<Array<{ code: string; name: string }>>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Create schema modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -79,17 +94,37 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
   const [showAssociateModal, setShowAssociateModal] = useState(false);
   const [associatingSchema, setAssociatingSchema] = useState<FloatingSchema | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedProjectForAssociation, setSelectedProjectForAssociation] = useState<number | null>(null);
   const [associationType, setAssociationType] = useState<'linked' | 'cloned' | 'imported'>('linked');
   const [alias, setAlias] = useState('');
   const [associating, setAssociating] = useState(false);
+
+  // Delete schema modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingSchema, setDeletingSchema] = useState<FloatingSchema | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{
+    projects_count: number;
+    versions_count: number;
+    tables_count: number;
+    requires_force?: boolean;
+  } | null>(null);
 
   // Load schemas when panel becomes active
   useEffect(() => {
     if (isActive) {
       loadSchemas();
+      loadLanguages();
     }
-  }, [isActive]);
+  }, [isActive, projectId]);
+
+  // Update tab title when project changes (only for filtered panels)
+  useEffect(() => {
+    if (filterByProject && updateTabTitle && contextSelectedProject) {
+      updateTabTitle(`Database - ${contextSelectedProject.name}`);
+    }
+  }, [filterByProject, updateTabTitle, contextSelectedProject]);
 
   const loadSchemas = async () => {
     try {
@@ -102,7 +137,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
         return;
       }
 
-      const response = await fetch('/api/schemas', {
+      const url = projectId ? `/api/schemas?project_id=${projectId}` : '/api/schemas';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -116,8 +152,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       const data = await response.json();
       setSchemas(data.schemas || []);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading schemas');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading schemas');
     } finally {
       setLoading(false);
     }
@@ -139,8 +175,120 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
 
       const data = await response.json();
       setProjects(data.projects || []);
-    } catch (err) {
+    } catch {
       // Error loading projects
+    }
+  };
+
+  const loadLanguages = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/active-languages', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setLanguages(data.languages || []);
+
+      // Pre-select all languages by default
+      setSelectedLanguages((data.languages || []).map((lang: any) => lang.code));
+    } catch {
+      // Error loading languages
+    }
+  };
+
+  const handleExportTranslations = async () => {
+    if (!contextSelectedProject || selectedLanguages.length === 0) {
+      setError('Please select at least one language');
+      return;
+    }
+
+    setExporting(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const languagesParam = selectedLanguages.map(lang => `languages[]=${lang}`).join('&');
+      const url = `/api/translations/export?project_id=${contextSelectedProject.id}&${languagesParam}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export translations');
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `translations_${contextSelectedProject.name}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+
+      setShowExportDialog(false);
+      setSuccess('Translations exported successfully');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error exporting translations');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportTranslations = async (event: any) => {
+    const file = event.files[0];
+    if (!file || !contextSelectedProject) return;
+
+    setImporting(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('project_id', contextSelectedProject.id.toString());
+
+      const response = await fetch('/api/translations/import', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to import translations');
+      }
+
+      const result = await response.json();
+      setShowImportDialog(false);
+      setSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error importing translations');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -175,8 +323,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       setCreateForm({ name: '', description: '', visibility: 'private' });
       setSuccess('Database schema created successfully');
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creating schema');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error creating schema');
     } finally {
       setCreating(false);
     }
@@ -227,8 +375,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       setEditingSchema(null);
       setSuccess('Schema updated successfully');
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error updating schema');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error updating schema');
     } finally {
       setSaving(false);
     }
@@ -236,7 +384,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
 
   const handleAssociateToProject = (schema: FloatingSchema) => {
     setAssociatingSchema(schema);
-    setSelectedProject(null);
+    setSelectedProjectForAssociation(null);
     setAssociationType('linked');
     setAlias('');
     setShowAssociateModal(true);
@@ -244,7 +392,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
   };
 
   const handleConfirmAssociation = async () => {
-    if (!associatingSchema || !selectedProject) return;
+    if (!associatingSchema || !selectedProjectForAssociation) return;
 
     setAssociating(true);
     setError('');
@@ -255,7 +403,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/projects/${selectedProject}/schemas`, {
+      const response = await fetch(`/api/projects/${selectedProjectForAssociation}/schemas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,8 +427,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       await loadSchemas(); // Reload schemas to update the UI
       setSuccess(`Schema successfully ${associationType} to project`);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error associating schema');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error associating schema');
     } finally {
       setAssociating(false);
     }
@@ -346,7 +494,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
   const handleRemoveFromProject = async (schema: FloatingSchema, projectId: number) => {
     try {
       setError('');
-      
+
       const token = localStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
@@ -368,8 +516,106 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       await loadSchemas();
       setSuccess(`Schema removed from project successfully`);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error removing schema');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error removing schema');
+    }
+  };
+
+  const handleDeleteSchema = (schema: FloatingSchema) => {
+    setDeletingSchema(schema);
+    setDeleteConfirmText('');
+    setDeleteInfo(null);
+    setShowDeleteModal(true);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingSchema) return;
+
+    // Require exact schema name confirmation
+    if (deleteConfirmText !== deletingSchema.name) {
+      setError('Schema name does not match. Please type the exact schema name to confirm deletion.');
+      return;
+    }
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // First attempt without force - to get deletion info
+      let response = await fetch(`/api/schemas/${deletingSchema.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          force_delete: false
+        }),
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        const textResult = await response.text();
+        throw new Error(`Server returned invalid JSON. Status: ${response.status}, Text: ${textResult.substring(0, 200)}`);
+      }
+
+      // If requires force confirmation, show the details and ask for force delete
+      if (!response.ok && result.requires_force) {
+        setDeleteInfo({
+          projects_count: result.projects_count,
+          versions_count: result.versions_count,
+          tables_count: result.tables_count,
+          requires_force: true
+        });
+
+        // Now do the force delete
+        response = await fetch(`/api/schemas/${deletingSchema.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            force_delete: true
+          }),
+        });
+
+        try {
+          result = await response.json();
+        } catch {
+          const textResult = await response.text();
+          throw new Error(`Server returned invalid JSON on force delete. Status: ${response.status}, Text: ${textResult.substring(0, 200)}`);
+        }
+      }
+
+      if (!response.ok) {
+        const errorMessage = result.message || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      // Success!
+      setShowDeleteModal(false);
+      setDeletingSchema(null);
+      setDeleteInfo(null);
+      await loadSchemas();
+      setSuccess(`Schema "${deletingSchema.name}" and all related data deleted successfully`);
+
+    } catch {
+      const errorMessage = _ instanceof Error ? _.message : 'Error deleting schema';
+      setError(errorMessage);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -414,6 +660,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
             onClick={() => onOpenDesigner(schema.id, schema.name)}
           />
         )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-sm p-button-danger"
+          tooltip="Delete schema"
+          onClick={() => handleDeleteSchema(schema)}
+        />
       </div>
     );
   };
@@ -477,7 +729,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
       )}
 
       {/* Schemas Table */}
-      <Card title="My Database Schemas" className="flex-1">
+      <Card title="My Database Schemas" className="flex-1 mb-4">
         <DataTable
           value={schemas}
           className="p-datatable-sm"
@@ -490,37 +742,66 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
         >
           <Column field="name" header="Schema Name" sortable />
           <Column field="description" header="Description" />
-          <Column 
-            header="Assigned Projects" 
+          <Column
+            header="Assigned Projects"
             body={projectsTemplate}
             className="w-60"
           />
-          <Column 
-            field="visibility" 
-            header="Visibility" 
+          <Column
+            field="visibility"
+            header="Visibility"
             body={visibilityTemplate}
             className="w-24"
           />
-          <Column 
-            field="owner" 
-            header="Owner" 
+          <Column
+            field="owner"
+            header="Owner"
             body={ownerTemplate}
             className="w-40"
           />
-          <Column 
-            field="created_at" 
-            header="Created" 
+          <Column
+            field="created_at"
+            header="Created"
             body={(schema) => formatDate(schema.created_at)}
             className="w-32"
             sortable
           />
-          <Column 
-            header="Actions" 
+          <Column
+            header="Actions"
             body={actionTemplate}
             className="w-40"
           />
         </DataTable>
       </Card>
+
+      {/* Translation Export/Import */}
+      {contextSelectedProject && (
+        <Card title="Translation Export/Import" className="mt-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-gray-400 mb-2">
+                Export schema translations for {contextSelectedProject.name} to Excel or import translations from translation agencies.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                icon="pi pi-download"
+                label="Export Translations"
+                className="p-button-success"
+                onClick={() => setShowExportDialog(true)}
+                disabled={exporting || !contextSelectedProject}
+              />
+              <Button
+                icon="pi pi-upload"
+                label="Import Translations"
+                className="p-button-info"
+                onClick={() => setShowImportDialog(true)}
+                disabled={importing || !contextSelectedProject}
+              />
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Create Schema Modal */}
       <Dialog
@@ -698,8 +979,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
               Select Project *
             </label>
             <Dropdown
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.value)}
+              value={selectedProjectForAssociation}
+              onChange={(e) => setSelectedProjectForAssociation(e.value)}
               options={projects.map(p => ({ label: p.name, value: p.id }))}
               placeholder="Select a project"
               className="w-full"
@@ -745,7 +1026,208 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner }: Ta
               label={associating ? "Associating..." : "Associate Schema"}
               icon={associating ? "pi pi-spinner pi-spin" : "pi pi-link"}
               onClick={handleConfirmAssociation}
-              disabled={associating || !selectedProject}
+              disabled={associating || !selectedProjectForAssociation}
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Delete Schema Modal */}
+      <Dialog
+        header={`🗑️ Delete Schema: ${deletingSchema?.name}`}
+        visible={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        style={{ width: '500px' }}
+        modal
+        closable={!deleting}
+        draggable={false}
+        resizable={false}
+        className="p-dialog-custom"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded">
+            <div className="flex items-center mb-2">
+              <i className="pi pi-exclamation-triangle text-red-600 mr-2"></i>
+              <h4 className="font-bold text-red-800">⚠️ Permanent Deletion Warning</h4>
+            </div>
+            <p className="text-red-700 text-sm mb-3">
+              This action will permanently delete the schema and <strong>ALL</strong> related data:
+            </p>
+
+            {deleteInfo && (
+              <ul className="text-red-700 text-sm space-y-1 mb-3">
+                <li>🗂️ <strong>{deleteInfo.versions_count}</strong> schema versions</li>
+                <li>🏗️ <strong>{deleteInfo.tables_count}</strong> database tables</li>
+                <li>🔗 <strong>{deleteInfo.projects_count}</strong> project associations</li>
+                <li>🎨 All schema designer layouts</li>
+                <li>⚙️ All constraints and relationships</li>
+              </ul>
+            )}
+
+            <p className="text-red-800 font-medium text-sm">
+              💀 This action <u>cannot be undone</u>!
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type the schema name <strong>"{deletingSchema?.name}"</strong> to confirm deletion:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={`Type "${deletingSchema?.name}" here`}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              disabled={deleting}
+              autoComplete="off"
+            />
+            <small className="text-gray-600">
+              Schema name must match exactly (case-sensitive)
+            </small>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-100 border border-red-400 rounded text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={() => setShowDeleteModal(false)}
+              className="p-button-text"
+              disabled={deleting}
+            />
+            <Button
+              label={deleting ? "Deleting..." : "🗑️ Delete Forever"}
+              icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
+              onClick={handleConfirmDelete}
+              className="p-button-danger"
+              disabled={deleting || deleteConfirmText !== deletingSchema?.name}
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Export Translations Dialog */}
+      <Dialog
+        header="Export Translations to Excel"
+        visible={showExportDialog}
+        onHide={() => setShowExportDialog(false)}
+        style={{ width: '500px' }}
+        modal
+        closable
+        draggable={false}
+        resizable={false}
+        className="p-dialog-custom"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 rounded border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-1">
+              Export for {contextSelectedProject?.name}
+            </h4>
+            <p className="text-sm text-blue-600">
+              Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Languages *
+            </label>
+            <MultiSelect
+              value={selectedLanguages}
+              onChange={(e) => setSelectedLanguages(e.value)}
+              options={languages.map(lang => ({ label: `${lang.name} (${lang.code.toUpperCase()})`, value: lang.code }))}
+              placeholder="Select languages to export"
+              className="w-full"
+              disabled={exporting}
+              display="chip"
+            />
+            <small className="text-gray-600">
+              Select one or more languages for the translation export
+            </small>
+          </div>
+
+          {error && (
+            <Message severity="error" text={error} />
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={() => setShowExportDialog(false)}
+              className="p-button-text"
+              disabled={exporting}
+            />
+            <Button
+              label={exporting ? "Exporting..." : "Export to Excel"}
+              icon={exporting ? "pi pi-spinner pi-spin" : "pi pi-download"}
+              onClick={handleExportTranslations}
+              disabled={exporting || selectedLanguages.length === 0}
+              className="p-button-success"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Import Translations Dialog */}
+      <Dialog
+        header="Import Translations from Excel"
+        visible={showImportDialog}
+        onHide={() => setShowImportDialog(false)}
+        style={{ width: '500px' }}
+        modal
+        closable
+        draggable={false}
+        resizable={false}
+        className="p-dialog-custom"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-green-50 rounded border border-green-200">
+            <h4 className="font-medium text-green-800 mb-1">
+              Import for {contextSelectedProject?.name}
+            </h4>
+            <p className="text-sm text-green-600">
+              Upload an Excel file with translations. The file must follow the export format.
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload Excel File *
+            </label>
+            <FileUpload
+              mode="basic"
+              name="file"
+              accept=".xlsx,.xls"
+              maxFileSize={10000000}
+              customUpload
+              uploadHandler={handleImportTranslations}
+              auto={false}
+              chooseLabel="Choose Excel File"
+              disabled={importing}
+            />
+            <small className="text-gray-600">
+              Excel files only (.xlsx, .xls), max 10MB
+            </small>
+          </div>
+
+          {error && (
+            <Message severity="error" text={error} />
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={() => setShowImportDialog(false)}
+              className="p-button-text"
+              disabled={importing}
             />
           </div>
         </div>

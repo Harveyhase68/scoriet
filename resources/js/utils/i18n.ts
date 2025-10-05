@@ -108,6 +108,10 @@ export interface Translations {
   privacyPolicy: string;
   termsOfService: string;
   allRightsReserved: string;
+
+  //LoginModal.tsx
+  DemoTextHeader: string;
+
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -121,7 +125,7 @@ const translations: Record<SupportedLanguage, Translations> = {
 
     title: 'Enterprise Code Generator',
     subtitle: 'Transform your database schemas into production-ready code with intelligent templates. Reduce development time by 80% with automated code generation.',
-    startFree: 'Start Free',
+    startFree: 'Start Free', 
     tryDemo: 'Try Demo',
     watchDemo: 'Watch Demo',
 
@@ -195,6 +199,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Terms of Service',
     allRightsReserved: 'All rights reserved',
+    DemoTextHeader: 'Demo mode available',
   },
   de: {
     login: 'Anmelden',
@@ -280,6 +285,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Datenschutz',
     termsOfService: 'Nutzungsbedingungen',
     allRightsReserved: 'Alle Rechte vorbehalten',
+
+    DemoTextHeader: 'Demo-Modus verfügbar',
   },
   fr: {
     login: 'Connexion',
@@ -365,6 +372,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Politique de confidentialité',
     termsOfService: 'Conditions d\'utilisation',
     allRightsReserved: 'Tous droits réservés',
+
+    DemoTextHeader: 'Mode démo disponible',
   },
   es: {
     login: 'Iniciar sesión',
@@ -450,6 +459,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Política de privacidad',
     termsOfService: 'Términos de servicio',
     allRightsReserved: 'Todos los derechos reservados',
+
+    DemoTextHeader: 'Modo de demostración disponible',
   },
   it: {
     login: 'Accedi',
@@ -535,6 +546,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Termini di servizio',
     allRightsReserved: 'Tutti i diritti riservati',
+
+    DemoTextHeader: 'Modalità demo disponibile',
   },
 };
 

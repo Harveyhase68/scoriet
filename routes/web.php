@@ -87,3 +87,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+
+// Admin routes for CMS (must be defined before generic routes) - TEMPORARILY WITHOUT AUTH
+Route::get('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('admin.pages.index');
+Route::get('/admin/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('admin.pages.create');
+Route::post('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'store'])->name('admin.pages.store');
+Route::get('/admin/pages/{page}/edit', [App\Http\Controllers\Admin\PageController::class, 'edit'])->name('admin.pages.edit');
+Route::put('/admin/pages/{page}', [App\Http\Controllers\Admin\PageController::class, 'update'])->name('admin.pages.update');
+
+// Localized CMS pages using Inertia (must be before generic route)
+Route::get('/{locale}/help', [App\Http\Controllers\PageController::class, 'help'])
+    ->where('locale', 'en|de|fr|es|it')
+    ->name('pages.help');
+
+Route::get('/{locale}/impressum', [App\Http\Controllers\PageController::class, 'impressum'])
+    ->where('locale', 'en|de|fr|es|it')
+    ->name('pages.impressum');
+
+// Localized static pages (only for known locales)
+Route::middleware(['web'])->group(function () {
+    Route::get('/{locale}/{slug}', [App\Http\Controllers\PageController::class, 'show'])
+        ->where('locale', 'en|de|fr|es|it') // Only allow known locales
+        ->where('slug', '[a-z-]+')
+        ->name('page');
+});

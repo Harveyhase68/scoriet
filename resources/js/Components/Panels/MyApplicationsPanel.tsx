@@ -4,7 +4,6 @@ import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
-import { Message } from 'primereact/message';
 import { Dialog } from 'primereact/dialog';
 
 interface TabPanelProps {
@@ -77,8 +76,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       const data = await response.json();
       setApplications(data.applications || []);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading applications');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading applications');
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,6 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
 import { Dropdown } from 'primereact/dropdown';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage } from '@/utils/i18n';
 import CSSFlag from '@/Components/CSSFlag';
@@ -79,7 +78,6 @@ export default function RegisterModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Registration error details:', errorData);
 
         // Display the user-friendly message from the backend
         setError(errorData.message || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
@@ -105,8 +103,8 @@ export default function RegisterModal({
         }, 2000);
       }
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'An error occurred');
     } finally {
       setLoading(false);
     }

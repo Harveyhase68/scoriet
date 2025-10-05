@@ -1,4 +1,9 @@
 @import 'tailwindcss';
+
+/* Tailwind 4.0 - Define source files to scan */
+@source "../views/**/*.blade.php";
+@source "../js/**/*.{js,jsx,ts,tsx}";
+
 @import 'primeicons/primeicons.css';
 @import 'primereact/resources/themes/arya-blue/theme.css';
 @import 'primereact/resources/primereact.css';

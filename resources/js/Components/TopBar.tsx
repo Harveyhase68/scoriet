@@ -33,8 +33,8 @@ export default function TopBar() {
         const pendingCount = applications.filter((app: any) => app.status === 'pending').length;
         setPendingApplicationsCount(pendingCount);
       }
-    } catch (error) {
-      console.error('Error loading pending applications:', error);
+    } catch {
+      // Error loading pending applications
       setPendingApplicationsCount(0);
     }
   }, [selectedProject]);
@@ -50,7 +50,6 @@ export default function TopBar() {
       const { projectId } = event.detail;
       // Only reload if it's for the current selected project
       if (selectedProject && projectId === selectedProject.id) {
-        console.log('🔔 TopBar: Applications updated, reloading pending count');
         loadPendingApplications();
       }
     };
@@ -61,25 +60,6 @@ export default function TopBar() {
       window.removeEventListener('applicationsUpdated', handleApplicationsUpdated as EventListener);
     };
   }, [selectedProject, loadPendingApplications]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🎯 TopBar: selectedProject changed:', selectedProject ? { id: selectedProject.id, name: selectedProject.name } : null);
-  }, [selectedProject]);
-
-  useEffect(() => {
-    console.log('🎯 TopBar: projects changed, count:', projects?.length || 0);
-  }, [projects]);
-
-  // Debug logging for dropdown state
-  useEffect(() => {
-    console.log('🎯 TopBar: Dropdown debug state:', {
-      selectedProject: selectedProject ? { id: selectedProject.id, name: selectedProject.name } : null,
-      projectsCount: projects?.length || 0,
-      loading,
-      selectedProjectInOptions: selectedProject ? projects?.some(p => p.id === selectedProject.id) : false
-    });
-  }, [selectedProject, projects, loading]);
 
   return (
     <div className="h-12 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-4">
@@ -107,7 +87,6 @@ export default function TopBar() {
             options={projects || []}
             onChange={(e) => {
               const selectedProjectObject = projects?.find(p => p.id === e.value);
-              console.log('🎯 TopBar: Dropdown onChange triggered - ID:', e.value, 'Object:', selectedProjectObject ? { id: selectedProjectObject.id, name: selectedProjectObject.name } : null);
               setSelectedProject(selectedProjectObject || null);
             }}
             optionLabel="name"
@@ -135,7 +114,6 @@ export default function TopBar() {
               style={{ padding: '4px' }}
               tooltip={`${pendingApplicationsCount} pending application${pendingApplicationsCount > 1 ? 's' : ''}`}
               onClick={() => {
-                console.log('🔔 TopBar: Bell clicked, dispatching openApplicationsModal event');
                 // Trigger opening Applications Modal via custom event
                 const event = new CustomEvent('openApplicationsModal', {
                   detail: { projectId: selectedProject.id }

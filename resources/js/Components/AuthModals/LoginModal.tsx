@@ -3,8 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
-import { Checkbox } from 'primereact/checkbox';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
 
 interface LoginModalProps {
   visible: boolean;
@@ -33,6 +32,10 @@ export default function LoginModal({
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState<string>('');
 
+  // Language state
+  const [currentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,7 +80,6 @@ export default function LoginModal({
       }
 
       const tokenData = await tokenResponse.json();
-      console.log('🔐 Token Response:', tokenData);
 
       // Save token - depending on 'Remember Me' option
       if (formData.rememberMe) {
@@ -85,14 +87,11 @@ export default function LoginModal({
         localStorage.setItem('access_token', tokenData.access_token);
         localStorage.setItem('refresh_token', tokenData.refresh_token);
         localStorage.setItem('remember_me', 'true');
-        console.log('🔐 Saved to localStorage:', tokenData.access_token);
-
       } else {
         // Only for session - deleted when browser closes
         sessionStorage.setItem('access_token', tokenData.access_token);
         sessionStorage.setItem('refresh_token', tokenData.refresh_token);
         localStorage.setItem('remember_me', 'false');
-        console.log('🔐 Saved to sessionStorage:', tokenData.access_token);
       }
 
       // Call user update with token from correct storage
@@ -109,16 +108,17 @@ export default function LoginModal({
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        // Store user_id in localStorage for later use
+        // Store user_id and user_type in localStorage for later use
         localStorage.setItem('user_id', userData.id.toString());
+        localStorage.setItem('user_type', userData.user_type || 'free');
       }
 
       // Success - close modal
       onLoginSuccess?.();
       onHide();
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -231,7 +231,7 @@ export default function LoginModal({
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
           <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
             <i className="pi pi-info-circle mr-2"></i>
-            Demo mode available
+            {t.DemoTextHeader}
           </h3>
           <p className="text-blue-700 text-sm mb-3">
             Test Scoriet without registration with ready-made demo data:

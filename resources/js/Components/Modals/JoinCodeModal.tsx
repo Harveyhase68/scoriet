@@ -3,7 +3,6 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Message } from 'primereact/message';
 import { Card } from 'primereact/card';
 
 interface Project {
@@ -73,8 +72,8 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
       setStep('preview');
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error looking up project');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error looking up project');
     } finally {
       setLoading(false);
     }
@@ -122,8 +121,8 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
         onSuccess();
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error submitting application');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error submitting application');
     } finally {
       setApplying(false);
     }

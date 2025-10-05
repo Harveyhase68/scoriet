@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
 
 interface ForgotPasswordModalProps {
   visible: boolean;
@@ -46,8 +45,8 @@ export default function ForgotPasswordModal({
       setSuccess('A password reset link has been sent to your email address.');
       setEmail(''); // Clear email field
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'An error occurred');
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { ErrorBoundary } from 'react-error-boundary';
 import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
+import { useProject } from '@/contexts/ProjectContext';
 
 // Always-loaded components (small and critical)
 import NewNavigationPanel from '@/Components/Panels/NewNavigationPanel';
@@ -30,6 +31,10 @@ const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseM
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
 const DebugManualGeneratorPanel = lazy(() => import('@/Components/Panels/DebugManualGeneratorPanel'));
 const CodeGenerationPanel = lazy(() => import('@/Components/Panels/CodeGenerationPanel'));
+const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageManagementPanel'));
+const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
+const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
+const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -46,6 +51,9 @@ const DatabaseExportModal = lazy(() => import('@/Components/DatabaseExportModal'
 
 // Project Context
 import { ProjectProvider } from '@/contexts/ProjectContext';
+
+// Layout Persistence
+import { LayoutPersistenceService } from '@/utils/layoutPersistence';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -150,8 +158,64 @@ function findFirstTabset(layout: any): any {
   return null;
 }
 
+// Function to update tab title dynamically
+const updateTabTitle = (dockRef: any, setLayout: any, tabId: string, newTitle: string) => {
+  if (!dockRef.current) {
+    return;
+  }
+
+  // Get current layout from dock reference
+  const currentLayout = dockRef.current.saveLayout();
+
+  const updateTitleInBox = (box: any): boolean => {
+    if (!box) return false;
+
+    // Check if this box has tabs
+    if (box.tabs && Array.isArray(box.tabs)) {
+      for (let i = 0; i < box.tabs.length; i++) {
+        if (box.tabs[i].id === tabId) {
+          box.tabs[i].title = newTitle;
+          return true;
+        }
+      }
+    }
+
+    // Search in children
+    if (box.children && Array.isArray(box.children)) {
+      for (const child of box.children) {
+        if (updateTitleInBox(child)) return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Create a deep copy of the current layout
+  const newLayout = JSON.parse(JSON.stringify(currentLayout));
+
+  // Search through all boxes
+  const boxes = ['dockbox', 'floatbox', 'windowbox', 'maxbox'];
+  let updated = false;
+
+  for (const boxName of boxes) {
+    if (newLayout[boxName] && updateTitleInBox(newLayout[boxName])) {
+      updated = true;
+      break;
+    }
+  }
+
+  if (updated) {
+    setLayout(newLayout);
+  }
+};
+
 // ✅ CORRECTED loadTab function with Lazy Loading!
-const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, openPanelFn?: (panelId: string, data?: any) => void) => {
+const loadTab = (
+  data: any,
+  handleOpenDesigner?: (schemaId: number) => void,
+  openPanelFn?: (panelId: string, data?: any) => void,
+  updateTitleCallback?: (newTitle: string) => void
+) => {
   const { id } = data;
 
   switch (id) {
@@ -296,12 +360,33 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
       };
 
     case 'template-management':
+    case 'template-management-filtered':
+      // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
+      const tabKey = id; // Use the unique tab ID directly
+
+      // Store persistent data in a global object (rc-dock workaround)
+      if (!window._tabData) window._tabData = {};
+
+      if (data.filterByProject !== undefined || updateTitleCallback) {
+        // First call - store the data and callback
+        window._tabData[tabKey] = {
+          filterByProject: data.filterByProject,
+          title: data.title,
+          updateTitleCallback: updateTitleCallback
+        };
+      }
+
+      // Get the stored data (works on subsequent calls)
+      const storedData = window._tabData[tabKey] || {};
+      const shouldShowProjectFilter = storedData.filterByProject === true;
+      const actualUpdateTitleCallback = storedData.updateTitleCallback || updateTitleCallback;
+
       return {
         id,
         title: data.title || 'Template Verwaltung',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <TemplateManagementPanel />
+            <TemplateManagementPanel filterByProject={shouldShowProjectFilter} updateTabTitle={actualUpdateTitleCallback} />
           </Suspense>
         ),
         closable: true,
@@ -309,12 +394,33 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
       };
 
     case 'database-management':
+    case 'database-management-filtered':
+      // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
+      const dbTabKey = id; // Use the unique tab ID directly
+
+      // Store persistent data in a global object (rc-dock workaround)
+      if (!window._tabData) window._tabData = {};
+
+      if (data.filterByProject !== undefined || updateTitleCallback) {
+        // First call - store the data and callback
+        window._tabData[dbTabKey] = {
+          filterByProject: data.filterByProject,
+          title: data.title,
+          updateTitleCallback: updateTitleCallback
+        };
+      }
+
+      // Get the stored data (works on subsequent calls)
+      const dbStoredData = window._tabData[dbTabKey] || {};
+      const dbShouldShowProjectFilter = dbStoredData.filterByProject === true;
+      const dbActualUpdateTitleCallback = dbStoredData.updateTitleCallback || updateTitleCallback;
+
       return {
         id,
         title: data.title || 'Database Management',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <DatabaseManagementPanel isActive={true} onOpenDesigner={handleOpenDesigner} />
+            <DatabaseManagementPanel isActive={true} onOpenDesigner={handleOpenDesigner} filterByProject={dbShouldShowProjectFilter} updateTabTitle={dbActualUpdateTitleCallback} />
           </Suspense>
         ),
         closable: true,
@@ -322,12 +428,33 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
       };
 
     case 'team-management':
+    case 'team-management-filtered':
+      // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
+      const teamTabKey = id; // Use the unique tab ID directly
+
+      // Store persistent data in a global object (rc-dock workaround)
+      if (!window._tabData) window._tabData = {};
+
+      if (data.filterByProject !== undefined || updateTitleCallback) {
+        // First call - store the data and callback
+        window._tabData[teamTabKey] = {
+          filterByProject: data.filterByProject,
+          title: data.title,
+          updateTitleCallback: updateTitleCallback
+        };
+      }
+
+      // Get the stored data (works on subsequent calls)
+      const teamStoredData = window._tabData[teamTabKey] || {};
+      const teamShouldShowProjectFilter = teamStoredData.filterByProject === true;
+      const teamActualUpdateTitleCallback = teamStoredData.updateTitleCallback || updateTitleCallback;
+
       return {
         id,
         title: data.title || 'Team Verwaltung',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <TeamManagementPanel />
+            <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} updateTabTitle={teamActualUpdateTitleCallback} />
           </Suspense>
         ),
         closable: true,
@@ -367,6 +494,45 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CodeGenerationPanel isActive={true} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'language-management':
+      return {
+        id,
+        title: data.title || 'Language Management',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <LanguageManagementPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'schema-translation':
+      return {
+        id,
+        title: data.title || 'Schema Translation',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <SchemaTranslationPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'system-settings':
+      return {
+        id,
+        title: data.title || 'System Settings',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <SystemSettingsPanel />
           </Suspense>
         ),
         closable: true,
@@ -427,7 +593,24 @@ const loadTab = (data: any, handleOpenDesigner?: (schemaId: number) => void, ope
           group: 'card custom'
         };
       }
-      
+
+      // Handle project-specific settings panels (e.g., project-settings-1, project-settings-2)
+      if (id.startsWith('project-settings-')) {
+        const projectId = parseInt(id.split('-')[2]);
+
+        return {
+          id,
+          title: data.title || `Project Settings (${data.projectName || 'Project ' + projectId})`,
+          content: (
+            <Suspense fallback={<PanelLoader />}>
+              <ProjectSettingsPanel />
+            </Suspense>
+          ),
+          closable: true,
+          group: 'card custom'
+        };
+      }
+
       // Better fallback - still try to load reasonable content
       if (id.startsWith('t')) {
         return {
@@ -475,10 +658,54 @@ interface IndexProps {
 export default function Index(props: IndexProps = {}) {
   const { resetToken, resetEmail } = props;
   const ref = useRef<any>(null);
-  const [layout, setLayout] = useState(initialLayout);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(300);
+
+  // Project context
+  const { projects, selectedProject, setSelectedProject } = useProject();
+
+  // Initialize layout from localStorage or use default
+  const [layout, setLayout] = useState(() => {
+    const { layout: savedLayout } = LayoutPersistenceService.loadLayout();
+    return savedLayout || initialLayout;
+  });
+
+  // Initialize left panel width from localStorage or use default
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
+    const { leftPanelWidth: savedWidth } = LayoutPersistenceService.loadLayout();
+    return savedWidth;
+  });
   const [isResizing, setIsResizing] = useState(false);
-  
+
+  // Helper function to update layout and save to localStorage
+  const updateLayout = useCallback((newLayout: any) => {
+    setLayout(newLayout);
+    LayoutPersistenceService.saveLayout(newLayout, leftPanelWidth);
+  }, [leftPanelWidth]);
+
+  // Save left panel width changes to localStorage
+  useEffect(() => {
+    LayoutPersistenceService.saveLayout(layout, leftPanelWidth);
+  }, [leftPanelWidth, layout]);
+
+  // Clear layout and reset to default
+  const clearLayout = useCallback(() => {
+    LayoutPersistenceService.clearLayout();
+    setLayout(initialLayout);
+    setLeftPanelWidth(300);
+  }, []);
+
+  // Expose clearLayout globally for debugging/manual use
+  useEffect(() => {
+    (window as any).clearLayout = clearLayout;
+    return () => {
+      delete (window as any).clearLayout;
+    };
+  }, [clearLayout]);
+
+  // Show layout restoration info on mount
+  useEffect(() => {
+    // Layout restoration handled silently
+  }, []);
+
   // Auth Modal State - Initialize based on authentication status
   const [activeModal, setActiveModal] = useState<AuthModalType>(() => {
     // Check if user is authenticated on initial load
@@ -844,9 +1071,7 @@ export default function Index(props: IndexProps = {}) {
       floatable: true,
       closable: true,
       panelExtra: (panelData: any, context: any) => {
-        // DEBUG: Show Close All button in every tab + log the tab ID
-        console.log('Tab ID:', panelData.id, 'Title:', panelData.title);
-        const showCloseAllButton = true; // panelData.id === 'project';
+        const showCloseAllButton = true;
 
         return (
           <>
@@ -893,18 +1118,29 @@ export default function Index(props: IndexProps = {}) {
       return;
     }
 
+    // Handle project settings panels - set selected project before opening
+    if (panelId.startsWith('project-settings-') && data?.projectId) {
+      const projectToSet = projects.find(p => p.id === data.projectId);
+      if (projectToSet) {
+        setSelectedProject(projectToSet);
+      }
+    }
+
     setTimeout(() => {
       if (!ref.current) {
         return;
       }
 
-      const existingTab = ref.current.find(panelId);
+      // Create unique tab ID for project-filtered panels
+      const uniqueTabId = data?.filterByProject ? `${panelId}-filtered` : panelId;
+
+      const existingTab = ref.current.find(uniqueTabId);
 
       if (existingTab) {
         // Tab exists, just activate it within the tabset without moving
-        if (existingTab.parent && existingTab.parent.activeId !== panelId) {
+        if (existingTab.parent && existingTab.parent.activeId !== uniqueTabId) {
           // Update the parent tabset to make this tab active
-          existingTab.parent.activeId = panelId;
+          existingTab.parent.activeId = uniqueTabId;
           // Force re-render by updating layout
           const currentLayout = ref.current.saveLayout();
           setLayout({...currentLayout});
@@ -912,9 +1148,13 @@ export default function Index(props: IndexProps = {}) {
         // Tab is already active, do nothing
         return;
       } else {
-        // Create new tab
-        const newTab = loadTab({ id: panelId, ...data });
-        
+        // Create new tab with updateTabTitle callback
+        const updateTitleCallback = (newTitle: string) => {
+          updateTabTitle(ref, setLayout, uniqueTabId, newTitle);
+        };
+
+        const newTab = loadTab({ id: uniqueTabId, ...data }, handleOpenDesigner, openPanel, updateTitleCallback);
+
         if (newTab) {
           const currentLayout = ref.current.saveLayout();
           const firstTabset = findFirstTabset(currentLayout);
@@ -930,9 +1170,9 @@ export default function Index(props: IndexProps = {}) {
                   {
                     id: `+${Date.now()}`,
                     size: 300,
-                    tabs: [{ id: panelId, title: newTab.title }],
+                    tabs: [{ id: uniqueTabId, title: newTab.title }],
                     group: 'card custom',
-                    activeId: panelId
+                    activeId: uniqueTabId
                   }
                 ]
               }
@@ -945,8 +1185,8 @@ export default function Index(props: IndexProps = {}) {
               
               function addTabToTabset(node: any): boolean {
                 if (node.tabs && Array.isArray(node.tabs) && node.tabs.length > 0) {
-                  node.tabs.push({ id: panelId, title: newTab.title });
-                  node.activeId = panelId;
+                  node.tabs.push({ id: uniqueTabId, title: newTab.title });
+                  node.activeId = uniqueTabId;
                   return true;
                 }
                 
@@ -977,9 +1217,9 @@ export default function Index(props: IndexProps = {}) {
                       {
                         id: `+${Date.now()}`,
                         size: 300,
-                        tabs: [{ id: panelId, title: newTab.title }],
+                        tabs: [{ id: uniqueTabId, title: newTab.title }],
                         group: 'card custom',
-                        activeId: panelId
+                        activeId: uniqueTabId
                       }
                     ]
                   }
@@ -998,9 +1238,9 @@ export default function Index(props: IndexProps = {}) {
                     {
                       id: `+${Date.now()}`,
                       size: 300,
-                      tabs: [{ id: panelId, title: newTab.title }],
+                      tabs: [{ id: uniqueTabId, title: newTab.title }],
                       group: 'card custom',
-                      activeId: panelId
+                      activeId: uniqueTabId
                     }
                   ]
                 }
@@ -1012,7 +1252,7 @@ export default function Index(props: IndexProps = {}) {
       }
     }, 50);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]); // Other dependencies would cause infinite loop
+  }, [isAuthenticated, projects, selectedProject, setSelectedProject]); // Other dependencies would cause infinite loop
 
   // Handle opening designer with pre-selected schema
   const handleOpenDesigner = useCallback((schemaId: number, schemaName?: string) => {
@@ -1046,14 +1286,11 @@ export default function Index(props: IndexProps = {}) {
   // Listen for notification bell click to open Applications Modal via ProjectPanel
   useEffect(() => {
     const handleOpenApplicationsModal = () => {
-      console.log('📧 Index: Received openApplicationsModal event, opening ProjectPanel and Applications modal');
-
       // First, ensure ProjectPanel is open
       openPanel('project');
 
       // Multiple attempts to trigger the modal - try different timings
       const tryTriggerModal = (attempt: number) => {
-        console.log(`📧 Index: Attempt ${attempt} - Dispatching openApplicationsModalInPanel event`);
         const event = new CustomEvent('openApplicationsModalInPanel', {
           detail: { fromTopBar: true, attempt }
         });
@@ -1190,6 +1427,13 @@ useHotkeys('alt+n', () => {
   useHotkeys('alt+l', () => {
   });
 
+  // Clear saved layout with Alt+R (Reset)
+  useHotkeys('alt+r', () => {
+    if (confirm('Clear saved layout and reset to default?')) {
+      clearLayout();
+    }
+  });
+
   useHotkeys('alt+c', async () => {
     const cleanedLayout = cleanLayoutForExport(layout);
     const layoutJson = JSON.stringify(cleanedLayout, null, 2);
@@ -1284,9 +1528,9 @@ useHotkeys('alt+n', () => {
     if (currentTabId === 'protect1' && direction === 'remove') {
       alert('Removal of this tab is rejected!');
     } else {
-      setLayout(newLayout);
+      updateLayout(newLayout);
     }
-  }, []);
+  }, [updateLayout]);
 
   // Resize handler for the left panel
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1338,7 +1582,6 @@ useHotkeys('alt+n', () => {
   };
 
   const handleSqlImportSuccess = (result: any) => {
-    console.log('SQL Import Success:', result);
     setShowSqlImportModal(false);
     // Optional: Show success message or refresh relevant panels
   };
@@ -1359,10 +1602,6 @@ useHotkeys('alt+n', () => {
 
       <ErrorBoundary
         FallbackComponent={ErrorFallback}
-        onError={(error, errorInfo) => {
-          // Log error for debugging (you can add external logging service here)
-          console.error('Application Error:', error, errorInfo);
-        }}
       >
         <ProjectProvider>
         <div 

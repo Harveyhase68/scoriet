@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
 
 interface PendingInvitationModalProps {
@@ -73,8 +72,8 @@ export default function PendingInvitationModal({
 
       const data = await response.json();
       setInvitation(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading invitation');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading invitation');
     } finally {
       setLoading(false);
     }
@@ -118,8 +117,8 @@ export default function PendingInvitationModal({
       } else {
         throw new Error(data.message || 'Failed to accept invitation');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error accepting invitation');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error accepting invitation');
     } finally {
       setProcessing(false);
     }
@@ -157,8 +156,8 @@ export default function PendingInvitationModal({
       } else {
         throw new Error(data.message || 'Failed to decline invitation');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error declining invitation');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error declining invitation');
     } finally {
       setProcessing(false);
     }

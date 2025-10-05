@@ -5,7 +5,6 @@ import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Badge } from 'primereact/badge';
-import { Message } from 'primereact/message';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 
@@ -229,11 +228,11 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         } else {
           // Failed to load projects
         }
-      } catch (projectError) {
+      } catch {
         setProjectMembers([]);
       }
 
-    } catch (error) {
+    } catch {
       setError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setLoading(false);
@@ -321,7 +320,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       // Refresh data
       loadData();
       onSave?.();
-    } catch (error) {
+    } catch {
       // Error adding member to team
       toast.current?.show({
         severity: 'error',
@@ -380,7 +379,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
           loadData();
           onSave?.();
-        } catch (error) {
+        } catch {
           // Error removing member
           toast.current?.show({
             severity: 'error',
@@ -434,7 +433,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
       loadTeamMembers();
       onSave?.();
-    } catch (error) {
+    } catch {
       // Error updating role
       toast.current?.show({
         severity: 'error',
@@ -570,8 +569,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           {/* Info message */}
           <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
             <i className="pi pi-info-circle mr-2"></i>
-            
-            
+            Team-Mitglieder können an diesem Projekt zusammenarbeiten. Projekt-Mitglieder mit Status "Available" können zum Team hinzugefügt werden.
           </div>
 
           {/* Members Table */}

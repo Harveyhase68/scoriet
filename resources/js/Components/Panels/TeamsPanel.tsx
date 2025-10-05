@@ -61,7 +61,7 @@ export default function TeamsPanel() {
     const loadData = async () => {
       try {
         await loadAllTeams();
-      } catch (err) {
+      } catch {
         // Error loading data
       } finally {
         setLoading(false);
@@ -102,7 +102,7 @@ export default function TeamsPanel() {
         // Clear any selected team IDs when switching projects
         setSelectedTeamIds([]);
       }
-    } catch (err) {
+    } catch {
       // Error loading project teams
     }
   }, [teams]);
@@ -150,8 +150,8 @@ export default function TeamsPanel() {
       }
       setTeams(teamsArray);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading teams');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading teams');
     }
   };
 
@@ -194,8 +194,8 @@ export default function TeamsPanel() {
       setSelectedTeamIds([]);
       setSuccess(`${selectedTeamIds.length} teams assigned to project successfully`);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error assigning teams');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error assigning teams');
     } finally {
       setAssigningTeams(false);
     }
@@ -234,8 +234,8 @@ export default function TeamsPanel() {
         setSuccess(`Team "${removedTeam.name}" removed from project successfully`);
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error removing team');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error removing team');
     }
   };
 

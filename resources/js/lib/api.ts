@@ -2,6 +2,11 @@
 interface SchemaTable {
   id: number;
   table_name: string;
+  comment?: string;
+  primarykeyfield?: string;
+  filekeyname?: string;
+  file_name_renamed?: string;
+  file_name_short?: string;
   fields: SchemaField[];
   constraints: SchemaConstraint[];
 }
@@ -12,7 +17,12 @@ interface SchemaField {
   field_type: string;
   is_nullable: boolean;
   is_auto_increment: boolean;
+  is_primary_key?: boolean;
+  is_index?: boolean;
+  is_unique?: boolean;
   default_value?: string;
+  comment?: string;
+  extra?: string;
 }
 
 interface SchemaConstraint {
@@ -86,14 +96,14 @@ class ApiClient {
     // Could show login modal here or redirect
   }
 
-  private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+  async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const token = await this.getAuthToken();
-    
+
     // If no token, throw authentication error immediately
     if (!token) {
       throw new Error('Authentication required - please login');
     }
-    
+
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,
       headers: {
@@ -110,7 +120,8 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw { response: { status: response.status, data: errorData }, message: `API Error: ${response.status} ${response.statusText}` };
     }
 
     return response.json();
@@ -135,6 +146,7 @@ class ApiClient {
     category?: string;
     search?: string;
     active_only?: boolean;
+    project_id?: number;
   }): Promise<any[]> {
     const params = new URLSearchParams();
     if (filters?.category && filters.category !== 'All') {
@@ -145,6 +157,9 @@ class ApiClient {
     }
     if (filters?.active_only) {
       params.append('active_only', 'true');
+    }
+    if (filters?.project_id) {
+      params.append('project_id', filters.project_id.toString());
     }
 
     const queryString = params.toString();
@@ -222,6 +237,70 @@ class ApiClient {
     }
   }
 
+  async hardDeleteTemplate(id: number): Promise<any> {
+    try {
+      await this.request(`/templates/${id}/force`, {
+        method: 'DELETE',
+      });
+      return {
+        success: true
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async toggleTemplateActive(id: number): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${id}/toggle`, {
+        method: 'PATCH',
+      });
+      return {
+        success: true,
+        is_active: response.is_active
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async cloneTemplate(id: number, data: { name: string; visibility: string }): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${id}/clone`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return {
+        success: true,
+        template: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async checkTemplateName(name: string): Promise<any> {
+    try {
+      const response = await this.request(`/templates/check-name?name=${encodeURIComponent(name)}`);
+      return {
+        exists: response.exists
+      };
+    } catch (error) {
+      return {
+        exists: false
+      };
+    }
+  }
+
   async getTemplate(id: number): Promise<any> {
     try {
       const response = await this.request(`/templates/${id}`);
@@ -272,7 +351,18 @@ class ApiClient {
       };
     }
   }
+
+  async getCurrentUser(): Promise<any> {
+    try {
+      const response = await this.request('/user');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
 }
 
 export const apiClient = new ApiClient();
+export const api = apiClient; // Add this alias for backwards compatibility
 export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion };

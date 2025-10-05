@@ -13,6 +13,7 @@ interface Project {
   created_at: string;
   updated_at: string;
   teams_count?: number;
+  members_count?: number;
   templates_count?: number;
   databases_count?: number;
   applications_count?: number;
@@ -68,7 +69,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   }, [selectedProject]);
 
   const loadProjects = useCallback(async () => {
-    console.log('🌍 ProjectContext: loadProjects called from:', new Error().stack?.split('\n')[2]);
     try {
       setLoading(true);
       // Check both localStorage and sessionStorage for the token
@@ -126,20 +126,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         const currentTime = Date.now();
         const isRecentUpdate = currentTime - ((window as any).lastProjectUpdate || 0) < 2000; // Within 2 seconds
 
-        console.log('🌍 ProjectContext: Project selection decision:', {
-          projectToSelect: projectToSelect ? { id: projectToSelect.id, name: projectToSelect.name } : null,
-          isRecentUpdate,
-          currentTime,
-          lastProjectUpdate: (window as any).lastProjectUpdate,
-          timeDiff: currentTime - ((window as any).lastProjectUpdate || 0),
-          currentSelectedProject: selectedProject ? { id: selectedProject.id, name: selectedProject.name } : null
-        });
-
         if (projectToSelect && !isRecentUpdate) {
-          console.log('🌍 ProjectContext: Setting selected project to:', projectToSelect.name);
           setSelectedProject(projectToSelect);
-        } else if (isRecentUpdate) {
-          console.log('🌍 ProjectContext: Skipping project selection due to recent update');
         }
       }
     } catch (err) {

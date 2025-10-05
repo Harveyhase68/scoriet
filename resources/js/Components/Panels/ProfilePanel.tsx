@@ -3,8 +3,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
-import { Message } from 'primereact/message';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
 import { Avatar } from 'primereact/avatar';
 
 interface User {
@@ -66,8 +65,8 @@ export default function ProfilePanel() {
         email: userData.email
       });
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setLoading(false);
     }
@@ -104,8 +103,8 @@ export default function ProfilePanel() {
       setSuccess('Profil erfolgreich aktualisiert');
       setUser(prev => prev ? { ...prev, ...profileData } : null);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setUpdating(false);
     }
@@ -153,8 +152,8 @@ export default function ProfilePanel() {
         password_confirmation: ''
       });
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setUpdating(false);
     }

@@ -15,7 +15,6 @@ export default function LanguageSelector({
   currentLanguage,
   onLanguageChange,
   variant = 'button',
-  size = 'normal'
 }: LanguageSelectorProps) {
   const overlayRef = useRef<OverlayPanel>(null);
 
@@ -24,17 +23,6 @@ export default function LanguageSelector({
   const handleLanguageSelect = (language: SupportedLanguage) => {
     onLanguageChange(language);
     overlayRef.current?.hide();
-  };
-
-  const getSizeClasses = () => {
-    switch (size) {
-      case 'small':
-        return 'text-sm px-2 py-1';
-      case 'large':
-        return 'text-lg px-4 py-3';
-      default:
-        return 'px-3 py-2';
-    }
   };
 
   const getButtonContent = () => {
@@ -70,10 +58,12 @@ export default function LanguageSelector({
           e.preventDefault();
           overlayRef.current?.toggle(e);
         }}
-        className={`p-button-text p-button-rounded ${getSizeClasses()}`}
+        className={`p-button-text p-button p-component`}
         style={{
           borderRadius: '8px',
-          minWidth: variant === 'flag-only' ? '40px' : 'auto'
+          minWidth: variant === 'flag-only' ? '40px' : 'auto',
+          paddingTop: '10px',
+          paddingBottom: '10px'
         }}
         aria-label="Select Language"
         tooltip="Select Language"

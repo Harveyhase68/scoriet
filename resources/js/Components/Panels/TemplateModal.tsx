@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Select } from 'antd';
+import { Modal, Form, Input, Select, Checkbox } from 'antd';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, FileOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -19,6 +18,7 @@ interface TemplateModalProps {
     onEditFile: (file: any) => void;
     onDeleteFile: (index: number) => void;
     fileTypes: any[];
+    userType?: string;
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -32,7 +32,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     onCreateFile,
     onEditFile,
     onDeleteFile,
-    fileTypes
+    fileTypes,
+    userType
 }) => {
     const [form] = Form.useForm();
     const [isSaved, setIsSaved] = useState(false);
@@ -50,6 +51,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 language: editingTemplate.language,
                 tags: editingTemplate.tags,
                 is_active: editingTemplate.is_active,
+                visibility: editingTemplate.visibility || 'public',
+                is_system_template: editingTemplate.is_system_template || false,
             };
             // Set form values when editing
             form.setFieldsValue(initialValues);
@@ -59,13 +62,17 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         } else if (visible && !editingTemplate) {
             // Reset form for new template
             form.resetFields();
-            const initialValues = { is_active: true };
+            const initialValues = {
+                is_active: true,
+                visibility: 'public',
+                is_system_template: userType === 'system' ? false : false
+            };
             form.setFieldsValue(initialValues);
             setOriginalFormValues(initialValues);
             setIsSaved(false); // New templates start as unsaved
             setHasFormChanges(false); // Reset form changes
         }
-    }, [visible, editingTemplate, form]);
+    }, [visible, editingTemplate, form, userType]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
@@ -75,7 +82,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         if (!originalFormValues) return;
 
         const currentValues = form.getFieldsValue();
-        const fieldsToCheck = ['name', 'description', 'category', 'language', 'tags', 'is_active'];
+        const fieldsToCheck = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template'];
 
         const hasChanges = fieldsToCheck.some(field => {
             const original = originalFormValues[field];
@@ -203,6 +210,32 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     />
                 </Form.Item>
 
+                <div className="flex gap-4">
+                    <Form.Item
+                        name="visibility"
+                        label="Sichtbarkeit"
+                        rules={[{ required: true, message: 'Bitte Sichtbarkeit auswählen!' }]}
+                        className="flex-1"
+                    >
+                        <Select placeholder="Sichtbarkeit wählen">
+                            <Option value="public">Public</Option>
+                            <Option value="private">Private</Option>
+                        </Select>
+                    </Form.Item>
+
+                    {userType === 'system' && (
+                        <Form.Item
+                            name="is_system_template"
+                            valuePropName="checked"
+                            className="flex-1"
+                        >
+                            <Checkbox>
+                                <span className="text-gray-300">System Template</span>
+                            </Checkbox>
+                        </Form.Item>
+                    )}
+                </div>
+
                 {/* Template Files Section */}
                 <div className="border-t pt-4 mt-4">
                     <div className="flex justify-between items-center mb-4">
@@ -314,10 +347,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     initialValue={true}
                     className="mt-4"
                 >
-                    <label className="flex items-center text-gray-300">
-                        <input type="checkbox" className="mr-2" />
+                    <Checkbox
+                        className="text-gray-300"
+                        onChange={checkFormChanges}
+                    >
                         Template ist aktiv
-                    </label>
+                    </Checkbox>
                 </Form.Item>
 
                 <div className="flex gap-2 justify-end">

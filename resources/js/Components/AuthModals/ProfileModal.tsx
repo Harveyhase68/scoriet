@@ -3,7 +3,6 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { Message } from 'primereact/message';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
@@ -14,6 +13,7 @@ import CSSFlag from '@/Components/CSSFlag';
 interface ProfileModalProps {
   visible: boolean;
   onHide: () => void;
+  defaultTab?: number; // Tab index to open by default (0=Profile, 1=Password, 2=Plans, 3=Delete)
 }
 
 interface UserData {
@@ -27,7 +27,7 @@ interface UserData {
   updated_at?: string;
 }
 
-export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
+export default function ProfileModal({ visible, onHide, defaultTab = 0 }: ProfileModalProps) {
   // Get current language for translations
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -92,6 +92,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
   const [profileSuccess, setProfileSuccess] = useState<string>('');
   const [passwordSuccess, setPasswordSuccess] = useState<string>('');
   const [deleteSuccess, setDeleteSuccess] = useState<string>('');
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(defaultTab);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -113,26 +114,32 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       }
 
       const user = await response.json();
+
+      // Use the language from database if available, otherwise fallback to stored language
+      const userLanguage = user.language || getStoredLanguage();
+
       setUserData({
         ...user,
-        language: user.language || getStoredLanguage()
+        language: userLanguage
       });
 
       // Update stored language to user's preference
       if (user.language) {
         setStoredLanguage(user.language as SupportedLanguage);
+        setCurrentLanguage(user.language as SupportedLanguage);
       }
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Error loading');
+    } catch {
+      setProfileError(_ instanceof Error ? _.message : 'Error loading');
     }
   }, []);
 
-  // Load user data when opening
+  // Load user data when opening and reset tab index
   useEffect(() => {
     if (visible) {
       loadUserData();
+      setActiveTabIndex(defaultTab); // Reset to defaultTab when modal opens
     }
-  }, [visible, loadUserData]);
+  }, [visible, loadUserData, defaultTab]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,8 +174,8 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
 
       setProfileSuccess(t.profileUpdateSuccess);
 
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Profile update error');
+    } catch {
+      setProfileError(_ instanceof Error ? _.message : 'Profile update error');
     } finally {
       setLoadingProfile(false);
     }
@@ -201,7 +208,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
           }),
         });
       }
-    } catch (error) {
+    } catch {
       // Failed to update language
     }
   };
@@ -247,8 +254,8 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       setPasswordSuccess(t.passwordChangeSuccess);
       setPasswordData({ current_password: '', password: '', password_confirmation: '' });
       
-    } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'An error occurred');
+    } catch {
+      setPasswordError(_ instanceof Error ? _.message : 'An error occurred');
     } finally {
       setLoadingPassword(false);
     }
@@ -313,8 +320,8 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
         window.location.reload();
       }, 2000);
       
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+    } catch {
+      setDeleteError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setLoadingDelete(false);
     }
@@ -354,7 +361,7 @@ export default function ProfileModal({ visible, onHide }: ProfileModalProps) {
       resizable={false}
       className="p-dialog-custom"
     >
-      <TabView>
+      <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
         <TabPanel header={t.profileTab} leftIcon="pi pi-user">
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             {profileError && (

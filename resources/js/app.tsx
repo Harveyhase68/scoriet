@@ -6,6 +6,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import './i18n'; // Initialize i18n
+import { ProjectProvider } from '@/contexts/ProjectContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -15,7 +16,11 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        root.render(
+            <ProjectProvider>
+                <App {...props} />
+            </ProjectProvider>
+        );
     },
     progress: {
         color: '#4B5563',

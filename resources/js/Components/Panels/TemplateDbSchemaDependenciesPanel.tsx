@@ -9,18 +9,7 @@ import { Card } from 'primereact/card';
 import { apiClient as api } from '@/lib/api';
 import { TabContentProps } from '@/types';
 
-// Global Ant Design React 19 warning suppression
-(() => {
-    const originalWarn = console.warn;
-    console.warn = (...args) => {
-        if (args[0] && typeof args[0] === 'string' &&
-            (args[0].includes('[antd: compatible]') ||
-             args[0].includes('antd v5 support React is 16 ~ 18'))) {
-            return;
-        }
-        originalWarn.apply(console, args);
-    };
-})();
+// Global Ant Design React 19 warning suppression removed
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
     const ref = useRef<HTMLDivElement>(null);
@@ -48,6 +37,10 @@ interface Template {
     category: string;
     language: string;
     is_active: boolean;
+    is_system_template?: boolean;
+    visibility?: 'public' | 'private';
+    creator_user_id?: number;
+    project_id?: number;
 }
 
 interface DbSchema {
@@ -96,7 +89,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
             if (response.success) {
                 setSchemas(response.schemas);
             }
-        } catch (error) {
+        } catch {
             // Failed to load DB schemas
             message.error('Failed to load DB schemas');
         }
@@ -221,8 +214,35 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [templateFilter, setTemplateFilter] = useState<'all' | 'system' | 'public' | 'project'>('all');
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     // No need to inject styles - using centralized CSS
+
+    // Load current user on component mount
+    useEffect(() => {
+        const loadCurrentUser = async () => {
+            try {
+                const user = await api.getCurrentUser();
+                setCurrentUserId(user.id);
+            } catch {
+                // Failed to load current user
+            }
+        };
+        loadCurrentUser();
+    }, []);
+
+    // Check if user can edit template (replicate backend logic)
+    const canUserEditTemplate = (template: Template): boolean => {
+        if (!currentUserId) return false;
+
+        // System templates cannot be edited by anyone
+        if (template.is_system_template) {
+            return false;
+        }
+
+        // Fallback to creator check
+        return template.creator_user_id === currentUserId;
+    };
 
     const loadTemplates = useCallback(async () => {
         setLoading(true);
@@ -241,7 +261,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             }
 
             setTemplates(filteredTemplates);
-        } catch (error) {
+        } catch {
             // Failed to load templates
             message.error('Failed to load templates');
         } finally {
@@ -263,7 +283,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             } else {
                 message.error('Failed to load template dependencies');
             }
-        } catch (error) {
+        } catch {
             // Failed to load template dependencies
             message.error('Failed to load template dependencies');
         } finally {
@@ -289,7 +309,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             } else {
                 message.error('Failed to remove dependency');
             }
-        } catch (error) {
+        } catch {
             // Failed to remove dependency
             message.error('Failed to remove dependency');
         }
@@ -311,6 +331,20 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     };
 
     const templateActionBodyTemplate = (rowData: Template) => {
+        const canEdit = canUserEditTemplate(rowData);
+
+        if (!canEdit) {
+            return (
+                <Button
+                    icon="pi pi-eye"
+                    className="p-button-sm p-button-secondary"
+                    disabled
+                    label="View Only"
+                    title="You can only edit your own templates"
+                />
+            );
+        }
+
         return (
             <Button
                 icon="pi pi-arrow-right"
@@ -350,6 +384,19 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     };
 
     const dependencyActionBodyTemplate = (rowData: DbSchemaDependency) => {
+        if (!selectedTemplate || !canUserEditTemplate(selectedTemplate)) {
+            return (
+                <div className="flex space-x-2">
+                    <Button
+                        icon="pi pi-eye"
+                        className="p-button-sm p-button-secondary"
+                        disabled
+                        title="Read-only template"
+                    />
+                </div>
+            );
+        }
+
         return (
             <div className="flex space-x-2">
                 <Tooltip title="Remove Dependency">
@@ -391,11 +438,51 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     value={templateFilter}
                                     onChange={(e) => setTemplateFilter(e.target.value)}
                                     className="mb-3"
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        border: 'none'
+                                    }}
                                 >
-                                    <Radio.Button value="all">All</Radio.Button>
-                                    <Radio.Button value="system">System</Radio.Button>
-                                    <Radio.Button value="public">Public</Radio.Button>
-                                    <Radio.Button value="project">Project</Radio.Button>
+                                    <Radio.Button
+                                        value="all"
+                                        style={{
+                                            backgroundColor: templateFilter === 'all' ? '#3b82f6' : '#4b5563',
+                                            borderColor: '#6b7280',
+                                            color: '#f3f4f6'
+                                        }}
+                                    >
+                                        All
+                                    </Radio.Button>
+                                    <Radio.Button
+                                        value="system"
+                                        style={{
+                                            backgroundColor: templateFilter === 'system' ? '#3b82f6' : '#4b5563',
+                                            borderColor: '#6b7280',
+                                            color: '#f3f4f6'
+                                        }}
+                                    >
+                                        System
+                                    </Radio.Button>
+                                    <Radio.Button
+                                        value="public"
+                                        style={{
+                                            backgroundColor: templateFilter === 'public' ? '#3b82f6' : '#4b5563',
+                                            borderColor: '#6b7280',
+                                            color: '#f3f4f6'
+                                        }}
+                                    >
+                                        Public
+                                    </Radio.Button>
+                                    <Radio.Button
+                                        value="project"
+                                        style={{
+                                            backgroundColor: templateFilter === 'project' ? '#3b82f6' : '#4b5563',
+                                            borderColor: '#6b7280',
+                                            color: '#f3f4f6'
+                                        }}
+                                    >
+                                        Project
+                                    </Radio.Button>
                                 </Radio.Group>
                             </div>
 
@@ -441,7 +528,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                 <h3 className="text-lg font-semibold">
                                     DB Schema Dependencies {selectedTemplate && `for ${selectedTemplate.name}`}
                                 </h3>
-                                {selectedTemplate && (
+                                {selectedTemplate && canUserEditTemplate(selectedTemplate) && (
                                     <Button
                                         icon="pi pi-plus"
                                         className="p-button-sm p-button-success"

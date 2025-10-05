@@ -57,9 +57,6 @@ export default function LandingPage() {
 
       // Check both localStorage and sessionStorage for token
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      console.log('🔍 Token check - localStorage:', localStorage.getItem('access_token'));
-      console.log('🔍 Token check - sessionStorage:', sessionStorage.getItem('access_token'));
-      console.log('🔍 Final token:', token);
 
       const isAuth = !!token;
       setIsAuthenticated(isAuth);
@@ -202,7 +199,6 @@ export default function LandingPage() {
   const handleLoginSuccess = () => {
     // After successful login, check auth state from both storages
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    console.log('🔍 LoginSuccess - Token found:', !!token);
     if (token) {
       setIsAuthenticated(true);
       loadUserData();
@@ -599,13 +595,13 @@ export default function LandingPage() {
               </div>
 
               <div>
-                <h4 className="font-semibold mb-4 text-white">{t.supportLabel}</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">{t.helpCenterLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.communityLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.contactUsLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.statusLink}</a></li>
-                </ul>
+                  <h4 className="font-semibold mb-4 text-white">{t.supportLabel}</h4>
+                  <ul className="space-y-2 text-gray-400">
+                      <li><a href={`/${currentLanguage}/help`} className="hover:text-white">{t.helpCenterLink}</a></li>
+                      <li><a href={`/${currentLanguage}/impressum`} className="hover:text-white">Impressum</a></li>
+                      <li><a href="#" className="hover:text-white">{t.contactUsLink}</a></li>
+                      <li><a href="#" className="hover:text-white">{t.communityLink}</a></li>
+                  </ul>
               </div>
             </div>
             

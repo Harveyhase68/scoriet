@@ -6,10 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\FloatingSchema;
 use App\Models\SchemaVersion;
 use App\Models\SchemaDesignerLayout;
+use App\Models\SchemaTable;
+use App\Models\SchemaField;
+use App\Models\SchemaConstraint;
+use App\Models\SchemaConstraintColumn;
+use App\Models\SchemaForeignKeyReference;
+use App\Models\SchemaForeignKeyReferenceColumn;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SchemaController extends Controller
@@ -20,15 +28,23 @@ class SchemaController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
-        
+        $projectId = $request->get('project_id');
+
         // Get schemas owned by the user or public schemas they can access
-        $schemas = FloatingSchema::with(['owner', 'projects'])
+        $query = FloatingSchema::with(['owner', 'projects'])
             ->where(function ($query) use ($user) {
                 $query->where('owner_id', $user->id)
                       ->orWhere('visibility', 'public');
-            })
-            ->latest()
-            ->get()
+            });
+
+        // Filter by project if specified
+        if ($projectId) {
+            $query->whereHas('projects', function ($projectQuery) use ($projectId) {
+                $projectQuery->where('project_id', $projectId);
+            });
+        }
+
+        $schemas = $query->latest()->get()
             ->map(function ($schema) use ($user) {
                 // Get project associations with pivot data
                 $projects = $schema->projects->map(function ($project) {
@@ -146,29 +162,178 @@ class SchemaController extends Controller
     }
 
     /**
-     * Remove the specified schema
+     * Remove the specified schema with cascade deletion
      */
-    public function destroy(FloatingSchema $schema): JsonResponse
+    public function destroy(Request $request, FloatingSchema $schema): JsonResponse
     {
         $user = Auth::user();
-        
+
+        // 🔍 IMMEDIATE DEBUG LOGGING
+        Log::info("🚨 DELETE REQUEST RECEIVED", [
+            'timestamp' => now()->toISOString(),
+            'user_id' => $user->id,
+            'schema_id' => $schema->id,
+            'schema_name' => $schema->name,
+            'request_method' => $request->method(),
+            'request_url' => $request->fullUrl(),
+            'request_body' => $request->all(),
+            'force_delete_param' => $request->input('force_delete'),
+            'request_headers' => [
+                'content-type' => $request->header('Content-Type'),
+                'accept' => $request->header('Accept'),
+                'user-agent' => $request->header('User-Agent')
+            ]
+        ]);
+
         // Check if user can delete this schema
         if (!$schema->canBeEditedBy($user)) {
             return response()->json(['message' => 'Unauthorized to delete this schema'], 403);
         }
 
-        // Check if schema is being used by projects
+        // Get counts for confirmation message
         $projectsCount = $schema->projects()->count();
-        if ($projectsCount > 0) {
+        $versionsCount = $schema->versions()->count();
+        $totalTablesCount = SchemaTable::whereIn('schema_version_id',
+            $schema->versions()->pluck('id')
+        )->count();
+
+        // Force delete flag for cascading all related data
+        $forceDelete = $request->input('force_delete', false);
+
+        if (!$forceDelete && $projectsCount > 0) {
             return response()->json([
-                'message' => "Cannot delete schema. It is currently being used by {$projectsCount} project(s).",
-                'projects_count' => $projectsCount
+                'message' => "Schema is being used by {$projectsCount} project(s). Use force delete to proceed.",
+                'projects_count' => $projectsCount,
+                'versions_count' => $versionsCount,
+                'tables_count' => $totalTablesCount,
+                'requires_force' => true
             ], 422);
         }
 
-        $schema->delete();
+        try {
+            Log::info("🗑️ Starting schema deletion", [
+                'schema_id' => $schema->id,
+                'schema_name' => $schema->name,
+                'user_id' => $user->id,
+                'projects_count' => $projectsCount,
+                'versions_count' => $versionsCount,
+                'tables_count' => $totalTablesCount,
+                'force_delete' => $forceDelete
+            ]);
 
-        return response()->json(['message' => 'Schema deleted successfully']);
+            // 🚨 STEP 1: Remove project associations OUTSIDE the transaction first
+            Log::info("🔥 Pre-emptive project association removal");
+            $deletedProjectAssociations = DB::table('project_schemas')
+                ->where('schema_id', $schema->id)
+                ->delete();
+            Log::info("✅ Pre-removed {$deletedProjectAssociations} project associations");
+
+            // Try to detach using Eloquent as well (belt and suspenders)
+            try {
+                $schema->projects()->detach();
+                Log::info("✅ Eloquent detach completed");
+            } catch (\Exception $e) {
+                Log::warning("⚠️ Eloquent detach failed: " . $e->getMessage());
+            }
+
+            // 🚨 STEP 2: Now delete the schema and all related data
+            DB::transaction(function () use ($schema, $user) {
+                Log::info("🔥 Starting main deletion transaction for schema {$schema->id}");
+
+                // Get all related IDs first
+                $versionIds = $schema->versions()->pluck('id')->toArray();
+                $tableIds = SchemaTable::whereIn('schema_version_id', $versionIds)->pluck('id')->toArray();
+                $constraintIds = SchemaConstraint::whereIn('table_id', $tableIds)->pluck('id')->toArray();
+                $referenceIds = SchemaForeignKeyReference::whereIn('constraint_id', $constraintIds)->pluck('id')->toArray();
+
+                Log::info("🔍 Deletion scope", [
+                    'schema_id' => $schema->id,
+                    'version_ids' => $versionIds,
+                    'table_ids' => $tableIds,
+                    'constraint_ids' => $constraintIds,
+                    'reference_ids' => $referenceIds
+                ]);
+
+                // Delete in proper dependency order
+                if (!empty($referenceIds)) {
+                    $deletedReferenceColumns = SchemaForeignKeyReferenceColumn::whereIn('reference_id', $referenceIds)->delete();
+                    Log::info("✅ Removed {$deletedReferenceColumns} foreign key reference columns");
+                }
+
+                if (!empty($constraintIds)) {
+                    $deletedReferences = SchemaForeignKeyReference::whereIn('constraint_id', $constraintIds)->delete();
+                    Log::info("✅ Removed {$deletedReferences} foreign key references");
+                }
+
+                if (!empty($constraintIds)) {
+                    $deletedConstraintColumns = SchemaConstraintColumn::whereIn('constraint_id', $constraintIds)->delete();
+                    Log::info("✅ Removed {$deletedConstraintColumns} constraint columns");
+                }
+
+                if (!empty($tableIds)) {
+                    $deletedConstraints = SchemaConstraint::whereIn('table_id', $tableIds)->delete();
+                    Log::info("✅ Removed {$deletedConstraints} constraints");
+                }
+
+                if (!empty($tableIds)) {
+                    $deletedFields = SchemaField::whereIn('table_id', $tableIds)->delete();
+                    Log::info("✅ Removed {$deletedFields} schema fields");
+                }
+
+                // Delete schema designer layouts (they use schema_id, not schema_version_id)
+                $deletedLayouts = SchemaDesignerLayout::where('schema_id', $schema->id)->delete();
+                Log::info("✅ Removed {$deletedLayouts} schema designer layouts");
+
+                if (!empty($versionIds)) {
+                    $deletedTables = SchemaTable::whereIn('schema_version_id', $versionIds)->delete();
+                    Log::info("✅ Removed {$deletedTables} schema tables");
+                }
+
+                if (!empty($versionIds)) {
+                    $deletedVersions = SchemaVersion::whereIn('id', $versionIds)->delete();
+                    Log::info("✅ Removed {$deletedVersions} schema versions");
+                }
+
+                // Double-check project associations are gone
+                $remainingAssociations = DB::table('project_schemas')
+                    ->where('schema_id', $schema->id)
+                    ->count();
+                Log::info("🔍 Remaining project associations: {$remainingAssociations}");
+
+                if ($remainingAssociations > 0) {
+                    DB::table('project_schemas')->where('schema_id', $schema->id)->delete();
+                    Log::info("✅ Force-removed remaining project associations");
+                }
+
+                // Finally delete the schema itself
+                $schema->delete();
+                Log::info("✅ Removed schema itself");
+            });
+
+            Log::info("🎉 Schema deletion completed successfully", [
+                'schema_id' => $schema->id,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'message' => 'Schema and all related data deleted successfully',
+                'deleted_projects_count' => $projectsCount,
+                'deleted_versions_count' => $versionsCount,
+                'deleted_tables_count' => $totalTablesCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("❌ Schema deletion failed", [
+                'schema_id' => $schema->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to delete schema',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -235,11 +400,24 @@ class SchemaController extends Controller
         // Get tables with fields and constraints including foreign key references
         // Order by id to preserve original import sequence
         $tables = $version->tables()->with([
-            'fields', 
-            'constraints.constraintColumns',
+            'fields',
+            'constraints.constraintColumns.field',
             'constraints.foreignKeyReference.referencedTable',
             'constraints.foreignKeyReference.referenceColumns'
         ])->orderBy('id')->get();
+
+        // Transform constraints to include columns data for frontend compatibility
+        $tables->each(function ($table) {
+            $table->constraints->each(function ($constraint) {
+                // Add columns attribute by manually mapping constraintColumns
+                $constraint->columns = $constraint->constraintColumns->map(function ($constraintColumn) {
+                    return [
+                        'field_name' => $constraintColumn->field?->field_name,
+                        'field_id' => $constraintColumn->field_id,
+                    ];
+                });
+            });
+        });
 
         return response()->json($tables);
     }
@@ -274,7 +452,12 @@ class SchemaController extends Controller
 
             return response()->json(['message' => 'Layout saved successfully']);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to save layout'], 500);
+            \Log::error('Layout save error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'message' => 'Failed to save layout',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -312,34 +495,121 @@ class SchemaController extends Controller
 
         $request->validate([
             'table_name' => 'required|string|max:255',
-            'comment' => 'nullable|string',
+            'filekeyname' => 'nullable|string|max:100',
+            'file_name_renamed' => 'nullable|string|max:100',
+            'file_name_short' => 'nullable|string|max:50',
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
             'columns.*.is_nullable' => 'boolean',
             'columns.*.is_auto_increment' => 'boolean',
-            'columns.*.comment' => 'nullable|string',
+            'columns.*.is_primary_key' => 'boolean',
+            'columns.*.is_index' => 'boolean',
+            'columns.*.is_unique' => 'boolean',
+            'columns.*.control_type' => 'nullable|string|max:30',
+            'columns.*.link_table' => 'nullable|string|max:64',
+            'columns.*.link_field' => 'nullable|string|max:64',
+            'columns.*.link_display_field' => 'nullable|string|max:64',
+            'columns.*.link_order_field' => 'nullable|string|max:64',
+            'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
         ]);
+
+        \Log::info('CreateTable Request Data:', $request->all());
 
         try {
             // Create the table
             $table = \App\Models\SchemaTable::create([
                 'schema_version_id' => $version->id,
+                'schema_id' => $version->schema_id, // Add the missing schema_id
                 'table_name' => $request->table_name,
-                'comment' => $request->comment,
+                'filekeyname' => $request->filekeyname,
+                'file_name_renamed' => $request->file_name_renamed,
+                'file_name_short' => $request->file_name_short,
             ]);
 
             // Create columns if provided
             if ($request->has('columns')) {
+                $primaryKeyFields = [];
+                $indexFields = [];
+                $uniqueFields = [];
+
                 foreach ($request->columns as $index => $columnData) {
-                    \App\Models\SchemaField::create([
+                    $field = \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
                         'field_type' => $columnData['data_type'],
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
-                        'comment' => $columnData['comment'] ?? null,
+                        'is_primary_key' => $columnData['is_primary_key'] ?? false,
+                        'is_index' => $columnData['is_index'] ?? false,
+                        'is_unique' => $columnData['is_unique'] ?? false,
                         'field_order' => $index, // Logische Reihenfolge: 0, 1, 2, 3...
+                        // Control Type & Link fields for ComboBox, ListBox, etc.
+                        'control_type' => $columnData['control_type'] ?? 'TEXT',
+                        'link_table' => $columnData['link_table'] ?? null,
+                        'link_field' => $columnData['link_field'] ?? null,
+                        'link_display_field' => $columnData['link_display_field'] ?? null,
+                        'link_order_field' => $columnData['link_order_field'] ?? null,
+                        'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
+                    ]);
+
+                    // Track constraint fields
+                    if (!empty($columnData['is_primary_key'])) {
+                        $primaryKeyFields[] = $field;
+                    }
+                    if (!empty($columnData['is_index'])) {
+                        $indexFields[] = $field;
+                    }
+                    if (!empty($columnData['is_unique'])) {
+                        $uniqueFields[] = $field;
+                    }
+                }
+
+                // Create PRIMARY KEY constraint if we have primary key fields
+                if (!empty($primaryKeyFields)) {
+                    $fieldNames = collect($primaryKeyFields)->pluck('field_name')->toArray();
+                    $constraintName = 'PK_' . $table->table_name . '_' . implode('_', $fieldNames);
+                    $primaryKeyConstraint = \App\Models\SchemaConstraint::create([
+                        'table_id' => $table->id,
+                        'constraint_name' => $constraintName,
+                        'constraint_type' => 'PRIMARY KEY',
+                    ]);
+                    foreach ($primaryKeyFields as $index => $field) {
+                        \App\Models\SchemaConstraintColumn::create([
+                            'constraint_id' => $primaryKeyConstraint->id,
+                            'field_id' => $field->id,
+                            'column_order' => $index,
+                        ]);
+                    }
+                }
+
+                // Create INDEX constraints for individual fields
+                foreach ($indexFields as $field) {
+                    $constraintName = 'IDX_' . $table->table_name . '_' . $field->field_name;
+                    $indexConstraint = \App\Models\SchemaConstraint::create([
+                        'table_id' => $table->id,
+                        'constraint_name' => $constraintName,
+                        'constraint_type' => 'INDEX',
+                    ]);
+                    \App\Models\SchemaConstraintColumn::create([
+                        'constraint_id' => $indexConstraint->id,
+                        'field_id' => $field->id,
+                        'column_order' => 0,
+                    ]);
+                }
+
+                // Create UNIQUE constraints for individual fields
+                foreach ($uniqueFields as $field) {
+                    $constraintName = 'UQ_' . $table->table_name . '_' . $field->field_name;
+                    $uniqueConstraint = \App\Models\SchemaConstraint::create([
+                        'table_id' => $table->id,
+                        'constraint_name' => $constraintName,
+                        'constraint_type' => 'UNIQUE',
+                    ]);
+                    \App\Models\SchemaConstraintColumn::create([
+                        'constraint_id' => $uniqueConstraint->id,
+                        'field_id' => $field->id,
+                        'column_order' => 0,
                     ]);
                 }
             }
@@ -352,9 +622,20 @@ class SchemaController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+            \Log::error('CreateTable Exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'message' => 'Failed to create table',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'debug' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
             ], 500);
         }
     }
@@ -381,38 +662,143 @@ class SchemaController extends Controller
 
         $request->validate([
             'table_name' => 'required|string|max:255',
-            'comment' => 'nullable|string',
+            'filekeyname' => 'nullable|string|max:100',
+            'file_name_renamed' => 'nullable|string|max:100',
+            'file_name_short' => 'nullable|string|max:50',
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
             'columns.*.is_nullable' => 'boolean',
             'columns.*.is_auto_increment' => 'boolean',
+            'columns.*.is_primary_key' => 'boolean',
+            'columns.*.is_index' => 'boolean',
+            'columns.*.is_unique' => 'boolean',
             'columns.*.comment' => 'nullable|string',
+            'columns.*.control_type' => 'nullable|string|max:30',
+            'columns.*.link_table' => 'nullable|string|max:64',
+            'columns.*.link_field' => 'nullable|string|max:64',
+            'columns.*.link_display_field' => 'nullable|string|max:64',
+            'columns.*.link_order_field' => 'nullable|string|max:64',
+            'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
         ]);
 
         try {
+            // Debug: Log the incoming request data
+            Log::info('UpdateTable Request Data:', [
+                'table_name' => $request->table_name,
+                'columns' => $request->columns
+            ]);
+
             // Update the table
             $table->update([
                 'table_name' => $request->table_name,
-                'comment' => $request->comment,
+                'filekeyname' => $request->filekeyname,
+                'file_name_renamed' => $request->file_name_renamed,
+                'file_name_short' => $request->file_name_short,
             ]);
 
-            // Delete existing fields and recreate them
+            // Delete existing fields and constraints, then recreate them
             \App\Models\SchemaField::where('table_id', $table->id)->delete();
+            \App\Models\SchemaConstraint::where('table_id', $table->id)->delete();
+
+            $createdFields = [];
+            $primaryKeyFields = [];
+            $indexFields = [];
+            $uniqueFields = [];
 
             // Create new columns if provided
             if ($request->has('columns')) {
                 foreach ($request->columns as $index => $columnData) {
-                    \App\Models\SchemaField::create([
+                    $field = \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
                         'field_type' => $columnData['data_type'],
                         'is_nullable' => $columnData['is_nullable'] ?? true,
+                        'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
+                        'is_primary_key' => $columnData['is_primary_key'] ?? false,
+                        'is_index' => $columnData['is_index'] ?? false,
+                        'is_unique' => $columnData['is_unique'] ?? false,
                         'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
-                        'comment' => $columnData['comment'] ?? null,
                         'field_order' => $index, // Logical order: 0, 1, 2, 3...
+                        'comment' => $columnData['comment'] ?? null,
+                        // Control Type & Link fields for ComboBox, ListBox, etc.
+                        'control_type' => $columnData['control_type'] ?? 'TEXT',
+                        'link_table' => $columnData['link_table'] ?? null,
+                        'link_field' => $columnData['link_field'] ?? null,
+                        'link_display_field' => $columnData['link_display_field'] ?? null,
+                        'link_order_field' => $columnData['link_order_field'] ?? null,
+                        'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
+                    ]);
+
+                    $createdFields[$columnData['column_name']] = $field;
+
+                    // Track constraint fields
+                    if (!empty($columnData['is_primary_key'])) {
+                        $primaryKeyFields[] = $field;
+                    }
+                    if (!empty($columnData['is_index'])) {
+                        $indexFields[] = $field;
+                    }
+                    if (!empty($columnData['is_unique'])) {
+                        $uniqueFields[] = $field;
+                    }
+                }
+            }
+
+            // Create PRIMARY KEY constraint if we have primary key fields
+            if (!empty($primaryKeyFields)) {
+                // Generate constraint name from field names
+                $fieldNames = collect($primaryKeyFields)->pluck('field_name')->toArray();
+                $constraintName = 'PK_' . $table->table_name . '_' . implode('_', $fieldNames);
+
+                $primaryKeyConstraint = \App\Models\SchemaConstraint::create([
+                    'table_id' => $table->id,
+                    'constraint_name' => $constraintName,
+                    'constraint_type' => 'PRIMARY KEY',
+                ]);
+
+                // Add constraint columns for primary key
+                foreach ($primaryKeyFields as $index => $field) {
+                    \App\Models\SchemaConstraintColumn::create([
+                        'constraint_id' => $primaryKeyConstraint->id,
+                        'field_id' => $field->id,
+                        'column_order' => $index,
                     ]);
                 }
+            }
+
+            // Create INDEX constraints for individual fields
+            foreach ($indexFields as $field) {
+                $constraintName = 'IDX_' . $table->table_name . '_' . $field->field_name;
+
+                $indexConstraint = \App\Models\SchemaConstraint::create([
+                    'table_id' => $table->id,
+                    'constraint_name' => $constraintName,
+                    'constraint_type' => 'INDEX',
+                ]);
+
+                \App\Models\SchemaConstraintColumn::create([
+                    'constraint_id' => $indexConstraint->id,
+                    'field_id' => $field->id,
+                    'column_order' => 0,
+                ]);
+            }
+
+            // Create UNIQUE constraints for individual fields
+            foreach ($uniqueFields as $field) {
+                $constraintName = 'UQ_' . $table->table_name . '_' . $field->field_name;
+
+                $uniqueConstraint = \App\Models\SchemaConstraint::create([
+                    'table_id' => $table->id,
+                    'constraint_name' => $constraintName,
+                    'constraint_type' => 'UNIQUE',
+                ]);
+
+                \App\Models\SchemaConstraintColumn::create([
+                    'constraint_id' => $uniqueConstraint->id,
+                    'field_id' => $field->id,
+                    'column_order' => 0,
+                ]);
             }
 
             $table->load(['fields', 'constraints']);
@@ -760,7 +1146,9 @@ class SchemaController extends Controller
                         'field_type' => $columnData['data_type'],
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
-                        'comment' => $columnData['comment'] ?? null,
+                        'is_primary_key' => $columnData['is_primary_key'] ?? false,
+                        'is_index' => $columnData['is_index'] ?? false,
+                        'is_unique' => $columnData['is_unique'] ?? false,
                         'field_order' => $index, // Logische Reihenfolge: 0, 1, 2, 3...
                     ]);
                 }

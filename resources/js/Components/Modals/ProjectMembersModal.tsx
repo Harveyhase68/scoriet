@@ -3,7 +3,6 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Tag } from 'primereact/tag';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
@@ -60,8 +59,8 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       const data = await response.json();
       
       setMembers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading project members');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading project members');
     } finally {
       setLoading(false);
     }
@@ -98,8 +97,8 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
       setSuccess('Member removed successfully');
       loadMembers(); // Refresh the list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error removing member');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error removing member');
     }
   };
 
@@ -131,8 +130,8 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
       setSuccess('Member role updated successfully');
       loadMembers(); // Refresh the list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error updating member role');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error updating member role');
     }
   };
 

@@ -3,8 +3,7 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Message } from 'primereact/message';
+import { TabPanel } from 'primereact/tabview';
 
 // interface TabPanelProps {
 //   isActive: boolean;
@@ -72,7 +71,7 @@ export default function CodeGenerationPanel() {
         const errorData = await response.json();
         setError(errorData.message || 'Failed to generate code');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to generate code');
     } finally {
       setLoading(false);
@@ -168,13 +167,13 @@ export default function CodeGenerationPanel() {
           result += selectedFile.content;
         }
 
-      } catch (execError) {
+      } catch {
         result += `Function execution error: ${execError}\n`;
         result += `\nFunction content:\n${selectedFile.content}`;
       }
 
       setExecutionResult(result);
-    } catch (err) {
+    } catch {
       setExecutionResult(`Execution Error: ${err}`);
     }
   };
@@ -258,7 +257,7 @@ export default function CodeGenerationPanel() {
           } else {
             progressLog += `⚠ Could not parse function in ${file.filename}\n`;
           }
-        } catch (fileError) {
+        } catch {
           progressLog += `✗ Error processing ${file.filename}: ${fileError}\n`;
         }
       });
@@ -269,7 +268,7 @@ export default function CodeGenerationPanel() {
 
       setGeneratedCodeFiles(generatedFiles);
       setExecutionResult(progressLog);
-    } catch (err) {
+    } catch {
       setExecutionResult(`Batch execution error: ${err}\n\n${progressLog}`);
     } finally {
       setBatchProcessing(false);
@@ -309,7 +308,7 @@ export default function CodeGenerationPanel() {
       URL.revokeObjectURL(url);
 
       alert(`Downloaded ${generatedCodeFiles.length} generated files as text file!`);
-    } catch (err) {
+    } catch {
       alert(`Download error: ${err}`);
     }
   };

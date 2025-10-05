@@ -4,6 +4,7 @@ import { TieredMenu } from 'primereact/tieredmenu';
 import { MenuItem } from 'primereact/menuitem';
 import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -12,8 +13,10 @@ interface ExtendedNavigationPanelProps extends NavigationPanelProps {
 }
 
 export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSqlImport, onOpenDatabaseExport }: ExtendedNavigationPanelProps) {
+  const { selectedProject } = useProject();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
+  const [userType, setUserType] = useState<string>('');
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Load from localStorage, default to true (collapsed)
     const saved = localStorage.getItem('navigation_collapsed');
@@ -39,6 +42,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           const user = await response.json();
           setIsLoggedIn(true);
           setUserName(user.name || user.email);
+          setUserType(user.user_type || '');
           return true;
         } else {
           // Token invalid - clean up and notify other components
@@ -51,6 +55,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           setIsLoggedIn(false);
           setUserName('');
+          setUserType('');
 
           // Trigger storage event to notify other components (like Index.tsx)
           window.dispatchEvent(new Event('storage'));
@@ -64,6 +69,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     } else {
       setIsLoggedIn(false);
       setUserName('');
+      setUserType('');
       return false;
     }
   };
@@ -199,6 +205,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('t2')
         },
         {
+          label: 'Schema Translation',
+          icon: 'pi pi-language',
+          command: () => onOpenPanel('schema-translation')
+        },
+        {
           separator: true
         },
         {
@@ -239,7 +250,37 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         {
           label: 'Settings',
           icon: 'pi pi-cog',
-          command: () => {/* Settings - not implemented */}
+          items: [
+            {
+              label: 'Projekt-Einstellungen',
+              icon: 'pi pi-sliders-h',
+              command: () => {
+                if (selectedProject) {
+                  onOpenPanel(`project-settings-${selectedProject.id}`, {
+                    type: 'project-settings',
+                    title: `Project Settings (${selectedProject.name})`,
+                    projectId: selectedProject.id,
+                    projectName: selectedProject.name
+                  });
+                } else {
+                  // If no project selected, open project management first
+                  onOpenPanel('project');
+                }
+              }
+            },
+            ...(userType === 'system' ? [
+              {
+                label: 'System Settings',
+                icon: 'pi pi-cog',
+                command: () => onOpenPanel('system-settings')
+              },
+              {
+                label: 'Language Management',
+                icon: 'pi pi-globe',
+                command: () => onOpenPanel('language-management')
+              }
+            ] : [])
+          ]
         }
       ]
     }
@@ -260,7 +301,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         {
           label: 'Change Plan',
           icon: 'pi pi-credit-card',
-          command: () => {/* Change plan - not implemented */}
+          command: () => onOpenModal?.('plan')
         },
         {
           label: 'Back to Lobby',
@@ -447,6 +488,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <i className="pi pi-window-maximize"></i>
                     <span>Designer</span>
                   </button>
+                  <button onClick={() => onOpenPanel('schema-translation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-language"></i>
+                    <span>Schema Translation</span>
+                  </button>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-upload"></i>
@@ -480,10 +525,46 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <span>Query Builder</span>
                   </button>
                   <div className="border-t border-gray-600 my-2"></div>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-cog"></i>
-                    <span>Settings</span>
-                  </button>
+                  <div className="relative group">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-cog"></i>
+                      <span>Settings</span>
+                      <i className="pi pi-angle-right ml-auto"></i>
+                    </button>
+                    {/* Nested submenu for Settings */}
+                    <div className="absolute left-full top-0 ml-2 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button onClick={() => {
+                          if (selectedProject) {
+                            onOpenPanel(`project-settings-${selectedProject.id}`, {
+                              type: 'project-settings',
+                              title: `Project Settings (${selectedProject.name})`,
+                              projectId: selectedProject.id,
+                              projectName: selectedProject.name
+                            });
+                          } else {
+                            // If no project selected, open project management first
+                            onOpenPanel('project');
+                          }
+                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-sliders-h"></i>
+                          <span>Projekt-Einstellungen</span>
+                        </button>
+                        {userType === 'system' && (
+                          <>
+                            <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                              <i className="pi pi-cog"></i>
+                              <span>System Settings</span>
+                            </button>
+                            <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                              <i className="pi pi-globe"></i>
+                              <span>Language Management</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -514,13 +595,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} text-gray-300`} title={isLoggedIn ? userName : 'Account'}></i>
               </button>
               {/* Popup submenu for Profile */}
-              <div className="absolute left-full bottom-0 ml-2 w-36 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full bottom-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   {isLoggedIn ? (
                     <>
                       <button onClick={() => onOpenModal?.('profile')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-user-edit"></i>
                         <span>Profile</span>
+                      </button>
+                      <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        <i className="pi pi-credit-card"></i>
+                        <span>Change Plan</span>
+                      </button>
+                      <button onClick={() => window.location.href = '/'} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        <i className="pi pi-external-link"></i>
+                        <span>Back to Lobby</span>
                       </button>
                       <div className="border-t border-gray-600 my-2"></div>
                       <button onClick={() => {

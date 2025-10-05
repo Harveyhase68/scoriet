@@ -83,7 +83,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       if (data.length > 0 && !selectedSchemaId && !preselectedSchemaId) {
         setSelectedSchemaId(data[0].id);
       }
-    } catch (err) {
+    } catch {
       setError(err instanceof Error ? err.message : 'Error loading schemas');
       setSchemas([]);
     } finally {
@@ -199,7 +199,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       onSuccess(result);
       handleClose();
       
-    } catch (err) {
+    } catch {
       setError(err instanceof Error ? err.message : 'Import failed');
     } finally {
       setLoading(false);

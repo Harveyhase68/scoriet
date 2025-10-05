@@ -7,7 +7,6 @@ import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
-import { Message } from 'primereact/message';
 import { confirmDialog } from 'primereact/confirmdialog';
 
 interface ProjectInvitationsModalProps {
@@ -87,8 +86,8 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
       const data = await response.json();
       // API returns invitations directly, not wrapped in { invitations: [...] }
       setInvitations(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading invitations');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading invitations');
     } finally {
       setLoading(false);
     }
@@ -139,8 +138,8 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
       setInviteForm({ email: '', role: 'member', message: '' });
       loadInvitations();
       onSuccess?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error sending invitation');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error sending invitation');
     } finally {
       setSending(false);
     }

@@ -259,6 +259,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'language' => 'nullable|string|in:en,de,fr,es,it',
         ]);
 
         if ($validator->fails()) {
@@ -268,14 +269,21 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user->update([
+        $updateData = [
             'name' => $request->name,
             'email' => $request->email,
-        ]);
+        ];
+
+        // Add language if provided
+        if ($request->has('language')) {
+            $updateData['language'] = $request->language;
+        }
+
+        $user->update($updateData);
 
         return response()->json([
             'message' => 'Profil erfolgreich aktualisiert',
-            'user' => $user
+            'user' => $user->fresh() // Reload user data to get updated language
         ]);
     }
 

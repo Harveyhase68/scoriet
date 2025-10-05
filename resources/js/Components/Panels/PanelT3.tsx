@@ -60,74 +60,8 @@ export default function PanelT3() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
 
-  // Load templates on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        await loadAllTemplates(); // Load templates first
-      } catch (err) {
-        // Error loading data
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  // Load templates assigned to a specific project
-  const loadProjectTemplates = useCallback(async (projectId: number) => {
-    try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch(`/api/schema-versions/${projectId}/templates`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Extract project_templates array from response
-        const projectTemplatesArray = data.project_templates || [];
-        
-        // Extract assigned template IDs
-        const assignedTemplateIds = projectTemplatesArray.map((pt: any) => pt.template_id || pt.id);
-        
-        // Split templates into assigned and available
-        const assigned = templates.filter(t => assignedTemplateIds.includes(t.id));
-        const available = templates.filter(t => !assignedTemplateIds.includes(t.id));
-        
-        // Update state
-        setAssignedTemplates(assigned);
-        setAvailableTemplates(available);
-        
-        // Clear selections when switching projects
-        setSelectedTemplateIds([]);
-      }
-    } catch (err) {
-      // Error loading project templates
-    }
-  }, [templates]);
-
-  // When templates are loaded and selectedProject changes, reload project templates
-  useEffect(() => {
-    if (templates.length > 0 && selectedProject) {
-      loadProjectTemplates(selectedProject.id);
-    } else if (templates.length > 0 && !selectedProject) {
-      // If templates loaded but no project selected, show all as available
-      setAvailableTemplates(templates);
-      setAssignedTemplates([]);
-      setSelectedTemplateIds([]); // Clear selections too
-    }
-  }, [templates, selectedProject, loadProjectTemplates]);
-
-
-  const loadAllTemplates = async () => {
+  // Define loadAllTemplates before using it in useEffect
+  const loadAllTemplates = useCallback(async () => {
     try {
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -135,7 +69,11 @@ export default function PanelT3() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/templates', {
+      // Always load all available templates (not filtered by project)
+      // The assignment logic will determine which ones are already assigned
+      const url = '/api/templates';
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -147,18 +85,89 @@ export default function PanelT3() {
       }
 
       const data = await response.json();
-      
+
       // Extract templates from the response object
       const templatesArray = data.templates || [];
-      
+
       setTemplates(templatesArray);
       // Don't set availableTemplates here - will be set after loading project templates
       // setAvailableTemplates(templatesArray); // Initially all templates are available
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading templates');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading templates');
     }
-  };
+  }, [selectedProject]);
+
+  // Load assigned templates for the current project
+  const loadProjectTemplates = useCallback(async () => {
+    if (!selectedProject) return;
+
+    try {
+      setError('');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Load project's assigned templates
+      const response = await fetch(`/api/schema-versions/${selectedProject.id}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load project templates: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // The API now returns templates with is_assigned flag
+      if (data.templates) {
+        const assigned = data.templates.filter((t: any) => t.is_assigned);
+        const available = data.templates.filter((t: any) => !t.is_assigned);
+
+        setAssignedTemplates(assigned);
+        setAvailableTemplates(available);
+        setSelectedTemplateIds([]);
+      } else {
+        // Fallback if API response structure is different
+        setAssignedTemplates([]);
+        setAvailableTemplates(templates);
+        setSelectedTemplateIds([]);
+      }
+
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error loading project templates');
+    }
+  }, [selectedProject, templates]);
+
+  // Load templates on mount and when project changes
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await loadAllTemplates(); // Load templates first
+      } catch {
+        // Error loading data
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [loadAllTemplates]); // Use loadAllTemplates as dependency
+
+  // When templates are loaded, load the assigned templates for the current project
+  useEffect(() => {
+    if (templates.length > 0 && selectedProject) {
+      loadProjectTemplates();
+    } else if (templates.length > 0) {
+      // No project selected - show all templates as available
+      setAvailableTemplates(templates);
+      setAssignedTemplates([]);
+      setSelectedTemplateIds([]);
+    }
+  }, [templates, selectedProject]);
 
   // Handle template assignment
   const handleAssignTemplates = async () => {
@@ -199,8 +208,8 @@ export default function PanelT3() {
       setSelectedTemplateIds([]);
       setSuccess(`${selectedTemplateIds.length} templates assigned to project successfully`);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error assigning templates');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error assigning templates');
     } finally {
       setAssigningTemplates(false);
     }
@@ -240,8 +249,8 @@ export default function PanelT3() {
         setSuccess(`Template "${removedTemplate.name}" removed from project successfully`);
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error removing template');
+    } catch {
+      setError(_ instanceof Error ? _.message : 'Error removing template');
     }
   };
 
