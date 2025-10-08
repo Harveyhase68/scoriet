@@ -523,8 +523,8 @@ class TemplateController extends Controller
             $schema = \App\Models\FloatingSchema::findOrFail($validated['schema_id']);
             \Log::info('Found schema', ['schema' => $schema->toArray()]);
 
-            // Check if user can access this schema (owner or public)
-            if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
+            // Check if user can access this schema (owner or public) - using type-safe comparison
+            if ((string)$schema->owner_id !== (string)$user->id && $schema->visibility !== 'public') {
                 \Log::error('Schema access denied', [
                     'schema_owner_id' => $schema->owner_id,
                     'user_id' => $user->id,
@@ -679,8 +679,8 @@ class TemplateController extends Controller
             $user = auth()->user();
             $schema = \App\Models\FloatingSchema::findOrFail($schemaId);
 
-            // Check if user can access this schema (owner or public)
-            if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
+            // Check if user can access this schema (owner or public) - using type-safe comparison
+            if ((string)$schema->owner_id !== (string)$user->id && $schema->visibility !== 'public') {
                 return response()->json([
                     'success' => false,
                     'error' => 'Access denied to this DB schema',

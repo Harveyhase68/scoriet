@@ -126,8 +126,8 @@ class TeamController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user has access to this team
-        if (!$team->hasUser($user) && $team->project_owner_id !== $user->id) {
+        // Check if user has access to this team (using type-safe comparison)
+        if (!$team->hasUser($user) && (string)$team->project_owner_id !== (string)$user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -200,8 +200,8 @@ class TeamController extends Controller
     {
         $user = Auth::user();
 
-        // Only team owner can delete the team
-        if ($team->project_owner_id !== $user->id) {
+        // Only team owner can delete the team (using type-safe comparison)
+        if ((string)$team->project_owner_id !== (string)$user->id) {
             return response()->json(['message' => 'Only team owner can delete the team'], 403);
         }
 
@@ -293,8 +293,8 @@ class TeamController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user is team owner
-        if ($team->project_owner_id !== $user->id) {
+        // Check if user is team owner (using type-safe comparison)
+        if ((string)$team->project_owner_id !== (string)$user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -339,8 +339,8 @@ class TeamController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user has access to this team
-        if (!$team->hasUser($user) && $team->project_owner_id !== $user->id) {
+        // Check if user has access to this team (using type-safe comparison)
+        if (!$team->hasUser($user) && (string)$team->project_owner_id !== (string)$user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
