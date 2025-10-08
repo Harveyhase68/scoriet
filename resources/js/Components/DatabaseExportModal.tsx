@@ -1,5 +1,5 @@
 // resources/js/Components/DatabaseExportModal.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -52,40 +52,50 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
   const [activeTab, setActiveTab] = useState<number>(0); // 0 = Download, 1 = View SQL
   const downloadLinkRef = useRef<HTMLAnchorElement>(null);
 
-  const resetModal = () => {
-    setSelectedSchemaId(null);
-    setSelectedVersion(null);
-    setSchemaVersions([]);
-    setExportedSQL('');
+  const loadSchemas = useCallback(async () => {
+    if (!selectedProject) return;
+
+    setLoadingSchemas(true);
     setError(null);
-    setActiveTab(0);
-  };
 
-  const handleClose = () => {
-    if (!loading) {
-      resetModal();
-      onClose();
-    }
-  };
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
 
-  // Load schemas when modal opens
-  useEffect(() => {
-    if (isOpen && selectedProject) {
-      loadSchemas();
-    } else if (isOpen && !selectedProject) {
-      setError('No project selected. Please select a project first.');
-    }
-  }, [isOpen, selectedProject]);
+      if (!response.ok) {
+        throw new Error('Failed to load schemas');
+      }
 
-  // Load available versions when schema is selected
-  useEffect(() => {
-    if (selectedSchemaId) {
-      loadSchemaVersions(selectedSchemaId);
-    } else {
-      setSelectedVersion(null);
-      setSchemaVersions([]);
+      const data = await response.json();
+
+      // Handle different possible response formats
+      let schemasArray = [];
+      if (data.schemas) {
+        schemasArray = data.schemas;
+      } else if (Array.isArray(data)) {
+        schemasArray = data;
+      } else if (data.data) {
+        schemasArray = data.data;
+      }
+      setSchemas(schemasArray);
+
+      // Auto-select first schema if available
+      if (schemasArray && schemasArray.length > 0) {
+        setSelectedSchemaId(schemasArray[0].id);
+      }
+    } catch (error) {
+      // Error loading schemas
+      setError(error instanceof Error ? error.message : 'Failed to load schemas');
+      setSchemas([]);
+    } finally {
+      setLoadingSchemas(false);
     }
-  }, [selectedSchemaId]);
+  }, [selectedProject]);
 
   const loadSchemaVersions = async (schemaId: number) => {
     setLoadingVersions(true);
@@ -126,59 +136,49 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
         setSelectedVersion(highestVersion.version_number);
       }
-    } catch {
+    } catch (error) {
       // Error loading schema versions
-      setError(err instanceof Error ? err.message : 'Failed to load schema versions');
+      setError(error instanceof Error ? error.message : 'Failed to load schema versions');
       setSchemaVersions([]);
     } finally {
       setLoadingVersions(false);
     }
   };
 
-  const loadSchemas = async () => {
-    if (!selectedProject) return;
-
-    setLoadingSchemas(true);
+  const resetModal = () => {
+    setSelectedSchemaId(null);
+    setSelectedVersion(null);
+    setSchemaVersions([]);
+    setExportedSQL('');
     setError(null);
+    setActiveTab(0);
+  };
 
-    try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load schemas');
-      }
-
-      const data = await response.json();
-
-      // Handle different possible response formats
-      let schemasArray = [];
-      if (data.schemas) {
-        schemasArray = data.schemas;
-      } else if (Array.isArray(data)) {
-        schemasArray = data;
-      } else if (data.data) {
-        schemasArray = data.data;
-      }
-      setSchemas(schemasArray);
-
-      // Auto-select first schema if available
-      if (schemasArray && schemasArray.length > 0) {
-        setSelectedSchemaId(schemasArray[0].id);
-      }
-    } catch {
-      // Error loading schemas
-      setError(err instanceof Error ? err.message : 'Failed to load schemas');
-      setSchemas([]);
-    } finally {
-      setLoadingSchemas(false);
+  const handleClose = () => {
+    if (!loading) {
+      resetModal();
+      onClose();
     }
   };
+
+  // Load schemas when modal opens
+  useEffect(() => {
+    if (isOpen && selectedProject) {
+      loadSchemas();
+    } else if (isOpen && !selectedProject) {
+      setError('No project selected. Please select a project first.');
+    }
+  }, [isOpen, selectedProject, loadSchemas]);
+
+  // Load available versions when schema is selected
+  useEffect(() => {
+    if (selectedSchemaId) {
+      loadSchemaVersions(selectedSchemaId);
+    } else {
+      setSelectedVersion(null);
+      setSchemaVersions([]);
+    }
+  }, [selectedSchemaId]);
 
   const exportAndDownload = async () => {
     setActiveTab(0);
@@ -233,9 +233,9 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         downloadSQL(sqlContent);
       }
       // View mode - just set the SQL content, user can see it below
-    } catch {
+    } catch (error) {
       // Export error
-      setError(err instanceof Error ? err.message : 'Export failed');
+      setError(error instanceof Error ? error.message : 'Export failed');
     } finally {
       setLoading(false);
     }
@@ -427,13 +427,6 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   backgroundColor: '#111827',
                   color: '#e5e7eb',
                   minHeight: '100%'
-                }}
-                textareaProps={{
-                  readOnly: true,
-                  style: {
-                    outline: 'none',
-                    resize: 'none'
-                  }
                 }}
               />
             </div>

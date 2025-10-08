@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
-import { TabPanel } from 'primereact/tabview';
+import { TabView, TabPanel } from 'primereact/tabview';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useProject } from '@/contexts/ProjectContext';
 import Editor from 'react-simple-code-editor';
@@ -228,7 +228,7 @@ export default function DebugManualGeneratorPanel() {
   const [downloadFilename, setDownloadFilename] = useState<string>('generated.php');
 
   // Helper functions (defined early to avoid hoisting issues)
-  const getFileGenerationType = (): 'project_file' | 'db_table_file' | 'project_file_languages' | 'db_table_file_languages' | 'static_file' | 'static_directory' | null => {
+  const getFileGenerationType = useCallback((): 'project_file' | 'db_table_file' | 'project_file_languages' | 'db_table_file_languages' | 'static_file' | 'static_directory' | null => {
     if (!templateFiles || templateFiles.length === 0 || selectedFile === null || selectedFile === undefined) {
       return null;
     }
@@ -271,62 +271,29 @@ export default function DebugManualGeneratorPanel() {
     }
 
     return null; // Unbekannt/Static
-  };
+  }, [templateFiles, selectedFile]);
 
-  const shouldShowProjectDropdown = (): boolean => {
+  const shouldShowProjectDropdown = useCallback((): boolean => {
     const fileType = getFileGenerationType();
     return fileType === 'project_file' || fileType === 'project_file_languages';
-  };
+  }, [getFileGenerationType]);
 
-  const shouldShowTableDropdown = (): boolean => {
+  const shouldShowTableDropdown = useCallback((): boolean => {
     const fileType = getFileGenerationType();
     return fileType === 'db_table_file' || fileType === 'db_table_file_languages';
-  };
+  }, [getFileGenerationType]);
 
-  const shouldShowLanguageDropdown = (): boolean => {
+  const shouldShowLanguageDropdown = useCallback((): boolean => {
     const fileType = getFileGenerationType();
     return fileType === 'project_file_languages' || fileType === 'db_table_file_languages';
-  };
+  }, [getFileGenerationType]);
 
   const getSelectedFileName = () => {
     const file = templateFiles.find(f => f.id === selectedFile);
     return file?.file_name || '';
   };
 
-  // Load templates on component mount
-  useEffect(() => {
-    loadTemplates();
-    loadSchemaTables();
-    loadLanguages();
-  }, []);
-
-  // Update selected project when global project changes
-  useEffect(() => {
-    if (selectedProject) {
-      setSelectedProjectForGenerator(selectedProject.id);
-      // Reload schema tables when project changes
-      loadSchemaTables();
-    }
-  }, [selectedProject]);
-
-  // Update button state when dependencies change
-  useEffect(() => {
-    const projectCondition = !(shouldShowProjectDropdown() && !selectedProjectForGenerator);
-    // FIXED: 0 is a valid table index, don't treat it as falsy!
-    const tableCondition = !shouldShowTableDropdown() || (selectedTable !== null && selectedTable !== undefined);
-    const languageCondition = !shouldShowLanguageDropdown() || (selectedLanguage !== null && selectedLanguage !== undefined);
-
-    Boolean(!loading && selectedTemplate && (selectedFile !== null && selectedFile !== undefined) && projectCondition && tableCondition && languageCondition);
-  }, [selectedTable, selectedLanguage, loading, selectedTemplate, selectedFile, selectedProjectForGenerator, shouldShowProjectDropdown, shouldShowTableDropdown, shouldShowLanguageDropdown]);
-
-  // Load template files when template changes
-  useEffect(() => {
-    if (selectedTemplate) {
-      loadTemplateFiles(selectedTemplate);
-    }
-  }, [selectedTemplate]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
@@ -362,9 +329,9 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setError('Fehler beim Laden der Templates');
     }
-  };
+  }, []);
 
-  const loadTemplateFiles = async (templateId: number) => {
+  const loadTemplateFiles = useCallback(async (templateId: number) => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
@@ -418,9 +385,9 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setError('Fehler beim Laden der Template-Dateien');
     }
-  };
+  }, []);
 
-  const loadSchemaTables = async () => {
+  const loadSchemaTables = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
@@ -609,9 +576,9 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setSchemaTables([]);
     }
-  };
+  }, [selectedProject]);
 
-  const loadLanguages = async () => {
+  const loadLanguages = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
@@ -643,7 +610,25 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setLanguageOptions([]);
     }
-  };
+  }, [selectedLanguage]);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadTemplates();
+    loadLanguages();
+  }, [loadTemplates, loadLanguages]);
+
+  // Load template files when template changes
+  useEffect(() => {
+    if (selectedTemplate) {
+      loadTemplateFiles(selectedTemplate);
+    }
+  }, [selectedTemplate, loadTemplateFiles]);
+
+  // Load schema tables when project changes
+  useEffect(() => {
+    loadSchemaTables();
+  }, [loadSchemaTables]);
 
   const fetchCode = async () => {
     if (!selectedTemplate || (selectedFile === null || selectedFile === undefined)) {
@@ -947,14 +932,14 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       // Set the final result
       setExecutedResult(result);
       setActiveTabIndex(1); // Switch to result tab
-    } catch {
+    } catch (execError) {
       // Set error result when execution fails
-      setExecutedResult(`❌ Ausführung fehlgeschlagen!\n\nBitte kontrollieren Sie den "Debug Helper" Tab für Details.\n\nFehler: ${(_ as Error).message || 'Unbekannter Fehler'}`);
+      setExecutedResult(`❌ Ausführung fehlgeschlagen!\n\nBitte kontrollieren Sie den "Debug Helper" Tab für Details.\n\nFehler: ${(execError as Error).message || 'Unbekannter Fehler'}`);
       setActiveTabIndex(1); // Switch to result tab to show error
 
       // Enhanced error handling with line number detection
       let errorMessage = '';
-      const error = _ as Error;
+      const error = execError as Error;
 
       // Try to extract line number from error stack and convert to template line number
       let lineNumber = '';
@@ -1081,7 +1066,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           // Set the fallback result with a note about fallback
           setExecutedResult(`⚠️ Fallback-Interpretation aktiviert (SyntaxError):\n\n${result}\n\n🔧 Original Fehler:\n${errorMessage}`);
           setActiveTabIndex(1); // Switch to result tab
-        } catch {
+        } catch (fallbackErr) {
           // Use the enhanced error message from the main catch block
           const fallbackError = fallbackErr as Error;
           setExecutedResult(`${errorMessage}\n\n🔧 Fallback-Interpretation ebenfalls fehlgeschlagen:\n${fallbackError.message || 'Unbekannter Fallback-Fehler'}\n\nOriginal Code (erste 500 Zeichen):\n${preparedCode.substring(0, 500)}...`);
@@ -1153,7 +1138,9 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
   return (
     <ErrorBoundary
-      FallbackComponent={ErrorFallback}
+      FallbackComponent={({ error }) => (
+        <ErrorFallback error={error} resetError={() => {}} />
+      )}
     >
       <div className="h-full bg-gray-800 text-gray-100 p-4">
         <Card className="h-full bg-gray-700 border-gray-600">
@@ -1314,7 +1301,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                     debugOutput += `🔍 JAVASCRIPT SYNTAX ANALYSIS\n`;
                     debugOutput += `==============================\n`;
 
-                    const syntaxIssues = [];
+                    const syntaxIssues: string[] = [];
                     codeLines.forEach((line, index) => {
                       const lineNum = index + 1;
                       const trimmed = line.trim();
@@ -1398,8 +1385,8 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                   setDebugInfo(debugOutput);
                   setActiveTabIndex(2); // Switch to debug tab
 
-                } catch {
-                  setDebugInfo(`❌ Fehler beim Debug Helper: ${(error as Error).message}\n\nDetails: ${error}`);
+                } catch (debugError) {
+                  setDebugInfo(`❌ Fehler beim Debug Helper: ${(debugError as Error).message}\n\nDetails: ${debugError}`);
                   setActiveTabIndex(2);
                 }
               }}
@@ -1409,7 +1396,18 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           </div>
 
           {error && (
-            <Message severity="error" text={error} className="w-full" />
+            <div className="p-4 bg-red-900 border-b border-red-600 text-red-200">
+              <div className="flex items-center">
+                <span className="mr-2">⚠️</span>
+                <span>{error}</span>
+                <button
+                  onClick={() => setError('')}
+                  className="ml-auto text-red-400 hover:text-red-200"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Debug Info */}
@@ -1432,11 +1430,12 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
           {/* 3-Tab System */}
           {preparedCode && (
-            <TabView
-              activeIndex={activeTabIndex}
-              onTabChange={(e) => setActiveTabIndex(e.index)}
-              className="bg-gray-700"
-            >
+            <div className="bg-gray-700">
+              <TabView
+                activeIndex={activeTabIndex}
+                onTabChange={(e: any) => setActiveTabIndex(e.index)}
+                className="bg-gray-700"
+              >
               <TabPanel header="1. Vorbereiteter Code" className="text-gray-100">
                 <div className="bg-gray-900 p-4 rounded border border-gray-600">
                   <div className="flex justify-between items-center mb-2">
@@ -1670,7 +1669,8 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
                   </div>
                 </div>
               </TabPanel>
-            </TabView>
+              </TabView>
+            </div>
           )}
           </div>
         </Card>

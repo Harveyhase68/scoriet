@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\FloatingSchema;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Models\Team;
 
@@ -421,9 +423,88 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $assignedTeams = $project->teams()->with(['owner'])->get();
+        // Get ONLY teams that are assigned via pivot table to this specific project
+        $assignedTeams = \App\Models\Team::with(['owner'])
+            ->whereHas('projects', function($q) use ($project) {
+                $q->where('project_id', $project->id);
+            })
+            ->where('is_active', true)
+            ->get();
 
         return response()->json($assignedTeams);
+    }
+
+    /**
+     * Get all projects with their assigned teams (optimized single query)
+     */
+    public function getProjectsWithTeams(): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Get projects owned by the user with their teams in a single query
+        $projects = Project::where('owner_id', $user->id)
+            ->active()
+            ->with(['owner', 'teams' => function($query) {
+                // Only load teams that are actually assigned to this project
+                $query->where('is_active', true);
+            }, 'teams.owner'])
+            ->get();
+
+        // Format projects with teams data
+        $formattedProjects = $projects->map(function ($project) {
+            $teams = $project->teams->map(function ($team) {
+                return [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                    'description' => $team->description,
+                    'project_owner_id' => $team->project_owner_id,
+                    'is_active' => $team->is_active,
+                    'created_at' => $team->created_at,
+                    'updated_at' => $team->updated_at,
+                    'owner' => $team->owner ? [
+                        'id' => $team->owner->id,
+                        'name' => $team->owner->name,
+                        'email' => $team->owner->email,
+                        'email_verified_at' => $team->owner->email_verified_at,
+                        'username' => $team->owner->username,
+                        'user_type' => $team->owner->user_type,
+                        'language' => $team->owner->language,
+                        'premium_expires_at' => $team->owner->premium_expires_at,
+                        'pending_project_invitation_id' => $team->owner->pending_project_invitation_id,
+                        'created_at' => $team->owner->created_at,
+                        'updated_at' => $team->owner->updated_at,
+                    ] : null,
+                ];
+            });
+
+            return [
+                'id' => $project->id,
+                'name' => $project->name,
+                'description' => $project->description,
+                'owner_id' => $project->owner_id,
+                'is_active' => $project->is_active,
+                'is_public' => $project->is_public,
+                'created_at' => $project->created_at,
+                'updated_at' => $project->updated_at,
+                'owner' => $project->owner ? [
+                    'id' => $project->owner->id,
+                    'name' => $project->owner->name,
+                    'email' => $project->owner->email,
+                    'username' => $project->owner->username,
+                ] : null,
+                'teams' => $teams,
+                'teams_count' => $teams->count(),
+            ];
+        });
+
+        return response()->json([
+            'projects' => $formattedProjects,
+            'total_projects' => $formattedProjects->count(),
+        ]);
     }
 
     /**
@@ -806,6 +887,100 @@ class ProjectController extends Controller
         return response()->json([
             'enabled_languages' => $project->enabled_languages ?? [],
             'default_language' => $project->default_language,
+        ]);
+    }
+
+    /**
+     * Get all projects the current user has access to (owner or team member)
+     */
+    public function getUserProjects(): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Get projects owned by the user
+        $ownedProjects = Project::where('owner_id', $user->id)
+            ->active()
+            ->get();
+
+        // Get projects where user is a team member
+        $teamProjects = Project::whereHas('teams.members', function($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+        ->with(['owner', 'teams.members.user']) // Load all related data for debugging
+        ->active()
+        ->get();
+
+        // Also try a more explicit query to make sure we're getting team projects
+        $explicitTeamProjects = DB::table('projects')
+            ->join('project_teams', 'projects.id', '=', 'project_teams.project_id')
+            ->join('teams', 'project_teams.team_id', '=', 'teams.id')
+            ->join('team_members', 'teams.id', '=', 'team_members.team_id')
+            ->where('team_members.user_id', $user->id)
+            ->where('projects.is_active', true)
+            ->select('projects.*')
+            ->distinct()
+            ->get()
+            ->map(function($item) {
+                return (array) $item;
+            });
+
+        // Convert to Eloquent models with relationships loaded
+        $explicitTeamProjectsModels = $explicitTeamProjects->map(function($projectData) use ($user) {
+            $project = new Project($projectData);
+            $project->owner = \App\Models\User::find($projectData['owner_id']);
+            return $project;
+        });
+
+        // Merge with the relationship-based query results
+        $allTeamProjects = $teamProjects->merge($explicitTeamProjectsModels)->unique('id');
+
+        // DEBUG: Log what we're finding
+        \Log::info('getUserProjects DEBUG', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'owned_projects_count' => $ownedProjects->count(),
+            'owned_projects' => $ownedProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
+            'team_projects_count' => $teamProjects->count(),
+            'team_projects' => $teamProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
+            'explicit_team_projects_count' => $explicitTeamProjects->count(),
+            'explicit_team_projects' => $explicitTeamProjects->map(function($p) { return ['id' => $p['id'], 'name' => $p['name'], 'owner_id' => $p['owner_id']]; })->toArray(),
+            'all_team_projects_count' => $allTeamProjects->count(),
+            'all_team_projects' => $allTeamProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
+        ]);
+
+        // Merge and remove duplicates (in case user is both owner and team member)
+        $allProjects = $ownedProjects->merge($allTeamProjects)->unique('id');
+
+        // Format projects with additional info
+        $projects = $allProjects->map(function ($project) use ($user) {
+            $counts = $project->getCounts();
+
+            // Check if user is owner or team member
+            $isOwner = (string)$project->owner_id === (string)$user->id;
+            $isTeamMember = $project->teams()->whereHas('members', function($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })->exists();
+
+            return array_merge($project->toArray(), [
+                'teams_count' => $counts['teams_count'],
+                'members_count' => $counts['members_count'],
+                'applications_count' => $counts['applications_count'],
+                'templates_count' => $counts['templates_count'],
+                'schemas_count' => $counts['schemas_count'],
+                'databases_count' => $counts['databases_count'],
+                'is_owner' => $isOwner,
+                'is_team_member' => $isTeamMember,
+                'access_type' => $isOwner ? 'owner' : 'team_member',
+            ]);
+        });
+
+        return response()->json([
+            'projects' => $projects,
+            'total_projects' => $projects->count(),
         ]);
     }
 }

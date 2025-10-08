@@ -54,7 +54,7 @@ export const changeLanguage = async (lng: string) => {
         },
         body: JSON.stringify({ language: lng })
       });
-    } catch (error) {
+    } catch {
       // Failed to save language preference
     }
   }

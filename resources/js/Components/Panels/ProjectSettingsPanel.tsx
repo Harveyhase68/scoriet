@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input, Select, Checkbox, Button, message, Spin, Transfer, Tabs } from 'antd';
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useProject } from '@/contexts/ProjectContext';
@@ -26,12 +26,16 @@ interface ProjectMember {
 }
 
 export default function ProjectSettingsPanel() {
+    console.log('🔍 ProjectSettingsPanel: Component loaded');
+
     const { selectedProject, loadProjects } = useProject();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+
+    console.log('🔍 ProjectSettingsPanel: selectedProject:', selectedProject);
 
     const [formData, setFormData] = useState({
         // Project Settings
@@ -64,15 +68,7 @@ export default function ProjectSettingsPanel() {
         google_translate_api_key: ''
     });
 
-    useEffect(() => {
-        loadLanguages();
-        if (selectedProject) {
-            loadProjectData();
-            loadProjectMembers();
-        }
-    }, [selectedProject]);
-
-    const loadLanguages = async () => {
+    const loadLanguages = useCallback(async () => {
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) return;
@@ -91,9 +87,9 @@ export default function ProjectSettingsPanel() {
         } catch (error) {
             console.error('Error loading languages:', error);
         }
-    };
+    }, []);
 
-    const loadProjectData = async () => {
+    const loadProjectData = useCallback(async () => {
         if (!selectedProject) return;
 
         setLoading(true);
@@ -156,9 +152,9 @@ export default function ProjectSettingsPanel() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedProject]);
 
-    const loadProjectMembers = async () => {
+    const loadProjectMembers = useCallback(async () => {
         if (!selectedProject) return;
 
         try {
@@ -179,7 +175,15 @@ export default function ProjectSettingsPanel() {
         } catch (error) {
             console.error('Error loading project members:', error);
         }
-    };
+    }, [selectedProject]);
+
+    useEffect(() => {
+        loadLanguages();
+        if (selectedProject) {
+            loadProjectData();
+            loadProjectMembers();
+        }
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages]);
 
     const handleSave = async () => {
         if (!selectedProject) {
@@ -265,11 +269,14 @@ export default function ProjectSettingsPanel() {
         }));
 
     if (!selectedProject) {
+        console.log('🔍 ProjectSettingsPanel: No selectedProject available, showing fallback');
         return (
             <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
                 <div className="text-center">
                     <i className="pi pi-info-circle text-4xl mb-4"></i>
                     <p>Bitte wählen Sie ein Projekt aus</p>
+                    <p className="text-sm mt-2">selectedProject is null</p>
+                    <p className="text-xs mt-2 text-yellow-400">🔍 ProjectSettingsPanel loaded but no project selected</p>
                 </div>
             </div>
         );
@@ -283,15 +290,20 @@ export default function ProjectSettingsPanel() {
         );
     }
 
+    console.log('🔍 ProjectSettingsPanel: Rendering with selectedProject:', selectedProject);
+
     return (
         <div className="h-full flex flex-col bg-gray-800 text-gray-100 p-6 overflow-auto project-settings-panel">
             <div className="mb-6 flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-100">
-                        Projekt-Einstellungen
+                        Projekt-Einstellungen ✅
                     </h2>
                     <p className="text-gray-400 mt-2">
                         Projekt: <span className="font-semibold text-gray-200">{selectedProject.name}</span>
+                    </p>
+                    <p className="text-xs text-green-400 mt-1">
+                        ✅ ProjectSettingsPanel erfolgreich geladen
                     </p>
                 </div>
                 <Button

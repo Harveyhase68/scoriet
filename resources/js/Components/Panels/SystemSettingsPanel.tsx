@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Input, message, Spin } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Form, Input, InputNumber, message, Spin } from 'antd';
 import { Button } from 'primereact/button';
 import { api } from '@/lib/api';
 
@@ -105,22 +105,7 @@ export default function SystemSettingsPanel() {
     }
   `;
 
-  useEffect(() => {
-    // Inject dark mode styles
-    const styleElement = document.createElement('style');
-    styleElement.textContent = darkModeStyles;
-    document.head.appendChild(styleElement);
-
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.request('/settings');
@@ -136,7 +121,22 @@ export default function SystemSettingsPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [form]);
+
+  useEffect(() => {
+    // Inject dark mode styles
+    const styleElement = document.createElement('style');
+    styleElement.textContent = darkModeStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, [darkModeStyles]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleSubmit = async (values: any) => {
     setSaving(true);

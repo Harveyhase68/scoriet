@@ -9,6 +9,7 @@ import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Dropdown } from 'primereact/dropdown';
+import { Message } from 'primereact/message';
 import ClassicTreeView from '@/Components/ClassicTreeView';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
@@ -20,6 +21,7 @@ import { useProject } from '@/contexts/ProjectContext';
 interface TabPanelProps {
   isActive: boolean;
   onOpenPanel?: (panelId: string, data?: any) => void;
+  projectId?: number;
 }
 
 interface Project {
@@ -63,7 +65,7 @@ interface Project {
   timezone?: string;
 }
 
-export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
+export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPanelProps) {
   // Use global project context
   const {
     projects: globalProjects,
@@ -151,6 +153,16 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
     }
   }, [isActive, globalSelectedProject]);
 
+  // Load specific project when projectId prop is provided (for tree view navigation)
+  useEffect(() => {
+    if (projectId && globalProjects.length > 0) {
+      const project = globalProjects.find(p => p.id === projectId);
+      if (project) {
+        setGlobalSelectedProject(project);
+      }
+    }
+  }, [projectId, globalProjects, setGlobalSelectedProject]);
+
   // Listen for notification bell click to open Applications Modal
   useEffect(() => {
     const handleOpenApplicationsModal = () => {
@@ -168,15 +180,24 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
   const handleEdit = async (projectToEdit?: Project) => {
     const project = projectToEdit || currentProject;
     if (project && onOpenPanel) {
+      console.log('🔍 ProjectPanel handleEdit called:', { project, projectId: project.id, projectName: project.name });
+
       // Set the project as the current project first
-      setGlobalSelectedProject(project);
+      setGlobalSelectedProject(project as any);
+
       // Open the project settings panel with unique ID and project name in title
-      onOpenPanel(`project-settings-${project.id}`, {
+      const panelId = `project-settings-${project.id}`;
+      const panelData = {
         type: 'project-settings',
         title: `Project Settings (${project.name})`,
         projectId: project.id,
         projectName: project.name
-      });
+      };
+
+      console.log('🔍 Opening project settings panel:', { panelId, panelData });
+      onOpenPanel(panelId, panelData);
+    } else {
+      console.warn('🔍 handleEdit called but no project or onOpenPanel:', { project, onOpenPanel: !!onOpenPanel });
     }
   };
 
@@ -287,8 +308,8 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       });
       setSuccess('Project created successfully');
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error creating project');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error creating project');
     } finally {
       setCreating(false);
     }
@@ -355,8 +376,8 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
       setProjectToDelete(null);
       setSuccess('Project deleted successfully');
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error deleting project');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error deleting project');
     } finally {
       setDeleting(false);
     }
@@ -790,7 +811,12 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
                 label="Teams Management"
                 icon="pi pi-users"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('team-management', { title: `Teams - ${currentProject?.name}`, filterByProject: true })}
+                onClick={() => {
+                  if (currentProject) {
+                    setGlobalSelectedProject(currentProject as any);
+                    onOpenPanel?.('teams-filtered', { title: `Teams Management - ${currentProject.name}`, filterByProject: true, source: 'project-management' });
+                  }
+                }}
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
@@ -824,7 +850,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
         <div className="space-y-4">
           <Card title="All Projects" className="flex-1">
             <DataTable
-              value={projects}
+              value={projects.filter(p => p.id)}
               className="p-datatable-sm"
               emptyMessage="No projects found"
               paginator
@@ -1328,7 +1354,7 @@ export default function ProjectPanel({ isActive, onOpenPanel }: TabPanelProps) {
           <div className="flex items-start space-x-3">
             <i className="pi pi-exclamation-triangle text-orange-500 text-2xl mt-1"></i>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-xl font-bold text-gray-300 mb-2">
                 Are you sure you want to delete this project?
               </h3>
               <p className="text-sm text-gray-600 mb-2">

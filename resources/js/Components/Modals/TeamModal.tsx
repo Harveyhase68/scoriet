@@ -3,8 +3,10 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
+// import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
+import { MultiSelect } from 'primereact/multiselect';
+import { Message } from 'primereact/message';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface TeamMember {
@@ -28,11 +30,15 @@ interface Team {
   created_at: string;
   updated_at: string;
   project_owner_id: number;
-  project_id: number;
+  project_id?: number;
   project?: {
     id: number;
     name: string;
   };
+  projects?: Array<{
+    id: number;
+    name: string;
+  }>;
   owner: {
     id: number;
     name: string;
@@ -52,10 +58,15 @@ interface TeamModalProps {
 
 export default function TeamModal({ visible, onHide, team, onSave }: TeamModalProps) {
   const { projects } = useProject();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    project_ids: number[];
+    is_active: boolean;
+  }>({
     name: '',
     description: '',
-    project_id: 0,
+    project_ids: [],
     is_active: true
   });
   const [loading, setLoading] = useState(false);
@@ -67,14 +78,14 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       setFormData({
         name: team.name,
         description: team.description || '',
-        project_id: team.project_id || 0,
+        project_ids: team.projects?.map((p: any) => p.id) || [],
         is_active: team.is_active
       });
     } else if (visible && !team) {
       setFormData({
         name: '',
         description: '',
-        project_id: 0,
+        project_ids: [],
         is_active: true
       });
     }
@@ -122,7 +133,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       }
 
       onSave();
-    } catch {
+    } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to save team');
     } finally {
       setLoading(false);
@@ -131,13 +142,13 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
   if (!visible) return null;
 
-  const projectOptions = [
-    { label: 'Select Project', value: 0 },
-    ...projects.map(project => ({
-      label: project.name,
-      value: project.id
-    }))
-  ];
+  // const projectOptions = [
+  //   { label: 'Select Project', value: 0 },
+  //   ...projects.map(project => ({
+  //     label: project.name,
+  //     value: project.id
+  //   }))
+  // ];
 
   return (
     <Dialog
@@ -181,16 +192,24 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           </div>
 
           <div className="field">
-            <label htmlFor="project_id" className="block text-sm font-medium mb-2 text-gray-100">
-              Project
+            <label htmlFor="project_ids" className="block text-sm font-medium mb-2 text-gray-100">
+              Projects
             </label>
-            <Dropdown
-              id="project_id"
-              value={formData.project_id}
-              options={projectOptions}
-              onChange={(e) => setFormData(prev => ({ ...prev, project_id: e.value }))}
-              placeholder="Select project"
+            <MultiSelect
+              id="project_ids"
+              value={formData.project_ids}
+              options={projects.map(project => ({
+                label: project.name,
+                value: project.id
+              }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, project_ids: e.value }))}
+              placeholder="Select projects"
+              display="chip"
+              className="w-full"
             />
+            <small className="text-gray-600">
+              Select one or more projects for this team
+            </small>
           </div>
 
           <div className="field">

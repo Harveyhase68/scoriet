@@ -84,7 +84,11 @@ export default function TopBar() {
           <Dropdown
             key={selectedProject ? `project-${selectedProject.id}` : 'no-project'}
             value={selectedProject ? selectedProject.id : null}
-            options={projects || []}
+            options={(projects || []).filter((project, index, self) => {
+              // Filter out projects without an ID and duplicates
+              if (!project.id) return false;
+              return index === self.findIndex((p) => p.id === project.id);
+            })}
             onChange={(e) => {
               const selectedProjectObject = projects?.find(p => p.id === e.value);
               setSelectedProject(selectedProjectObject || null);

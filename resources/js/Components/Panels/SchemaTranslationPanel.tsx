@@ -125,7 +125,7 @@ export default function SchemaTranslationPanel() {
     return () => {
       document.head.removeChild(styleElement);
     };
-  }, []);
+  }, [darkModeStyles]);
 
   const fetchLanguages = async () => {
     try {
@@ -142,7 +142,7 @@ export default function SchemaTranslationPanel() {
     }
   };
 
-  const fetchSchemaStructure = async () => {
+  const fetchSchemaStructure = React.useCallback(async () => {
     if (!selectedProject) {
       setSchemaStructure([]);
       return;
@@ -163,7 +163,7 @@ export default function SchemaTranslationPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProject]);
 
   const fetchTranslationsForItem = async (itemName: string) => {
     try {
@@ -186,7 +186,7 @@ export default function SchemaTranslationPanel() {
   useEffect(() => {
     fetchLanguages();
     fetchSchemaStructure();
-  }, [selectedProject]);
+  }, [selectedProject, fetchSchemaStructure]);
 
   useEffect(() => {
     if (selectedItem) {
@@ -201,10 +201,10 @@ export default function SchemaTranslationPanel() {
           <span className="text-blue-300">📁</span>
           <span className="font-mono">{table.table_name}</span>
           {table.schema_name && (
-            <Tag size="small" color="purple">{table.schema_name}</Tag>
+            <Tag color="purple">{table.schema_name}</Tag>
           )}
           {table.comment && (
-            <Tag size="small" color="blue">{table.comment}</Tag>
+            <Tag color="blue">{table.comment}</Tag>
           )}
         </div>
       ),
@@ -214,9 +214,9 @@ export default function SchemaTranslationPanel() {
           <div className="flex items-center gap-2">
             <span className="text-green-300">📄</span>
             <span className="font-mono text-sm">{field.field_name}</span>
-            <Tag size="small" color="green">{field.field_type}</Tag>
+            <Tag color="green">{field.field_type}</Tag>
             {field.comment && (
-              <Tag size="small" color="orange">{field.comment}</Tag>
+              <Tag color="orange">{field.comment}</Tag>
             )}
           </div>
         ),

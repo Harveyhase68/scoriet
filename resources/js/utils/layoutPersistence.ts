@@ -33,7 +33,7 @@ export class LayoutPersistenceService {
       };
 
       localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layoutState));
-    } catch (error) {
+    } catch {
       // Failed to save layout
     }
   }
@@ -74,7 +74,7 @@ export class LayoutPersistenceService {
         layout: layoutState.layout,
         leftPanelWidth: layoutState.leftPanelWidth || 300
       };
-    } catch (error) {
+    } catch {
       // Failed to load layout
       this.clearLayout();
       return { layout: null, leftPanelWidth: 300 };
@@ -87,7 +87,7 @@ export class LayoutPersistenceService {
   static clearLayout(): void {
     try {
       localStorage.removeItem(LAYOUT_STORAGE_KEY);
-    } catch (error) {
+    } catch {
       // Failed to clear layout
     }
   }

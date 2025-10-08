@@ -127,11 +127,11 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
             <div className="text-sm font-bold text-white">{data.tableName}</div>
           </div>
           <div className="flex items-center gap-1">
-            {data.onEdit && data.isLatestVersion && (
+            {data.onEdit && data.isLatestVersion && data.table && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  data.onEdit(data.table);
+                  data.onEdit!(data.table!);
                 }}
                 className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
                 title="Tabelle bearbeiten"
@@ -139,11 +139,11 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                 ✏️
               </button>
             )}
-            {data.onDelete && data.isLatestVersion && (
+            {data.onDelete && data.isLatestVersion && data.table && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  data.onDelete(data.table);
+                  data.onDelete!(data.table!);
                 }}
                 className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
                 title="Tabelle löschen"
@@ -419,8 +419,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setSelectedSchema(preSelectedSchema);
         }
       }
-    } catch {
-      const errorMessage = _ instanceof Error ? _.message : 'Failed to load schemas';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load schemas';
       setError(errorMessage);
       
       // If it's an auth error, clear the state
@@ -531,8 +531,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }
       
       return versions;
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Failed to load schema versions');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load schema versions');
       setSchemaVersions([]);
       return [];
     } finally {
@@ -582,8 +582,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setEdges([]);
         setError(null); // Clear error, empty version is valid
       }
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Failed to load schema version');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load schema version');
     } finally {
       setLoading(false);
     }
@@ -722,8 +722,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Failed to create table');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create table');
     } finally {
       setLoading(false);
     }
@@ -784,8 +784,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Failed to update table');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update table');
     } finally {
       setLoading(false);
     }
@@ -818,9 +818,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table edit modal
       setShowEditTableModal(true);
 
-    } catch {
+    } catch (err) {
       // Error creating new version
-      setError(error instanceof Error ? error.message : 'Failed to create new version');
+      setError(err instanceof Error ? err.message : 'Failed to create new version');
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -854,9 +854,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table creation modal
       setShowCreateTableModal(true);
 
-    } catch {
+    } catch (err) {
       // Error creating new version
-      setError(error instanceof Error ? error.message : 'Failed to create new version');
+      setError(err instanceof Error ? err.message : 'Failed to create new version');
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -886,9 +886,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table edit modal
       setShowEditTableModal(true);
 
-    } catch {
+    } catch (err) {
       // Error marking unsaved changes
-      setError(error instanceof Error ? error.message : 'Failed to update version');
+      setError(err instanceof Error ? err.message : 'Failed to update version');
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -918,9 +918,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Open the table creation modal
       setShowCreateTableModal(true);
 
-    } catch {
+    } catch (err) {
       // Error marking unsaved changes
-      setError(error instanceof Error ? error.message : 'Failed to update version');
+      setError(err instanceof Error ? err.message : 'Failed to update version');
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -976,9 +976,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       if (selectedSchema && selectedVersion) {
         loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
-    } catch {
+    } catch (err) {
       // Error deleting table
-      setError(error instanceof Error ? error.message : 'Failed to delete table');
+      setError(err instanceof Error ? err.message : 'Failed to delete table');
     }
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema]);
 
@@ -1033,7 +1033,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
             // Reload schema versions to get the new version
             const newVersions = await loadSchemaVersions(selectedSchema);
-            const newVersion = newVersions?.find(v => v.version_number === result.new_version_number);
+            const newVersion = newVersions?.find((v: SchemaVersionExtended) => v.version_number === result.new_version_number);
 
             if (newVersion) {
               setSelectedVersion(newVersion);
@@ -1041,9 +1041,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               loadSchemaVersionWithSchema(selectedSchema, newVersion);
             }
           }
-        } catch {
+        } catch (err) {
           // Error creating new version and deleting table
-          setError(error instanceof Error ? error.message : 'Failed to create new version and delete table');
+          setError(err instanceof Error ? err.message : 'Failed to create new version and delete table');
         } finally {
           setShowVersionModal(false);
           setPendingDeleteTable(null);
@@ -1088,9 +1088,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
         // Delete the table
         await performDeleteTable(pendingDeleteTable);
-      } catch {
+      } catch (err) {
         // Error deleting table
-        setError(error instanceof Error ? error.message : 'Failed to delete table');
+        setError(err instanceof Error ? err.message : 'Failed to delete table');
       } finally {
         setShowVersionModal(false);
         setPendingDeleteTable(null);
@@ -1277,8 +1277,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                     setNodes(currentNodes => {
                       // Apply the changes to get updated positions and dimensions
                       const updatedNodes = currentNodes.map(node => {
-                        const positionChange = changes.find(c => c.id === node.id && c.type === 'position');
-                        const dimensionChange = changes.find(c => c.id === node.id && c.type === 'dimensions');
+                        const positionChange = changes.find((c: any) => c.id === node.id && c.type === 'position');
+                        const dimensionChange = changes.find((c: any) => c.id === node.id && c.type === 'dimensions');
                         
                         const updatedNode = { ...node };
                         
@@ -1295,8 +1295,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                       });
                       
                       // Save the layout with current node positions and sizes
-                      const nodesToSave = updatedNodes.filter(node => 
-                        node.data && node.data.tableName
+                      const nodesToSave = updatedNodes.filter(node =>
+                        node.data && (node.data as any).tableName
                       );
                       
                       if (nodesToSave.length > 0) {

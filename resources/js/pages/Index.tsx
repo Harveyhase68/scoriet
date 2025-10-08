@@ -8,6 +8,18 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { ErrorBoundary } from 'react-error-boundary';
 import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
+
+// Global window interface for tab data
+declare global {
+  interface Window {
+    _tabData?: Record<string, {
+      filterByProject?: boolean;
+      forceProjectId?: number;
+      title?: string;
+      updateTitleCallback?: (newTitle: string) => void;
+    }>;
+  }
+}
 import { useProject } from '@/contexts/ProjectContext';
 
 // Always-loaded components (small and critical)
@@ -273,17 +285,47 @@ const loadTab = (
       };
 
     case 'teams':
+    case 'teams-filtered':
+    case 'teams-filtered-filtered': {
+      // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
+      const teamsTabKey = id; // Use the unique tab ID directly
+
+      // Store persistent data in a global object (rc-dock workaround)
+      if (!window._tabData) window._tabData = {};
+
+      if (data.filterByProject !== undefined || data.forceProjectId !== undefined || updateTitleCallback) {
+        // First call - store the data and callback
+        window._tabData[teamsTabKey] = {
+          filterByProject: data.filterByProject,
+          forceProjectId: data.forceProjectId,
+          title: data.title,
+          updateTitleCallback: updateTitleCallback
+        } as any;
+      }
+
+      // Get the stored data (works on subsequent calls)
+      const teamsStoredData = window._tabData[teamsTabKey] || {};
+      const teamsShouldShowProjectFilter = teamsStoredData.filterByProject === true;
+      const teamsForceProjectId = teamsStoredData.forceProjectId as number | undefined;
+      const teamsActualUpdateTitleCallback = teamsStoredData.updateTitleCallback || updateTitleCallback;
+
       return {
         id,
         title: data.title || 'Teams',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <TeamsPanel isActive={true} />
+            <TeamsPanel
+              isActive={true}
+              filterByProject={teamsShouldShowProjectFilter}
+              forceProjectId={teamsForceProjectId}
+              updateTabTitle={teamsActualUpdateTitleCallback}
+            />
           </Suspense>
         ),
         closable: true,
         group: 'card custom'
       };
+    }
 
     case 'project':
       return {
@@ -360,7 +402,7 @@ const loadTab = (
       };
 
     case 'template-management':
-    case 'template-management-filtered':
+    case 'template-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
       const tabKey = id; // Use the unique tab ID directly
 
@@ -392,9 +434,10 @@ const loadTab = (
         closable: true,
         group: 'card custom'
       };
+    }
 
     case 'database-management':
-    case 'database-management-filtered':
+    case 'database-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
       const dbTabKey = id; // Use the unique tab ID directly
 
@@ -426,27 +469,30 @@ const loadTab = (
         closable: true,
         group: 'card custom'
       };
+    }
 
     case 'team-management':
-    case 'team-management-filtered':
+    case 'team-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
       const teamTabKey = id; // Use the unique tab ID directly
 
       // Store persistent data in a global object (rc-dock workaround)
       if (!window._tabData) window._tabData = {};
 
-      if (data.filterByProject !== undefined || updateTitleCallback) {
+      if (data.filterByProject !== undefined || data.forceProjectId !== undefined || updateTitleCallback) {
         // First call - store the data and callback
         window._tabData[teamTabKey] = {
           filterByProject: data.filterByProject,
+          forceProjectId: data.forceProjectId,
           title: data.title,
           updateTitleCallback: updateTitleCallback
-        };
+        } as any;
       }
 
       // Get the stored data (works on subsequent calls)
       const teamStoredData = window._tabData[teamTabKey] || {};
       const teamShouldShowProjectFilter = teamStoredData.filterByProject === true;
+      const teamForceProjectId = teamStoredData.forceProjectId as number | undefined;
       const teamActualUpdateTitleCallback = teamStoredData.updateTitleCallback || updateTitleCallback;
 
       return {
@@ -454,12 +500,13 @@ const loadTab = (
         title: data.title || 'Team Verwaltung',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} updateTabTitle={teamActualUpdateTitleCallback} />
+            <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
           </Suspense>
         ),
         closable: true,
         group: 'card custom'
       };
+    }
 
     case 'template-db-schema-dependencies':
       return {
@@ -559,6 +606,22 @@ const loadTab = (
       };
 
     default:
+      // Handle project-specific panels (e.g., project-1, project-2)
+      if (id.startsWith('project-')) {
+        const projectId = parseInt(id.split('-')[1]);
+        return {
+          id,
+          title: data.title || `Project Management (${data.projectName || 'Project ' + projectId})`,
+          content: (
+            <Suspense fallback={<PanelLoader />}>
+              <ProjectPanel isActive={true} onOpenPanel={openPanelFn} projectId={projectId} />
+            </Suspense>
+          ),
+          closable: true,
+          group: 'card custom'
+        };
+      }
+      
       // Handle schema-specific designer tabs (e.g., designer_schema_1, designer_schema_2)
       if (id.startsWith('designer_schema_')) {
         const schemaId = parseInt(id.split('_')[2]);
@@ -805,7 +868,7 @@ export default function Index(props: IndexProps = {}) {
           setShowPendingInvitation(true);
         }
       }
-    } catch (error) {
+    } catch {
       // Silently handle errors (e.g., 404 when not authenticated)
     }
   }, [isAuthenticated]);
@@ -889,7 +952,7 @@ export default function Index(props: IndexProps = {}) {
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
           }
-        } catch (error) {
+        } catch {
           // Network error or other issue - clean up tokens and set unauthenticated
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
@@ -1132,7 +1195,15 @@ export default function Index(props: IndexProps = {}) {
       }
 
       // Create unique tab ID for project-filtered panels
-      const uniqueTabId = data?.filterByProject ? `${panelId}-filtered` : panelId;
+      let uniqueTabId = data?.filterByProject ? `${panelId}-filtered` : panelId;
+      
+      // Check if a filtered tab already exists for this panel type
+      if (data?.filterByProject) {
+        const existingFilteredTab = ref.current.find(`${panelId}-filtered`);
+        if (existingFilteredTab) {
+          uniqueTabId = `${panelId}-filtered`; // Use the existing tab ID instead of creating a new one
+        }
+      }
 
       const existingTab = ref.current.find(uniqueTabId);
 
@@ -1581,7 +1652,7 @@ useHotkeys('alt+n', () => {
     setShowSqlImportModal(false);
   };
 
-  const handleSqlImportSuccess = (result: any) => {
+  const handleSqlImportSuccess = () => {
     setShowSqlImportModal(false);
     // Optional: Show success message or refresh relevant panels
   };
@@ -1632,7 +1703,7 @@ useHotkeys('alt+n', () => {
                   borderRight: '1px solid #444'
                 }}
               >
-                <PanelT1 />
+                <PanelT1 onOpenPanel={openPanel} />
               </div>
 
               {/* RESIZE HANDLE */}
