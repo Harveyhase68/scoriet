@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
@@ -11,6 +11,7 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
+import { Message } from 'primereact/message';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -111,22 +112,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     requires_force?: boolean;
   } | null>(null);
 
-  // Load schemas when panel becomes active
-  useEffect(() => {
-    if (isActive) {
-      loadSchemas();
-      loadLanguages();
-    }
-  }, [isActive, projectId]);
-
-  // Update tab title when project changes (only for filtered panels)
-  useEffect(() => {
-    if (filterByProject && updateTabTitle && contextSelectedProject) {
-      updateTabTitle(`Database - ${contextSelectedProject.name}`);
-    }
-  }, [filterByProject, updateTabTitle, contextSelectedProject]);
-
-  const loadSchemas = async () => {
+  const loadSchemas = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -152,12 +138,28 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       const data = await response.json();
       setSchemas(data.schemas || []);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading schemas');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading schemas');
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  // Load schemas when panel becomes active
+  useEffect(() => {
+    if (isActive) {
+      loadSchemas();
+      loadLanguages();
+    }
+  }, [isActive, loadSchemas]);
+
+  // Update tab title when project changes (only for filtered panels)
+  useEffect(() => {
+    if (filterByProject && updateTabTitle && contextSelectedProject) {
+      updateTabTitle(`Database - ${contextSelectedProject.name}`);
+    }
+  }, [filterByProject, updateTabTitle, contextSelectedProject]);
+
 
   const loadProjects = async () => {
     try {
@@ -245,8 +247,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       setShowExportDialog(false);
       setSuccess('Translations exported successfully');
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error exporting translations');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error exporting translations');
     } finally {
       setExporting(false);
     }
@@ -285,8 +287,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       const result = await response.json();
       setShowImportDialog(false);
       setSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error importing translations');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error importing translations');
     } finally {
       setImporting(false);
     }
@@ -323,8 +325,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setCreateForm({ name: '', description: '', visibility: 'private' });
       setSuccess('Database schema created successfully');
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error creating schema');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error creating schema');
     } finally {
       setCreating(false);
     }
@@ -375,8 +377,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setEditingSchema(null);
       setSuccess('Schema updated successfully');
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error updating schema');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error updating schema');
     } finally {
       setSaving(false);
     }
@@ -427,8 +429,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadSchemas(); // Reload schemas to update the UI
       setSuccess(`Schema successfully ${associationType} to project`);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error associating schema');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error associating schema');
     } finally {
       setAssociating(false);
     }
@@ -516,8 +518,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadSchemas();
       setSuccess(`Schema removed from project successfully`);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error removing schema');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error removing schema');
     }
   };
 
@@ -611,8 +613,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadSchemas();
       setSuccess(`Schema "${deletingSchema.name}" and all related data deleted successfully`);
 
-    } catch {
-      const errorMessage = _ instanceof Error ? _.message : 'Error deleting schema';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error deleting schema';
       setError(errorMessage);
     } finally {
       setDeleting(false);

@@ -184,10 +184,16 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/templates/by-db-schema/{schemaId}', [TemplateController::class, 'getTemplatesByDbSchema']);
     });
     
+    // Optimized Projects with Teams route (use different path to avoid conflicts)
+    Route::get('/projects-with-teams', [ProjectController::class, 'getProjectsWithTeams']);
+
     // Projects Management
     Route::apiResource('projects', ProjectController::class);
     Route::post('/projects/{project}/restore', [ProjectController::class, 'restore']);
     Route::delete('/projects/{project}/force', [ProjectController::class, 'forceDestroy']);
+
+    // User Projects (including team access)
+    Route::get('/user/projects', [ProjectController::class, 'getUserProjects']);
     
     // Project Team Management
     Route::get('/projects/{project}/teams/available', [ProjectController::class, 'getAvailableTeams']);
@@ -217,6 +223,7 @@ Route::middleware('auth:api')->group(function () {
 
     
     Route::resource('teams', TeamController::class);
+    Route::get('/teams/{team}/members', [TeamController::class, 'getMembers']);
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);

@@ -66,7 +66,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
         const user = await response.json();
         setUserData(user);
       }
-    } catch (err) {
+    } catch {
       // Error loading user data
     }
   };

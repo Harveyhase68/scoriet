@@ -35,6 +35,16 @@ interface Team {
   description: string;
   is_active: boolean;
   created_at: string;
+  project_owner_id: number;
+  project_id?: number;
+  project?: {
+    id: number;
+    name: string;
+  };
+  projects?: Array<{
+    id: number;
+    name: string;
+  }>;
   owner: {
     id: number;
     name: string;
@@ -44,80 +54,167 @@ interface Team {
   members_count?: number;
 }
 
-export default function TeamsPanel() {
+interface TeamsPanelProps {
+  isActive?: boolean;
+  filterByProject?: boolean;
+  updateTabTitle?: (newTitle: string) => void;
+  source?: 'menu' | 'project-management'; // New prop to track where the panel was opened from
+  forceProjectId?: number; // Force the panel to use this project ID instead of the selected project
+}
+
+export default function TeamsPanel({ filterByProject = false, source = 'menu', forceProjectId }: TeamsPanelProps) {
   const { selectedProject } = useProject();
+  // Use forceProjectId if provided, otherwise use selectedProject
+  const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : undefined);
   const [teams, setTeams] = useState<Team[]>([]);
   const [assignedTeams, setAssignedTeams] = useState<Team[]>([]);
   const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
+  const [selectedTeamIdsByProject, setSelectedTeamIdsByProject] = useState<Record<number, number[]>>({});
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigningTeams, setAssigningTeams] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
+  // const [loadingProjects, setLoadingProjects] = useState(false);
+  const [forcedProject, setForcedProject] = useState<any>(null);
 
-  // Load teams on mount
+  // Load forced project data if forceProjectId is provided
+  useEffect(() => {
+    if (forceProjectId !== undefined) {
+      const loadForcedProject = async () => {
+        try {
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          if (!token) {
+            throw new Error('Not authenticated');
+          }
+
+          const response = await fetch(`/api/projects/${forceProjectId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const projectData = await response.json();
+            setForcedProject(projectData);
+          }
+        } catch (error) {
+          console.error('Error loading forced project:', error);
+        }
+      };
+      loadForcedProject();
+    }
+  }, [forceProjectId]);
+
+  // Load data on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        await loadAllTeams();
-      } catch {
-        // Error loading data
+        if (source === 'menu') {
+          // Load all teams and projects for menu view
+          await Promise.all([
+            loadAllTeams(),
+            loadProjects()
+          ]);
+        } else {
+          // Load only teams for project-management view
+          await loadAllTeams();
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Error loading data');
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, []);
+  }, [source]);
 
   // Load teams assigned to a specific project
   const loadProjectTeams = useCallback(async (projectId: number) => {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
+      if (!token || !projectId) {
         return;
       }
 
-      const response = await fetch(`/api/projects/${projectId}/teams/assigned`, {
+      // Load assigned teams
+      const assignedResponse = await fetch(`/api/projects/${projectId}/teams/assigned`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
       });
       
-      if (response.ok) {
-        const assignedTeamsData = await response.json();
-        
-        // Extract assigned team IDs
-        const assignedTeamIds = assignedTeamsData.map((team: Team) => team.id);
-        
-        // Split teams into assigned and available
-        const assigned = teams.filter(t => assignedTeamIds.includes(t.id));
-        const available = teams.filter(t => !assignedTeamIds.includes(t.id));
+      // Load available teams
+      const availableResponse = await fetch(`/api/projects/${projectId}/teams/available`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (assignedResponse.ok && availableResponse.ok) {
+        const assignedTeamsData = await assignedResponse.json();
+        const availableTeamsData = await availableResponse.json();
         
         // Update state
-        setAssignedTeams(assigned);
-        setAvailableTeams(available);
+        setAssignedTeams(assignedTeamsData);
+        setAvailableTeams(availableTeamsData);
         
         // Clear any selected team IDs when switching projects
-        setSelectedTeamIds([]);
+        setSelectedTeamIdsByProject({});
       }
-    } catch {
-      // Error loading project teams
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading project teams');
     }
-  }, [teams]);
+  }, []);
 
-  // When teams are loaded and selectedProject changes, reload project teams
-  useEffect(() => {
-    if (teams.length > 0 && selectedProject) {
-      loadProjectTeams(selectedProject.id);
-    } else if (teams.length > 0 && !selectedProject) {
-      // No project selected, show all teams as available
-      setAvailableTeams(teams);
-      setAssignedTeams([]);
-      setSelectedTeamIds([]);
+  // Load all projects for menu view
+  const loadProjects = async () => {
+    try {
+      // setLoadingProjects(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load projects');
+      }
+
+      const data = await response.json();
+      setProjects(data.projects || []);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading projects');
+    } finally {
+      // setLoadingProjects(false);
     }
-  }, [teams, selectedProject, loadProjectTeams]);
+  };
+
+  // When projectId changes, reload project teams
+  useEffect(() => {
+    if (projectId) {
+      console.log('🔍 TeamsPanel: Loading teams for projectId:', projectId, 'forceProjectId:', forceProjectId);
+      loadProjectTeams(projectId);
+    } else {
+      // No project selected, show all teams as available
+      loadAllTeams().then(allTeams => {
+        setAvailableTeams(allTeams);
+        setAssignedTeams([]);
+        setSelectedTeamIdsByProject({});
+      });
+    }
+  }, [projectId, loadProjectTeams, forceProjectId]);
 
   const loadAllTeams = async () => {
     try {
@@ -149,15 +246,17 @@ export default function TeamsPanel() {
         teamsArray = data;
       }
       setTeams(teamsArray);
+      return teamsArray;
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading teams');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading teams');
+      return [];
     }
   };
 
   // Handle team assignment
   const handleAssignTeams = async () => {
-    if (!selectedProject || selectedTeamIds.length === 0) return;
+    if (Object.keys(selectedTeamIdsByProject).length === 0) return;
 
     setAssigningTeams(true);
     setError('');
@@ -168,42 +267,50 @@ export default function TeamsPanel() {
         throw new Error('Not authenticated');
       }
 
+      let totalAssigned = 0;
+      
+      // For each project, assign the selected teams
+      for (const [projectIdStr, teamIds] of Object.entries(selectedTeamIdsByProject)) {
+        if (teamIds.length === 0) continue;
+        
+        const projectId = parseInt(projectIdStr);
+        
+        const response = await fetch(`/api/projects/${projectId}/teams/assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            team_ids: teamIds
+          }),
+        });
 
-      const response = await fetch(`/api/projects/${selectedProject.id}/teams/assign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          team_ids: selectedTeamIds
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to assign teams');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to assign teams');
+        }
+        
+        totalAssigned += teamIds.length;
       }
 
-      // Move assigned teams from available to assigned
-      const newlyAssigned = availableTeams.filter(t => selectedTeamIds.includes(t.id));
-      setAssignedTeams(prev => [...prev, ...newlyAssigned]);
-      setAvailableTeams(prev => prev.filter(t => !selectedTeamIds.includes(t.id)));
+      // Refresh teams data
+      await loadAllTeams();
       
-      setSelectedTeamIds([]);
-      setSuccess(`${selectedTeamIds.length} teams assigned to project successfully`);
+      setSelectedTeamIdsByProject({});
+      setSuccess(`${totalAssigned} teams assigned to projects successfully`);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error assigning teams');
+    } catch (error: any) {
+      setError(error instanceof Error ? error.message : 'Error assigning teams');
     } finally {
       setAssigningTeams(false);
     }
   };
 
   // Handle team removal
-  const handleRemoveTeam = async (teamId: number) => {
-    if (!selectedProject) return;
+  const handleRemoveTeam = async (projectId: number, teamId: number) => {
+    if (!projectId) return;
 
     try {
       setError('');
@@ -212,7 +319,7 @@ export default function TeamsPanel() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/projects/${selectedProject.id}/teams/${teamId}`, {
+      const response = await fetch(`/api/projects/${projectId}/teams/${teamId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -221,7 +328,15 @@ export default function TeamsPanel() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to get error message from response
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, use default error message
+        }
+        throw new Error(errorMessage);
       }
 
       await response.json();
@@ -234,8 +349,8 @@ export default function TeamsPanel() {
         setSuccess(`Team "${removedTeam.name}" removed from project successfully`);
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error removing team');
+    } catch (error: any) {
+      setError(error instanceof Error ? error.message : 'Error removing team');
     }
   };
 
@@ -267,17 +382,17 @@ export default function TeamsPanel() {
         ) : (
           <>
             {/* Header */}
-            <Card title={selectedProject ? `Teams Assignment - ${selectedProject.name}` : "Teams Assignment"} className="m-4 mb-2">
+            <Card title={projectId ? `Teams Project Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (source === 'menu' ? "Teams Assignment" : "Project Teams")} className="m-4 mb-2">
           <div className="flex flex-col gap-4">
             {/* Project Info */}
-            {selectedProject && (
+            {projectId && (forcedProject || selectedProject) && (
               <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
                 <i className="pi pi-briefcase"></i>
-                <span>Working on: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
+                <span>Working on: <strong>{(forcedProject || selectedProject).name}</strong> by {(forcedProject || selectedProject).owner.name}</span>
               </div>
             )}
             
-            {!selectedProject && (
+            {!projectId && source === 'menu' && (
               <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
                 <i className="pi pi-exclamation-triangle"></i>
                 <span>Please select a project from the navigation to manage teams</span>
@@ -290,7 +405,7 @@ export default function TeamsPanel() {
                 <InputText
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search teams..."
+                  placeholder="Search teams there..."
                   className="w-full"
                 />
               </div>
@@ -310,10 +425,156 @@ export default function TeamsPanel() {
                 <div className="flex items-center justify-center py-8">
                   <i className="pi pi-spinner pi-spin text-2xl text-blue-500"></i>
                 </div>
+              ) : source === 'menu' ? (
+                // Menu view - Show projects with all teams (assigned and unassigned)
+                <>
+                  <div className="mb-4">
+                    <InputText
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search projects or teams..."
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  <div className="overflow-auto" style={{ maxHeight: '500px' }}>
+                    {projects.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        No projects found
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {projects.map(project => {
+                          // Get only teams that are actually assigned to this project
+                          const allTeamsForProject = teams.filter(team => {
+                            // Check if team is assigned to this project
+                            const isAssignedToProject = team.projects?.some(p => p.id === project.id);
+                            
+                            // Only include teams that are assigned to this project
+                            return isAssignedToProject;
+                          });
+                          
+                          // Filter by search query
+                          const filteredTeams = allTeamsForProject.filter(team => {
+                            if (!searchQuery) return true;
+                            return team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                   team.description.toLowerCase().includes(searchQuery.toLowerCase());
+                          });
+                          
+                          return (
+                            <div key={project.id} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                  <i className="pi pi-briefcase text-blue-500"></i>
+                                  {project.name}
+                                </h3>
+                                <span className="text-sm text-gray-400">
+                                  {filteredTeams.length} team{filteredTeams.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              
+                              {filteredTeams.length === 0 ? (
+                                <div className="text-center py-4 text-gray-500">
+                                  No teams available for this project
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {filteredTeams.map(team => {
+                                    // Check if team is assigned to this specific project
+                                    const isAssignedToThisProject = team.projects?.some(p => p.id === project.id);
+                                    
+                                    return (
+                                      <div key={team.id} className="flex items-center justify-between p-3 bg-gray-600 rounded hover:bg-gray-500 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                          <div className="ml-4">
+                                            <h4 className="font-medium text-white">{team.name}</h4>
+                                            <p className="text-sm text-gray-300">{team.description}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <span className="text-xs text-gray-400">
+                                                <i className="pi pi-user"></i> {team.owner?.name || 'Unknown'}
+                                              </span>
+                                              <span className="text-xs text-gray-400">
+                                                <i className="pi pi-users"></i> {team.members_count || 0} members
+                                              </span>
+                                              <span className={`text-xs px-2 py-1 rounded ${
+                                                isAssignedToThisProject ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                                              }`}>
+                                                {isAssignedToThisProject ? 'Assigned' : 'Unassigned'}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                          {isAssignedToThisProject ? (
+                                            <Button
+                                              icon="pi pi-times"
+                                              className="p-button-rounded p-button-text p-button-sm p-button-danger"
+                                              tooltip="Remove from project"
+                                              onClick={() => handleRemoveTeam(project.id, team.id)}
+                                            />
+                                          ) : (
+                                            <Checkbox
+                                              checked={selectedTeamIdsByProject[project.id]?.includes(team.id) || false}
+                                              onChange={(e) => {
+                                                const currentSelection = selectedTeamIdsByProject[project.id] || [];
+                                                if (e.checked) {
+                                                  setSelectedTeamIdsByProject(prev => ({
+                                                    ...prev,
+                                                    [project.id]: [...currentSelection, team.id]
+                                                  }));
+                                                } else {
+                                                  setSelectedTeamIdsByProject(prev => ({
+                                                    ...prev,
+                                                    [project.id]: currentSelection.filter(id => id !== team.id)
+                                                  }));
+                                                }
+                                              }}
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
+                    <div className="text-sm text-gray-500">
+                      {(() => {
+                        const totalSelected = Object.values(selectedTeamIdsByProject).reduce((sum, ids) => sum + ids.length, 0);
+                        return totalSelected > 0 ? `${totalSelected} team${totalSelected !== 1 ? 's' : ''} selected` : '';
+                      })()}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        label="Clear Selection"
+                        icon="pi pi-times"
+                        onClick={() => setSelectedTeamIdsByProject({})}
+                        className="p-button-text"
+                      />
+                      <Button
+                        label={`Assign Team(s) to Projects`}
+                        icon="pi pi-check"
+                        onClick={handleAssignTeams}
+                        disabled={Object.keys(selectedTeamIdsByProject).length === 0 || assigningTeams}
+                        loading={assigningTeams}
+                      />
+                    </div>
+                  </div>
+                </>
               ) : (
+                // Project Management view - Show simple table
                 <>
                   <DataTable
-                    key={`teams-table-${selectedProject?.id || 'no-project'}-${selectedTeamIds.join('-')}-${assignedTeams.length}-${filteredAvailableTeams.length}`}
+                    key={`teams-table-${(forcedProject || selectedProject)?.id || 'no-project'}-${selectedTeamIds.join('-')}-${assignedTeams.length}-${filteredAvailableTeams.length}`}
                     value={[...(assignedTeams || []), ...filteredAvailableTeams]}
                     className="p-datatable-sm"
                     emptyMessage="No teams found"
@@ -333,18 +594,16 @@ export default function TeamsPanel() {
                       </div>
                     }
                   >
-                    <Column 
+                    <Column
                       headerStyle={{ width: '3rem' }}
                       header={() => {
                         const availableTeamIds = filteredAvailableTeams.map(team => team.id);
-                        const allSelected = availableTeamIds.length > 0 && 
+                        const allSelected = availableTeamIds.length > 0 &&
                           availableTeamIds.every(id => selectedTeamIds.includes(id));
-                        const someSelected = availableTeamIds.some(id => selectedTeamIds.includes(id));
                         
                         return (
                           <Checkbox
                             checked={allSelected}
-                            indeterminate={someSelected && !allSelected ? true : undefined}
                             onChange={(e) => {
                               if (e.checked) {
                                 setSelectedTeamIds(availableTeamIds);
@@ -364,7 +623,7 @@ export default function TeamsPanel() {
                               icon="pi pi-times"
                               className="p-button-rounded p-button-text p-button-sm p-button-danger"
                               tooltip="Remove from project"
-                              onClick={() => handleRemoveTeam(team.id)}
+                              onClick={() => handleRemoveTeam(projectId || 0, team.id)}
                             />
                           );
                         } else {
@@ -387,8 +646,8 @@ export default function TeamsPanel() {
                     
                     <Column field="name" header="Team Name" sortable />
                     <Column field="description" header="Description" />
-                    <Column 
-                      field="owner" 
+                    <Column
+                      field="owner"
                       header="Owner"
                       body={(team) => (
                         <div className="flex items-center gap-2">
@@ -397,8 +656,8 @@ export default function TeamsPanel() {
                         </div>
                       )}
                     />
-                    <Column 
-                      field="members_count" 
+                    <Column
+                      field="members_count"
                       header="Members"
                       body={(team) => (
                         <div className="flex items-center gap-1">
@@ -407,8 +666,8 @@ export default function TeamsPanel() {
                         </div>
                       )}
                     />
-                    <Column 
-                      field="is_active" 
+                    <Column
+                      field="is_active"
                       header="Status"
                       body={(team) => (
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -418,8 +677,8 @@ export default function TeamsPanel() {
                         </span>
                       )}
                     />
-                    <Column 
-                      field="created_at" 
+                    <Column
+                      field="created_at"
                       header="Created"
                       body={(team) => new Date(team.created_at).toLocaleDateString('de-DE')}
                     />
@@ -442,7 +701,7 @@ export default function TeamsPanel() {
                           label={`Assign Teams (${selectedTeamIds.length})`}
                           icon="pi pi-check"
                           onClick={handleAssignTeams}
-                          disabled={!selectedProject || assigningTeams}
+                          disabled={!projectId || assigningTeams}
                           loading={assigningTeams}
                         />
                       </div>

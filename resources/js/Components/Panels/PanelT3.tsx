@@ -93,10 +93,10 @@ export default function PanelT3() {
       // Don't set availableTemplates here - will be set after loading project templates
       // setAvailableTemplates(templatesArray); // Initially all templates are available
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading templates');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading templates');
     }
-  }, [selectedProject]);
+  }, []);
 
   // Load assigned templates for the current project
   const loadProjectTemplates = useCallback(async () => {
@@ -138,8 +138,8 @@ export default function PanelT3() {
         setSelectedTemplateIds([]);
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading project templates');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading project templates');
     }
   }, [selectedProject, templates]);
 
@@ -167,7 +167,7 @@ export default function PanelT3() {
       setAssignedTemplates([]);
       setSelectedTemplateIds([]);
     }
-  }, [templates, selectedProject]);
+  }, [templates, selectedProject, loadProjectTemplates]);
 
   // Handle template assignment
   const handleAssignTemplates = async () => {
@@ -208,8 +208,8 @@ export default function PanelT3() {
       setSelectedTemplateIds([]);
       setSuccess(`${selectedTemplateIds.length} templates assigned to project successfully`);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error assigning templates');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error assigning templates');
     } finally {
       setAssigningTemplates(false);
     }
@@ -249,8 +249,8 @@ export default function PanelT3() {
         setSuccess(`Template "${removedTemplate.name}" removed from project successfully`);
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error removing template');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error removing template');
     }
   };
 
@@ -378,12 +378,11 @@ export default function PanelT3() {
                         const availableTemplateIds = filteredAvailableTemplates.map(template => template.id);
                         const allSelected = availableTemplateIds.length > 0 && 
                           availableTemplateIds.every(id => selectedTemplateIds.includes(id));
-                        const someSelected = availableTemplateIds.some(id => selectedTemplateIds.includes(id));
+                        //const someSelected = availableTemplateIds.some(id => selectedTemplateIds.includes(id));
                         
                         return (
                           <Checkbox
                             checked={allSelected}
-                            indeterminate={someSelected && !allSelected ? true : undefined}
                             onChange={(e) => {
                               if (e.checked) {
                                 setSelectedTemplateIds(availableTemplateIds);

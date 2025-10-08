@@ -29,7 +29,15 @@ interface Team {
   created_at: string;
   updated_at: string;
   project_owner_id: number;
-  project_name: string;
+  project_id?: number;
+  project?: {
+    id: number;
+    name: string;
+  };
+  projects?: Array<{
+    id: number;
+    name: string;
+  }>;
   owner: {
     id: number;
     name: string;
@@ -232,7 +240,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         setProjectMembers([]);
       }
 
-    } catch {
+    } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to load data');
     } finally {
       setLoading(false);
@@ -320,7 +328,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       // Refresh data
       loadData();
       onSave?.();
-    } catch {
+    } catch (error) {
       // Error adding member to team
       toast.current?.show({
         severity: 'error',
@@ -379,7 +387,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
           loadData();
           onSave?.();
-        } catch {
+        } catch (error) {
           // Error removing member
           toast.current?.show({
             severity: 'error',
@@ -431,9 +439,9 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         life: 3000
       });
 
-      loadTeamMembers();
+      loadData();
       onSave?.();
-    } catch {
+    } catch (error) {
       // Error updating role
       toast.current?.show({
         severity: 'error',
@@ -563,7 +571,9 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       >
         <div className="h-full flex flex-col">
           {error && (
-            <Message severity="error" text={error} className="mb-4" />
+            <div className="p-3 bg-red-900 border border-red-700 rounded text-red-100 text-sm mb-4">
+              {error}
+            </div>
           )}
 
           {/* Info message */}

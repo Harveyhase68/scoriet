@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -8,10 +9,15 @@ interface CreateTeamModalProps {
 }
 
 export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: CreateTeamModalProps) {
-  const [formData, setFormData] = useState({
+  const { projects } = useProject();
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    project_ids: number[];
+  }>({
     name: '',
     description: '',
-    project_name: 'default'
+    project_ids: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +41,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
       });
 
       if (response.ok) {
-        setFormData({ name: '', description: '', project_name: 'default' });
+        setFormData({ name: '', description: '', project_ids: [] });
         onTeamCreated();
         onClose();
       } else {
@@ -109,18 +115,26 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Project
+              Projects
             </label>
-            <input
-              type="text"
-              value={formData.project_name}
-              onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
+            <select
+              multiple
+              value={formData.project_ids.map(String)}
+              onChange={(e) => {
+                const selectedOptions = Array.from(e.target.selectedOptions, option => Number(option.value));
+                setFormData({ ...formData, project_ids: selectedOptions });
+              }}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Project name"
-              maxLength={255}
-            />
+              size={Math.min(4, projects.length || 1)}
+            >
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-500 mt-1">
-              Teams are organized by project. Default is "default".
+              Select one or more projects for this team. Hold Ctrl/Cmd to select multiple.
             </p>
           </div>
 

@@ -219,10 +219,8 @@ class Project extends Model
     public function getCounts()
     {
         try {
-            // Count teams owned by project owner (more logical than requiring manual assignment)
-            $teamsCount = \App\Models\Team::where('project_owner_id', $this->owner_id)
-                                         ->where('is_active', true)
-                                         ->count();
+            // Count teams assigned to this project through project_teams table
+            $teamsCount = $this->teams()->where('is_active', true)->count();
 
             return [
                 'teams_count' => $teamsCount,

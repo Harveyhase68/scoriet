@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import { DataTable } from 'primereact/datatable';
@@ -53,11 +53,15 @@ interface Team {
   created_at: string;
   updated_at: string;
   project_owner_id: number;
-  project_id: number;
+  project_id?: number;
   project?: {
     id: number;
     name: string;
   };
+  projects?: Array<{
+    id: number;
+    name: string;
+  }>;
   owner: {
     id: number;
     name: string;
@@ -71,15 +75,17 @@ interface Team {
 interface TeamManagementPanelProps {
   filterByProject?: boolean;
   updateTabTitle?: (newTitle: string) => void;
+  forceProjectId?: number; // Force the panel to use this project ID instead of the selected project
 }
 
-export default function TeamManagementPanel({ filterByProject = false, updateTabTitle }: TeamManagementPanelProps) {
+export default function TeamManagementPanel({ filterByProject = false, updateTabTitle, forceProjectId }: TeamManagementPanelProps) {
   // Use Project Context to get current project
   const { selectedProject } = useProject();
-  const projectId = filterByProject ? selectedProject?.id : undefined;
+  const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : undefined);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [forcedProject, setForcedProject] = useState<any>(null);
   
   // Modal states
   const [teamModalVisible, setTeamModalVisible] = useState(false);
@@ -89,18 +95,47 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   
   const toast = useRef<Toast>(null);
 
+  // Load forced project data if forceProjectId is provided
   useEffect(() => {
-    loadTeams();
-  }, [projectId]);
+    if (forceProjectId !== undefined) {
+      const loadForcedProject = async () => {
+        try {
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          if (!token) {
+            throw new Error('Not authenticated');
+          }
+
+          const response = await fetch(`/api/projects/${forceProjectId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const projectData = await response.json();
+            setForcedProject(projectData);
+          }
+        } catch (error) {
+          console.error('Error loading forced project:', error);
+        }
+      };
+      loadForcedProject();
+    }
+  }, [forceProjectId]);
 
   // Update tab title when project changes (only for filtered panels)
   useEffect(() => {
-    if (filterByProject && updateTabTitle && selectedProject) {
-      updateTabTitle(`Teams - ${selectedProject.name}`);
+    if (filterByProject && updateTabTitle) {
+      if (forcedProject) {
+        updateTabTitle(`Teams - ${forcedProject.name}`);
+      } else if (selectedProject) {
+        updateTabTitle(`Teams - ${selectedProject.name}`);
+      }
     }
-  }, [filterByProject, updateTabTitle, selectedProject]);
+  }, [filterByProject, updateTabTitle, selectedProject, forcedProject]);
 
-  const loadTeams = async () => {
+  const loadTeams = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -143,7 +178,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadTeams();
+  }, [loadTeams]);
 
   const handleCreateTeam = () => {
     setEditingTeam(null);
@@ -190,7 +229,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           });
 
           loadTeams();
-        } catch {
+        } catch (error) {
           // Error deleting team
           toast.current?.show({
             severity: 'error',
@@ -243,7 +282,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       <div className="flex flex-wrap gap-2">
         <InputText
           type="search"
-          placeholder="Search teams..."
+          placeholder="Search teams here..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="w-64"
@@ -293,12 +332,30 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   };
 
   const projectBodyTemplate = (team: Team) => {
-    return (
-      <div className="flex items-center gap-2">
-        <i className="pi pi-briefcase text-gray-500"></i>
-        <span>{team.project?.name || 'No Project'}</span>
-      </div>
-    );
+    // Use projects array if available, otherwise fall back to project for backward compatibility
+    if (team.projects && team.projects.length > 0) {
+      return (
+        <div className="flex items-center gap-2">
+          <i className="pi pi-briefcase text-gray-500"></i>
+          <span>{team.projects.map(p => p.name).join(', ')}</span>
+        </div>
+      );
+    } else if (team.project) {
+      // Fallback for old data structure
+      return (
+        <div className="flex items-center gap-2">
+          <i className="pi pi-briefcase text-gray-500"></i>
+          <span>{team.project.name}</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-2">
+          <i className="pi pi-briefcase text-gray-500"></i>
+          <span>No Projects</span>
+        </div>
+      );
+    }
   };
 
   const createdBodyTemplate = (team: Team) => {
@@ -411,10 +468,10 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                   className="w-24"
                 />
                 <Column
-                  field="project.name"
-                  header="Project"
+                  field="projects"
+                  header="Projects"
                   body={projectBodyTemplate}
-                  sortable
+                  sortable={false} // Can't sort by array of projects
                   className="w-1/6"
                 />
                 <Column

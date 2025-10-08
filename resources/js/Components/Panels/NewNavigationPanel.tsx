@@ -148,6 +148,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               icon: 'pi pi-cog',
               command: () => onOpenPanel('team-management')
             },
+            {
+              label: 'Teams Assignment',
+              icon: 'pi pi-users',
+              command: () => {
+                if (selectedProject) {
+                  onOpenPanel('teams-filtered', { title: `Teams Management - ${selectedProject.name}`, filterByProject: true, source: 'menu' });
+                } else {
+                  // If no project selected, open project management first
+                  onOpenPanel('project');
+                }
+              }
+            },
           ]
         },
         {
@@ -431,6 +443,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-cog"></i>
                           <span>Team Management</span>
+                        </button>
+                        <button onClick={() => {
+                          if (selectedProject) {
+                            onOpenPanel('teams-filtered', { title: `Teams Management - ${selectedProject.name}`, filterByProject: true, source: 'menu' });
+                          } else {
+                            // If no project selected, open project management first
+                            onOpenPanel('project');
+                          }
+                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-users"></i>
+                          <span>Teams Assignment</span>
                         </button>
                       </div>
                     </div>

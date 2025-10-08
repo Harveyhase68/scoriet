@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Modal, Form, Input, Switch, message, Tag, Select } from 'antd';
+import { Table, Modal, Form, Input, Switch, message, Tag, Select, InputNumber } from 'antd';
 import { Button } from 'primereact/button';
 import type { ColumnsType } from 'antd/es/table';
 import { api } from '@/lib/api';
@@ -155,7 +155,7 @@ export default function LanguageManagementPanel() {
     return () => {
       document.head.removeChild(styleElement);
     };
-  }, []);
+  }, [darkModeStyles]);
 
   const fetchLanguages = async () => {
     setLoading(true);

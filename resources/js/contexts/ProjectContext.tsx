@@ -80,7 +80,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         return;
       }
       
-      const response = await fetch('/api/projects', {
+      const response = await fetch('/api/user/projects', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -89,9 +89,18 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
       if (response.ok) {
         const data = await response.json();
-        
+
+        console.log('🔍 ProjectContext: Raw API response:', data);
+        console.log('🔍 ProjectContext: Projects array:', data.projects);
+        console.log('🔍 ProjectContext: Project names:', (data.projects || []).map((p: any) => ({ id: p.id, name: p.name })));
+
         const projectsArray = data.projects || [];
-        setProjects(projectsArray);
+        console.log('🔍 ProjectContext: Setting projects:', projectsArray.length, 'projects');
+        
+        // Filter out projects without an ID
+        const validProjects = projectsArray.filter((p: Project) => p.id);
+        console.log('🔍 ProjectContext: Valid projects:', validProjects.length, 'projects');
+        setProjects(validProjects);
         
         // Try to restore saved project, use preferred project, or auto-select first
         const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
@@ -122,20 +131,17 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         }
         
         // Always set the project if we have one to select (either restored or first)
-        // But don't override if this is right after a project update
-        const currentTime = Date.now();
-        const isRecentUpdate = currentTime - ((window as any).lastProjectUpdate || 0) < 2000; // Within 2 seconds
-
-        if (projectToSelect && !isRecentUpdate) {
+        if (projectToSelect) {
           setSelectedProject(projectToSelect);
+          localStorage.setItem('scoriet_selected_project_id', projectToSelect.id.toString());
         }
       }
-    } catch (err) {
+    } catch {
       // Error loading projects
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [preferredProject]);
 
   // Utility function to clear saved project
   const clearSavedProject = () => {
