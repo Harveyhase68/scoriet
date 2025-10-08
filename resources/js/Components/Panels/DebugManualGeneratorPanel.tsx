@@ -1147,7 +1147,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-white mb-4">🔧 Debug Manual Generator</h2>
           <p className="text-sm text-gray-300 mb-4">
-            Template-Entwicklung und Code-Debugging für einzelne Dateien
+            Template development and code debugging for individual files
           </p>
 
           {/* Selection Controls */}
