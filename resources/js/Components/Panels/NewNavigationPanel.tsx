@@ -268,11 +268,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               icon: 'pi pi-sliders-h',
               command: () => {
                 if (selectedProject) {
-                  onOpenPanel(`project-settings-${selectedProject.id}`, {
-                    type: 'project-settings',
-                    title: `Project Settings (${selectedProject.name})`,
-                    projectId: selectedProject.id,
-                    projectName: selectedProject.name
+                  onOpenPanel('project-settings', {
+                    title: `Projekt-Einstellungen (${selectedProject.name})`
                   });
                 } else {
                   // If no project selected, open project management first
@@ -559,11 +556,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="p-2">
                         <button onClick={() => {
                           if (selectedProject) {
-                            onOpenPanel(`project-settings-${selectedProject.id}`, {
-                              type: 'project-settings',
-                              title: `Project Settings (${selectedProject.name})`,
-                              projectId: selectedProject.id,
-                              projectName: selectedProject.name
+                            onOpenPanel('project-settings', {
+                              title: `Projekt-Einstellungen (${selectedProject.name})`
                             });
                           } else {
                             // If no project selected, open project management first

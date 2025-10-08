@@ -185,17 +185,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       // Set the project as the current project first
       setGlobalSelectedProject(project as any);
 
-      // Open the project settings panel with unique ID and project name in title
-      const panelId = `project-settings-${project.id}`;
-      const panelData = {
-        type: 'project-settings',
-        title: `Project Settings (${project.name})`,
-        projectId: project.id,
-        projectName: project.name
-      };
-
-      console.log('🔍 Opening project settings panel:', { panelId, panelData });
-      onOpenPanel(panelId, panelData);
+      // Open the project settings panel with the current project
+      console.log('🔍 Opening project settings panel:', { project });
+      onOpenPanel('project-settings', {
+        title: `Projekt-Einstellungen (${project.name})`
+      });
     } else {
       console.warn('🔍 handleEdit called but no project or onOpenPanel:', { project, onOpenPanel: !!onOpenPanel });
     }

@@ -586,6 +586,19 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'project-settings':
+      return {
+        id,
+        title: data.title || 'Project Settings',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ProjectSettingsPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'register':
     case 'profile':
     case 'forgot':
@@ -657,22 +670,7 @@ const loadTab = (
         };
       }
 
-      // Handle project-specific settings panels (e.g., project-settings-1, project-settings-2)
-      if (id.startsWith('project-settings-')) {
-        const projectId = parseInt(id.split('-')[2]);
-
-        return {
-          id,
-          title: data.title || `Project Settings (${data.projectName || 'Project ' + projectId})`,
-          content: (
-            <Suspense fallback={<PanelLoader />}>
-              <ProjectSettingsPanel />
-            </Suspense>
-          ),
-          closable: true,
-          group: 'card custom'
-        };
-      }
+      // Note: project-settings panels are now handled by the non-project-specific case above
 
       // Better fallback - still try to load reasonable content
       if (id.startsWith('t')) {
@@ -1181,13 +1179,7 @@ export default function Index(props: IndexProps = {}) {
       return;
     }
 
-    // Handle project settings panels - set selected project before opening
-    if (panelId.startsWith('project-settings-') && data?.projectId) {
-      const projectToSet = projects.find(p => p.id === data.projectId);
-      if (projectToSet) {
-        setSelectedProject(projectToSet);
-      }
-    }
+    // Note: project-settings panels are now handled by the non-project-specific case above
 
     setTimeout(() => {
       if (!ref.current) {

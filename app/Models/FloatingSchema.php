@@ -129,8 +129,8 @@ class FloatingSchema extends Model
             return true;
         }
         
-        // Owner can always access
-        if ($this->owner_id === $user->id) {
+        // Owner can always access (force string comparison for cross-platform compatibility)
+        if ((string)$this->owner_id === (string)$user->id) {
             return true;
         }
         
