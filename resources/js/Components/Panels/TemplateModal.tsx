@@ -241,7 +241,6 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold text-gray-300">Template Dateien</h3>
                         <Button
-                            type="primary"
                             size="small"
                             icon={<PlusOutlined />}
                             disabled={!isSaved && !editingTemplate}
@@ -250,30 +249,23 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 e.preventDefault();
                                 onCreateFile();
                             }}
+                            className="p-button-primary"
                         >
                             Datei hinzufügen
                         </Button>
                     </div>
 
-                    {!isSaved && !editingTemplate && (
-                        <div className="mb-4">
-                            <Message
-                                severity="info"
-                                text="Bitte speichern Sie das Template, erst dann können Sie Dateien zum Template hinzufügen"
-                                className="w-full"
-                            />
-                        </div>
-                    )}
+                   {!isSaved && !editingTemplate && (
+                       <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                           Bitte speichern Sie das Template, erst dann können Sie Dateien zum Template hinzufügen
+                       </div>
+                   )}
 
-                    {editingTemplate && (
-                        <div className="mb-4">
-                            <Message
-                                severity="info"
-                                text="Hinweis: Dateien werden sofort dem Template zugewiesen. Änderungen an Template-Details (Name, Beschreibung, etc.) müssen separat gespeichert werden."
-                                className="w-full"
-                            />
-                        </div>
-                    )}
+                   {editingTemplate && (
+                       <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                           Hinweis: Dateien werden sofort dem Template zugewiesen. Änderungen an Template-Details (Name, Beschreibung, etc.) müssen separat gespeichert werden.
+                       </div>
+                   )}
                     
                     {templateFiles.length > 0 ? (
                         <div className="max-h-60 overflow-y-auto border border-gray-600 rounded bg-gray-700">
@@ -305,8 +297,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             </td>
                                             <td className="px-3 py-2">
                                                 <div className="flex gap-1">
-                                                    <Button 
-                                                        type="link" 
+                                                    <Button
                                                         size="small"
                                                         icon={<EditOutlined />}
                                                         onClick={(e) => {
@@ -314,10 +305,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                             e.preventDefault();
                                                             onEditFile(file);
                                                         }}
-                                                        className="text-blue-400 hover:text-blue-300"
+                                                        className="p-button-text p-button-sm text-blue-400 hover:text-blue-300"
                                                     />
-                                                    <Button 
-                                                        type="link" 
+                                                    <Button
                                                         size="small"
                                                         icon={<DeleteOutlined />}
                                                         onClick={(e) => {
@@ -325,7 +315,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                             e.preventDefault();
                                                             onDeleteFile(index);
                                                         }}
-                                                        className="text-red-400 hover:text-red-300"
+                                                        className="p-button-text p-button-danger p-button-sm text-red-400 hover:text-red-300"
                                                     />
                                                 </div>
                                             </td>

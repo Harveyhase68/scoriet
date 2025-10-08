@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('teams', function (Blueprint $table) {
-            $table->dropColumn('project_id');
+            // Prüfen, ob der Foreign Key existiert, bevor man ihn löscht
+            if (Schema::hasColumn('teams', 'project_id')) {
+                $table->dropForeign(['project_id']);
+                $table->dropColumn('project_id');
+            }
         });
     }
 
@@ -23,7 +27,7 @@ return new class extends Migration
     {
         Schema::table('teams', function (Blueprint $table) {
             $table->unsignedBigInteger('project_id')->nullable();
-            $table->index('project_id', 'teams_project_id_foreign');
+            $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
             $table->index(['project_owner_id', 'project_id'], 'teams_project_owner_id_project_id_index');
         });
     }
