@@ -115,13 +115,13 @@ class Template extends Model
     }
 
     /**
-     * Get the assigned schema versions through project templates (legacy).
+     * Get the assigned schema versions through project templates (legacy - DEPRECATED).
+     * This relationship is no longer used and always returns empty.
      */
     public function schemaVersions()
     {
-        return $this->belongsToMany(SchemaVersion::class, 'project_templates')
-            ->withPivot('is_enabled', 'template_config')
-            ->withTimestamps();
+        return $this->belongsToMany(SchemaVersion::class, 'project_template_usage')
+            ->whereRaw('1 = 0'); // Always return empty - legacy relationship
     }
 
     /**
