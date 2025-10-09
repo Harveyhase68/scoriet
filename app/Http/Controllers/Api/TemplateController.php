@@ -271,6 +271,52 @@ class TemplateController extends Controller
     }
 
     /**
+     * Remove template from project (legacy endpoint for schema-versions)
+     */
+    public function removeFromProject($schemaId, $templateId): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Cast to integers to ensure proper comparison
+        $projectId = (int) $schemaId;
+        $templateId = (int) $templateId;
+
+        $project = Project::find($projectId);
+        $template = Template::find($templateId);
+
+        if (!$project) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (!$template) {
+            return response()->json(['message' => 'Template not found'], 404);
+        }
+
+        // Check permissions
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized to access this project'], 403);
+        }
+
+        // Find and deactivate the template usage (using strict integer comparison)
+        $usage = ProjectTemplateUsage::where('project_id', $projectId)
+            ->where('template_id', $templateId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$usage) {
+            return response()->json(['message' => 'Template is not assigned to this project'], 404);
+        }
+
+        // Deactivate the usage (soft delete)
+        $usage->update(['is_active' => false]);
+
+        return response()->json([
+            'message' => 'Template removed from project successfully',
+            'success' => true,
+        ]);
+    }
+
+    /**
      * Remove template usage from project
      */
     public function removeUsage(Request $request): JsonResponse
