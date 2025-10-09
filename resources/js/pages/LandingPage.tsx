@@ -185,12 +185,18 @@ export default function LandingPage() {
   };
 
   const handleLogout = () => {
-    // Clear tokens from both storages
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('auth_token'); // if using different key
-    sessionStorage.removeItem('access_token');
-    sessionStorage.removeItem('refresh_token');
+    // Clear all sessionStorage
+    sessionStorage.clear();
+
+    // Clear all localStorage (including layout, navigation state, etc.)
+    localStorage.clear();
+
+    // Set logout flag after clearing (to prevent login modal popup in app)
+    localStorage.setItem('logout_in_progress', 'true');
+
+    // Clear cookies
+    document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
     setUserData(null);
     setIsAuthenticated(false);
     window.location.reload();

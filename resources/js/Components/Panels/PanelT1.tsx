@@ -254,6 +254,18 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
     };
 
     loadProjectData();
+    
+    // Listen for team changes
+    const handleTeamChange = () => {
+      console.log('🚀 Team change detected, refreshing navigation tree...');
+      loadProjectData();
+    };
+    
+    window.addEventListener('teamChanged', handleTeamChange);
+    
+    return () => {
+      window.removeEventListener('teamChanged', handleTeamChange);
+    };
   }, []);
 
   const toggleNode = (nodeId: string) => {
@@ -290,7 +302,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           const panelData = {
             type: 'project',
-            title: `Project: ${actualProjectName}`,
+            title: `Project Management: ${actualProjectName}`,
             projectId: node.projectId,
             projectName: actualProjectName,
             actualProjectName: actualProjectName,
@@ -310,9 +322,12 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         break;
       case 'team':
         if (onOpenPanel) {
-          onOpenPanel('team-management', {
+          // Create unique panel ID based on project to allow multiple team panels
+          const uniqueTeamPanelId = `team-management-project-${node.projectId}`;
+
+          onOpenPanel(uniqueTeamPanelId, {
             type: 'team-management',
-            title: `Team Management: ${node.name}`,
+            title: `Team Management`, // Will be updated by the panel itself
             projectId: node.projectId,
             teamId: node.teamId,
             teamName: node.name,

@@ -128,9 +128,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   useEffect(() => {
     if (filterByProject && updateTabTitle) {
       if (forcedProject) {
-        updateTabTitle(`Teams - ${forcedProject.name}`);
+        updateTabTitle(`Team Management: ${forcedProject.name}`);
       } else if (selectedProject) {
-        updateTabTitle(`Teams - ${selectedProject.name}`);
+        updateTabTitle(`Team Management: ${selectedProject.name}`);
       }
     }
   }, [filterByProject, updateTabTitle, selectedProject, forcedProject]);

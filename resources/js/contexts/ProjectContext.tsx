@@ -19,6 +19,8 @@ interface Project {
   applications_count?: number;
   is_owner?: boolean;
   can_join?: boolean;
+  default_language?: string;
+  enabled_languages?: string[];
   owner: {
     id: number;
     name: string;
