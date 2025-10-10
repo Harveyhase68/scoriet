@@ -110,8 +110,21 @@ export interface Translations {
   allRightsReserved: string;
 
   //LoginModal.tsx
-  DemoTextHeader: string;
-
+  LoginDemoTextHeader: string;
+  LoginDemoDescription: string;
+  LoginDemoAdmin: string;
+  LoginDemoUser: string;
+  LoginToolTip: string;
+  LoginEmailOrUserName: string;
+  LoginEmailOrUserNameHint: string;
+  LoginPassword: string;
+  LoginPasswordHint: string;
+  LoginStayLoggedIn: string;
+  LoginStayLoggedInTooltip: string;
+  LoginButton: string;
+  LoginDoLogin: string;
+  LoginRegister: string;
+  LoginForgotPassword: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -199,7 +212,21 @@ const translations: Record<SupportedLanguage, Translations> = {
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Terms of Service',
     allRightsReserved: 'All rights reserved',
-    DemoTextHeader: 'Demo mode available',
+    LoginDemoTextHeader: 'Demo mode available',
+    LoginDemoDescription: 'Test Scoriet without registration with ready-made demo data:',
+    LoginDemoAdmin: '- Full access, 2 teams, 3 projects',
+    LoginDemoUser: '- Team member, assigned 1 project',
+    LoginToolTip: 'Click cards above for instant demo or enter demo username manually (leave password empty) - Demo restarts every 20 minutes',
+    LoginEmailOrUserName: 'E-Mail or Username',
+    LoginEmailOrUserNameHint: 'email@example.com od username',
+    LoginPassword: 'Password',
+    LoginPasswordHint: 'Your Password',
+    LoginStayLoggedIn: 'Stay logged in (30 days)',
+    LoginStayLoggedInTooltip: 'You will remain logged in even after closing the browser',
+    LoginButton: 'Login',
+    LoginDoLogin: 'Logging in...',
+    LoginRegister: 'Don\'t have an account? Register',
+    LoginForgotPassword: 'Forgot password?',
   },
   de: {
     login: 'Anmelden',
@@ -286,7 +313,21 @@ const translations: Record<SupportedLanguage, Translations> = {
     termsOfService: 'Nutzungsbedingungen',
     allRightsReserved: 'Alle Rechte vorbehalten',
 
-    DemoTextHeader: 'Demo-Modus verfügbar',
+    LoginDemoTextHeader: 'Demo-Modus verfügbar',
+    LoginDemoDescription: 'Testen Sie Scoriet ohne Registrierung mit vorgefertigten Demodaten:',
+    LoginDemoAdmin: '- Vollzugriff, 2 Teams, 3 Projekte',
+    LoginDemoUser: '- Teammitglied, 1 Projekt zugewiesen',
+    LoginToolTip: 'Klicken Sie oben auf die Karten, um eine sofortige Demo zu erhalten, oder geben Sie den Demo-Benutzernamen manuell ein (lassen Sie das Passwort leer) - die Demo wird alle 20 Minuten neu gestartet',
+    LoginEmailOrUserName: 'E-Mail oder Username',
+    LoginEmailOrUserNameHint: 'email@example.com oder username',
+    LoginPassword: 'Passwort',
+    LoginPasswordHint: 'Ihr Passwort',
+    LoginStayLoggedIn: 'Angemeldet bleiben (30 Tage)',
+    LoginStayLoggedInTooltip: 'Sie bleiben auch nach dem Schließen des Browsers angemeldet',
+    LoginButton: 'Login',
+    LoginDoLogin: 'Anmelden...',
+    LoginRegister: 'Sie haben noch kein Konto? Registrieren',
+    LoginForgotPassword: 'Passwort vergessen?',
   },
   fr: {
     login: 'Connexion',
@@ -373,7 +414,22 @@ const translations: Record<SupportedLanguage, Translations> = {
     termsOfService: 'Conditions d\'utilisation',
     allRightsReserved: 'Tous droits réservés',
 
-    DemoTextHeader: 'Mode démo disponible',
+    LoginDemoTextHeader: 'Mode démo disponible',
+    LoginDemoDescription: 'Testez Scoriet sans inscription avec des données de démonstration prêtes à l\'emploi :',
+    LoginDemoAdmin: '- Accès complet, 2 équipes, 3 projets',
+    LoginDemoUser: '- Membre de l\'équipe, affecté à 1 projet',
+    LoginToolTip: 'Cliquez sur les cartes ci-dessus pour une démonstration instantanée ou saisissez le nom d\'utilisateur de démonstration manuellement (laissez le mot de passe vide) - La démonstration redémarre toutes les 20 minutes',
+    LoginEmailOrUserName: 'E-mail ou nom d\'utilisateur',
+    LoginEmailOrUserNameHint: 'email@exemple.com ou nom d\'utilisateur',
+    LoginPassword: 'Mot de passe',
+    LoginPasswordHint: 'Votre mot de passe',
+    LoginStayLoggedIn: 'Rester connecté (30 jours)',
+    LoginStayLoggedInTooltip: 'Vous resterez connecté même après la fermeture du navigateur',
+    LoginButton: 'Connexion',
+    LoginDoLogin: 'Connexion...',
+    LoginRegister: 'Vous n\'avez pas de compte ? Inscrivez-vous',
+    LoginForgotPassword: 'Mot de passe oublié?',
+    
   },
   es: {
     login: 'Iniciar sesión',
@@ -460,7 +516,22 @@ const translations: Record<SupportedLanguage, Translations> = {
     termsOfService: 'Términos de servicio',
     allRightsReserved: 'Todos los derechos reservados',
 
-    DemoTextHeader: 'Modo de demostración disponible',
+    LoginDemoTextHeader: 'Modo de demostración disponible',
+    LoginDemoDescription: 'Pruebe Scoriet sin registro con datos de demostración listos para usar:',
+    LoginDemoAdmin: '- Acceso completo, 2 equipos, 3 proyectos',
+    LoginDemoUser: '- Miembro del equipo, asignado 1 proyecto',
+    LoginToolTip: 'Haga clic en las tarjetas de arriba para obtener una demostración instantánea o ingrese el nombre de usuario de la demostración manualmente (deje la contraseña vacía). La demostración se reinicia cada 20 minutos.',
+    LoginEmailOrUserName: 'Correo electrónico o nombre de usuario',
+    LoginEmailOrUserNameHint: 'correo email@example.com o nombre de usuario',
+    LoginPassword: 'Contraseña',
+    LoginPasswordHint: 'Tu contraseña',
+    LoginStayLoggedIn: 'Mantener la sesión iniciada (30 días)',
+    LoginStayLoggedInTooltip: 'Permanecerá conectado incluso después de cerrar el navegador.',
+    LoginButton: 'Acceso',
+    LoginDoLogin: 'Iniciando sesión...',
+    LoginRegister: '¿No tienes una cuenta? Regístrate',
+    LoginForgotPassword: '¿Has olvidado tu contraseña?',
+    
   },
   it: {
     login: 'Accedi',
@@ -547,7 +618,22 @@ const translations: Record<SupportedLanguage, Translations> = {
     termsOfService: 'Termini di servizio',
     allRightsReserved: 'Tutti i diritti riservati',
 
-    DemoTextHeader: 'Modalità demo disponibile',
+    LoginDemoTextHeader: 'Modalità demo disponibile',
+    LoginDemoDescription: 'Prova Scoriet senza registrazione con dati demo già pronti:',
+    LoginDemoAdmin: '- Accesso completo, 2 team, 3 progetti',
+    LoginDemoUser: '- Membro del team, assegnato 1 progetto',
+    LoginToolTip: 'Fai clic sulle carte sopra per una demo immediata o inserisci manualmente il nome utente demo (lascia la password vuota). La demo si riavvia ogni 20 minuti.',
+    LoginEmailOrUserName: 'E-mail o nome utente',
+    LoginEmailOrUserNameHint: 'email@example.com o nome utente',
+    LoginPassword: 'Parola d\'ordine',
+    LoginPasswordHint: 'La tua password',
+    LoginStayLoggedIn: 'Rimani connesso (30 giorni)',
+    LoginStayLoggedInTooltip: 'Rimarrai connesso anche dopo aver chiuso il browser',
+    LoginButton: 'Accesso',
+    LoginDoLogin: 'Accesso in corso...',
+    LoginRegister: 'Non hai un account? Registrati',
+    LoginForgotPassword: 'Ha dimenticato la password?',
+
   },
 };
 
