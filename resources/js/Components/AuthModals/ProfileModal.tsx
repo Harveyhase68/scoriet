@@ -7,6 +7,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
 import { Dropdown } from 'primereact/dropdown';
+import { Message } from 'primereact/message';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/utils/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 
@@ -31,6 +32,19 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   // Get current language for translations
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Listen for language changes from other components
+  useEffect(() => {
+    const handleLanguageChangeEvent = (event: CustomEvent) => {
+      setCurrentLanguage(event.detail.language);
+    };
+
+    window.addEventListener('languageChanged', handleLanguageChangeEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('languageChanged', handleLanguageChangeEvent as EventListener);
+    };
+  }, []);
 
   // Add CSS for dark theme dropdown styling
   React.useEffect(() => {
@@ -174,6 +188,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       setProfileSuccess(t.profileUpdateSuccess);
 
+      // Automatisch schließen nach 1.5 Sekunden
+      setTimeout(() => {
+        handleHide();
+      }, 500);
+
     } catch {
       setProfileError(_ instanceof Error ? _.message : 'Profile update error');
     } finally {
@@ -190,6 +209,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       setStoredLanguage(language);
       // Update current language for immediate UI update
       setCurrentLanguage(language);
+
+      // Notify all components about language change
+      window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
 
       // Also save to backend
       const token = localStorage.getItem('access_token');

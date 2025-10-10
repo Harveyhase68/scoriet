@@ -102,8 +102,8 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
             const projectData = await response.json();
             setForcedProject(projectData);
           }
-        } catch (error) {
-          console.error('Error loading forced project:', error);
+        } catch {
+          // Error loading forced project
         }
       };
       loadForcedProject();
@@ -205,7 +205,6 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   // When projectId changes, reload project teams
   useEffect(() => {
     if (projectId) {
-      console.log('🔍 TeamsPanel: Loading teams for projectId:', projectId, 'forceProjectId:', forceProjectId);
       loadProjectTeams(projectId);
     } else if (!loading && source === 'menu') {
       // No project selected, show all teams as available (only in menu mode)
@@ -216,7 +215,6 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       });
     } else if (source === 'project-management' && selectedProject && !forceProjectId) {
       // In project-management mode, use selected project if no forceProjectId
-      console.log('🔍 TeamsPanel: Using selected project for project-management:', selectedProject.id);
       loadProjectTeams(selectedProject.id);
     }
   }, [projectId, loadProjectTeams, forceProjectId, loading, source, selectedProject]);

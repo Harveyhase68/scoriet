@@ -92,16 +92,10 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       if (response.ok) {
         const data = await response.json();
 
-        console.log('🔍 ProjectContext: Raw API response:', data);
-        console.log('🔍 ProjectContext: Projects array:', data.projects);
-        console.log('🔍 ProjectContext: Project names:', (data.projects || []).map((p: any) => ({ id: p.id, name: p.name })));
-
         const projectsArray = data.projects || [];
-        console.log('🔍 ProjectContext: Setting projects:', projectsArray.length, 'projects');
-        
+
         // Filter out projects without an ID
         const validProjects = projectsArray.filter((p: Project) => p.id);
-        console.log('🔍 ProjectContext: Valid projects:', validProjects.length, 'projects');
         setProjects(validProjects);
         
         // Try to restore saved project, use preferred project, or auto-select first

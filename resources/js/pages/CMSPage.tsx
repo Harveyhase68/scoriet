@@ -32,6 +32,32 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   const handleLanguageChange = (language: SupportedLanguage) => {
     setCurrentLanguage(language);
     setStoredLanguage(language);
+
+    // Notify all components about language change
+    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
+
+    // ONLY redirect if we are actually on a CMS page (not on /app or /)
+    // Redirect to the same page but with the new language in the URL
+    // Example: /de/help -> /en/help
+    const currentPath = window.location.pathname;
+
+    // Skip redirect if we're on /app or homepage
+    if (currentPath === '/app' || currentPath === '/' || currentPath === '') {
+      return;
+    }
+
+    const pathSegments = currentPath.split('/').filter(segment => segment !== '');
+
+    // Check if the first segment is a language code (de, en, es, fr, it)
+    const supportedLangCodes = ['de', 'en', 'es', 'fr', 'it'];
+    if (pathSegments.length > 0 && supportedLangCodes.includes(pathSegments[0])) {
+      // Replace the language segment with the new language
+      pathSegments[0] = language;
+      const newPath = '/' + pathSegments.join('/');
+
+      // Navigate to the new URL
+      window.location.href = newPath;
+    }
   };
 
   // Check if this is a demo installation

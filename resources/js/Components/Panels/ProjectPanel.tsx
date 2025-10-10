@@ -180,18 +180,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const handleEdit = async (projectToEdit?: Project) => {
     const project = projectToEdit || currentProject;
     if (project && onOpenPanel) {
-      console.log('🔍 ProjectPanel handleEdit called:', { project, projectId: project.id, projectName: project.name });
-
       // Set the project as the current project first
       setGlobalSelectedProject(project as any);
 
       // Open the project settings panel with the current project
-      console.log('🔍 Opening project settings panel:', { project });
       onOpenPanel('project-settings', {
         title: `Projekt-Einstellungen (${project.name})`
       });
-    } else {
-      console.warn('🔍 handleEdit called but no project or onOpenPanel:', { project, onOpenPanel: !!onOpenPanel });
     }
   };
 

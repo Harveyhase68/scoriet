@@ -44,6 +44,9 @@ export default function LandingPage() {
   const handleLanguageChange = (language: SupportedLanguage) => {
     setCurrentLanguage(language);
     setStoredLanguage(language);
+
+    // Notify all components about language change
+    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
   };
 
   // Check if this is a demo installation

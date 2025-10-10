@@ -354,9 +354,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                         // Load template files for the new template
                         try {
-                            const filesResponse = await api.getTemplateFiles(newTemplate.id);
-                            if (filesResponse.success) {
-                                setTemplateFiles(filesResponse.files || []);
+                            const templateResponse = await api.getTemplate(newTemplate.id);
+                            if (templateResponse.success) {
+                                setTemplateFiles(templateResponse.template.files || []);
                             }
                         } catch {
                             // Files loading error - not critical
@@ -804,10 +804,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 ]}
                 width={800}
                 style={{ top: 20 }}
-                bodyStyle={{
-                    maxHeight: 'calc(100vh - 200px)',
-                    overflowY: 'auto',
-                    padding: '24px'
+                styles={{
+                    body: {
+                        maxHeight: 'calc(100vh - 200px)',
+                        overflowY: 'auto',
+                        padding: '24px'
+                    }
                 }}
                 className="dark-modal"
                 modalRender={(modal) => (
@@ -871,10 +873,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     </Button>,
                     <Button
                         key="clone"
-                        type="primary"
                         onClick={handleCloneSubmit}
                         disabled={nameExists || !cloneName.trim() || nameCheckLoading}
                         loading={nameCheckLoading}
+                        className="p-button-primary"
                         style={{
                             backgroundColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,
                             borderColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,

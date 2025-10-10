@@ -9,6 +9,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,6 +50,11 @@ interface Template {
 
 export default function PanelT3() {
   const { selectedProject } = useProject();
+
+  // Language state
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [assignedTemplates, setAssignedTemplates] = useState<Template[]>([]);
   const [availableTemplates, setAvailableTemplates] = useState<Template[]>([]);
@@ -142,6 +148,19 @@ export default function PanelT3() {
       setError(error instanceof Error ? error.message : 'Error loading project templates');
     }
   }, [selectedProject, templates]);
+
+  // Listen for language changes
+  useEffect(() => {
+    const handleLanguageChange = (event: CustomEvent) => {
+      setCurrentLanguage(event.detail.language);
+    };
+
+    window.addEventListener('languageChanged', handleLanguageChange as EventListener);
+
+    return () => {
+      window.removeEventListener('languageChanged', handleLanguageChange as EventListener);
+    };
+  }, []);
 
   // Load templates on mount and when project changes
   useEffect(() => {
@@ -289,26 +308,26 @@ export default function PanelT3() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-              <p className="text-gray-300">Loading templates...</p>
+              <p className="text-gray-300">{t.templatesLoadingText}</p>
             </div>
           </div>
         ) : (
           <>
             {/* Header */}
-            <Card title={selectedProject ? `Templates Assignment - ${selectedProject.name}` : "Templates Assignment"} className="m-4 mb-2">
+            <Card title={selectedProject ? `${t.templatesAssignmentTitle} - ${selectedProject.name}` : t.templatesAssignmentTitle} className="m-4 mb-2">
           <div className="flex flex-col gap-4">
             {/* Project Info */}
             {selectedProject && (
               <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
                 <i className="pi pi-briefcase"></i>
-                <span>Working on: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
+                <span>{t.templatesWorkingOn}: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
               </div>
             )}
             
             {!selectedProject && (
               <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
                 <i className="pi pi-exclamation-triangle"></i>
-                <span>Please select a project from the navigation to manage templates</span>
+                <span>{t.templatesSelectProjectHint}</span>
               </div>
             )}
 
@@ -318,7 +337,7 @@ export default function PanelT3() {
                 <InputText
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search templates..."
+                  placeholder={t.templatesSearchPlaceholder}
                   className="w-full"
                 />
               </div>
@@ -330,7 +349,7 @@ export default function PanelT3() {
                 }}
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Filter by category"
+                placeholder={t.templatesFilterCategory}
                 className="w-48"
               />
             </div>
@@ -355,7 +374,7 @@ export default function PanelT3() {
                     key={`templates-table-${selectedProject?.id || 'no-project'}-${selectedTemplateIds.join('-')}-${assignedTemplates.length}-${filteredAvailableTemplates.length}`}
                     value={[...(assignedTemplates || []), ...filteredAvailableTemplates]}
                     className="p-datatable-sm"
-                    emptyMessage="No templates found"
+                    emptyMessage={t.templatesNoTemplatesFound}
                     paginator
                     rows={10}
                     rowsPerPageOptions={[5, 10, 20]}
@@ -367,7 +386,7 @@ export default function PanelT3() {
                           Templates ({(assignedTemplates || []).length + filteredAvailableTemplates.length})
                         </span>
                         <div className="text-sm text-gray-500">
-                          {selectedTemplateIds.length > 0 && `${selectedTemplateIds.length} selected`}
+                          {selectedTemplateIds.length > 0 && `${selectedTemplateIds.length} ${t.templatesSelectedCount}`}
                         </div>
                       </div>
                     }
@@ -401,7 +420,7 @@ export default function PanelT3() {
                             <Button
                               icon="pi pi-times"
                               className="p-button-rounded p-button-text p-button-sm p-button-danger"
-                              tooltip="Remove from project"
+                              tooltip={t.templatesRemoveFromProject}
                               onClick={() => handleRemoveTemplate(template.id)}
                             />
                           );
@@ -422,33 +441,33 @@ export default function PanelT3() {
                         }
                       }}
                     />
-                    
-                    <Column field="name" header="Template Name" sortable />
-                    <Column field="description" header="Description" />
-                    <Column 
-                      field="category" 
-                      header="Category" 
+
+                    <Column field="name" header={t.templatesColumnName} sortable />
+                    <Column field="description" header={t.templatesColumnDescription} />
+                    <Column
+                      field="category"
+                      header={t.templatesColumnCategory} 
                       body={(template) => (
                         <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
                           {template.category}
                         </span>
                       )}
                     />
-                    <Column field="language" header="Language" />
-                    <Column 
-                      field="is_active" 
-                      header="Status"
+                    <Column field="language" header={t.templatesColumnLanguage} />
+                    <Column
+                      field="is_active"
+                      header={t.templatesColumnStatus}
                       body={(template) => (
                         <span className={`px-2 py-1 rounded text-xs ${
                           template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
                         }`}>
-                          {template.is_active ? 'Active' : 'Inactive'}
+                          {template.is_active ? t.templatesStatusActive : t.templatesStatusInactive}
                         </span>
                       )}
                     />
-                    <Column 
-                      field="created_at" 
-                      header="Created"
+                    <Column
+                      field="created_at"
+                      header={t.templatesColumnCreated}
                       body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
                     />
                   </DataTable>
@@ -457,17 +476,17 @@ export default function PanelT3() {
                   {selectedTemplateIds.length > 0 && (
                     <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
                       <div className="text-sm text-gray-500">
-                        {selectedTemplateIds.length} template{selectedTemplateIds.length !== 1 ? 's' : ''} selected
+                        {selectedTemplateIds.length} template{selectedTemplateIds.length !== 1 ? 's' : ''} {t.templatesSelectedCount}
                       </div>
                       <div className="flex space-x-2">
                         <Button
-                          label="Clear Selection"
+                          label={t.templatesClearSelection}
                           icon="pi pi-times"
                           onClick={() => setSelectedTemplateIds([])}
                           className="p-button-text"
                         />
                         <Button
-                          label={`Assign Templates (${selectedTemplateIds.length})`}
+                          label={`${t.templatesAssignButton} (${selectedTemplateIds.length})`}
                           icon="pi pi-check"
                           onClick={handleAssignTemplates}
                           disabled={!selectedProject || assigningTemplates}
