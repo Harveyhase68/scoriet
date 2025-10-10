@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
+import { Message } from 'primereact/message';
+import { getTranslations, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
 
 interface LoginModalProps {
   visible: boolean;
@@ -32,9 +33,29 @@ export default function LoginModal({
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState<string>('');
 
-  // Language state
-  const [currentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
-  const { t } = useTranslation(currentLanguage);
+  // Sync language with lobby (from localStorage)
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+
+  // Listen for language changes from lobby
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newLang = getStoredLanguage();
+      if (newLang !== currentLanguage) {
+        setCurrentLanguage(newLang);
+      }
+    };
+
+    // Check for language changes every time the modal becomes visible
+    if (visible) {
+      handleStorageChange();
+    }
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [visible, currentLanguage]);
+
+  // Use useMemo to recalculate translations when language changes
+  const t = React.useMemo(() => getTranslations(currentLanguage), [currentLanguage]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,9 +218,9 @@ export default function LoginModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <Message 
-            severity="error" 
-            text={error} 
+          <Message
+            severity="error"
+            text={error}
             className="w-full"
           />
         )}

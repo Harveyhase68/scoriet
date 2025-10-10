@@ -229,6 +229,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           });
 
           loadTeams();
+
+          // Notify NavigationPanel to refresh teams
+          window.dispatchEvent(new CustomEvent('teamChanged'));
         } catch (error) {
           // Error deleting team
           toast.current?.show({
@@ -256,6 +259,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       detail: editingTeam ? 'Team updated successfully' : 'Team created successfully',
       life: 3000
     });
+
+    // Notify NavigationPanel to refresh teams
+    window.dispatchEvent(new CustomEvent('teamChanged'));
   };
 
   const onMembersSaved = () => {

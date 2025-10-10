@@ -35,9 +35,9 @@ export default function LanguageSelector({
         );
       case 'compact':
         return (
-          <span className="flex items-center space-x-1">
+          <span className="flex items-center space-x-2">
             <CSSFlag country={currentLang.code === 'en' ? 'us' : currentLang.code} size="sm" />
-            <span className="text-xs uppercase font-semibold">{currentLang.code}</span>
+            <span className="uppercase font-medium">{currentLang.code}</span>
           </span>
         );
       default:
@@ -62,8 +62,8 @@ export default function LanguageSelector({
         style={{
           borderRadius: '8px',
           minWidth: variant === 'flag-only' ? '40px' : 'auto',
-          paddingTop: '10px',
-          paddingBottom: '10px'
+          paddingTop: '6px',
+          paddingBottom: '6px'
         }}
         aria-label="Select Language"
         tooltip="Select Language"
