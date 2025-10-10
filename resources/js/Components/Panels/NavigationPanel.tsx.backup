@@ -282,15 +282,12 @@ export default function NavigationPanel({ onOpenPanel, onOpenModal }: ExtendedNa
           break;
         case "import-sql":
           // TODO: Open SQL import dialog
-          console.log('Opening SQL import');
           break;
         case "import-schema":
           // TODO: Open schema import dialog
-          console.log('Opening schema import');
           break;
         case "export-schema":
           // TODO: Open schema export dialog
-          console.log('Opening schema export');
           break;
       }
     }
