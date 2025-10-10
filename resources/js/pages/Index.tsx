@@ -230,6 +230,39 @@ const loadTab = (
 ) => {
   const { id } = data;
 
+  // Handle dynamic team-management panel IDs (e.g., team-management-project-5, team-management-project-5-filtered)
+  if (id.startsWith('team-management-project-')) {
+    const teamTabKey = id;
+
+    if (!window._tabData) window._tabData = {};
+
+    if (data.filterByProject !== undefined || data.forceProjectId !== undefined || updateTitleCallback) {
+      window._tabData[teamTabKey] = {
+        filterByProject: data.filterByProject,
+        forceProjectId: data.forceProjectId,
+        title: data.title,
+        updateTitleCallback: updateTitleCallback
+      } as any;
+    }
+
+    const teamStoredData = window._tabData[teamTabKey] || {};
+    const teamShouldShowProjectFilter = teamStoredData.filterByProject === true;
+    const teamForceProjectId = teamStoredData.forceProjectId as number | undefined;
+    const teamActualUpdateTitleCallback = teamStoredData.updateTitleCallback || updateTitleCallback;
+
+    return {
+      id,
+      title: data.title || 'Team Verwaltung',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
   switch (id) {
     case 'home':
     case 'landing':
@@ -1212,7 +1245,7 @@ export default function Index(props: IndexProps = {}) {
           existingTab.parent.activeId = uniqueTabId;
           // Force re-render by updating layout
           const currentLayout = ref.current.saveLayout();
-          setLayout({...currentLayout});
+          updateLayout({...currentLayout});
         }
         // Tab is already active, do nothing
         return;
@@ -1246,7 +1279,7 @@ export default function Index(props: IndexProps = {}) {
                 ]
               }
             };
-            setLayout(updatedLayout);
+            updateLayout(updatedLayout);
           } else {
             try {
               // Add new tab to existing tabset
@@ -1274,7 +1307,7 @@ export default function Index(props: IndexProps = {}) {
                            addTabToTabset(currentLayout.maxbox);
               
               if (added) {
-                setLayout({...currentLayout});
+                updateLayout({...currentLayout});
               } else {
                 // Fallback: create new tabset
                 const updatedLayout = {
@@ -1293,7 +1326,7 @@ export default function Index(props: IndexProps = {}) {
                     ]
                   }
                 };
-                setLayout(updatedLayout);
+                updateLayout(updatedLayout);
               }
             } catch {
               // Error in layout modification
@@ -1314,14 +1347,14 @@ export default function Index(props: IndexProps = {}) {
                   ]
                 }
               };
-              setLayout(updatedLayout);
+              updateLayout(updatedLayout);
             }
           }
         }
       }
     }, 50);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, projects, selectedProject, setSelectedProject]); // Other dependencies would cause infinite loop
+  }, [isAuthenticated, projects, selectedProject, setSelectedProject, updateLayout]); // Other dependencies would cause infinite loop
 
   // Handle opening designer with pre-selected schema
   const handleOpenDesigner = useCallback((schemaId: number, schemaName?: string) => {

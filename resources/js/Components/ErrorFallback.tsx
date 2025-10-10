@@ -9,6 +9,15 @@ interface ErrorFallbackProps {
 }
 
 export default function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
+  const handleReloadWithReset = () => {
+    // Clear all storage to reset the app completely
+    sessionStorage.clear();
+    localStorage.clear();
+
+    // Reload the page
+    window.location.reload();
+  };
+
   return (
     <div className="h-full bg-gray-800 text-gray-100 p-4">
       <Card className="h-full bg-gray-700 border-gray-600">
@@ -53,17 +62,21 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
             />
 
             <Button
-              label="Seite neu laden"
+              label="Seite neu laden & Reset"
               icon="pi pi-replay"
-              onClick={() => window.location.reload()}
-              className="bg-gray-600 hover:bg-gray-700"
+              onClick={handleReloadWithReset}
+              className="bg-orange-600 hover:bg-orange-700"
               outlined
             />
           </div>
 
           <div className="text-xs text-gray-400 max-w-md">
-            Tipp: Wenn das Problem weiterhin besteht, versuchen Sie die Seite neu zu laden
-            oder kontaktieren Sie den Support.
+            <p className="mb-2">
+              <strong className="text-orange-400">Hinweis:</strong> Der "Reset" Button löscht alle lokalen Daten (Layout, Einstellungen) und startet die App neu.
+            </p>
+            <p>
+              Tipp: Wenn das Problem weiterhin besteht, kontaktieren Sie den Support.
+            </p>
           </div>
         </div>
       </Card>

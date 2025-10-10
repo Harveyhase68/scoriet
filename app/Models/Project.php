@@ -436,6 +436,25 @@ class Project extends Model
      */
     public function linkTemplate(Template $template, ?string $alias = null, ?array $config = null): ProjectTemplateUsage
     {
+        // Check if a usage record already exists (active or inactive)
+        $existingUsage = ProjectTemplateUsage::where('project_id', $this->id)
+            ->where('template_id', $template->id)
+            ->first();
+
+        if ($existingUsage) {
+            // Reactivate existing usage
+            $existingUsage->update([
+                'is_active' => true,
+                'usage_type' => 'linked',
+                'alias' => $alias,
+                'config' => $config,
+                'used_at' => now(),
+            ]);
+
+            return $existingUsage;
+        }
+
+        // Create new usage record
         return ProjectTemplateUsage::create([
             'project_id' => $this->id,
             'template_id' => $template->id,

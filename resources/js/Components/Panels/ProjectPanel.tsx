@@ -297,6 +297,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       });
       setSuccess('Project created successfully');
 
+      // Notify NavigationPanel to refresh projects
+      window.dispatchEvent(new CustomEvent('projectChanged'));
+
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error creating project');
     } finally {

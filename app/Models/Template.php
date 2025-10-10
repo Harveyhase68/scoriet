@@ -115,13 +115,13 @@ class Template extends Model
     }
 
     /**
-     * Get the assigned schema versions through project templates (legacy).
+     * Get the assigned schema versions through project templates (legacy - DEPRECATED).
+     * This relationship is no longer used and always returns empty.
      */
     public function schemaVersions()
     {
-        return $this->belongsToMany(SchemaVersion::class, 'project_templates')
-            ->withPivot('is_enabled', 'template_config')
-            ->withTimestamps();
+        return $this->belongsToMany(SchemaVersion::class, 'project_template_usage')
+            ->whereRaw('1 = 0'); // Always return empty - legacy relationship
     }
 
     /**
@@ -230,7 +230,7 @@ class Template extends Model
      */
     public function canBeAccessedBy($user): bool
     {
-        return $this->visibility === 'public' || $this->owner_id === $user->id;
+        return $this->visibility === 'public' || $this->owner_id == $user->id;
     }
 
     /**
@@ -240,7 +240,7 @@ class Template extends Model
     {
         // System templates can only be edited by system users (the creator)
         if ($this->is_system_template) {
-            return $user->user_type === 'system' && $this->creator_user_id === $user->id;
+            return $user->user_type === 'system' && $this->creator_user_id == $user->id;
         }
 
         // Project templates can only be edited by project members
@@ -249,7 +249,7 @@ class Template extends Model
         }
 
         // Fallback to creator check
-        return $this->creator_user_id === $user->id;
+        return $this->creator_user_id == $user->id;
     }
 
     /**
@@ -268,7 +268,7 @@ class Template extends Model
         }
 
         // Fallback to creator check
-        return $this->creator_user_id === $user->id;
+        return $this->creator_user_id == $user->id;
     }
 
     /**
@@ -299,11 +299,11 @@ class Template extends Model
     public function hasRequiredDbSchemasDependenciesSatisfied($availableSchemas): bool
     {
         $requiredSchemas = $this->dbSchemasDependencies()->wherePivot('is_required', true)->get();
-        
+
         foreach ($requiredSchemas as $requiredSchema) {
             $found = false;
             foreach ($availableSchemas as $availableSchema) {
-                if ($availableSchema->id === $requiredSchema->id || 
+                if ($availableSchema->id == $requiredSchema->id ||
                     $availableSchema->name === $requiredSchema->name) {
                     $found = true;
                     break;
@@ -313,7 +313,7 @@ class Template extends Model
                 return false;
             }
         }
-        
+
         return true;
     }
 

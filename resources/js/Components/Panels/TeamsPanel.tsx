@@ -65,7 +65,7 @@ interface TeamsPanelProps {
 export default function TeamsPanel({ filterByProject = false, source = 'menu', forceProjectId }: TeamsPanelProps) {
   const { selectedProject } = useProject();
   // Use forceProjectId if provided, otherwise use selectedProject
-  const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : undefined);
+  const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : (source === 'project-management' ? selectedProject?.id : undefined));
   const [teams, setTeams] = useState<Team[]>([]);
   const [assignedTeams, setAssignedTeams] = useState<Team[]>([]);
   const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
@@ -75,6 +75,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   const [assigningTeams, setAssigningTeams] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [removeSuccess, setRemoveSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
   // const [loadingProjects, setLoadingProjects] = useState(false);
@@ -205,8 +206,8 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   useEffect(() => {
     if (projectId) {
       loadProjectTeams(projectId);
-    } else {
-      // No project selected, show all teams as available
+    } else if (!loading && source === 'menu') {
+      // No project selected, show all teams as available (only in menu mode)
       loadAllTeams().then(allTeams => {
         setAvailableTeams(allTeams);
         setAssignedTeams([]);
@@ -216,7 +217,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       // In project-management mode, use selected project if no forceProjectId
       loadProjectTeams(selectedProject.id);
     }
-  }, [projectId, loadProjectTeams, forceProjectId]);
+  }, [projectId, loadProjectTeams, forceProjectId, loading, source, selectedProject]);
 
   const loadAllTeams = async () => {
     try {
@@ -300,8 +301,50 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       // Refresh teams data
       await loadAllTeams();
       
+      // In menu mode, also refresh project teams for each affected project
+      if (source === 'menu') {
+        for (const projectIdStr of Object.keys(selectedTeamIdsByProject)) {
+          const projectId = parseInt(projectIdStr);
+          await loadProjectTeams(projectId);
+        }
+        
+        // Update the teams state to reflect the new project assignments
+        setTeams(prev => {
+          const updatedTeams = [...prev];
+          
+          // For each project and each assigned team, update the team's projects array
+          for (const [projectIdStr, teamIds] of Object.entries(selectedTeamIdsByProject)) {
+            const projectId = parseInt(projectIdStr);
+            const project = projects.find(p => p.id === projectId);
+            
+            if (project) {
+              teamIds.forEach(teamId => {
+                const teamIndex = updatedTeams.findIndex(t => t.id === teamId);
+                if (teamIndex >= 0) {
+                  // Add the project to the team's projects array if not already there
+                  const team = updatedTeams[teamIndex];
+                  const hasProject = (team.projects || []).some(p => p.id === projectId);
+                  
+                  if (!hasProject) {
+                    updatedTeams[teamIndex] = {
+                      ...team,
+                      projects: [...(team.projects || []), { id: project.id, name: project.name }]
+                    };
+                  }
+                }
+              });
+            }
+          }
+          
+          return updatedTeams;
+        });
+      }
+      
       setSelectedTeamIdsByProject({});
       setSuccess(`${totalAssigned} teams assigned to projects successfully`);
+      
+      // Trigger navigation tree refresh
+      window.dispatchEvent(new Event('teamChanged'));
 
     } catch (error: any) {
       setError(error instanceof Error ? error.message : 'Error assigning teams');
@@ -344,11 +387,38 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       await response.json();
 
       // Move team from assigned to available
-      const removedTeam = assignedTeams.find(t => t.id === teamId);
+      const removedTeam = (assignedTeams || []).find(t => t.id === teamId);
       if (removedTeam) {
-        setAssignedTeams(prev => prev.filter(t => t.id !== teamId));
+        setAssignedTeams(prev => (prev || []).filter(t => t.id !== teamId));
         setAvailableTeams(prev => [...prev, removedTeam]);
-        setSuccess(`Team "${removedTeam.name}" removed from project successfully`);
+        setRemoveSuccess(`Team "${removedTeam.name}" removed from project successfully`);
+        
+        // Refresh the teams data to update the UI in menu mode
+        if (source === 'menu') {
+          // Update the teams state to reflect the removal from the project
+          setTeams(prev => {
+            return prev.map(team => {
+              if (team.id === teamId) {
+                // Remove the project from the team's projects array
+                return {
+                  ...team,
+                  projects: (team.projects || []).filter(p => p.id !== projectId)
+                };
+              }
+              return team;
+            });
+          });
+          
+          // Reload data from server to ensure consistency
+          loadAllTeams();
+          // Also refresh the project teams if we have a project
+          if (projectId) {
+            loadProjectTeams(projectId);
+          }
+          
+          // Trigger navigation tree refresh
+          window.dispatchEvent(new Event('teamChanged'));
+        }
       }
 
     } catch (error: any) {
@@ -384,38 +454,18 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
         ) : (
           <>
             {/* Header */}
-            <Card title={projectId ? `Teams Project Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (source === 'menu' ? "Teams Assignment" : "Project Teams")} className="m-4 mb-2">
+            <Card title={source === 'project-management' && projectId ? `Teams Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (projectId ? `Teams Project Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (source === 'menu' ? "Teams Assignment" : "Project Teams"))} className="m-4 mb-2">
           <div className="flex flex-col gap-4">
-            {/* Project Info */}
-            {projectId && (forcedProject || selectedProject) && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                <i className="pi pi-briefcase"></i>
-                <span>Working on: <strong>{(forcedProject || selectedProject).name}</strong> by {(forcedProject || selectedProject).owner.name}</span>
-              </div>
-            )}
             
-            {!projectId && source === 'menu' && (
-              <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                <i className="pi pi-exclamation-triangle"></i>
-                <span>Please select a project from the navigation to manage teams</span>
-              </div>
-            )}
+            
+            
 
-            {/* Search */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <InputText
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search teams there..."
-                  className="w-full"
-                />
-              </div>
-            </div>
+            
 
             {/* Status Messages */}
             {error && <div className="text-red-500 text-sm">{error}</div>}
             {success && <div className="text-green-500 text-sm">{success}</div>}
+            {removeSuccess && <div className="text-red-500 text-sm">{removeSuccess}</div>}
           </div>
         </Card>
 
@@ -447,13 +497,11 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                     ) : (
                       <div className="space-y-4">
                         {projects.map(project => {
-                          // Get only teams that are actually assigned to this project
-                          const allTeamsForProject = teams.filter(team => {
-                            // Check if team is assigned to this project
-                            const isAssignedToProject = team.projects?.some(p => p.id === project.id);
-                            
-                            // Only include teams that are assigned to this project
-                            return isAssignedToProject;
+                          // Get all teams (not just assigned ones) to show assignment status
+                          const allTeamsForProject = teams.filter(() => {
+                            // Include all teams owned by the current user
+                            // Teams will be marked as assigned/unassigned in the UI
+                            return true; // Show all teams, will filter by assignment status in UI
                           });
                           
                           // Filter by search query

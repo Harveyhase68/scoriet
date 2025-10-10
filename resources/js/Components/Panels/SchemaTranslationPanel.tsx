@@ -127,20 +127,33 @@ export default function SchemaTranslationPanel() {
     };
   }, [darkModeStyles]);
 
-  const fetchLanguages = async () => {
+  const fetchLanguages = React.useCallback(async () => {
     try {
-      const response = await api.request('/active-languages');
-      setLanguages(response);
-      // Pre-select all languages for export and import
-      const allCodes = response.map((lang: Language) => lang.code);
+      // First, get all active languages
+      const allLanguages = await api.request('/active-languages');
+
+      // Filter to only show languages enabled for the selected project
+      let projectLanguages = allLanguages;
+      if (selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
+        // Only show languages that are enabled for this project
+        projectLanguages = allLanguages.filter((lang: Language) =>
+          selectedProject.enabled_languages.includes(lang.code)
+        );
+      }
+
+      setLanguages(projectLanguages);
+
+      // Pre-select all project languages for export and import
+      const allCodes = projectLanguages.map((lang: Language) => lang.code);
       setSelectedLanguagesForExport(allCodes);
       setSelectedLanguagesForImport(allCodes);
+
       // Pre-select all except source language for auto-translate
       setTargetLanguagesForTranslate(allCodes.filter((code: string) => code !== 'de'));
     } catch (error: any) {
       message.error('Failed to load languages: ' + (error.response?.data?.message || error.message));
     }
-  };
+  }, [selectedProject]);
 
   const fetchSchemaStructure = React.useCallback(async () => {
     if (!selectedProject) {
@@ -186,7 +199,7 @@ export default function SchemaTranslationPanel() {
   useEffect(() => {
     fetchLanguages();
     fetchSchemaStructure();
-  }, [selectedProject, fetchSchemaStructure]);
+  }, [selectedProject, fetchSchemaStructure, fetchLanguages]);
 
   useEffect(() => {
     if (selectedItem) {

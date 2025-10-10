@@ -135,9 +135,27 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('project')
         },
         {
-          label: 'Database Management',
-          icon: 'pi pi-database',
-          command: () => onOpenPanel('database-management')
+          label: 'Settings',
+          icon: 'pi pi-cog',
+          items: [
+            {
+              label: 'Projekt-Einstellungen',
+              icon: 'pi pi-sliders-h',
+              command: () => {
+                if (selectedProject) {
+                  onOpenPanel('project-settings', {
+                    title: `Projekt-Einstellungen (${selectedProject.name})`
+                  });
+                } else {
+                  // If no project selected, open project management first
+                  onOpenPanel('project');
+                }
+              }
+            }
+          ]
+        },
+        {
+          separator: true
         },
         {
           label: 'Teams',
@@ -238,7 +256,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     },
     {
       label: 'Generator',
-      icon: 'pi pi-cog',
+      icon: 'pi pi-wrench',
       // No command here - parent items should not execute
       items: [
         {
@@ -255,44 +273,27 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: 'Query Builder',
           icon: 'pi pi-search',
           command: () => {/* Query builder - not implemented */}
-        },
-        {
-          separator: true
-        },
-        {
-          label: 'Settings',
-          icon: 'pi pi-cog',
-          items: [
-            {
-              label: 'Projekt-Einstellungen',
-              icon: 'pi pi-sliders-h',
-              command: () => {
-                if (selectedProject) {
-                  onOpenPanel('project-settings', {
-                    title: `Projekt-Einstellungen (${selectedProject.name})`
-                  });
-                } else {
-                  // If no project selected, open project management first
-                  onOpenPanel('project');
-                }
-              }
-            },
-            ...(userType === 'system' ? [
-              {
-                label: 'System Settings',
-                icon: 'pi pi-cog',
-                command: () => onOpenPanel('system-settings')
-              },
-              {
-                label: 'Language Management',
-                icon: 'pi pi-globe',
-                command: () => onOpenPanel('language-management')
-              }
-            ] : [])
-          ]
         }
       ]
-    }
+    },
+    ...(userType === 'system' ? [
+      {
+        label: 'Administration',
+        icon: 'pi pi-cog',
+        items: [
+          {
+            label: 'System Settings',
+            icon: 'pi pi-cog',
+            command: () => onOpenPanel('system-settings')
+          },
+          {
+            label: 'Language Management',
+            icon: 'pi pi-globe',
+            command: () => onOpenPanel('language-management')
+          }
+        ]
+      }
+    ] : [])
   ];
 
   // Profile menu items
@@ -324,18 +325,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: 'Logout',
           icon: 'pi pi-sign-out',
           command: () => {
-            // Set logout flag to prevent login modal popup
+            // Clear all sessionStorage
+            sessionStorage.clear();
+
+            // Clear all localStorage (including layout, navigation state, etc.)
+            localStorage.clear();
+
+            // Set logout flag after clearing (to prevent login modal popup)
             localStorage.setItem('logout_in_progress', 'true');
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('remember_me');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('access_token');
-            sessionStorage.removeItem('refresh_token');
-            sessionStorage.removeItem('user');
+
+            // Clear cookies
             document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
             setIsLoggedIn(false);
             setUserName('');
+
             // Redirect to lobby immediately
             window.location.href = '/';
           }
@@ -424,10 +428,33 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <i className="pi pi-home"></i>
                     <span>Project Management</span>
                   </button>
-                  <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-database"></i>
-                    <span>Database Management</span>
-                  </button>
+
+                  <div className="relative group/settings">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-cog"></i>
+                      <span>Settings</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Settings */}
+                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/settings:opacity-100 group-hover/settings:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button onClick={() => {
+                          if (selectedProject) {
+                            onOpenPanel('project-settings', {
+                              title: `Projekt-Einstellungen (${selectedProject.name})`
+                            });
+                          } else {
+                            onOpenPanel('project');
+                          }
+                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-sliders-h"></i>
+                          <span>Projekt-Einstellungen</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-600 my-2"></div>
+
                   <div className="relative group/teams">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-users"></i>
@@ -527,7 +554,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-cog text-gray-300" title="Generator"></i>
+                <i className="pi pi-wrench text-gray-300" title="Generator"></i>
               </button>
               {/* Popup submenu for Generator */}
               <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -544,47 +571,30 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <i className="pi pi-search"></i>
                     <span>Query Builder</span>
                   </button>
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <div className="relative group">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                      <i className="pi pi-cog"></i>
-                      <span>Settings</span>
-                      <i className="pi pi-angle-right ml-auto"></i>
-                    </button>
-                    {/* Nested submenu for Settings */}
-                    <div className="absolute left-full top-0 ml-2 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                      <div className="p-2">
-                        <button onClick={() => {
-                          if (selectedProject) {
-                            onOpenPanel('project-settings', {
-                              title: `Projekt-Einstellungen (${selectedProject.name})`
-                            });
-                          } else {
-                            // If no project selected, open project management first
-                            onOpenPanel('project');
-                          }
-                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-sliders-h"></i>
-                          <span>Projekt-Einstellungen</span>
-                        </button>
-                        {userType === 'system' && (
-                          <>
-                            <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                              <i className="pi pi-cog"></i>
-                              <span>System Settings</span>
-                            </button>
-                            <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                              <i className="pi pi-globe"></i>
-                              <span>Language Management</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
+
+            {userType === 'system' && (
+              <div className="relative group">
+                <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
+                  <i className="pi pi-cog text-gray-300" title="Administration"></i>
+                </button>
+                {/* Popup submenu for Administration */}
+                <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="p-2">
+                    <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-cog"></i>
+                      <span>System Settings</span>
+                    </button>
+                    <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-globe"></i>
+                      <span>Language Management</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

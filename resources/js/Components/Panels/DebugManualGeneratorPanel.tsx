@@ -593,7 +593,14 @@ export default function DebugManualGeneratorPanel() {
 
       if (response.ok) {
         const data = await response.json();
-        const languages = Array.isArray(data) ? data : (data.languages || data.data || []);
+        let languages = Array.isArray(data) ? data : (data.languages || data.data || []);
+
+        // Filter to only show languages enabled for the selected project
+        if (selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
+          languages = languages.filter((lang: any) =>
+            selectedProject.enabled_languages.includes(lang.code)
+          );
+        }
 
         const languageOpts = languages.map((lang: any) => ({
           label: `${lang.flag} ${lang.name}`,
@@ -610,7 +617,7 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setLanguageOptions([]);
     }
-  }, [selectedLanguage]);
+  }, [selectedLanguage, selectedProject]);
 
   // Load data on component mount
   useEffect(() => {
