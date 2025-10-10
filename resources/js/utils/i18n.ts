@@ -125,6 +125,28 @@ export interface Translations {
   LoginDoLogin: string;
   LoginRegister: string;
   LoginForgotPassword: string;
+
+  // PanelT3.tsx - Templates Panel
+  templatesLoadingText: string;
+  templatesAssignmentTitle: string;
+  templatesSearchPlaceholder: string;
+  templatesFilterCategory: string;
+  templatesCategoryAll: string;
+  templatesAssignButton: string;
+  templatesClearSelection: string;
+  templatesSelectedCount: string;
+  templatesRemoveFromProject: string;
+  templatesColumnName: string;
+  templatesColumnDescription: string;
+  templatesColumnCategory: string;
+  templatesColumnLanguage: string;
+  templatesColumnStatus: string;
+  templatesColumnCreated: string;
+  templatesStatusActive: string;
+  templatesStatusInactive: string;
+  templatesNoTemplatesFound: string;
+  templatesSelectProjectHint: string;
+  templatesWorkingOn: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -227,6 +249,28 @@ const translations: Record<SupportedLanguage, Translations> = {
     LoginDoLogin: 'Logging in...',
     LoginRegister: 'Don\'t have an account? Register',
     LoginForgotPassword: 'Forgot password?',
+
+    // PanelT3.tsx - Templates Panel
+    templatesLoadingText: 'Loading templates...',
+    templatesAssignmentTitle: 'Templates Assignment',
+    templatesSearchPlaceholder: 'Search templates...',
+    templatesFilterCategory: 'Filter by category',
+    templatesCategoryAll: 'All Categories',
+    templatesAssignButton: 'Assign Templates',
+    templatesClearSelection: 'Clear Selection',
+    templatesSelectedCount: 'selected',
+    templatesRemoveFromProject: 'Remove from project',
+    templatesColumnName: 'Template Name',
+    templatesColumnDescription: 'Description',
+    templatesColumnCategory: 'Category',
+    templatesColumnLanguage: 'Language',
+    templatesColumnStatus: 'Status',
+    templatesColumnCreated: 'Created',
+    templatesStatusActive: 'Active',
+    templatesStatusInactive: 'Inactive',
+    templatesNoTemplatesFound: 'No templates found',
+    templatesSelectProjectHint: 'Please select a project from the navigation to manage templates',
+    templatesWorkingOn: 'Working on',
   },
   de: {
     login: 'Anmelden',
@@ -328,6 +372,28 @@ const translations: Record<SupportedLanguage, Translations> = {
     LoginDoLogin: 'Anmelden...',
     LoginRegister: 'Sie haben noch kein Konto? Registrieren',
     LoginForgotPassword: 'Passwort vergessen?',
+
+    // PanelT3.tsx - Templates Panel
+    templatesLoadingText: 'Templates werden geladen...',
+    templatesAssignmentTitle: 'Template Zuweisung',
+    templatesSearchPlaceholder: 'Templates suchen...',
+    templatesFilterCategory: 'Nach Kategorie filtern',
+    templatesCategoryAll: 'Alle Kategorien',
+    templatesAssignButton: 'Templates zuweisen',
+    templatesClearSelection: 'Auswahl aufheben',
+    templatesSelectedCount: 'ausgewählt',
+    templatesRemoveFromProject: 'Aus Projekt entfernen',
+    templatesColumnName: 'Template Name',
+    templatesColumnDescription: 'Beschreibung',
+    templatesColumnCategory: 'Kategorie',
+    templatesColumnLanguage: 'Sprache',
+    templatesColumnStatus: 'Status',
+    templatesColumnCreated: 'Erstellt',
+    templatesStatusActive: 'Aktiv',
+    templatesStatusInactive: 'Inaktiv',
+    templatesNoTemplatesFound: 'Keine Templates gefunden',
+    templatesSelectProjectHint: 'Bitte wählen Sie ein Projekt aus der Navigation um Templates zu verwalten',
+    templatesWorkingOn: 'Arbeite an',
   },
   fr: {
     login: 'Connexion',
@@ -429,7 +495,29 @@ const translations: Record<SupportedLanguage, Translations> = {
     LoginDoLogin: 'Connexion...',
     LoginRegister: 'Vous n\'avez pas de compte ? Inscrivez-vous',
     LoginForgotPassword: 'Mot de passe oublié?',
-    
+
+    // PanelT3.tsx - Templates Panel
+    templatesLoadingText: 'Chargement des modèles...',
+    templatesAssignmentTitle: 'Attribution de modèles',
+    templatesSearchPlaceholder: 'Rechercher des modèles...',
+    templatesFilterCategory: 'Filtrer par catégorie',
+    templatesCategoryAll: 'Toutes les catégories',
+    templatesAssignButton: 'Attribuer des modèles',
+    templatesClearSelection: 'Effacer la sélection',
+    templatesSelectedCount: 'sélectionné',
+    templatesRemoveFromProject: 'Retirer du projet',
+    templatesColumnName: 'Nom du modèle',
+    templatesColumnDescription: 'Description',
+    templatesColumnCategory: 'Catégorie',
+    templatesColumnLanguage: 'Langue',
+    templatesColumnStatus: 'Statut',
+    templatesColumnCreated: 'Créé',
+    templatesStatusActive: 'Actif',
+    templatesStatusInactive: 'Inactif',
+    templatesNoTemplatesFound: 'Aucun modèle trouvé',
+    templatesSelectProjectHint: 'Veuillez sélectionner un projet dans la navigation pour gérer les modèles',
+    templatesWorkingOn: 'Travail sur',
+
   },
   es: {
     login: 'Iniciar sesión',
@@ -531,7 +619,29 @@ const translations: Record<SupportedLanguage, Translations> = {
     LoginDoLogin: 'Iniciando sesión...',
     LoginRegister: '¿No tienes una cuenta? Regístrate',
     LoginForgotPassword: '¿Has olvidado tu contraseña?',
-    
+
+    // PanelT3.tsx - Templates Panel
+    templatesLoadingText: 'Cargando plantillas...',
+    templatesAssignmentTitle: 'Asignación de plantillas',
+    templatesSearchPlaceholder: 'Buscar plantillas...',
+    templatesFilterCategory: 'Filtrar por categoría',
+    templatesCategoryAll: 'Todas las categorías',
+    templatesAssignButton: 'Asignar plantillas',
+    templatesClearSelection: 'Limpiar selección',
+    templatesSelectedCount: 'seleccionado',
+    templatesRemoveFromProject: 'Eliminar del proyecto',
+    templatesColumnName: 'Nombre de plantilla',
+    templatesColumnDescription: 'Descripción',
+    templatesColumnCategory: 'Categoría',
+    templatesColumnLanguage: 'Idioma',
+    templatesColumnStatus: 'Estado',
+    templatesColumnCreated: 'Creado',
+    templatesStatusActive: 'Activo',
+    templatesStatusInactive: 'Inactivo',
+    templatesNoTemplatesFound: 'No se encontraron plantillas',
+    templatesSelectProjectHint: 'Seleccione un proyecto de la navegación para gestionar plantillas',
+    templatesWorkingOn: 'Trabajando en',
+
   },
   it: {
     login: 'Accedi',
@@ -633,6 +743,28 @@ const translations: Record<SupportedLanguage, Translations> = {
     LoginDoLogin: 'Accesso in corso...',
     LoginRegister: 'Non hai un account? Registrati',
     LoginForgotPassword: 'Ha dimenticato la password?',
+
+    // PanelT3.tsx - Templates Panel
+    templatesLoadingText: 'Caricamento modelli...',
+    templatesAssignmentTitle: 'Assegnazione modelli',
+    templatesSearchPlaceholder: 'Cerca modelli...',
+    templatesFilterCategory: 'Filtra per categoria',
+    templatesCategoryAll: 'Tutte le categorie',
+    templatesAssignButton: 'Assegna modelli',
+    templatesClearSelection: 'Cancella selezione',
+    templatesSelectedCount: 'selezionato',
+    templatesRemoveFromProject: 'Rimuovi dal progetto',
+    templatesColumnName: 'Nome modello',
+    templatesColumnDescription: 'Descrizione',
+    templatesColumnCategory: 'Categoria',
+    templatesColumnLanguage: 'Lingua',
+    templatesColumnStatus: 'Stato',
+    templatesColumnCreated: 'Creato',
+    templatesStatusActive: 'Attivo',
+    templatesStatusInactive: 'Inattivo',
+    templatesNoTemplatesFound: 'Nessun modello trovato',
+    templatesSelectProjectHint: 'Seleziona un progetto dalla navigazione per gestire i modelli',
+    templatesWorkingOn: 'Lavorando su',
 
   },
 };

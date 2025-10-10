@@ -1123,7 +1123,13 @@ export default function Index(props: IndexProps = {}) {
       maxbox: removeTabsFromNode(currentLayout.maxbox)
     };
 
-    setLayout(newLayout);
+    // Clear tab data cache to prevent reopening closed tabs
+    if (window._tabData) {
+      window._tabData = {};
+    }
+
+    // Use updateLayout to save to localStorage
+    updateLayout(newLayout);
   };
 
   // Group definition - only for movable panels (moved inside component for closeAllTabs access)

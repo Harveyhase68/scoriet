@@ -116,8 +116,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             const projectData = await response.json();
             setForcedProject(projectData);
           }
-        } catch (error) {
-          console.error('Error loading forced project:', error);
+        } catch {
+          // Error loading forced project
         }
       };
       loadForcedProject();

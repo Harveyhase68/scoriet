@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
+import { Message } from 'primereact/message';
 
 interface ForgotPasswordModalProps {
   visible: boolean;

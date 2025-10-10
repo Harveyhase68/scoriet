@@ -46,19 +46,13 @@ interface TreeNode {
 // Generate tree data from projects, teams, and team members (optimized version)
 const generateProjectTreeData = async (): Promise<TreeNode[]> => {
   try {
-    console.log('🔍 Starting to generate project tree data (optimized)...');
-
     // Fetch projects with their teams in a single query
     const projects = await apiClient.getProjectsWithTeams();
-    console.log('📋 Projects with teams fetched:', projects);
 
     const treeNodes: TreeNode[] = [];
 
     for (const project of projects) {
-      console.log('🏗️ Processing project:', project.name, 'ID:', project.id);
       if (!project.id) {
-        console.warn('⚠️ Skipping project with undefined ID:', project.name);
-        console.warn('🔍 Project data structure:', project);
         continue;
       }
       const projectNode: TreeNode = {
@@ -72,12 +66,9 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
 
       // Teams are already loaded with the project
       const teams = project.teams || [];
-      console.log('👥 Teams for project:', project.name, ':', teams);
-      console.log('👥 Teams data structure:', teams.map((t: any) => ({ id: t.id, name: t.name, project_owner_id: t.project_owner_id })));
 
       if (teams.length > 0) {
         for (const team of teams) {
-          console.log('👥 Processing team:', team.name, 'ID:', team.id);
           const teamNode: TreeNode = {
             id: `team-${team.id}-project-${project.id}`, // Unique ID for each team-project combination
             name: team.name,
@@ -89,18 +80,13 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
           };
 
           // Fetch members for this team (still individual calls, but much fewer)
-          console.log('🔍 Fetching members for team:', team.name, 'Team ID:', team.id);
           if (!team.id) {
-            console.warn('⚠️ Skipping members for team with undefined ID:', team.name);
             continue;
           }
           const members = await apiClient.getTeamMembers(team.id);
-          console.log('👤 Members fetched for team:', team.name, ':', members);
-          console.log('👤 Members data structure:', members.map((m: any) => ({ user_id: m.user_id, user: m.user, name: m.name })));
 
           if (members.length > 0) {
             teamNode.children = members.map((member: any) => {
-              console.log('👤 Processing member:', member);
               return {
                 id: `member-${member.user_id}-team-${team.id}-project-${project.id}`, // Unique ID for each member-team-project combination
                 name: member.user?.name || member.name || 'Unknown User',
@@ -111,26 +97,17 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
                 children: []
               };
             });
-            console.log('✅ Added members to team:', team.name, 'Members count:', members.length);
-          } else {
-            console.log('⚠️ No members found for team:', team.name);
           }
 
           projectNode.children!.push(teamNode);
-          console.log('✅ Added team to project:', project.name);
         }
-      } else {
-        console.log('⚠️ No teams found for project:', project.name);
       }
 
       treeNodes.push(projectNode);
     }
 
-    console.log('✅ Final tree data structure:', treeNodes);
-    console.log('🚀 Performance: Used single optimized query for projects and teams');
     return treeNodes;
-  } catch (error) {
-    console.error('❌ Error generating project tree data:', error);
+  } catch {
     // Return a fallback structure for debugging
     return [
       {
@@ -239,21 +216,29 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   // Load project data on component mount
   useEffect(() => {
     const loadProjectData = async () => {
-      console.log('🚀 Starting to load project data...');
       setLoading(true);
       try {
         const data = await generateProjectTreeData();
-        console.log('📊 Setting tree data:', data);
         setTreeData(data);
-        console.log('✅ Tree data loaded successfully');
-      } catch (error) {
-        console.error('❌ Error loading project data:', error);
+      } catch {
+        // Error loading project data
       } finally {
         setLoading(false);
       }
     };
 
     loadProjectData();
+
+    // Listen for team changes
+    const handleTeamChange = () => {
+      loadProjectData();
+    };
+
+    window.addEventListener('teamChanged', handleTeamChange);
+
+    return () => {
+      window.removeEventListener('teamChanged', handleTeamChange);
+    };
   }, []);
 
   const toggleNode = (nodeId: string) => {
@@ -296,14 +281,6 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             actualProjectName: actualProjectName,
             realProjectName: actualProjectName
           };
-
-          console.log('🚀 PanelT1 calling onOpenPanel with:', {
-            panelId: uniqueProjectId,
-            data: panelData,
-            nodeName: node.name,
-            nodeId: node.id,
-            actualProjectName: actualProjectName
-          });
 
           onOpenPanel(uniqueProjectId, panelData);
         }
