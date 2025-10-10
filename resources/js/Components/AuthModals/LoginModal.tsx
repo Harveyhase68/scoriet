@@ -231,10 +231,10 @@ export default function LoginModal({
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
           <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
             <i className="pi pi-info-circle mr-2"></i>
-            {t.DemoTextHeader}
+            {t.LoginDemoTextHeader}
           </h3>
           <p className="text-blue-700 text-sm mb-3">
-            Test Scoriet without registration with ready-made demo data:
+            {t.LoginDemoDescription}
           </p>
           <div className="space-y-2">
             <button 
@@ -245,7 +245,7 @@ export default function LoginModal({
             >
               <strong className="text-blue-800">demo-admin</strong>
               <span className="text-blue-600 text-sm ml-2">
-                - Full access, 2 teams, 3 projects
+             {t. LoginDemoAdmin}
               </span>
             </button>
             <button 
@@ -256,25 +256,25 @@ export default function LoginModal({
             >
               <strong className="text-blue-800">demo-user</strong>
               <span className="text-blue-600 text-sm ml-2">
-                - Team member, assigned 1 project
+              {t.LoginDemoUser}
               </span>
             </button>
           </div>
           <p className="text-blue-600 text-xs mt-2">
-            Click cards above for instant demo or enter demo username manually (leave password empty) - Demo restarts every 20 minutes
+            {t.LoginToolTip}
           </p>
         </div>
 
         <div className="field">
           <label htmlFor="login-email" className="block text-sm font-medium mb-2">
-            E-Mail oder Username
+            {t.LoginEmailOrUserName}
           </label>
           <InputText
             id="login-email"
             type="text"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : 'email@example.com oder username'}
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : t.LoginEmailOrUserNameHint}
             className="w-full"
             disabled={loading}
             required
@@ -283,14 +283,14 @@ export default function LoginModal({
 
         <div className="field">
           <label htmlFor="login-password" className="block text-sm font-medium mb-2">
-            Passwort
+            {t.LoginPassword}
           </label>
           <Password
             id="login-password"
             inputId="login-password-input"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'Leave empty for demo' : 'Your password'}
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'Leave empty for demo' : t.LoginPassword}
             className="w-full"
             inputClassName="w-full"
             disabled={loading}
@@ -312,17 +312,17 @@ export default function LoginModal({
               className="w-4 h-4"
             />
             <label htmlFor="remember-me" className="text-sm cursor-pointer">
-              Stay logged in (30 days)
+              {t.LoginStayLoggedIn}
             </label>
           </div>
           <div className="text-xs text-gray-500 mt-1 ml-6">
-            You will remain logged in even after closing the browser
+            {t.LoginStayLoggedInTooltip}
           </div>
         </div>
 
         <Button
           type="submit"
-          label={loading ? "Logging in..." : "Login"}
+          label={loading ? t.LoginDoLogin : t.LoginButton}
           icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
           className="w-full"
           disabled={loading}
@@ -333,7 +333,7 @@ export default function LoginModal({
             <div>
               <Button
                 type="button"
-                label="Don't have an account? Register"
+                label={t.LoginRegister}
                 className="p-button-link p-button-sm"
                 onClick={() => {
                   handleHide();
@@ -345,7 +345,7 @@ export default function LoginModal({
           <div>
             <Button
               type="button"
-              label="Forgot password?"
+              label={t.LoginForgotPassword}
               className="p-button-link p-button-sm"
               onClick={() => {
                 handleHide();
