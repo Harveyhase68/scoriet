@@ -421,6 +421,71 @@ class ApiClient {
     }
   }
 
+  async getProjectTemplateUsages(projectId: number): Promise<any[]> {
+    try {
+      if (!projectId) {
+        return [];
+      }
+
+      const response = await this.request(`/projects/${projectId}/template-usages`);
+      return response.usages || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getProjectSchemas(projectId: number): Promise<any[]> {
+    try {
+      if (!projectId) {
+        return [];
+      }
+
+      const response = await this.request(`/projects/${projectId}/schemas`);
+      return response || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getSchemaVersions(schemaId: number): Promise<any[]> {
+    try {
+      if (!schemaId) {
+        return [];
+      }
+
+      const response = await this.request(`/floating-schemas/${schemaId}/versions`);
+      return response || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getVersionTables(versionId: number): Promise<any[]> {
+    try {
+      if (!versionId) {
+        return [];
+      }
+
+      const response = await this.request(`/schema-versions/${versionId}/tables`);
+      return response || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getProjectGenerationTree(projectId: number): Promise<any> {
+    try {
+      if (!projectId) {
+        return null;
+      }
+
+      const response = await this.request(`/projects/${projectId}/generation-tree`);
+      return response || null;
+    } catch {
+      return null;
+    }
+  }
+
 }
 
 export const apiClient = new ApiClient();

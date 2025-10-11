@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Models\Team;
+use App\Services\ProjectFileTreeGenerator;
 
 class ProjectController extends Controller
 {
@@ -156,6 +157,9 @@ class ProjectController extends Controller
             }
         }
 
+        // Get user's profile language to add as first project language
+        $userLanguage = $user->language ?? 'de'; // Default to 'de' if not set
+
         $project = Project::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -184,6 +188,8 @@ class ProjectController extends Controller
             'time_format' => $validated['time_format'] ?? 'H:i:s',
             'currency_symbol' => $validated['currency_symbol'] ?? '€',
             'timezone' => $validated['timezone'] ?? 'Europe/Vienna',
+            // Language settings - automatically add user's profile language
+            'enabled_languages' => [$userLanguage],
             // API Keys
             'google_translate_api_key' => $validated['google_translate_api_key'] ?? null,
         ]);
@@ -981,6 +987,52 @@ class ProjectController extends Controller
         return response()->json([
             'projects' => $projects,
             'total_projects' => $projects->count(),
+        ]);
+    }
+
+    /**
+     * Get or generate the file generation tree for a project
+     */
+    public function getGenerationTree(Project $project): JsonResponse
+    {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Check if we have a fresh tree in the database
+        $generationTree = $project->generationTree;
+
+        if (!$generationTree || $generationTree->is_stale) {
+            // Generate and save a new tree
+            $generator = new ProjectFileTreeGenerator();
+            $generationTree = $generator->generateAndSave($project);
+        }
+
+        return response()->json([
+            'tree_data' => $generationTree->tree_data,
+            'generated_at' => $generationTree->generated_at,
+            'is_stale' => $generationTree->is_stale,
+        ]);
+    }
+
+    /**
+     * Force regenerate the file generation tree for a project
+     */
+    public function regenerateTree(Project $project): JsonResponse
+    {
+        // Check if user has access to this project
+        if (!$this->userHasProjectAccess($project)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $generator = new ProjectFileTreeGenerator();
+        $generationTree = $generator->generateAndSave($project);
+
+        return response()->json([
+            'message' => 'Generation tree regenerated successfully',
+            'tree_data' => $generationTree->tree_data,
+            'generated_at' => $generationTree->generated_at,
         ]);
     }
 }
