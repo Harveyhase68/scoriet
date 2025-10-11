@@ -6,6 +6,12 @@ use Carbon\CarbonInterval;
 use Laravel\Passport\Passport;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
+use App\Models\Template;
+use App\Models\SchemaVersion;
+use App\Models\Project;
+use App\Observers\TemplateObserver;
+use App\Observers\SchemaVersionObserver;
+use App\Observers\ProjectObserver;
 
 class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthServiceProvider
 {
@@ -37,13 +43,17 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         VerifyEmail::createUrlUsing(function ($notifiable) {
             $id = $notifiable->getKey();
             $hash = sha1($notifiable->getEmailForVerification());
-            
-            return url("/verify-email/{$id}/{$hash}") . 
-                   '?expires=' . now()->addHour()->timestamp . 
-                   '&signature=' . hash_hmac('sha256', 
-                       "verify-email/{$id}/{$hash}", 
+
+            return url("/verify-email/{$id}/{$hash}") .
+                   '?expires=' . now()->addHour()->timestamp .
+                   '&signature=' . hash_hmac('sha256',
+                       "verify-email/{$id}/{$hash}",
                        config('app.key'));
         });
 
+        // Register observers for automatic generation tree regeneration
+        Template::observe(TemplateObserver::class);
+        SchemaVersion::observe(SchemaVersionObserver::class);
+        Project::observe(ProjectObserver::class);
     }
 }

@@ -59,15 +59,17 @@ interface TemplateFile {
 
 interface TemplateManagementPanelProps {
     filterByProject?: boolean; // Explicit flag to control project filtering
+    forceProjectId?: number; // Force a specific project ID (overrides selectedProject)
+    forceProjectName?: string; // Force a specific project name for the title
     updateTabTitle?: (newTitle: string) => void; // Callback to update tab title
 }
 
-const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filterByProject = false, updateTabTitle }) => {
+const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }) => {
     // Use Project Context to get current project
     const { selectedProject } = useProject();
     // Only use project filtering if explicitly requested (Quick Actions)
-    // Always use current project from context when filtering is enabled
-    const projectId = filterByProject ? selectedProject?.id : undefined;
+    // If forceProjectId is provided, use that instead of selectedProject
+    const projectId = filterByProject ? (forceProjectId || selectedProject?.id) : undefined;
     // Using centralized CSS styles from auth-modals.css
 
     // Get current user ID and type for permission checks
@@ -92,7 +94,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [cloneVisibility, setCloneVisibility] = useState<'public' | 'private'>('public');
     const [nameCheckLoading, setNameCheckLoading] = useState(false);
     const [nameExists, setNameExists] = useState(false);
-    
+
+    // Track if we should use forceProjectName (don't change title on selectedProject changes)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const useForceProjectName = useRef(!!forceProjectName);
+
     // Forms are now handled by separate modal components
 
     // No need to inject styles - using centralized CSS
@@ -113,12 +119,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, categoryFilter, projectId]);
 
-    // Update tab title when project changes (only for filtered panels)
+    // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
     useEffect(() => {
-        if (filterByProject && updateTabTitle && selectedProject) {
-            updateTabTitle(`Templates - ${selectedProject.name}`);
+        if (filterByProject && updateTabTitle && forceProjectName) {
+            updateTabTitle(`Template Management: ${forceProjectName}`);
         }
-    }, [filterByProject, updateTabTitle, selectedProject]);
+    }, [filterByProject, updateTabTitle, forceProjectName]);
+
+    // No dynamic title updates for menu call - title stays as "Template Verwaltung" (all templates)
 
 
     const loadTemplates = async () => {

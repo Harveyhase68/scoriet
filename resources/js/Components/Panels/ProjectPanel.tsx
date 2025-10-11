@@ -823,7 +823,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => {
-                  onOpenPanel?.('template-management', { title: `Templates - ${currentProject?.name}`, filterByProject: true });
+                  if (currentProject) {
+                    onOpenPanel?.(`template-management-project-${currentProject.id}`, {
+                      title: `Template Management: ${currentProject.name}`,
+                      filterByProject: true,
+                      forceProjectId: currentProject.id,
+                      forceProjectName: currentProject.name
+                    });
+                  }
                 }}
                 disabled={!currentProject || !onOpenPanel}
               />
