@@ -560,7 +560,17 @@ const loadTab = (
         title: data.title || '🔧 Debug Manual Generator',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <DebugManualGeneratorPanel isActive={true} />
+            <DebugManualGeneratorPanel
+              tableId={data.tableId}
+              tableName={data.tableName}
+              schemaId={data.schemaId}
+              projectId={data.projectId}
+              projectName={data.projectName}
+              templateId={data.templateId}
+              fileId={data.fileId}
+              languageId={data.languageId}
+              languageCode={data.languageCode}
+            />
           </Suspense>
         ),
         closable: true,
@@ -652,6 +662,31 @@ const loadTab = (
       };
 
     default:
+      // Handle debug-manual-generator panels with dynamic IDs (e.g., debug-manual-generator-gen-file-49-6-1)
+      if (id.startsWith('debug-manual-generator')) {
+        return {
+          id,
+          title: data.title || '🔧 Debug Manual Generator',
+          content: (
+            <Suspense fallback={<PanelLoader />}>
+              <DebugManualGeneratorPanel
+                tableId={data.tableId}
+                tableName={data.tableName}
+                schemaId={data.schemaId}
+                projectId={data.projectId}
+                projectName={data.projectName}
+                templateId={data.templateId}
+                fileId={data.fileId}
+                languageId={data.languageId}
+                languageCode={data.languageCode}
+              />
+            </Suspense>
+          ),
+          closable: true,
+          group: 'card custom'
+        };
+      }
+
       // Handle project-specific panels (e.g., project-1, project-2)
       if (id.startsWith('project-')) {
         const projectId = parseInt(id.split('-')[1]);
