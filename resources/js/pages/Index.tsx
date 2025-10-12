@@ -695,7 +695,6 @@ const loadTab = (
               projectName={data.projectName}
               templateId={data.templateId}
               fileId={data.fileId}
-              languageId={data.languageId}
               languageCode={data.languageCode}
             />
           </Suspense>
@@ -791,21 +790,62 @@ const loadTab = (
     default:
       // Handle debug-manual-generator panels with dynamic IDs (e.g., debug-manual-generator-gen-file-49-6-1)
       if (id.startsWith('debug-manual-generator')) {
+        console.log('🚀 Index.tsx loadTab: Received data for debug-manual-generator:', {
+          id,
+          templateId: data.templateId,
+          fileId: data.fileId,
+          tableId: data.tableId,
+          languageCode: data.languageCode,
+          fullData: data
+        });
+
+        // Store data in window._tabData to handle rc-dock's multiple calls
+        const tabKey = id;
+        if (!window._tabData) window._tabData = {};
+
+        if (data.templateId !== undefined || data.fileId !== undefined || data.tableId !== undefined || updateTitleCallback) {
+          // First call - store the data
+          window._tabData[tabKey] = {
+            templateId: data.templateId,
+            fileId: data.fileId,
+            fileName: data.fileName, // ADD: Store filename for matching
+            tableId: data.tableId,
+            tableName: data.tableName,
+            schemaId: data.schemaId,
+            projectId: data.projectId,
+            projectName: data.projectName,
+            languageId: data.languageId,
+            languageCode: data.languageCode,
+            title: data.title,
+            updateTitleCallback: updateTitleCallback
+          } as any;
+        }
+
+        // Get stored data (works on subsequent calls)
+        const storedData = window._tabData[tabKey] || {};
+        console.log('💾 Using stored data:', storedData);
+        console.log('✨ Creating panel with props:', {
+          preSelectedTemplateId: storedData.templateId,
+          preSelectedFileId: storedData.fileId,
+          preSelectedTableId: storedData.tableId,
+          preSelectedLanguageCode: storedData.languageCode
+        });
+
         return {
           id,
-          title: data.title || '🔧 Debug Manual Generator',
+          title: data.title || storedData.title || '🔧 Debug Manual Generator',
           content: (
             <Suspense fallback={<PanelLoader />}>
               <DebugManualGeneratorPanel
-                tableId={data.tableId}
-                tableName={data.tableName}
-                schemaId={data.schemaId}
-                projectId={data.projectId}
-                projectName={data.projectName}
-                templateId={data.templateId}
-                fileId={data.fileId}
-                languageId={data.languageId}
-                languageCode={data.languageCode}
+                tableId={storedData.tableId}
+                tableName={storedData.tableName}
+                schemaId={storedData.schemaId}
+                projectId={storedData.projectId}
+                projectName={storedData.projectName}
+                templateId={storedData.templateId}
+                fileId={storedData.fileId}
+                fileName={storedData.fileName}
+                languageCode={storedData.languageCode}
               />
             </Suspense>
           ),

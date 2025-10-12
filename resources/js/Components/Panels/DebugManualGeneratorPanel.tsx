@@ -174,6 +174,7 @@ interface DebugManualGeneratorPanelProps {
   projectName?: string;
   templateId?: number;
   fileId?: number;
+  fileName?: string;
   languageId?: number;
   languageCode?: string;
 }
@@ -216,6 +217,7 @@ export default function DebugManualGeneratorPanel({
   projectId: preSelectedProjectId,
   templateId: preSelectedTemplateId,
   fileId: preSelectedFileId,
+  fileName: preSelectedFileName, // ADD: Accept fileName for matching
 //  languageId: preSelectedLanguageId,
   languageCode: preSelectedLanguageCode
 }: DebugManualGeneratorPanelProps = {}) {
@@ -317,9 +319,11 @@ export default function DebugManualGeneratorPanel({
         return;
       }
 
-      // Build URL with project filter if we have a preSelectedProjectId
+      // WICHTIG: Wenn preSelectedTemplateId vorhanden (vom TreeView), lade ALLE Templates (ohne Filter)
+      // Sonst: Lade nur Templates für das aktuelle Projekt
       let url = '/api/templates';
-      if (preSelectedProjectId) {
+      if (!preSelectedTemplateId && preSelectedProjectId) {
+        // Nur filtern wenn KEIN preSelected Template (normales Öffnen des Panels)
         url = `/api/templates?project_id=${preSelectedProjectId}`;
       }
 
@@ -353,7 +357,7 @@ export default function DebugManualGeneratorPanel({
     } catch {
       setError('Fehler beim Laden der Templates');
     }
-  }, [preSelectedProjectId]);
+  }, [preSelectedProjectId, preSelectedTemplateId]);
 
   const loadTemplateFiles = useCallback(async (templateId: number) => {
     try {
@@ -378,12 +382,29 @@ export default function DebugManualGeneratorPanel({
           filesArray = data.template_files;
         }
 
+        // 🔍 DEBUG: Log raw API response to find correct ID field
+        console.log('🔍 loadTemplateFiles - Raw API Response:', {
+          filesArrayLength: filesArray.length,
+          firstFile: filesArray[0],
+          allFiles: filesArray
+        });
+
         // More lenient filtering - accept any object with some identifier
         const validFiles = filesArray.map((file: any, index: number) => {
-          // Create a normalized file object
+          // Extract filename (API returns 'filename' not 'id')
+          const extractedFilename = file.filename || file.file_name || file.name || file.template_file_name || `File ${index + 1}`;
+
+          // 🔍 DEBUG: Log raw file data
+          console.log(`🔍 File ${index} normalized:`, {
+            'filename (from API)': extractedFilename,
+            'ALL API fields': Object.keys(file)
+          });
+
+          // Create a normalized file object - KEEP ORIGINAL ID IF AVAILABLE!
           const normalizedFile = {
-            id: file.id || file.file_id || file.template_file_id || index,
-            file_name: file.file_name || file.name || file.filename || file.template_file_name || `File ${index + 1}`,
+            id: file.id || index, // Use original file ID if available, otherwise index
+            file_name: extractedFilename,
+            filename: extractedFilename, // Store original filename for matching
             file_type: file.file_type || file.type || file.template_file_type || file.extension || 'unknown',
             file_order: file.file_order || file.order || index,
             generation_type: file.generation_type || file.type || file.file_type || null,
@@ -392,26 +413,26 @@ export default function DebugManualGeneratorPanel({
           };
 
           return normalizedFile;
-        }).filter((file: any) => file.id !== undefined);
+        }).filter((file: any) => file.filename !== undefined);
 
         setTemplateFiles(validFiles);
 
-        // Auto-select first valid file - NUR wenn KEIN preSelectedFileId vorhanden!
-        // WICHTIG: preSelectedFileId wird aus dem Closure gelesen, NICHT aus dependencies!
-        if (validFiles.length > 0 && !preSelectedFileId) {
+        // Auto-select first valid file - NUR wenn KEIN preSelectedFileName vorhanden!
+        // WICHTIG: preSelectedFileName wird aus dem Closure gelesen, NICHT aus dependencies!
+        if (validFiles.length > 0 && !preSelectedFileName) {
           setSelectedFile(validFiles[0].id);
         } else if (validFiles.length === 0) {
           setSelectedFile(null);
           setError(`Keine gültigen Template-Dateien für Template ${templateId} gefunden`);
         }
-        // Wenn preSelectedFileId vorhanden: NICHT auto-select, warte auf useEffect Pre-Selection!
+        // Wenn preSelectedFileName vorhanden: NICHT auto-select, warte auf useEffect Pre-Selection!
       } else {
         setError(`Fehler beim Laden der Template-Dateien: ${response.status}`);
       }
     } catch {
       setError('Fehler beim Laden der Template-Dateien');
     }
-  }, []); // WICHTIG: LEER lassen, preSelectedFileId aus Closure verwenden!
+  }, [preSelectedFileName]); // WICHTIG: preSelectedFileName für auto-select Logik
 
   const loadSchemaTables = useCallback(async () => {
     try {
@@ -624,10 +645,12 @@ export default function DebugManualGeneratorPanel({
         const data = await response.json();
         let languages = Array.isArray(data) ? data : (data.languages || data.data || []);
 
-        // Filter to only show languages enabled for the selected project
-        if (selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
+        // WICHTIG: Wenn preSelectedLanguageCode vorhanden (vom TreeView), lade ALLE Sprachen (ohne Filter)
+        // Sonst: Lade nur Sprachen für das aktuelle Projekt
+        if (!preSelectedLanguageCode && selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
+          // Nur filtern wenn KEINE preSelected Language (normales Öffnen des Panels)
           languages = languages.filter((lang: any) =>
-            selectedProject.enabled_languages.includes(lang.code)
+            selectedProject.enabled_languages?.includes(lang.code)
           );
         }
 
@@ -648,7 +671,7 @@ export default function DebugManualGeneratorPanel({
     } catch {
       setLanguageOptions([]);
     }
-  }, [selectedLanguage, selectedProject]); // WICHTIG: preSelectedLanguageCode NICHT in dependencies (kommt aus Closure)!
+  }, [selectedLanguage, selectedProject, preSelectedLanguageCode]);
 
   // Load data on component mount
   useEffect(() => {
@@ -694,20 +717,24 @@ export default function DebugManualGeneratorPanel({
   useEffect(() => {
     console.log('🔍 Template Pre-Selection useEffect:', {
       preSelectedTemplateId,
+      preSelectedTemplateIdType: typeof preSelectedTemplateId,
       templatesLength: templates.length,
       selectedTemplate,
-      templates: templates.map(t => ({ id: t.id, name: t.name }))
+      templatesData: templates.map(t => ({ id: t.id, idType: typeof t.id, name: t.name }))
     });
 
     if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
       // Check if the template exists in the loaded templates
-      const templateExists = templates.some(t => t.id === preSelectedTemplateId);
-      console.log('✅ Template exists?', templateExists);
+      // Try both number and string comparison in case of type mismatch
+      const templateExists = templates.some(t => t.id === preSelectedTemplateId || t.id == preSelectedTemplateId);
+      console.log('✅ Template exists?', templateExists, 'Looking for ID:', preSelectedTemplateId, '(type:', typeof preSelectedTemplateId, ')');
       if (templateExists) {
         console.log('✅ Setting template to:', preSelectedTemplateId);
         setTimeout(() => {
           setSelectedTemplate(preSelectedTemplateId);
         }, 100);
+      } else {
+        console.log('❌ Template NOT found! Available templates:', templates.map(t => `ID=${t.id} (${typeof t.id}) name=${t.name}`));
       }
     }
   }, [preSelectedTemplateId, templates, selectedTemplate]);
@@ -715,44 +742,51 @@ export default function DebugManualGeneratorPanel({
   // Pre-select file when opened from File Preview
   useEffect(() => {
     console.log('🔍 File Pre-Selection useEffect:', {
-      preSelectedFileId,
+      preSelectedFileName,
+      preSelectedFileNameType: typeof preSelectedFileName,
       templateFilesLength: templateFiles.length,
       selectedFile,
-      templateFiles: templateFiles.map(f => ({ id: f.id, name: f.file_name }))
+      templateFilesData: templateFiles.map(f => ({ id: f.id, filename: f.file_name, name: f.file_name }))
     });
 
-    if (preSelectedFileId && templateFiles.length > 0 && selectedFile === null) {
-      // Check if the file exists in the loaded template files
-      const fileExists = templateFiles.some(f => f.id === preSelectedFileId);
-      console.log('✅ File exists?', fileExists, 'Looking for ID:', preSelectedFileId);
-      if (fileExists) {
-        console.log('✅ Setting file to:', preSelectedFileId);
+    if (preSelectedFileId && templateFiles.length > 0) {
+      // Match by ID instead of filename
+      const matchedFile = templateFiles.find(f => f.id === preSelectedFileId);
+      console.log('✅ File matched by ID?', !!matchedFile, 'Looking for ID:', preSelectedFileId);
+      if (matchedFile) {
+        console.log('✅ Setting file to ID:', matchedFile.id, 'Filename:', matchedFile.file_name);
         // Slight delay after template files load
         setTimeout(() => {
-          setSelectedFile(preSelectedFileId);
+          setSelectedFile(matchedFile.id); // Use the normalized index-based ID
         }, 200);
+      } else {
+        console.log('❌ File NOT found! Available files:', templateFiles.map(f => `ID=${f.id} filename="${f.file_name}"`));
+        console.log('❌ File NOT found! Available files:', templateFiles);
       }
     }
-  }, [preSelectedFileId, templateFiles, selectedFile]);
+  }, [preSelectedFileName, preSelectedFileId, templateFiles, selectedFile]);
 
   // Pre-select language when opened from File Preview
   useEffect(() => {
     console.log('🔍 Language Pre-Selection useEffect:', {
       preSelectedLanguageCode,
+      preSelectedLanguageCodeType: typeof preSelectedLanguageCode,
       languageOptionsLength: languageOptions.length,
       selectedLanguage,
-      languageOptions
+      languageOptionsData: languageOptions.map(l => ({ value: l.value, label: l.label }))
     });
 
     if (preSelectedLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
       // Check if the language exists in the loaded language options
       const languageExists = languageOptions.some(l => l.value === preSelectedLanguageCode);
-      console.log('✅ Language exists?', languageExists, 'Looking for code:', preSelectedLanguageCode);
+      console.log('✅ Language exists?', languageExists, 'Looking for code:', preSelectedLanguageCode, '(type:', typeof preSelectedLanguageCode, ')');
       if (languageExists) {
         console.log('✅ Setting language to:', preSelectedLanguageCode);
         setTimeout(() => {
           setSelectedLanguage(preSelectedLanguageCode);
         }, 100);
+      } else {
+        console.log('❌ Language NOT found! Available languages:', languageOptions.map(l => `value="${l.value}" (${typeof l.value}) label="${l.label}"`));
       }
     }
   }, [preSelectedLanguageCode, languageOptions, selectedLanguage]);

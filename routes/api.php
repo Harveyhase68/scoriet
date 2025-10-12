@@ -1247,7 +1247,8 @@ Route::get('/template-output/{templateId}', function ($templateId) {
                 'filename' => $file->file_name,
                 'content' => $file->file_content,
                 'type' => $file->file_type,
-                'order' => $file->file_order
+                'order' => $file->file_order,
+                'id' => $file->id
             ];
         }
 
