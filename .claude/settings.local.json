@@ -46,7 +46,11 @@
       "Bash(npx tsc:*)",
       "Bash(sed:*)",
       "Bash(npm run lint:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git stash show:*)",
+      "Bash(git switch:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

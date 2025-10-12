@@ -580,6 +580,16 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         break;
       case 'generated-file':
         if (onOpenPanel) {
+          console.log('🔥 PanelT1: Opening generated-file with node:', {
+            templateId: node.templateId,
+            fileId: node.fileId,
+            tableId: node.tableId,
+            tableName: node.tableName,
+            languageId: node.languageId,
+            languageCode: node.languageCode,
+            fullNode: node
+          });
+
           // Open Debug Manual Generator with ALL parameters pre-selected
           const uniqueDebugPanelId = `debug-manual-generator-gen-file-${node.fileId}-${node.tableId}-${node.languageId}`;
 
@@ -590,6 +600,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             projectName: node.projectName,
             templateId: node.templateId,
             fileId: node.fileId,
+            fileName: node.name, // ADD: Pass filename for matching since API doesn't return IDs
             tableId: node.tableId,
             tableName: node.tableName,
             languageId: node.languageId,
