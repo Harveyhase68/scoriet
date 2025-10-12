@@ -396,20 +396,22 @@ export default function DebugManualGeneratorPanel({
 
         setTemplateFiles(validFiles);
 
-        // Auto-select first valid file
-        if (validFiles.length > 0) {
+        // Auto-select first valid file - NUR wenn KEIN preSelectedFileId vorhanden!
+        // WICHTIG: preSelectedFileId wird aus dem Closure gelesen, NICHT aus dependencies!
+        if (validFiles.length > 0 && !preSelectedFileId) {
           setSelectedFile(validFiles[0].id);
-        } else {
+        } else if (validFiles.length === 0) {
           setSelectedFile(null);
           setError(`Keine gültigen Template-Dateien für Template ${templateId} gefunden`);
         }
+        // Wenn preSelectedFileId vorhanden: NICHT auto-select, warte auf useEffect Pre-Selection!
       } else {
         setError(`Fehler beim Laden der Template-Dateien: ${response.status}`);
       }
     } catch {
       setError('Fehler beim Laden der Template-Dateien');
     }
-  }, []);
+  }, []); // WICHTIG: LEER lassen, preSelectedFileId aus Closure verwenden!
 
   const loadSchemaTables = useCallback(async () => {
     try {
@@ -636,15 +638,17 @@ export default function DebugManualGeneratorPanel({
 
         setLanguageOptions(languageOpts);
 
-        // Auto-select first language if available and none selected
-        if (languageOpts.length > 0 && !selectedLanguage) {
+        // Auto-select first language - NUR wenn KEIN preSelectedLanguageCode vorhanden!
+        // WICHTIG: preSelectedLanguageCode wird aus dem Closure gelesen, NICHT aus dependencies!
+        if (languageOpts.length > 0 && !selectedLanguage && !preSelectedLanguageCode) {
           setSelectedLanguage(languageOpts[0].value);
         }
+        // Wenn preSelectedLanguageCode vorhanden: NICHT auto-select, warte auf useEffect Pre-Selection!
       }
     } catch {
       setLanguageOptions([]);
     }
-  }, [selectedLanguage, selectedProject]);
+  }, [selectedLanguage, selectedProject]); // WICHTIG: preSelectedLanguageCode NICHT in dependencies (kommt aus Closure)!
 
   // Load data on component mount
   useEffect(() => {
@@ -688,10 +692,19 @@ export default function DebugManualGeneratorPanel({
 
   // Pre-select template when opened from File Preview
   useEffect(() => {
+    console.log('🔍 Template Pre-Selection useEffect:', {
+      preSelectedTemplateId,
+      templatesLength: templates.length,
+      selectedTemplate,
+      templates: templates.map(t => ({ id: t.id, name: t.name }))
+    });
+
     if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
       // Check if the template exists in the loaded templates
       const templateExists = templates.some(t => t.id === preSelectedTemplateId);
+      console.log('✅ Template exists?', templateExists);
       if (templateExists) {
+        console.log('✅ Setting template to:', preSelectedTemplateId);
         setTimeout(() => {
           setSelectedTemplate(preSelectedTemplateId);
         }, 100);
@@ -701,10 +714,19 @@ export default function DebugManualGeneratorPanel({
 
   // Pre-select file when opened from File Preview
   useEffect(() => {
+    console.log('🔍 File Pre-Selection useEffect:', {
+      preSelectedFileId,
+      templateFilesLength: templateFiles.length,
+      selectedFile,
+      templateFiles: templateFiles.map(f => ({ id: f.id, name: f.file_name }))
+    });
+
     if (preSelectedFileId && templateFiles.length > 0 && selectedFile === null) {
       // Check if the file exists in the loaded template files
       const fileExists = templateFiles.some(f => f.id === preSelectedFileId);
+      console.log('✅ File exists?', fileExists, 'Looking for ID:', preSelectedFileId);
       if (fileExists) {
+        console.log('✅ Setting file to:', preSelectedFileId);
         // Slight delay after template files load
         setTimeout(() => {
           setSelectedFile(preSelectedFileId);
@@ -715,10 +737,19 @@ export default function DebugManualGeneratorPanel({
 
   // Pre-select language when opened from File Preview
   useEffect(() => {
+    console.log('🔍 Language Pre-Selection useEffect:', {
+      preSelectedLanguageCode,
+      languageOptionsLength: languageOptions.length,
+      selectedLanguage,
+      languageOptions
+    });
+
     if (preSelectedLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
       // Check if the language exists in the loaded language options
       const languageExists = languageOptions.some(l => l.value === preSelectedLanguageCode);
+      console.log('✅ Language exists?', languageExists, 'Looking for code:', preSelectedLanguageCode);
       if (languageExists) {
+        console.log('✅ Setting language to:', preSelectedLanguageCode);
         setTimeout(() => {
           setSelectedLanguage(preSelectedLanguageCode);
         }, 100);
@@ -1246,27 +1277,11 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             Template development and code debugging for individual files
           </p>
 
-          {/* Selection Controls - NEW ORDER: 1. Table, 2. Template, 3. File */}
+          {/* Selection Controls - FIXED ORDER: Template > File > Table > Project > Language */}
+          {/* WICHTIG: Alle Felder immer sichtbar, nur disabled wenn nicht relevant! */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Table Dropdown - FIRST (nur sichtbar bei db_table_file ODER wenn vorausgewählt) */}
-            {(shouldShowTableDropdown() || preSelectedTableId) && (
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  📊 DB Tabelle {preSelectedTableName && <span className="text-xs text-green-400">(vorausgewählt)</span>}
-                </label>
-                <Dropdown
-                  value={selectedTable}
-                  options={tableOptions}
-                  onChange={(e) => {
-                    setSelectedTable(e.value);
-                  }}
-                  placeholder="Tabelle wählen"
-                  className="w-full"
-                />
-              </div>
-            )}
 
-            {/* Template Dropdown - SECOND */}
+            {/* 1. Template Dropdown - IMMER FIRST */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
                 📄 Template
@@ -1280,7 +1295,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               />
             </div>
 
-            {/* File Dropdown - THIRD */}
+            {/* 2. File Dropdown - IMMER SECOND */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
                 📝 Template Datei
@@ -1297,39 +1312,54 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               />
             </div>
 
-            {/* Project Dropdown - nur sichtbar bei project_file */}
-            {shouldShowProjectDropdown() && (
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  🏗️ Projekt
-                </label>
-                <Dropdown
-                  value={selectedProjectForGenerator}
-                  options={projectOptions}
-                  onChange={(e) => setSelectedProjectForGenerator(e.value)}
-                  placeholder="Projekt wählen"
-                  className="w-full"
-                />
-              </div>
-            )}
+            {/* 3. Table Dropdown - IMMER THIRD (disabled wenn nicht db_table_file) */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                📊 DB Tabelle {shouldShowTableDropdown() ? <span className="text-xs text-green-400">(benötigt)</span> : <span className="text-xs text-gray-500">(nicht benötigt)</span>}
+              </label>
+              <Dropdown
+                value={selectedTable}
+                options={tableOptions}
+                onChange={(e) => {
+                  setSelectedTable(e.value);
+                }}
+                placeholder={shouldShowTableDropdown() ? "Tabelle wählen" : "Nicht benötigt für diesen File-Typ"}
+                className="w-full"
+                disabled={!shouldShowTableDropdown()}
+              />
+            </div>
 
-            {/* Language Dropdown - nur sichtbar bei language templates */}
-            {shouldShowLanguageDropdown() && (
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  🌐 Sprache
-                </label>
-                <Dropdown
-                  value={selectedLanguage}
-                  options={languageOptions}
-                  onChange={(e) => {
-                    setSelectedLanguage(e.value);
-                  }}
-                  placeholder="Sprache wählen"
-                  className="w-full"
-                />
-              </div>
-            )}
+            {/* 4. Project Dropdown - IMMER FOURTH (disabled wenn nicht project_file) */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                🏗️ Projekt {shouldShowProjectDropdown() ? <span className="text-xs text-green-400">(benötigt)</span> : <span className="text-xs text-gray-500">(nicht benötigt)</span>}
+              </label>
+              <Dropdown
+                value={selectedProjectForGenerator}
+                options={projectOptions}
+                onChange={(e) => setSelectedProjectForGenerator(e.value)}
+                placeholder={shouldShowProjectDropdown() ? "Projekt wählen" : "Nicht benötigt für diesen File-Typ"}
+                className="w-full"
+                disabled={!shouldShowProjectDropdown()}
+              />
+            </div>
+
+            {/* 5. Language Dropdown - IMMER FIFTH (disabled wenn nicht language-enabled) */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                🌐 Sprache {shouldShowLanguageDropdown() ? <span className="text-xs text-green-400">(benötigt)</span> : <span className="text-xs text-gray-500">(nicht benötigt)</span>}
+              </label>
+              <Dropdown
+                value={selectedLanguage}
+                options={languageOptions}
+                onChange={(e) => {
+                  setSelectedLanguage(e.value);
+                }}
+                placeholder={shouldShowLanguageDropdown() ? "Sprache wählen" : "Nicht benötigt für diesen File-Typ"}
+                className="w-full"
+                disabled={!shouldShowLanguageDropdown()}
+              />
+            </div>
 
           </div>
 
