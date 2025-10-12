@@ -15,6 +15,7 @@ declare global {
     _tabData?: Record<string, {
       filterByProject?: boolean;
       forceProjectId?: number;
+      forceProjectName?: string;
       title?: string;
       updateTitleCallback?: (newTitle: string) => void;
     }>;
@@ -256,6 +257,132 @@ const loadTab = (
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
+  // Handle dynamic template-management panel IDs (e.g., template-management-project-5, template-management-project-5-filtered)
+  if (id.startsWith('template-management-project-')) {
+    const templateTabKey = id;
+
+    if (!window._tabData) window._tabData = {};
+
+    if (data.filterByProject !== undefined || data.forceProjectId !== undefined || data.forceProjectName !== undefined || updateTitleCallback) {
+      window._tabData[templateTabKey] = {
+        filterByProject: data.filterByProject,
+        forceProjectId: data.forceProjectId,
+        forceProjectName: data.forceProjectName,
+        title: data.title,
+        updateTitleCallback: updateTitleCallback
+      } as any;
+    }
+
+    const templateStoredData = window._tabData[templateTabKey] || {};
+    const templateShouldShowProjectFilter = templateStoredData.filterByProject === true;
+    const templateForceProjectId = templateStoredData.forceProjectId as number | undefined;
+    const templateForceProjectName = templateStoredData.forceProjectName as string | undefined;
+    const templateActualUpdateTitleCallback = templateStoredData.updateTitleCallback || updateTitleCallback;
+
+    return {
+      id,
+      title: data.title || templateStoredData.title || 'Template Verwaltung',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <TemplateManagementPanel
+            filterByProject={templateShouldShowProjectFilter}
+            forceProjectId={templateForceProjectId}
+            forceProjectName={templateForceProjectName}
+            updateTabTitle={templateActualUpdateTitleCallback}
+          />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
+  // Handle dynamic database-management panel IDs (e.g., database-management-project-5)
+  if (id.startsWith('database-management-project-')) {
+    const databaseTabKey = id;
+
+    if (!window._tabData) window._tabData = {};
+
+    if (data.filterByProject !== undefined || data.forceProjectId !== undefined || data.forceProjectName !== undefined || updateTitleCallback) {
+      window._tabData[databaseTabKey] = {
+        filterByProject: data.filterByProject,
+        forceProjectId: data.forceProjectId,
+        forceProjectName: data.forceProjectName,
+        title: data.title,
+        updateTitleCallback: updateTitleCallback
+      } as any;
+    }
+
+    const databaseStoredData = window._tabData[databaseTabKey] || {};
+    const databaseShouldShowProjectFilter = databaseStoredData.filterByProject === true;
+    const databaseForceProjectId = databaseStoredData.forceProjectId as number | undefined;
+    const databaseForceProjectName = databaseStoredData.forceProjectName as string | undefined;
+    const databaseActualUpdateTitleCallback = databaseStoredData.updateTitleCallback || updateTitleCallback;
+
+    return {
+      id,
+      title: data.title || databaseStoredData.title || 'Database Management',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <DatabaseManagementPanel
+            isActive={true}
+            onOpenDesigner={handleOpenDesigner}
+            filterByProject={databaseShouldShowProjectFilter}
+            forceProjectId={databaseForceProjectId}
+            forceProjectName={databaseForceProjectName}
+            updateTabTitle={databaseActualUpdateTitleCallback}
+          />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
+  // Handle dynamic debug-manual-generator panel IDs (e.g., debug-manual-generator-table-5)
+  if (id.startsWith('debug-manual-generator-table-')) {
+    const debugTabKey = id;
+
+    if (!window._tabData) window._tabData = {};
+
+    if (data.tableId !== undefined || data.tableName !== undefined || data.schemaId !== undefined || updateTitleCallback) {
+      window._tabData[debugTabKey] = {
+        tableId: data.tableId,
+        tableName: data.tableName,
+        schemaId: data.schemaId,
+        projectId: data.projectId,
+        projectName: data.projectName,
+        title: data.title,
+        updateTitleCallback: updateTitleCallback
+      } as any;
+    }
+
+    const debugStoredData = window._tabData[debugTabKey] || {};
+    const debugTableId = debugStoredData.tableId as number | undefined;
+    const debugTableName = debugStoredData.tableName as string | undefined;
+    const debugSchemaId = debugStoredData.schemaId as number | undefined;
+    const debugProjectId = debugStoredData.projectId as number | undefined;
+    const debugProjectName = debugStoredData.projectName as string | undefined;
+
+    return {
+      id,
+      title: data.title || debugStoredData.title || 'Debug Manual Generator',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <DebugManualGeneratorPanel
+            tableId={debugTableId}
+            tableName={debugTableName}
+            schemaId={debugSchemaId}
+            projectId={debugProjectId}
+            projectName={debugProjectName}
+          />
         </Suspense>
       ),
       closable: true,
@@ -820,6 +947,14 @@ export default function Index(props: IndexProps = {}) {
     LayoutPersistenceService.clearLayout();
     setLayout(initialLayout);
     setLeftPanelWidth(300);
+
+    // Clear tab data cache
+    if (window._tabData) {
+      window._tabData = {};
+    }
+
+    // Save the empty layout immediately to prevent race conditions
+    LayoutPersistenceService.saveLayoutImmediate(initialLayout, 300);
   }, []);
 
   // Expose clearLayout globally for debugging/manual use
@@ -1116,7 +1251,7 @@ export default function Index(props: IndexProps = {}) {
   // Function to close all panels
   const closeAllPanels = () => {
     if (ref.current) {
-      setLayout({
+      const emptyLayout = {
         "dockbox": {
           "id": "+1",
           "mode": "horizontal",
@@ -1140,7 +1275,16 @@ export default function Index(props: IndexProps = {}) {
           "mode": "maximize",
           "children": []
         }
-      });
+      };
+
+      // Clear tab data cache
+      if (window._tabData) {
+        window._tabData = {};
+      }
+
+      // Save immediately to prevent race conditions
+      setLayout(emptyLayout);
+      LayoutPersistenceService.saveLayoutImmediate(emptyLayout, leftPanelWidth);
     }
   };
 
@@ -1196,8 +1340,11 @@ export default function Index(props: IndexProps = {}) {
       window._tabData = {};
     }
 
-    // Use updateLayout to save to localStorage
-    updateLayout(newLayout);
+    // CRITICAL: Save immediately without debouncing to prevent race conditions
+    // If we use updateLayout (debounced), the user might open a new panel before
+    // the save completes, causing the old layout to be restored
+    setLayout(newLayout);
+    LayoutPersistenceService.saveLayoutImmediate(newLayout, leftPanelWidth);
   };
 
   // Group definition - only for movable panels (moved inside component for closeAllTabs access)
@@ -1261,10 +1408,12 @@ export default function Index(props: IndexProps = {}) {
       }
 
       // Create unique tab ID for project-filtered panels
-      let uniqueTabId = data?.filterByProject ? `${panelId}-filtered` : panelId;
-      
-      // Check if a filtered tab already exists for this panel type
-      if (data?.filterByProject) {
+      // DON'T add -filtered if the panelId already contains a project-specific ID
+      const isAlreadyProjectSpecific = panelId.includes('-project-') || panelId.startsWith('team-management-project-');
+      let uniqueTabId = (data?.filterByProject && !isAlreadyProjectSpecific) ? `${panelId}-filtered` : panelId;
+
+      // Check if a filtered tab already exists for this panel type (only for non-project-specific panels)
+      if (data?.filterByProject && !isAlreadyProjectSpecific) {
         const existingFilteredTab = ref.current.find(`${panelId}-filtered`);
         if (existingFilteredTab) {
           uniqueTabId = `${panelId}-filtered`; // Use the existing tab ID instead of creating a new one
@@ -1297,13 +1446,13 @@ export default function Index(props: IndexProps = {}) {
           const firstTabset = findFirstTabset(currentLayout);
 
           if (!firstTabset) {
-            // Create first tabset
+            // Create first tabset - MUST use currentLayout, not state layout!
             const updatedLayout = {
-              ...layout,
+              ...currentLayout,
               dockbox: {
-                ...layout.dockbox,
+                ...currentLayout.dockbox,
                 children: [
-                  ...layout.dockbox.children,
+                  ...currentLayout.dockbox.children,
                   {
                     id: `+${Date.now()}`,
                     size: 300,
@@ -1365,13 +1514,14 @@ export default function Index(props: IndexProps = {}) {
               }
             } catch {
               // Error in layout modification
-              // Final fallback
+              // Final fallback - MUST use current layout from ref, not state!
+              const fallbackLayout = ref.current.saveLayout();
               const updatedLayout = {
-                ...layout,
+                ...fallbackLayout,
                 dockbox: {
-                  ...layout.dockbox,
+                  ...fallbackLayout.dockbox,
                   children: [
-                    ...layout.dockbox.children,
+                    ...fallbackLayout.dockbox.children,
                     {
                       id: `+${Date.now()}`,
                       size: 300,

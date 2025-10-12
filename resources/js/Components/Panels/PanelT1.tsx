@@ -32,13 +32,24 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
   );
 };
 
-// Tree Node Interface for Projects and Teams
+// Tree Node Interface for Projects, Teams, Templates, Schemas, Tables, and Generated Files
 interface TreeNode {
   id: string;
   name: string;
-  type: 'project' | 'team' | 'member';
+  type: 'project' | 'team' | 'member' | 'template' | 'databases-container' | 'schema' | 'table' |
+        'generated-files-container' | 'template-group' | 'generated-file' | 'directory';
   projectId?: number;
+  projectName?: string;
   teamId?: number;
+  templateId?: number;
+  schemaId?: number;
+  tableId?: number;
+  tableName?: string;
+  fileId?: number;
+  languageId?: number;
+  languageCode?: string;
+  path?: string;
+  fileType?: string;
   children?: TreeNode[];
   expanded?: boolean;
 }
@@ -103,6 +114,161 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
         }
       }
 
+      // Load templates for this project
+      const templateUsages = await apiClient.getProjectTemplateUsages(project.id);
+
+      if (templateUsages.length > 0) {
+        for (const usage of templateUsages) {
+          // Only add templates that have valid template data (not deleted)
+          if (usage.template && usage.template.id) {
+            const templateNode: TreeNode = {
+              id: `template-${usage.template.id}-project-${project.id}`,
+              name: usage.template.name,
+              type: 'template',
+              templateId: usage.template.id,
+              projectId: project.id,
+              projectName: project.name, // Store project name for tab title
+              expanded: false,
+              children: []
+            };
+
+            projectNode.children!.push(templateNode);
+          }
+        }
+      }
+
+      // Load schemas (databases) for this project
+      const schemas = await apiClient.getProjectSchemas(project.id);
+
+      // ALWAYS create a "Databases" container node, even if no schemas exist yet
+      // This allows users to open Database Management and assign databases to the project
+      const databasesContainerNode: TreeNode = {
+        id: `databases-${project.id}`,
+        name: 'Databases',
+        type: 'databases-container',
+        projectId: project.id,
+        projectName: project.name,
+        expanded: false, // Collapsed by default
+        children: []
+      };
+
+      // Add schemas only if they exist
+      if (schemas.length > 0) {
+        for (const schema of schemas) {
+          if (schema && schema.id) {
+            const schemaNode: TreeNode = {
+              id: `schema-${schema.id}-project-${project.id}`,
+              name: schema.name || `Schema ${schema.id}`,
+              type: 'schema',
+              schemaId: schema.id,
+              projectId: project.id,
+              projectName: project.name, // Store project name for tab title
+              expanded: false, // Collapsed by default
+              children: []
+            };
+
+            // Load tables for this schema (from latest version)
+            try {
+              const versions = await apiClient.getSchemaVersions(schema.id);
+              if (versions && versions.length > 0) {
+                // Get latest version (highest version_number)
+                const latestVersion = versions.reduce((max, version) =>
+                  version.version_number > max.version_number ? version : max
+                , versions[0]);
+
+                const tables = await apiClient.getVersionTables(latestVersion.id);
+
+                if (tables && tables.length > 0) {
+                  for (const table of tables) {
+                    if (table && table.id) {
+                      const tableNode: TreeNode = {
+                        id: `table-${table.id}-schema-${schema.id}-project-${project.id}`,
+                        name: table.table_name || `Table ${table.id}`,
+                        type: 'table',
+                        tableId: table.id,
+                        tableName: table.table_name,
+                        schemaId: schema.id,
+                        projectId: project.id,
+                        projectName: project.name,
+                        expanded: false,
+                        children: []
+                      };
+
+                      schemaNode.children!.push(tableNode);
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              // Error loading tables for schema - continue with other schemas
+              console.error(`Error loading tables for schema ${schema.id}:`, error);
+            }
+
+            databasesContainerNode.children!.push(schemaNode);
+          }
+        }
+      }
+
+      // ALWAYS add the databases container to the project (even if empty)
+      projectNode.children!.push(databasesContainerNode);
+
+      // Load generation tree for this project
+      const generationTreeData = await apiClient.getProjectGenerationTree(project.id);
+
+      if (generationTreeData && generationTreeData.tree_data && generationTreeData.tree_data.length > 0) {
+        // Create "File Preview" container node
+        const generatedFilesContainerNode: TreeNode = {
+          id: `generated-files-${project.id}`,
+          name: 'File Preview',
+          type: 'generated-files-container',
+          projectId: project.id,
+          projectName: project.name,
+          expanded: false, // Collapsed by default
+          children: []
+        };
+
+        // Convert the tree_data to TreeNode format
+        const convertGenerationNode = (genNode: any): TreeNode => {
+          const treeNode: TreeNode = {
+            id: genNode.id,
+            name: genNode.name,
+            type: genNode.type as any,
+            projectId: project.id,
+            projectName: project.name,
+            expanded: false,
+            children: []
+          };
+
+          // Add additional properties based on type
+          if (genNode.type === 'template-group') {
+            treeNode.templateId = genNode.templateId;
+          } else if (genNode.type === 'generated-file') {
+            treeNode.path = genNode.path;
+            treeNode.templateId = genNode.templateId;
+            treeNode.fileId = genNode.fileId;
+            treeNode.tableId = genNode.tableId;
+            treeNode.tableName = genNode.tableName;
+            treeNode.languageId = genNode.languageId;
+            treeNode.languageCode = genNode.languageCode;
+            treeNode.fileType = genNode.fileType;
+          } else if (genNode.type === 'directory') {
+            treeNode.path = genNode.path;
+          }
+
+          // Recursively convert children
+          if (genNode.children && genNode.children.length > 0) {
+            treeNode.children = genNode.children.map(convertGenerationNode);
+          }
+
+          return treeNode;
+        };
+
+        // Add all templates/directories/files from the generation tree
+        generatedFilesContainerNode.children = generationTreeData.tree_data.map(convertGenerationNode);
+
+        projectNode.children!.push(generatedFilesContainerNode);
+      }
+
       treeNodes.push(projectNode);
     }
 
@@ -157,8 +323,24 @@ const TreeNodeComponent: React.FC<{
         return '👥';
       case 'member':
         return '👤';
-      default:
+      case 'template':
         return '📄';
+      case 'databases-container':
+        return '📁';
+      case 'schema':
+        return '💾';
+      case 'table':
+        return '📊';
+      case 'generated-files-container':
+        return '📦';
+      case 'template-group':
+        return '📋';
+      case 'directory':
+        return '📂';
+      case 'generated-file':
+        return '📝';
+      default:
+        return '📁';
     }
   };
 
@@ -253,7 +435,23 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         return node;
       });
     };
-    
+
+    setTreeData(updateNode(treeData));
+  };
+
+  const expandNode = (nodeId: string) => {
+    const updateNode = (nodes: TreeNode[]): TreeNode[] => {
+      return nodes.map(node => {
+        if (node.id === nodeId) {
+          return { ...node, expanded: true };
+        }
+        if (node.children) {
+          return { ...node, children: updateNode(node.children) };
+        }
+        return node;
+      });
+    };
+
     setTreeData(updateNode(treeData));
   };
 
@@ -263,6 +461,11 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   };
 
   const handleOpenPanel = (node: TreeNode) => {
+    // Expand the node if it has children (better UX - user wants to work with it)
+    if (node.children && node.children.length > 0) {
+      expandNode(node.id);
+    }
+
     // Double click opens the appropriate panel
     switch (node.type) {
       case 'project':
@@ -311,6 +514,87 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             teamId: node.teamId,
             memberName: node.name,
             filterByProject: true
+          });
+        }
+        break;
+      case 'template':
+        if (onOpenPanel && node.projectId) {
+          // Create unique panel ID for template management filtered by project
+          const uniqueTemplatePanelId = `template-management-project-${node.projectId}`;
+
+          onOpenPanel(uniqueTemplatePanelId, {
+            type: 'template-management',
+            title: `Template Management: ${node.projectName || 'Project'}`,
+            projectId: node.projectId,
+            projectName: node.projectName,
+            templateId: node.templateId,
+            filterByProject: true,
+            forceProjectId: node.projectId // Force the panel to use this project ID
+          });
+        }
+        break;
+      case 'databases-container':
+        if (onOpenPanel && node.projectId) {
+          // Create unique panel ID for database management filtered by project
+          const uniqueDatabasePanelId = `database-management-project-${node.projectId}`;
+
+          onOpenPanel(uniqueDatabasePanelId, {
+            type: 'database-management',
+            title: `Database Management: ${node.projectName || 'Project'}`,
+            projectId: node.projectId,
+            projectName: node.projectName,
+            filterByProject: true,
+            forceProjectId: node.projectId,
+            forceProjectName: node.projectName // Force the project name in the title
+          });
+        }
+        break;
+      case 'schema':
+        if (onOpenPanel && node.schemaId) {
+          // Open Database Designer (PanelT2) with this schema pre-selected
+          const uniqueDesignerPanelId = `designer_schema_${node.schemaId}`;
+
+          onOpenPanel(uniqueDesignerPanelId, {
+            type: 't2',
+            title: `Database Designer: ${node.name}`,
+            schemaName: node.name,
+            preSelectedSchemaId: node.schemaId
+          });
+        }
+        break;
+      case 'table':
+        if (onOpenPanel && node.tableId && node.schemaId) {
+          // Open Debug Manual Generator with this table pre-selected
+          const uniqueDebugPanelId = `debug-manual-generator-table-${node.tableId}`;
+
+          onOpenPanel(uniqueDebugPanelId, {
+            type: 'debug-manual-generator',
+            title: `Debug Manual Generator: ${node.tableName || 'Table'}`,
+            tableId: node.tableId,
+            tableName: node.tableName,
+            schemaId: node.schemaId,
+            projectId: node.projectId,
+            projectName: node.projectName
+          });
+        }
+        break;
+      case 'generated-file':
+        if (onOpenPanel) {
+          // Open Debug Manual Generator with ALL parameters pre-selected
+          const uniqueDebugPanelId = `debug-manual-generator-gen-file-${node.fileId}-${node.tableId}-${node.languageId}`;
+
+          onOpenPanel(uniqueDebugPanelId, {
+            type: 'debug-manual-generator',
+            title: `Generator: ${node.name}`,
+            projectId: node.projectId,
+            projectName: node.projectName,
+            templateId: node.templateId,
+            fileId: node.fileId,
+            tableId: node.tableId,
+            tableName: node.tableName,
+            languageId: node.languageId,
+            languageCode: node.languageCode,
+            preFilePath: node.path // The full generated path
           });
         }
         break;

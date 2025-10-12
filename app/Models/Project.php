@@ -320,6 +320,14 @@ class Project extends Model
     }
 
     /**
+     * Get the generation tree for this project
+     */
+    public function generationTree()
+    {
+        return $this->hasOne(ProjectGenerationTree::class);
+    }
+
+    /**
      * Get all template usages for this project
      */
     public function templateUsages()

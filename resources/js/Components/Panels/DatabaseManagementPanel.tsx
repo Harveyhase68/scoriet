@@ -17,6 +17,8 @@ interface TabPanelProps {
   isActive: boolean;
   onOpenDesigner?: (schemaId: number, schemaName?: string) => void;
   filterByProject?: boolean;
+  forceProjectId?: number;
+  forceProjectName?: string;
   updateTabTitle?: (newTitle: string) => void;
 }
 
@@ -55,10 +57,11 @@ interface Project {
   };
 }
 
-export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, updateTabTitle }: TabPanelProps) {
+export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }: TabPanelProps) {
   // Use Project Context to get current project
   const { selectedProject: contextSelectedProject } = useProject();
-  const projectId = filterByProject ? contextSelectedProject?.id : undefined;
+  // Use forceProjectId if provided (from TreeView), otherwise use context
+  const projectId = forceProjectId || (filterByProject ? contextSelectedProject?.id : undefined);
   const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,14 +119,15 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       setLoading(true);
       setError('');
-      
+
       const token = localStorage.getItem('access_token');
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
-      const url = projectId ? `/api/schemas?project_id=${projectId}` : '/api/schemas';
+      // Always load ALL schemas (no project filter)
+      const url = '/api/schemas';
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -143,7 +147,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, []);
 
   // Load schemas when panel becomes active
   useEffect(() => {
@@ -153,12 +157,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
   }, [isActive, loadSchemas]);
 
-  // Update tab title when project changes (only for filtered panels)
+  // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
   useEffect(() => {
-    if (filterByProject && updateTabTitle && contextSelectedProject) {
-      updateTabTitle(`Database - ${contextSelectedProject.name}`);
+    if (filterByProject && updateTabTitle && forceProjectName) {
+      updateTabTitle(`Database Management: ${forceProjectName}`);
     }
-  }, [filterByProject, updateTabTitle, contextSelectedProject]);
+  }, [filterByProject, updateTabTitle, forceProjectName]);
 
 
   const loadProjects = async () => {
@@ -386,11 +390,15 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const handleAssociateToProject = (schema: FloatingSchema) => {
     setAssociatingSchema(schema);
-    setSelectedProjectForAssociation(null);
+    // If forceProjectId is set (from TreeView), use that; otherwise user selects
+    setSelectedProjectForAssociation(forceProjectId || null);
     setAssociationType('linked');
     setAlias('');
     setShowAssociateModal(true);
-    loadProjects();
+    // Only load projects if we need the dropdown (no forceProjectId)
+    if (!forceProjectId) {
+      loadProjects();
+    }
   };
 
   const handleConfirmAssociation = async () => {
@@ -623,30 +631,53 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const actionTemplate = (schema: FloatingSchema) => {
     const projects = schema.projects || [];
-    const hasProjects = projects.length > 0;
+
+    // Check if current project (from forceProjectId or context) is linked to this schema
+    const currentProjectId = projectId; // This is forceProjectId || contextSelectedProject?.id
+    const isLinkedToCurrentProject = currentProjectId ? projects.some(p => p.id === currentProjectId) : false;
+    const currentProjectLink = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
 
     return (
       <div className="flex space-x-1">
-        {hasProjects ? (
-          // Show remove buttons for each project association
-          projects.map((project) => (
+        {filterByProject && currentProjectId ? (
+          // When filtering by project: Show X if linked, Link button if not linked
+          isLinkedToCurrentProject && currentProjectLink ? (
             <button
-              key={project.id}
               className="inline-flex items-center justify-center w-10 h-10 text-white bg-red-600 hover:bg-red-700 rounded-full text-base font-medium transition-colors duration-200 border border-red-600 hover:border-red-700 shadow-sm hover:shadow-md"
-              title={`Remove from ${project.name}`}
-              onClick={() => handleRemoveFromProject(schema, project.id)}
+              title={`Remove from project`}
+              onClick={() => handleRemoveFromProject(schema, currentProjectLink.id)}
             >
               <i className="pi pi-times text-base"></i>
             </button>
-          ))
+          ) : (
+            <Button
+              icon="pi pi-link"
+              className="p-button-rounded p-button-text p-button-sm"
+              tooltip="Link to project"
+              onClick={() => handleAssociateToProject(schema)}
+            />
+          )
         ) : (
-          // Show associate button only if no projects
-          <Button
-            icon="pi pi-link"
-            className="p-button-rounded p-button-text p-button-sm"
-            tooltip="Associate to project"
-            onClick={() => handleAssociateToProject(schema)}
-          />
+          // When NOT filtering by project: Show all project associations
+          projects.length > 0 ? (
+            projects.map((project) => (
+              <button
+                key={project.id}
+                className="inline-flex items-center justify-center w-10 h-10 text-white bg-red-600 hover:bg-red-700 rounded-full text-base font-medium transition-colors duration-200 border border-red-600 hover:border-red-700 shadow-sm hover:shadow-md"
+                title={`Remove from ${project.name}`}
+                onClick={() => handleRemoveFromProject(schema, project.id)}
+              >
+                <i className="pi pi-times text-base"></i>
+              </button>
+            ))
+          ) : (
+            <Button
+              icon="pi pi-link"
+              className="p-button-rounded p-button-text p-button-sm"
+              tooltip="Associate to project"
+              onClick={() => handleAssociateToProject(schema)}
+            />
+          )
         )}
         <Button
           icon="pi pi-pencil"
@@ -956,7 +987,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Associate to Project Modal */}
       <Dialog
-        header="Associate Schema to Project"
+        header="Link Schema to Project"
         visible={showAssociateModal}
         onHide={() => setShowAssociateModal(false)}
         style={{ width: '500px' }}
@@ -976,19 +1007,34 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             </p>
           </div>
 
-          <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Project *
-            </label>
-            <Dropdown
-              value={selectedProjectForAssociation}
-              onChange={(e) => setSelectedProjectForAssociation(e.value)}
-              options={projects.map(p => ({ label: p.name, value: p.id }))}
-              placeholder="Select a project"
-              className="w-full"
-              disabled={associating}
-            />
-          </div>
+          {/* Only show project dropdown if no forceProjectId (not from TreeView) */}
+          {!forceProjectId && (
+            <div className="field">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Project *
+              </label>
+              <Dropdown
+                value={selectedProjectForAssociation}
+                onChange={(e) => setSelectedProjectForAssociation(e.value)}
+                options={projects.map(p => ({ label: p.name, value: p.id }))}
+                placeholder="Select a project"
+                className="w-full"
+                disabled={associating}
+              />
+            </div>
+          )}
+
+          {/* Show project name if forceProjectId is set */}
+          {forceProjectId && forceProjectName && (
+            <div className="p-3 bg-green-50 rounded border border-green-200">
+              <label className="block text-sm font-medium text-green-800 mb-1">
+                Link to Project:
+              </label>
+              <p className="text-base font-semibold text-green-900">
+                {forceProjectName}
+              </p>
+            </div>
+          )}
 
           <div className="field">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1025,7 +1071,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={associating}
             />
             <Button
-              label={associating ? "Associating..." : "Associate Schema"}
+              label={associating ? "Linking..." : "Link Schema"}
               icon={associating ? "pi pi-spinner pi-spin" : "pi pi-link"}
               onClick={handleConfirmAssociation}
               disabled={associating || !selectedProjectForAssociation}

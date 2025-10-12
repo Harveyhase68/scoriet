@@ -166,9 +166,17 @@ const copyToClipboardFallback = (text: string) => {
   }
 };
 
-// interface TabPanelProps {
-//   isActive: boolean;
-// }
+interface DebugManualGeneratorPanelProps {
+  tableId?: number;
+  tableName?: string;
+  schemaId?: number;
+  projectId?: number;
+  projectName?: string;
+  templateId?: number;
+  fileId?: number;
+  languageId?: number;
+  languageCode?: string;
+}
 
 interface Template {
   id: number;
@@ -201,7 +209,16 @@ interface SchemaTable {
   }>;
 }
 
-export default function DebugManualGeneratorPanel() {
+export default function DebugManualGeneratorPanel({
+  tableId: preSelectedTableId,
+  tableName: preSelectedTableName,
+//  schemaId: preSelectedSchemaId,
+  projectId: preSelectedProjectId,
+  templateId: preSelectedTemplateId,
+  fileId: preSelectedFileId,
+//  languageId: preSelectedLanguageId,
+  languageCode: preSelectedLanguageCode
+}: DebugManualGeneratorPanelProps = {}) {
   const { selectedProject, projects } = useProject();
 
   // Selection States
@@ -299,7 +316,14 @@ export default function DebugManualGeneratorPanel() {
       if (!token) {
         return;
       }
-      const response = await fetch('/api/templates', {
+
+      // Build URL with project filter if we have a preSelectedProjectId
+      let url = '/api/templates';
+      if (preSelectedProjectId) {
+        url = `/api/templates?project_id=${preSelectedProjectId}`;
+      }
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -329,7 +353,7 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setError('Fehler beim Laden der Templates');
     }
-  }, []);
+  }, [preSelectedProjectId]);
 
   const loadTemplateFiles = useCallback(async (templateId: number) => {
     try {
@@ -394,10 +418,13 @@ export default function DebugManualGeneratorPanel() {
 
       const allTables: SchemaTable[] = [];
 
-      // If we have a selected project, load its schemas
-      if (selectedProject) {
+      // Use preSelectedProjectId if available (from TreeView), otherwise use selectedProject from context
+      const projectIdToUse = preSelectedProjectId || selectedProject?.id;
+
+      // If we have a project (from TreeView or context), load its schemas
+      if (projectIdToUse) {
         try {
-          const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
+          const response = await fetch(`/api/projects/${projectIdToUse}/schemas`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/json',
@@ -504,7 +531,7 @@ export default function DebugManualGeneratorPanel() {
       }
 
       // Only use fallback if we have no project selected or no project schemas found
-      if (allTables.length === 0 && !selectedProject) {
+      if (allTables.length === 0 && !projectIdToUse) {
         try {
           const globalResponse = await fetch('/api/template-db-schema/schemas', {
             headers: {
@@ -539,12 +566,12 @@ export default function DebugManualGeneratorPanel() {
         } catch {
           // Error loading global schemas
         }
-      } else if (selectedProject && allTables.length === 0) {
+      } else if (projectIdToUse && allTables.length === 0) {
         // Project selected but no linked schemas found - this is acceptable
       }
 
       // Last fallback: gtree-test API (nur wenn gar kein Projekt ausgewählt)
-      if (allTables.length === 0 && !selectedProject) {
+      if (allTables.length === 0 && !projectIdToUse) {
         const gtreeResponse = await fetch('/api/gtree-test/1', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -576,7 +603,7 @@ export default function DebugManualGeneratorPanel() {
     } catch {
       setSchemaTables([]);
     }
-  }, [selectedProject]);
+  }, [selectedProject, preSelectedProjectId]);
 
   const loadLanguages = useCallback(async () => {
     try {
@@ -636,6 +663,68 @@ export default function DebugManualGeneratorPanel() {
   useEffect(() => {
     loadSchemaTables();
   }, [loadSchemaTables]);
+
+  // Pre-select table when opened from TreeView
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. We have pre-selected table info from TreeView
+    // 2. Tables are loaded
+    // 3. No table has been selected yet (or manually changed by user)
+    if (preSelectedTableId && preSelectedTableName && schemaTables.length > 0) {
+      // Find the table by name in the loaded schema tables
+      const tableIndex = schemaTables.findIndex(
+        (table) => table.tablename === preSelectedTableName
+      );
+
+      // Only set if found and not already set (to avoid overwriting user selection)
+      if (tableIndex !== -1 && selectedTable === null) {
+        // Use setTimeout to ensure this runs after the component has fully mounted
+        setTimeout(() => {
+          setSelectedTable(tableIndex);
+        }, 100);
+      }
+    }
+  }, [preSelectedTableId, preSelectedTableName, schemaTables, selectedTable]);
+
+  // Pre-select template when opened from File Preview
+  useEffect(() => {
+    if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
+      // Check if the template exists in the loaded templates
+      const templateExists = templates.some(t => t.id === preSelectedTemplateId);
+      if (templateExists) {
+        setTimeout(() => {
+          setSelectedTemplate(preSelectedTemplateId);
+        }, 100);
+      }
+    }
+  }, [preSelectedTemplateId, templates, selectedTemplate]);
+
+  // Pre-select file when opened from File Preview
+  useEffect(() => {
+    if (preSelectedFileId && templateFiles.length > 0 && selectedFile === null) {
+      // Check if the file exists in the loaded template files
+      const fileExists = templateFiles.some(f => f.id === preSelectedFileId);
+      if (fileExists) {
+        // Slight delay after template files load
+        setTimeout(() => {
+          setSelectedFile(preSelectedFileId);
+        }, 200);
+      }
+    }
+  }, [preSelectedFileId, templateFiles, selectedFile]);
+
+  // Pre-select language when opened from File Preview
+  useEffect(() => {
+    if (preSelectedLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
+      // Check if the language exists in the loaded language options
+      const languageExists = languageOptions.some(l => l.value === preSelectedLanguageCode);
+      if (languageExists) {
+        setTimeout(() => {
+          setSelectedLanguage(preSelectedLanguageCode);
+        }, 100);
+      }
+    }
+  }, [preSelectedLanguageCode, languageOptions, selectedLanguage]);
 
   const fetchCode = async () => {
     if (!selectedTemplate || (selectedFile === null || selectedFile === undefined)) {
@@ -1157,60 +1246,13 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             Template development and code debugging for individual files
           </p>
 
-          {/* Selection Controls */}
+          {/* Selection Controls - NEW ORDER: 1. Table, 2. Template, 3. File */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Template
-              </label>
-              <Dropdown
-                value={selectedTemplate}
-                options={templateOptions}
-                onChange={(e) => setSelectedTemplate(e.value)}
-                placeholder="Template wählen"
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Datei
-              </label>
-              <Dropdown
-                value={selectedFile}
-                options={fileOptions}
-                onChange={(e) => {
-                  setSelectedFile(e.value);
-                  // Reset table selection when changing file type
-                  setSelectedTable(null);
-                }}
-                placeholder="Datei wählen"
-                className="w-full"
-                disabled={!selectedTemplate}
-              />
-            </div>
-
-            {/* Project Dropdown - nur sichtbar bei project_file */}
-            {shouldShowProjectDropdown() && (
+            {/* Table Dropdown - FIRST (nur sichtbar bei db_table_file ODER wenn vorausgewählt) */}
+            {(shouldShowTableDropdown() || preSelectedTableId) && (
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Projekt
-                </label>
-                <Dropdown
-                  value={selectedProjectForGenerator}
-                  options={projectOptions}
-                  onChange={(e) => setSelectedProjectForGenerator(e.value)}
-                  placeholder="Projekt wählen"
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {/* Table Dropdown - nur sichtbar bei db_table_file */}
-            {shouldShowTableDropdown() && (
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  DB Tabelle
+                  📊 DB Tabelle {preSelectedTableName && <span className="text-xs text-green-400">(vorausgewählt)</span>}
                 </label>
                 <Dropdown
                   value={selectedTable}
@@ -1224,11 +1266,58 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
               </div>
             )}
 
+            {/* Template Dropdown - SECOND */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                📄 Template
+              </label>
+              <Dropdown
+                value={selectedTemplate}
+                options={templateOptions}
+                onChange={(e) => setSelectedTemplate(e.value)}
+                placeholder="Template wählen"
+                className="w-full"
+              />
+            </div>
+
+            {/* File Dropdown - THIRD */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                📝 Template Datei
+              </label>
+              <Dropdown
+                value={selectedFile}
+                options={fileOptions}
+                onChange={(e) => {
+                  setSelectedFile(e.value);
+                }}
+                placeholder="Datei wählen"
+                className="w-full"
+                disabled={!selectedTemplate}
+              />
+            </div>
+
+            {/* Project Dropdown - nur sichtbar bei project_file */}
+            {shouldShowProjectDropdown() && (
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  🏗️ Projekt
+                </label>
+                <Dropdown
+                  value={selectedProjectForGenerator}
+                  options={projectOptions}
+                  onChange={(e) => setSelectedProjectForGenerator(e.value)}
+                  placeholder="Projekt wählen"
+                  className="w-full"
+                />
+              </div>
+            )}
+
             {/* Language Dropdown - nur sichtbar bei language templates */}
             {shouldShowLanguageDropdown() && (
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Sprache
+                  🌐 Sprache
                 </label>
                 <Dropdown
                   value={selectedLanguage}

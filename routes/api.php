@@ -194,6 +194,10 @@ Route::middleware('auth:api')->group(function () {
 
     // User Projects (including team access)
     Route::get('/user/projects', [ProjectController::class, 'getUserProjects']);
+
+    // Project Generation Tree
+    Route::get('/projects/{project}/generation-tree', [ProjectController::class, 'getGenerationTree']);
+    Route::post('/projects/{project}/generation-tree/regenerate', [ProjectController::class, 'regenerateTree']);
     
     // Project Team Management
     Route::get('/projects/{project}/teams/available', [ProjectController::class, 'getAvailableTeams']);

@@ -17,13 +17,51 @@ export interface TabData {
 const LAYOUT_STORAGE_KEY = 'scoriet_dock_layout';
 const LAYOUT_VERSION = '1.0';
 const MAX_AGE_DAYS = 30; // Layout expires after 30 days
+const SAVE_DEBOUNCE_MS = 500; // Debounce save operations to prevent race conditions
 
 export class LayoutPersistenceService {
+  private static saveTimeout: NodeJS.Timeout | null = null;
 
   /**
-   * Save layout to localStorage
+   * Save layout to localStorage (debounced to prevent race conditions)
+   * This ensures only the final layout state is saved, not intermediate states
+   * during animations or panel opening/closing operations.
    */
   static saveLayout(layout: any, leftPanelWidth?: number): void {
+    // Clear any pending save operation
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+
+    // Schedule a new save operation after debounce delay
+    this.saveTimeout = setTimeout(() => {
+      try {
+        const layoutState: LayoutState = {
+          layout: layout,
+          timestamp: Date.now(),
+          version: LAYOUT_VERSION,
+          leftPanelWidth: leftPanelWidth
+        };
+
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layoutState));
+      } catch {
+        // Failed to save layout
+      } finally {
+        this.saveTimeout = null;
+      }
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Save layout immediately without debouncing (for explicit save operations)
+   */
+  static saveLayoutImmediate(layout: any, leftPanelWidth?: number): void {
+    // Clear any pending debounced save
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+
     try {
       const layoutState: LayoutState = {
         layout: layout,
@@ -85,6 +123,12 @@ export class LayoutPersistenceService {
    * Clear saved layout
    */
   static clearLayout(): void {
+    // Cancel any pending save operations
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+
     try {
       localStorage.removeItem(LAYOUT_STORAGE_KEY);
     } catch {
