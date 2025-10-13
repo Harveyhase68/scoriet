@@ -1570,24 +1570,6 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             </div>
           )}
 
-          {/* Debug Info */}
-          {selectedTemplate && selectedFile && (
-            <div className="bg-gray-800 p-3 rounded border border-gray-600">
-              <div className="text-sm text-gray-300">
-                <strong>Debug-Konfiguration:</strong><br/>
-                Template: {selectedTemplate} |
-                Datei: {getSelectedFileName()} |
-                Typ: {getFileGenerationType()}<br/>
-                {shouldShowProjectDropdown() && `Projekt: ${projectOptions.find(p => p.value === selectedProjectForGenerator)?.label || 'Nicht gewählt'}`}
-                {shouldShowTableDropdown() && `Tabelle: ${selectedTable !== null ? tableOptions.find(t => t.value === selectedTable)?.label : 'Nicht gewählt'}`}
-                {shouldShowTableDropdown() && <br/>}
-                {shouldShowTableDropdown() && `Verfügbare Tabellen: ${tableOptions.length}`}
-                {shouldShowLanguageDropdown() && <br/>}
-                {shouldShowLanguageDropdown() && `Sprache: ${selectedLanguage ? languageOptions.find(l => l.value === selectedLanguage)?.label || selectedLanguage : 'Nicht gewählt'}`}
-              </div>
-            </div>
-          )}
-
           {/* 3-Tab System */}
           {preparedCode && (
             <div className="bg-gray-700">

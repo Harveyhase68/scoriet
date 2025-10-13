@@ -230,7 +230,7 @@ class Template extends Model
      */
     public function canBeAccessedBy($user): bool
     {
-        return $this->visibility === 'public' || $this->owner_id == $user->id;
+        return $this->visibility === 'public' || $this->owner_id == (string)$user->id;
     }
 
     /**
@@ -240,7 +240,7 @@ class Template extends Model
     {
         // System templates can only be edited by system users (the creator)
         if ($this->is_system_template) {
-            return $user->user_type === 'system' && $this->creator_user_id == $user->id;
+            return $user->user_type === 'system' && $this->creator_user_id == (string)$user->id;
         }
 
         // Project templates can only be edited by project members

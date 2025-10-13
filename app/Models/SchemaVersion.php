@@ -43,13 +43,16 @@ class SchemaVersion extends Model
     {
         $nextVersion = $schema->last_version + 1;
         
-        $version = self::create([
+        $version = new self([
             'schema_id' => $schema->id,
             'version_name' => "v{$nextVersion}",
             'version_number' => $nextVersion,
             'description' => $description ?? "Version {$nextVersion}",
             'imported_at' => now(),
         ]);
+        
+        // Save using Eloquent to trigger observers
+        $version->save();
 
         // Update schema's last_version (which is now the current version)
         $schema->update([

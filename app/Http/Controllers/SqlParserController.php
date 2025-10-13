@@ -115,6 +115,9 @@ class SqlParserController extends Controller
             // Store parsed tables in the new version using the existing service
             $this->schemaStorageService->storeParsedTablesInVersion($schemaVersion, $parsedTables);
 
+            // 🔄 QUEUE JOBS: Dispatch regeneration jobs for affected projects
+            $this->dispatchRegenerationJobs($schema);
+
             return response()->json([
                 'success' => true,
                 'schema_version_id' => $schemaVersion->id,
@@ -397,5 +400,54 @@ class SqlParserController extends Controller
                 'sql_preview' => substr($sqlScript ?? '', 0, 200),
             ], 500);
         }
+    }
+
+    /**
+     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this schema
+     */
+    private function dispatchRegenerationJobs(FloatingSchema $schema): void
+    {
+        // 🧪 TEST LOGGING: Start der Job-Dispatching-Protokollierung
+        \Log::info("🧪 [QUEUE-TEST] Starting job dispatch for schema {$schema->id} ({$schema->name})");
+        
+        // Find all projects that use this schema
+        $projectIds = \DB::table('project_schemas')
+            ->where('schema_id', $schema->id)
+            ->pluck('project_id')
+            ->unique()
+            ->toArray();
+
+        \Log::info("🧪 [QUEUE-TEST] Found project IDs: " . json_encode($projectIds));
+
+        if (empty($projectIds)) {
+            \Log::warning("🧪 [QUEUE-TEST] Schema {$schema->id}: No projects affected for queue regeneration");
+            return;
+        }
+
+        \Log::info("🧪 [QUEUE-TEST] Schema {$schema->id}: Dispatching regeneration for " . count($projectIds) . " projects");
+
+        // Get job count before dispatching
+        $jobsBefore = \DB::table('jobs')->count();
+        \Log::info("🧪 [QUEUE-TEST] Jobs in queue before dispatch: {$jobsBefore}");
+
+        // Dispatch queue jobs for each affected project
+        $dispatchedJobs = 0;
+        foreach ($projectIds as $projectId) {
+            \Log::info("🧪 [QUEUE-TEST] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
+            
+            try {
+                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
+                $dispatchedJobs++;
+                \Log::info("🧪 [QUEUE-TEST] Successfully dispatched job for project {$projectId}");
+            } catch (\Exception $e) {
+                \Log::error("🧪 [QUEUE-TEST] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+            }
+        }
+
+        // Get job count after dispatching
+        $jobsAfter = \DB::table('jobs')->count();
+        \Log::info("🧪 [QUEUE-TEST] Jobs in queue after dispatch: {$jobsAfter}");
+        \Log::info("🧪 [QUEUE-TEST] Total dispatched jobs: {$dispatchedJobs}");
+        \Log::info("🧪 [QUEUE-TEST] Job dispatch completed for schema {$schema->id}");
     }
 }

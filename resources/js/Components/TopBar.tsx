@@ -49,7 +49,7 @@ export default function TopBar() {
     const handleApplicationsUpdated = (event: CustomEvent) => {
       const { projectId } = event.detail;
       // Only reload if it's for the current selected project
-      if (selectedProject && projectId === selectedProject.id) {
+      if (selectedProject && parseInt(projectId) === selectedProject.id) {
         loadPendingApplications();
       }
     };

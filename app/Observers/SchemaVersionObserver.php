@@ -14,6 +14,7 @@ class SchemaVersionObserver
      */
     public function created(SchemaVersion $schemaVersion): void
     {
+        Log::info("SchemaVersionObserver: created event triggered for schema version {$schemaVersion->id}");
         $this->regenerateAffectedProjects($schemaVersion, 'created');
     }
 

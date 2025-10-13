@@ -144,6 +144,9 @@ class TemplateController extends Controller
                 }
             }
 
+            // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
+            $this->dispatchRegenerationJobsForTemplate($template);
+
             return response()->json([
                 'success' => true,
                 'template' => $template->load('files'),
@@ -704,5 +707,53 @@ class TemplateController extends Controller
                 'error' => 'DB schema not found',
             ], 404);
         }
+    }
+
+    /**
+     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this template
+     */
+    private function dispatchRegenerationJobsForTemplate(Template $template): void
+    {
+        \Log::info("🧪 [TEMPLATE-QUEUE] Starting job dispatch for template {$template->id} ({$template->name})");
+        
+        // Find all projects that use this template
+        $projectIds = \DB::table('project_templates')
+            ->where('template_id', $template->id)
+            ->pluck('project_id')
+            ->unique()
+            ->toArray();
+
+        \Log::info("🧪 [TEMPLATE-QUEUE] Found project IDs: " . json_encode($projectIds));
+
+        if (empty($projectIds)) {
+            \Log::info("🧪 [TEMPLATE-QUEUE] Template {$template->id}: No projects using this template yet");
+            return;
+        }
+
+        \Log::info("🧪 [TEMPLATE-QUEUE] Template {$template->id}: Dispatching regeneration for " . count($projectIds) . " projects");
+
+        // Get job count before dispatching
+        $jobsBefore = \DB::table('jobs')->count();
+        \Log::info("🧪 [TEMPLATE-QUEUE] Jobs in queue before dispatch: {$jobsBefore}");
+
+        // Dispatch queue jobs for each affected project
+        $dispatchedJobs = 0;
+        foreach ($projectIds as $projectId) {
+            \Log::info("🧪 [TEMPLATE-QUEUE] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
+            
+            try {
+                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
+                $dispatchedJobs++;
+                \Log::info("🧪 [TEMPLATE-QUEUE] Successfully dispatched job for project {$projectId}");
+            } catch (\Exception $e) {
+                \Log::error("🧪 [TEMPLATE-QUEUE] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+            }
+        }
+
+        // Get job count after dispatching
+        $jobsAfter = \DB::table('jobs')->count();
+        \Log::info("🧪 [TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
+        \Log::info("🧪 [TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
+        \Log::info("🧪 [TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
     }
 }

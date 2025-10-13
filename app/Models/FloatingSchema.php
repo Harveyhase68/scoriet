@@ -136,7 +136,7 @@ class FloatingSchema extends Model
         
         // If schema has no owner, first user (admin) can access it
         // This handles cases where schemas were created without proper ownership
-        if (empty($this->owner_id) && $user->id === 1) {
+        if (empty($this->owner_id) && $user->id === (string)1) {
             return true;
         }
         

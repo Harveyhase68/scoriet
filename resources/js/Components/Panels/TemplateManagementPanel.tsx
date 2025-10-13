@@ -713,7 +713,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             header="Aktionen"
                             body={(template) => {
-                                const isOwner = template.creator_user_id === currentUserId;
+                                const isOwner = parseInt(template.creator_user_id) === currentUserId;
 
                                 return (
                                     <div className="flex gap-1">
