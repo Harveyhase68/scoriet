@@ -152,7 +152,7 @@ export default function EditProjectModal({
 
     // Confirm ownership transfer if requested
     if (editForm.new_owner_id) {
-      const newOwner = projectMembers.find(member => member.user_id === editForm.new_owner_id);
+      const newOwner = projectMembers.find(member => parseInt(member.user_id) === editForm.new_owner_id);
       if (!confirm(`Are you sure you want to transfer ownership to ${newOwner?.user.name} (${newOwner?.user.email})?\n\nThis action cannot be undone and you will lose owner privileges!`)) {
         return;
       }

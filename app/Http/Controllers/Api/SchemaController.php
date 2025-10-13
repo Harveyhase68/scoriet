@@ -57,7 +57,7 @@ class SchemaController extends Controller
                 });
 
                 return array_merge($schema->toArray(), [
-                    'is_owner' => $schema->owner_id === $user->id,
+                    'is_owner' => $schema->owner_id === (string)$user->id,
                     'tables_count' => 0, // TODO: Implement proper tables count
                     'projects_count' => $schema->projects()->count(),
                     'projects' => $projects,
@@ -120,7 +120,7 @@ class SchemaController extends Controller
         $schema->load(['owner', 'projects']);
 
         return response()->json(array_merge($schema->toArray(), [
-            'is_owner' => $schema->owner_id === $user->id,
+            'is_owner' => $schema->owner_id === (string)$user->id,
             'tables_count' => 0, // TODO: Implement proper tables count
             'projects_count' => $schema->projects()->count(),
         ]));
@@ -155,7 +155,7 @@ class SchemaController extends Controller
         $schema->load('owner');
 
         return response()->json(array_merge($schema->toArray(), [
-            'is_owner' => $schema->owner_id === $user->id,
+            'is_owner' => $schema->owner_id === (string)$user->id,
             'tables_count' => 0, // TODO: Implement proper tables count
             'projects_count' => $schema->projects()->count(),
         ]));
@@ -916,7 +916,7 @@ class SchemaController extends Controller
                 'table_name' => $table->table_name,
                 'table_belongs_to_version_id' => $table->schema_version_id,
                 'expected_version_id' => $version->id,
-                'table_belongs_to_correct_version' => $table->schema_version_id === $version->id,
+                'table_belongs_to_correct_version' => $table->schema_version_id === (string)$version->id,
                 'version_tables_count' => $version->tables()->count(),
                 'all_table_ids_in_version' => $version->tables()->pluck('id')->toArray(),
                 'all_table_names_in_version' => $version->tables()->pluck('table_name', 'id')->toArray()

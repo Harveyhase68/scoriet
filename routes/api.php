@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\SqlParserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\QueueTestController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\DbSchemaController;
 use App\Http\Controllers\TeamController;
@@ -182,6 +183,13 @@ Route::middleware('auth:api')->group(function () {
 
         // Cross-reference queries
         Route::get('/templates/by-db-schema/{schemaId}', [TemplateController::class, 'getTemplatesByDbSchema']);
+    });
+    
+    // 🧪 Queue Testing Routes
+    Route::prefix('queue-test')->group(function () {
+        Route::get('/test', [QueueTestController::class, 'testQueueSystem']);
+        Route::get('/logs', [QueueTestController::class, 'showQueueLogs']);
+        Route::post('/dispatch/{projectId}', [QueueTestController::class, 'dispatchJobForProject']);
     });
     
     // Optimized Projects with Teams route (use different path to avoid conflicts)

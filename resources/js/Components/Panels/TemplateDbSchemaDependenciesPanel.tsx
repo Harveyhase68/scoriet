@@ -96,6 +96,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
     };
 
     const handleSubmit = async (values: any) => {
+   
         if (!templateId) return;
 
         setLoading(true);
@@ -164,7 +165,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                                         v{option.data.schema.last_version}
                                     </span>
                                 </div>
-                                <Tag color={option.data.schema.visibility === 'public' ? 'green' : 'orange'} size="small">
+                                <Tag color={option.data.schema.visibility === 'public' ? 'green' : 'orange'}>
                                     {option.data.schema.visibility}
                                 </Tag>
                             </div>
@@ -209,7 +210,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     const [templates, setTemplates] = useState<Template[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [dependencies, setDependencies] = useState<DbSchemaDependency[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Start with loading state true to ensure proper initial loading
     const [dependenciesLoading, setDependenciesLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [addModalVisible, setAddModalVisible] = useState(false);
@@ -223,7 +224,8 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
         const loadCurrentUser = async () => {
             try {
                 const user = await api.getCurrentUser();
-                setCurrentUserId(user.id);
+                setCurrentUserId(parseInt(user.id));
+                console.log(user.id + ' - ' + typeof user.id+ ' - ' + parseInt(user.id));
             } catch {
                 // Failed to load current user
             }
@@ -233,19 +235,26 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
 
     // Check if user can edit template (replicate backend logic)
     const canUserEditTemplate = (template: Template): boolean => {
-        if (!currentUserId) return false;
-
-        // System templates cannot be edited by anyone
-        if (template.is_system_template) {
+        if (!currentUserId) {
+            console.log('canUserEditTemplate: false weil !currentUserId');
             return false;
         }
 
+        // System templates cannot be edited by anyone
+        if (template.is_system_template) {
+            console.log('canUserEditTemplate: false weil template.is_system_template');
+            return false;
+        }
+        
+        const templateCreatorId = parseInt(String(template.creator_user_id), 10); // Sicherstellen, dass es eine Zahl ist
+        
         // Fallback to creator check
-        return template.creator_user_id === currentUserId;
+        console.log('canUserEditTemplate: '+templateCreatorId+' / da fallback?');
+        return templateCreatorId === currentUserId;
     };
 
     const loadTemplates = useCallback(async () => {
-        setLoading(true);
+        setLoading(true); // Ensure loading is set to true at the start of loading
         try {
             // Use the API client's getAllTemplates method
             const templates = await api.getAllTemplates();
@@ -269,10 +278,14 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
         }
     }, [templateFilter]);
 
-    // Load templates on component mount and filter change
-    useEffect(() => {
-        loadTemplates();
-    }, [loadTemplates]);
+        // Load templates on component mount and filter change
+        useEffect(() => {
+            if (currentUserId !== null) {
+            // Starte das Laden der Templates NUR, wenn die User-ID bekannt ist.
+            // Das loadTemplates wird das setLoading(true) und (false) selbst verwalten.
+            loadTemplates();
+        }
+    }, [loadTemplates, currentUserId]); // Add currentUserId to dependencies
 
     const loadTemplateDependencies = async (templateId: number) => {
         setDependenciesLoading(true);
@@ -331,7 +344,9 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     };
 
     const templateActionBodyTemplate = (rowData: Template) => {
+        console.log(rowData);
         const canEdit = canUserEditTemplate(rowData);
+        console.log(canEdit);
 
         if (!canEdit) {
             return (

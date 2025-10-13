@@ -14,8 +14,10 @@ class TemplateObserver
      */
     public function created(Template $template): void
     {
-        // When a template is created, it's not yet assigned to projects
-        // So no need to regenerate anything yet
+        Log::info("🧪 [TEMPLATE-OBSERVER] created event triggered for template {$template->id} ({$template->name})");
+        // Note: Jobs are also dispatched directly in TemplateController::store()
+        // But we'll also dispatch here for consistency
+        $this->regenerateAffectedProjects($template, 'created');
     }
 
     /**

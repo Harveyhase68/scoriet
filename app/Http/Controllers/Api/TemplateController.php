@@ -508,7 +508,7 @@ class TemplateController extends Controller
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
                 return response()->json(['message' => 'System-Templates können nicht gelöscht werden'], 403);
-            } elseif ($template->visibility === 'public' && $template->creator_user_id !== $user->id) {
+            } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
                 return response()->json(['message' => 'Public Templates anderer Benutzer können nicht gelöscht werden'], 403);
             } else {
                 return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu löschen'], 403);
@@ -532,7 +532,7 @@ class TemplateController extends Controller
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
                 return response()->json(['message' => 'System-Templates können nicht permanent gelöscht werden'], 403);
-            } elseif ($template->visibility === 'public' && $template->creator_user_id !== $user->id) {
+            } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
                 return response()->json(['message' => 'Public Templates anderer Benutzer können nicht permanent gelöscht werden'], 403);
             } else {
                 return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template permanent zu löschen'], 403);
@@ -562,7 +562,7 @@ class TemplateController extends Controller
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
                 return response()->json(['message' => 'System-Templates können nicht aktiviert/deaktiviert werden'], 403);
-            } elseif ($template->visibility === 'public' && $template->creator_user_id !== $user->id) {
+            } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
                 return response()->json(['message' => 'Public Templates anderer Benutzer können nicht geändert werden'], 403);
             } else {
                 return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu ändern'], 403);
