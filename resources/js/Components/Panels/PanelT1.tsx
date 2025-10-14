@@ -235,7 +235,7 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
             type: genNode.type as any,
             projectId: project.id,
             projectName: project.name,
-            expanded: false,
+            expanded: genNode.type === 'directory' ? true : false, // Auto-expand directories
             children: []
           };
 
@@ -692,6 +692,9 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
               <div><strong>Name:</strong> {selectedNode.name}</div>
               <div><strong>Type:</strong> {selectedNode.type}</div>
               <div><strong>ID:</strong> {selectedNode.id}</div>
+              {selectedNode.path && (
+                <div><strong>Path:</strong> {selectedNode.path}</div>
+              )}
               {selectedNode.projectId && (
                 <div><strong>Project ID:</strong> {selectedNode.projectId}</div>
               )}
@@ -700,6 +703,19 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
               )}
               {selectedNode.type === 'member' && (
                 <div><strong>Role:</strong> Team Member</div>
+              )}
+              {selectedNode.type === 'generated-file' && (
+                <>
+                  {selectedNode.templateId && (
+                    <div><strong>Template ID:</strong> {selectedNode.templateId}</div>
+                  )}
+                  {selectedNode.tableName && (
+                    <div><strong>Table:</strong> {selectedNode.tableName}</div>
+                  )}
+                  {selectedNode.languageCode && (
+                    <div><strong>Language:</strong> {selectedNode.languageCode}</div>
+                  )}
+                </>
               )}
             </div>
           </div>

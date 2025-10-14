@@ -116,6 +116,7 @@ class TemplateController extends Controller
                 'is_active' => 'boolean',
                 'files' => 'nullable|array',
                 'files.*.file_name' => 'required|string',
+                'files.*.file_path' => 'nullable|string',
                 'files.*.file_content' => 'required|string',
                 'files.*.file_type' => 'nullable|string|max:50',
                 'files.*.file_order' => 'nullable|integer',
@@ -136,7 +137,7 @@ class TemplateController extends Controller
                 foreach ($validated['files'] as $index => $fileData) {
                     $template->files()->create([
                         'file_name' => $fileData['file_name'],
-                        'file_path' => "templates/{$template->id}/{$fileData['file_name']}",
+                        'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileData['file_name']}",
                         'file_content' => $fileData['file_content'],
                         'file_type' => $fileData['file_type'] ?? 'template',
                         'file_order' => $fileData['file_order'] ?? $index,
@@ -178,6 +179,7 @@ class TemplateController extends Controller
                 'is_active' => 'boolean',
                 'files' => 'nullable|array',
                 'files.*.file_name' => 'required|string',
+                'files.*.file_path' => 'nullable|string',
                 'files.*.file_content' => 'required|string',
                 'files.*.file_type' => 'nullable|string|max:50',
                 'files.*.file_order' => 'nullable|integer',
@@ -203,7 +205,7 @@ class TemplateController extends Controller
                 foreach ($validated['files'] as $index => $fileData) {
                     $template->files()->create([
                         'file_name' => $fileData['file_name'],
-                        'file_path' => "templates/{$template->id}/{$fileData['file_name']}",
+                        'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileData['file_name']}",
                         'file_content' => $fileData['file_content'],
                         'file_type' => $fileData['file_type'] ?? 'template',
                         'file_order' => $fileData['file_order'] ?? $index,
@@ -396,6 +398,7 @@ class TemplateController extends Controller
                 'template_data.template.is_active' => 'nullable|boolean',
                 'template_data.files' => 'nullable|array',
                 'template_data.files.*.file_name' => 'required|string',
+                'template_data.files.*.file_path' => 'nullable|string',
                 'template_data.files.*.file_content' => 'required|string',
                 'template_data.files.*.file_type' => 'nullable|string|max:50',
                 'template_data.files.*.file_order' => 'nullable|integer',
@@ -436,7 +439,7 @@ class TemplateController extends Controller
             foreach ($filesData as $index => $fileData) {
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
-                    'file_path' => "templates/{$template->id}/{$fileData['file_name']}",
+                    'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileData['file_name']}",
                     'file_content' => $fileData['file_content'],
                     'file_type' => $fileData['file_type'] ?? 'template',
                     'file_order' => $fileData['file_order'] ?? $index,

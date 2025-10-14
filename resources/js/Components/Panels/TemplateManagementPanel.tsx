@@ -52,6 +52,7 @@ interface TemplateFile {
     id: number;
     file_name: string;
     file_path: string;
+    output_path: string;
     file_content: string;
     file_type: string;
     file_order: number;
@@ -162,7 +163,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             try {
                 const response = await api.getTemplate(template.id);
                 if (response.success) {
-                    setTemplateFiles(response.template.files || []);
+                    // Ensure output_path is properly set for each file
+                    const files = response.template.files || [];
+                    const filesWithOutputPath = files.map((file: TemplateFile) => ({
+                        ...file,
+                        output_path: file.output_path || '/'
+                    }));
+                    setTemplateFiles(filesWithOutputPath);
                 } else {
                     setTemplateFiles([]);
                 }
@@ -296,7 +303,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     file_name: file.file_name,
                     file_content: file.file_content,
                     file_type: file.file_type,
-                    file_order: index
+                    file_order: index,
+                    output_path: file.output_path || '/'
                 }))
             };
 
@@ -364,7 +372,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         try {
                             const templateResponse = await api.getTemplate(newTemplate.id);
                             if (templateResponse.success) {
-                                setTemplateFiles(templateResponse.template.files || []);
+                                // Ensure output_path is properly set for each file
+                                const files = templateResponse.template.files || [];
+                                const filesWithOutputPath = files.map((file: TemplateFile) => ({
+                                    ...file,
+                                    output_path: file.output_path || '/'
+                                }));
+                                setTemplateFiles(filesWithOutputPath);
                             }
                         } catch {
                             // Files loading error - not critical
@@ -479,7 +493,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     file_name: f.file_name,
                     file_content: f.file_content,
                     file_type: f.file_type,
-                    file_order: f.file_order
+                    file_order: f.file_order,
+                    output_path: f.output_path || '/'
                 }))
             };
 
@@ -509,6 +524,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             file_content: values.file_content,
             file_type: values.file_type,
             file_order: values.file_order || templateFiles.length,
+            output_path: values.output_path || '/',
         };
 
         try {
@@ -528,14 +544,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 file_name: f.file_name,
                                 file_content: f.file_content,
                                 file_type: f.file_type,
-                                file_order: f.file_order
+                                file_order: f.file_order,
+                                output_path: f.output_path || '/'
                             }
                       )
                     : [...templateFiles.map(f => ({
                         file_name: f.file_name,
                         file_content: f.file_content,
                         file_type: f.file_type,
-                        file_order: f.file_order
+                        file_order: f.file_order,
+                        output_path: f.output_path || '/'
                       })), fileData]
             };
 
@@ -547,7 +565,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     // Update existing file
                     const newFiles = templateFiles.map(f =>
                         f.id === editingFile.id
-                            ? { ...fileData, id: editingFile.id, file_path: '' }
+                            ? { ...fileData, id: editingFile.id, file_path: '', output_path: values.output_path || '/' }
                             : f
                     );
                     setTemplateFiles(newFiles);
@@ -555,7 +573,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     // Add new file - reload from server to get proper ID
                     const templateResponse = await api.getTemplate(editingTemplate.id);
                     if (templateResponse.success) {
-                        setTemplateFiles(templateResponse.template.files || []);
+                        // Ensure output_path is properly set for each file
+                        const files = templateResponse.template.files || [];
+                        const filesWithOutputPath = files.map((file: TemplateFile) => ({
+                            ...file,
+                            output_path: file.output_path || '/'
+                        }));
+                        setTemplateFiles(filesWithOutputPath);
                     }
                 }
 

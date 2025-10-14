@@ -10,6 +10,7 @@ use App\Models\Language;
 use App\Models\SchemaTable;
 use App\Models\SchemaVersion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProjectFileTreeGenerator
 {
@@ -150,6 +151,9 @@ class ProjectFileTreeGenerator
             }
         }
 
+        // Sort the tree structure alphabetically by directory/file names
+        $this->sortTreeNodes($children);
+
         return [
             'id' => 'template-' . $template->id,
             'name' => $template->name,
@@ -177,13 +181,41 @@ class ProjectFileTreeGenerator
             '%9' => '',  // No database version for project files
         ];
 
-        $path = $this->resolvePlaceholders($templateFile->file_path, $placeholders);
+        // Use output_path for directory structure, file_path for the actual file
+        $outputPath = $templateFile->output_path ?? '';
+        $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
+        
+        // Resolve placeholders in both paths
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
+        
+        // Combine output path and file path
+        $fullPath = $resolvedOutputPath;
+        if (!empty($resolvedFilePath)) {
+            // If file_path includes directories, we need to handle them
+            $fileName = basename($resolvedFilePath);
+            $fileDir = dirname($resolvedFilePath);
+            
+            if ($fileDir !== '.' && $fileDir !== '/') {
+                // Add file directory to output path
+                $fullPath = rtrim($fullPath, '/') . '/' . ltrim($fileDir, '/');
+            }
+            
+            // Add filename
+            $fullPath = rtrim($fullPath, '/') . '/' . $fileName;
+        }
+        
+        // Always ensure we have a valid path
+        if (empty($fullPath)) {
+            $fullPath = $templateFile->file_name;
+            Log::warning("🧪 [TREE-GEN] Resolved path is empty for TemplateFile ID {$templateFile->id}, using file_name: '{$fullPath}'");
+        }
 
         return [
             'id' => 'gen-file-project-' . $templateFile->id,
-            'name' => basename($path),
+            'name' => basename($fullPath),
             'type' => 'generated-file',
-            'path' => $path,
+            'path' => $fullPath,
             'templateId' => $template->id,
             'fileId' => $templateFile->id,
             'fileType' => 'project_file',
@@ -219,13 +251,41 @@ class ProjectFileTreeGenerator
             '%9' => $versionNumber,                  // Database version number
         ];
 
-        $path = $this->resolvePlaceholders($templateFile->file_path, $placeholders);
+        // Use output_path for directory structure, file_path for the actual file
+        $outputPath = $templateFile->output_path ?? '';
+        $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
+        
+        // Resolve placeholders in both paths
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
+        
+        // Combine output path and file path
+        $fullPath = $resolvedOutputPath;
+        if (!empty($resolvedFilePath)) {
+            // If file_path includes directories, we need to handle them
+            $fileName = basename($resolvedFilePath);
+            $fileDir = dirname($resolvedFilePath);
+            
+            if ($fileDir !== '.' && $fileDir !== '/') {
+                // Add file directory to output path
+                $fullPath = rtrim($fullPath, '/') . '/' . ltrim($fileDir, '/');
+            }
+            
+            // Add filename
+            $fullPath = rtrim($fullPath, '/') . '/' . $fileName;
+        }
+        
+        // Always ensure we have a valid path
+        if (empty($fullPath)) {
+            $fullPath = $templateFile->file_name;
+            Log::warning("🧪 [TREE-GEN] Resolved path is empty for TemplateFile ID {$templateFile->id}, using file_name: '{$fullPath}'");
+        }
 
         return [
             'id' => 'gen-file-' . $templateFile->id . '-table-' . ($tableData['id'] ?? 0) . '-lang-' . ($languageData['id'] ?? 0),
-            'name' => basename($path),
+            'name' => basename($fullPath),
             'type' => 'generated-file',
-            'path' => $path,
+            'path' => $fullPath,
             'templateId' => $template->id,
             'fileId' => $templateFile->id,
             'tableId' => $tableData['id'] ?? 0,
@@ -311,6 +371,40 @@ class ProjectFileTreeGenerator
     protected function toSnakeCase(string $str): string
     {
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $str));
+    }
+
+    /**
+     * Sort tree nodes recursively by name (directories first, then files)
+     */
+    protected function sortTreeNodes(array &$nodes): void
+    {
+        // Separate directories and files
+        $directories = [];
+        $files = [];
+
+        foreach ($nodes as &$node) {
+            if ($node['type'] === 'directory') {
+                // Recursively sort children of directories
+                if (!empty($node['children'])) {
+                    $this->sortTreeNodes($node['children']);
+                }
+                $directories[] = &$node;
+            } else {
+                $files[] = &$node;
+            }
+        }
+
+        // Sort directories and files alphabetically
+        usort($directories, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        usort($files, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        // Combine directories first, then files
+        $nodes = array_merge($directories, $files);
     }
 
     /**
