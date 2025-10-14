@@ -365,9 +365,11 @@ class TemplateController extends Controller
             'is_system_template' => 'nullable|boolean',
             'files' => 'array',
             'files.*.file_name' => 'required|string',
+            'files.*.file_path' => 'nullable|string',
             'files.*.file_content' => 'required|string',
             'files.*.file_type' => 'required|string',
             'files.*.file_order' => 'integer',
+            'files.*.output_path' => 'nullable|string',
         ]);
 
         // Only system users can create system templates
@@ -390,10 +392,11 @@ class TemplateController extends Controller
             foreach ($validated['files'] as $fileData) {
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
-                    'file_path' => $fileData['file_name'], // Use file_name as file_path for now
+                    'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
                     'file_content' => $fileData['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
+                    'output_path' => $fileData['output_path'] ?? '/',
                 ]);
             }
         }
@@ -451,9 +454,11 @@ class TemplateController extends Controller
             'is_system_template' => 'nullable|boolean',
             'files' => 'array',
             'files.*.file_name' => 'required|string',
+            'files.*.file_path' => 'nullable|string',
             'files.*.file_content' => 'required|string',
             'files.*.file_type' => 'required|string',
             'files.*.file_order' => 'integer',
+            'files.*.output_path' => 'nullable|string',
         ]);
 
         // Only system users can set/change system template flag
@@ -483,10 +488,11 @@ class TemplateController extends Controller
             foreach ($validated['files'] as $fileData) {
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
-                    'file_path' => $fileData['file_name'], // Use file_name as file_path for now
+                    'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
                     'file_content' => $fileData['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
+                    'output_path' => $fileData['output_path'] ?? '/',
                 ]);
             }
 
@@ -842,6 +848,7 @@ class TemplateController extends Controller
 
         $validated = $request->validate([
             'file_name' => 'required|string',
+            'file_path' => 'nullable|string',
             'file_content' => 'required|string',
             'file_type' => 'required|string',
             'file_order' => 'integer',
@@ -850,7 +857,7 @@ class TemplateController extends Controller
 
         $file = $template->files()->create([
             'file_name' => $validated['file_name'],
-            'file_path' => $validated['file_name'],
+            'file_path' => $validated['file_path'] ?? $validated['file_name'], // Use provided file_path or fallback to file_name
             'file_content' => $validated['file_content'],
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? 0,
@@ -879,6 +886,7 @@ class TemplateController extends Controller
 
         $validated = $request->validate([
             'file_name' => 'required|string',
+            'file_path' => 'nullable|string',
             'file_content' => 'required|string',
             'file_type' => 'required|string',
             'file_order' => 'integer',
@@ -887,7 +895,7 @@ class TemplateController extends Controller
 
         $file->update([
             'file_name' => $validated['file_name'],
-            'file_path' => $validated['file_name'],
+            'file_path' => $validated['file_path'] ?? $file->file_path, // Preserve original file_path if not provided
             'file_content' => $validated['file_content'],
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? $file->file_order,
