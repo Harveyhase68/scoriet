@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Button, Table, Modal, Form, Input, Select, Space, message, Popconfirm, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, FileOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
+import { useForm, Controller } from 'react-hook-form';
+import { useToast } from '@/contexts/ToastContext';
+import { Dialog } from 'primereact/dialog';
+import { Tag } from 'primereact/tag';
+import { Button } from 'primereact/button';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
 import { apiClient as api } from '@/lib/api';
-
-const { TextArea } = Input;
-const { Option } = Select;
 
 interface TemplateFile {
     id: number;
@@ -28,9 +35,18 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
     onFilesUpdate,
     onClose
 }) => {
+    const toast = useToast();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingFile, setEditingFile] = useState<TemplateFile | null>(null);
-    const [form] = Form.useForm();
+
+    const { control, handleSubmit, reset, formState: { errors } } = useForm({
+        defaultValues: {
+            file_name: '',
+            file_content: '',
+            file_type: 'template',
+            file_order: 0
+        }
+    });
 
     const fileTypes = [
         'template',
@@ -47,8 +63,9 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
     const handleCreate = () => {
         setEditingFile(null);
-        form.resetFields();
-        form.setFieldsValue({
+        reset({
+            file_name: '',
+            file_content: '',
             file_type: 'template',
             file_order: files.length
         });
@@ -57,7 +74,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
     const handleEdit = (file: TemplateFile) => {
         setEditingFile(file);
-        form.setFieldsValue({
+        reset({
             file_name: file.file_name,
             file_content: file.file_content,
             file_type: file.file_type,
@@ -66,7 +83,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
         setModalVisible(true);
     };
 
-    const handleSubmit = async (values: any) => {
+    const onSubmit = async (values: any) => {
         try {
             const fileData = {
                 file_name: values.file_name,
@@ -83,12 +100,12 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
             }
 
             if (response.data.success) {
-                message.success(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'erstellt'}`);
+                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'erstellt'}`);
                 setModalVisible(false);
                 onFilesUpdate();
             }
         } catch {
-            message.error(`Fehler beim ${editingFile ? 'Aktualisieren' : 'Erstellen'} der Datei`);
+            toast.showError(`Fehler beim ${editingFile ? 'Aktualisieren' : 'Erstellen'} der Datei`);
         }
     };
 
@@ -96,11 +113,11 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
         try {
             const response = await api.delete(`/template-files/${id}`);
             if (response.data.success) {
-                message.success('Datei erfolgreich gelöscht');
+                toast.showSuccess('Datei erfolgreich gelöscht');
                 onFilesUpdate();
             }
         } catch {
-            message.error('Fehler beim Löschen der Datei');
+            toast.showError('Fehler beim Löschen der Datei');
         }
     };
 
@@ -111,183 +128,250 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch {
-            message.error('Fehler beim Verschieben der Datei');
+            toast.showError('Fehler beim Verschieben der Datei');
         }
     };
 
-    const columns = [
-        {
-            title: 'Name',
-            dataIndex: 'file_name',
-            key: 'file_name',
-            render: (name: string) => (
-                <span>
-                    <FileOutlined className="mr-2" />
-                    {name}
-                </span>
-            ),
-        },
-        {
-            title: 'Typ',
-            dataIndex: 'file_type',
-            key: 'file_type',
-            render: (type: string) => (
-                <Tag color="blue">{type}</Tag>
-            ),
-        },
-        {
-            title: 'Reihenfolge',
-            dataIndex: 'file_order',
-            key: 'file_order',
-            width: 100,
-        },
-        {
-            title: 'Größe',
-            dataIndex: 'file_content',
-            key: 'size',
-            width: 100,
-            render: (content: string) => `${content.length} Zeichen`,
-        },
-        {
-            title: 'Aktionen',
-            key: 'actions',
-            width: 200,
-            render: (_, record: TemplateFile, index: number) => (
-                <Space>
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<UpOutlined />}
-                        disabled={index === 0}
-                        onClick={() => handleMoveFile(record.id, 'up')}
-                        title="Nach oben"
-                    />
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<DownOutlined />}
-                        disabled={index === files.length - 1}
-                        onClick={() => handleMoveFile(record.id, 'down')}
-                        title="Nach unten"
-                    />
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    />
-                    <Popconfirm
-                        title="Datei löschen?"
-                        description="Sind Sie sicher, dass Sie diese Datei löschen möchten?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Ja"
-                        cancelText="Nein"
-                    >
-                        <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                        />
-                    </Popconfirm>
-                </Space>
-            ),
-        },
-    ];
+    const confirmDelete = (id: number) => {
+        confirmDialog({
+            message: 'Sind Sie sicher, dass Sie diese Datei löschen möchten?',
+            header: 'Datei löschen?',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => handleDelete(id),
+            acceptLabel: 'Ja',
+            rejectLabel: 'Nein',
+            acceptClassName: 'p-button-danger'
+        });
+    };
+
+    const nameBodyTemplate = (rowData: TemplateFile) => {
+        return (
+            <span>
+                <i className="pi pi-file mr-2"></i>
+                {rowData.file_name}
+            </span>
+        );
+    };
+
+    const typeBodyTemplate = (rowData: TemplateFile) => {
+        return <Tag value={rowData.file_type} severity="info" />;
+    };
+
+    const sizeBodyTemplate = (rowData: TemplateFile) => {
+        return `${rowData.file_content.length} Zeichen`;
+    };
+
+    const actionsBodyTemplate = (rowData: TemplateFile) => {
+        const index = files.indexOf(rowData);
+        return (
+            <div className="flex gap-1">
+                <Button
+                    icon="pi pi-arrow-up"
+                    rounded
+                    text
+                    size="small"
+                    disabled={index === 0}
+                    onClick={() => handleMoveFile(rowData.id, 'up')}
+                    tooltip="Nach oben"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-arrow-down"
+                    rounded
+                    text
+                    size="small"
+                    disabled={index === files.length - 1}
+                    onClick={() => handleMoveFile(rowData.id, 'down')}
+                    tooltip="Nach unten"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    text
+                    severity="info"
+                    size="small"
+                    onClick={() => handleEdit(rowData)}
+                    tooltip="Bearbeiten"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-trash"
+                    rounded
+                    text
+                    severity="danger"
+                    size="small"
+                    onClick={() => confirmDelete(rowData.id)}
+                    tooltip="Löschen"
+                    tooltipOptions={{ position: 'top' }}
+                />
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-4">
+            <ConfirmDialog />
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Template Dateien verwalten</h3>
-                <Space>
+                <div className="flex gap-2">
                     <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
+                        icon="pi pi-plus"
+                        label="Neue Datei"
+                        size="small"
+                        severity="success"
                         onClick={handleCreate}
-                    >
-                        Neue Datei
-                    </Button>
-                    <Button onClick={onClose}>
-                        Schließen
-                    </Button>
-                </Space>
+                    />
+                    <Button
+                        icon="pi pi-times"
+                        label="Schließen"
+                        size="small"
+                        severity="secondary"
+                        onClick={onClose}
+                    />
+                </div>
             </div>
 
-            <Table
-                columns={columns}
-                dataSource={files}
+            <DataTable
+                value={files}
                 rowKey="id"
-                pagination={false}
                 size="small"
-            />
+                stripedRows
+                showGridlines
+                emptyMessage="Keine Dateien vorhanden"
+            >
+                <Column field="file_name" header="Name" body={nameBodyTemplate} sortable />
+                <Column field="file_type" header="Typ" body={typeBodyTemplate} sortable style={{ width: '150px' }} />
+                <Column field="file_order" header="Reihenfolge" sortable style={{ width: '120px' }} />
+                <Column header="Größe" body={sizeBodyTemplate} style={{ width: '120px' }} />
+                <Column header="Aktionen" body={actionsBodyTemplate} style={{ width: '200px' }} />
+            </DataTable>
 
             {/* Create/Edit Modal */}
-            <Modal
-                title={editingFile ? 'Datei bearbeiten' : 'Neue Datei erstellen'}
-                open={modalVisible}
-                onCancel={() => setModalVisible(false)}
-                footer={null}
-                width={800}
+            <Dialog
+                header={editingFile ? 'Datei bearbeiten' : 'Neue Datei erstellen'}
+                visible={modalVisible}
+                onHide={() => setModalVisible(false)}
+                style={{ width: '800px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                >
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="flex gap-4">
-                        <Form.Item
-                            name="file_name"
-                            label="Dateiname"
-                            rules={[{ required: true, message: 'Bitte Dateinamen eingeben!' }]}
-                            className="flex-1"
-                        >
-                            <Input placeholder="e.g., Model.php, component.tsx" />
-                        </Form.Item>
+                        {/* File Name */}
+                        <div className="flex-1">
+                            <label htmlFor="file_name" className="block text-sm font-medium mb-2">
+                                Dateiname *
+                            </label>
+                            <Controller
+                                name="file_name"
+                                control={control}
+                                rules={{ required: 'Bitte Dateinamen eingeben!' }}
+                                render={({ field }) => (
+                                    <InputText
+                                        id="file_name"
+                                        {...field}
+                                        placeholder="e.g., Model.php, component.tsx"
+                                        className="w-full"
+                                    />
+                                )}
+                            />
+                            {errors.file_name && (
+                                <small className="text-red-400 mt-1 block">{errors.file_name.message}</small>
+                            )}
+                        </div>
 
-                        <Form.Item
-                            name="file_type"
-                            label="Typ"
-                            rules={[{ required: true, message: 'Bitte Typ auswählen!' }]}
-                            className="w-40"
-                        >
-                            <Select placeholder="Typ auswählen">
-                                {fileTypes.map(type => (
-                                    <Option key={type} value={type}>{type}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
+                        {/* File Type */}
+                        <div className="w-40">
+                            <label htmlFor="file_type" className="block text-sm font-medium mb-2">
+                                Typ *
+                            </label>
+                            <Controller
+                                name="file_type"
+                                control={control}
+                                rules={{ required: 'Bitte Typ auswählen!' }}
+                                render={({ field }) => (
+                                    <Dropdown
+                                        id="file_type"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(e.value)}
+                                        options={fileTypes.map(type => ({ label: type, value: type }))}
+                                        placeholder="Typ auswählen"
+                                        className="w-full"
+                                    />
+                                )}
+                            />
+                            {errors.file_type && (
+                                <small className="text-red-400 mt-1 block">{errors.file_type.message}</small>
+                            )}
+                        </div>
 
-                        <Form.Item
-                            name="file_order"
-                            label="Reihenfolge"
-                            className="w-32"
-                        >
-                            <Input type="number" min={0} />
-                        </Form.Item>
+                        {/* File Order */}
+                        <div className="w-32">
+                            <label htmlFor="file_order" className="block text-sm font-medium mb-2">
+                                Reihenfolge
+                            </label>
+                            <Controller
+                                name="file_order"
+                                control={control}
+                                render={({ field }) => (
+                                    <InputText
+                                        id="file_order"
+                                        type="number"
+                                        value={field.value?.toString()}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                        min={0}
+                                        className="w-full"
+                                    />
+                                )}
+                            />
+                        </div>
                     </div>
 
-                    <Form.Item
-                        name="file_content"
-                        label="Dateiinhalt"
-                        rules={[{ required: true, message: 'Bitte Dateiinhalt eingeben!' }]}
-                    >
-                        <TextArea 
-                            rows={15}
-                            placeholder="Template-Code hier eingeben..."
-                            style={{ fontFamily: 'monospace' }}
+                    {/* File Content */}
+                    <div>
+                        <label htmlFor="file_content" className="block text-sm font-medium mb-2">
+                            Dateiinhalt *
+                        </label>
+                        <Controller
+                            name="file_content"
+                            control={control}
+                            rules={{ required: 'Bitte Dateiinhalt eingeben!' }}
+                            render={({ field }) => (
+                                <InputTextarea
+                                    id="file_content"
+                                    {...field}
+                                    rows={15}
+                                    placeholder="Template-Code hier eingeben..."
+                                    className="w-full font-mono"
+                                />
+                            )}
                         />
-                    </Form.Item>
-
-                    <div className="flex gap-2 justify-end">
-                        <Button onClick={() => setModalVisible(false)}>
-                            Abbrechen
-                        </Button>
-                        <Button type="primary" htmlType="submit">
-                            {editingFile ? 'Aktualisieren' : 'Erstellen'}
-                        </Button>
+                        {errors.file_content && (
+                            <small className="text-red-400 mt-1 block">{errors.file_content.message}</small>
+                        )}
                     </div>
-                </Form>
-            </Modal>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 justify-end">
+                        <Button
+                            type="button"
+                            label="Abbrechen"
+                            icon="pi pi-times"
+                            severity="secondary"
+                            onClick={() => setModalVisible(false)}
+                        />
+                        <Button
+                            type="submit"
+                            label={editingFile ? 'Aktualisieren' : 'Erstellen'}
+                            icon="pi pi-check"
+                            severity="success"
+                        />
+                    </div>
+                </form>
+            </Dialog>
         </div>
     );
 };

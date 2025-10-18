@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Modal, Form, Input, Switch, message, Tag, Select, InputNumber } from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { useToast } from '@/contexts/ToastContext';
 import { Button } from 'primereact/button';
-import type { ColumnsType } from 'antd/es/table';
+import { Tag } from 'primereact/tag';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { Dialog } from 'primereact/dialog';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
+import { InputSwitch } from 'primereact/inputswitch';
+import { Dropdown } from 'primereact/dropdown';
 import { api } from '@/lib/api';
 
 interface Language {
@@ -35,214 +46,136 @@ interface LanguageFormData {
 }
 
 export default function LanguageManagementPanel() {
+  const toast = useToast();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingLanguage, setEditingLanguage] = useState<Language | null>(null);
-  const [form] = Form.useForm();
 
-  // Custom dark mode CSS for Ant Design Modal and components
-  const darkModeStyles = `
-    /* Modal styling */
-    .language-management-modal .ant-modal-content {
-      background: #374151 !important;
-      color: #f9fafb !important;
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<LanguageFormData>({
+    defaultValues: {
+      code: '',
+      name: '',
+      native_name: '',
+      flag: '',
+      is_active: true,
+      is_default: false,
+      sort_order: 0,
+      description: ''
     }
-    .language-management-modal .ant-modal-header {
-      background: #374151 !important;
-      border-bottom: 1px solid #4b5563 !important;
-    }
-    .language-management-modal .ant-modal-title {
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-modal-footer {
-      background: #374151 !important;
-      border-top: 1px solid #4b5563 !important;
-    }
-
-    /* Form styling inside modal */
-    .language-management-modal .ant-form-item-label > label {
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-input {
-      background: #1f2937 !important;
-      border-color: #4b5563 !important;
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-input:focus {
-      border-color: #2563eb !important;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
-    }
-    .language-management-modal .ant-select-selector {
-      background: #1f2937 !important;
-      border-color: #4b5563 !important;
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-select-selection-search-input {
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-input-number {
-      background: #1f2937 !important;
-      border-color: #4b5563 !important;
-    }
-    .language-management-modal .ant-input-number-input {
-      color: #f9fafb !important;
-    }
-    .language-management-modal .ant-switch {
-      background: #4b5563 !important;
-    }
-    .language-management-modal .ant-switch-checked {
-      background: #2563eb !important;
-    }
-
-    /* Table styling */
-    .ant-table {
-      background: #374151 !important;
-      color: #f9fafb !important;
-    }
-    .ant-table-thead > tr > th {
-      background: #1f2937 !important;
-      color: #f9fafb !important;
-      border-bottom: 1px solid #4b5563 !important;
-    }
-    .ant-table-tbody > tr > td {
-      background: #374151 !important;
-      color: #f9fafb !important;
-      border-bottom: 1px solid #4b5563 !important;
-    }
-    .ant-table-tbody > tr:hover > td {
-      background: #1f2937 !important;
-    }
-
-    /* Pagination styling */
-    .ant-pagination {
-      color: #f9fafb !important;
-    }
-    .ant-pagination .ant-pagination-item {
-      background: #1f2937 !important;
-      border-color: #4b5563 !important;
-    }
-    .ant-pagination .ant-pagination-item a {
-      color: #f9fafb !important;
-    }
-    .ant-pagination .ant-pagination-item-active {
-      background: #2563eb !important;
-      border-color: #2563eb !important;
-    }
-    .ant-pagination .ant-pagination-prev,
-    .ant-pagination .ant-pagination-next {
-      color: #f9fafb !important;
-    }
-
-    /* Select dropdown */
-    .ant-select-dropdown.language-management-dropdown {
-      background: #374151 !important;
-    }
-    .ant-select-dropdown.language-management-dropdown .ant-select-item {
-      color: #f9fafb !important;
-    }
-    .ant-select-dropdown.language-management-dropdown .ant-select-item-option-selected {
-      background: #2563eb !important;
-    }
-  `;
+  });
 
   useEffect(() => {
-    // Inject dark mode styles
-    const styleElement = document.createElement('style');
-    styleElement.textContent = darkModeStyles;
-    document.head.appendChild(styleElement);
-
-    return () => {
-      document.head.removeChild(styleElement);
+    const fetchLanguages = async () => {
+        setLoading(true);
+        try {
+          const response = await api.request('/languages');
+          setLanguages(response);
+        } catch (error: any) {
+          if (error.response?.status === 403) {
+            toast.showError('Unauthorized. System admin access required.');
+          } else {
+            toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
+          }
+        } finally {
+          setLoading(false);
+        }
     };
-  }, [darkModeStyles]);
 
-  const fetchLanguages = async () => {
-    setLoading(true);
-    try {
-      const response = await api.request('/languages');
-      setLanguages(response);
-    } catch (error: any) {
-      if (error.response?.status === 403) {
-        message.error('Unauthorized. System admin access required.');
-      } else {
-        message.error('Failed to load languages: ' + (error.response?.data?.message || error.message));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
     fetchLanguages();
-  }, []);
+  }, [toast]);
 
   const handleCreate = () => {
     setEditingLanguage(null);
-    form.resetFields();
-    form.setFieldsValue({
+    reset({
+      code: '',
+      name: '',
+      native_name: '',
+      flag: '',
       is_active: true,
       is_default: false,
-      sort_order: languages.length + 1
+      sort_order: languages.length + 1,
+      description: ''
     });
     setModalVisible(true);
   };
 
   const handleEdit = (language: Language) => {
     setEditingLanguage(language);
-    form.setFieldsValue(language);
+    reset({
+      code: language.code,
+      name: language.name,
+      native_name: language.native_name,
+      flag: language.flag || '',
+      is_active: language.is_active,
+      is_default: language.is_default,
+      sort_order: language.sort_order,
+      description: language.description || ''
+    });
     setModalVisible(true);
+  };
+
+  const confirmDelete = (language: Language) => {
+    confirmDialog({
+      message: 'Are you sure you want to delete this language?',
+      header: 'Delete Language',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => handleDelete(language),
+      acceptLabel: 'Yes',
+      rejectLabel: 'No',
+      acceptClassName: 'p-button-danger'
+    });
   };
 
   const handleDelete = async (language: Language) => {
     try {
       await api.request(`/languages/${language.id}`, { method: 'DELETE' });
-      message.success('Language deleted successfully');
+      toast.showSuccess('Language deleted successfully');
       fetchLanguages();
     } catch (error: any) {
-      message.error('Failed to delete language: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to delete language: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleToggleActive = async (language: Language) => {
     try {
       await api.request(`/languages/${language.id}/toggle-active`, { method: 'PATCH' });
-      message.success(`Language ${language.is_active ? 'deactivated' : 'activated'} successfully`);
+      toast.showSuccess(`Language ${language.is_active ? 'deactivated' : 'activated'} successfully`);
       fetchLanguages();
     } catch (error: any) {
-      message.error('Failed to toggle language status: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to toggle language status: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleSetDefault = async (language: Language) => {
     try {
       await api.request(`/languages/${language.id}/set-default`, { method: 'PATCH' });
-      message.success('Default language updated successfully');
+      toast.showSuccess('Default language updated successfully');
       fetchLanguages();
     } catch (error: any) {
-      message.error('Failed to set default language: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to set default language: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  const handleSubmit = async (values: LanguageFormData) => {
+  const onSubmit = async (values: LanguageFormData) => {
     try {
       if (editingLanguage) {
         await api.request(`/languages/${editingLanguage.id}`, {
           method: 'PUT',
           body: JSON.stringify(values)
         });
-        message.success('Language updated successfully');
+        toast.showSuccess('Language updated successfully');
       } else {
         await api.request('/languages', {
           method: 'POST',
           body: JSON.stringify(values)
         });
-        message.success('Language created successfully');
+        toast.showSuccess('Language created successfully');
       }
       setModalVisible(false);
       fetchLanguages();
     } catch (error: any) {
-      message.error('Failed to save language: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to save language: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -266,133 +199,92 @@ export default function LanguageManagementPanel() {
     { value: '🇮🇳', label: '🇮🇳 India' },
   ];
 
-  const columns: ColumnsType<Language> = [
-    {
-      title: 'Flag',
-      dataIndex: 'flag',
-      key: 'flag',
-      width: 60,
-      render: (flag: string) => flag || '🏴',
-    },
-    {
-      title: 'Code',
-      dataIndex: 'code',
-      key: 'code',
-      width: 80,
-      render: (code: string) => <Tag color="blue">{code.toUpperCase()}</Tag>,
-    },
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      width: 150,
-    },
-    {
-      title: 'Native Name',
-      dataIndex: 'native_name',
-      key: 'native_name',
-      width: 150,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'is_active',
-      key: 'is_active',
-      width: 100,
-      render: (is_active: boolean, record: Language) => (
-        <div className="flex gap-1">
-          <Tag color={is_active ? 'green' : 'red'}>
-            {is_active ? 'Active' : 'Inactive'}
-          </Tag>
-          {record.is_default && <Tag color="gold">Default</Tag>}
-        </div>
-      ),
-    },
-    {
-      title: 'Sort Order',
-      dataIndex: 'sort_order',
-      key: 'sort_order',
-      width: 100,
-      sorter: (a, b) => a.sort_order - b.sort_order,
-    },
-    {
-      title: 'Creator',
-      dataIndex: 'creator',
-      key: 'creator',
-      width: 120,
-      render: (creator: any) => creator?.name || 'System',
-    },
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (description: string) => description || '-',
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 200,
-      render: (_, record: Language) => (
-        <div className="flex gap-1">
+  const flagBodyTemplate = (rowData: Language) => {
+    return rowData.flag || '🏴';
+  };
+
+  const codeBodyTemplate = (rowData: Language) => {
+    return <Tag value={rowData.code.toUpperCase()} severity="info" />;
+  };
+
+  const statusBodyTemplate = (rowData: Language) => {
+    return (
+      <div className="flex gap-1">
+        <Tag
+          value={rowData.is_active ? 'Active' : 'Inactive'}
+          severity={rowData.is_active ? 'success' : 'danger'}
+        />
+        {rowData.is_default && <Tag value="Default" severity="warning" />}
+      </div>
+    );
+  };
+
+  const creatorBodyTemplate = (rowData: Language) => {
+    return rowData.creator?.name || 'System';
+  };
+
+  const descriptionBodyTemplate = (rowData: Language) => {
+    return rowData.description || '-';
+  };
+
+  const actionsBodyTemplate = (rowData: Language) => {
+    return (
+      <div className="flex gap-1">
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          text
+          size="small"
+          severity="info"
+          onClick={() => handleEdit(rowData)}
+          tooltip="Edit Language"
+          tooltipOptions={{ position: 'top' }}
+        />
+
+        <Button
+          icon={rowData.is_active ? "pi pi-eye-slash" : "pi pi-eye"}
+          rounded
+          text
+          size="small"
+          severity={rowData.is_active ? "warning" : "success"}
+          onClick={() => handleToggleActive(rowData)}
+          tooltip={rowData.is_active ? 'Deactivate' : 'Activate'}
+          tooltipOptions={{ position: 'top' }}
+          disabled={rowData.is_default && rowData.is_active}
+        />
+
+        {!rowData.is_default && (
           <Button
-            icon="pi pi-pencil"
+            icon="pi pi-star"
             rounded
             text
             size="small"
-            severity="info"
-            onClick={() => handleEdit(record)}
-            tooltip="Edit Language"
+            severity="help"
+            onClick={() => handleSetDefault(rowData)}
+            tooltip="Set as Default"
             tooltipOptions={{ position: 'top' }}
+            disabled={!rowData.is_active}
           />
+        )}
 
-          <Button
-            icon={record.is_active ? "pi pi-eye-slash" : "pi pi-eye"}
-            rounded
-            text
-            size="small"
-            severity={record.is_active ? "warning" : "success"}
-            onClick={() => handleToggleActive(record)}
-            tooltip={record.is_active ? 'Deactivate' : 'Activate'}
-            tooltipOptions={{ position: 'top' }}
-            disabled={record.is_default && record.is_active}
-          />
-
-          {!record.is_default && (
-            <Button
-              icon="pi pi-star"
-              rounded
-              text
-              size="small"
-              severity="help"
-              onClick={() => handleSetDefault(record)}
-              tooltip="Set as Default"
-              tooltipOptions={{ position: 'top' }}
-              disabled={!record.is_active}
-            />
-          )}
-
-          <Button
-            icon="pi pi-trash"
-            rounded
-            text
-            size="small"
-            severity="danger"
-            onClick={() => {
-              if (window.confirm('Are you sure you want to delete this language?')) {
-                handleDelete(record);
-              }
-            }}
-            tooltip={record.is_default ? 'Cannot delete default language' : 'Delete Language'}
-            tooltipOptions={{ position: 'top' }}
-            disabled={record.is_default}
-          />
-        </div>
-      ),
-    },
-  ];
+        <Button
+          icon="pi pi-trash"
+          rounded
+          text
+          size="small"
+          severity="danger"
+          onClick={() => confirmDelete(rowData)}
+          tooltip={rowData.is_default ? 'Cannot delete default language' : 'Delete Language'}
+          tooltipOptions={{ position: 'top' }}
+          disabled={rowData.is_default}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-gray-800 text-gray-100">
+      <ConfirmDialog />
       <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
         <div className="flex justify-between items-center">
           <div>
@@ -415,136 +307,262 @@ export default function LanguageManagementPanel() {
 
       <div className="flex-1 p-4 overflow-auto bg-gray-800">
         <div className="rounded-lg shadow-sm overflow-hidden bg-gray-700">
-          <Table
-            columns={columns}
-            dataSource={languages}
+          <DataTable
+            value={languages}
             rowKey="id"
             loading={loading}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} languages`,
-            }}
-            scroll={{ y: 'calc(100vh - 300px)' }}
+            paginator
+            rows={20}
+            rowsPerPageOptions={[10, 20, 50]}
+            paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+            currentPageReportTemplate="{first}-{last} of {total} languages"
             size="small"
-          />
+            stripedRows
+            showGridlines
+            scrollable
+            scrollHeight="calc(100vh - 300px)"
+            emptyMessage="No languages found"
+          >
+            <Column field="flag" header="Flag" body={flagBodyTemplate} style={{ width: '80px' }} />
+            <Column field="code" header="Code" body={codeBodyTemplate} sortable style={{ width: '100px' }} />
+            <Column field="name" header="Name" sortable style={{ width: '150px' }} />
+            <Column field="native_name" header="Native Name" sortable style={{ width: '150px' }} />
+            <Column header="Status" body={statusBodyTemplate} style={{ width: '150px' }} />
+            <Column field="sort_order" header="Sort Order" sortable style={{ width: '120px' }} />
+            <Column header="Creator" body={creatorBodyTemplate} style={{ width: '120px' }} />
+            <Column field="description" header="Description" body={descriptionBodyTemplate} />
+            <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+          </DataTable>
         </div>
       </div>
 
-        <Modal
-          title={editingLanguage ? 'Edit Language' : 'Add New Language'}
-          open={modalVisible}
-          onCancel={() => setModalVisible(false)}
-          onOk={() => form.submit()}
-          width={600}
-          destroyOnHidden
-          className="language-management-modal"
-        >
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            initialValues={{
-              is_active: true,
-              is_default: false,
-              sort_order: 1
-            }}
-          >
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              name="code"
-              label="Language Code"
-              rules={[
-                { required: true, message: 'Please enter language code' },
-                { max: 5, message: 'Code must be 5 characters or less' },
-                { pattern: /^[a-z]{2,3}(-[A-Z]{2})?$/, message: 'Please enter valid language code (e.g., en, de, en-US)' }
-              ]}
-            >
-              <Input placeholder="e.g., en, de, fr" />
-            </Form.Item>
-
-            <Form.Item
-              name="flag"
-              label="Flag"
-            >
-              <Select
-                placeholder="Select flag"
-                allowClear
-                showSearch
-                options={commonFlags}
-                dropdownClassName="language-management-dropdown"
+        <Dialog
+          header={editingLanguage ? 'Edit Language' : 'Add New Language'}
+          visible={modalVisible}
+          onHide={() => setModalVisible(false)}
+          style={{ width: '600px' }}
+          modal
+          closable
+          draggable
+          resizable
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                label="Cancel"
+                icon="pi pi-times"
+                severity="secondary"
+                onClick={() => setModalVisible(false)}
               />
-            </Form.Item>
-          </div>
+              <Button
+                type="button"
+                label={editingLanguage ? 'Update' : 'Create'}
+                icon="pi pi-check"
+                severity="success"
+                onClick={handleSubmit(onSubmit)}
+              />
+            </div>
+          }
+        >
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Language Code */}
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium mb-2">
+                  Language Code *
+                </label>
+                <Controller
+                  name="code"
+                  control={control}
+                  rules={{
+                    required: 'Please enter language code',
+                    maxLength: { value: 5, message: 'Code must be 5 characters or less' },
+                    pattern: { value: /^[a-z]{2,3}(-[A-Z]{2})?$/, message: 'Please enter valid language code (e.g., en, de, en-US)' }
+                  }}
+                  render={({ field }) => (
+                    <InputText
+                      id="code"
+                      {...field}
+                      placeholder="e.g., en, de, fr"
+                      className="w-full"
+                    />
+                  )}
+                />
+                {errors.code && (
+                  <small className="text-red-400 mt-1 block">{errors.code.message}</small>
+                )}
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              name="name"
-              label="English Name"
-              rules={[
-                { required: true, message: 'Please enter language name' },
-                { max: 100, message: 'Name must be 100 characters or less' }
-              ]}
-            >
-              <Input placeholder="e.g., English, German, French" />
-            </Form.Item>
+              {/* Flag */}
+              <div>
+                <label htmlFor="flag" className="block text-sm font-medium mb-2">
+                  Flag
+                </label>
+                <Controller
+                  name="flag"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="flag"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={commonFlags}
+                      placeholder="Select flag"
+                      showClear
+                      filter
+                      className="w-full"
+                    />
+                  )}
+                />
+              </div>
+            </div>
 
-            <Form.Item
-              name="native_name"
-              label="Native Name"
-              rules={[
-                { required: true, message: 'Please enter native language name' },
-                { max: 100, message: 'Native name must be 100 characters or less' }
-              ]}
-            >
-              <Input placeholder="e.g., English, Deutsch, Français" />
-            </Form.Item>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* English Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium mb-2">
+                  English Name *
+                </label>
+                <Controller
+                  name="name"
+                  control={control}
+                  rules={{
+                    required: 'Please enter language name',
+                    maxLength: { value: 100, message: 'Name must be 100 characters or less' }
+                  }}
+                  render={({ field }) => (
+                    <InputText
+                      id="name"
+                      {...field}
+                      placeholder="e.g., English, German, French"
+                      className="w-full"
+                    />
+                  )}
+                />
+                {errors.name && (
+                  <small className="text-red-400 mt-1 block">{errors.name.message}</small>
+                )}
+              </div>
 
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[
-              { max: 1000, message: 'Description must be 1000 characters or less' }
-            ]}
-          >
-            <Input.TextArea
-              rows={3}
-              placeholder="Optional description of the language"
-            />
-          </Form.Item>
+              {/* Native Name */}
+              <div>
+                <label htmlFor="native_name" className="block text-sm font-medium mb-2">
+                  Native Name *
+                </label>
+                <Controller
+                  name="native_name"
+                  control={control}
+                  rules={{
+                    required: 'Please enter native language name',
+                    maxLength: { value: 100, message: 'Native name must be 100 characters or less' }
+                  }}
+                  render={({ field }) => (
+                    <InputText
+                      id="native_name"
+                      {...field}
+                      placeholder="e.g., English, Deutsch, Français"
+                      className="w-full"
+                    />
+                  )}
+                />
+                {errors.native_name && (
+                  <small className="text-red-400 mt-1 block">{errors.native_name.message}</small>
+                )}
+              </div>
+            </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Form.Item
-              name="sort_order"
-              label="Sort Order"
-              rules={[
-                { required: true, message: 'Please enter sort order' },
-                { type: 'number', min: 0, message: 'Sort order must be 0 or greater' }
-              ]}
-            >
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
+            {/* Description */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium mb-2">
+                Description
+              </label>
+              <Controller
+                name="description"
+                control={control}
+                rules={{
+                  maxLength: { value: 1000, message: 'Description must be 1000 characters or less' }
+                }}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="description"
+                    {...field}
+                    rows={3}
+                    placeholder="Optional description of the language"
+                    className="w-full"
+                  />
+                )}
+              />
+              {errors.description && (
+                <small className="text-red-400 mt-1 block">{errors.description.message}</small>
+              )}
+            </div>
 
-            <Form.Item
-              name="is_active"
-              label="Active"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
+            <div className="grid grid-cols-3 gap-4">
+              {/* Sort Order */}
+              <div>
+                <label htmlFor="sort_order" className="block text-sm font-medium mb-2">
+                  Sort Order *
+                </label>
+                <Controller
+                  name="sort_order"
+                  control={control}
+                  rules={{
+                    required: 'Please enter sort order',
+                    min: { value: 0, message: 'Sort order must be 0 or greater' }
+                  }}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="sort_order"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      min={0}
+                      className="w-full"
+                    />
+                  )}
+                />
+                {errors.sort_order && (
+                  <small className="text-red-400 mt-1 block">{errors.sort_order.message}</small>
+                )}
+              </div>
 
-            <Form.Item
-              name="is_default"
-              label="Default Language"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-          </div>
-          </Form>
-        </Modal>
+              {/* Active */}
+              <div>
+                <label htmlFor="is_active" className="block text-sm font-medium mb-2">
+                  Active
+                </label>
+                <Controller
+                  name="is_active"
+                  control={control}
+                  render={({ field }) => (
+                    <InputSwitch
+                      id="is_active"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Default Language */}
+              <div>
+                <label htmlFor="is_default" className="block text-sm font-medium mb-2">
+                  Default Language
+                </label>
+                <Controller
+                  name="is_default"
+                  control={control}
+                  render={({ field }) => (
+                    <InputSwitch
+                      id="is_default"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+          </form>
+        </Dialog>
       </div>
     );
 }

@@ -486,8 +486,110 @@ class ApiClient {
     }
   }
 
+  async checkGenerationTreeUpdates(projectId: number, since: string): Promise<any> {
+    try {
+      if (!projectId) {
+        return null;
+      }
+
+      const response = await this.request(`/projects/${projectId}/generation-tree/updates?since=${encodeURIComponent(since)}`);
+      return response || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Public API method for pricing (no auth required)
+  async getPricing(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseURL}/pricing`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Failed to fetch pricing:', error);
+      // Return fallback prices if API fails
+      return {
+        success: true,
+        prices: {
+          premium: 9.99,
+          business: 29.99,
+          patron: 99.99
+        },
+        currency: 'EUR',
+        updated_at: new Date().toISOString()
+      };
+    }
+  }
+
 }
 
 export const apiClient = new ApiClient();
 export const api = apiClient; // Add this alias for backwards compatibility
 export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion };
+
+// Utility functions to access pricing data from localStorage
+export const pricingUtils = {
+  // Get pricing data from localStorage
+  getPricingData(): { premium: number; business: number; patron: number } | null {
+    try {
+      const pricingData = localStorage.getItem('pricing_data');
+      return pricingData ? JSON.parse(pricingData) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Get currency from localStorage
+  getCurrency(): string {
+    return localStorage.getItem('pricing_currency') || 'EUR';
+  },
+
+  // Get pricing timestamp from localStorage
+  getTimestamp(): string | null {
+    return localStorage.getItem('pricing_timestamp');
+  },
+
+  // Get individual price
+  getPrice(plan: 'premium' | 'business' | 'patron'): number | null {
+    const pricing = this.getPricingData();
+    return pricing ? pricing[plan] : null;
+  },
+
+  // Check if pricing data is fresh (less than 10 minutes old)
+  isDataFresh(): boolean {
+    const timestamp = this.getTimestamp();
+    if (!timestamp) return false;
+
+    const storedTime = new Date(timestamp);
+    const now = new Date();
+    const minutesDiff = (now.getTime() - storedTime.getTime()) / (1000 * 60);
+
+    return minutesDiff < 10;
+  },
+
+  // Force refresh pricing data
+  async refreshPricingData(): Promise<boolean> {
+    try {
+      const pricingData = await apiClient.getPricing();
+      
+      if (pricingData.success) {
+        localStorage.setItem('pricing_data', JSON.stringify(pricingData.prices));
+        localStorage.setItem('pricing_currency', pricingData.currency || 'EUR');
+        localStorage.setItem('pricing_timestamp', pricingData.updated_at || new Date().toISOString());
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+};

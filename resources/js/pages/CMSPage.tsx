@@ -3,9 +3,15 @@ import { Head } from '@inertiajs/react';
 import { Button } from 'primereact/button';
 import { Badge } from 'primereact/badge';
 import { Divider } from 'primereact/divider';
+import { Dialog } from 'primereact/dialog';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/utils/i18n';
+
+import {
+  CheckIcon,
+  HeartIcon
+} from '@heroicons/react/24/outline';
 
 interface UserData {
   id?: number;
@@ -23,6 +29,8 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
+  const [systemSettings, setSystemSettings] = useState<any>(null);
 
   // Language state
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
@@ -63,6 +71,30 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   // Check if this is a demo installation
   const isDemoMode = import.meta.env.VITE_SCORIET_DEMO === 'true';
 
+  const loadSystemSettings = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch('/settings', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const settings = await response.json();
+        setSystemSettings(settings);
+      }
+    } catch {
+      // Error loading system settings - use defaults
+      setSystemSettings({
+        price_premium: 2.99,
+        price_business: 9.99,
+        price_patron: 5.00,
+      });
+    }
+  };
+
   // Check authentication on component mount
   useEffect(() => {
     const checkAuth = () => {
@@ -74,6 +106,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
       }
     };
     checkAuth();
+    loadSystemSettings();
   }, [userData]);
 
   const loadUserData = async () => {
@@ -151,11 +184,13 @@ export default function CMSPage({ title, content }: CMSPageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <img
-                  src="/images/logos/scoriet-logo.png"
-                  alt="Scoriet Logo"
-                  className="h-8 w-auto"
-                />
+                <a href="/" className="flex items-center">
+                  <img
+                    src="/images/logos/scoriet-logo.png"
+                    alt="Scoriet Logo"
+                    className="h-8 w-auto hover:opacity-80 transition-opacity"
+                  />
+                </a>
                 <Badge value="BETA" severity="info" className="ml-2" />
               </div>
 
@@ -207,7 +242,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
                       icon="pi pi-credit-card"
                       className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-                      onClick={() => alert('Plan ändern - Coming Soon!')}
+                      onClick={() => setShowPlanModal(true)}
                     />
                     <Button
                       label={t.logout}
@@ -318,7 +353,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
                 <p className="text-gray-400 mb-4">
                   The future of code generation. Built by developers, for developers.
                 </p>
-                <div className="flex space-x-4">
+                <div className="flex space-x-4 gap-3">
                   <Button icon="pi pi-github" className="p-button-text p-button-rounded" />
                   <Button icon="pi pi-twitter" className="p-button-text p-button-rounded" />
                   <Button icon="pi pi-discord" className="p-button-text p-button-rounded" />
@@ -368,6 +403,157 @@ export default function CMSPage({ title, content }: CMSPageProps) {
           </div>
         </footer>
       </div>
+
+      {/* Plan Selection Modal */}
+      <Dialog
+        visible={showPlanModal}
+        onHide={() => setShowPlanModal(false)}
+        modal
+        header="Choose Your Plan"
+        style={{ width: '95vw', maxWidth: '1400px' }}
+        contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
+        headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
+        className="plan-modal"
+      >
+        <div className="space-y-6">
+          {/* Current Plan Status */}
+          <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+              <Badge value="Free" severity="info" />
+            </div>
+            <p className="text-gray-300">
+              You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features and support the project!
+            </p>
+          </div>
+
+          {/* Plans Grid */}
+          <div className="grid md:grid-cols-4 gap-6">
+            {/* Premium Plan */}
+            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-white mb-2">Premium</h3>
+                <div className="text-3xl font-bold text-blue-400 mb-2">
+                  {systemSettings ? `€${systemSettings.price_premium}` : "€2.99"}
+                  <span className="text-lg text-gray-400">/month</span>
+                </div>
+                <p className="text-gray-300 mb-6">Best for professional developers</p>
+                
+                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Unlimited projects
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Advanced templates
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Custom template creation
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Priority support
+                  </li>
+                </ul>
+                
+                <Button
+                  label="Choose Premium"
+                  className="p-button-primary w-full"
+                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                  onClick={() => alert(`Upgrading to Premium - Payment integration coming soon!`)}
+                />
+              </div>
+            </div>
+
+            {/* Business Plan */}
+            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg ring-2 ring-blue-400">
+              <div className="p-6">
+                <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Business</h3>
+                <div className="text-3xl font-bold text-blue-400 mb-2">
+                  {systemSettings ? `€${systemSettings.price_business}` : "€9.99"}
+                  <span className="text-lg text-gray-400">/month</span>
+                </div>
+                <p className="text-gray-300 mb-6">Best for teams and agencies</p>
+                
+                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    All Premium features
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Team collaboration tools
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Google Translate API
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Advanced analytics
+                  </li>
+                </ul>
+                
+                <Button
+                  label="Choose Business"
+                  className="p-button-info w-full"
+                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                  onClick={() => alert(`Upgrading to Business - Payment integration coming soon!`)}
+                />
+              </div>
+            </div>
+
+            {/* Patron Plan */}
+            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                  Patron
+                  <HeartIcon className="w-6 h-6 text-red-500 ml-2" />
+                </h3>
+                <div className="text-3xl font-bold text-blue-400 mb-2">
+                  {systemSettings ? `€${systemSettings.price_patron}+` : "€5+"}
+                  <span className="text-lg text-gray-400">/month</span>
+                </div>
+                <p className="text-gray-300 mb-6">Support the community</p>
+                
+                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    All Business features
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Early access to features
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Influence development
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Community Discord access
+                  </li>
+                </ul>
+                
+                <Button
+                  label="Become Patron"
+                  className="p-button-help w-full"
+                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                  onClick={() => alert(`Becoming a Patron - Payment integration coming soon!`)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Note */}
+          <div className="text-center text-gray-400 text-sm">
+            <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Auth Modals */}
       <AuthModalManager

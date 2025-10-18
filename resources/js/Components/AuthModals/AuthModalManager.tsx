@@ -13,7 +13,7 @@ interface AuthModalManagerProps {
   activeModal: AuthModalType;
   onCloseModal: () => void;
   onLoginSuccess?: () => void;
-  onRegistrationSuccess?: () => void;
+  onRegistrationSuccess?: (message: string) => void;
   resetPasswordToken?: string;
   resetPasswordEmail?: string;
   isLoginClosable?: boolean;

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Select, Upload, message } from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { useToast } from '@/contexts/ToastContext';
+import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
-
-const { TextArea } = Input;
-const { Option } = Select;
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
+import { FileUpload } from 'primereact/fileupload';
 
 interface FileModalProps {
     visible: boolean;
@@ -23,7 +25,16 @@ const FileModal: React.FC<FileModalProps> = ({
     templateFiles,
     fileTypes
 }) => {
-    const [form] = Form.useForm();
+    const toast = useToast();
+    const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
+        defaultValues: {
+            file_name: '',
+            output_path: '/',
+            file_content: '',
+            file_type: 'project_file',
+            file_order: 0
+        }
+    });
     const [contentMode, setContentMode] = useState<'text' | 'zip'>('text');
     const [uploadedFile, setUploadedFile] = useState<any>(null);
 
@@ -33,7 +44,7 @@ const FileModal: React.FC<FileModalProps> = ({
             setTimeout(() => {
                 if (editingFile) {
                     // Editing existing file
-                    form.setFieldsValue({
+                    reset({
                         file_name: editingFile.file_name,
                         output_path: editingFile.output_path || '/',
                         file_content: editingFile.file_content,
@@ -44,26 +55,25 @@ const FileModal: React.FC<FileModalProps> = ({
                     setUploadedFile(null);
                 } else {
                     // Creating new file
-                    form.resetFields();
-                    form.setFieldsValue({
+                    reset({
+                        file_name: '',
+                        output_path: '/',
+                        file_content: '',
                         file_type: 'project_file',
-                        file_order: templateFiles.length,
-                        output_path: '/'
+                        file_order: templateFiles.length
                     });
                     setContentMode('text');
                     setUploadedFile(null);
                 }
             }, 50);
         }
-    }, [visible, editingFile, templateFiles.length, form]);
+    }, [visible, editingFile, templateFiles.length, reset]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
 
-    const handleSubmit = async () => {
+    const handleSubmit = handleFormSubmit(async (values) => {
         try {
-            const values = await form.validateFields();
-
             // If ZIP mode is selected, include the uploaded file
             if (contentMode === 'zip' && uploadedFile) {
                 values.zip_file = uploadedFile;
@@ -71,121 +81,161 @@ const FileModal: React.FC<FileModalProps> = ({
             }
 
             await onSubmit(values);
-            form.resetFields();
+            reset();
             setUploadedFile(null);
             setContentMode('text');
         } catch {
-            // Form validation failed
+            // Submit failed
         }
-    };
+    });
 
     const handleUpload = (file: any) => {
         const isZip = file.type === 'application/zip' || file.name.endsWith('.zip');
         if (!isZip) {
-            message.error('Bitte wählen Sie eine ZIP-Datei aus!');
+            toast.showError('Bitte wählen Sie eine ZIP-Datei aus!');
             return false;
         }
 
         setUploadedFile(file);
-        message.success(`${file.name} wurde geladen`);
+        toast.showSuccess(`${file.name} wurde geladen`);
         return false; // Prevent auto upload
     };
 
     const removeUploadedFile = () => {
         setUploadedFile(null);
-        message.info('ZIP-Datei entfernt');
+        toast.showInfo('ZIP-Datei entfernt');
     };
 
     return (
-        <Modal
-            title={editingFile ? 'Datei bearbeiten' : 'Neue Datei hinzufügen'}
-            open={visible}
-            onCancel={onCancel}
-            footer={null}
-            width={700}
-            className="dark-modal"
-            destroyOnHidden={false}
-            modalRender={(modal) => (
-                <div className="dark-modal">
-                    {modal}
-                </div>
-            )}
+        <Dialog
+            header={editingFile ? 'Datei bearbeiten' : 'Neue Datei hinzufügen'}
+            visible={visible}
+            onHide={onCancel}
+            style={{ width: '700px' }}
+            modal
+            closable
+            draggable
+            resizable
         >
-            <Form
-                form={form}
-                layout="vertical"
-            >
+            <form className="space-y-4">
                 <div className="flex gap-4">
-                    <Form.Item
-                        name="file_name"
-                        label="Dateiname"
-                        rules={[{ required: true, message: 'Bitte Dateinamen eingeben!' }]}
-                        className="flex-1"
-                    >
-                        <Input placeholder="e.g., Model.php, component.tsx, config.json" />
-                    </Form.Item>
+                    {/* File Name */}
+                    <div className="flex-1">
+                        <label htmlFor="file_name" className="block text-sm font-medium mb-2">
+                            Dateiname *
+                        </label>
+                        <Controller
+                            name="file_name"
+                            control={control}
+                            rules={{ required: 'Bitte Dateinamen eingeben!' }}
+                            render={({ field }) => (
+                                <InputText
+                                    id="file_name"
+                                    {...field}
+                                    placeholder="e.g., Model.php, component.tsx, config.json"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        {errors.file_name && (
+                            <small className="text-red-400 mt-1 block">{errors.file_name.message}</small>
+                        )}
+                    </div>
 
-                    <Form.Item
-                        name="file_type"
-                        label="Template-Typ"
-                        rules={[{ required: true, message: 'Bitte Typ auswählen!' }]}
-                        className="w-48"
-                    >
-                        <Select placeholder="Typ auswählen">
-                            {fileTypes.map(type => (
-                                <Option key={type.value} value={type.value}>
-                                    {type.label}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+                    {/* File Type */}
+                    <div className="w-48">
+                        <label htmlFor="file_type" className="block text-sm font-medium mb-2">
+                            Template-Typ *
+                        </label>
+                        <Controller
+                            name="file_type"
+                            control={control}
+                            rules={{ required: 'Bitte Typ auswählen!' }}
+                            render={({ field }) => (
+                                <Dropdown
+                                    id="file_type"
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(e.value)}
+                                    options={fileTypes.map(type => ({ label: type.label, value: type.value }))}
+                                    placeholder="Typ auswählen"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        {errors.file_type && (
+                            <small className="text-red-400 mt-1 block">{errors.file_type.message}</small>
+                        )}
+                    </div>
                 </div>
 
-                <Form.Item
-                    name="output_path"
-                    label="Zielverzeichnis"
-                    rules={[{ required: true, message: 'Bitte Zielverzeichnis eingeben!' }]}
-                    tooltip="The directory where the generated file should be saved (e.g., /components/, /services/, /data/)"
-                >
-                    <Input
-                        placeholder="e.g., /components/, /services/, /app/Http/Controllers/"
-                        addonBefore="Pfad:"
+                {/* Output Path */}
+                <div>
+                    <label htmlFor="output_path" className="block text-sm font-medium mb-2">
+                        Zielverzeichnis *
+                        <span className="text-xs text-gray-400 ml-2">
+                            (e.g., /components/, /services/, /data/)
+                        </span>
+                    </label>
+                    <Controller
+                        name="output_path"
+                        control={control}
+                        rules={{ required: 'Bitte Zielverzeichnis eingeben!' }}
+                        render={({ field }) => (
+                            <div className="p-inputgroup">
+                                <span className="p-inputgroup-addon">Pfad:</span>
+                                <InputText
+                                    id="output_path"
+                                    {...field}
+                                    placeholder="e.g., /components/, /services/, /app/Http/Controllers/"
+                                    className="w-full"
+                                />
+                            </div>
+                        )}
                     />
-                </Form.Item>
+                    {errors.output_path && (
+                        <small className="text-red-400 mt-1 block">{errors.output_path.message}</small>
+                    )}
+                </div>
 
                 {/* Content Mode Toggle */}
                 <div className="mb-4">
-                    <label className="block text-sm font-medium mb-2 text-gray-200">
+                    <label className="block text-sm font-medium mb-2">
                         Inhaltstyp auswählen:
                     </label>
-                    <div className="flex gap-4">
+                    <div className="flex gap-2">
                         <Button
-                            type={contentMode === 'text' ? 'primary' : 'default'}
+                            type="button"
+                            label="Text-Eingabe"
+                            severity={contentMode === 'text' ? 'primary' : 'secondary'}
                             onClick={() => setContentMode('text')}
                             size="small"
-                        >
-                            Text-Eingabe
-                        </Button>
+                        />
                         <Button
-                            type={contentMode === 'zip' ? 'primary' : 'default'}
+                            type="button"
+                            label="ZIP-Upload"
+                            severity={contentMode === 'zip' ? 'primary' : 'secondary'}
                             onClick={() => setContentMode('zip')}
                             size="small"
-                        >
-                            ZIP-Upload
-                        </Button>
+                        />
                     </div>
                 </div>
 
                 {/* Text Content Input */}
                 {contentMode === 'text' && (
-                    <Form.Item
-                        name="file_content"
-                        label="Dateiinhalt"
-                        rules={[{ required: contentMode === 'text', message: 'Bitte Dateiinhalt eingeben!' }]}
-                    >
-                        <TextArea
-                            rows={15}
-                            placeholder={`Template-Code hier eingeben...
+                    <div>
+                        <label htmlFor="file_content" className="block text-sm font-medium mb-2">
+                            Dateiinhalt {contentMode === 'text' && '*'}
+                        </label>
+                        <Controller
+                            name="file_content"
+                            control={control}
+                            rules={{ required: contentMode === 'text' ? 'Bitte Dateiinhalt eingeben!' : false }}
+                            render={({ field }) => (
+                                <InputTextarea
+                                    id="file_content"
+                                    {...field}
+                                    rows={15}
+                                    placeholder={`Template-Code hier eingeben...
 
 Platzhalter-Beispiele:
 - {projectname} - Name des Projekts
@@ -202,57 +252,65 @@ Schleifen und Logik:
     $p_{item.name} = {item.typecast}"";
   {endif}
 {endfor}`}
-                            style={{ fontFamily: 'monospace' }}
+                                    className="w-full font-mono"
+                                />
+                            )}
                         />
-                    </Form.Item>
+                        {errors.file_content && (
+                            <small className="text-red-400 mt-1 block">{errors.file_content.message}</small>
+                        )}
+                    </div>
                 )}
 
                 {/* ZIP Upload */}
                 {contentMode === 'zip' && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2 text-gray-200">
+                        <label className="block text-sm font-medium mb-2">
                             ZIP-Datei hochladen
                         </label>
                         {!uploadedFile ? (
-                            <Upload.Dragger
+                            <FileUpload
                                 name="zip_file"
-                                beforeUpload={handleUpload}
                                 accept=".zip"
-                                showUploadList={false}
-                                style={{
-                                    background: '#1f2937',
-                                    border: '2px dashed #4b5563',
-                                    borderRadius: '8px',
-                                    height: '200px'
+                                maxFileSize={10000000}
+                                customUpload
+                                auto
+                                chooseLabel="ZIP-Datei auswählen"
+                                uploadHandler={(e) => {
+                                    if (e.files && e.files.length > 0) {
+                                        handleUpload(e.files[0]);
+                                    }
                                 }}
-                            >
-                                <div className="flex flex-col items-center justify-center h-full text-gray-300">
-                                    <UploadOutlined style={{ fontSize: '48px', color: '#6b7280', marginBottom: '16px' }} />
-                                    <p className="text-lg mb-2">ZIP-Datei hier ablegen oder klicken zum Auswählen</p>
-                                    <p className="text-sm text-gray-400">
-                                        Unterstützt werden .zip Dateien mit Template-Strukturen
-                                    </p>
-                                </div>
-                            </Upload.Dragger>
+                                emptyTemplate={
+                                    <div className="flex flex-col items-center justify-center p-8 text-gray-300">
+                                        <i className="pi pi-upload" style={{ fontSize: '48px', color: '#6b7280', marginBottom: '16px' }}></i>
+                                        <p className="text-lg mb-2">ZIP-Datei hier ablegen oder klicken zum Auswählen</p>
+                                        <p className="text-sm text-gray-400">
+                                            Unterstützt werden .zip Dateien mit Template-Strukturen
+                                        </p>
+                                    </div>
+                                }
+                                className="w-full"
+                            />
                         ) : (
                             <div className="border-2 border-green-500 bg-green-900 rounded-lg p-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <UploadOutlined className="text-green-400 mr-2" />
+                                        <i className="pi pi-check-circle text-green-400 mr-2"></i>
                                         <span className="text-green-100">{uploadedFile.name}</span>
                                         <span className="text-green-300 ml-2">
                                             ({(uploadedFile.size / 1024).toFixed(1)} KB)
                                         </span>
                                     </div>
                                     <Button
-                                        type="link"
-                                        danger
-                                        icon={<DeleteOutlined />}
+                                        type="button"
+                                        label="Entfernen"
+                                        icon="pi pi-times"
+                                        severity="danger"
+                                        text
                                         onClick={removeUploadedFile}
                                         size="small"
-                                    >
-                                        Entfernen
-                                    </Button>
+                                    />
                                 </div>
                             </div>
                         )}
@@ -270,16 +328,22 @@ Schleifen und Logik:
                     </ul>
                 </div>
 
-                <div className="flex gap-2 justify-end">
-                    <Button onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button type="primary" onClick={handleSubmit}>
-                        {editingFile ? 'Aktualisieren' : 'Hinzufügen'}
-                    </Button>
+                <div className="flex gap-2 justify-end mt-4">
+                    <Button
+                        type="button"
+                        label="Cancel"
+                        severity="secondary"
+                        onClick={onCancel}
+                    />
+                    <Button
+                        type="button"
+                        label={editingFile ? 'Aktualisieren' : 'Hinzufügen'}
+                        severity="success"
+                        onClick={handleSubmit}
+                    />
                 </div>
-            </Form>
-        </Modal>
+            </form>
+        </Dialog>
     );
 };
 

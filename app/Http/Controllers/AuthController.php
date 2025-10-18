@@ -327,12 +327,20 @@ class AuthController extends Controller
      */
     public function verifyEmail(Request $request)
     {
-        $user = User::findOrFail($request->route('id'));
+        try {
+            $user = User::findOrFail($request->route('id'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Ungültiger Bestätigungslink. Der Benutzer existiert nicht oder wurde gelöscht.',
+                'invalid_link' => true
+            ], 404);
+        }
 
         // Check if the hash matches
         if (!hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
             return response()->json([
-                'message' => 'Ungültiger Bestätigungslink'
+                'message' => 'Ungültiger Bestätigungslink. Der Link ist abgelaufen oder wurde manipuliert.',
+                'invalid_link' => true
             ], 400);
         }
 

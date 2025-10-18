@@ -844,8 +844,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '450px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -920,8 +920,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '450px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -993,8 +993,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -1088,8 +1088,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '500px' }}
         modal
         closable={!deleting}
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -1168,8 +1168,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -1231,8 +1231,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">

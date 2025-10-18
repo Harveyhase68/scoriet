@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
 
 class PageController extends Controller
 {
@@ -16,7 +17,7 @@ class PageController extends Controller
     {
         $pages = Page::orderBy('slug')->orderBy('locale')->get();
 
-        return view('admin.pages.index', compact('pages'));
+        return response()->json($pages);
     }
 
     /**
@@ -46,12 +47,12 @@ class PageController extends Controller
                      ->exists();
 
         if ($exists) {
-            return back()->withErrors(['slug' => 'A page with this slug already exists for the selected language.'])->withInput();
+            return response()->json(['error' => 'A page with this slug already exists for the selected language.'], 422);
         }
 
-        Page::create($validated);
+        $page = Page::create($validated);
 
-        return Redirect::route('admin.pages.index')->with('success', 'Page created successfully.');
+        return response()->json($page, 201);
     }
 
     /**
@@ -67,14 +68,24 @@ class PageController extends Controller
      */
     public function update(Request $request, Page $page)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'is_active' => 'boolean',
         ]);
 
-        $page->update($request->only(['title', 'content', 'is_active']));
+        $page->update($validated);
 
-        return Redirect::route('admin.pages.index')->with('success', 'Page updated successfully.');
+        return response()->json($page);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Page $page)
+    {
+        $page->delete();
+
+        return response()->json(['message' => 'Page deleted successfully.']);
     }
 }

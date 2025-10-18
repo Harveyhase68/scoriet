@@ -64,6 +64,7 @@ class ProjectFileTreeGenerator
         return DB::table('project_template_usage')
             ->join('templates', 'project_template_usage.template_id', '=', 'templates.id')
             ->where('project_template_usage.project_id', $project->id)
+            ->where('project_template_usage.is_active', true)
             ->select('templates.*')
             ->get()
             ->toArray();
@@ -88,33 +89,36 @@ class ProjectFileTreeGenerator
     {
         $tables = [];
 
-        // Get all schemas associated with this project
-        $projectSchemas = DB::table('project_schemas')
-            ->where('project_id', $project->id)
-            ->get();
-
-        foreach ($projectSchemas as $projectSchema) {
-            // Get the latest version for this schema
-            $latestVersion = SchemaVersion::where('schema_id', $projectSchema->schema_id)
-                ->orderBy('version_number', 'desc')
-                ->first();
-
-            if ($latestVersion) {
-                // Load all tables for this version
-                $schemaTables = SchemaTable::where('schema_version_id', $latestVersion->id)
-                    ->orderBy('table_name')
-                    ->get()
-                    ->toArray();
-
-                // Add version number to each table
-                foreach ($schemaTables as &$table) {
-                    $table['schema_version_number'] = $latestVersion->version_number;
-                }
-
-                $tables = array_merge($tables, $schemaTables);
+        // Get all schema versions (not just project-connected ones)
+        $allSchemaVersions = SchemaVersion::orderBy('schema_id')->orderBy('version_number', 'desc')->get();
+        
+        // Group by schema_id to get only the latest version per schema
+        $latestVersionsBySchema = [];
+        foreach ($allSchemaVersions as $version) {
+            if (!isset($latestVersionsBySchema[$version->schema_id]) ||
+                $version->version_number > $latestVersionsBySchema[$version->schema_id]->version_number) {
+                $latestVersionsBySchema[$version->schema_id] = $version;
             }
         }
 
+        foreach ($latestVersionsBySchema as $schemaId => $latestVersion) {
+            // Load all tables for this version
+            $schemaTables = SchemaTable::where('schema_version_id', $latestVersion->id)
+                ->orderBy('table_name')
+                ->get()
+                ->toArray();
+
+            // Add version number to each table
+            foreach ($schemaTables as &$table) {
+                $table['schema_version_number'] = $latestVersion->version_number;
+                $table['schema_id'] = $schemaId;
+            }
+
+            $tables = array_merge($tables, $schemaTables);
+        }
+
+        Log::info("🧪 [TREE-GEN] Loaded tables from ALL schemas: " . count($tables) . " tables from " . count($latestVersionsBySchema) . " schemas");
+        
         return $tables;
     }
 
@@ -147,6 +151,17 @@ class ProjectFileTreeGenerator
                         );
                         $this->insertIntoTree($children, $fileNode);
                     }
+                }
+            } elseif ($templateFile->file_type === 'db_table_file') {
+                // Table file: generate for each table (without language)
+                foreach ($tables as $table) {
+                    $fileNode = $this->buildTableFileNode(
+                        $templateFile,
+                        $template,
+                        $table,
+                        $project
+                    );
+                    $this->insertIntoTree($children, $fileNode);
                 }
             }
         }
@@ -293,6 +308,72 @@ class ProjectFileTreeGenerator
             'languageId' => $languageData['id'] ?? 0,
             'languageCode' => $languageCode,
             'fileType' => 'db_table_file_languages',
+        ];
+    }
+
+    /**
+     * Build a node for a table file (without language)
+     */
+    protected function buildTableFileNode($templateFile, $template, $table, Project $project): array
+    {
+        // Convert to array if it's an object
+        $tableData = is_array($table) ? $table : (array)$table;
+
+        $tableName = $tableData['table_name'] ?? '';
+        $versionNumber = $tableData['schema_version_number'] ?? '';
+
+        $placeholders = [
+            '%1' => $tableName,                      // Table name
+            '%2' => '',                              // No language code
+            '%3' => '',                              // No language name
+            '%4' => '',                              // No language localization
+            '%5' => $template->name ?? '',           // Template name
+            '%6' => date('Y-m-d'),                   // Date (UNC friendly)
+            '%7' => date('H-i-s'),                   // Time (UNC friendly)
+            '%8' => date('Y-m-d_H-i-s'),            // DateTime (UNC friendly)
+            '%9' => $versionNumber,                  // Database version number
+        ];
+
+        // Use output_path for directory structure, file_path for the actual file
+        $outputPath = $templateFile->output_path ?? '';
+        $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
+        
+        // Resolve placeholders in both paths
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
+        
+        // Combine output path and file path
+        $fullPath = $resolvedOutputPath;
+        if (!empty($resolvedFilePath)) {
+            // If file_path includes directories, we need to handle them
+            $fileName = basename($resolvedFilePath);
+            $fileDir = dirname($resolvedFilePath);
+            
+            if ($fileDir !== '.' && $fileDir !== '/') {
+                // Add file directory to output path
+                $fullPath = rtrim($fullPath, '/') . '/' . ltrim($fileDir, '/');
+            }
+            
+            // Add filename
+            $fullPath = rtrim($fullPath, '/') . '/' . $fileName;
+        }
+        
+        // Always ensure we have a valid path
+        if (empty($fullPath)) {
+            $fullPath = $templateFile->file_name;
+            Log::warning("🧪 [TREE-GEN] Resolved path is empty for TemplateFile ID {$templateFile->id}, using file_name: '{$fullPath}'");
+        }
+
+        return [
+            'id' => 'gen-file-' . $templateFile->id . '-table-' . ($tableData['id'] ?? 0),
+            'name' => basename($fullPath),
+            'type' => 'generated-file',
+            'path' => $fullPath,
+            'templateId' => $template->id,
+            'fileId' => $templateFile->id,
+            'tableId' => $tableData['id'] ?? 0,
+            'tableName' => $tableName,
+            'fileType' => 'db_table_file',
         ];
     }
 

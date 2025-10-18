@@ -288,8 +288,8 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       style={{ width: '60vw', maxWidth: '900px' }}
       modal
       closable={!loading}
-      draggable={false}
-      resizable={false}
+      draggable={true}
+      resizable={true}
       className="database-export-modal"
       contentStyle={{
         padding: '0',

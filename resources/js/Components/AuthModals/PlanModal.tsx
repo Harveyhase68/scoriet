@@ -3,7 +3,8 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, HeartIcon } from '@heroicons/react/24/outline';
+import { pricingUtils } from '@/lib/api';
 
 interface PlanModalProps {
   visible: boolean;
@@ -11,6 +12,32 @@ interface PlanModalProps {
 }
 
 export default function PlanModal({ visible, onHide }: PlanModalProps) {
+  // Get pricing data from localStorage
+  const getPricingData = () => {
+    const prices = pricingUtils.getPricingData();
+    const currency = pricingUtils.getCurrency();
+    
+    // Fallback to defaults if no pricing data available
+    if (!prices) {
+      return {
+        premium: 2.99,
+        business: 9.99,
+        patron: 5.00,
+        currency: 'EUR'
+      };
+    }
+    
+    return {
+      premium: prices.premium,
+      business: prices.business,
+      patron: prices.patron,
+      currency: currency
+    };
+  };
+
+  // Get pricing data
+  const pricingData = getPricingData();
+  
   const pricingTiers = [
     {
       name: 'Free',
@@ -29,9 +56,9 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
     },
     {
       name: 'Premium',
-      price: "€2.99",
+      price: `${pricingData.currency}${pricingData.premium}`,
       period: "/month",
-      yearlyPrice: "€29.99/year",
+      yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
       description: "Best for professional developers",
       features: [
         "Unlimited projects",
@@ -46,12 +73,30 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
       popular: true
     },
     {
+      name: 'Business',
+      price: `${pricingData.currency}${pricingData.business}`,
+      period: "/month",
+      yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
+      description: "Best for teams and agencies",
+      features: [
+        "All Premium features",
+        "Team collaboration tools",
+        "Google Translate API integration",
+        "Advanced analytics",
+        "Priority support with SLA",
+        "Custom branding options"
+      ],
+      buttonText: "Choose Business",
+      buttonClass: "p-button-info",
+      popular: false
+    },
+    {
       name: 'Patron',
-      price: "€5+",
+      price: `${pricingData.currency}${pricingData.patron}+`,
       period: "/month",
       description: "Support the community",
       features: [
-        "All Premium features",
+        "All Business features",
         "Early access to features",
         "Influence development",
         "Community Discord access",
@@ -69,7 +114,7 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
       onHide={onHide}
       modal
       header="Choose Your Plan"
-      style={{ width: '90vw', maxWidth: '1000px' }}
+      style={{ width: '95vw', maxWidth: '1400px' }}
       contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
       headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
       className="plan-modal"
@@ -87,7 +132,7 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
         </div>
 
         {/* Plans Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-4 gap-6">
           {pricingTiers.map((plan, index) => (
             <Card
               key={index}
@@ -97,7 +142,10 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
                 {plan.popular && (
                   <Badge value="MOST POPULAR" severity="info" className="mb-4" />
                 )}
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                  {plan.name}
+                  {plan.name === 'Patron' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                </h3>
                 <div className="text-3xl font-bold text-blue-400 mb-2">
                   {plan.price}
                   {plan.price !== '€0' && plan.price !== 'Custom' && (

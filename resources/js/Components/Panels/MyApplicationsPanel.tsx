@@ -295,8 +295,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         style={{ width: '600px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         {selectedApplication && (

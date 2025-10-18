@@ -404,6 +404,9 @@ class TemplateController extends Controller
         // Update file_count based on actual number of files
         $template->update(['file_count' => $template->files()->count()]);
 
+        // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
+        $this->dispatchRegenerationJobsForTemplate($template);
+
         return response()->json($template->load('files'), 201);
     }
 
@@ -500,6 +503,9 @@ class TemplateController extends Controller
             $template->update(['file_count' => $template->files()->count()]);
         }
 
+        // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
+        $this->dispatchRegenerationJobsForTemplate($template);
+
         return response()->json($template->load('files'));
     }
 
@@ -523,6 +529,10 @@ class TemplateController extends Controller
 
         // Delete the template (CASCADE will automatically delete related files and project usages)
         $template->delete();
+
+        // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template (before deletion)
+        // Note: Observer will handle this automatically, but we ensure it's dispatched
+        // $this->dispatchRegenerationJobsForTemplate($template); // Not needed - Observer handles it
 
         return response()->json(['message' => 'Template deleted successfully']);
     }
@@ -924,5 +934,54 @@ class TemplateController extends Controller
         $template->update(['file_count' => $template->files()->count()]);
 
         return response()->json(['message' => 'File deleted successfully']);
+    }
+
+    /**
+     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this template
+     */
+    private function dispatchRegenerationJobsForTemplate(Template $template): void
+    {
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Starting job dispatch for template {$template->id} ({$template->name})");
+        
+        // Find all projects that use this template
+        $projectIds = \DB::table('project_template_usage')
+            ->where('template_id', $template->id)
+            ->where('is_active', true)
+            ->pluck('project_id')
+            ->unique()
+            ->toArray();
+
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Found project IDs: " . json_encode($projectIds));
+
+        if (empty($projectIds)) {
+            \Log::info("🧪 [API-TEMPLATE-QUEUE] Template {$template->id}: No projects using this template yet");
+            return;
+        }
+
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Template {$template->id}: Dispatching regeneration for " . count($projectIds) . " projects");
+
+        // Get job count before dispatching
+        $jobsBefore = \DB::table('jobs')->count();
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Jobs in queue before dispatch: {$jobsBefore}");
+
+        // Dispatch queue jobs for each affected project
+        $dispatchedJobs = 0;
+        foreach ($projectIds as $projectId) {
+            \Log::info("🧪 [API-TEMPLATE-QUEUE] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
+            
+            try {
+                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
+                $dispatchedJobs++;
+                \Log::info("🧪 [API-TEMPLATE-QUEUE] Successfully dispatched job for project {$projectId}");
+            } catch (\Exception $e) {
+                \Log::error("🧪 [API-TEMPLATE-QUEUE] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+            }
+        }
+
+        // Get job count after dispatching
+        $jobsAfter = \DB::table('jobs')->count();
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
+        \Log::info("🧪 [API-TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
     }
 }

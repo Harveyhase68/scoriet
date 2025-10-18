@@ -50,7 +50,18 @@
       "Bash(git stash show:*)",
       "Bash(git switch:*)",
       "Bash(git merge:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(for file in \"C:\\wamp\\www\\scoriet\\resources\\js\\Components\\Modals\"/*.tsx)",
+      "Bash(done)",
+      "Bash(sort:*)",
+      "Bash(for file in \"FileModal.tsx\" \"LanguageManagementPanel.tsx\" \"ProjectSettingsPanel.tsx\" \"SchemaTranslationPanel.tsx\" \"SystemSettingsPanel.tsx\" \"TemplateDbSchemaDependenciesPanel.tsx\" \"TemplateFileManager.tsx\" \"TemplateModal.tsx\")",
+      "Bash(do)",
+      "Bash(filepath=\"C:\\wamp\\www\\scoriet\\resources\\js\\Components\\Panels$file\")",
+      "Bash(if [ -f \"$filepath\" ])",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(fi)",
+      "Bash(netstat:*)"
     ],
     "deny": [],
     "ask": []

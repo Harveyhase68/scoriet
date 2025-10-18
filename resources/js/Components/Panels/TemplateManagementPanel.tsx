@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Tag, Space, message } from 'antd';
+import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { useToast } from '@/contexts/ToastContext';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
+import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
@@ -68,6 +72,7 @@ interface TemplateManagementPanelProps {
 const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }) => {
     // Use Project Context to get current project
     const { selectedProject } = useProject();
+    const toast = useToast();
     // Only use project filtering if explicitly requested (Quick Actions)
     // If forceProjectId is provided, use that instead of selectedProject
     const projectId = filterByProject ? (forceProjectId || selectedProject?.id) : undefined;
@@ -142,7 +147,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             setTemplates(templates);
         } catch {
             // Error loading templates
-            message.error('Fehler beim Laden der Templates. Bitte zuerst einloggen.');
+            toast.showError('Fehler beim Laden der Templates. Bitte zuerst einloggen.');
             setTemplates([]);
         } finally {
             setLoading(false);
@@ -194,7 +199,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch {
             // Error loading template details
-            message.error('Fehler beim Laden der Template-Details');
+            toast.showError('Fehler beim Laden der Template-Details');
         }
     };
 
@@ -203,12 +208,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         try {
             const response = await api.hardDeleteTemplate(id);
             if (response.success) {
-                message.success('Template endgültig gelöscht');
+                toast.showSuccess('Template endgültig gelöscht');
                 loadTemplates();
             }
         } catch {
             // Error hard deleting template
-            message.error('Fehler beim endgültigen Löschen des Templates');
+            toast.showError('Fehler beim endgültigen Löschen des Templates');
         }
     };
 
@@ -217,12 +222,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             const response = await api.toggleTemplateActive(template.id);
             if (response.success) {
                 const newStatus = response.is_active ? 'aktiviert' : 'deaktiviert';
-                message.success(`Template ${newStatus}`);
+                toast.showSuccess(`Template ${newStatus}`);
                 loadTemplates();
             }
         } catch {
             // Error toggling template status
-            message.error('Fehler beim Ändern des Template-Status');
+            toast.showError('Fehler beim Ändern des Template-Status');
         }
     };
 
@@ -278,13 +283,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             });
 
             if (response.success) {
-                message.success('Template erfolgreich geklont');
+                toast.showSuccess('Template erfolgreich geklont');
                 setCloneModalVisible(false);
                 loadTemplates();
             }
         } catch (error: any) {
             const errorMessage = error.response?.data?.message || 'Fehler beim Klonen des Templates';
-            message.error(errorMessage);
+            toast.showError(errorMessage);
         }
     };
 
@@ -316,7 +321,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
 
             if (response.success) {
-                message.success(`Template erfolgreich ${editingTemplate ? 'aktualisiert' : 'erstellt'}`);
+                toast.showSuccess(`Template erfolgreich ${editingTemplate ? 'aktualisiert' : 'erstellt'}`);
                 setModalVisible(false);
                 setTemplateFiles([]);
 
@@ -328,7 +333,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         } catch (error: any) {
             // Template submission error
             const errorMessage = error.response?.data?.error || error.response?.data?.message || `Fehler beim ${editingTemplate ? 'Aktualisieren' : 'Erstellen'} des Templates`;
-            message.error(errorMessage);
+            toast.showError(errorMessage);
         }
     };
 
@@ -351,7 +356,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             const response = await api.createTemplate(templateData);
 
             if (response.success) {
-                message.success('Template erfolgreich gespeichert');
+                toast.showSuccess('Template erfolgreich gespeichert');
 
                 // Close the create modal
                 setModalVisible(false);
@@ -388,7 +393,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch (error: any) {
             const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Fehler beim Speichern des Templates';
-            message.error(errorMessage);
+            toast.showError(errorMessage);
         }
     };
 
@@ -402,34 +407,38 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 const response = await api.importTemplate(templateData, false);
                 
                 if (response.success) {
-                    message.success('Template erfolgreich importiert');
+                    toast.showSuccess('Template erfolgreich importiert');
                     loadTemplates();
                 } else {
-                    message.error(response.error || 'Fehler beim Importieren des Templates');
+                    toast.showError(response.error || 'Fehler beim Importieren des Templates');
                 }
             } catch (error: any) {
                 if (error.response?.status === 409) {
                     // Template already exists
-                    Modal.confirm({
-                        title: 'Template existiert bereits',
-                        content: `Ein Template mit diesem Namen existiert bereits. Möchten Sie es überschreiben?`,
-                        onOk: async () => {
+                    confirmDialog({
+                        message: 'Ein Template mit diesem Namen existiert bereits. Möchten Sie es überschreiben?',
+                        header: 'Template existiert bereits',
+                        icon: 'pi pi-exclamation-triangle',
+                        accept: async () => {
                             try {
                                 const templateData = JSON.parse(e.target?.result as string);
                                 const response = await api.importTemplate(templateData, true);
-                                
+
                                 if (response.success) {
-                                    message.success('Template erfolgreich importiert und überschrieben');
+                                    toast.showSuccess('Template erfolgreich importiert und überschrieben');
                                     loadTemplates();
                                 }
                             } catch {
                                 // Error overwriting template
-                                message.error('Fehler beim Überschreiben des Templates');
+                                toast.showError('Fehler beim Überschreiben des Templates');
                             }
-                        }
+                        },
+                        acceptLabel: 'Ja, überschreiben',
+                        rejectLabel: 'Abbrechen',
+                        acceptClassName: 'p-button-danger'
                     });
                 } else {
-                    message.error('Fehler beim Importieren des Templates');
+                    toast.showError('Fehler beim Importieren des Templates');
                     // Import error
                 }
             }
@@ -452,10 +461,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                message.success('Template erfolgreich exportiert');
+                toast.showSuccess('Template erfolgreich exportiert');
             }
         } catch {
-            message.error('Fehler beim Exportieren des Templates');
+            toast.showError('Fehler beim Exportieren des Templates');
             // Export error
         }
     };
@@ -473,7 +482,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const handleDeleteFile = async (index: number) => {
         if (!editingTemplate) {
-            message.error('Kein Template ausgewählt');
+            toast.showError('Kein Template ausgewählt');
             return;
         }
 
@@ -503,19 +512,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             if (response.success) {
                 // Update local state
                 setTemplateFiles(newFiles);
-                message.success(`Datei "${fileToDelete.file_name}" erfolgreich gelöscht`);
+                toast.showSuccess(`Datei "${fileToDelete.file_name}" erfolgreich gelöscht`);
             } else {
-                message.error('Fehler beim Löschen der Datei');
+                toast.showError('Fehler beim Löschen der Datei');
             }
         } catch (error: any) {
             // File delete error
-            message.error('Fehler beim Löschen der Datei: ' + (error.response?.data?.message || error.message));
+            toast.showError('Fehler beim Löschen der Datei: ' + (error.response?.data?.message || error.message));
         }
     };
 
     const handleFileSubmit = async (values: any) => {
         if (!editingTemplate) {
-            message.error('Kein Template ausgewählt');
+            toast.showError('Kein Template ausgewählt');
             return;
         }
 
@@ -583,13 +592,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     }
                 }
 
-                message.success(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'hinzugefügt'}`);
+                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'hinzugefügt'}`);
             } else {
-                message.error('Fehler beim Speichern der Datei');
+                toast.showError('Fehler beim Speichern der Datei');
             }
         } catch (error: any) {
             // File save error
-            message.error('Fehler beim Speichern der Datei: ' + (error.response?.data?.message || error.message));
+            toast.showError('Fehler beim Speichern der Datei: ' + (error.response?.data?.message || error.message));
         }
 
         // Close modal and reset state
@@ -825,30 +834,24 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             />
 
             {/* View Modal */}
-            <Modal
-                title={`Template: ${viewingTemplate?.name}`}
-                open={viewModalVisible}
-                onCancel={() => setViewModalVisible(false)}
-                footer={[
-                    <Button key="close" onClick={() => setViewModalVisible(false)}>
+            <Dialog
+                header={`Template: ${viewingTemplate?.name}`}
+                visible={viewModalVisible}
+                onHide={() => setViewModalVisible(false)}
+                footer={
+                    <Button onClick={() => setViewModalVisible(false)}>
                         Schließen
                     </Button>
-                ]}
-                width={800}
-                style={{ top: 20 }}
-                styles={{
-                    body: {
-                        maxHeight: 'calc(100vh - 200px)',
-                        overflowY: 'auto',
-                        padding: '24px'
-                    }
+                }
+                style={{ width: '800px' }}
+                contentStyle={{
+                    maxHeight: 'calc(100vh - 200px)',
+                    overflowY: 'auto'
                 }}
-                className="dark-modal"
-                modalRender={(modal) => (
-                    <div className="dark-modal">
-                        {modal}
-                    </div>
-                )}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
             >
                 {viewingTemplate && (
                     <div className="space-y-4">
@@ -856,18 +859,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <strong>Beschreibung:</strong> {viewingTemplate.description || 'Keine Beschreibung'}
                         </div>
                         <div>
-                            <strong>Kategorie:</strong> <Tag color="blue">{viewingTemplate.category}</Tag>
+                            <strong>Kategorie:</strong> <Tag value={viewingTemplate.category} severity="info" />
                         </div>
                         <div>
-                            <strong>Sprache:</strong> <Tag color="green">{viewingTemplate.language}</Tag>
+                            <strong>Sprache:</strong> <Tag value={viewingTemplate.language} severity="success" />
                         </div>
                         <div>
                             <strong>Tags:</strong>
-                            <Space wrap className="ml-2">
+                            <div className="flex flex-wrap gap-2 ml-2">
                                 {viewingTemplate.tags?.map((tag, index) => (
-                                    <Tag key={index} color="orange">{tag}</Tag>
+                                    <Tag key={index} value={tag} severity="warning" />
                                 ))}
-                            </Space>
+                            </div>
                         </div>
                         <div>
                             <strong>Dateien ({viewingTemplate.files?.length || 0}):</strong>
@@ -877,7 +880,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         <div key={file.id} className="border border-gray-600 bg-gray-800 p-3 rounded">
                                             <div className="flex justify-between items-center mb-2">
                                                 <strong>{file.file_name}</strong>
-                                                <Tag>{file.file_type}</Tag>
+                                                <Tag value={file.file_type} />
                                             </div>
                                             <pre className="text-xs bg-gray-800 text-gray-200 p-2 rounded overflow-x-auto">
                                                 {file.file_content.substring(0, 500)}
@@ -892,39 +895,38 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         </div>
                     </div>
                 )}
-            </Modal>
+            </Dialog>
 
             {/* Clone Modal */}
-            <Modal
-                title={`Template klonen: ${templateToClone?.name}`}
-                open={cloneModalVisible}
-                onCancel={() => setCloneModalVisible(false)}
-                footer={[
-                    <Button key="cancel" onClick={() => setCloneModalVisible(false)}>
-                        Abbrechen
-                    </Button>,
-                    <Button
-                        key="clone"
-                        onClick={handleCloneSubmit}
-                        disabled={nameExists || !cloneName.trim() || nameCheckLoading}
-                        loading={nameCheckLoading}
-                        className="p-button-primary"
-                        style={{
-                            backgroundColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,
-                            borderColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,
-                            opacity: (nameExists || !cloneName.trim() || nameCheckLoading) ? 0.7 : 1
-                        }}
-                    >
-                        Jetzt klonen
-                    </Button>
-                ]}
-                width={500}
-                className="dark-modal"
-                modalRender={(modal) => (
-                    <div className="dark-modal">
-                        {modal}
-                    </div>
-                )}
+            <Dialog
+                header={`Template klonen: ${templateToClone?.name}`}
+                visible={cloneModalVisible}
+                onHide={() => setCloneModalVisible(false)}
+                footer={
+                    <>
+                        <Button onClick={() => setCloneModalVisible(false)}>
+                            Abbrechen
+                        </Button>
+                        <Button
+                            onClick={handleCloneSubmit}
+                            disabled={nameExists || !cloneName.trim() || nameCheckLoading}
+                            loading={nameCheckLoading}
+                            className="p-button-primary"
+                            style={{
+                                backgroundColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,
+                                borderColor: (nameExists || !cloneName.trim() || nameCheckLoading) ? '#6b7280' : undefined,
+                                opacity: (nameExists || !cloneName.trim() || nameCheckLoading) ? 0.7 : 1
+                            }}
+                        >
+                            Jetzt klonen
+                        </Button>
+                    </>
+                }
+                style={{ width: '500px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
             >
                 <div className="space-y-4">
                     <div>
@@ -975,7 +977,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <strong>Typ:</strong> {templateToClone?.is_system_template ? 'System' : templateToClone?.visibility}
                     </div>
                 </div>
-            </Modal>
+            </Dialog>
+
+            {/* ConfirmDialog for import overwrite confirmation */}
+            <ConfirmDialog />
         </TabContent>
     );
 };

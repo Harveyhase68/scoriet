@@ -275,8 +275,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
         style={{ width: '900px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">
@@ -375,8 +375,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
         style={{ width: '450px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">

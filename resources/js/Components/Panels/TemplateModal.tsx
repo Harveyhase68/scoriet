@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Select, Checkbox } from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { PlusOutlined, EditOutlined, DeleteOutlined, FileOutlined } from '@ant-design/icons';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
+import { Chips } from 'primereact/chips';
+import { Checkbox } from 'primereact/checkbox';
 
-const { TextArea } = Input;
-const { Option } = Select;
 
 interface TemplateModalProps {
     visible: boolean;
@@ -35,7 +38,19 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     fileTypes,
     userType
 }) => {
-    const [form] = Form.useForm();
+    const { control, handleSubmit: handleFormSubmit, reset, getValues, formState: { errors } } = useForm({
+        defaultValues: {
+            name: '',
+            description: '',
+            category: '',
+            language: '',
+            tags: [],
+            is_active: true,
+            visibility: 'public',
+            is_system_template: false
+        }
+    });
+
     const [isSaved, setIsSaved] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [hasFormChanges, setHasFormChanges] = useState(false);
@@ -49,30 +64,34 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 description: editingTemplate.description,
                 category: editingTemplate.category,
                 language: editingTemplate.language,
-                tags: editingTemplate.tags,
+                tags: editingTemplate.tags || [],
                 is_active: editingTemplate.is_active,
                 visibility: editingTemplate.visibility || 'public',
                 is_system_template: editingTemplate.is_system_template || false,
             };
             // Set form values when editing
-            form.setFieldsValue(initialValues);
+            reset(initialValues);
             setOriginalFormValues(initialValues);
             setIsSaved(true); // Existing templates are considered "saved"
             setHasFormChanges(false); // Reset form changes
         } else if (visible && !editingTemplate) {
             // Reset form for new template
-            form.resetFields();
             const initialValues = {
+                name: '',
+                description: '',
+                category: '',
+                language: '',
+                tags: [],
                 is_active: true,
                 visibility: 'public',
                 is_system_template: userType === 'system' ? false : false
             };
-            form.setFieldsValue(initialValues);
+            reset(initialValues);
             setOriginalFormValues(initialValues);
             setIsSaved(false); // New templates start as unsaved
             setHasFormChanges(false); // Reset form changes
         }
-    }, [visible, editingTemplate, form, userType]);
+    }, [visible, editingTemplate, reset, userType]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
@@ -81,7 +100,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     const checkFormChanges = () => {
         if (!originalFormValues) return;
 
-        const currentValues = form.getFieldsValue();
+        const currentValues = getValues();
         const fieldsToCheck = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template'];
 
         const hasChanges = fieldsToCheck.some(field => {
@@ -99,140 +118,241 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         setHasFormChanges(hasChanges);
     };
 
-    const handleSave = async () => {
+    const handleSave = handleFormSubmit(async (values) => {
         try {
             setIsLoading(true);
-            const values = await form.validateFields();
             if (onSave) {
                 await onSave(values);
                 setIsSaved(true);
             }
         } catch {
-            // Form validation failed
+            // Save failed
         } finally {
             setIsLoading(false);
         }
-    };
+    });
 
-    const handleSubmit = async () => {
+    const handleSubmit = handleFormSubmit(async (values) => {
         try {
-            const values = await form.validateFields();
             await onSubmit(values);
-            form.resetFields();
+            reset();
             setIsSaved(false);
         } catch {
-            // Form validation failed
+            // Submit failed
         }
-    };
+    });
 
     return (
-        <Modal
-            title={editingTemplate ? 'Template bearbeiten' : 'Neues Template erstellen'}
-            open={visible}
-            onCancel={onCancel}
-            footer={null}
-            width={800}
-            className="dark-modal"
-            modalRender={(modal) => (
-                <div className="dark-modal">
-                    {modal}
-                </div>
-            )}
+        <Dialog
+            header={editingTemplate ? 'Template bearbeiten' : 'Neues Template erstellen'}
+            visible={visible}
+            onHide={onCancel}
+            style={{ width: '800px' }}
+            modal
+            closable
+            draggable={true}
+            resizable={true}
         >
-            <Form
-                form={form}
-                layout="vertical"
-                onValuesChange={checkFormChanges}
-            >
-                <Form.Item
-                    name="name"
-                    label="Name"
-                    rules={[
-                        { required: true, message: 'Bitte Template-Name eingeben!' },
-                        {
-                            pattern: /^[a-z0-9]+(_[a-z0-9]+)*$/,
-                            message: 'Template-Name darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten (z.B. my_template_123)'
-                        }
-                    ]}
-                >
-                    <Input
-                        placeholder="my_template_name"
-                        className="font-mono"
+            <form className="space-y-4">
+                {/* Template Name */}
+                <div>
+                    <label htmlFor="name" className="block text-sm font-medium mb-2">
+                        Name *
+                    </label>
+                    <Controller
+                        name="name"
+                        control={control}
+                        rules={{
+                            required: 'Bitte Template-Name eingeben!',
+                            pattern: {
+                                value: /^[a-z0-9]+(_[a-z0-9]+)*$/,
+                                message: 'Template-Name darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten (z.B. my_template_123)'
+                            }
+                        }}
+                        render={({ field }) => (
+                            <InputText
+                                id="name"
+                                {...field}
+                                placeholder="my_template_name"
+                                className="w-full font-mono"
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    checkFormChanges();
+                                }}
+                            />
+                        )}
                     />
-                </Form.Item>
-                <div className="text-xs text-gray-500 -mt-4 mb-4">
-                    Template-Namen werden später für URLs verwendet (username/template_name)
+                    {errors.name && (
+                        <small className="text-red-400 mt-1 block">{errors.name.message}</small>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                        Template-Namen werden später für URLs verwendet (username/template_name)
+                    </div>
                 </div>
 
-                <Form.Item
-                    name="description"
-                    label="Beschreibung"
-                >
-                    <TextArea 
-                        rows={3}
-                        placeholder="Template Beschreibung (optional)"
+                {/* Description */}
+                <div>
+                    <label htmlFor="description" className="block text-sm font-medium mb-2">
+                        Beschreibung
+                    </label>
+                    <Controller
+                        name="description"
+                        control={control}
+                        render={({ field }) => (
+                            <InputTextarea
+                                id="description"
+                                {...field}
+                                rows={3}
+                                placeholder="Template Beschreibung (optional)"
+                                className="w-full"
+                                onChange={(e) => {
+                                    field.onChange(e);
+                                    checkFormChanges();
+                                }}
+                            />
+                        )}
                     />
-                </Form.Item>
-
-                <div className="flex gap-4">
-                    <Form.Item
-                        name="category"
-                        label="Kategorie"
-                        rules={[{ required: true, message: 'Bitte Kategorie auswählen!' }]}
-                        className="flex-1"
-                    >
-                        <Select placeholder="Kategorie auswählen" className="placeholder-gray-400">
-                            {categories.filter(cat => cat !== 'All').map(cat => (
-                                <Option key={cat} value={cat}>{cat}</Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="language"
-                        label="Sprache"
-                        rules={[{ required: true, message: 'Bitte Sprache eingeben!' }]}
-                        className="flex-1"
-                    >
-                        <Input placeholder="e.g., PHP, JavaScript, TypeScript" />
-                    </Form.Item>
                 </div>
 
-                <Form.Item
-                    name="tags"
-                    label="Tags"
-                >
-                    <Select
-                        mode="tags"
-                        placeholder="Tags hinzufügen"
-                        className="placeholder-gray-400"
-                        tokenSeparators={[',']}
+                <div className="flex gap-4">
+                    {/* Category */}
+                    <div className="flex-1">
+                        <label htmlFor="category" className="block text-sm font-medium mb-2">
+                            Kategorie *
+                        </label>
+                        <Controller
+                            name="category"
+                            control={control}
+                            rules={{ required: 'Bitte Kategorie auswählen!' }}
+                            render={({ field }) => (
+                                <Dropdown
+                                    id="category"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                        field.onChange(e.value);
+                                        checkFormChanges();
+                                    }}
+                                    options={categories.filter(cat => cat !== 'All').map(cat => ({ label: cat, value: cat }))}
+                                    placeholder="Kategorie auswählen"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        {errors.category && (
+                            <small className="text-red-400 mt-1 block">{errors.category.message}</small>
+                        )}
+                    </div>
+
+                    {/* Language */}
+                    <div className="flex-1">
+                        <label htmlFor="language" className="block text-sm font-medium mb-2">
+                            Sprache *
+                        </label>
+                        <Controller
+                            name="language"
+                            control={control}
+                            rules={{ required: 'Bitte Sprache eingeben!' }}
+                            render={({ field }) => (
+                                <InputText
+                                    id="language"
+                                    {...field}
+                                    placeholder="e.g., PHP, JavaScript, TypeScript"
+                                    className="w-full"
+                                    onChange={(e) => {
+                                        field.onChange(e);
+                                        checkFormChanges();
+                                    }}
+                                />
+                            )}
+                        />
+                        {errors.language && (
+                            <small className="text-red-400 mt-1 block">{errors.language.message}</small>
+                        )}
+                    </div>
+                </div>
+
+                {/* Tags */}
+                <div>
+                    <label htmlFor="tags" className="block text-sm font-medium mb-2">
+                        Tags
+                    </label>
+                    <Controller
+                        name="tags"
+                        control={control}
+                        render={({ field }) => (
+                            <Chips
+                                id="tags"
+                                value={field.value}
+                                onChange={(e) => {
+                                    field.onChange(e.value);
+                                    checkFormChanges();
+                                }}
+                                placeholder="Tags hinzufügen (Enter drücken)"
+                                className="w-full"
+                                separator=","
+                            />
+                        )}
                     />
-                </Form.Item>
+                </div>
 
                 <div className="flex gap-4">
-                    <Form.Item
-                        name="visibility"
-                        label="Sichtbarkeit"
-                        rules={[{ required: true, message: 'Bitte Sichtbarkeit auswählen!' }]}
-                        className="flex-1"
-                    >
-                        <Select placeholder="Sichtbarkeit wählen">
-                            <Option value="public">Public</Option>
-                            <Option value="private">Private</Option>
-                        </Select>
-                    </Form.Item>
+                    {/* Visibility */}
+                    <div className="flex-1">
+                        <label htmlFor="visibility" className="block text-sm font-medium mb-2">
+                            Sichtbarkeit *
+                        </label>
+                        <Controller
+                            name="visibility"
+                            control={control}
+                            rules={{ required: 'Bitte Sichtbarkeit auswählen!' }}
+                            render={({ field }) => (
+                                <Dropdown
+                                    id="visibility"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                        field.onChange(e.value);
+                                        checkFormChanges();
+                                    }}
+                                    options={[
+                                        { label: 'Public', value: 'public' },
+                                        { label: 'Private', value: 'private' }
+                                    ]}
+                                    placeholder="Sichtbarkeit wählen"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        {errors.visibility && (
+                            <small className="text-red-400 mt-1 block">{errors.visibility.message}</small>
+                        )}
+                    </div>
 
+                    {/* System Template (conditional) */}
                     {userType === 'system' && (
-                        <Form.Item
-                            name="is_system_template"
-                            valuePropName="checked"
-                            className="flex-1"
-                        >
-                            <Checkbox>
-                                <span className="text-gray-300">System Template</span>
-                            </Checkbox>
-                        </Form.Item>
+                        <div className="flex-1">
+                            <label htmlFor="is_system_template" className="block text-sm font-medium mb-2">
+                                System Template
+                            </label>
+                            <Controller
+                                name="is_system_template"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="flex items-center mt-2">
+                                        <Checkbox
+                                            inputId="is_system_template"
+                                            checked={field.value}
+                                            onChange={(e) => {
+                                                field.onChange(e.checked);
+                                                checkFormChanges();
+                                            }}
+                                        />
+                                        <label htmlFor="is_system_template" className="ml-2">
+                                            System Template
+                                        </label>
+                                    </div>
+                                )}
+                            />
+                        </div>
                     )}
                 </div>
 
@@ -242,7 +362,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <h3 className="text-lg font-semibold text-gray-300">Template Dateien</h3>
                         <Button
                             size="small"
-                            icon={<PlusOutlined />}
+                            icon="pi pi-plus"
                             disabled={!isSaved && !editingTemplate}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -283,7 +403,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         <tr key={file.id || index} className="border-t border-gray-600 hover:bg-gray-600 transition-colors">
                                             <td className="px-3 py-2">
                                                 <div className="flex items-center text-gray-100">
-                                                    <FileOutlined className="mr-2 text-gray-300" />
+                                                    <i className="pi pi-file mr-2 text-gray-300"></i>
                                                     {file.file_name}
                                                 </div>
                                             </td>
@@ -299,7 +419,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 <div className="flex gap-1">
                                                     <Button
                                                         size="small"
-                                                        icon={<EditOutlined />}
+                                                        icon="pi pi-pencil"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             e.preventDefault();
@@ -309,7 +429,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                     />
                                                     <Button
                                                         size="small"
-                                                        icon={<DeleteOutlined />}
+                                                        icon="pi pi-trash"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             e.preventDefault();
@@ -331,28 +451,38 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     )}
                 </div>
 
-                <Form.Item
-                    name="is_active"
-                    valuePropName="checked"
-                    initialValue={true}
-                    className="mt-4"
-                >
-                    <Checkbox
-                        className="text-gray-300"
-                        onChange={checkFormChanges}
-                    >
-                        Template ist aktiv
-                    </Checkbox>
-                </Form.Item>
+                {/* Is Active */}
+                <div className="mt-4">
+                    <Controller
+                        name="is_active"
+                        control={control}
+                        render={({ field }) => (
+                            <div className="flex items-center">
+                                <Checkbox
+                                    inputId="is_active"
+                                    checked={field.value}
+                                    onChange={(e) => {
+                                        field.onChange(e.checked);
+                                        checkFormChanges();
+                                    }}
+                                />
+                                <label htmlFor="is_active" className="ml-2">
+                                    Template ist aktiv
+                                </label>
+                            </div>
+                        )}
+                    />
+                </div>
 
                 <div className="flex gap-2 justify-end">
-                    <Button onClick={onCancel}>
+                    <Button type="button" onClick={onCancel}>
                         Abbrechen
                     </Button>
 
                     {/* Save button - only for new templates */}
                     {!editingTemplate && (
                         <Button
+                            type="button"
                             onClick={handleSave}
                             loading={isLoading}
                             disabled={isSaved}
@@ -363,6 +493,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     )}
 
                     <Button
+                        type="button"
                         onClick={handleSubmit}
                         disabled={editingTemplate && !hasFormChanges}
                         className={editingTemplate && !hasFormChanges ? 'opacity-50' : ''}
@@ -373,8 +504,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         }
                     </Button>
                 </div>
-            </Form>
-        </Modal>
+            </form>
+        </Dialog>
     );
 };
 

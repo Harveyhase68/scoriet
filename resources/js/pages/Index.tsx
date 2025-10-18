@@ -3,9 +3,10 @@ import React, { useRef, useState, useCallback, useEffect, lazy, Suspense } from 
 import { Head } from '@inertiajs/react';
 import { DockLayout } from 'rc-dock';
 import "rc-dock/dist/rc-dock.css";
-import { ExpandOutlined, CompressOutlined, CloseOutlined, CaretDownOutlined, DeleteOutlined } from '@ant-design/icons';
+
 import { useHotkeys } from 'react-hotkeys-hook';
 import { ErrorBoundary } from 'react-error-boundary';
+import { Toast } from 'primereact/toast';
 import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
 
@@ -48,6 +49,7 @@ const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageM
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
+const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -87,11 +89,11 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
 };
 
 const icons = {
-  maximize: <ExpandOutlined style={{ fontSize: '12px' }} />,
-  restore: <CompressOutlined style={{ fontSize: '12px' }} />,
-  close: <CloseOutlined style={{ fontSize: '12px' }} />,
-  more: <CaretDownOutlined style={{ fontSize: '9px' }} />,
-  closeAll: <DeleteOutlined style={{ fontSize: '12px', color: '#ff4d4f' }} />,
+  maximize: <i className="pi pi-arrows-alt" style={{ fontSize: '12px' }}></i>,
+  restore: <i className="pi pi-minus" style={{ fontSize: '12px' }}></i>,
+  close: <i className="pi pi-times" style={{ fontSize: '12px' }}></i>,
+  more: <i className="pi pi-caret-down" style={{ fontSize: '9px' }}></i>,
+  closeAll: <i className="pi pi-trash" style={{ fontSize: '12px', color: '#ff4d4f' }}></i>,
 };
 
 // Group definition will be moved inside the component
@@ -768,6 +770,19 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'cms-admin':
+      return {
+        id,
+        title: data.title || 'CMS Admin',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <CMSAdminPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'register':
     case 'profile':
     case 'forgot':
@@ -790,15 +805,6 @@ const loadTab = (
     default:
       // Handle debug-manual-generator panels with dynamic IDs (e.g., debug-manual-generator-gen-file-49-6-1)
       if (id.startsWith('debug-manual-generator')) {
-        console.log('🚀 Index.tsx loadTab: Received data for debug-manual-generator:', {
-          id,
-          templateId: data.templateId,
-          fileId: data.fileId,
-          tableId: data.tableId,
-          languageCode: data.languageCode,
-          fullData: data
-        });
-
         // Store data in window._tabData to handle rc-dock's multiple calls
         const tabKey = id;
         if (!window._tabData) window._tabData = {};
@@ -823,13 +829,6 @@ const loadTab = (
 
         // Get stored data (works on subsequent calls)
         const storedData = window._tabData[tabKey] || {};
-        console.log('💾 Using stored data:', storedData);
-        console.log('✨ Creating panel with props:', {
-          preSelectedTemplateId: storedData.templateId,
-          preSelectedFileId: storedData.fileId,
-          preSelectedTableId: storedData.tableId,
-          preSelectedLanguageCode: storedData.languageCode
-        });
 
         return {
           id,
@@ -954,6 +953,7 @@ interface IndexProps {
 export default function Index(props: IndexProps = {}) {
   const { resetToken, resetEmail } = props;
   const ref = useRef<any>(null);
+  const toast = useRef<Toast>(null);
 
   // Project context
   const { projects, selectedProject, setSelectedProject } = useProject();
@@ -1927,6 +1927,13 @@ useHotkeys('alt+n', () => {
     <>
       <Head title={resetToken ? "Reset Password - Scoriet" : "Scoriet - Enterprise Code Generator"} />
 
+      {/* Toast Notification Component */}
+      <Toast
+        ref={toast}
+        position="top-right"
+        style={{ zIndex: 9999 }}
+      />
+
       <ErrorBoundary
         FallbackComponent={ErrorFallback}
       >
@@ -2040,8 +2047,21 @@ useHotkeys('alt+n', () => {
             checkPendingInvitation();
           }, 500);
         }}
-        onRegistrationSuccess={() => {
+        onRegistrationSuccess={(message: string) => {
           handleCloseModal();
+
+          // Small delay to ensure modal is fully closed before showing toast
+          setTimeout(() => {
+            if (toast.current) {
+              toast.current.show({
+                severity: 'success',
+                summary: 'Registration Successful',
+                detail: message,
+                life: 8000, // 8 seconds
+                closable: true
+              });
+            }
+          }, 300); // 300ms delay for modal closing animation
         }}
       />
 

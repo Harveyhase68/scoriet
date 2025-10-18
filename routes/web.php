@@ -88,12 +88,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
-// Admin routes for CMS (must be defined before generic routes) - TEMPORARILY WITHOUT AUTH
-Route::get('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('admin.pages.index');
-Route::get('/admin/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('admin.pages.create');
-Route::post('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'store'])->name('admin.pages.store');
-Route::get('/admin/pages/{page}/edit', [App\Http\Controllers\Admin\PageController::class, 'edit'])->name('admin.pages.edit');
-Route::put('/admin/pages/{page}', [App\Http\Controllers\Admin\PageController::class, 'update'])->name('admin.pages.update');
+// Admin routes for CMS (protected - only system administrators)
+// Note: These should be accessed from within /app, not directly
+Route::middleware(['web', 'admin'])->group(function () {
+    Route::get('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('admin.pages.index');
+    Route::get('/admin/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('admin.pages.create');
+    Route::post('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'store'])->name('admin.pages.store');
+    Route::get('/admin/pages/{page}/edit', [App\Http\Controllers\Admin\PageController::class, 'edit'])->name('admin.pages.edit');
+    Route::put('/admin/pages/{page}', [App\Http\Controllers\Admin\PageController::class, 'update'])->name('admin.pages.update');
+    Route::delete('/admin/pages/{page}', [App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('admin.pages.destroy');
+});
 
 // Localized CMS pages using Inertia (must be before generic route)
 Route::get('/{locale}/help', [App\Http\Controllers\PageController::class, 'help'])
