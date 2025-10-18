@@ -214,8 +214,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       style={{ width: '50vw', maxWidth: '800px' }}
       modal
       closable={!loading}
-      draggable={false}
-      resizable={false}
+      draggable={true}
+      resizable={true}
       className="sql-import-modal"
       contentStyle={{
         padding: '0',

@@ -895,8 +895,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         style={{ width: '800px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <TabView>
@@ -1345,8 +1345,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         style={{ width: '450px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">

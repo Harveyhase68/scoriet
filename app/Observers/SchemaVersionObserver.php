@@ -35,27 +35,43 @@ class SchemaVersionObserver
     }
 
     /**
-     * Regenerate generation trees for all projects using this schema
+     * Regenerate generation trees for ALL projects (since ProjectFileTreeGenerator now uses ALL schemas)
      */
     protected function regenerateAffectedProjects(SchemaVersion $schemaVersion, string $action): void
     {
-        // Find all projects that use this schema
-        $projectIds = DB::table('project_schemas')
-            ->where('schema_id', $schemaVersion->schema_id)
-            ->pluck('project_id')
-            ->unique()
+        // Get ALL projects (not just projects using this schema)
+        // Since ProjectFileTreeGenerator now considers ALL schemas, we need to update ALL projects
+        $projectIds = DB::table('projects')
+            ->where('is_active', true)
+            ->pluck('id')
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("SchemaVersion {$schemaVersion->id} ({$action}): No projects affected");
+            Log::info("SchemaVersion {$schemaVersion->id} ({$action}): No active projects found");
             return;
         }
 
-        Log::info("SchemaVersion {$schemaVersion->id} ({$action}): Dispatching regeneration for " . count($projectIds) . " projects");
+        Log::info("SchemaVersion {$schemaVersion->id} ({$action}): Dispatching regeneration for ALL " . count($projectIds) . " active projects");
+
+        // Check if we should run synchronously (for development/testing)
+        $runSynchronously = config('app.env') === 'local' || config('queue.default') === 'sync';
 
         // Dispatch queue jobs for each affected project
         foreach ($projectIds as $projectId) {
-            RegenerateProjectGenerationTree::dispatch($projectId);
+            try {
+                if ($runSynchronously) {
+                    // Run the job immediately for development
+                    Log::info("SchemaVersion {$schemaVersion->id} ({$action}): Running regeneration job synchronously for project {$projectId}");
+                    $job = new RegenerateProjectGenerationTree($projectId);
+                    $job->handle();
+                } else {
+                    // Dispatch to queue for production
+                    RegenerateProjectGenerationTree::dispatch($projectId);
+                    Log::info("Successfully dispatched regeneration job for project {$projectId}");
+                }
+            } catch (\Exception $e) {
+                Log::error("Failed to dispatch/run regeneration job for project {$projectId}: " . $e->getMessage());
+            }
         }
     }
 }

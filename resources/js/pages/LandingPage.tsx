@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
@@ -6,6 +6,7 @@ import { Badge } from 'primereact/badge';
 import { Divider } from 'primereact/divider';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
 import {
   CodeBracketIcon as CodeIcon,
   CircleStackIcon as DatabaseIcon,
@@ -17,6 +18,7 @@ import {
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/utils/i18n';
+import { pricingUtils } from '@/lib/api';
 
 interface UserData {
   id?: number;
@@ -26,6 +28,17 @@ interface UserData {
 }
 
 export default function LandingPage() {
+  // Translation hooks
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => {
+    return getStoredLanguage() as SupportedLanguage || 'de';
+  });
+  const { t } = useTranslation(currentLanguage);
+  
+  // Toast ref
+  const toast = useRef<Toast>(null);
+  
+  // State management
+  const [isDemoMode] = useState<boolean>(true); // Set demo mode based on your app logic
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
@@ -36,47 +49,44 @@ export default function LandingPage() {
     return setting === null || setting === 'true';
   });
 
-  // Language state
-  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
-  const { t } = useTranslation(currentLanguage);
-
-  // Handle language change
+  // Language change handler
   const handleLanguageChange = (language: SupportedLanguage) => {
     setCurrentLanguage(language);
     setStoredLanguage(language);
-
-    // Notify all components about language change
-    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
   };
 
-  // Check if this is a demo installation
-  const isDemoMode = import.meta.env.VITE_SCORIET_DEMO === 'true';
-
-  // Check authentication on component mount
-  useEffect(() => {
-    const checkAuth = () => {
-      // Clear logout flag when arriving at lobby
-      localStorage.removeItem('logout_in_progress');
-
-      // Check both localStorage and sessionStorage for token
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
-      const isAuth = !!token;
-      setIsAuthenticated(isAuth);
-      if (isAuth && !userData) {
-        loadUserData();
-      }
+  // Get pricing data from localStorage
+  const getPricingData = () => {
+    const prices = pricingUtils.getPricingData();
+    const currency = pricingUtils.getCurrency();
+    
+    // Fallback to defaults if no pricing data available
+    if (!prices) {
+      return {
+        premium: 2.99,
+        business: 9.99,
+        patron: 5.00,
+        currency: 'EUR'
+      };
+    }
+    
+    return {
+      premium: prices.premium,
+      business: prices.business,
+      patron: prices.patron,
+      currency: currency
     };
-
-    checkAuth();
-  }, [userData]);
-
+  };
 
   const loadUserData = async () => {
     try {
       // Check both localStorage and sessionStorage for token
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
+      if (!token) {
+        setIsAuthenticated(false);
+        setUserData(null);
+        return;
+      }
 
       const response = await fetch('/api/user', {
         headers: {
@@ -88,11 +98,25 @@ export default function LandingPage() {
       if (response.ok) {
         const user = await response.json();
         setUserData(user);
+        setIsAuthenticated(true);
+      } else {
+        // Token invalid, clear it
+        setIsAuthenticated(false);
+        setUserData(null);
+        localStorage.removeItem('access_token');
+        sessionStorage.removeItem('access_token');
       }
-    } catch {
-      // Error loading user data
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      setIsAuthenticated(false);
+      setUserData(null);
     }
   };
+
+  // Check authentication on mount
+  useEffect(() => {
+    loadUserData();
+  }, []);
 
   const features = [
     {
@@ -117,6 +141,9 @@ export default function LandingPage() {
     }
   ];
 
+  // Get pricing data
+  const pricingData = getPricingData();
+  
   const pricingTiers = [
     {
       name: t.freeLabel,
@@ -135,9 +162,9 @@ export default function LandingPage() {
     },
     {
       name: t.premiumLabel,
-      price: "€2.99",
+      price: `${pricingData.currency}${pricingData.premium}`,
       period: "/month",
-      yearlyPrice: "€29.99/year",
+      yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
       description: "Best for professional developers",
       features: [
         "Unlimited projects",
@@ -152,12 +179,30 @@ export default function LandingPage() {
       popular: true
     },
     {
+      name: "Business",
+      price: `${pricingData.currency}${pricingData.business}`,
+      period: "/month",
+      yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
+      description: "Best for teams and agencies",
+      features: [
+        "All Premium features",
+        "Team collaboration tools",
+        "Google Translate API integration",
+        "Advanced analytics",
+        "Priority support with SLA",
+        "Custom branding options"
+      ],
+      buttonText: "Go Business",
+      buttonClass: "p-button-info",
+      popular: false
+    },
+    {
       name: t.patronLabel,
-      price: "€5+",
+      price: `${pricingData.currency}${pricingData.patron}+`,
       period: "/month",
       description: "Support the community",
       features: [
-        "All Premium features",
+        "All Business features",
         "Early access to features",
         "Influence development",
         "Community Discord access",
@@ -241,7 +286,14 @@ export default function LandingPage() {
   return (
     <>
       <Head title="Scoriet - Enterprise Code Generator" />
-      
+
+      {/* Toast Notification Component */}
+      <Toast
+        ref={toast}
+        position="top-right"
+        style={{ zIndex: 9999 }}
+      />
+
       <div className="min-h-screen bg-gray-900 text-white overflow-y-auto max-h-screen">
         {/* Settings Panel (only shown in tab view) */}
         {isAuthenticated && window.location.pathname === '/app' && (
@@ -274,11 +326,13 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <img 
-                  src="/images/logos/scoriet-logo.png" 
-                  alt="Scoriet Logo" 
-                  className="h-8 w-auto"
-                />
+                <a href="/" className="flex items-center">
+                  <img
+                    src="/images/logos/scoriet-logo.png"
+                    alt="Scoriet Logo"
+                    className="h-8 w-auto hover:opacity-80 transition-opacity"
+                  />
+                </a>
                 <Badge value="BETA" severity="info" className="ml-2" />
               </div>
               
@@ -414,7 +468,7 @@ export default function LandingPage() {
               {t.pricingSubtitle}
             </p>
             
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {pricingTiers.map((tier, index) => (
                 <Card 
                   key={index} 
@@ -524,7 +578,7 @@ export default function LandingPage() {
                 <Badge value={t.freeTier} severity="info" className="text-lg px-4 py-2" />
               </div>
               
-              <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <div className="grid md:grid-cols-4 gap-6 max-w-7xl mx-auto">
                 {pricingTiers.map((plan, index) => (
                   <Card 
                     key={index}
@@ -576,7 +630,7 @@ export default function LandingPage() {
                 <p className="text-gray-400 mb-4">
                   The future of code generation. Built by developers, for developers.
                 </p>
-                <div className="flex space-x-4">
+                <div className="flex space-x-4 gap-3">
                   <Button icon="pi pi-github" className="p-button-text p-button-rounded" />
                   <Button icon="pi pi-twitter" className="p-button-text p-button-rounded" />
                   <Button icon="pi pi-discord" className="p-button-text p-button-rounded" />
@@ -660,7 +714,7 @@ export default function LandingPage() {
         onHide={() => setShowPlanModal(false)}
         modal
         header="Choose Your Plan"
-        style={{ width: '90vw', maxWidth: '1000px' }}
+        style={{ width: '95vw', maxWidth: '1400px' }}
         contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
         headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
         className="plan-modal"
@@ -678,7 +732,7 @@ export default function LandingPage() {
           </div>
 
           {/* Plans Grid */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-4 gap-6">
             {pricingTiers.map((plan, index) => (
               <Card 
                 key={index}
@@ -736,9 +790,21 @@ export default function LandingPage() {
         onCloseModal={handleCloseModal}
         isLoginClosable={true} // On landing page, login is always closable
         onLoginSuccess={handleLoginSuccess}
-        onRegistrationSuccess={() => {
+        onRegistrationSuccess={(message: string) => {
           handleCloseModal();
-          // Could redirect to welcome flow or stay on landing
+
+          // Show success notification
+          setTimeout(() => {
+            if (toast.current) {
+              toast.current.show({
+                severity: 'success',
+                summary: 'Registration Successful',
+                detail: message,
+                life: 8000, // 8 seconds
+                closable: true
+              });
+            }
+          }, 300); // 300ms delay for modal closing animation
         }}
         currentLanguage={currentLanguage}
       />

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Tree, Input, message, Tag } from 'antd';
+import { useToast } from '@/contexts/ToastContext';
 import { Button } from 'primereact/button';
+import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
+import { Tree, TreeNode } from 'primereact/tree';
+import { InputText } from 'primereact/inputtext';
 import { api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
-import type { DataNode } from 'antd/es/tree';
 
 interface SchemaTranslation {
   id: number;
@@ -41,6 +43,7 @@ interface SchemaField {
 }
 
 export default function SchemaTranslationPanel() {
+  const toast = useToast();
   const { selectedProject } = useProject();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [schemaStructure, setSchemaStructure] = useState<SchemaTable[]>([]);
@@ -66,66 +69,13 @@ export default function SchemaTranslationPanel() {
   const [autoSaving, setAutoSaving] = useState(false);
   const [saveTimeoutId, setSaveTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
-  // Custom dark mode CSS for Ant Design components
-  const darkModeStyles = `
-    /* Tree styling */
-    .ant-tree {
-      background: #374151 !important;
-      color: #f9fafb !important;
-    }
-    .ant-tree .ant-tree-node-content-wrapper {
-      color: #f9fafb !important;
-    }
-    .ant-tree .ant-tree-node-content-wrapper:hover {
-      background: #1f2937 !important;
-    }
-    .ant-tree .ant-tree-node-selected .ant-tree-node-content-wrapper,
-    .ant-tree .ant-tree-node-selected .ant-tree-node-content-wrapper:hover,
-    .ant-tree-focused .ant-tree-node-selected .ant-tree-node-content-wrapper,
-    .ant-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
-      background: #1e3a8a !important;
-      color: #f9fafb !important;
-    }
-    .ant-tree .ant-tree-treenode {
-      color: #f9fafb !important;
-    }
+  // Tree expansion state
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
-    /* Tabs styling */
-    .ant-tabs .ant-tabs-tab {
-      color: #f9fafb !important;
-    }
-    .ant-tabs .ant-tabs-tab-active {
-      color: #2563eb !important;
-    }
-    .ant-tabs .ant-tabs-ink-bar {
-      background: #2563eb !important;
-    }
-    .ant-tabs .ant-tabs-content {
-      color: #f9fafb !important;
-    }
+  // Sidebar resize state
+  const [sidebarWidth, setSidebarWidth] = useState(400); // Default 400px instead of 320px
+  const [isResizing, setIsResizing] = useState(false);
 
-    /* Input styling */
-    .ant-input {
-      background: #1f2937 !important;
-      border-color: #4b5563 !important;
-      color: #f9fafb !important;
-    }
-    .ant-input:focus {
-      border-color: #2563eb !important;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
-    }
-  `;
-
-  useEffect(() => {
-    // Inject dark mode styles
-    const styleElement = document.createElement('style');
-    styleElement.textContent = darkModeStyles;
-    document.head.appendChild(styleElement);
-
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, [darkModeStyles]);
 
   const fetchLanguages = React.useCallback(async () => {
     try {
@@ -151,13 +101,14 @@ export default function SchemaTranslationPanel() {
       // Pre-select all except source language for auto-translate
       setTargetLanguagesForTranslate(allCodes.filter((code: string) => code !== 'de'));
     } catch (error: any) {
-      message.error('Failed to load languages: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
     }
-  }, [selectedProject]);
+  }, [selectedProject, toast]);
 
   const fetchSchemaStructure = React.useCallback(async () => {
     if (!selectedProject) {
       setSchemaStructure([]);
+      setExpandedKeys({});
       return;
     }
 
@@ -167,25 +118,47 @@ export default function SchemaTranslationPanel() {
 
       if (response.tables && Array.isArray(response.tables)) {
         setSchemaStructure(response.tables);
+
+        // Auto-expand all tables when schema loads
+        const allExpanded: Record<string, boolean> = {};
+        response.tables.forEach((table: SchemaTable) => {
+          allExpanded[table.table_name] = true;
+        });
+        setExpandedKeys(allExpanded);
       } else {
         setSchemaStructure([]);
+        setExpandedKeys({});
       }
     } catch (error: any) {
-      message.error('Failed to load schema structure: ' + (error.response?.data?.message || error.message));
+      toast.showError('Failed to load schema structure: ' + (error.response?.data?.message || error.message));
       setSchemaStructure([]);
+      setExpandedKeys({});
     } finally {
       setLoading(false);
     }
-  }, [selectedProject]);
+  }, [selectedProject, toast]);
 
-  const fetchTranslationsForItem = async (itemName: string) => {
+  const fetchTranslationsForItem = React.useCallback(async (itemName: string) => {
     try {
       const response = await api.request(`/schema-translations/item/${encodeURIComponent(itemName)}`);
       const translationsMap: Record<string, string> = {};
 
-      if (response.translations) {
-        Object.values(response.translations).forEach((translation: any) => {
-          translationsMap[translation.code] = translation.translated_text;
+      // The API returns { item_name: "...", translations: {...} }
+      const translationsData = response.translations || {};
+
+      if (Array.isArray(translationsData)) {
+        // Array format: [{ code: 'de', translated_text: '...' }, ...]
+        translationsData.forEach((translation: any) => {
+          if (translation.code && translation.translated_text) {
+            translationsMap[translation.code] = translation.translated_text;
+          }
+        });
+      } else if (typeof translationsData === 'object' && translationsData !== null) {
+        // Object format: { de: { code: 'de', translated_text: '...' }, en: { ... } }
+        Object.entries(translationsData).forEach(([, translation]: [string, any]) => {
+          if (translation && translation.code && translation.translated_text) {
+            translationsMap[translation.code] = translation.translated_text;
+          }
         });
       }
 
@@ -194,7 +167,7 @@ export default function SchemaTranslationPanel() {
       // Item has no translations yet, that's okay
       setSelectedItemTranslations({});
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLanguages();
@@ -205,44 +178,54 @@ export default function SchemaTranslationPanel() {
     if (selectedItem) {
       fetchTranslationsForItem(selectedItem);
     }
-  }, [selectedItem]);
+  }, [selectedItem, fetchTranslationsForItem]);
 
-  const buildTreeData = (): DataNode[] => {
+  // Expand/Collapse all functions
+  const expandAll = () => {
+    const allExpanded: Record<string, boolean> = {};
+    schemaStructure.forEach((table) => {
+      allExpanded[table.table_name] = true;
+    });
+    setExpandedKeys(allExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedKeys({});
+  };
+
+  const buildTreeData = (): TreeNode[] => {
     return schemaStructure.map(table => ({
-      title: (
+      label: (
         <div className="flex items-center gap-2">
           <span className="text-blue-300">📁</span>
           <span className="font-mono">{table.table_name}</span>
           {table.schema_name && (
-            <Tag color="purple">{table.schema_name}</Tag>
+            <Tag value={table.schema_name} style={{ backgroundColor: '#9333ea', color: 'white' }} />
           )}
           {table.comment && (
-            <Tag color="blue">{table.comment}</Tag>
+            <Tag value={table.comment} severity="info" />
           )}
         </div>
       ),
       key: table.table_name,
       children: table.fields.map(field => ({
-        title: (
+        label: (
           <div className="flex items-center gap-2">
             <span className="text-green-300">📄</span>
             <span className="font-mono text-sm">{field.field_name}</span>
-            <Tag color="green">{field.field_type}</Tag>
+            <Tag value={field.field_type} severity="success" />
             {field.comment && (
-              <Tag color="orange">{field.comment}</Tag>
+              <Tag value={field.comment} severity="warning" />
             )}
           </div>
         ),
         key: `${table.table_name}.${field.field_name}`,
-        isLeaf: true
+        leaf: true
       }))
     }));
   };
 
-  const handleTreeSelect = (selectedKeys: React.Key[]) => {
-    const key = selectedKeys[0] as string;
-    setSelectedItem(key || null);
-  };
+
 
   // Auto-save with debouncing
   const handleTranslationChange = (languageCode: string, value: string) => {
@@ -295,7 +278,7 @@ export default function SchemaTranslationPanel() {
 
   const handleExportTranslations = async () => {
     if (!selectedProject || selectedLanguagesForExport.length === 0) {
-      message.error('Please select at least one language');
+      toast.showError('Please select at least one language');
       return;
     }
 
@@ -331,9 +314,9 @@ export default function SchemaTranslationPanel() {
       document.body.removeChild(a);
 
       setShowExportDialog(false);
-      message.success('Translations exported successfully');
+      toast.showSuccess('Translations exported successfully');
     } catch (error: any) {
-      message.error('Failed to export: ' + (error.message || 'Unknown error'));
+      toast.showError('Failed to export: ' + (error.message || 'Unknown error'));
     } finally {
       setExporting(false);
     }
@@ -348,7 +331,7 @@ export default function SchemaTranslationPanel() {
 
   const handleConfirmImport = async () => {
     if (!importFile || !selectedProject || selectedLanguagesForImport.length === 0) {
-      message.error('Please select a file and at least one language');
+      toast.showError('Please select a file and at least one language');
       return;
     }
 
@@ -384,14 +367,14 @@ export default function SchemaTranslationPanel() {
       const result = await response.json();
       setShowImportDialog(false);
       setImportFile(null);
-      message.success(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
+      toast.showSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
 
       // Refresh current item translations if an item is selected
       if (selectedItem) {
         fetchTranslationsForItem(selectedItem);
       }
     } catch (error: any) {
-      message.error('Failed to import: ' + (error.message || 'Unknown error'));
+      toast.showError('Failed to import: ' + (error.message || 'Unknown error'));
     } finally {
       setImporting(false);
     }
@@ -399,7 +382,7 @@ export default function SchemaTranslationPanel() {
 
   const handleAutoTranslate = async () => {
     if (!selectedProject) {
-      message.error('No project selected');
+      toast.showError('No project selected');
       return;
     }
 
@@ -453,9 +436,9 @@ export default function SchemaTranslationPanel() {
 
     // Show info message if items found
     if (itemCount > 0) {
-      message.info(`Found ${itemCount} items with ${sourceLanguageForTranslate.toUpperCase()} translation (${totalChars} chars total)`, 2);
+      toast.showInfo(`Found ${itemCount} items with ${sourceLanguageForTranslate.toUpperCase()} translation (${totalChars} chars total)`, 2);
     } else {
-      message.warning(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation. Please add translations first.`, 3);
+      toast.showWarn(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation. Please add translations first.`, 3);
     }
   };
 
@@ -463,7 +446,7 @@ export default function SchemaTranslationPanel() {
     if (!selectedProject) return;
 
     if (targetLanguagesForTranslate.length === 0) {
-      message.error('Please select at least one target language');
+      toast.showError('Please select at least one target language');
       return;
     }
 
@@ -486,7 +469,7 @@ export default function SchemaTranslationPanel() {
         const sourceText = selectedItemTranslations[sourceLanguageForTranslate];
 
         if (!sourceText || sourceText.trim() === '') {
-          message.error(`Please enter a translation for ${sourceLanguageForTranslate.toUpperCase()} first, or select a different source language.`);
+          toast.showError(`Please enter a translation for ${sourceLanguageForTranslate.toUpperCase()} first, or select a different source language.`);
           setTranslating(false);
           return;
         }
@@ -495,7 +478,7 @@ export default function SchemaTranslationPanel() {
       }
 
     } catch (error: any) {
-      message.error('Auto-translate failed: ' + (error.message || 'Unknown error'));
+      toast.showError('Auto-translate failed: ' + (error.message || 'Unknown error'));
     } finally {
       setTranslating(false);
       setTranslationProgress({ current: 0, total: 0 });
@@ -531,7 +514,7 @@ export default function SchemaTranslationPanel() {
     });
 
     setSelectedItemTranslations(newTranslations);
-    message.success(`Translated from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages. Review and save when ready.`);
+    toast.showSuccess(`Translated from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages. Review and save when ready.`);
   };
 
   const translateAllSchemaItems = async (token: string) => {
@@ -562,7 +545,7 @@ export default function SchemaTranslationPanel() {
     }
 
     if (itemsToTranslate.length === 0) {
-      message.warning(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation`);
+      toast.showWarn(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation`);
       return;
     }
 
@@ -617,7 +600,7 @@ export default function SchemaTranslationPanel() {
       }
     }
 
-    message.success(`Translated ${successCount} items from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages! ${errorCount > 0 ? `(${errorCount} failed)` : ''}`);
+    toast.showSuccess(`Translated ${successCount} items from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages! ${errorCount > 0 ? `(${errorCount} failed)` : ''}`);
 
     // Refresh current item if selected
     if (selectedItem) {
@@ -694,7 +677,7 @@ export default function SchemaTranslationPanel() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold text-white">{itemInfo.displayName}</h3>
-                  <Tag color={itemInfo.color}>{itemInfo.type}</Tag>
+                  <Tag value={itemInfo.type} severity={itemInfo.color === 'blue' ? 'info' : 'success'} />
                 </div>
                 <p className="text-sm text-gray-400">Manage translations for this {itemInfo.type.toLowerCase()}</p>
               </div>
@@ -709,6 +692,21 @@ export default function SchemaTranslationPanel() {
         </div>
 
         <div className="flex-1 p-4 overflow-auto">
+          {/* Show info message if no translations exist yet */}
+          {Object.keys(selectedItemTranslations).length === 0 && (
+            <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-200">
+                <i className="pi pi-info-circle"></i>
+                <div>
+                  <p className="font-semibold">No translations found for "{selectedItem}"</p>
+                  <p className="text-sm text-blue-300 mt-1">
+                    Enter translations below to create new entries. They will be auto-saved after 1 second of inactivity.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4">
             {languages.map(language => (
               <div key={language.code} className="bg-gray-700 rounded-lg p-4">
@@ -718,9 +716,12 @@ export default function SchemaTranslationPanel() {
                     <h4 className="font-semibold text-white">{language.name}</h4>
                     <p className="text-sm text-gray-400">{language.native_name}</p>
                   </div>
-                  <Tag color="blue">{language.code.toUpperCase()}</Tag>
+                  <Tag value={language.code.toUpperCase()} severity="info" />
+                  {selectedItemTranslations[language.code] && (
+                    <Tag value="✓" severity="success" />
+                  )}
                 </div>
-                <Input
+                <InputText
                   placeholder={`Enter ${language.name} translation...`}
                   value={selectedItemTranslations[language.code] || ''}
                   onChange={(e) => handleTranslationChange(language.code, e.target.value)}
@@ -781,9 +782,39 @@ export default function SchemaTranslationPanel() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Schema Tree */}
-        <div className="w-80 flex-shrink-0 border-r border-gray-600 bg-gray-700 flex flex-col">
+        <div
+          className="flex-shrink-0 border-r border-gray-600 bg-gray-700 flex flex-col relative"
+          style={{ width: `${sidebarWidth}px` }}
+        >
           <div className="p-4 border-b border-gray-600 flex-shrink-0">
-            <h4 className="font-semibold text-white mb-2">Database Schema</h4>
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-semibold text-white">Database Schema</h4>
+              {/* Expand/Collapse Buttons */}
+              {schemaStructure.length > 0 && (
+                <div className="flex gap-1">
+                  <Button
+                    icon="pi pi-plus"
+                    size="small"
+                    text
+                    rounded
+                    severity="secondary"
+                    onClick={expandAll}
+                    tooltip="Expand All"
+                    tooltipOptions={{ position: 'bottom' }}
+                  />
+                  <Button
+                    icon="pi pi-minus"
+                    size="small"
+                    text
+                    rounded
+                    severity="secondary"
+                    onClick={collapseAll}
+                    tooltip="Collapse All"
+                    tooltipOptions={{ position: 'bottom' }}
+                  />
+                </div>
+              )}
+            </div>
             <p className="text-sm text-gray-400">Select tables and fields to translate</p>
             {selectedProject && (
               <p className="text-xs text-blue-300 mt-1">Project: {selectedProject.name}</p>
@@ -805,14 +836,65 @@ export default function SchemaTranslationPanel() {
               </div>
             ) : (
               <Tree
-                treeData={buildTreeData()}
-                onSelect={handleTreeSelect}
-                selectedKeys={selectedItem ? [selectedItem] : []}
-                defaultExpandAll
-                className="bg-transparent"
+                value={buildTreeData()}
+                selectionMode="single"
+                selectionKeys={selectedItem ? { [selectedItem]: true } : {}}
+                onSelectionChange={(e) => {
+                  // PrimeReact Tree returns e.value as a string directly (the selected key)
+                  // NOT as an object with keys!
+                  if (typeof e.value === 'string' && e.value) {
+                    setSelectedItem(e.value);
+                  } else if (typeof e.value === 'object' && e.value !== null) {
+                    // Fallback: if it's an object, get first key
+                    const keys = Object.keys(e.value);
+                    if (keys.length > 0) {
+                      setSelectedItem(keys[0]);
+                    } else {
+                      setSelectedItem(null);
+                    }
+                  } else {
+                    setSelectedItem(null);
+                  }
+                }}
+                expandedKeys={expandedKeys}
+                onToggle={(e) => setExpandedKeys(e.value)}
+                className="bg-transparent w-full h-full schema-tree-compact"
+                style={{ height: '100%' }}
               />
             )}
           </div>
+
+          {/* Resize Handle */}
+          <div
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizing(true);
+
+              const startX = e.clientX;
+              const startWidth = sidebarWidth;
+
+              const handleMouseMove = (e: MouseEvent) => {
+                const delta = e.clientX - startX;
+                const newWidth = Math.max(280, Math.min(800, startWidth + delta)); // Min 280px, Max 800px
+                setSidebarWidth(newWidth);
+              };
+
+              const handleMouseUp = () => {
+                setIsResizing(false);
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
+            style={{
+              backgroundColor: isResizing ? '#3b82f6' : 'transparent',
+              width: '4px',
+              marginRight: '-2px'
+            }}
+          />
         </div>
 
         {/* Right Panel - Translation Detail */}
@@ -829,21 +911,24 @@ export default function SchemaTranslationPanel() {
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-blue-50 rounded border border-blue-200">
-            <h4 className="font-medium text-blue-800 mb-1">
-              Export for {selectedProject?.name}
-            </h4>
-            <p className="text-sm text-blue-600">
-              Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
-            </p>
+          <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
+            <div className="flex items-center gap-2 text-blue-200">
+              <i className="pi pi-info-circle"></i>
+              <div>
+                <p className="font-semibold">Export for {selectedProject?.name}</p>
+                <p className="text-sm text-blue-300 mt-1">
+                  Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Select Languages *
             </label>
             <MultiSelect
@@ -855,7 +940,7 @@ export default function SchemaTranslationPanel() {
               disabled={exporting}
               display="chip"
             />
-            <small className="text-gray-600">
+            <small className="text-gray-400">
               Select one or more languages for the translation export
             </small>
           </div>
@@ -890,21 +975,24 @@ export default function SchemaTranslationPanel() {
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-green-50 rounded border border-green-200">
-            <h4 className="font-medium text-green-800 mb-1">
-              Import for {selectedProject?.name}
-            </h4>
-            <p className="text-sm text-green-600">
-              Upload an Excel file with translations. Select which languages to import.
-            </p>
+          <div className="mb-4 p-4 bg-green-900 border border-green-500 rounded-lg">
+            <div className="flex items-center gap-2 text-green-200">
+              <i className="pi pi-info-circle"></i>
+              <div>
+                <p className="font-semibold">Import for {selectedProject?.name}</p>
+                <p className="text-sm text-green-300 mt-1">
+                  Upload an Excel file with translations. Select which languages to import.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Upload Excel File *
             </label>
             <FileUpload
@@ -918,13 +1006,13 @@ export default function SchemaTranslationPanel() {
               chooseLabel={importFile ? importFile.name : "Choose Excel File"}
               disabled={importing}
             />
-            <small className="text-gray-600">
+            <small className="text-gray-400">
               Excel files only (.xlsx, .xls), max 10MB
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Select Languages to Import *
             </label>
             <MultiSelect
@@ -936,7 +1024,7 @@ export default function SchemaTranslationPanel() {
               disabled={importing}
               display="chip"
             />
-            <small className="text-gray-600">
+            <small className="text-gray-400">
               Only selected languages will be imported from the Excel file
             </small>
           </div>
@@ -974,20 +1062,25 @@ export default function SchemaTranslationPanel() {
         style={{ width: '550px' }}
         modal
         closable={!translating}
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
-            <h4 className="font-medium text-yellow-800 mb-1">
-              {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : 'Auto-Translate')}
-            </h4>
-            <p className="text-sm text-yellow-600">
-              {translateAllItems
-                ? 'All tables and fields with the source language will be translated automatically.'
-                : 'Select the source language (must already be filled in) and target languages for translation.'
-              }
-            </p>
+          <div className="mb-4 p-4 bg-yellow-900 border border-yellow-500 rounded-lg">
+            <div className="flex items-center gap-2 text-yellow-200">
+              <i className="pi pi-info-circle"></i>
+              <div>
+                <p className="font-semibold">
+                  {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : 'Auto-Translate')}
+                </p>
+                <p className="text-sm text-yellow-300 mt-1">
+                  {translateAllItems
+                    ? 'All tables and fields with the source language will be translated automatically.'
+                    : 'Select the source language (must already be filled in) and target languages for translation.'
+                  }
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="field">
@@ -1007,17 +1100,17 @@ export default function SchemaTranslationPanel() {
                 className="w-4 h-4"
                 disabled={translating}
               />
-              <label htmlFor="translateAll" className="text-sm font-medium text-gray-700 cursor-pointer">
+              <label htmlFor="translateAll" className="text-sm font-medium text-gray-300 cursor-pointer">
                 🚀 Translate all tables and fields
               </label>
             </div>
-            <small className="text-gray-600 ml-6">
+            <small className="text-gray-400 ml-6">
               Automatically translates all items that have the source language
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Source Language *
             </label>
             <Dropdown
@@ -1037,13 +1130,13 @@ export default function SchemaTranslationPanel() {
               }))}
               className="w-full"
             />
-            <small className="text-gray-600">
+            <small className="text-gray-400">
               The language to translate FROM (must already have a translation)
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Target Languages *
             </label>
             <MultiSelect
@@ -1056,7 +1149,7 @@ export default function SchemaTranslationPanel() {
               className="w-full"
               display="chip"
             />
-            <small className="text-gray-600">
+            <small className="text-gray-400">
               Languages to translate TO
             </small>
           </div>
@@ -1076,23 +1169,24 @@ export default function SchemaTranslationPanel() {
           )}
 
           {!translating && (
-            <div className="p-3 bg-blue-50 rounded border border-blue-200">
-              <p className="text-sm text-blue-700">
-                {translateAllItems ? (
-                  <>
-                    📊 Estimated cost: ~${((estimatedCharCount * targetLanguagesForTranslate.length) / 1000000 * 20).toFixed(3)}
-                    <br />
-                    <span className="text-xs">
-                      ({estimatedCharCount} chars × {targetLanguagesForTranslate.length} languages = {estimatedCharCount * targetLanguagesForTranslate.length} total chars)
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    📊 Estimated cost: ~$0.00{Math.max(1, targetLanguagesForTranslate.length * 2)}
-                    ({(selectedItemTranslations[sourceLanguageForTranslate]?.length || 0) * targetLanguagesForTranslate.length} characters)
-                  </>
-                )}
-              </p>
+            <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-200">
+                <i className="pi pi-info-circle"></i>
+                <div>
+                  <p className="font-semibold">
+                    📊 Estimated cost: ~${translateAllItems
+                      ? ((estimatedCharCount * targetLanguagesForTranslate.length) / 1000000 * 20).toFixed(3)
+                      : `0.00${Math.max(1, targetLanguagesForTranslate.length * 2)}`
+                    }
+                  </p>
+                  <p className="text-sm text-blue-300 mt-1">
+                    {translateAllItems
+                      ? `(${estimatedCharCount} chars × ${targetLanguagesForTranslate.length} languages = ${estimatedCharCount * targetLanguagesForTranslate.length} total chars)`
+                      : `(${(selectedItemTranslations[sourceLanguageForTranslate]?.length || 0) * targetLanguagesForTranslate.length} characters)`
+                    }
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1121,6 +1215,29 @@ export default function SchemaTranslationPanel() {
           </div>
         </div>
       </Dialog>
+
+      {/* Custom CSS for compact tree */}
+      <style>{`
+        .schema-tree-compact .p-treenode {
+          padding: 0.125rem 0 !important;
+        }
+        .schema-tree-compact .p-treenode-content {
+          padding: 0.125rem 0.5rem !important;
+          min-height: 1.5rem !important;
+        }
+        .schema-tree-compact .p-tree-toggler {
+          width: 1.25rem !important;
+          height: 1.25rem !important;
+        }
+        .schema-tree-compact .p-treenode-label {
+          font-size: 0.875rem !important;
+        }
+        .schema-tree-compact .p-tag {
+          font-size: 0.75rem !important;
+          padding: 0.125rem 0.375rem !important;
+          height: 1.25rem !important;
+        }
+      `}</style>
     </div>
   );
 }

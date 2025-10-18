@@ -397,8 +397,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         style={{ width: '500px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
         <div className="space-y-4">

@@ -213,6 +213,9 @@ class TemplateController extends Controller
                 }
             }
 
+            // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
+            $this->dispatchRegenerationJobsForTemplate($template);
+
             return response()->json([
                 'success' => true,
                 'template' => $template->load('files'),
@@ -720,8 +723,9 @@ class TemplateController extends Controller
         \Log::info("🧪 [TEMPLATE-QUEUE] Starting job dispatch for template {$template->id} ({$template->name})");
         
         // Find all projects that use this template
-        $projectIds = \DB::table('project_templates')
+        $projectIds = \DB::table('project_template_usage')
             ->where('template_id', $template->id)
+            ->where('is_active', true)
             ->pluck('project_id')
             ->unique()
             ->toArray();

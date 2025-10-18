@@ -13,6 +13,7 @@ use App\Models\SchemaConstraintColumn;
 use App\Models\SchemaForeignKeyReference;
 use App\Models\SchemaForeignKeyReferenceColumn;
 use App\Models\Project;
+use App\Models\ProjectSchema;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -223,9 +224,7 @@ class SchemaController extends Controller
 
             // 🚨 STEP 1: Remove project associations OUTSIDE the transaction first
             Log::info("🔥 Pre-emptive project association removal");
-            $deletedProjectAssociations = DB::table('project_schemas')
-                ->where('schema_id', $schema->id)
-                ->delete();
+            $deletedProjectAssociations = ProjectSchema::where('schema_id', $schema->id)->delete();
             Log::info("✅ Pre-removed {$deletedProjectAssociations} project associations");
 
             // Try to detach using Eloquent as well (belt and suspenders)
@@ -295,13 +294,11 @@ class SchemaController extends Controller
                 }
 
                 // Double-check project associations are gone
-                $remainingAssociations = DB::table('project_schemas')
-                    ->where('schema_id', $schema->id)
-                    ->count();
+                $remainingAssociations = ProjectSchema::where('schema_id', $schema->id)->count();
                 Log::info("🔍 Remaining project associations: {$remainingAssociations}");
 
                 if ($remainingAssociations > 0) {
-                    DB::table('project_schemas')->where('schema_id', $schema->id)->delete();
+                    ProjectSchema::where('schema_id', $schema->id)->delete();
                     Log::info("✅ Force-removed remaining project associations");
                 }
 

@@ -276,7 +276,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         }
       ]
     },
-    ...(userType === 'system' ? [
+    ...(userType === 'system' || userType === 'admin' ? [
       {
         label: 'Administration',
         icon: 'pi pi-cog',
@@ -290,6 +290,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             label: 'Language Management',
             icon: 'pi pi-globe',
             command: () => onOpenPanel('language-management')
+          },
+          {
+            separator: true
+          },
+          {
+            label: 'CMS Admin',
+            icon: 'pi pi-file-edit',
+            command: () => onOpenPanel('cms-admin')
           }
         ]
       }
@@ -575,7 +583,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               </div>
             </div>
 
-            {userType === 'system' && (
+            {(userType === 'system' || userType === 'admin') && (
               <div className="relative group">
                 <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
                   <i className="pi pi-cog text-gray-300" title="Administration"></i>
@@ -590,6 +598,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-globe"></i>
                       <span>Language Management</span>
+                    </button>
+                    <div className="border-t border-gray-600 my-2"></div>
+                    <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-file-edit"></i>
+                      <span>CMS Admin</span>
                     </button>
                   </div>
                 </div>

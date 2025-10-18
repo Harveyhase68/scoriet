@@ -76,8 +76,8 @@ export default function ForgotPasswordModal({
       style={{ width: '400px' }}
       modal
       closable
-      draggable={false}
-      resizable={false}
+      draggable={true}
+      resizable={true}
       className="p-dialog-custom"
     >
       <div className="mb-4 text-sm text-gray-600">

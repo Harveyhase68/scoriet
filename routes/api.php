@@ -23,6 +23,38 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CustomTokenController;
 Route::post('/oauth/token', [CustomTokenController::class, 'issueToken'])->name('api.oauth.token');
 
+// Test Observer (outside auth middleware for testing)
+Route::get('/test/observer', function () {
+    try {
+        // Create a new table using Eloquent to trigger the observer
+        $schemaVersion = \Illuminate\Support\Facades\DB::table('schema_versions')
+            ->where('schema_id', 1)
+            ->orderBy('version_number', 'desc')
+            ->first();
+        
+        if (!$schemaVersion) {
+            return response()->json(['error' => 'No schema version found'], 404);
+        }
+        
+        $table = new \App\Models\SchemaTable();
+        $table->schema_version_id = $schemaVersion->id;
+        $table->schema_id = $schemaVersion->schema_id;
+        $table->table_name = 'test_observer_table_' . time();
+        $table->save();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Created test table with ID: ' . $table->id,
+            'table_name' => $table->table_name
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
 // Authentication Routes (public)
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -60,6 +92,40 @@ Route::prefix('project-invitations')->name('api.project-invitations.')->group(fu
     Route::get('/info/{token}', [ProjectInvitationController::class, 'getInvitationInfo'])->name('info');
     Route::post('/accept/{token}', [ProjectInvitationController::class, 'acceptInvitation'])->name('accept');
     Route::post('/decline/{token}', [ProjectInvitationController::class, 'declineInvitation'])->name('decline');
+});
+
+// Public Pricing API (no auth required)
+Route::get('/pricing', function () {
+    try {
+        $settings = \App\Models\Settings::first();
+        
+        if (!$settings) {
+            // Fallback to default prices if no settings exist
+            $prices = [
+                'premium' => 9.99,
+                'business' => 29.99,
+                'patron' => 99.99
+            ];
+        } else {
+            $prices = [
+                'premium' => (float) $settings->price_premium,
+                'business' => (float) $settings->price_business,
+                'patron' => (float) $settings->price_patron
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'prices' => $prices,
+            'currency' => 'EUR',
+            'updated_at' => $settings ? $settings->updated_at : now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to fetch pricing information'
+        ], 500);
+    }
 });
 
 // Protected Routes (require authentication)
@@ -207,6 +273,10 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/generation-tree', [ProjectController::class, 'getGenerationTree']);
     Route::post('/projects/{project}/generation-tree/regenerate', [ProjectController::class, 'regenerateTree']);
     
+    // Project Generation Tree v2 - Enhanced with update checking
+    Route::get('/projects/{project}/generation-tree/v2', [App\Http\Controllers\Api\ProjectGenerationTreeController::class, 'show']);
+    Route::get('/projects/{project}/generation-tree/updates', [App\Http\Controllers\Api\ProjectGenerationTreeController::class, 'checkUpdates']);
+    
     // Project Team Management
     Route::get('/projects/{project}/teams/available', [ProjectController::class, 'getAvailableTeams']);
     Route::get('/projects/{project}/teams/assigned', [ProjectController::class, 'getAssignedTeams']);
@@ -324,6 +394,14 @@ Route::middleware('auth:api')->group(function () {
 
     // Auto-Translate
     Route::post('/translations/auto-translate', [\App\Http\Controllers\Api\AutoTranslateController::class, 'translate']);
+
+    // CMS Admin (System Admin only)
+    Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
+        Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index']);
+        Route::post('/pages', [\App\Http\Controllers\Admin\PageController::class, 'store']);
+        Route::put('/pages/{page}', [\App\Http\Controllers\Admin\PageController::class, 'update']);
+        Route::delete('/pages/{page}', [\App\Http\Controllers\Admin\PageController::class, 'destroy']);
+    });
 });
 
 // DEBUG: Test route to check if ProjectApplicationController is accessible

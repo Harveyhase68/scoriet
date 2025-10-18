@@ -1030,7 +1030,7 @@ class ProjectController extends Controller
         $generationTree = $generator->generateAndSave($project);
 
         return response()->json([
-            'message' => 'Generation tree regenerated successfully',
+            'message' => 'Generation tree made regenerated successfully',
             'tree_data' => $generationTree->tree_data,
             'generated_at' => $generationTree->generated_at,
         ]);

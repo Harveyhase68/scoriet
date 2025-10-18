@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Modal, Tag, Space, message, Button as AntButton, Form, Input, Select, Switch, Tooltip, Radio } from 'antd';
-import { PlusOutlined, LinkOutlined, ApiOutlined } from '@ant-design/icons';
+import { useForm, Controller } from 'react-hook-form';
+import { Dialog } from 'primereact/dialog';
+import { useToast } from '@/contexts/ToastContext';
+import { Tag } from 'primereact/tag';
+
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { InputSwitch } from 'primereact/inputswitch';
+import { SelectButton } from 'primereact/selectbutton';
+
 import { Card } from 'primereact/card';
 import { apiClient as api } from '@/lib/api';
 import { TabContentProps } from '@/types';
@@ -73,17 +80,18 @@ interface AddDependencyModalProps {
 }
 
 const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClose, onSuccess, templateId }) => {
-    const [form] = Form.useForm();
+    const toast = useToast();
+    const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
+        defaultValues: {
+            schema_id: null,
+            is_required: true,
+            alias: ''
+        }
+    });
     const [loading, setLoading] = useState(false);
     const [schemas, setSchemas] = useState<DbSchema[]>([]);
 
-    useEffect(() => {
-        if (visible) {
-            loadDbSchemas();
-        }
-    }, [visible]);
-
-    const loadDbSchemas = async () => {
+    const loadDbSchemas = useCallback(async () => {
         try {
             const response = await api.request('/template-db-schema/schemas');
             if (response.success) {
@@ -91,12 +99,18 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
             }
         } catch {
             // Failed to load DB schemas
-            message.error('Failed to load DB schemas');
+            toast.showError('Failed to load DB schemas');
         }
-    };
+    }, [toast]);
 
-    const handleSubmit = async (values: any) => {
-   
+    useEffect(() => {
+        if (visible) {
+            loadDbSchemas();
+            reset({ schema_id: null, is_required: true, alias: '' });
+        }
+    }, [visible, reset, loadDbSchemas]);
+
+    const onSubmit = handleFormSubmit(async (values) => {
         if (!templateId) return;
 
         setLoading(true);
@@ -106,105 +120,144 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 body: JSON.stringify(values),
             });
             if (response.success) {
-                message.success('DB schema dependency added successfully');
-                form.resetFields();
+                toast.showSuccess('DB schema dependency added successfully');
+                reset();
                 onSuccess();
                 onClose();
             } else {
-                message.error(response.error || 'Failed to add dependency');
+                toast.showError(response.error || 'Failed to add dependency');
             }
         } catch (error: any) {
             // Failed to add dependency
             const errorMessage = error.response?.data?.error || 'Failed to add dependency';
-            message.error(errorMessage);
+            toast.showError(errorMessage);
         } finally {
             setLoading(false);
         }
-    };
+    });
 
     return (
-        <Modal
-            title={
+        <Dialog
+            header={
                 <div className="flex items-center space-x-2">
-                    <PlusOutlined />
+                    <i className="pi pi-plus"></i>
                     <span>Add DB Schema Dependency</span>
                 </div>
             }
-            open={visible}
-            onCancel={onClose}
-            footer={null}
-            className="dark-modal"
+            visible={visible}
+            onHide={onClose}
+            style={{ width: '600px' }}
+            modal
+            closable
+            draggable={true}
+            resizable={true}
         >
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleSubmit}
-                initialValues={{ is_required: true }}
-            >
-                <Form.Item
-                    name="schema_id"
-                    label="Database Schema"
-                    rules={[{ required: true, message: 'Please select a database schema' }]}
-                >
-                    <Select
-                        placeholder="Select a database schema"
-                        showSearch
-                        filterOption={(input, option) =>
-                            option?.label?.toLowerCase().includes(input.toLowerCase()) ?? false
-                        }
-                        options={schemas.map(schema => ({
-                            value: schema.id,
-                            label: `${schema.name} (${schema.visibility})`,
-                            schema
-                        }))}
-                        optionRender={(option) => (
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <span>{option.data.schema.name}</span>
-                                    <span className="text-gray-400 ml-2">
-                                        v{option.data.schema.last_version}
-                                    </span>
-                                </div>
-                                <Tag color={option.data.schema.visibility === 'public' ? 'green' : 'orange'}>
-                                    {option.data.schema.visibility}
-                                </Tag>
-                            </div>
+            <form onSubmit={onSubmit} className="space-y-4">
+                {/* Database Schema */}
+                <div>
+                    <label htmlFor="schema_id" className="block text-sm font-medium mb-2">
+                        Database Schema *
+                    </label>
+                    <Controller
+                        name="schema_id"
+                        control={control}
+                        rules={{ required: 'Please select a database schema' }}
+                        render={({ field }) => (
+                            <Dropdown
+                                id="schema_id"
+                                value={field.value}
+                                onChange={(e) => field.onChange(e.value)}
+                                options={schemas.map(schema => ({
+                                    value: schema.id,
+                                    label: `${schema.name} (${schema.visibility})`,
+                                    schema
+                                }))}
+                                optionLabel="label"
+                                placeholder="Select a database schema"
+                                filter
+                                className="w-full"
+                                itemTemplate={(option) => (
+                                    <div className="flex justify-between items-center w-full">
+                                        <div>
+                                            <span>{option.schema.name}</span>
+                                            <span className="text-gray-400 ml-2">
+                                                v{option.schema.last_version}
+                                            </span>
+                                        </div>
+                                        <Tag
+                                            value={option.schema.visibility}
+                                            severity={option.schema.visibility === 'public' ? 'success' : 'warning'}
+                                        />
+                                    </div>
+                                )}
+                            />
                         )}
                     />
-                </Form.Item>
+                    {errors.schema_id && (
+                        <small className="text-red-400 mt-1 block">{errors.schema_id.message}</small>
+                    )}
+                </div>
 
-                <Form.Item
-                    name="is_required"
-                    label="Required Dependency"
-                    valuePropName="checked"
-                >
-                    <Switch />
-                </Form.Item>
+                {/* Is Required */}
+                <div>
+                    <label htmlFor="is_required" className="block text-sm font-medium mb-2">
+                        Required Dependency
+                    </label>
+                    <Controller
+                        name="is_required"
+                        control={control}
+                        render={({ field }) => (
+                            <InputSwitch
+                                inputId="is_required"
+                                checked={field.value}
+                                onChange={(e) => field.onChange(e.value)}
+                            />
+                        )}
+                    />
+                </div>
 
-                <Form.Item
-                    name="alias"
-                    label="Alias (Optional)"
-                >
-                    <Input placeholder="Enter an alias for this DB schema in the template" />
-                </Form.Item>
+                {/* Alias */}
+                <div>
+                    <label htmlFor="alias" className="block text-sm font-medium mb-2">
+                        Alias (Optional)
+                    </label>
+                    <Controller
+                        name="alias"
+                        control={control}
+                        render={({ field }) => (
+                            <InputText
+                                id="alias"
+                                {...field}
+                                placeholder="Enter an alias for this DB schema in the template"
+                                className="w-full"
+                            />
+                        )}
+                    />
+                </div>
 
-                <Form.Item className="mb-0">
-                    <Space>
-                        <AntButton onClick={onClose}>
-                            Cancel
-                        </AntButton>
-                        <AntButton type="primary" htmlType="submit" loading={loading}>
-                            Add Dependency
-                        </AntButton>
-                    </Space>
-                </Form.Item>
-            </Form>
-        </Modal>
+                {/* Action Buttons */}
+                <div className="flex gap-2 justify-end">
+                    <Button
+                        type="button"
+                        label="Cancel"
+                        severity="secondary"
+                        onClick={onClose}
+                    />
+                    <Button
+                        type="submit"
+                        label="Add Dependency"
+                        severity="success"
+                        loading={loading}
+                    />
+                </div>
+            </form>
+        </Dialog>
     );
 };
 
 const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     // Using centralized CSS styles from auth-modals.css
+    const toast = useToast();
 
     // State variables
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -225,7 +278,6 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             try {
                 const user = await api.getCurrentUser();
                 setCurrentUserId(parseInt(user.id));
-                console.log(user.id + ' - ' + typeof user.id+ ' - ' + parseInt(user.id));
             } catch {
                 // Failed to load current user
             }
@@ -236,20 +288,17 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     // Check if user can edit template (replicate backend logic)
     const canUserEditTemplate = (template: Template): boolean => {
         if (!currentUserId) {
-            console.log('canUserEditTemplate: false weil !currentUserId');
             return false;
         }
 
         // System templates cannot be edited by anyone
         if (template.is_system_template) {
-            console.log('canUserEditTemplate: false weil template.is_system_template');
             return false;
         }
         
         const templateCreatorId = parseInt(String(template.creator_user_id), 10); // Sicherstellen, dass es eine Zahl ist
         
         // Fallback to creator check
-        console.log('canUserEditTemplate: '+templateCreatorId+' / da fallback?');
         return templateCreatorId === currentUserId;
     };
 
@@ -272,11 +321,11 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             setTemplates(filteredTemplates);
         } catch {
             // Failed to load templates
-            message.error('Failed to load templates');
+            toast.showError('Failed to load templates');
         } finally {
             setLoading(false);
         }
-    }, [templateFilter]);
+    }, [templateFilter, toast]);
 
         // Load templates on component mount and filter change
         useEffect(() => {
@@ -294,11 +343,11 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             if (response.success) {
                 setDependencies(response.dependencies || []);
             } else {
-                message.error('Failed to load template dependencies');
+                toast.showError('Failed to load template dependencies');
             }
         } catch {
             // Failed to load template dependencies
-            message.error('Failed to load template dependencies');
+            toast.showError('Failed to load template dependencies');
         } finally {
             setDependenciesLoading(false);
         }
@@ -315,16 +364,16 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 method: 'DELETE',
             });
             if (response.success) {
-                message.success('Dependency removed successfully');
+                toast.showSuccess('Dependency removed successfully');
                 if (selectedTemplate) {
                     loadTemplateDependencies(selectedTemplate.id);
                 }
             } else {
-                message.error('Failed to remove dependency');
+                toast.showError('Failed to remove dependency');
             }
         } catch {
             // Failed to remove dependency
-            message.error('Failed to remove dependency');
+            toast.showError('Failed to remove dependency');
         }
     };
 
@@ -337,16 +386,14 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
         return (
             <div className="flex items-center space-x-2">
                 <span className="font-medium">{rowData.name}</span>
-                <Tag color="blue">{rowData.category}</Tag>
-                {!rowData.is_active && <Tag color="red">Inactive</Tag>}
+                <Tag value={rowData.category} severity="info" />
+                {!rowData.is_active && <Tag value="Inactive" severity="danger" />}
             </div>
         );
     };
 
     const templateActionBodyTemplate = (rowData: Template) => {
-        console.log(rowData);
         const canEdit = canUserEditTemplate(rowData);
-        console.log(canEdit);
 
         if (!canEdit) {
             return (
@@ -373,13 +420,14 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     const dependencySchemaBodyTemplate = (rowData: DbSchemaDependency) => {
         return (
             <div className="flex items-center space-x-2">
-                <ApiOutlined />
+                <i className="pi pi-cloud"></i>
                 <span className="font-medium">{rowData.db_schema?.name}</span>
-                <Tag color={rowData.db_schema?.visibility === 'public' ? 'green' : 'orange'}>
-                    {rowData.db_schema?.visibility}
-                </Tag>
+                <Tag
+                    value={rowData.db_schema?.visibility}
+                    severity={rowData.db_schema?.visibility === 'public' ? 'success' : 'warning'}
+                />
                 {rowData.db_schema?.last_version && (
-                    <Tag color="blue">v{rowData.db_schema.last_version}</Tag>
+                    <Tag value={`v${rowData.db_schema.last_version}`} severity="info" />
                 )}
             </div>
         );
@@ -389,11 +437,11 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
         return (
             <div className="flex items-center space-x-2">
                 {rowData.is_required ? (
-                    <Tag color="red">Required</Tag>
+                    <Tag value="Required" severity="danger" />
                 ) : (
-                    <Tag color="blue">Optional</Tag>
+                    <Tag value="Optional" severity="info" />
                 )}
-                {rowData.alias && <Tag color="purple">Alias: {rowData.alias}</Tag>}
+                {rowData.alias && <Tag value={`Alias: ${rowData.alias}`} style={{ backgroundColor: '#9333ea', color: 'white' }} />}
             </div>
         );
     };
@@ -414,13 +462,13 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
 
         return (
             <div className="flex space-x-2">
-                <Tooltip title="Remove Dependency">
-                    <Button
-                        icon="pi pi-trash"
-                        className="p-button-sm p-button-danger"
-                        onClick={() => handleRemoveDependency(rowData)}
-                    />
-                </Tooltip>
+                <Button
+                    icon="pi pi-trash"
+                    className="p-button-sm p-button-danger"
+                    onClick={() => handleRemoveDependency(rowData)}
+                    tooltip="Remove Dependency"
+                    tooltipOptions={{ position: 'top' }}
+                />
             </div>
         );
     };
@@ -431,7 +479,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 <Card className="bg-gray-700 border-gray-600">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-gray-100 flex items-center space-x-2">
-                            <LinkOutlined />
+                            <i className="pi pi-link"></i>
                             <span>Template - DB Schema Dependencies</span>
                         </h2>
                         <Button
@@ -449,56 +497,17 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
 
                             {/* Template Filter */}
                             <div className="mb-3">
-                                <Radio.Group
+                                <SelectButton
                                     value={templateFilter}
-                                    onChange={(e) => setTemplateFilter(e.target.value)}
-                                    className="mb-3"
-                                    style={{
-                                        backgroundColor: 'transparent',
-                                        border: 'none'
-                                    }}
-                                >
-                                    <Radio.Button
-                                        value="all"
-                                        style={{
-                                            backgroundColor: templateFilter === 'all' ? '#3b82f6' : '#4b5563',
-                                            borderColor: '#6b7280',
-                                            color: '#f3f4f6'
-                                        }}
-                                    >
-                                        All
-                                    </Radio.Button>
-                                    <Radio.Button
-                                        value="system"
-                                        style={{
-                                            backgroundColor: templateFilter === 'system' ? '#3b82f6' : '#4b5563',
-                                            borderColor: '#6b7280',
-                                            color: '#f3f4f6'
-                                        }}
-                                    >
-                                        System
-                                    </Radio.Button>
-                                    <Radio.Button
-                                        value="public"
-                                        style={{
-                                            backgroundColor: templateFilter === 'public' ? '#3b82f6' : '#4b5563',
-                                            borderColor: '#6b7280',
-                                            color: '#f3f4f6'
-                                        }}
-                                    >
-                                        Public
-                                    </Radio.Button>
-                                    <Radio.Button
-                                        value="project"
-                                        style={{
-                                            backgroundColor: templateFilter === 'project' ? '#3b82f6' : '#4b5563',
-                                            borderColor: '#6b7280',
-                                            color: '#f3f4f6'
-                                        }}
-                                    >
-                                        Project
-                                    </Radio.Button>
-                                </Radio.Group>
+                                    onChange={(e) => setTemplateFilter(e.value)}
+                                    options={[
+                                        { label: 'All', value: 'all' },
+                                        { label: 'System', value: 'system' },
+                                        { label: 'Public', value: 'public' },
+                                        { label: 'Project', value: 'project' }
+                                    ]}
+                                    className="w-full mb-3"
+                                />
                             </div>
 
                             <div className="mb-3">

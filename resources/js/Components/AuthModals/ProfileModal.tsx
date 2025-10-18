@@ -379,8 +379,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       style={{ width: '700px' }}
       modal
       closable
-      draggable={false}
-      resizable={false}
+      draggable={true}
+      resizable={true}
       className="p-dialog-custom"
     >
       <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>

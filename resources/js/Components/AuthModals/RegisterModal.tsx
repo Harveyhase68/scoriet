@@ -12,7 +12,7 @@ interface RegisterModalProps {
   visible: boolean;
   onHide: () => void;
   onSwitchToLogin: () => void;
-  onRegistrationSuccess?: () => void;
+  onRegistrationSuccess?: (message: string) => void;
   currentLanguage?: SupportedLanguage;
 }
 
@@ -87,22 +87,23 @@ export default function RegisterModal({
       }
 
       const registrationData = await response.json();
-      
+
+      // Prepare success message
+      let successMessage = '';
       if (registrationData.email_verification_required) {
-        setSuccess('Registration successful! Please check your email for a verification link before logging in.');
-        // Don't automatically switch to login - user needs to verify email first
-        onRegistrationSuccess?.();
+        successMessage = 'Registration successful! Please check your email for a verification link before logging in.';
       } else {
         const userId = registrationData.user?.id;
-        setSuccess(`Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`);
-        
-        // Automatically switch to login after 2 seconds
-        setTimeout(() => {
-          onRegistrationSuccess?.();
-          handleHide();
-          onSwitchToLogin();
-        }, 2000);
+        successMessage = `Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`;
       }
+
+      // Call callback FIRST (before closing modal)
+      if (onRegistrationSuccess) {
+        onRegistrationSuccess(successMessage);
+      }
+
+      // Then close modal
+      handleHide();
       
     } catch {
       setError(_ instanceof Error ? _.message : 'An error occurred');
@@ -205,8 +206,8 @@ export default function RegisterModal({
         style={{ width: '450px' }}
         modal
         closable
-        draggable={false}
-        resizable={false}
+        draggable={true}
+        resizable={true}
         className="p-dialog-custom"
       >
       <form onSubmit={handleSubmit} className="space-y-4">

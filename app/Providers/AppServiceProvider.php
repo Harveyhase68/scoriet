@@ -9,9 +9,19 @@ use Illuminate\Notifications\Messages\MailMessage;
 use App\Models\Template;
 use App\Models\SchemaVersion;
 use App\Models\Project;
+use App\Models\TemplateFile;
+use App\Models\ProjectTemplateUsage;
+use App\Models\SchemaTable;
+use App\Models\ProjectGenerationTree;
+use App\Models\ProjectSchema;
 use App\Observers\TemplateObserver;
 use App\Observers\SchemaVersionObserver;
 use App\Observers\ProjectObserver;
+use App\Observers\TemplateFileObserver;
+use App\Observers\ProjectTemplateUsageObserver;
+use App\Observers\SchemaTableObserver;
+use App\Observers\ProjectGenerationTreeObserver;
+use App\Observers\ProjectSchemaObserver;
 
 class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthServiceProvider
 {
@@ -55,5 +65,10 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         Template::observe(TemplateObserver::class);
         SchemaVersion::observe(SchemaVersionObserver::class);
         Project::observe(ProjectObserver::class);
+        TemplateFile::observe(TemplateFileObserver::class);
+        ProjectTemplateUsage::observe(ProjectTemplateUsageObserver::class);
+        SchemaTable::observe(SchemaTableObserver::class);
+        ProjectGenerationTree::observe(ProjectGenerationTreeObserver::class);
+        ProjectSchema::observe(ProjectSchemaObserver::class);
     }
 }

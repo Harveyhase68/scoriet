@@ -130,9 +130,19 @@ export default function LoginModal({
       // Success - close modal
       onLoginSuccess?.();
       onHide();
-      
-    } catch {
-      setError(_ instanceof Error ? _.message : 'An error occurred');
+
+    } catch (error) {
+      // Better error messages for common scenarios
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+
+      // Check for specific error messages
+      if (errorMessage.includes('Login failed') || errorMessage.includes('invalid_grant')) {
+        setError('E-Mail/Benutzername oder Passwort ist falsch.');
+      } else if (errorMessage.includes('email_verification_required')) {
+        setError('E-Mail-Adresse muss bestätigt werden.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,8 +215,8 @@ export default function LoginModal({
       style={{ width: '400px' }}
       modal
       closable={closable}
-      draggable={false}
-      resizable={false}
+      draggable={true}
+      resizable={true}
       className="p-dialog-custom"
     >
       <form onSubmit={handleSubmit} className="space-y-4">

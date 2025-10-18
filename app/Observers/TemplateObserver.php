@@ -61,6 +61,7 @@ class TemplateObserver
         // Find all projects that use this template
         $projectIds = DB::table('project_template_usage')
             ->where('template_id', $template->id)
+            ->where('is_active', true)
             ->pluck('project_id')
             ->unique()
             ->toArray();

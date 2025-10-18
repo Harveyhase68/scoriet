@@ -1,5 +1,5 @@
 // resources/js/Components/Panels/PanelT1.tsx - Navigation Panel with Projects and Teams (Optimized)
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TabContentProps, NavigationPanelProps } from '@/types';
 import { apiClient } from '@/lib/api';
 
@@ -350,7 +350,7 @@ const TreeNodeComponent: React.FC<{
         className={`flex items-center py-1 px-2 cursor-pointer hover:bg-gray-700 rounded text-sm ${
           isSelected ? 'bg-blue-600 text-white' : 'text-gray-300'
         }`}
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        style={{ paddingLeft: `${level * 16 + 8}px`, userSelect: 'none' }}
         onClick={() => onSelect(node)}
         onDoubleClick={() => onOpenPanel(node)}
       >
@@ -367,7 +367,7 @@ const TreeNodeComponent: React.FC<{
         )}
         {!hasChildren && <span className="w-4 mr-1"></span>}
         <span className="mr-2">{getIcon()}</span>
-        <span className="truncate">{node.name}</span>
+        <span className="truncate" style={{ userSelect: 'none' }}>{node.name}</span>
       </div>
       
       {node.expanded && node.children && (
@@ -394,6 +394,93 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Function to refresh only the File Preview for a specific project
+  const refreshFilePreview = useCallback(async (projectId: number) => {
+    try {
+      const generationTreeData = await apiClient.getProjectGenerationTree(projectId);
+      
+      // Update function to replace only the File Preview node
+      const updateFilePreviewInTree = (nodes: TreeNode[]): TreeNode[] => {
+        return nodes.map(node => {
+          if (node.id === `project-${projectId}`) {
+            // Find and remove the existing File Preview node
+            const updatedChildren = (node.children || []).filter(
+              child => child.type !== 'generated-files-container'
+            );
+            
+            // Add new File Preview node if data exists
+            if (generationTreeData && generationTreeData.tree_data && generationTreeData.tree_data.length > 0) {
+              const generatedFilesContainerNode: TreeNode = {
+                id: `generated-files-${projectId}`,
+                name: 'File Preview',
+                type: 'generated-files-container',
+                projectId: projectId,
+                projectName: node.projectName,
+                expanded: false, // Keep current expanded state
+                children: []
+              };
+
+              // Convert the tree_data to TreeNode format
+              const convertGenerationNode = (genNode: any): TreeNode => {
+                const treeNode: TreeNode = {
+                  id: genNode.id,
+                  name: genNode.name,
+                  type: genNode.type as any,
+                  projectId: projectId,
+                  projectName: node.projectName,
+                  expanded: genNode.type === 'directory' ? true : false,
+                  children: []
+                };
+
+                // Add additional properties based on type
+                if (genNode.type === 'template-group') {
+                  treeNode.templateId = genNode.templateId;
+                } else if (genNode.type === 'generated-file') {
+                  treeNode.path = genNode.path;
+                  treeNode.templateId = genNode.templateId;
+                  treeNode.fileId = genNode.fileId;
+                  treeNode.tableId = genNode.tableId;
+                  treeNode.tableName = genNode.tableName;
+                  treeNode.languageId = genNode.languageId;
+                  treeNode.languageCode = genNode.languageCode;
+                  treeNode.fileType = genNode.fileType;
+                } else if (genNode.type === 'directory') {
+                  treeNode.path = genNode.path;
+                }
+
+                // Recursively convert children
+                if (genNode.children && genNode.children.length > 0) {
+                  treeNode.children = genNode.children.map(convertGenerationNode);
+                }
+
+                return treeNode;
+              };
+
+              // Add all templates/directories/files from the generation tree
+              generatedFilesContainerNode.children = generationTreeData.tree_data.map(convertGenerationNode);
+              
+              // Add the new File Preview node to children
+              updatedChildren.push(generatedFilesContainerNode);
+            }
+            
+            return { ...node, children: updatedChildren };
+          }
+          
+          // Recursively update children
+          if (node.children) {
+            return { ...node, children: updateFilePreviewInTree(node.children) };
+          }
+          
+          return node;
+        });
+      };
+
+      setTreeData(updateFilePreviewInTree(treeData));
+    } catch (error) {
+      console.error(`Error refreshing File Preview for project ${projectId}:`, error);
+    }
+  }, [treeData]);
 
   // Load project data on component mount
   useEffect(() => {
@@ -422,6 +509,72 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
       window.removeEventListener('teamChanged', handleTeamChange);
     };
   }, []);
+
+  // Listen for File Preview updates
+  useEffect(() => {
+    const handleFilePreviewUpdate = (event: CustomEvent) => {
+      const { projectId } = event.detail;
+      refreshFilePreview(projectId);
+    };
+
+    // Add event listener
+    window.addEventListener('filePreviewUpdate', handleFilePreviewUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('filePreviewUpdate', handleFilePreviewUpdate as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeData]);
+
+  // Auto-polling for File Preview updates (every 5 seconds)
+  useEffect(() => {
+    // Extract project IDs from tree data
+    const projectIds = treeData
+      .filter(node => node.type === 'project')
+      .map(node => node.projectId)
+      .filter(id => id !== undefined) as number[];
+
+    if (projectIds.length === 0) return;
+
+    // Store last update timestamps for each project
+    const lastUpdateTimestamps: Record<number, string> = {};
+    
+    // Initialize timestamps from current tree data
+    projectIds.forEach(projectId => {
+      const generatedFilesNode = treeData
+        .find(node => node.id === `project-${projectId}`)?.children
+        ?.find(child => child.type === 'generated-files-container');
+      
+      if (generatedFilesNode) {
+        lastUpdateTimestamps[projectId] = new Date().toISOString();
+      }
+    });
+
+    // Set up polling interval
+    const interval = setInterval(async () => {
+      for (const projectId of projectIds) {
+        try {
+          const response = await apiClient.checkGenerationTreeUpdates(
+            projectId,
+            lastUpdateTimestamps[projectId] || new Date(0).toISOString()
+          );
+
+          if (response.data.has_updates && response.data.tree_data) {
+            // Update the timestamp
+            lastUpdateTimestamps[projectId] = response.data.last_update;
+            
+            // Refresh only the File Preview
+            refreshFilePreview(projectId);
+          }
+        } catch {
+          // Silently ignore polling errors to avoid console spam
+        }
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeData]);
 
   const toggleNode = (nodeId: string) => {
     const updateNode = (nodes: TreeNode[]): TreeNode[] => {
@@ -580,16 +733,6 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         break;
       case 'generated-file':
         if (onOpenPanel) {
-          console.log('🔥 PanelT1: Opening generated-file with node:', {
-            templateId: node.templateId,
-            fileId: node.fileId,
-            tableId: node.tableId,
-            tableName: node.tableName,
-            languageId: node.languageId,
-            languageCode: node.languageCode,
-            fullNode: node
-          });
-
           // Open Debug Manual Generator with ALL parameters pre-selected
           const uniqueDebugPanelId = `debug-manual-generator-gen-file-${node.fileId}-${node.tableId}-${node.languageId}`;
 

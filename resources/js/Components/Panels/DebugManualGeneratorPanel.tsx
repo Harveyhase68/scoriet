@@ -382,23 +382,10 @@ export default function DebugManualGeneratorPanel({
           filesArray = data.template_files;
         }
 
-        // 🔍 DEBUG: Log raw API response to find correct ID field
-        console.log('🔍 loadTemplateFiles - Raw API Response:', {
-          filesArrayLength: filesArray.length,
-          firstFile: filesArray[0],
-          allFiles: filesArray
-        });
-
         // More lenient filtering - accept any object with some identifier
         const validFiles = filesArray.map((file: any, index: number) => {
           // Extract filename (API returns 'filename' not 'id')
           const extractedFilename = file.filename || file.file_name || file.name || file.template_file_name || `File ${index + 1}`;
-
-          // 🔍 DEBUG: Log raw file data
-          console.log(`🔍 File ${index} normalized:`, {
-            'filename (from API)': extractedFilename,
-            'ALL API fields': Object.keys(file)
-          });
 
           // Create a normalized file object - KEEP ORIGINAL ID IF AVAILABLE!
           const normalizedFile = {
@@ -715,78 +702,41 @@ export default function DebugManualGeneratorPanel({
 
   // Pre-select template when opened from File Preview
   useEffect(() => {
-    console.log('🔍 Template Pre-Selection useEffect:', {
-      preSelectedTemplateId,
-      preSelectedTemplateIdType: typeof preSelectedTemplateId,
-      templatesLength: templates.length,
-      selectedTemplate,
-      templatesData: templates.map(t => ({ id: t.id, idType: typeof t.id, name: t.name }))
-    });
-
     if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
       // Check if the template exists in the loaded templates
       // Try both number and string comparison in case of type mismatch
       const templateExists = templates.some(t => t.id === preSelectedTemplateId || t.id == preSelectedTemplateId);
-      console.log('✅ Template exists?', templateExists, 'Looking for ID:', preSelectedTemplateId, '(type:', typeof preSelectedTemplateId, ')');
       if (templateExists) {
-        console.log('✅ Setting template to:', preSelectedTemplateId);
         setTimeout(() => {
           setSelectedTemplate(preSelectedTemplateId);
         }, 100);
-      } else {
-        console.log('❌ Template NOT found! Available templates:', templates.map(t => `ID=${t.id} (${typeof t.id}) name=${t.name}`));
       }
     }
   }, [preSelectedTemplateId, templates, selectedTemplate]);
 
   // Pre-select file when opened from File Preview
   useEffect(() => {
-    console.log('🔍 File Pre-Selection useEffect:', {
-      preSelectedFileName,
-      preSelectedFileNameType: typeof preSelectedFileName,
-      templateFilesLength: templateFiles.length,
-      selectedFile,
-      templateFilesData: templateFiles.map(f => ({ id: f.id, filename: f.file_name, name: f.file_name }))
-    });
-
     if (preSelectedFileId && templateFiles.length > 0) {
       // Match by ID instead of filename
       const matchedFile = templateFiles.find(f => f.id === preSelectedFileId);
-      console.log('✅ File matched by ID?', !!matchedFile, 'Looking for ID:', preSelectedFileId);
       if (matchedFile) {
-        console.log('✅ Setting file to ID:', matchedFile.id, 'Filename:', matchedFile.file_name);
         // Slight delay after template files load
         setTimeout(() => {
           setSelectedFile(matchedFile.id); // Use the normalized index-based ID
         }, 200);
-      } else {
-        console.log('❌ File NOT found! Available files:', templateFiles.map(f => `ID=${f.id} filename="${f.file_name}"`));
-        console.log('❌ File NOT found! Available files:', templateFiles);
       }
     }
   }, [preSelectedFileName, preSelectedFileId, templateFiles, selectedFile]);
 
   // Pre-select language when opened from File Preview
   useEffect(() => {
-    console.log('🔍 Language Pre-Selection useEffect:', {
-      preSelectedLanguageCode,
-      preSelectedLanguageCodeType: typeof preSelectedLanguageCode,
-      languageOptionsLength: languageOptions.length,
-      selectedLanguage,
-      languageOptionsData: languageOptions.map(l => ({ value: l.value, label: l.label }))
-    });
-
     if (preSelectedLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
       // Check if the language exists in the loaded language options
       const languageExists = languageOptions.some(l => l.value === preSelectedLanguageCode);
-      console.log('✅ Language exists?', languageExists, 'Looking for code:', preSelectedLanguageCode, '(type:', typeof preSelectedLanguageCode, ')');
       if (languageExists) {
-        console.log('✅ Setting language to:', preSelectedLanguageCode);
         setTimeout(() => {
           setSelectedLanguage(preSelectedLanguageCode);
         }, 100);
-      } else {
-        console.log('❌ Language NOT found! Available languages:', languageOptions.map(l => `value="${l.value}" (${typeof l.value}) label="${l.label}"`));
       }
     }
   }, [preSelectedLanguageCode, languageOptions, selectedLanguage]);
