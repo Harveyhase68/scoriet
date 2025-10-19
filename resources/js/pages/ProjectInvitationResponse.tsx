@@ -149,7 +149,10 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(registrationForm),
+        body: JSON.stringify({
+          ...registrationForm,
+          invitation_token: token  // Send invitation token with registration
+        }),
       });
 
       const data = await response.json();

@@ -28,6 +28,7 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'language' => 'nullable|string|in:en,de,fr',
+            'invitation_token' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -69,13 +70,37 @@ class AuthController extends Controller
 
         // Check if there's a pending invitation for this email
         $pendingInvitationId = null;
-        $invitation = \App\Models\ProjectInvitation::where('invited_email', $request->email)
-            ->where('status', 'pending')
-            ->whereDate('expires_at', '>=', now())
-            ->first();
+        $invitation = null;
+
+        // First check if invitation_token was provided
+        if ($request->has('invitation_token')) {
+            $invitation = \App\Models\ProjectInvitation::where('token', $request->invitation_token)
+                ->where('invited_email', $request->email)
+                ->where('status', 'pending')
+                ->whereDate('expires_at', '>=', now())
+                ->first();
+
+            \Log::info('Registration with invitation token', [
+                'token' => $request->invitation_token,
+                'email' => $request->email,
+                'invitation_found' => !!$invitation,
+            ]);
+        }
+
+        // If not found via token, try to find by email
+        if (!$invitation) {
+            $invitation = \App\Models\ProjectInvitation::where('invited_email', $request->email)
+                ->where('status', 'pending')
+                ->whereDate('expires_at', '>=', now())
+                ->first();
+        }
 
         if ($invitation) {
             $pendingInvitationId = $invitation->id;
+            \Log::info('Pending invitation found for registration', [
+                'invitation_id' => $invitation->id,
+                'project_id' => $invitation->project_id,
+            ]);
         }
 
         $user = User::create([
@@ -367,12 +392,36 @@ class AuthController extends Controller
             // Refresh user to get any updated data
             $user->refresh();
 
+            // Auto-accept pending project invitation after email verification
+            $invitationAccepted = false;
+            $projectName = null;
+            if ($user->hasPendingInvitation()) {
+                $invitation = $user->pendingProjectInvitation;
+                if ($invitation && $invitation->isPending()) {
+                    \Log::info('Auto-accepting invitation after email verification', [
+                        'user_id' => $user->id,
+                        'invitation_id' => $invitation->id,
+                        'project_id' => $invitation->project_id,
+                    ]);
+
+                    $success = $invitation->accept();
+                    if ($success) {
+                        $invitationAccepted = true;
+                        $projectName = $invitation->project->name;
+                        $user->clearPendingInvitation();
+                        \Log::info('Invitation auto-accepted successfully', ['project' => $projectName]);
+                    }
+                }
+            }
+
             return response()->json([
                 'message' => 'Email address successfully confirmed',
                 'user' => $user,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'has_pending_invitation' => $user->hasPendingInvitation()
+                'has_pending_invitation' => false,
+                'invitation_auto_accepted' => $invitationAccepted,
+                'project_name' => $projectName,
             ]);
         }
 
