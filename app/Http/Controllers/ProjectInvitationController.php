@@ -237,19 +237,40 @@ class ProjectInvitationController extends Controller
     {
         $user = Auth::user();
 
+        \Log::info('=== Cancel Invitation Request ===', [
+            'user_id' => $user->id,
+            'project_id' => $project->id,
+            'invitation_id' => $invitation->id,
+            'invitation_project_id' => $invitation->project_id,
+            'invitation_status' => $invitation->status,
+            'user_can_manage' => $project->userCanManage($user),
+        ]);
+
         if (!$project->userCanManage($user)) {
+            \Log::warning('Cancel invitation: Unauthorized', [
+                'user_id' => $user->id,
+                'project_id' => $project->id,
+            ]);
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($invitation->project_id !== $project->id) {
+        if ((int)$invitation->project_id !== (int)$project->id) {
+            \Log::warning('Cancel invitation: Wrong project', [
+                'invitation_project_id' => $invitation->project_id,
+                'requested_project_id' => $project->id,
+            ]);
             return response()->json(['message' => 'Invitation does not belong to this project'], 422);
         }
 
         if ($invitation->status !== 'pending') {
+            \Log::warning('Cancel invitation: Not pending', [
+                'status' => $invitation->status,
+            ]);
             return response()->json(['message' => 'Can only cancel pending invitations'], 422);
         }
 
         $invitation->update(['status' => 'expired']);
+        \Log::info('Invitation cancelled successfully', ['invitation_id' => $invitation->id]);
 
         return response()->json(['message' => 'Invitation cancelled successfully']);
     }
