@@ -3,6 +3,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
+import { Message } from 'primereact/message';
 
 interface LoginPanelProps {
   onSwitchPanel?: (panelType: string) => void;

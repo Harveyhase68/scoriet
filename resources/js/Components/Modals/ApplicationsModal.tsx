@@ -6,6 +6,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
+import { Message } from 'primereact/message';
 
 interface Application {
   id: number;
@@ -80,8 +81,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       const data = await response.json();
       setApplications(data.applications || []);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading applications');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading applications');
     } finally {
       setLoading(false);
     }
@@ -105,7 +106,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/applications/${selectedApplication.id}/review`, {
+      const response = await fetch('/api/project-application-review', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,6 +114,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
           'Accept': 'application/json',
         },
         body: JSON.stringify({
+          application_id: selectedApplication.id,
           action: reviewAction,
           notes: reviewNotes
         }),
@@ -137,8 +139,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       });
       window.dispatchEvent(event);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error reviewing application');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error reviewing application');
     } finally {
       setReviewing(false);
     }
@@ -219,7 +221,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   const actionTemplate = (application: Application) => {
     if (application.status === 'pending') {
       return (
-        <div className="flex space-x-1">
+        <div className="flex gap-2">
           <Button
             icon="pi pi-check"
             className="p-button-rounded p-button-sm p-button-success"
@@ -390,11 +392,11 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
                     <span className="text-gray-500">@{selectedApplication.user.username}</span>
                   )}
                 </div>
-                
-                <div className="text-sm text-gray-600">
+
+                <div className="text-sm text-gray-300">
                   Applied on {formatDate(selectedApplication.created_at)}
                 </div>
-                
+
                 {selectedApplication.message && (
                   <div className="p-3 bg-gray-50 rounded text-sm text-gray-800">
                     <strong className="text-gray-700">Message:</strong>
@@ -406,7 +408,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
           )}
 
           <div className="field">
-            <label htmlFor="review-notes" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="review-notes" className="block text-sm font-medium text-gray-300 mb-2">
               {reviewAction === 'approve' ? 'Welcome Message' : 'Rejection Reason'} (Optional)
             </label>
             <InputTextarea
@@ -425,7 +427,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
             />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end gap-4 pt-4">
             <Button
               label="Cancel"
               icon="pi pi-times"

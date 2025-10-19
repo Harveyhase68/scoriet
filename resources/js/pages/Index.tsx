@@ -34,7 +34,7 @@ const PanelT1 = lazy(() => import('@/Components/Panels/PanelT1'));
 const PanelT2 = lazy(() => import('@/Components/Panels/PanelT2'));
 const PanelT3 = lazy(() => import('@/Components/Panels/PanelT3'));
 const PanelT5 = lazy(() => import('@/Components/Panels/PanelT5'));
-const LoginPanel = lazy(() => import('@/Components/Panels/LoginPanel'));
+const AuthPanel = lazy(() => import('@/Components/Panels/AuthPanel'));
 const TeamsPanel = lazy(() => import('@/Components/Panels/TeamsPanel'));
 const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
 const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
@@ -556,7 +556,7 @@ const loadTab = (
         title: data.title || 'Login',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <LoginPanel />
+            <AuthPanel initialPanel="login" />
           </Suspense>
         ),
         closable: true,

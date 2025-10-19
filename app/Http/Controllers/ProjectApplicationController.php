@@ -100,32 +100,68 @@ class ProjectApplicationController extends Controller
     /**
      * Review an application (approve/reject)
      */
-    public function reviewApplication(Request $request, $applicationId)
+    public function reviewApplication(Request $request)
     {
+        // Log IMMEDIATELY to see if we even reach this method
+        \Log::info('=== ReviewApplication METHOD CALLED ===', [
+            'request_all' => $request->all(),
+            'user_id' => $request->user()?->id,
+        ]);
+
         $validator = Validator::make($request->all(), [
+            'application_id' => 'required|integer',
             'action' => 'required|in:approve,reject',
             'notes' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
+            \Log::error('ReviewApplication: Validation failed', ['errors' => $validator->errors()]);
             return response()->json([
                 'message' => 'Validierungsfehler',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        $application = ProjectApplication::with(['project', 'user'])->findOrFail($applicationId);
+        $applicationId = $request->application_id;
+
+        try {
+            $application = ProjectApplication::with(['project', 'user'])->findOrFail($applicationId);
+        } catch (\Exception $e) {
+            \Log::error('ReviewApplication: Application not found', ['applicationId' => $applicationId, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Application not found'], 404);
+        }
+
         $user = $request->user();
 
+        // Debug logging
+        \Log::info('ReviewApplication Debug', [
+            'application_id' => $applicationId,
+            'project_id' => $application->project_id,
+            'project_owner_id' => $application->project->owner_id,
+            'project_owner_id_type' => gettype($application->project->owner_id),
+            'user_id' => $user->id,
+            'user_id_type' => gettype($user->id),
+            'owner_id_string' => (string)$application->project->owner_id,
+            'user_id_string' => (string)$user->id,
+            'are_equal_strict' => $application->project->owner_id === $user->id,
+            'are_equal_loose' => $application->project->owner_id == $user->id,
+            'are_equal_string' => (string)$application->project->owner_id === (string)$user->id,
+        ]);
+
         // Only project owner can review
-        if ($application->project->owner_id !== $user->id) {
+        if ((string)$application->project->owner_id !== (string)$user->id) {
+            \Log::warning('ReviewApplication: Permission denied', [
+                'project_owner_id' => $application->project->owner_id,
+                'user_id' => $user->id,
+            ]);
             return response()->json([
-                'message' => 'Keine Berechtigung'
+                'message' => 'Keine Berechtigung - Du bist nicht der Projekt-Owner'
             ], 403);
         }
 
         // Check if already reviewed
         if ($application->status !== 'pending') {
+            \Log::info('ReviewApplication: Already reviewed', ['status' => $application->status]);
             return response()->json([
                 'message' => 'Diese Bewerbung wurde bereits bearbeitet'
             ], 409);
@@ -139,6 +175,8 @@ class ProjectApplicationController extends Controller
             $application->reject($user->id, $request->notes);
             $message = 'Bewerbung wurde abgelehnt';
         }
+
+        \Log::info('ReviewApplication: Success', ['action' => $request->action]);
 
         return response()->json([
             'message' => $message,

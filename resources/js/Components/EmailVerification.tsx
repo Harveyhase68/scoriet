@@ -117,7 +117,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
               
               {(status === 'success' || status === 'already_verified') && (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-300">
                     You are now logged in and will be redirected to the app automatically.
                   </p>
                   <Button
@@ -131,7 +131,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
 
               {status === 'error' && (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-300">
                     Falls Sie weiterhin Probleme haben, kontaktieren Sie bitte den Support.
                   </p>
                   <Button

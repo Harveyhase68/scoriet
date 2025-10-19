@@ -38,7 +38,7 @@ export default function LandingPage() {
   const toast = useRef<Toast>(null);
   
   // State management
-  const [isDemoMode] = useState<boolean>(true); // Set demo mode based on your app logic
+  const [isDemoMode] = useState<boolean>(import.meta.env.VITE_SCORIET_DEMO === 'true'); // Set demo mode based on your app logic
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
