@@ -12,6 +12,8 @@ interface EmailVerificationProps {
 export default function EmailVerification({ userId, hash }: EmailVerificationProps) {
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'already_verified'>('loading');
   const [message, setMessage] = useState<string>('');
+  const [invitationAccepted, setInvitationAccepted] = useState<boolean>(false);
+  const [projectName, setProjectName] = useState<string | null>(null);
 
   const verifyEmail = useCallback(async () => {
     try {
@@ -38,11 +40,16 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
         }
         setMessage(data.message);
 
+        // Check if invitation was auto-accepted
+        if (data.invitation_auto_accepted) {
+          setInvitationAccepted(true);
+          setProjectName(data.project_name || null);
+        }
+
         // Auto-redirect to app after a short delay
-        // The app will automatically check for pending invitations after auto-login
         setTimeout(() => {
           window.location.href = '/app';
-        }, 2000);
+        }, data.invitation_auto_accepted ? 3000 : 2000);  // Give more time to read the project message
       } else {
         setStatus('error');
         setMessage(data.message || 'Fehler bei der E-Mail-Bestätigung');
@@ -116,10 +123,20 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
               />
               
               {(status === 'success' || status === 'already_verified') && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-sm text-gray-300">
                     You are now logged in and will be redirected to the app automatically.
                   </p>
+                  {invitationAccepted && projectName && (
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                      <p className="text-green-800 font-semibold text-base">
+                        🎉 You've been added to {projectName}!
+                      </p>
+                      <p className="text-green-700 text-sm mt-1">
+                        You can now start collaborating with your team.
+                      </p>
+                    </div>
+                  )}
                   <Button
                     label="Go to App Now"
                     icon="pi pi-arrow-right"
