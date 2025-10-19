@@ -86,7 +86,7 @@ class ProjectInvitationController extends Controller
 
         return response()->json([
             'message' => 'Invitation sent successfully',
-            'invitation' => $invitation->load(['project', 'inviter'])
+            'invitation' => $invitation->load(['project', 'inviter', 'invitedUser'])
         ], 201);
     }
 

@@ -112,8 +112,27 @@ class SqlParserController extends Controller
                 $description
             );
 
+            // Refresh to ensure schema_id is loaded
+            $schemaVersion->refresh();
+
             // Store parsed tables in the new version using the existing service
             $this->schemaStorageService->storeParsedTablesInVersion($schemaVersion, $parsedTables);
+
+            // Copy schema_designer_layouts from previous version (if exists)
+            if ($schema->last_version > 1) {
+                $previousVersion = $schema->last_version - 1;
+                $previousLayouts = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
+                    ->where('version_number', $previousVersion)
+                    ->get();
+
+                foreach ($previousLayouts as $layout) {
+                    \App\Models\SchemaDesignerLayout::create([
+                        'schema_id' => $schema->id,
+                        'version_number' => $schemaVersion->version_number,
+                        'layout_data' => $layout->layout_data,
+                    ]);
+                }
+            }
 
             // 🔄 QUEUE JOBS: Dispatch regeneration jobs for affected projects
             $this->dispatchRegenerationJobs($schema);

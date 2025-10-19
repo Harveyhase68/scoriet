@@ -106,8 +106,14 @@ class SchemaStorageService
         $fileNameShort = !empty($tableData['file_name_short']) ? $tableData['file_name_short'] : $this->generateFileNameShort($tableData['table_name']);
         $fileNameRenamed = $tableData['file_name_renamed'] ?? '';
 
+        // Ensure schema_id is set - fallback to loading from relationship if needed
+        $schemaId = $schemaVersion->schema_id;
+        if (!$schemaId && $schemaVersion->schema) {
+            $schemaId = $schemaVersion->schema->id;
+        }
+
         return SchemaTable::create([
-            'schema_id' => $schemaVersion->schema_id, // ← ADD: Direct schema relationship
+            'schema_id' => $schemaId, // Direct schema relationship
             'schema_version_id' => $schemaVersion->id,
             'table_name' => $tableData['table_name'],
             'primarykeyfield' => $primaryKey, // 🔧 Primary key migration
