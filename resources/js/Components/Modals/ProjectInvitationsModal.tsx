@@ -46,7 +46,7 @@ const roleOptions = [
   { label: 'Admin', value: 'admin' }
 ];
 
-export default function ProjectInvitationsModal({ visible, onHide, project, onSuccess }: ProjectInvitationsModalProps) {
+export default function ProjectInvitationsModal({ visible, onHide, project }: ProjectInvitationsModalProps) {
   const [invitations, setInvitations] = useState<ProjectInvitation[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -62,11 +62,13 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
 
   const loadInvitations = React.useCallback(async () => {
     if (!project) return;
-    
+
     try {
       setLoading(true);
       setError('');
-      
+      // NEVER clear success message during reload - let it auto-expire
+      // setSuccess(''); // <-- REMOVED
+
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError('Not authenticated');
@@ -95,20 +97,25 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
   }, [project]);
 
   useEffect(() => {
+    console.log('=== useEffect triggered ===', { visible, projectId: project?.id });
     if (visible && project) {
+      console.log('Loading invitations...');
       loadInvitations();
     }
-  }, [visible, project, loadInvitations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, project]); // Removed loadInvitations from dependencies to prevent re-render loop
 
   const sendInvitation = async () => {
     if (!project || !inviteForm.email.trim()) {
       return;
     }
 
+    console.log('=== SEND INVITATION START ===');
     try {
       setSending(true);
       setError('');
       setSuccess('');
+      console.log('States cleared, about to fetch');
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
@@ -130,15 +137,58 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
         }),
       });
 
+      const data = await response.json();
+      console.log('Response received:', data);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send invitation');
+        throw new Error(data.message || 'Failed to send invitation');
       }
 
-      setSuccess('Invitation sent successfully!');
+      console.log('Setting success message...');
+      setSuccess('✅ Invitation sent successfully! Email delivered.');
+
+      console.log('Clearing form...');
       setInviteForm({ email: '', role: 'member', message: '' });
-      loadInvitations();
-      onSuccess?.();
+
+      console.log('SUCCESS MESSAGE IS NOW SET - Should be visible!');
+
+      // Add the new invitation to the list
+      if (data.invitation) {
+        console.log('Adding invitation to list - raw data:', data.invitation);
+
+        // Enrich the invitation with ALL fields that the table expects
+        const enrichedInvitation: ProjectInvitation = {
+          id: data.invitation.id,
+          invited_email: data.invitation.invited_email,
+          role: data.invitation.role,
+          status: data.invitation.status || 'pending',
+          message: data.invitation.message || undefined,
+          created_at: data.invitation.created_at || new Date().toISOString(),
+          expires_at: data.invitation.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          responded_at: data.invitation.responded_at,
+          inviter: data.invitation.inviter || {
+            id: data.invitation.invited_by,
+            name: 'You',
+            email: ''
+          },
+          invited_user: data.invitation.invited_user
+        };
+
+        console.log('Adding enriched invitation:', enrichedInvitation);
+        setInvitations(prev => [enrichedInvitation, ...prev]);
+      }
+
+      // KEEP DISABLED: Call onSuccess callback (this causes parent re-render!)
+      // console.log('Calling onSuccess callback...');
+      // onSuccess?.();
+
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        console.log('Auto-clearing success message after 5 seconds');
+        setSuccess('');
+      }, 5000);
+
+      console.log('=== SEND INVITATION END - SUCCESS ===');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error sending invitation');
     } finally {
@@ -167,8 +217,13 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
           });
 
           if (response.ok) {
-            setSuccess('Invitation cancelled successfully');
+            setSuccess('✅ Invitation cancelled successfully');
             loadInvitations();
+
+            // Auto-clear success message after 4 seconds
+            setTimeout(() => {
+              setSuccess('');
+            }, 4000);
           } else {
             const errorData = await response.json();
             setError(errorData.message || 'Failed to cancel invitation');
@@ -208,14 +263,19 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
           });
 
           if (response.ok) {
-            setSuccess('Invitation resent successfully');
+            setSuccess('✅ Invitation resent successfully! Email delivered.');
             loadInvitations();
+
+            // Auto-clear success message after 4 seconds
+            setTimeout(() => {
+              setSuccess('');
+            }, 4000);
           } else {
             const errorData = await response.json();
             setError(errorData.message || 'Failed to resend invitation');
           }
-        } catch {
-          setError('Failed to resend invitation');
+        } catch (error) {
+          setError(error instanceof Error ? error.message : 'Failed to resend invitation');
         }
       }
     });

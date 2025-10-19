@@ -113,9 +113,10 @@ class SchemaVersion extends Model
         
         foreach ($sourceVersion->tables as $sourceTable) {
             \Log::info("📋 Copying table", ['table_name' => $sourceTable->table_name]);
-            
+
             // Create new table for this version
             $newTable = \App\Models\SchemaTable::create([
+                'schema_id' => $schema->id,
                 'schema_version_id' => $newVersion->id,
                 'table_name' => $sourceTable->table_name,
                 'table_comment' => $sourceTable->table_comment,
@@ -328,66 +329,37 @@ class SchemaVersion extends Model
         // Copy layout positions and sizes
         \Log::info("📐 Copying layout data");
         try {
-            // First, clean up any existing layouts for this version to avoid duplicates
-            \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
-                ->where('version_number', $newVersion->version_number)
-                ->delete();
-            
-            \Log::info("📐 Cleaned existing layouts for new version", ['version_number' => $newVersion->version_number]);
-            
-            $sourceLayouts = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
+            // Get source layout (single row with JSON data)
+            $sourceLayout = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
                 ->where('version_number', $fromVersionNumber)
-                ->get();
-                
-            \Log::info("📐 Found layouts to copy", ['layouts_count' => $sourceLayouts->count()]);
-                
-            $copiedCount = 0;
-            foreach ($sourceLayouts as $sourceLayout) {
-                try {
-                    \Log::info("📐 Copying layout", [
-                        'table_name' => $sourceLayout->table_name,
-                        'x' => $sourceLayout->x_position,
-                        'y' => $sourceLayout->y_position,
-                        'target_version' => $newVersion->version_number
-                    ]);
-                    
-                    // Use updateOrCreate to handle any remaining duplicates gracefully
-                    \App\Models\SchemaDesignerLayout::updateOrCreate(
-                        [
-                            'schema_id' => $schema->id,
-                            'version_number' => $newVersion->version_number,
-                            'table_name' => $sourceLayout->table_name,
-                        ],
-                        [
-                            'x_position' => $sourceLayout->x_position,
-                            'y_position' => $sourceLayout->y_position,
-                            'width' => $sourceLayout->width,
-                            'height' => $sourceLayout->height,
-                        ]
-                    );
-                    $copiedCount++;
-                    
-                    \Log::info("📐 Layout copied successfully", ['copied_count' => $copiedCount]);
-                } catch (\Exception $e) {
-                    \Log::error("❌ Failed to copy layout", [
-                        'table_name' => $sourceLayout->table_name ?? 'unknown',
-                        'error' => $e->getMessage(),
-                        'line' => $e->getLine(),
-                        'file' => $e->getFile()
-                    ]);
-                    throw $e; // Re-throw to stop the process
-                }
+                ->first();
+
+            if ($sourceLayout) {
+                \Log::info("📐 Found layout to copy", ['has_data' => !empty($sourceLayout->layout_data)]);
+
+                // Copy layout_data JSON to new version
+                \App\Models\SchemaDesignerLayout::updateOrCreate(
+                    [
+                        'schema_id' => $schema->id,
+                        'version_number' => $newVersion->version_number,
+                    ],
+                    [
+                        'layout_data' => $sourceLayout->layout_data,
+                    ]
+                );
+
+                \Log::info("📐 Layout copied successfully");
+            } else {
+                \Log::info("📐 No layout found to copy from version", ['from_version' => $fromVersionNumber]);
             }
-            
-            \Log::info("✅ Layout data copied", ['layouts_count' => $copiedCount]);
         } catch (\Exception $e) {
-            \Log::error("❌ Critical error during layout copying", [
+            \Log::error("❌ Failed to copy layout", [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
                 'trace' => $e->getTraceAsString()
             ]);
-            throw $e; // Re-throw to fail the entire process
+            // Don't throw - layout copying should not fail the entire version copy
         }
         
         \Log::info("🎉 createNewVersionWithCopy completed successfully", [

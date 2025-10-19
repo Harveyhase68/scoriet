@@ -1129,6 +1129,7 @@ class SchemaController extends Controller
 
             // Create the new table in the new version
             $table = \App\Models\SchemaTable::create([
+                'schema_id' => $schema->id,
                 'schema_version_id' => $newVersion->id,
                 'table_name' => $request->table_name,
                 'comment' => $request->comment,
@@ -1227,5 +1228,392 @@ class SchemaController extends Controller
         }
 
         return response()->json($stats);
+    }
+
+    /**
+     * Delete a foreign key constraint (creates new version if not latest)
+     */
+    public function deleteForeignKey(Request $request, $constraintId): JsonResponse
+    {
+        $user = Auth::user();
+
+        try {
+            // Find the constraint
+            $constraint = \App\Models\SchemaConstraint::findOrFail($constraintId);
+
+            // Get the table and version
+            $table = $constraint->table;
+            $version = $table->schemaVersion;
+
+            if (!$version || !$version->hasSchema()) {
+                return response()->json(['message' => 'This action requires a floating schema'], 400);
+            }
+
+            $schema = $version->schema;
+
+            // Check permissions
+            if (!$schema->canBeEditedBy($user)) {
+                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            }
+
+            // Check if this is a foreign key
+            if ($constraint->constraint_type !== 'FOREIGN KEY') {
+                return response()->json(['message' => 'Only foreign key constraints can be deleted with this endpoint'], 400);
+            }
+
+            // Get constraint info for response
+            $constraintInfo = [
+                'constraint_name' => $constraint->constraint_name,
+                'table_name' => $table->table_name,
+            ];
+
+            // Check if this is the latest version
+            $isLatestVersion = $version->version_number === $schema->last_version;
+
+            if (!$isLatestVersion) {
+                // Need to create a new version first
+                $newVersion = \App\Models\SchemaVersion::createNewVersionWithCopy(
+                    $schema,
+                    $version->version_number,
+                    "Delete FK: {$constraint->constraint_name}"
+                );
+
+                // Find the corresponding constraint in the new version
+                $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
+                if (!$newTable) {
+                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                }
+
+                $newConstraint = $newTable->constraints()
+                    ->where('constraint_name', $constraint->constraint_name)
+                    ->where('constraint_type', 'FOREIGN KEY')
+                    ->first();
+
+                if (!$newConstraint) {
+                    return response()->json(['message' => 'Failed to find constraint in new version'], 500);
+                }
+
+                // Delete the constraint in the new version
+                $newConstraint->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'New version created and foreign key deleted',
+                    'constraint' => $constraintInfo,
+                    'new_version' => [
+                        'id' => $newVersion->id,
+                        'version_number' => $newVersion->version_number,
+                    ]
+                ]);
+            } else {
+                // Latest version - delete directly
+                $constraint->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Foreign key deleted successfully',
+                    'constraint' => $constraintInfo,
+                ]);
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Constraint not found'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Delete FK Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to delete foreign key',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a foreign key constraint (creates new version if not latest)
+     */
+    public function updateForeignKey(Request $request, $constraintId): JsonResponse
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'source_field_id' => 'required|exists:schema_fields,id',
+            'target_field_id' => 'required|exists:schema_fields,id',
+            'on_delete' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
+            'on_update' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
+            'constraint_name' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Find the constraint
+            $constraint = \App\Models\SchemaConstraint::findOrFail($constraintId);
+
+            // Get the table and version
+            $table = $constraint->table;
+            $version = $table->schemaVersion;
+
+            if (!$version || !$version->hasSchema()) {
+                return response()->json(['message' => 'This action requires a floating schema'], 400);
+            }
+
+            $schema = $version->schema;
+
+            // Check permissions
+            if (!$schema->canBeEditedBy($user)) {
+                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            }
+
+            // Check if this is a foreign key
+            if ($constraint->constraint_type !== 'FOREIGN KEY') {
+                return response()->json(['message' => 'Only foreign key constraints can be updated with this endpoint'], 400);
+            }
+
+            // Check if this is the latest version
+            $isLatestVersion = $version->version_number === $schema->last_version;
+
+            if (!$isLatestVersion) {
+                // Need to create a new version first
+                $newVersion = \App\Models\SchemaVersion::createNewVersionWithCopy(
+                    $schema,
+                    $version->version_number,
+                    "Update FK: {$constraint->constraint_name}"
+                );
+
+                // Find the corresponding constraint in the new version
+                $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
+                if (!$newTable) {
+                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                }
+
+                $newConstraint = $newTable->constraints()
+                    ->where('constraint_name', $constraint->constraint_name)
+                    ->where('constraint_type', 'FOREIGN KEY')
+                    ->first();
+
+                if (!$newConstraint) {
+                    return response()->json(['message' => 'Failed to find constraint in new version'], 500);
+                }
+
+                // Update the constraint in the new version
+                $this->updateConstraintData($newConstraint, $validated);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'New version created and foreign key updated',
+                    'new_version' => [
+                        'id' => $newVersion->id,
+                        'version_number' => $newVersion->version_number,
+                    ]
+                ]);
+            } else {
+                // Latest version - update directly
+                $this->updateConstraintData($constraint, $validated);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Foreign key updated successfully',
+                ]);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Constraint not found'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Update FK Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update foreign key',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new foreign key constraint (creates new version if not latest)
+     */
+    public function createForeignKey(Request $request, $tableId): JsonResponse
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'source_field_id' => 'required|exists:schema_fields,id',
+            'target_field_id' => 'required|exists:schema_fields,id',
+            'on_delete' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
+            'on_update' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
+            'constraint_name' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Find the table
+            $table = \App\Models\SchemaTable::findOrFail($tableId);
+            $version = $table->schemaVersion;
+
+            if (!$version || !$version->hasSchema()) {
+                return response()->json(['message' => 'This action requires a floating schema'], 400);
+            }
+
+            $schema = $version->schema;
+
+            // Check permissions
+            if (!$schema->canBeEditedBy($user)) {
+                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            }
+
+            // Check if this is the latest version
+            $isLatestVersion = $version->version_number === $schema->last_version;
+
+            if (!$isLatestVersion) {
+                // Need to create a new version first
+                $newVersion = \App\Models\SchemaVersion::createNewVersionWithCopy(
+                    $schema,
+                    $version->version_number,
+                    "Create FK on {$table->table_name}"
+                );
+
+                // Find the corresponding table in the new version
+                $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
+                if (!$newTable) {
+                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                }
+
+                // Create the constraint in the new version
+                $this->createConstraintData($newTable, $validated);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'New version created and foreign key created',
+                    'new_version' => [
+                        'id' => $newVersion->id,
+                        'version_number' => $newVersion->version_number,
+                    ]
+                ]);
+            } else {
+                // Latest version - create directly
+                $this->createConstraintData($table, $validated);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Foreign key created successfully',
+                ]);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Table not found'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Create FK Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to create foreign key',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Update constraint data
+     */
+    private function updateConstraintData($constraint, $validated)
+    {
+        // Update constraint name if provided
+        if (!empty($validated['constraint_name'])) {
+            $constraint->update(['constraint_name' => $validated['constraint_name']]);
+        }
+
+        // Delete old constraint columns
+        $constraint->constraintColumns()->delete();
+
+        // Create new constraint column for source field
+        $sourceField = \App\Models\SchemaField::find($validated['source_field_id']);
+        \App\Models\SchemaConstraintColumn::create([
+            'constraint_id' => $constraint->id,
+            'field_id' => $sourceField->id,
+            'column_order' => 0,
+        ]);
+
+        // Update or create foreign key reference
+        $targetField = \App\Models\SchemaField::find($validated['target_field_id']);
+        $targetTable = $targetField->table;
+
+        $fkReference = $constraint->foreignKeyReference;
+        if ($fkReference) {
+            $fkReference->update([
+                'referenced_table_id' => $targetTable->id,
+                'on_delete' => $validated['on_delete'] ?? 'RESTRICT',
+                'on_update' => $validated['on_update'] ?? 'RESTRICT',
+            ]);
+            $fkReference->referenceColumns()->delete();
+        } else {
+            $fkReference = \App\Models\SchemaForeignKeyReference::create([
+                'constraint_id' => $constraint->id,
+                'referenced_table_id' => $targetTable->id,
+                'on_delete' => $validated['on_delete'] ?? 'RESTRICT',
+                'on_update' => $validated['on_update'] ?? 'RESTRICT',
+            ]);
+        }
+
+        // Create reference column
+        \App\Models\SchemaForeignKeyReferenceColumn::create([
+            'reference_id' => $fkReference->id,
+            'referenced_field_id' => $targetField->id,
+        ]);
+    }
+
+    /**
+     * Helper: Create constraint data
+     */
+    private function createConstraintData($table, $validated)
+    {
+        $sourceField = \App\Models\SchemaField::find($validated['source_field_id']);
+        $targetField = \App\Models\SchemaField::find($validated['target_field_id']);
+        $targetTable = $targetField->table;
+
+        // Generate constraint name if not provided
+        $constraintName = $validated['constraint_name'] ??
+            'fk_' . $table->table_name . '_' . $sourceField->field_name;
+
+        // Create constraint
+        $constraint = \App\Models\SchemaConstraint::create([
+            'table_id' => $table->id,
+            'constraint_name' => $constraintName,
+            'constraint_type' => 'FOREIGN KEY',
+        ]);
+
+        // Create constraint column
+        \App\Models\SchemaConstraintColumn::create([
+            'constraint_id' => $constraint->id,
+            'field_id' => $sourceField->id,
+            'column_order' => 0,
+        ]);
+
+        // Create foreign key reference
+        $fkReference = \App\Models\SchemaForeignKeyReference::create([
+            'constraint_id' => $constraint->id,
+            'referenced_table_id' => $targetTable->id,
+            'on_delete' => $validated['on_delete'] ?? 'RESTRICT',
+            'on_update' => $validated['on_update'] ?? 'RESTRICT',
+        ]);
+
+        // Create reference column
+        \App\Models\SchemaForeignKeyReferenceColumn::create([
+            'reference_id' => $fkReference->id,
+            'referenced_field_id' => $targetField->id,
+        ]);
     }
 }

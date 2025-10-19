@@ -1,5 +1,7 @@
 // resources/js/Components/Panels/PanelT2.tsx - Database Schema Visualizer
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
 
 // TypeScript declaration for window timeout
 declare global {
@@ -309,34 +311,40 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
 
 const convertSchemaToEdges = (tables: SchemaTable[]): Edge[] => {
   const edges: Edge[] = [];
-  
+
   tables.forEach(table => {
     table.constraints?.forEach(constraint => {
       if (constraint.constraint_type === 'FOREIGN KEY' && constraint.foreign_key_reference) {
         const targetTable = constraint.foreign_key_reference.referenced_table;
         if (targetTable) {
           edges.push({
-            id: `fk-${table.id}-${targetTable.id}`,
+            id: `fk-${constraint.id}`,
             source: `table-${table.id}`,
             target: `table-${targetTable.id}`,
             type: 'smoothstep',
-            style: { 
-              stroke: '#f59e0b', 
+            style: {
+              stroke: '#f59e0b',
               strokeWidth: 2,
               strokeDasharray: '5,5'
             },
             label: 'FK',
-            labelStyle: { 
-              fontSize: '10px', 
+            labelStyle: {
+              fontSize: '10px',
               fontWeight: 'bold',
               fill: '#f59e0b'
+            },
+            data: {
+              constraintId: constraint.id,
+              constraintName: constraint.constraint_name,
+              sourceTable: table.table_name,
+              targetTable: targetTable.table_name,
             },
           });
         }
       }
     });
   });
-  
+
   return edges;
 };
 
@@ -362,6 +370,14 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
   const [pendingEditTable, setPendingEditTable] = useState<SchemaTable | null>(null);
   const [pendingAction, setPendingAction] = useState<'delete' | 'create' | 'edit' | null>(null);
+  const [showFKActionMenu, setShowFKActionMenu] = useState(false);
+  const [showDeleteFKModal, setShowDeleteFKModal] = useState(false);
+  const [selectedFK, setSelectedFK] = useState<{
+    constraintId: number;
+    constraintName: string;
+    sourceTable: string;
+    targetTable: string;
+  } | null>(null);
 
   const loadFloatingSchemas = useCallback(async (preserveSchemaId?: number) => {
     if (!selectedProject) {
@@ -638,6 +654,19 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
+  }, []);
+
+  const onEdgeDoubleClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    // Only handle FK edges
+    if (edge.data && edge.data.constraintId) {
+      setSelectedFK({
+        constraintId: edge.data.constraintId,
+        constraintName: edge.data.constraintName,
+        sourceTable: edge.data.sourceTable,
+        targetTable: edge.data.targetTable,
+      });
+      setShowFKActionMenu(true);
+    }
   }, []);
 
   const handleImportSuccess = () => {
@@ -1099,6 +1128,68 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     }
   }, [selectedVersion, pendingDeleteTable, performDeleteTable, handleContinueWithCreateTable, handleContinueWithEditTable, pendingAction]);
 
+  const handleCreateNewVersion = useCallback(async () => {
+    if (!selectedSchema) {
+      setError('No schema selected');
+      return;
+    }
+
+    // Calculate version numbers for confirmation
+    const currentVersion = selectedSchema.last_version || 1;
+    const newVersionNumber = currentVersion + 1;
+
+    // Show confirmation dialog
+    confirmDialog({
+      message: `Do you want to create a new version ${newVersionNumber} from version ${currentVersion}?`,
+      header: 'Create New Version',
+      icon: 'pi pi-exclamation-triangle',
+      accept: async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          const token = localStorage.getItem('access_token');
+          if (!token) {
+            throw new Error('Not authenticated');
+          }
+
+          const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              description: `New version created manually`
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || errorData.error || 'Failed to create new version');
+          }
+
+          const newVersion = await response.json();
+
+          // Reload schema versions
+          await loadSchemaVersions(selectedSchema);
+
+          // Select the newly created version
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }, 200);
+
+          setError(null);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to create new version');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  }, [selectedSchema, loadSchemaVersions, loadSchemaVersionWithSchema]);
+
   const handleRefresh = useCallback(async () => {
     // Store current selections to preserve them
     const currentSchemaId = selectedSchema?.id;
@@ -1127,6 +1218,60 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }, 100);
     }
   }, [selectedSchema, selectedVersion, loadFloatingSchemas, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
+
+  const handleDeleteFK = useCallback(async () => {
+    if (!selectedFK) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/constraints/${selectedFK.constraintId}/foreign-key`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to delete foreign key');
+      }
+
+      // Close modal
+      setShowDeleteFKModal(false);
+      setSelectedFK(null);
+
+      // If a new version was created, reload and select it
+      if (result.new_version) {
+        await loadSchemaVersions(selectedSchema!);
+        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        if (newVersion && selectedSchema) {
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }, 200);
+        }
+      } else {
+        // Just reload current version
+        if (selectedSchema && selectedVersion) {
+          await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete foreign key');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedFK, selectedSchema, selectedVersion, loadSchemaVersions, loadSchemaVersionWithSchema, schemaVersions]);
 
   return (
     <TabContent style={{}}>
@@ -1198,14 +1343,23 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               </select>
             )}
             
-            <button 
+            <button
               onClick={handleRefresh}
               className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
             >
               🔄 Refresh
             </button>
-            
+
+            <button
+              onClick={handleCreateNewVersion}
+              className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-sm transition-colors"
+              disabled={loading || !selectedSchema}
+              title="Create a new version (copies current version)"
+            >
+              ➕ New Version
+            </button>
+
             <button
               onClick={() => setShowImportModal(true)}
               className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
@@ -1312,6 +1466,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
+              onEdgeDoubleClick={onEdgeDoubleClick}
               nodeTypes={nodeTypes}
               nodesDraggable={true}
               nodesConnectable={false}
@@ -1466,6 +1621,127 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         table={pendingEditTable}
         loading={loading}
       />
+
+      {/* FK Action Menu */}
+      {showFKActionMenu && selectedFK && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 border border-gray-600">
+            <h3 className="text-lg font-bold text-white mb-4">Foreign Key Actions</h3>
+
+            <div className="mb-6">
+              <div className="bg-gray-700 p-3 rounded border border-gray-600">
+                <div className="text-sm space-y-1">
+                  <div>
+                    <span className="text-gray-400">From:</span>{' '}
+                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">To:</span>{' '}
+                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    {selectedFK.constraintName}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setShowFKActionMenu(false);
+                  // TODO: Open Edit FK Modal in Phase 2
+                  alert('Edit FK coming in Phase 2! 🚀');
+                }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+              >
+                ✏️ Edit Foreign Key
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowFKActionMenu(false);
+                  setShowDeleteFKModal(true);
+                }}
+                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+              >
+                🗑️ Delete Foreign Key
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowFKActionMenu(false);
+                  setSelectedFK(null);
+                }}
+                className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete FK Modal */}
+      {showDeleteFKModal && selectedFK && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
+            <h3 className="text-xl font-bold text-white mb-4">Delete Foreign Key</h3>
+
+            <div className="mb-6">
+              <p className="text-gray-300 mb-4">
+                Are you sure you want to delete this foreign key constraint?
+              </p>
+
+              <div className="bg-gray-700 p-4 rounded border border-gray-600">
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-400">Constraint:</span>{' '}
+                    <span className="text-white font-mono">{selectedFK.constraintName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">From:</span>{' '}
+                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">To:</span>{' '}
+                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                  </div>
+                </div>
+              </div>
+
+              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                  ⚠️ A new version will be created for this change.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteFKModal(false);
+                  setSelectedFK(null);
+                }}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteFK}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? 'Deleting...' : 'Delete Foreign Key'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PrimeReact ConfirmDialog for version creation confirmation */}
+      <ConfirmDialog />
     </TabContent>
   );
 }

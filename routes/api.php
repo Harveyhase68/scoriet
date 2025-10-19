@@ -235,6 +235,7 @@ Route::middleware('auth:api')->group(function () {
         // DB Schema Management
         Route::get('/schemas', [DbSchemaController::class, 'index']);
         Route::get('/schemas/{id}', [DbSchemaController::class, 'show']);
+        Route::post('/schemas/{id}/copy', [DbSchemaController::class, 'copySchema']);
 
         // DB Schema Dependencies
         Route::get('/schemas/{id}/templates', [DbSchemaController::class, 'getDependentTemplates']);
@@ -330,7 +331,12 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/schema-versions/{version}/tables/{table}', [SchemaController::class, 'deleteTable']);
     Route::post('/schema-versions/{version}/tables/{table}/delete-with-copy', [SchemaController::class, 'deleteTableWithVersionCopy']);
     Route::put('/schema-versions/{version}/unsaved-changes', [SchemaController::class, 'markUnsavedChanges']);
-    
+
+    // Foreign Key Management
+    Route::delete('/constraints/{constraint}/foreign-key', [SchemaController::class, 'deleteForeignKey']);
+    Route::put('/constraints/{constraint}/foreign-key', [SchemaController::class, 'updateForeignKey']);
+    Route::post('/tables/{table}/foreign-key', [SchemaController::class, 'createForeignKey']);
+
     // Schema Designer Layout Management
     Route::post('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'saveLayout']);
     Route::get('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'getLayout']);

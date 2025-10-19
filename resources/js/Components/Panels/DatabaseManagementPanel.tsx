@@ -115,6 +115,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     requires_force?: boolean;
   } | null>(null);
 
+  // Copy schema modal
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyingSchema, setCopyingSchema] = useState<FloatingSchema | null>(null);
+  const [copyName, setCopyName] = useState('');
+  const [copying, setCopying] = useState(false);
+
   const loadSchemas = useCallback(async () => {
     try {
       setLoading(true);
@@ -540,6 +546,58 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
   };
 
+  const handleCopySchema = (schema: FloatingSchema) => {
+    setCopyingSchema(schema);
+    setCopyName(schema.name + ' (Copy)');
+    setShowCopyModal(true);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleConfirmCopy = async () => {
+    if (!copyingSchema) return;
+
+    setCopying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/template-db-schema/schemas/${copyingSchema.id}/copy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          name: copyName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to copy schema');
+      }
+
+      setShowCopyModal(false);
+      setCopyingSchema(null);
+      await loadSchemas();
+      setSuccess(`Schema "${copyingSchema.name}" copied successfully as "${copyName}"`);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error copying schema';
+      setError(errorMessage);
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deletingSchema) return;
 
@@ -684,6 +742,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           className="p-button-rounded p-button-text p-button-sm"
           tooltip="Edit schema"
           onClick={() => handleEditSchema(schema)}
+        />
+        <Button
+          icon="pi pi-copy"
+          className="p-button-rounded p-button-text p-button-sm p-button-info"
+          tooltip="Copy database"
+          onClick={() => handleCopySchema(schema)}
         />
         {onOpenDesigner && (
           <Button
@@ -1276,6 +1340,70 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               onClick={() => setShowImportDialog(false)}
               className="p-button-text"
               disabled={importing}
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Copy Schema Modal */}
+      <Dialog
+        header="Copy Database Schema"
+        visible={showCopyModal}
+        onHide={() => setShowCopyModal(false)}
+        style={{ width: '500px' }}
+        modal
+        closable
+        draggable={true}
+        resizable={true}
+        className="p-dialog-custom"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-700 rounded border border-blue-500">
+            <h4 className="font-medium text-white mb-1">
+              Copy: {copyingSchema?.name}
+            </h4>
+            <p className="text-sm text-blue-100">
+              This will create a complete copy of the database schema including all tables, fields, constraints, and designer layouts. The copy will be set to version 1.
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
+              New Schema Name *
+            </label>
+            <InputText
+              value={copyName}
+              onChange={(e) => setCopyName(e.target.value)}
+              placeholder="Enter name for the copied schema"
+              className="w-full"
+              disabled={copying}
+              required
+            />
+            <small className="text-gray-500">
+              Choose a unique name for the copied schema
+            </small>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-700 border border-red-500 rounded text-red-100 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={() => setShowCopyModal(false)}
+              className="p-button-text"
+              disabled={copying}
+            />
+            <Button
+              label={copying ? "Copying..." : "Copy Database"}
+              icon={copying ? "pi pi-spinner pi-spin" : "pi pi-copy"}
+              onClick={handleConfirmCopy}
+              disabled={copying || !copyName.trim()}
+              className="p-button-info"
             />
           </div>
         </div>
