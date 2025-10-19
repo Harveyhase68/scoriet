@@ -158,14 +158,21 @@ class TranslationExportController extends Controller
             $spreadsheet = IOFactory::load($file->getPathname());
             $sheet = $spreadsheet->getActiveSheet();
             $highestRow = $sheet->getHighestRow();
+            $highestColumn = $sheet->getHighestColumn();
 
             // Read header row to get languages
             $headers = [];
             $col = 'A';
-            while ($sheet->getCell($col . '1')->getValue() !== null) {
-                $headers[$col] = $sheet->getCell($col . '1')->getValue();
+            while ($col <= $highestColumn) {
+                $cellValue = $sheet->getCell($col . '1')->getValue();
+                if ($cellValue !== null) {
+                    $headers[$col] = $cellValue;
+                }
                 $col++;
             }
+
+            // Debug: Log headers
+            \Log::info('Import headers:', $headers);
 
             // Find language columns (after column D)
             // Only include selected languages if specified
@@ -186,29 +193,96 @@ class TranslationExportController extends Controller
                 }
             }
 
+            // Debug: Log language columns
+            \Log::info('Language columns to import:', $languageColumns);
+
+            // Get all existing tables and fields for this project
+            $existingTables = [];
+            $existingFields = [];
+            
+            // Get schemas linked to this project
+            $schemas = FloatingSchema::whereHas('projects', function ($query) use ($projectId) {
+                $query->where('projects.id', $projectId);
+            })->get();
+            
+            // Collect all tables and fields
+            foreach ($schemas as $schema) {
+                $tables = SchemaTable::where('schema_id', $schema->id)
+                    ->with('fields')
+                    ->get();
+                
+                foreach ($tables as $table) {
+                    $existingTables[] = $table->table_name;
+                    
+                    foreach ($table->fields as $field) {
+                        $existingFields[] = $table->table_name . '.' . $field->field_name;
+                    }
+                }
+            }
+            
+            \Log::info('Existing tables:', $existingTables);
+            \Log::info('Existing fields:', $existingFields);
+
             $imported = 0;
             $updated = 0;
+            $skippedRows = 0;
+            $processedRows = 0;
+            $emptyTranslations = 0;
+            $notFoundInDb = 0;
 
             // Process each row (skip header)
             for ($row = 2; $row <= $highestRow; $row++) {
+                $processedRows++;
+                
                 $type = $sheet->getCell('A' . $row)->getValue();
                 $database = $sheet->getCell('B' . $row)->getValue();
                 $table = $sheet->getCell('C' . $row)->getValue();
                 $field = $sheet->getCell('D' . $row)->getValue();
 
-                if (!$type || !$table) {
+                // More flexible row validation - check if we have at least a table name
+                if (empty($table)) {
+                    $skippedRows++;
                     continue; // Skip empty rows
                 }
 
-                // Determine item name
+                // Determine item name - be more flexible with type
                 $itemType = strtolower($type);
-                $itemName = ($itemType === 'field') ? $table . '.' . $field : $table;
+                
+                // Handle different type formats (Table/Field, table/field, T/F, etc.)
+                if (in_array($itemType, ['table', 't', 'tab', 'tabelle'])) {
+                    $itemName = $table;
+                } elseif (in_array($itemType, ['field', 'f', 'col', 'column', 'spalte'])) {
+                    $itemName = empty($field) ? $table : $table . '.' . $field;
+                } else {
+                    // If type is empty or unrecognized, try to determine from field presence
+                    $itemName = empty($field) ? $table : $table . '.' . $field;
+                }
+
+                // Check if the item exists in the database
+                $isTable = !str_contains($itemName, '.');
+                $existsInDb = false;
+                
+                if ($isTable) {
+                    $existsInDb = in_array($itemName, $existingTables);
+                } else {
+                    $existsInDb = in_array($itemName, $existingFields);
+                }
+                
+                if (!$existsInDb) {
+                    $notFoundInDb++;
+                    \Log::info("Skipping item '{$itemName}' - not found in database");
+                    continue;
+                }
+
+                // Debug: Log row processing
+                \Log::info("Processing row {$row}: type={$type}, table={$table}, field={$field}, itemName={$itemName}");
 
                 // Process each language column
                 foreach ($languageColumns as $colLetter => $languageCode) {
                     $translatedText = $sheet->getCell($colLetter . $row)->getValue();
 
                     if (empty($translatedText)) {
+                        $emptyTranslations++;
                         continue; // Skip empty translations
                     }
 
@@ -221,6 +295,7 @@ class TranslationExportController extends Controller
                         [
                             'translated_text' => $translatedText,
                             'description' => '', // Optional: could add description column
+                            'is_active' => true,
                         ]
                     );
 
@@ -238,11 +313,35 @@ class TranslationExportController extends Controller
                 'imported_count' => $imported + $updated,
                 'created_count' => $imported,
                 'updated_count' => $updated,
+                'debug_info' => [
+                    'total_rows' => $highestRow - 1, // Excluding header
+                    'processed_rows' => $processedRows,
+                    'skipped_rows' => $skippedRows,
+                    'not_found_in_db' => $notFoundInDb,
+                    'empty_translations' => $emptyTranslations,
+                    'headers_found' => count($headers),
+                    'language_columns' => count($languageColumns),
+                    'selected_languages' => $selectedLanguages,
+                    'existing_tables_count' => count($existingTables),
+                    'existing_fields_count' => count($existingFields),
+                ]
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Translation import error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
-                'error' => 'Import fehlgeschlagen: ' . $e->getMessage()
+                'error' => 'Import fehlgeschlagen: ' . $e->getMessage(),
+                'debug_info' => [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]
             ], 500);
         }
     }

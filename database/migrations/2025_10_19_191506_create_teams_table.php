@@ -15,12 +15,9 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('name');
             $table->text('description')->nullable();
-            $table->unsignedBigInteger('project_owner_id');
-            $table->unsignedBigInteger('project_id')->nullable()->index('teams_project_id_foreign');
+            $table->unsignedBigInteger('project_owner_id')->index('teams_project_owner_id');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-
-            $table->index(['project_owner_id', 'project_id']);
         });
     }
 

@@ -12,15 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('project_generation_trees', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('project_id')->constrained('projects')->onDelete('cascade');
-            $table->json('tree_data'); // The complete file tree structure
-            $table->boolean('is_stale')->default(false); // Needs regeneration?
-            $table->timestamp('generated_at')->nullable(); // When was it last generated
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('project_id')->index();
+            $table->longText('tree_data');
+            $table->boolean('is_stale')->default(false);
+            $table->timestamp('generated_at')->nullable();
             $table->timestamps();
 
-            // Indexes for performance
-            $table->index('project_id');
             $table->index(['project_id', 'is_stale']);
         });
     }
