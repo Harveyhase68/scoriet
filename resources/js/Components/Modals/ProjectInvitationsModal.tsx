@@ -7,6 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
+import { Message } from 'primereact/message';
 import { confirmDialog } from 'primereact/confirmdialog';
 
 interface ProjectInvitationsModalProps {
@@ -86,8 +87,8 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
       const data = await response.json();
       // API returns invitations directly, not wrapped in { invitations: [...] }
       setInvitations(Array.isArray(data) ? data : []);
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading invitations');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading invitations');
     } finally {
       setLoading(false);
     }
@@ -138,8 +139,8 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
       setInviteForm({ email: '', role: 'member', message: '' });
       loadInvitations();
       onSuccess?.();
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error sending invitation');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error sending invitation');
     } finally {
       setSending(false);
     }
@@ -168,9 +169,12 @@ export default function ProjectInvitationsModal({ visible, onHide, project, onSu
           if (response.ok) {
             setSuccess('Invitation cancelled successfully');
             loadInvitations();
+          } else {
+            const errorData = await response.json();
+            setError(errorData.message || 'Failed to cancel invitation');
           }
-        } catch {
-          setError('Failed to cancel invitation');
+        } catch (error) {
+          setError(error instanceof Error ? error.message : 'Failed to cancel invitation');
         }
       }
     });
