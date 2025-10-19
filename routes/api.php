@@ -354,7 +354,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/join-code/{joinCode}', [ProjectApplicationController::class, 'getProjectByJoinCode']);
     Route::post('/project-applications', [ProjectApplicationController::class, 'apply']);
     Route::get('/projects/{project}/applications', [ProjectApplicationController::class, 'getProjectApplications']);
-    Route::post('/applications/{application}/review', [ProjectApplicationController::class, 'reviewApplication']);
+    Route::post('/project-application-review', [ProjectApplicationController::class, 'reviewApplication']);
     Route::get('/my-applications', [ProjectApplicationController::class, 'getMyApplications']);
     
     // Project Invitations

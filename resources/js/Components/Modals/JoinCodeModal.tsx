@@ -4,6 +4,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
+import { Message } from 'primereact/message';
 
 interface Project {
   id: number;
@@ -58,6 +59,9 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("We looked everywhere, we couldn't find the code!");
+        }
         const errorData = await response.json();
         throw new Error(errorData.message || 'Invalid join code');
       }
@@ -72,8 +76,8 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
       setStep('preview');
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error looking up project');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error looking up project');
     } finally {
       setLoading(false);
     }
@@ -121,8 +125,8 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
         onSuccess();
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error submitting application');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error submitting application');
     } finally {
       setApplying(false);
     }
@@ -174,7 +178,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
         {step === 'input' && (
           <>
             <div className="field">
-              <label htmlFor="join-code" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="join-code" className="block text-sm font-medium text-gray-300 mb-2">
                 Join Code
               </label>
               <div className="flex space-x-2">
@@ -211,15 +215,15 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
             <Card title="Project Information" className="mb-4">
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="text-lg font-semibold text-gray-300">{project.name}</h3>
+                  <p className="text-gray-300 text-sm">
                     {project.description || 'No description provided'}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Owner:</span>
+                    <span className="font-medium text-gray-300">Owner:</span>
                     <div className="flex items-center space-x-1 mt-1">
                       <i className="pi pi-user text-blue-500"></i>
                       <span>{project.owner.name}</span>
@@ -228,9 +232,9 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <span className="font-medium text-gray-700">Created:</span>
+                    <span className="font-medium text-gray-300">Created:</span>
                     <div className="mt-1">{formatDate(project.created_at)}</div>
                   </div>
                 </div>
@@ -247,7 +251,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
             </Card>
 
             <div className="field">
-              <label htmlFor="application-message" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="application-message" className="block text-sm font-medium text-gray-300 mb-2">
                 Application Message (Optional)
               </label>
               <InputTextarea
@@ -270,15 +274,15 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
         {step === 'applied' && (
           <div className="text-center py-6">
             <i className="pi pi-check-circle text-6xl text-green-500 mb-4"></i>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Application Sent!</h3>
-            <p className="text-gray-600">
+            <h3 className="text-lg font-medium text-gray-300 mb-2">Application Sent!</h3>
+            <p className="text-gray-300">
               Your application has been submitted to <strong>{project?.name}</strong>.
               The project owner will review your request and notify you of their decision.
             </p>
           </div>
         )}
 
-        <div className="flex justify-end space-x-2 pt-4">
+        <div className="flex justify-end gap-4 pt-4">
           {step === 'input' && (
             <Button
               label="Cancel"

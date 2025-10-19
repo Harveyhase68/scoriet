@@ -353,19 +353,17 @@ export default function LoginModal({
         />
 
         <div className="text-center space-y-2 mt-4">
-          {import.meta.env.VITE_SCORIET_DEMO !== 'true' && (
-            <div>
-              <Button
-                type="button"
-                label={t.LoginRegister}
-                className="p-button-link p-button-sm"
-                onClick={() => {
-                  handleHide();
-                  onSwitchToRegister();
-                }}
-              />
-            </div>
-          )}
+          <div>
+            <Button
+              type="button"
+              label={t.LoginRegister}
+              className="p-button-link p-button-sm"
+              onClick={() => {
+                handleHide();
+                onSwitchToRegister();
+              }}
+            />
+          </div>
           <div>
             <Button
               type="button"
