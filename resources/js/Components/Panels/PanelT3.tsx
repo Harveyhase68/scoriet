@@ -9,7 +9,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
 import { useProject } from '@/contexts/ProjectContext';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);

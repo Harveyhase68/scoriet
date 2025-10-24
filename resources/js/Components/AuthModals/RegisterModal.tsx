@@ -5,7 +5,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
-import { SupportedLanguage, supportedLanguages, getStoredLanguage } from '@/utils/i18n';
+import { SupportedLanguage, supportedLanguages, getStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 
 interface RegisterModalProps {
@@ -37,6 +37,10 @@ export default function RegisterModal({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
+  // Language state
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t } = useTranslation(selectedLanguage);
+  
   // Update language when currentLanguage prop changes
   React.useEffect(() => {
     if (currentLanguage && visible) {
@@ -44,6 +48,7 @@ export default function RegisterModal({
         ...prev,
         language: currentLanguage
       }));
+      setSelectedLanguage(currentLanguage);
     }
   }, [currentLanguage, visible]);
 
@@ -55,7 +60,7 @@ export default function RegisterModal({
 
     // Check password confirmation
     if (formData.password !== formData.password_confirmation) {
-      setError('Passwords do not match');
+      setError(t.registermodal58);
       setLoading(false);
       return;
     }
@@ -81,7 +86,7 @@ export default function RegisterModal({
         const errorData = await response.json();
 
         // Display the user-friendly message from the backend
-        setError(errorData.message || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+        setError(errorData.message || t.registermodal84);
         setLoading(false);
         return;
       }
@@ -91,10 +96,10 @@ export default function RegisterModal({
       // Prepare success message
       let successMessage = '';
       if (registrationData.email_verification_required) {
-        successMessage = 'Registration successful! Please check your email for a verification link before logging in.';
+        successMessage = t.registermodal94;
       } else {
-        const userId = registrationData.user?.id;
-        successMessage = `Registration successful! ${userId ? `Your User ID is: ${userId}. ` : ''}You can now log in.`;
+        //const userId = registrationData.user?.id;
+        successMessage = t.registermodal109;
       }
 
       // Call callback FIRST (before closing modal)
@@ -105,8 +110,8 @@ export default function RegisterModal({
       // Then close modal
       handleHide();
       
-    } catch {
-      setError(_ instanceof Error ? _.message : 'An error occurred');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.registermodal109);
     } finally {
       setLoading(false);
     }
@@ -126,7 +131,7 @@ export default function RegisterModal({
       email: '',
       password: '',
       password_confirmation: '',
-      language: currentLanguage || getStoredLanguage() // Keep the current lobby language or detected/stored language
+      language: selectedLanguage || getStoredLanguage() // Keep the current lobby language or detected/stored language
     });
     setError('');
     setSuccess('');
@@ -200,7 +205,7 @@ export default function RegisterModal({
         }
       `}</style>
       <Dialog
-        header="Register"
+        header={t.registermodal203}
         visible={visible}
         onHide={handleHide}
         style={{ width: '450px' }}

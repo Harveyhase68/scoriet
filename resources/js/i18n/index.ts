@@ -1,76 +1,138 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
+// Translation system for Scoriet with lazy loading
+import { useState, useEffect } from 'react';
+export type { SupportedLanguage, LanguageOption, Translations } from './types';
+export { supportedLanguages } from './types';
 
-// Translation files
-import en from './locales/en.json';
-import de from './locales/de.json';
-import fr from './locales/fr.json';
+import type { SupportedLanguage, Translations } from './types';
+import { supportedLanguages } from './types';
 
-const resources = {
-  en: { translation: en },
-  de: { translation: de },
-  fr: { translation: fr }
-};
+// Cache for loaded translations
+const translationsCache: Partial<Record<SupportedLanguage, Translations>> = {};
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    debug: import.meta.env.DEV,
+// Lazy load translations for a specific language
+async function loadTranslations(language: SupportedLanguage): Promise<Translations> {
+  // Return from cache if already loaded
+  if (translationsCache[language]) {
+    return translationsCache[language]!;
+  }
 
-    // Don't auto-detect from browser - we'll control it via user profile
-    detection: {
-      order: ['localStorage'], // Only check localStorage
-      lookupLocalStorage: 'user_language',
-      caches: ['localStorage']
-    },
+  // Dynamically import the language file
+  let translations: Translations;
 
-    interpolation: {
-      escapeValue: false // React already does escaping
-    },
+  switch (language) {
+    case 'en':
+      translations = (await import('./locales/en')).en;
+      break;
+    case 'de':
+      translations = (await import('./locales/de')).de;
+      break;
+    case 'fr':
+      translations = (await import('./locales/fr')).fr;
+      break;
+    case 'es':
+      translations = (await import('./locales/es')).es;
+      break;
+    case 'it':
+      translations = (await import('./locales/it')).it;
+      break;
+    default:
+      // Fallback to English
+      translations = (await import('./locales/en')).en;
+  }
 
-    // Load user's preferred language on startup
-    initImmediate: false
-  });
+  // Cache the loaded translations
+  translationsCache[language] = translations;
 
-// Function to change language and save to user profile
-export const changeLanguage = async (lng: string) => {
-  await i18n.changeLanguage(lng);
-  localStorage.setItem('user_language', lng);
+  return translations;
+}
 
-  // Also save to user profile via API
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  if (token) {
-    try {
-      await fetch('/api/profile/language', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ language: lng })
-      });
-    } catch {
-      // Failed to save language preference
+// Browser language detection
+export function detectBrowserLanguage(): SupportedLanguage {
+  const browserLang = navigator.language.toLowerCase();
+
+  // Check for exact matches first
+  for (const lang of supportedLanguages) {
+    if (browserLang === lang.code || browserLang.startsWith(lang.code + '-')) {
+      return lang.code;
     }
   }
-};
 
-// Load user's language from profile on login
-export const loadUserLanguage = (userLanguage?: string) => {
-  if (userLanguage) {
-    i18n.changeLanguage(userLanguage);
-    localStorage.setItem('user_language', userLanguage);
-  } else {
-    // Fallback to browser language or default
-    const browserLang = navigator.language.split('-')[0];
-    const supportedLang = ['de', 'en', 'fr'].includes(browserLang) ? browserLang : 'en';
-    i18n.changeLanguage(supportedLang);
+  // Fallback to English
+  return 'en';
+}
+
+// Get stored language or detect from browser
+export function getStoredLanguage(): SupportedLanguage {
+  const stored = localStorage.getItem('scoriet_language') as SupportedLanguage;
+  if (stored && supportedLanguages.some(lang => lang.code === stored)) {
+    return stored;
   }
-};
 
-export default i18n;
+  const detected = detectBrowserLanguage();
+  localStorage.setItem('scoriet_language', detected);
+  return detected;
+}
+
+// Store language preference
+export function setStoredLanguage(language: SupportedLanguage): void {
+  localStorage.setItem('scoriet_language', language);
+}
+
+// Get translations for a specific language (async)
+export async function getTranslations(language: SupportedLanguage): Promise<Translations> {
+  try {
+    return await loadTranslations(language);
+  } catch (error) {
+    console.error(`Failed to load translations for ${language}, falling back to English:`, error);
+    return await loadTranslations('en');
+  }
+}
+
+// React Hook for translations with lazy loading
+export function useTranslation(language: SupportedLanguage) {
+  const [translations, setTranslations] = useState<Translations | null>(
+    () => translationsCache[language] || null
+  );
+  const [isLoading, setIsLoading] = useState(!translationsCache[language]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      setIsLoading(true);
+      const t = await getTranslations(language);
+      if (isMounted) {
+        setTranslations(t);
+        setIsLoading(false);
+      }
+    }
+
+    // If not in cache, load it
+    if (!translationsCache[language]) {
+      load();
+    } else {
+      setTranslations(translationsCache[language]!);
+      setIsLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [language]);
+
+  // Return English as fallback while loading
+  return {
+    t: translations || ({} as Translations),
+    language,
+    isLoading,
+    supportedLanguages,
+    detectBrowserLanguage,
+    getStoredLanguage,
+    setStoredLanguage,
+  };
+}
+
+// Preload a language (useful for prefetching)
+export function preloadLanguage(language: SupportedLanguage): Promise<void> {
+  return loadTranslations(language).then(() => undefined);
+}

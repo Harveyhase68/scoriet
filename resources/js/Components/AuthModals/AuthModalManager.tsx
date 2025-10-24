@@ -5,7 +5,7 @@ import ForgotPasswordModal from './ForgotPasswordModal';
 import ProfileModal from './ProfileModal';
 import ResetPasswordModal from './ResetPasswordModal';
 import PlanModal from './PlanModal';
-import { SupportedLanguage } from '@/utils/i18n';
+import { SupportedLanguage } from '@/i18n';
 
 export type AuthModalType = 'login' | 'register' | 'forgot' | 'profile' | 'plan' | 'reset' | null;
 

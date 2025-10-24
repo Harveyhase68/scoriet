@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Button } from 'primereact/button';
 import { OverlayPanel } from 'primereact/overlaypanel';
-import { SupportedLanguage, supportedLanguages, LanguageOption } from '@/utils/i18n';
+import { SupportedLanguage, supportedLanguages, LanguageOption } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 
 interface LanguageSelectorProps {

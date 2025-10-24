@@ -6,7 +6,7 @@ import { Divider } from 'primereact/divider';
 import { Dialog } from 'primereact/dialog';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import LanguageSelector from '@/Components/LanguageSelector';
-import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/utils/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 
 import {
   CheckIcon,
