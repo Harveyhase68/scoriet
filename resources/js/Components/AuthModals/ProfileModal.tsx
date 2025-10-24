@@ -8,7 +8,7 @@ import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
 import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
-import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/utils/i18n';
+import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 
 interface ProfileModalProps {
@@ -75,7 +75,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       }
     `;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
   const [userData, setUserData] = useState<UserData>({
     name: '',
@@ -142,8 +144,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setStoredLanguage(user.language as SupportedLanguage);
         setCurrentLanguage(user.language as SupportedLanguage);
       }
-    } catch {
-      setProfileError(_ instanceof Error ? _.message : 'Error loading');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Error loading');
     }
   }, []);
 
@@ -193,8 +195,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         handleHide();
       }, 500);
 
-    } catch {
-      setProfileError(_ instanceof Error ? _.message : 'Profile update error');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Profile update error');
     } finally {
       setLoadingProfile(false);
     }
@@ -276,8 +278,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       setPasswordSuccess(t.passwordChangeSuccess);
       setPasswordData({ current_password: '', password: '', password_confirmation: '' });
       
-    } catch {
-      setPasswordError(_ instanceof Error ? _.message : 'An error occurred');
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoadingPassword(false);
     }
@@ -342,8 +344,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         window.location.reload();
       }, 2000);
       
-    } catch {
-      setDeleteError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setLoadingDelete(false);
     }

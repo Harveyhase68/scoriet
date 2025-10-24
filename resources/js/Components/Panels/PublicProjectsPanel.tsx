@@ -6,6 +6,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
+import { Message } from 'primereact/message';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import { useProject } from '@/contexts/ProjectContext';
 
@@ -99,8 +100,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       const data = await response.json();
       setProjects(data.projects || []);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading public projects');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error loading public projects');
     } finally {
       setLoading(false);
     }
@@ -181,8 +182,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         const errorData = await response.json();
         setCloneError(errorData.message || 'Failed to clone project');
       }
-    } catch {
-      setCloneError('Failed to clone project');
+    } catch (error) {
+      setCloneError(error instanceof Error ? error.message : 'Failed to clone project');
     } finally {
       setCloning(null);
     }

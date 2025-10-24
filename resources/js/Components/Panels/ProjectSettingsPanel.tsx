@@ -293,13 +293,10 @@ export default function ProjectSettingsPanel() {
             <div className="mb-6 flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-100">
-                        Projekt-Einstellungen ✅
+                        Projekt-Einstellungen
                     </h2>
                     <p className="text-gray-400 mt-2">
                         Projekt: <span className="font-semibold text-gray-200">{selectedProject.name}</span>
-                    </p>
-                    <p className="text-xs text-green-400 mt-1">
-                        ✅ ProjectSettingsPanel erfolgreich geladen
                     </p>
                 </div>
                 <Button

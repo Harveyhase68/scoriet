@@ -4,7 +4,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/utils/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface LoginModalProps {
   visible: boolean;

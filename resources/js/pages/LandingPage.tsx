@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import LanguageSelector from '@/Components/LanguageSelector';
-import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/utils/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 import { pricingUtils } from '@/lib/api';
 
 interface UserData {

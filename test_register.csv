@@ -1,0 +1,34 @@
+﻿Datei;Zeile;Typ;Text
+resources/js/Components/AuthModals/RegisterModal.tsx;2;string_literal;primereact/dialog
+resources/js/Components/AuthModals/RegisterModal.tsx;3;string_literal;primereact/inputtext
+resources/js/Components/AuthModals/RegisterModal.tsx;4;string_literal;primereact/password
+resources/js/Components/AuthModals/RegisterModal.tsx;5;string_literal;primereact/button
+resources/js/Components/AuthModals/RegisterModal.tsx;6;string_literal;primereact/dropdown
+resources/js/Components/AuthModals/RegisterModal.tsx;7;string_literal;primereact/message
+resources/js/Components/AuthModals/RegisterModal.tsx;8;string_literal;@/i18n
+resources/js/Components/AuthModals/RegisterModal.tsx;9;string_literal;@/Components/CSSFlag
+resources/js/Components/AuthModals/RegisterModal.tsx;72;string_literal;application/json
+resources/js/Components/AuthModals/RegisterModal.tsx;200;string_literal;"Segoe UI"
+resources/js/Components/AuthModals/RegisterModal.tsx;200;string_literal;"Apple Color Emoji"
+resources/js/Components/AuthModals/RegisterModal.tsx;200;string_literal;"Segoe UI Emoji"
+resources/js/Components/AuthModals/RegisterModal.tsx;236;string_literal;"block text-sm font-medium mb-2"
+resources/js/Components/AuthModals/RegisterModal.tsx;244;string_literal;"Your full name"
+resources/js/Components/AuthModals/RegisterModal.tsx;261;attr_placeholder;username123
+resources/js/Components/AuthModals/RegisterModal.tsx;282;attr_placeholder;your.email@example.com
+resources/js/Components/AuthModals/RegisterModal.tsx;298;string_literal;"Your password"
+resources/js/Components/AuthModals/RegisterModal.tsx;310;tag_label;"Confirm password"
+resources/js/Components/AuthModals/RegisterModal.tsx;317;string_literal;"Repeat password"
+resources/js/Components/AuthModals/RegisterModal.tsx;329;tag_label;"Preferred Language"
+resources/js/Components/AuthModals/RegisterModal.tsx;340;string_literal;"Select Language"
+resources/js/Components/AuthModals/RegisterModal.tsx;346;string_literal;"0.75rem 1rem"
+resources/js/Components/AuthModals/RegisterModal.tsx;346;string_literal;"flex items-center w-full"
+resources/js/Components/AuthModals/RegisterModal.tsx;347;string_literal;"mr-3 flex-shrink-0"
+resources/js/Components/AuthModals/RegisterModal.tsx;350;string_literal;"text-sm font-medium text-gray-100"
+resources/js/Components/AuthModals/RegisterModal.tsx;356;string_literal;"text-sm text-gray-500"
+resources/js/Components/AuthModals/RegisterModal.tsx;364;string_literal;"flex items-center py-2"
+resources/js/Components/AuthModals/RegisterModal.tsx;365;string_literal;"mr-2 flex-shrink-0"
+resources/js/Components/AuthModals/RegisterModal.tsx;368;string_literal;"text-sm font-medium"
+resources/js/Components/AuthModals/RegisterModal.tsx;384;string_literal;"Registration in progress..."
+resources/js/Components/AuthModals/RegisterModal.tsx;390;string_literal;"text-center mt-4"
+resources/js/Components/AuthModals/RegisterModal.tsx;393;string_literal;"Already have an account? Login"
+resources/js/Components/AuthModals/RegisterModal.tsx;394;string_literal;"p-button-link p-button-sm"

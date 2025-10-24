@@ -1,0 +1,15 @@
+﻿Datei;Zeile;Typ;Text
+resources/js/Components/AuthModals/RegisterModal.tsx;236;tag_label;Name
+resources/js/Components/AuthModals/RegisterModal.tsx;244;string_literal;"Your full name"
+resources/js/Components/AuthModals/RegisterModal.tsx;261;attr_placeholder;username123
+resources/js/Components/AuthModals/RegisterModal.tsx;274;tag_label;E-Mail
+resources/js/Components/AuthModals/RegisterModal.tsx;282;attr_placeholder;your.email@example.com
+resources/js/Components/AuthModals/RegisterModal.tsx;291;tag_label;Passwort
+resources/js/Components/AuthModals/RegisterModal.tsx;298;string_literal;"Your password"
+resources/js/Components/AuthModals/RegisterModal.tsx;310;tag_label;"Confirm password"
+resources/js/Components/AuthModals/RegisterModal.tsx;317;string_literal;"Repeat password"
+resources/js/Components/AuthModals/RegisterModal.tsx;329;tag_label;"Preferred Language"
+resources/js/Components/AuthModals/RegisterModal.tsx;340;string_literal;"Select Language"
+resources/js/Components/AuthModals/RegisterModal.tsx;384;string_literal;"Registration in progress..."
+resources/js/Components/AuthModals/RegisterModal.tsx;384;string_literal;Register
+resources/js/Components/AuthModals/RegisterModal.tsx;393;string_literal;"Already have an account? Login"
