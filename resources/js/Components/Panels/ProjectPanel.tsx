@@ -420,7 +420,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       // Filter teams for this project and build tree structure
       const allTeams = [...(data.owned_teams || []), ...(data.member_teams || [])];
-      const projectTeams = allTeams.filter(team => team.project_id === projectId);
+      const projectTeams = allTeams.filter(team =>
+        team.projects && team.projects.some((project: any) => project.id === projectId)
+      );
 
       // Build tree structure for classic TreeView
       const treeData = projectTeams.map(team => ({

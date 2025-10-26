@@ -1,0 +1,207 @@
+=== i18n Setup Log ===
+Started: 2025-10-26 16:48:45
+
+⚠ resources/js/app.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/AuthModals/AuthModalManager.tsx - Needs i18n setup
+    - Missing useTranslation call
+⚠ resources/js/Components/AuthModals/ForgotPasswordModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+✓ resources/js/Components/AuthModals/LoginModal.tsx - Already has i18n
+⚠ resources/js/Components/AuthModals/PlanModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+✓ resources/js/Components/AuthModals/ProfileModal.tsx - Already has i18n
+✓ resources/js/Components/AuthModals/RegisterModal.tsx - Already has i18n
+⚠ resources/js/Components/AuthModals/ResetPasswordModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/ClassicTreeView.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/CountryFlag.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/CSSFlag.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/DatabaseExportModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/EmailVerification.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/ErrorFallback.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/FlagIcon.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/LanguageSelector.tsx - Needs i18n setup
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/ApplicationsModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/CreateTableModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/CreateTeamModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/EditProjectModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/EditTableModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/JoinCodeModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/ManageTeamModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/MemberModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/PendingInvitationModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/ProjectInvitationsModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/ProjectMembersModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Modals/TeamModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/AuthPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/CMSAdminPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/CodeGenerationPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/DatabaseManagementPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/DebugManualGeneratorPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/FileModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/ForgotPasswordPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/LanguageManagementPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/LoginPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/MyApplicationsPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/NewNavigationPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/PanelT1.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/PanelT2.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+✓ resources/js/Components/Panels/PanelT3.tsx - Already has i18n
+⚠ resources/js/Components/Panels/PanelT5.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/ProfilePanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/ProjectPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/ProjectSettingsPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/PublicProjectsPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/RegisterPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/SchemaTranslationPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/SystemSettingsPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TeamManagementPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TeamsPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TeamsPanel_Old.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TemplateDbSchemaDependenciesPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TemplateFileManager.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TemplateManagementPanel.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Panels/TemplateModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/SqlImportModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/TopBar.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/Utils/FontProvider.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/Components/VersionConfirmationModal.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/contexts/ProjectContext.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/contexts/ToastContext.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+✓ resources/js/pages/CMSPage.tsx - Already has i18n
+⚠ resources/js/pages/EmailVerification.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/pages/Index.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+✓ resources/js/pages/LandingPage.tsx - Already has i18n
+⚠ resources/js/pages/ProjectInvitationResponse.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+⚠ resources/js/ssr.tsx - Needs i18n setup
+    - Missing import
+    - Missing useTranslation call
+
+=== Analysis Summary ===
+Total TSX files: 69
+Already have i18n: 6
+Need i18n setup: 63
+
+=== FINAL SUMMARY ===
+Total TSX files processed: 69
+Files already with i18n: 6
+Files updated: 63
+Completed: 2025-10-26 16:48:45
