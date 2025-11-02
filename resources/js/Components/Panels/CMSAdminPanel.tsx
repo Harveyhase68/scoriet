@@ -37,18 +37,18 @@ interface PageFormData {
   is_active: boolean;
 }
 
-const localeOptions = [
-  { label: t.editprojectmodal484, value: 'en' },
-  { label: t.editprojectmodal485, value: 'de' },
-  { label: t.editprojectmodal486, value: 'fr' },
-  { label: t.editprojectmodal487, value: 'es' },
-  { label: t.editprojectmodal488, value: 'it' },
-];
-
 export default function CMSAdminPanel() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  const localeOptions = [
+    { label: t.editprojectmodal484, value: 'en' },
+    { label: t.editprojectmodal485, value: 'de' },
+    { label: t.editprojectmodal486, value: 'fr' },
+    { label: t.editprojectmodal487, value: 'es' },
+    { label: t.editprojectmodal488, value: 'it' },
+  ];
   const toast = useToast();
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(false);

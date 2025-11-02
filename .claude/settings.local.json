@@ -22,7 +22,9 @@
       "Bash(then echo \"exists\")",
       "Bash(else mkdir \"C:\\wamp\\www\\scoriet\\.vscode\")",
       "Bash(php artisan:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(npm run build:prod:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
