@@ -30,6 +30,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 **We're currently in active development!** Here's what's working and what's coming:
 
 ### ✅ **Completed Features** (Alpha Ready)
+
+#### 🎨 **Core Platform**
 - ✅ **Modern UI/UX**: Professional dark theme with dockable panels
 - ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
 - ✅ **Internationalization (i18n)**: 5 languages with automatic browser detection
@@ -43,18 +45,51 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Environment-based Features**: Demo vs. Production mode
 - ✅ **Development Tooling**: Full CI/CD, linting, testing setup
 - ✅ **Accessibility**: WCAG compliant forms with proper autocomplete attributes
+
+#### 🗄️ **Database & Schema Management**
 - ✅ **Database Designer**: Visual SQL schema creation and editing with control type detection
 - ✅ **Control Type System**: Automatic UI control type detection (TEXT, COMBOBOX, DATEPICKER, etc.)
 - ✅ **Link Fields**: Complete foreign key relationship support with display fields and ordering
+- ✅ **Referential Actions**: CASCADE, SET NULL, RESTRICT, NO ACTION for foreign keys
+- ✅ **Edit Masks**: Field-level input masks for data validation
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
+- ✅ **Excel Translation Import**: Bulk import translations from Excel files
 - ✅ **SQL Parser Engine**: Advanced MySQL schema parsing with relationship detection
+- ✅ **Schema Versioning**: Automatic version tracking for database changes
+- ✅ **Schema Diff & Migration**: Compare schema versions and generate SQL migration scripts
+- ✅ **Copy Database**: Clone schemas with all tables, fields, and relationships
+
+#### 🚀 **Code Generation System**
 - ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
 - ✅ **Debug Manual Generator**: Real-time template debugging and testing
+- ✅ **Full Code Generation**: Generate complete projects from multiple templates
+- ✅ **Multi-Template Support**: Stack multiple templates for complex applications
+- ✅ **Multi-Language Generation**: Generate code in multiple languages simultaneously
 - ✅ **ZIP Template Upload**: Upload complete template structures as ZIP files
 - ✅ **File Path Organization**: Automatic directory structure for generated code
+- ✅ **Template Variables**: Custom project-level variables with multi-language support
+- ✅ **Error Reporting**: Comprehensive syntax error detection and reporting in ERRORS.txt
+- ✅ **Progress Tracking**: Real-time generation progress with file counters
+- ✅ **ZIP Download**: Package generated code with all files and error reports
+
+#### 👥 **Project & Team Management**
 - ✅ **Project Management**: Teams, projects, and collaboration tools
 - ✅ **Public Projects Gallery**: Clone and share projects with credit system
-- ✅ **Production Ready**: Clean codebase with all debug statements removed
+- ✅ **Team Collaboration**: Invite members, assign roles, manage permissions
+- ✅ **Project Settings**: Comprehensive project configuration and variable management
+
+#### 🔐 **Admin & Review System**
+- ✅ **Template Review System**: Inner Core reviewer approval workflow
+- ✅ **User Management Panel**: Assign Inner Core reviewer permissions
+- ✅ **System Settings Panel**: Global API keys, pricing management, user administration
+- ✅ **Review Dashboard**: Approve/reject templates with feedback system
+
+#### ✨ **Quality & Developer Experience**
+- ✅ **Production Ready**: Clean codebase with zero ESLint errors
+- ✅ **Code Quality Tools**: ESLint, Prettier, TypeScript validation
+- ✅ **Error Boundary**: Graceful error handling with user-friendly messages
+- ✅ **Toast Notifications**: Professional feedback system for user actions
+- ✅ **Loading States**: Smooth loading indicators throughout the application
 
 ### 🚧 **In Progress** (Coming Soon)
 - 🚧 **Multi-Language Templates**: Support for more programming languages
@@ -78,27 +113,54 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 
 ### ✨ Key Features
 
-- **🌍 Internationalization** - 5 languages (English, German, French, Spanish, Italian) with automatic browser detection
-- **🎨 CSS Flag Icons** - Beautiful country flags created with pure CSS gradients (no image dependencies)
-- **🗄️ Advanced SQL Parser** - Parse MySQL schemas with intelligent relationship detection
-- **🎯 Template Engine** - Powerful client-side template execution with JavaScript integration
-- **📋 Database Designer** - Visual schema creation with drag-and-drop table editing
-- **🎛️ Control Type System** - Automatic UI control detection (TEXT, COMBOBOX, DATEPICKER, CHECKBOX, etc.)
-- **🔗 Link Fields** - Complete foreign key support with display fields, ordering, and relationship management
-- **🌐 Schema Translation** - Multi-language descriptions for tables and fields
-- **📄 CMS Pages** - Inertia-based content management with React components
-- **🔧 Debug Manual Generator** - Real-time template debugging with live preview
-- **📦 ZIP Template Upload** - Upload complete template structures as ZIP files
-- **📁 File Path Organization** - Automatic directory structure for generated code (/components/, /services/, etc.)
-- **🖥️ Modern MDI Interface** - Professional dock-based UI with floating panels
-- **🔒 Enterprise Security** - Laravel Passport OAuth2 with Password Grant authentication
-- **👤 User Management** - Complete registration, login, and profile management system
-- **🔐 JWT Token Authentication** - Secure API access with Bearer tokens
-- **⚡ Real-time Generation** - Instant code generation without server processing
-- **🔧 Flexible Templates** - Stack multiple templates for complex application scaffolding
-- **🏢 Project Management** - Teams, projects, and collaboration with credit system
-- **🌐 Public Gallery** - Clone and share projects with the community
-- **♿ Accessibility First** - WCAG compliant with screen reader support and proper form attributes
+#### 🌍 **Internationalization & UX**
+- **5 Languages** - English, German, French, Spanish, Italian with automatic browser detection
+- **CSS Flag Icons** - Beautiful country flags created with pure CSS gradients (no image dependencies)
+- **Modern MDI Interface** - Professional dock-based UI with floating panels
+- **Accessibility First** - WCAG compliant with screen reader support and proper form attributes
+- **Toast Notifications** - Professional feedback system for all user actions
+
+#### 🗄️ **Database & Schema Tools**
+- **Advanced SQL Parser** - Parse MySQL schemas with intelligent relationship detection
+- **Database Designer** - Visual schema creation with drag-and-drop table editing
+- **Control Type System** - Automatic UI control detection (TEXT, COMBOBOX, DATEPICKER, CHECKBOX, etc.)
+- **Link Fields** - Complete foreign key support with display fields, ordering, and relationship management
+- **Referential Actions** - Full CASCADE, SET NULL, RESTRICT, NO ACTION support
+- **Edit Masks** - Field-level input validation masks
+- **Schema Translation** - Multi-language descriptions for tables and fields
+- **Excel Translation Import** - Bulk import translations from Excel files
+- **Schema Versioning** - Automatic version tracking for all database changes
+- **Schema Diff & Migration** - Compare versions and generate SQL migration scripts
+- **Copy Database** - Clone entire schemas with all relationships intact
+
+#### 🚀 **Code Generation Engine**
+- **Template Engine** - Powerful client-side template execution with JavaScript integration
+- **Debug Manual Generator** - Real-time template debugging with live preview
+- **Full Code Generation** - Generate complete projects from multiple templates
+- **Multi-Template Support** - Stack templates for complex application scaffolding
+- **Multi-Language Generation** - Generate code in multiple languages simultaneously
+- **ZIP Template Upload** - Upload complete template structures as ZIP files
+- **File Path Organization** - Automatic directory structure (/components/, /services/, etc.)
+- **Template Variables** - Custom project-level variables with multi-language support
+- **Error Reporting** - Comprehensive syntax error detection with ERRORS.txt
+- **Progress Tracking** - Real-time generation progress with file counters
+- **ZIP Download** - Package generated code with all files and error reports
+- **Real-time Generation** - Instant code generation without server processing
+
+#### 🔐 **Security & Admin**
+- **Enterprise Security** - Laravel Passport OAuth2 with Password Grant authentication
+- **User Management** - Complete registration, login, and profile management
+- **JWT Token Authentication** - Secure API access with Bearer tokens
+- **Template Review System** - Inner Core reviewer approval workflow
+- **Admin Dashboard** - System settings, pricing, API key management
+- **Role-Based Access** - Granular permissions for teams and projects
+
+#### 🏢 **Collaboration**
+- **Project Management** - Teams, projects, and collaboration tools
+- **Public Gallery** - Clone and share projects with the community
+- **Credit System** - Track project clones and give credit to creators
+- **Team Invitations** - Invite members and manage team access
+- **CMS Pages** - Inertia-based content management with React components
 
 ### 🏗️ Architecture
 
@@ -333,6 +395,96 @@ Upload complete template structures as ZIP files:
 - **Validation**: Ensures only valid ZIP files are accepted
 - **Preview**: Shows uploaded file information and size
 
+### 🚀 Full Code Generation
+
+**NEW!** Complete project generation with advanced features:
+
+#### Generation Workflow
+1. **Select Project**: Choose your target project with linked schema
+2. **Choose Templates**: Select one or multiple templates to stack
+3. **Select Languages**: Generate for multiple languages simultaneously (EN, DE, FR, ES, IT)
+4. **Validation**: Automatic checks for warnings and errors
+5. **Generation**: Real-time progress tracking with file counters
+6. **Download**: ZIP package with all generated files
+
+#### Multi-Template Support
+- **Template Stacking**: Combine multiple templates in one generation
+- **Layer-by-Layer**: Each template builds on previous results
+- **Complex Scaffolding**: Generate complete applications with:
+  - Database models
+  - API controllers
+  - Frontend components
+  - Service layers
+  - Documentation files
+  - Configuration files
+
+#### Multi-Language Generation
+- **Simultaneous Output**: Generate for all 5 languages at once
+- **Language-Specific Files**: Each language in separate directory
+- **Translation Integration**: Uses schema translations automatically
+- **File Naming**: Automatic language suffix (`_en.php`, `_de.php`, etc.)
+
+#### Template Variables
+- **Project Variables**: Custom variables defined per project
+- **Multi-Language Values**: Different values per language
+- **Template Access**: Use in any template with `{variable_name}`
+- **Dynamic Replacement**: Variables replaced during generation
+
+#### Progress Tracking
+- **Real-Time Updates**: See exactly what's being generated
+- **File Counters**: Track files generated per template and language
+- **Status Messages**: Clear feedback on current operation
+- **Progress Percentage**: Visual indication of completion
+
+#### Error Handling & Reporting
+- **Syntax Detection**: Catch JavaScript syntax errors in templates
+- **Validation Warnings**: Pre-generation checks for common issues
+- **Error Collection**: All errors aggregated during generation
+- **ERRORS.txt File**: Comprehensive error report included in ZIP
+- **Error Summary**: Count and preview in UI before download
+- **Scrollable Error List**: Review all errors in modal dialog
+
+#### Output Structure
+```
+generated_project.zip
+├── /template1/
+│   ├── /en/
+│   │   ├── users_en.php
+│   │   └── products_en.php
+│   ├── /de/
+│   │   ├── users_de.php
+│   │   └── products_de.php
+│   └── ...
+├── /template2/
+│   ├── /en/
+│   └── /de/
+└── ERRORS.txt (if errors occurred)
+```
+
+#### Advanced Features
+- **Warning System**: Pre-generation validation checks
+  - Missing templates warning
+  - Missing schema warning
+  - No languages selected warning
+- **Error Recovery**: Generation continues even if some files fail
+- **ZIP Packaging**: Automatic compression of all output
+- **Filename Sanitization**: Safe filenames for all platforms
+- **Memory Efficient**: Streams large outputs directly to ZIP
+
+#### Example Usage
+```typescript
+// Generate a complete PHP CRUD application
+Templates:
+  - PHP Model Template
+  - PHP Controller Template
+  - PHP View Template
+  - API Endpoint Template
+
+Languages: EN, DE, FR
+Tables: 131 tables from e-commerce schema
+Result: 786+ files in organized ZIP structure
+```
+
 ## 📋 Database Designer
 
 Scoriet includes a powerful visual database designer for creating and editing schemas:
@@ -407,7 +559,72 @@ Multi-language support for database schemas:
 - **Field Translations**: Translate field labels and help text
 - **Language Support**: All 5 supported languages (EN, DE, FR, ES, IT)
 - **Fallback System**: Automatic fallback to default language
+- **Excel Import**: Bulk import translations from Excel files
 - **Template Integration**: Access translated names in code generation
+
+### 🔄 Schema Diff & Migration Generator
+
+**NEW!** Powerful schema comparison and SQL migration generation:
+
+#### Compare Schema Versions
+- **Version Selection**: Compare any two schema versions (FROM → TO)
+- **Automatic Detection**: Auto-selects last two versions for quick comparisons
+- **Visual Diff**: See exactly what changed between versions
+- **Detailed Summary**: Statistics for all changes (tables, columns, keys)
+
+#### Migration Features
+- **SQL Script Generation**: Automatically generate ALTER TABLE statements
+- **Ordered Changes**: Changes prioritized in correct execution order
+  1. Drop foreign keys first
+  2. Create/drop tables
+  3. Add/modify/drop columns
+  4. Add primary keys
+  5. Add foreign keys last
+- **Comprehensive Change Types**:
+  - `CREATE_TABLE` / `DROP_TABLE`
+  - `ADD_COLUMN` / `DROP_COLUMN` / `MODIFY_COLUMN`
+  - `ADD_PRIMARY_KEY` / `DROP_PRIMARY_KEY`
+  - `ADD_FOREIGN_KEY` / `DROP_FOREIGN_KEY`
+- **Change Details**: Shows table name, field name, columns, constraint names
+- **Color-Coded Tags**: Visual indicators for change severity
+  - 🟢 Green: CREATE/ADD operations
+  - 🔴 Red: DROP operations
+  - 🟡 Yellow: MODIFY operations
+
+#### Export & Usage
+- **Download SQL**: Export migration script as `.sql` file
+- **Copy to Clipboard**: Quick copy for immediate use
+- **Preview Changes**: Review changes before executing
+- **Statistics Dashboard**:
+  - Total changes count
+  - Tables created/dropped
+  - Columns added/modified/dropped
+  - Primary keys changed
+  - Foreign keys added/dropped
+
+#### Example Workflow
+```typescript
+// 1. Select a schema
+// 2. Choose FROM version (e.g., v1.0)
+// 3. Choose TO version (e.g., v1.1)
+// 4. Click "Compare Versions"
+// 5. Review detected changes in table
+// 6. Download or copy generated SQL
+// 7. Execute on your database
+
+// Generated SQL example:
+ALTER TABLE `users` ADD COLUMN `phone` VARCHAR(20) NULL AFTER `email`;
+ALTER TABLE `users` ADD INDEX `idx_phone` (`phone`);
+ALTER TABLE `orders` ADD CONSTRAINT `fk_user`
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+#### Safety Features
+- **Review First**: Always shows changes before download
+- **No Automatic Execution**: Scripts must be manually applied
+- **Warning Messages**: Alerts for no changes or identical versions
+- **Error Validation**: Prevents comparing same version
 
 ### 🔧 Advanced Features
 
@@ -453,6 +670,48 @@ Comprehensive project and team collaboration features:
 - **Credit System**: Original creators receive credit for clones
 - **Discovery**: Browse community projects and templates
 
+### ⭐ Template Review System
+
+**NEW!** Professional quality control for public templates:
+
+#### Inner Core Reviewers
+- **Elite Reviewer Status**: Assigned by system administrators
+- **Special Permissions**: Review and approve/reject templates
+- **Quality Gate**: Ensures only high-quality templates go public
+- **Badge System**: Reviewers receive special recognition
+
+#### Review Workflow
+1. **Template Submission**: User marks template as "pending review"
+2. **Review Queue**: Template appears in Inner Core reviewer dashboard
+3. **Template Inspection**: Reviewers examine code, documentation, examples
+4. **Quick View**: Preview template files without full download
+5. **Decision**: Approve or reject with feedback
+6. **Notification**: Creator receives approval/rejection notice
+
+#### Review Features
+- **Pending Templates Dashboard**: See all templates awaiting review
+- **Template Details**: View name, description, file count, size
+- **File Preview**: Quick look at template contents
+- **Approval Actions**:
+  - ✅ **Approve**: Template becomes publicly available
+  - ❌ **Reject**: Template stays private with feedback
+- **Status Tracking**: Monitor review status in template management
+
+#### Quality Criteria
+Inner Core reviewers check for:
+- **Code Quality**: Well-structured, maintainable code
+- **Documentation**: Clear usage instructions
+- **Examples**: Working examples included
+- **Best Practices**: Follows language/framework standards
+- **Security**: No security vulnerabilities
+- **Completeness**: All necessary files included
+
+#### Benefits
+- **For Users**: Access to verified, high-quality templates
+- **For Creators**: Professional feedback and recognition
+- **For Community**: Curated library of excellent templates
+- **For Platform**: Maintained quality standards
+
 ### 🔐 Authentication System
 
 Scoriet includes a complete authentication system with OAuth2 Password Grant:
@@ -489,6 +748,53 @@ curl -X GET http://10.0.0.8:8000/api/user \
 - `PUT /api/profile/password` - Change password
 - `POST /api/auth/forgot-password` - Password reset request
 - `POST /api/auth/reset-password` - Password reset confirmation
+
+### ⚙️ System Settings & Administration
+
+**NEW!** Comprehensive admin panel for system management:
+
+#### User Management
+- **User List**: View all registered users with details
+- **User Details**: Name, email, type, verification status, join date
+- **Inner Core Assignment**: Assign/remove reviewer permissions
+- **User Statistics**: Member since, last login tracking
+- **Filtering & Sorting**: Search and organize user list
+- **Pagination**: Handle large user bases efficiently
+
+#### System Settings
+- **Global API Keys**: Configure shared services
+  - Google Translate API key for Business users
+  - Centralized API key management
+- **Subscription Pricing**: Set plan prices
+  - Premium Plan monthly price
+  - Business Plan monthly price
+  - Patron Plan minimum monthly price
+  - Currency configuration (USD, EUR, etc.)
+- **Real-time Updates**: Instant price changes
+- **Validation**: Ensure valid pricing configuration
+
+#### Admin Features
+- **Settings Dashboard**: Tabbed interface for organization
+  - Settings tab: API keys and pricing
+  - User Management tab: User administration
+- **Access Control**: Admin-only access to system settings
+- **Audit Trail**: Track who changed what (planned)
+- **Refresh Controls**: Manual data refresh options
+
+#### Configuration Examples
+```typescript
+// System Settings
+Global Google Translate API Key: AIza***********
+Premium Plan: $9.99/month
+Business Plan: $29.99/month
+Patron Plan: $99.99/month (minimum)
+
+// User Management
+Total Users: 1,247
+Verified Users: 1,156
+Inner Core Reviewers: 5
+Admin Users: 2
+```
 
 ### 🌍 Internationalization Features
 
