@@ -3,6 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ForgotPasswordModalProps {
   visible: boolean;
@@ -10,11 +11,15 @@ interface ForgotPasswordModalProps {
   onSwitchToLogin: () => void;
 }
 
-export default function ForgotPasswordModal({ 
-  visible, 
-  onHide, 
-  onSwitchToLogin 
+export default function ForgotPasswordModal({
+  visible,
+  onHide,
+  onSwitchToLogin
 }: ForgotPasswordModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -40,14 +45,14 @@ export default function ForgotPasswordModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error sending email');
+        throw new Error(errorData.message || t.forgotpasswordmodal43);
       }
 
-      setSuccess('A password reset link has been sent to your email address.');
+      setSuccess(t.forgotpasswordmodal46);
       setEmail(''); // Clear email field
       
-    } catch {
-      setError(_ instanceof Error ? _.message : 'An error occurred');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ export default function ForgotPasswordModal({
 
   return (
     <Dialog
-      header="Forgot Password"
+      header={t.forgotpasswordmodal73}
       visible={visible}
       onHide={handleHide}
       style={{ width: '400px' }}
@@ -110,7 +115,7 @@ export default function ForgotPasswordModal({
             type="email"
             value={email}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="your.email@example.com"
+            placeholder={t.forgotpasswordmodal113}
             className="w-full"
             disabled={loading}
             required
@@ -119,7 +124,7 @@ export default function ForgotPasswordModal({
 
         <Button
           type="submit"
-          label={loading ? "Wird gesendet..." : "Reset-Link senden"}
+          label={loading ? "Wird gesendet..." : t.forgotpasswordmodal122}
           icon={loading ? "pi pi-spinner pi-spin" : "pi pi-send"}
           className="w-full"
           disabled={loading}
@@ -128,7 +133,7 @@ export default function ForgotPasswordModal({
         <div className="text-center mt-4">
           <Button
             type="button"
-            label="Back to Login"
+            label={t.forgotpasswordmodal131}
             className="p-button-link p-button-sm"
             onClick={() => {
               handleHide();

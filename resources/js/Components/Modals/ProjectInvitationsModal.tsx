@@ -9,6 +9,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Message } from 'primereact/message';
 import { confirmDialog } from 'primereact/confirmdialog';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProjectInvitationsModalProps {
   visible: boolean;
@@ -41,12 +42,16 @@ interface ProjectInvitation {
   };
 }
 
-const roleOptions = [
-  { label: 'Member', value: 'member' },
-  { label: 'Admin', value: 'admin' }
-];
-
 export default function ProjectInvitationsModal({ visible, onHide, project }: ProjectInvitationsModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
+  const roleOptions = [
+    { label: t.manageteammodal394, value: 'member' },
+    { label: t.manageteammodal395, value: 'admin' }
+  ];
+
   const [invitations, setInvitations] = useState<ProjectInvitation[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -71,7 +76,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -83,23 +88,23 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load invitations');
+        throw new Error(t.projectinvitationsmodal86);
       }
 
       const data = await response.json();
       // API returns invitations directly, not wrapped in { invitations: [...] }
       setInvitations(Array.isArray(data) ? data : []);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading invitations');
+      setError(error instanceof Error ? error.message : t.projectinvitationsmodal93);
     } finally {
       setLoading(false);
     }
   }, [project]);
 
   useEffect(() => {
-    console.log('=== useEffect triggered ===', { visible, projectId: project?.id });
+    console.log(t.projectinvitationsmodal100, { visible, projectId: project?.id });
     if (visible && project) {
-      console.log('Loading invitations...');
+      console.log(t.projectinvitationsmodal102);
       loadInvitations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,16 +115,16 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       return;
     }
 
-    console.log('=== SEND INVITATION START ===');
+    console.log(t.projectinvitationsmodal113);
     try {
       setSending(true);
       setError('');
       setSuccess('');
-      console.log('States cleared, about to fetch');
+      console.log(t.projectinvitationsmodal118);
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -138,23 +143,23 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       });
 
       const data = await response.json();
-      console.log('Response received:', data);
+      console.log(t.projectinvitationsmodal141, data);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to send invitation');
+        throw new Error(data.message || t.manageteammodal129);
       }
 
-      console.log('Setting success message...');
-      setSuccess('✅ Invitation sent successfully! Email delivered.');
+      console.log(t.projectinvitationsmodal147);
+      setSuccess(t.projectinvitationsmodal148);
 
-      console.log('Clearing form...');
+      console.log(t.projectinvitationsmodal150);
       setInviteForm({ email: '', role: 'member', message: '' });
 
-      console.log('SUCCESS MESSAGE IS NOW SET - Should be visible!');
+      console.log(t.projectinvitationsmodal153);
 
       // Add the new invitation to the list
       if (data.invitation) {
-        console.log('Adding invitation to list - raw data:', data.invitation);
+        console.log(t.projectinvitationsmodal157, data.invitation);
 
         // Enrich the invitation with ALL fields that the table expects
         const enrichedInvitation: ProjectInvitation = {
@@ -168,29 +173,29 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
           responded_at: data.invitation.responded_at,
           inviter: data.invitation.inviter || {
             id: data.invitation.invited_by,
-            name: 'You',
+            name: t.projectinvitationmail33,
             email: ''
           },
           invited_user: data.invitation.invited_user
         };
 
-        console.log('Adding enriched invitation:', enrichedInvitation);
+        console.log(t.projectinvitationsmodal177, enrichedInvitation);
         setInvitations(prev => [enrichedInvitation, ...prev]);
       }
 
       // KEEP DISABLED: Call onSuccess callback (this causes parent re-render!)
-      // console.log('Calling onSuccess callback...');
+      // console.log(t.projectinvitationsmodal182);
       // onSuccess?.();
 
       // Auto-clear success message after 5 seconds
       setTimeout(() => {
-        console.log('Auto-clearing success message after 5 seconds');
+        console.log(t.projectinvitationsmodal187);
         setSuccess('');
       }, 5000);
 
-      console.log('=== SEND INVITATION END - SUCCESS ===');
+      console.log(t.projectinvitationsmodal191);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error sending invitation');
+      setError(error instanceof Error ? error.message : t.projectinvitationsmodal193);
     } finally {
       setSending(false);
     }
@@ -201,7 +206,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
     confirmDialog({
       message: `Are you sure you want to cancel the invitation for ${invitation.invited_email}?`,
-      header: 'Cancel Invitation',
+      header: t.manageteammodal534,
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
@@ -217,7 +222,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
           });
 
           if (response.ok) {
-            setSuccess('✅ Invitation cancelled successfully');
+            setSuccess(t.projectinvitationsmodal220);
             loadInvitations();
 
             // Auto-clear success message after 4 seconds
@@ -226,10 +231,10 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             }, 4000);
           } else {
             const errorData = await response.json();
-            setError(errorData.message || 'Failed to cancel invitation');
+            setError(errorData.message || t.manageteammodal206);
           }
         } catch (error) {
-          setError(error instanceof Error ? error.message : 'Failed to cancel invitation');
+          setError(error instanceof Error ? error.message : t.manageteammodal206);
         }
       }
     });
@@ -240,7 +245,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
     confirmDialog({
       message: `Resend invitation to ${invitation.invited_email}?`,
-      header: 'Resend Invitation',
+      header: t.projectinvitationsmodal243,
       icon: 'pi pi-send',
       accept: async () => {
         try {
@@ -258,12 +263,12 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             body: JSON.stringify({
               email: invitation.invited_email,
               role: invitation.role,
-              message: invitation.message || 'Resent invitation',
+              message: invitation.message || t.projectinvitationsmodal261,
             }),
           });
 
           if (response.ok) {
-            setSuccess('✅ Invitation resent successfully! Email delivered.');
+            setSuccess(t.projectinvitationsmodal266);
             loadInvitations();
 
             // Auto-clear success message after 4 seconds
@@ -272,10 +277,10 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             }, 4000);
           } else {
             const errorData = await response.json();
-            setError(errorData.message || 'Failed to resend invitation');
+            setError(errorData.message || t.projectinvitationsmodal275);
           }
         } catch (error) {
-          setError(error instanceof Error ? error.message : 'Failed to resend invitation');
+          setError(error instanceof Error ? error.message : t.projectinvitationsmodal275);
         }
       }
     });
@@ -283,10 +288,10 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
   const statusTemplate = (invitation: ProjectInvitation) => {
     const statusMap = {
-      pending: { severity: 'warning', label: 'Pending' },
-      accepted: { severity: 'success', label: 'Accepted' },
-      declined: { severity: 'danger', label: 'Declined' },
-      expired: { severity: 'info', label: 'Expired' }
+      pending: { severity: 'warning', label: t.projectinvitationsmodal286 },
+      accepted: { severity: 'success', label: t.projectinvitationsmodal287 },
+      declined: { severity: 'danger', label: t.projectinvitationsmodal288 },
+      expired: { severity: 'info', label: t.projectinvitationsmodal289 }
     };
 
     const status = statusMap[invitation.status as keyof typeof statusMap] || { severity: 'info', label: invitation.status };
@@ -302,7 +307,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             icon="pi pi-times"
             className="p-button-text p-button-danger"
             onClick={() => cancelInvitation(invitation)}
-            tooltip="Cancel invitation"
+            tooltip={t.projectinvitationsmodal305}
           />
         );
       case 'expired':
@@ -311,7 +316,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             icon="pi pi-refresh"
             className="p-button-text p-button-warning"
             onClick={() => resendInvitation(invitation)}
-            tooltip="Resend invitation"
+            tooltip={t.projectinvitationsmodal314}
           />
         );
       case 'accepted':
@@ -334,7 +339,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
   const dialogFooter = (
     <div>
       <Button 
-        label="Close" 
+        label={t.authmodalsesetpasswordmodal162} 
         icon="pi pi-times" 
         onClick={onHide} 
         className="p-button-text" 
@@ -367,7 +372,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
                 type="email"
                 value={inviteForm.email}
                 onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="user@example.com"
+                placeholder={t.projectinvitationsmodal370}
                 required
               />
             </div>
@@ -389,13 +394,13 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
               id="message"
               value={inviteForm.message}
               onChange={(e) => setInviteForm(prev => ({ ...prev, message: e.target.value }))}
-              placeholder="Add a personal message to the invitation..."
+              placeholder={t.projectinvitationsmodal392}
               rows={3}
             />
           </div>
 
           <Button
-            label="Send Invitation"
+            label={t.manageteammodal437}
             icon="pi pi-send"
             onClick={sendInvitation}
             loading={sending}
@@ -411,18 +416,18 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
           <DataTable
             value={invitations}
             loading={loading}
-            emptyMessage="No invitations sent yet"
+            emptyMessage={t.projectinvitationsmodal414}
             stripedRows
             size="small"
           >
             <Column 
               field="invited_email" 
-              header="Email" 
+              header={t.projectinvitationsmodal420} 
               style={{ width: '25%' }}
             />
             <Column 
               field="role" 
-              header="Role" 
+              header={t.manageteammodal388} 
               style={{ width: '15%' }}
               body={(invitation) => (
                 <Tag value={invitation.role} severity="info" />
@@ -430,24 +435,24 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             />
             <Column 
               field="status" 
-              header="Status" 
+              header={t.applicationsmodal335} 
               style={{ width: '15%' }}
               body={statusTemplate}
             />
             <Column 
               field="created_at" 
-              header="Sent" 
+              header={t.projectinvitationsmodal439} 
               style={{ width: '20%' }}
               body={(invitation) => new Date(invitation.created_at).toLocaleDateString()}
             />
             <Column 
               field="expires_at" 
-              header="Expires" 
+              header={t.projectinvitationsmodal445} 
               style={{ width: '20%' }}
               body={(invitation) => new Date(invitation.expires_at).toLocaleDateString()}
             />
             <Column 
-              header="Actions" 
+              header={t.applicationsmodal354} 
               style={{ width: '15%' }}
               body={actionsTemplate}
             />

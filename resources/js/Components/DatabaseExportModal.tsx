@@ -8,6 +8,7 @@ import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-sql';
 import 'prismjs/themes/prism-tomorrow.css';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface DatabaseExportModalProps {
   isOpen: boolean;
@@ -39,6 +40,10 @@ const highlightSQL = (code: string) => {
 };
 
 export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { selectedProject } = useProject();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [selectedSchemaId, setSelectedSchemaId] = useState<number | null>(null);
@@ -68,7 +73,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load schemas');
+        throw new Error(t.databaseexportmodal71);
       }
 
       const data = await response.json();
@@ -90,7 +95,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
     } catch (error) {
       // Error loading schemas
-      setError(error instanceof Error ? error.message : 'Failed to load schemas');
+      setError(error instanceof Error ? error.message : t.databaseexportmodal71);
       setSchemas([]);
     } finally {
       setLoadingSchemas(false);
@@ -111,7 +116,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load schema versions');
+        throw new Error(t.databaseexportmodal114);
       }
 
       const data = await response.json();
@@ -138,7 +143,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
     } catch (error) {
       // Error loading schema versions
-      setError(error instanceof Error ? error.message : 'Failed to load schema versions');
+      setError(error instanceof Error ? error.message : t.databaseexportmodal114);
       setSchemaVersions([]);
     } finally {
       setLoadingVersions(false);
@@ -166,7 +171,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     if (isOpen && selectedProject) {
       loadSchemas();
     } else if (isOpen && !selectedProject) {
-      setError('No project selected. Please select a project first.');
+      setError(t.databaseexportmodal169);
     }
   }, [isOpen, selectedProject, loadSchemas]);
 
@@ -192,7 +197,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
   const exportSchema = async (downloadMode: boolean = false) => {
     if (!selectedProject || !selectedSchemaId || selectedVersion === null) {
-      setError('Please select a database and version to export');
+      setError(t.databaseexportmodal195);
       return;
     }
 
@@ -211,9 +216,9 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('No tables found in this schema. The schema might be empty or the version doesn\'t exist.');
+          throw new Error(t.databaseexportmodal214);
         } else if (response.status === 403) {
-          throw new Error('Access denied to this schema. Please check your permissions.');
+          throw new Error(t.databaseexportmodal216);
         } else {
           throw new Error(`Export failed: HTTP ${response.status}`);
         }
@@ -222,10 +227,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Export failed');
+        throw new Error(data.error || t.databaseexportmodal225);
       }
 
-      const sqlContent = data.sql || '-- No SQL generated';
+      const sqlContent = data.sql || t.databaseexportmodal228;
       setExportedSQL(sqlContent);
 
       if (downloadMode) {
@@ -235,7 +240,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       // View mode - just set the SQL content, user can see it below
     } catch (error) {
       // Export error
-      setError(error instanceof Error ? error.message : 'Export failed');
+      setError(error instanceof Error ? error.message : t.databaseexportmodal225);
     } finally {
       setLoading(false);
     }
@@ -266,7 +271,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     const sortedVersions = [...schemaVersions].sort((a, b) => b.version_number - a.version_number);
 
     return sortedVersions.map((version: SchemaVersion) => ({
-      label: `Version ${version.version_number}${version.is_current ? ' (Current)' : ''}`,
+      label: `Version ${version.version_number}${version.is_current ? t.databaseexportmodal269 : ''}`,
       value: version.version_number
     }));
   };
@@ -282,7 +287,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
   return (
     <Dialog
-      header="📤 Export Database Schema"
+      header={t.databaseexportmodal285}
       visible={isOpen}
       onHide={handleClose}
       style={{ width: '60vw', maxWidth: '900px' }}
@@ -335,13 +340,13 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     value: schema.id
                   }))}
                   onChange={(e) => setSelectedSchemaId(e.value)}
-                  placeholder="Select database..."
+                  placeholder={t.databaseexportmodal338}
                   className="w-full custom-dropdown"
                   panelClassName="custom-dropdown-panel"
                 />
               ) : (
                 <div className="text-gray-400 text-sm">
-                  {selectedProject ? 'No databases found in project' : 'No project selected'}
+                  {selectedProject ? 'No databases found in project' : t.databaseexportmodal344}
                 </div>
               )}
             </div>
@@ -360,7 +365,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   value={selectedVersion}
                   options={getVersionOptions()}
                   onChange={(e) => setSelectedVersion(e.value)}
-                  placeholder="Select version..."
+                  placeholder={t.databaseexportmodal363}
                   className="w-full custom-dropdown"
                   panelClassName="custom-dropdown-panel"
                 />
@@ -377,7 +382,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             </div>
             <div className="flex space-x-3">
               <Button
-                label="📥 Download .sql"
+                label={t.databaseexportmodal380}
                 onClick={() => exportAndDownload()}
                 disabled={loading || !selectedSchemaId || selectedVersion === null}
                 className="p-button-outlined p-button-info"
@@ -385,7 +390,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                 size="small"
               />
               <Button
-                label="👁️ View SQL"
+                label={t.databaseexportmodal388}
                 onClick={() => exportAndView()}
                 disabled={loading || !selectedSchemaId || selectedVersion === null}
                 className="p-button-primary"
@@ -403,13 +408,13 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
               <h3 className="text-sm font-medium text-white">Generated SQL Script</h3>
               <div className="flex space-x-2">
                 <Button
-                  label="📋 Copy"
+                  label={t.databaseexportmodal406}
                   onClick={copyToClipboard}
                   className="p-button-text p-button-sm"
                   size="small"
                 />
                 <Button
-                  label="💾 Download"
+                  label={t.databaseexportmodal412}
                   onClick={() => downloadSQL(exportedSQL)}
                   className="p-button-text p-button-sm"
                   size="small"

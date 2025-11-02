@@ -189,7 +189,7 @@ class SchemaTranslationController extends Controller
                 'fields' => $table->fields->map(function ($field) {
                     return [
                         'field_name' => $field->field_name,
-                        'field_type' => $field->field_type,
+                        'field_type' => strtolower($field->field_type),
                         'comment' => $field->comment
                     ];
                 })->toArray()

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -9,6 +10,10 @@ interface CreateTeamModalProps {
 }
 
 export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: CreateTeamModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { projects } = useProject();
   const [formData, setFormData] = useState<{
     name: string;
@@ -21,6 +26,21 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  const handleNameChange = (value: string) => {
+    // Convert to lowercase and remove invalid characters
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+    // Check if any characters were removed (invalid input)
+    if (value !== sanitized) {
+      setNameError('Only lowercase letters, numbers, and underscores are allowed');
+    } else {
+      setNameError(null);
+    }
+
+    setFormData({ ...formData, name: sanitized });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,10 +66,10 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         onClose();
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Failed to create team');
+        setError(errorData.message || t.createteammodal49);
       }
     } catch {
-      setError('Network error occurred');
+      setError(t.createteammodal52);
     } finally {
       setLoading(false);
     }
@@ -92,11 +112,19 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="e.g., Core Team, Quality Check"
+              onChange={(e) => handleNameChange(e.target.value)}
+              className={`w-full px-3 py-2 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                nameError ? 'border-red-500' : 'border-gray-600'
+              }`}
+              placeholder="gen_team_96"
               maxLength={255}
             />
+            <small className="text-gray-400 text-xs mt-1 block">
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
+            {nameError && (
+              <small className="text-red-400 text-xs mt-1 block">{nameError}</small>
+            )}
           </div>
 
           <div>
@@ -107,7 +135,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="What does this team do?"
+              placeholder={t.createteammodal110}
               rows={3}
               maxLength={1000}
             />

@@ -8,18 +8,20 @@ import { Checkbox } from 'primereact/checkbox';
 import { InputText } from 'primereact/inputtext';
 import { Card } from 'primereact/card';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useToast } from '@/contexts/ToastContext';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const setFocus = () => ref.current?.focus();
 
   return (
-    <div 
-      {...rest} 
+    <div
+      {...rest}
       ref={ref}
-      tabIndex={-1} 
-      style={{ flex: 1, padding: '5px 10px', ...style }} 
-      onMouseDownCapture={setFocus} 
+      tabIndex={-1}
+      style={{ flex: 1, padding: '5px 10px', ...style }}
+      onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
       className="bg-gray-800 text-gray-100"
     >
@@ -63,6 +65,11 @@ interface TeamsPanelProps {
 }
 
 export default function TeamsPanel({ filterByProject = false, source = 'menu', forceProjectId }: TeamsPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+  const toast = useToast();
+
   const { selectedProject } = useProject();
   // Use forceProjectId if provided, otherwise use selectedProject
   const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : (source === 'project-management' ? selectedProject?.id : undefined));
@@ -73,9 +80,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigningTeams, setAssigningTeams] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [removeSuccess, setRemoveSuccess] = useState('');
+  const [, setError] = useState(''); // error state for future use
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
   // const [loadingProjects, setLoadingProjects] = useState(false);
@@ -88,7 +93,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
         try {
           const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
-            throw new Error('Not authenticated');
+            throw new Error(t.applicationsmodal66);
           }
 
           const response = await fetch(`/api/projects/${forceProjectId}`, {
@@ -125,7 +130,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
           await loadAllTeams();
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Error loading data');
+        setError(error instanceof Error ? error.message : t.teamspanel128);
       } finally {
         setLoading(false);
       }
@@ -169,7 +174,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
         setSelectedTeamIdsByProject({});
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading project teams');
+      setError(error instanceof Error ? error.message : t.teamspanel172);
     }
   }, []);
 
@@ -179,7 +184,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       // setLoadingProjects(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/projects', {
@@ -190,13 +195,13 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load projects');
+        throw new Error(t.teamspanel193);
       }
 
       const data = await response.json();
       setProjects(data.projects || []);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading projects');
+      setError(error instanceof Error ? error.message : t.teamspanel199);
     } finally {
       // setLoadingProjects(false);
     }
@@ -224,7 +229,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/teams?all=true', {
@@ -235,7 +240,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load teams');
+        throw new Error(t.projectpanel416);
       }
 
       const data = await response.json();
@@ -252,7 +257,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       return teamsArray;
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading teams');
+      setError(error instanceof Error ? error.message : t.teamspanel255);
       return [];
     }
   };
@@ -267,7 +272,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       let totalAssigned = 0;
@@ -292,7 +297,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to assign teams');
+          throw new Error(errorData.message || t.teamspanel295);
         }
         
         totalAssigned += teamIds.length;
@@ -341,13 +346,13 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       }
       
       setSelectedTeamIdsByProject({});
-      setSuccess(`${totalAssigned} teams assigned to projects successfully`);
-      
+      toast.showSuccess(`${totalAssigned}`+t.teamspanel349);
+
       // Trigger navigation tree refresh
-      window.dispatchEvent(new Event('teamChanged'));
+      window.dispatchEvent(new Event(t.panelt1506));
 
     } catch (error: any) {
-      setError(error instanceof Error ? error.message : 'Error assigning teams');
+      toast.showError(error instanceof Error ? error.message : t.teamspanel350);
     } finally {
       setAssigningTeams(false);
     }
@@ -361,7 +366,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${projectId}/teams/${teamId}`, {
@@ -386,43 +391,49 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
 
       await response.json();
 
-      // Move team from assigned to available
-      const removedTeam = (assignedTeams || []).find(t => t.id === teamId);
-      if (removedTeam) {
-        setAssignedTeams(prev => (prev || []).filter(t => t.id !== teamId));
-        setAvailableTeams(prev => [...prev, removedTeam]);
-        setRemoveSuccess(`Team "${removedTeam.name}" removed from project successfully`);
-        
-        // Refresh the teams data to update the UI in menu mode
-        if (source === 'menu') {
-          // Update the teams state to reflect the removal from the project
-          setTeams(prev => {
-            return prev.map(team => {
-              if (team.id === teamId) {
-                // Remove the project from the team's projects array
-                return {
-                  ...team,
-                  projects: (team.projects || []).filter(p => p.id !== projectId)
-                };
-              }
-              return team;
-            });
-          });
-          
-          // Reload data from server to ensure consistency
-          loadAllTeams();
-          // Also refresh the project teams if we have a project
-          if (projectId) {
-            loadProjectTeams(projectId);
-          }
-          
-          // Trigger navigation tree refresh
-          window.dispatchEvent(new Event('teamChanged'));
-        }
+      // Try to find the team in assignedTeams, or fallback to all teams
+      let removedTeam = (assignedTeams || []).find(t => t.id === teamId);
+      if (!removedTeam) {
+        // Fallback: try to find in all teams
+        removedTeam = teams.find(t => t.id === teamId);
       }
 
+      // Update local state immediately
+      setAssignedTeams(prev => (prev || []).filter(t => t.id !== teamId));
+      if (removedTeam) {
+        setAvailableTeams(prev => [...prev, removedTeam]);
+      }
+
+      // Update the teams state to reflect the removal from the project
+      setTeams(prev => {
+        return prev.map(team => {
+          if (team.id === teamId) {
+            // Remove the project from the team's projects array
+            return {
+              ...team,
+              projects: (team.projects || []).filter(p => p.id !== projectId)
+            };
+          }
+          return team;
+        });
+      });
+
+      // Reload data from server to ensure consistency - ALWAYS with await!
+      await loadAllTeams();
+      // Also refresh the project teams if we have a project
+      if (projectId) {
+        await loadProjectTeams(projectId);
+      }
+
+      // Show success toast AFTER data is reloaded
+      const teamName = removedTeam?.name || 'Team';
+      toast.showSuccess(`${teamName} ` + t.teamspanel430);
+
+      // Trigger navigation tree refresh
+      window.dispatchEvent(new Event(t.panelt1506));
+
     } catch (error: any) {
-      setError(error instanceof Error ? error.message : 'Error removing team');
+      toast.showError(error instanceof Error ? error.message : t.teamspanel425);
     }
   };
 
@@ -454,19 +465,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
         ) : (
           <>
             {/* Header */}
-            <Card title={source === 'project-management' && projectId ? `Teams Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (projectId ? `Teams Project Assignment - ${(forcedProject || selectedProject)?.name || 'Project'}` : (source === 'menu' ? "Teams Assignment" : "Project Teams"))} className="m-4 mb-2">
-          <div className="flex flex-col gap-4">
-            
-            
-            
-
-            
-
-            {/* Status Messages */}
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            {success && <div className="text-green-500 text-sm">{success}</div>}
-            {removeSuccess && <div className="text-red-500 text-sm">{removeSuccess}</div>}
-          </div>
+            <Card title={source === 'project-management' && projectId ? `Teams Assignment - ${(forcedProject || selectedProject)?.name || t.manageteammodal316}` : (projectId ? `Teams Project Assignment - ${(forcedProject || selectedProject)?.name || t.manageteammodal316}` : (source === 'menu' ? t.panelsewnavigationpanel170 : t.teamspanel457))} className="m-4 mb-2">
         </Card>
 
         {/* Teams Table */}
@@ -484,7 +483,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                     <InputText
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search projects or teams..."
+                      placeholder={t.teamspanel487}
                       className="w-full"
                     />
                   </div>
@@ -541,15 +540,15 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                                             <p className="text-sm text-gray-300">{team.description}</p>
                                             <div className="flex items-center gap-2 mt-1">
                                               <span className="text-xs text-gray-400">
-                                                <i className="pi pi-user"></i> {team.owner?.name || 'Unknown'}
+                                                <i className="pi pi-user"></i> {team.owner?.name || t.testprojectschemas50}
                                               </span>
                                               <span className="text-xs text-gray-400">
-                                                <i className="pi pi-users"></i> {team.members_count || 0} members
+                                                <i className="pi pi-users"></i> {team.members_count || 0} {t.teamspanel711}
                                               </span>
                                               <span className={`text-xs px-2 py-1 rounded ${
                                                 isAssignedToThisProject ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
                                               }`}>
-                                                {isAssignedToThisProject ? 'Assigned' : 'Unassigned'}
+                                                {isAssignedToThisProject ? t.teamspanel557 : t.teamspanel552}
                                               </span>
                                             </div>
                                           </div>
@@ -560,7 +559,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                                             <Button
                                               icon="pi pi-times"
                                               className="p-button-rounded p-button-text p-button-sm p-button-danger"
-                                              tooltip="Remove from project"
+                                              tooltip={t.templatesRemoveFromProject}
                                               onClick={() => handleRemoveTeam(project.id, team.id)}
                                             />
                                           ) : (
@@ -605,13 +604,13 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                     </div>
                     <div className="flex space-x-2">
                       <Button
-                        label="Clear Selection"
+                        label={t.templatesClearSelection}
                         icon="pi pi-times"
                         onClick={() => setSelectedTeamIdsByProject({})}
                         className="p-button-text"
                       />
                       <Button
-                        label={`Assign Team(s) to Projects`}
+                        label={t.teamspanel619}
                         icon="pi pi-check"
                         onClick={handleAssignTeams}
                         disabled={Object.keys(selectedTeamIdsByProject).length === 0 || assigningTeams}
@@ -627,7 +626,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                     key={`teams-table-${(forcedProject || selectedProject)?.id || 'no-project'}-${selectedTeamIds.join('-')}-${assignedTeams.length}-${filteredAvailableTeams.length}`}
                     value={[...(assignedTeams || []), ...filteredAvailableTeams]}
                     className="p-datatable-sm"
-                    emptyMessage="No teams found"
+                    emptyMessage={t.teammanagementpanel439}
                     paginator
                     rows={10}
                     rowsPerPageOptions={[5, 10, 20]}
@@ -672,7 +671,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                             <Button
                               icon="pi pi-times"
                               className="p-button-rounded p-button-text p-button-sm p-button-danger"
-                              tooltip="Remove from project"
+                              tooltip={t.templatesRemoveFromProject}
                               onClick={() => handleRemoveTeam(projectId || 0, team.id)}
                             />
                           );
@@ -694,21 +693,21 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                       }}
                     />
                     
-                    <Column field="name" header="Team Name" sortable />
-                    <Column field="description" header="Description" />
+                    <Column field="name" header={t.manageteammodal312} sortable />
+                    <Column field="description" header={t.createteammodal103} />
                     <Column
                       field="owner"
-                      header="Owner"
+                      header={t.manageteammodal320}
                       body={(team) => (
                         <div className="flex items-center gap-2">
                           <i className="pi pi-user text-gray-500"></i>
-                          <span>{team.owner?.username || team.owner?.name || 'Unknown'}</span>
+                          <span>{team.owner?.username || team.owner?.name || t.testprojectschemas50}</span>
                         </div>
                       )}
                     />
                     <Column
                       field="members_count"
-                      header="Members"
+                      header={t.projectpanel748}
                       body={(team) => (
                         <div className="flex items-center gap-1">
                           <i className="pi pi-users text-gray-500"></i>
@@ -718,18 +717,18 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                     />
                     <Column
                       field="is_active"
-                      header="Status"
+                      header={t.applicationsmodal335}
                       body={(team) => (
                         <span className={`px-2 py-1 rounded text-xs ${
                           team.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
                         }`}>
-                          {team.is_active ? 'Active' : 'Inactive'}
+                          {team.is_active ? t.templatesStatusActive : t.manageteammodal328}
                         </span>
                       )}
                     />
                     <Column
                       field="created_at"
-                      header="Created"
+                      header={t.databasemanagementpanel861}
                       body={(team) => new Date(team.created_at).toLocaleDateString('de-DE')}
                     />
                   </DataTable>
@@ -742,7 +741,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
                       </div>
                       <div className="flex space-x-2">
                         <Button
-                          label="Clear Selection"
+                          label={t.templatesClearSelection}
                           icon="pi pi-times"
                           onClick={() => setSelectedTeamIds([])}
                           className="p-button-text"

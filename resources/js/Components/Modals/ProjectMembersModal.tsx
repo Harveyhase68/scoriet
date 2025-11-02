@@ -7,6 +7,8 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import { Tag } from 'primereact/tag';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dropdown } from 'primereact/dropdown';
+import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProjectMembersModalProps {
   visible: boolean;
@@ -31,6 +33,10 @@ interface ProjectMember {
 }
 
 export default function ProjectMembersModal({ visible, onHide, project }: ProjectMembersModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,14 +59,14 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to load project members');
+        throw new Error(errorData.message || t.projectmembersmodal56);
       }
 
       const data = await response.json();
-      
+
       setMembers(data);
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading project members');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.projectmembersmodal63);
     } finally {
       setLoading(false);
     }
@@ -92,13 +98,13 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to remove member');
+        throw new Error(errorData.message || t.manageteammodal155);
       }
 
-      setSuccess('Member removed successfully');
+      setSuccess(t.teamcontroller241);
       loadMembers(); // Refresh the list
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error removing member');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.projectmembersmodal101);
     }
   };
 
@@ -125,20 +131,20 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update member role');
+        throw new Error(errorData.message || t.projectmembersmodal128);
       }
 
-      setSuccess('Member role updated successfully');
+      setSuccess(t.projectcontroller849);
       loadMembers(); // Refresh the list
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error updating member role');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.projectmembersmodal134);
     }
   };
 
   const confirmRemoveMember = (member: ProjectMember) => {
     confirmDialog({
       message: `Are you sure you want to remove ${member.user.name} from this project?`,
-      header: 'Confirm Removal',
+      header: t.projectmembersmodal141,
       icon: 'pi pi-exclamation-triangle',
       accept: () => handleRemoveMember(member),
       acceptClassName: 'p-button-danger'
@@ -173,8 +179,8 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
   const roleTemplate = (member: ProjectMember) => {
     const roleOptions = [
-      { label: 'Member', value: 'member' },
-      { label: 'Admin', value: 'admin' }
+      { label: t.manageteammodal394, value: 'member' },
+      { label: t.manageteammodal395, value: 'admin' }
     ];
 
     const getRoleColor = (role: string) => {
@@ -190,7 +196,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
     if (member.role === 'owner') {
       return (
         <Tag
-          value="Owner"
+          value={t.manageteammodal320}
           severity={getRoleColor(member.role)}
           className="font-semibold"
         />
@@ -203,7 +209,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
         options={roleOptions}
         onChange={(e) => handleRoleChange(member, e.value)}
         className="w-full"
-        placeholder="Select role"
+        placeholder={t.projectmembersmodal206}
       />
     );
   };
@@ -218,7 +224,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       <Button
         icon="pi pi-trash"
         className="p-button-rounded p-button-text p-button-danger p-button-sm"
-        tooltip="Remove member"
+        tooltip={t.projectmembersmodal221}
         onClick={() => confirmRemoveMember(member)}
       />
     );
@@ -261,30 +267,30 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
             <DataTable
               value={members}
               className="p-datatable-sm p-datatable-dark"
-              emptyMessage="No members found"
+              emptyMessage={t.membermodal590}
               showGridlines
               stripedRows
             >
               <Column
                 field="user"
-                header="User"
+                header={t.projectmembersmodal270}
                 body={userTemplate}
                 style={{ minWidth: '250px' }}
               />
               <Column
                 field="role"
-                header="Role"
+                header={t.manageteammodal388}
                 body={roleTemplate}
                 style={{ width: '150px' }}
               />
               <Column
                 field="joined_at"
-                header="Joined"
+                header={t.membermodal609}
                 body={joinedTemplate}
                 style={{ width: '150px' }}
               />
               <Column
-                header="Actions"
+                header={t.applicationsmodal354}
                 body={actionTemplate}
                 style={{ width: '100px' }}
               />
@@ -293,7 +299,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Close"
+              label={t.authmodalsesetpasswordmodal162}
               icon="pi pi-times"
               onClick={onHide}
               className="p-button-text"

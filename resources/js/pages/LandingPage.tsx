@@ -147,14 +147,16 @@ export default function LandingPage() {
   const pricingTiers = [
     {
       name: t.freeLabel,
+      plan: "free",
       price: "€0",
-      period: "forever",
-      description: "Perfect for personal projects",
+      period: t.landingpage151,
+      description: t.landingpage152,
       features: [
-        "Up to 3 projects",
-        "Basic templates",
-        "SQL schema parsing",
-        "Community support"
+        t.landingpage154,
+        t.landingpage155,
+        t.landingpage156,
+        t.landingpage157,
+        t.landingpage158,
       ],
       buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
@@ -162,51 +164,54 @@ export default function LandingPage() {
     },
     {
       name: t.premiumLabel,
+      plan: "premium",
       price: `${pricingData.currency}${pricingData.premium}`,
       period: "/month",
       yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
-      description: "Best for professional developers",
+      description: t.landingpage168,
       features: [
-        "Unlimited projects",
-        "Advanced templates",
-        "Custom template creation",
-        "Priority support",
-        "Advanced SQL features",
-        "Team collaboration"
+        t.landingpage170,
+        t. landingpage171,
+        t.landingpage172,
+        t.landingpage173,
+        t.landingpage174,
+        t.landingpage175
       ],
       buttonText: t.goPremium,
       buttonClass: "p-button-primary",
       popular: true
     },
     {
-      name: "Business",
+      name: t.landingpage182,
+      plan: "business",
       price: `${pricingData.currency}${pricingData.business}`,
       period: "/month",
       yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
-      description: "Best for teams and agencies",
+      description: t.landingpage186,
       features: [
-        "All Premium features",
-        "Team collaboration tools",
-        "Google Translate API integration",
-        "Advanced analytics",
-        "Priority support with SLA",
-        "Custom branding options"
+        t.landingpage188,
+        t.landingpage189,
+        t.landingpage190,
+        t.landingpage191,
+        t.landingpage192,
+        t.landingpage193
       ],
-      buttonText: "Go Business",
+      buttonText: t.landingpage195,
       buttonClass: "p-button-info",
       popular: false
     },
     {
       name: t.patronLabel,
+      plan: "patron",
       price: `${pricingData.currency}${pricingData.patron}+`,
       period: "/month",
-      description: "Support the community",
+      description: t.landingpage203,
       features: [
-        "All Business features",
-        "Early access to features",
-        "Influence development",
-        "Community Discord access",
-        "Custom amount (€5-50+)"
+        t.landingpage205,
+        t.landingpage206,
+        t.landingpage207,
+        t.landingpage208,
+        t. landingpage209 + `${pricingData.currency} ${pricingData.patron}`+"+)"
       ],
       buttonText: t.becomePatron,
       buttonClass: "p-button-help",
@@ -301,7 +306,7 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <Badge value="Welcome Tab" severity="info" />
+                  <Badge value={t.landingpage304} severity="info" />
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       inputId="openHomeOnStart"
@@ -309,12 +314,12 @@ export default function LandingPage() {
                       onChange={(e) => handleOpenHomeOnStartChange(e.checked!)}
                     />
                     <label htmlFor="openHomeOnStart" className="text-gray-300 text-sm cursor-pointer">
-                      Open this tab on app start
+                      {t.landingpage311}
                     </label>
                   </div>
                 </div>
                 <div className="text-xs text-gray-400">
-                  Close this tab to focus on your projects
+                  {t.landingpage316}
                 </div>
               </div>
             </div>
@@ -476,7 +481,7 @@ export default function LandingPage() {
                 >
                   {tier.popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <Badge value="MOST POPULAR" severity="info" className="px-3 py-1" />
+                      <Badge value={t.landingpage479} severity="info" className="px-3 py-1" />
                     </div>
                   )}
                   
@@ -570,7 +575,7 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-white mb-4">
-                  {t.welcomeBack}, {userData?.name || 'User'}! 👋
+                  {t.landingpage573} {userData?.name || 'User'}! 👋
                 </h2>
                 <p className="text-xl text-gray-300 mb-4">
                   {t.currentPlan} <span className="text-blue-400 font-semibold">{t.freeLabel} Plan</span>
@@ -586,12 +591,12 @@ export default function LandingPage() {
                   >
                     <div className="mb-4">
                       {plan.popular && (
-                        <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                        <Badge value={t.landingpage589} severity="info" className="mb-4" />
                       )}
                       <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                       <div className="text-3xl font-bold text-blue-400 mb-2">
                         {plan.price}
-                        {plan.price !== 'Free' && plan.price !== 'Custom' && (
+                        {plan.plan !== 'free' && plan.plan !== 'patron' && (
                           <span className="text-lg text-gray-400">/month</span>
                         )}
                       </div>
@@ -628,7 +633,7 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-white">Scoriet</h3>
                 <p className="text-gray-400 mb-4">
-                  The future of code generation. Built by developers, for developers.
+                  {t.landingpage630}
                 </p>
                 <div className="flex space-x-4 gap-3">
                   <Button icon="pi pi-github" className="p-button-text p-button-rounded" />
@@ -671,7 +676,7 @@ export default function LandingPage() {
             <Divider />
             
             <div className="flex justify-between items-center text-gray-400">
-              <p>&copy; 2025 Scoriet. {t.allRightsReserved}.</p>
+              <p>{t.allRightsReserved}.</p>
               <div className="flex space-x-6">
                 <a href="#" className="hover:text-white">{t.privacyPolicy}</a>
                 <a href="#" className="hover:text-white">{t.termsOfService}</a>
@@ -740,7 +745,7 @@ export default function LandingPage() {
               >
                 <div className="p-6">
                   {plan.popular && (
-                    <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                    <Badge value={t.landingpage743} severity="info" className="mb-4" />
                   )}
                   <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                   <div className="text-3xl font-bold text-blue-400 mb-2">

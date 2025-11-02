@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Template;
 use App\Models\Project;
 use App\Models\ProjectTemplateUsage;
+use App\Services\CodeScannerService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -482,6 +483,61 @@ class TemplateController extends Controller
             $updateData['is_system_template'] = $validated['is_system_template'];
         }
 
+        // 🛡️ SECURITY SCAN: Check for malicious code
+        // Scan wenn: (1) Template wird auf public gesetzt ODER (2) Template IST bereits public UND Dateien werden geändert
+        $scanResult = null;
+        $needsScan = false;
+        $isBecomingPublic = false;
+        $wasPublicBeforeUpdate = $template->visibility === 'public';
+        $autoSetToPrivate = false;
+
+        // Fall 1: Template wird gerade auf public gesetzt (von private/unlisted zu public)
+        if (isset($validated['visibility']) && $validated['visibility'] === 'public' && $template->visibility !== 'public') {
+            $needsScan = true;
+            $isBecomingPublic = true;
+        }
+
+        // Fall 2: Template IST bereits public UND Dateien werden geändert
+        if ($template->visibility === 'public' && isset($validated['files'])) {
+            $needsScan = true;
+        }
+
+        if ($needsScan) {
+            // Prepare files to scan
+            $filesToScan = [];
+
+            if (isset($validated['files'])) {
+                // Use files from request (if being updated)
+                $filesToScan = $validated['files'];
+            } else {
+                // Load existing files from database
+                $filesToScan = $template->files()->get()->toArray();
+            }
+
+            // Perform security scan
+            $scanResult = CodeScannerService::scanTemplateFiles($filesToScan);
+
+            // If critical issues found, automatically set to private (NEVER block with 400!)
+            if ($scanResult['blocked']) {
+                // Automatisch auf PRIVATE setzen, egal ob user versuchte auf public zu setzen oder nicht
+                $updateData['visibility'] = 'private';
+                $autoSetToPrivate = true;
+
+                \Log::warning('Code Scanner: Malicious code detected - automatically set template to private', [
+                    'template_id' => $template->id,
+                    'template_name' => $template->name,
+                    'was_trying_to_go_public' => $isBecomingPublic,
+                    'was_already_public' => $wasPublicBeforeUpdate,
+                    'scan_result' => $scanResult,
+                ]);
+            }
+
+            // If becoming public and no warnings, set review_status to pending_review
+            if ($isBecomingPublic && !($scanResult['blocked'] ?? false) && $scanResult['summary']['warning_count'] === 0) {
+                $updateData['review_status'] = 'pending_review';
+            }
+        }
+
         $template->update($updateData);
 
         // Update files - delete existing and recreate
@@ -506,7 +562,35 @@ class TemplateController extends Controller
         // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
         $this->dispatchRegenerationJobsForTemplate($template);
 
-        return response()->json($template->load('files'));
+        // Return response with scan result if available
+        $response = $template->load('files');
+
+        if ($scanResult !== null) {
+            $responseData = [
+                'template' => $response,
+                'scan_result' => $scanResult,
+                'warnings_found' => $scanResult['summary']['warning_count'] > 0,
+            ];
+
+            // If template was automatically set to private due to malicious code
+            if ($autoSetToPrivate) {
+                $responseData['auto_set_to_private'] = true;
+                $responseData['warning'] = 'Template unusual content detected, switching back to private.';
+
+                // Detaillierte Issue-Liste für Frontend
+                if (!empty($scanResult['issues']['hard_blocks'])) {
+                    $detectedPatterns = array_map(function($issue) {
+                        return $issue['pattern'] . ' (line ' . $issue['line'] . ')';
+                    }, $scanResult['issues']['hard_blocks']);
+
+                    $responseData['detected_issues'] = implode(', ', $detectedPatterns);
+                }
+            }
+
+            return response()->json($responseData);
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -983,5 +1067,134 @@ class TemplateController extends Controller
         \Log::info("🧪 [API-TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
         \Log::info("🧪 [API-TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
         \Log::info("🧪 [API-TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
+    }
+
+    /**
+     * Export template as JSON (for review/download)
+     */
+    public function exportTemplate($templateId)
+    {
+        $user = Auth::user();
+
+        // Find template
+        $template = Template::with(['files', 'creator'])->find($templateId);
+
+        if (!$template) {
+            return response()->json([
+                'message' => 'Template not found.',
+            ], 404);
+        }
+
+        // Check permissions (owner, inner core, or admin can export)
+        if ($template->creator_user_id != $user->id &&
+            !in_array($user->user_type, ['admin', 'system']) &&
+            !$user->is_inner_core) {
+            return response()->json([
+                'message' => 'Unauthorized to export this template.',
+            ], 403);
+        }
+
+        // Build export data
+        $exportData = [
+            'template' => [
+                'name' => $template->name,
+                'description' => $template->description,
+                'category' => $template->category,
+                'language' => $template->language,
+                'tags' => $template->tags,
+                'visibility' => $template->visibility,
+                'is_system_template' => $template->is_system_template,
+                'created_at' => $template->created_at,
+                'creator' => [
+                    'name' => $template->creator->name,
+                    'email' => $template->creator->email,
+                ],
+            ],
+            'files' => $template->files->map(function ($file) {
+                return [
+                    'file_name' => $file->file_name,
+                    'file_path' => $file->file_path,
+                    'output_path' => $file->output_path,
+                    'file_content' => $file->file_content,
+                    'file_type' => $file->file_type,
+                    'file_order' => $file->file_order,
+                ];
+            }),
+            'export_info' => [
+                'exported_at' => now(),
+                'exported_by' => $user->name,
+                'scoriet_version' => '1.0.0',
+            ],
+        ];
+
+        return response()->json($exportData, 200);
+    }
+
+    /**
+     * Download template files as ZIP
+     */
+    public function downloadTemplateZip($templateId)
+    {
+        $user = Auth::user();
+
+        // Find template
+        $template = Template::with(['files', 'creator'])->find($templateId);
+
+        if (!$template) {
+            return response()->json([
+                'message' => 'Template not found.',
+            ], 404);
+        }
+
+        // Check permissions (owner, inner core, or admin can download)
+        if ($template->creator_user_id != $user->id &&
+            !in_array($user->user_type, ['admin', 'system']) &&
+            !$user->is_inner_core) {
+            return response()->json([
+                'message' => 'Unauthorized to download this template.',
+            ], 403);
+        }
+
+        // Create a temporary zip file
+        $zipFileName = 'template_' . $template->id . '_' . time() . '.zip';
+        $zipFilePath = storage_path('app/temp/' . $zipFileName);
+
+        // Ensure temp directory exists
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
+        // Create ZIP archive
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return response()->json([
+                'message' => 'Failed to create ZIP archive.',
+            ], 500);
+        }
+
+        // Add README with template info
+        $readme = "Template: {$template->name}\n";
+        $readme .= "Description: {$template->description}\n";
+        $readme .= "Category: {$template->category}\n";
+        $readme .= "Language: {$template->language}\n";
+        $readme .= "Creator: {$template->creator->name} ({$template->creator->email})\n";
+        $readme .= "Created: {$template->created_at}\n";
+        $readme .= "\n";
+        $readme .= "Files:\n";
+        foreach ($template->files as $file) {
+            $readme .= "- {$file->file_name} ({$file->file_type})\n";
+        }
+        $zip->addFromString('README.txt', $readme);
+
+        // Add all template files
+        foreach ($template->files as $file) {
+            // Use file_name as the name in the ZIP
+            $zip->addFromString($file->file_name, $file->file_content);
+        }
+
+        $zip->close();
+
+        // Return the ZIP file as download and delete after sending
+        return response()->download($zipFilePath, $template->name . '.zip')->deleteFileAfterSend(true);
     }
 }

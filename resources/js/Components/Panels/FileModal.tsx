@@ -7,6 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { FileUpload } from 'primereact/fileupload';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface FileModalProps {
     visible: boolean;
@@ -25,6 +26,9 @@ const FileModal: React.FC<FileModalProps> = ({
     templateFiles,
     fileTypes
 }) => {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
     const toast = useToast();
     const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
         defaultValues: {
@@ -92,7 +96,7 @@ const FileModal: React.FC<FileModalProps> = ({
     const handleUpload = (file: any) => {
         const isZip = file.type === 'application/zip' || file.name.endsWith('.zip');
         if (!isZip) {
-            toast.showError('Bitte wählen Sie eine ZIP-Datei aus!');
+            toast.showError(t.filemodal95);
             return false;
         }
 
@@ -103,12 +107,12 @@ const FileModal: React.FC<FileModalProps> = ({
 
     const removeUploadedFile = () => {
         setUploadedFile(null);
-        toast.showInfo('ZIP-Datei entfernt');
+        toast.showInfo(t.filemodal106);
     };
 
     return (
         <Dialog
-            header={editingFile ? 'Datei bearbeiten' : 'Neue Datei hinzufügen'}
+            header={editingFile ? 'Datei bearbeiten' : t.filemodal111}
             visible={visible}
             onHide={onCancel}
             style={{ width: '700px' }}
@@ -127,12 +131,12 @@ const FileModal: React.FC<FileModalProps> = ({
                         <Controller
                             name="file_name"
                             control={control}
-                            rules={{ required: 'Bitte Dateinamen eingeben!' }}
+                            rules={{ required: t.filemodal130 }}
                             render={({ field }) => (
                                 <InputText
                                     id="file_name"
                                     {...field}
-                                    placeholder="e.g., Model.php, component.tsx, config.json"
+                                    placeholder={t.filemodal135}
                                     className="w-full"
                                 />
                             )}
@@ -150,7 +154,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         <Controller
                             name="file_type"
                             control={control}
-                            rules={{ required: 'Bitte Typ auswählen!' }}
+                            rules={{ required: t.filemodal153 }}
                             render={({ field }) => (
                                 <Dropdown
                                     id="file_type"
@@ -179,14 +183,14 @@ const FileModal: React.FC<FileModalProps> = ({
                     <Controller
                         name="output_path"
                         control={control}
-                        rules={{ required: 'Bitte Zielverzeichnis eingeben!' }}
+                        rules={{ required: t.filemodal182 }}
                         render={({ field }) => (
                             <div className="p-inputgroup">
                                 <span className="p-inputgroup-addon">Pfad:</span>
                                 <InputText
                                     id="output_path"
                                     {...field}
-                                    placeholder="e.g., /components/, /services/, /app/Http/Controllers/"
+                                    placeholder={t.filemodal189}
                                     className="w-full"
                                 />
                             </div>
@@ -205,14 +209,14 @@ const FileModal: React.FC<FileModalProps> = ({
                     <div className="flex gap-2">
                         <Button
                             type="button"
-                            label="Text-Eingabe"
+                            label={t.filemodal208}
                             severity={contentMode === 'text' ? 'primary' : 'secondary'}
                             onClick={() => setContentMode('text')}
                             size="small"
                         />
                         <Button
                             type="button"
-                            label="ZIP-Upload"
+                            label={t.filemodal215}
                             severity={contentMode === 'zip' ? 'primary' : 'secondary'}
                             onClick={() => setContentMode('zip')}
                             size="small"
@@ -229,7 +233,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         <Controller
                             name="file_content"
                             control={control}
-                            rules={{ required: contentMode === 'text' ? 'Bitte Dateiinhalt eingeben!' : false }}
+                            rules={{ required: contentMode === 'text' ? t.filemodal232 : false }}
                             render={({ field }) => (
                                 <InputTextarea
                                     id="file_content"
@@ -275,7 +279,7 @@ Schleifen und Logik:
                                 maxFileSize={10000000}
                                 customUpload
                                 auto
-                                chooseLabel="ZIP-Datei auswählen"
+                                chooseLabel={t.filemodal278}
                                 uploadHandler={(e) => {
                                     if (e.files && e.files.length > 0) {
                                         handleUpload(e.files[0]);
@@ -304,7 +308,7 @@ Schleifen und Logik:
                                     </div>
                                     <Button
                                         type="button"
-                                        label="Entfernen"
+                                        label={t.filemodal307}
                                         icon="pi pi-times"
                                         severity="danger"
                                         text
@@ -331,13 +335,13 @@ Schleifen und Logik:
                 <div className="flex gap-2 justify-end mt-4">
                     <Button
                         type="button"
-                        label="Cancel"
+                        label={t.applicationsmodal432}
                         severity="secondary"
                         onClick={onCancel}
                     />
                     <Button
                         type="button"
-                        label={editingFile ? 'Aktualisieren' : 'Hinzufügen'}
+                        label={editingFile ? t.applicationsmodal313 : t.filemodal340}
                         severity="success"
                         onClick={handleSubmit}
                     />

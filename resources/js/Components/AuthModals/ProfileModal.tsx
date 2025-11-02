@@ -114,7 +114,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        setProfileError('Not logged in');
+        setProfileError(t.profilemodal115);
         return;
       }
 
@@ -126,7 +126,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       });
 
       if (!response.ok) {
-        throw new Error('Error loading user data');
+        throw new Error(t.profilemodal127);
       }
 
       const user = await response.json();
@@ -145,7 +145,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setCurrentLanguage(user.language as SupportedLanguage);
       }
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : 'Error loading');
+      setProfileError(error instanceof Error ? error.message : t.profilemodal146);
     }
   }, []);
 
@@ -166,7 +166,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not logged in');
+        throw new Error(t.profilemodal115);
       }
 
       const response = await fetch('/api/profile/update', {
@@ -185,7 +185,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error updating');
+        throw new Error(errorData.message || t.profilemodal186);
       }
 
       setProfileSuccess(t.profileUpdateSuccess);
@@ -196,7 +196,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       }, 500);
 
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : 'Profile update error');
+      setProfileError(error instanceof Error ? error.message : t.profilemodal197);
     } finally {
       setLoadingProfile(false);
     }
@@ -245,7 +245,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
     // Check password confirmation
     if (passwordData.password !== passwordData.password_confirmation) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t.profilemodal246);
       setLoadingPassword(false);
       return;
     }
@@ -253,7 +253,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not logged in');
+        throw new Error(t.profilemodal115);
       }
 
       const response = await fetch('/api/profile/password', {
@@ -272,14 +272,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error changing password');
+        throw new Error(errorData.message || t.profilemodal273);
       }
 
       setPasswordSuccess(t.passwordChangeSuccess);
       setPasswordData({ current_password: '', password: '', password_confirmation: '' });
       
     } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : 'An error occurred');
+      setPasswordError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
     } finally {
       setLoadingPassword(false);
     }
@@ -304,8 +304,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setDeleteSuccess('');
 
     // Check confirmation text
-    if (deleteData.confirmText !== 'DELETE') {
-      setDeleteError('Sie müssen "DELETE" eingeben, um Ihren Account zu löschen');
+    if (deleteData.confirmText !== t.profilemodal305) {
+      setDeleteError('Sie müssen t.profilemodal305 eingeben, um Ihren Account zu löschen');
       setLoadingDelete(false);
       return;
     }
@@ -313,7 +313,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not logged in');
+        throw new Error(t.profilemodal115);
       }
 
       const response = await fetch('/api/profile/delete', {
@@ -330,10 +330,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Fehler beim Löschen des Accounts');
+        throw new Error(errorData.message || t.authcontroller492);
       }
 
-      setDeleteSuccess('Account erfolgreich gelöscht. Sie werden automatisch abgemeldet.');
+      setDeleteSuccess(t.profilemodal334);
       
       // Clear tokens and reload page after 2 seconds
       setTimeout(() => {
@@ -345,7 +345,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       }, 2000);
       
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Ein Fehler ist aufgetreten');
+      setDeleteError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
     } finally {
       setLoadingDelete(false);
     }
@@ -446,7 +446,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 type="text"
                 value={userData.name}
                 onChange={(e) => handleProfileInputChange('name', e.target.value)}
-                placeholder="Your full name"
+                placeholder={t.authmodalsegistermodal239}
                 className="w-full"
                 disabled={loadingProfile}
                 required
@@ -462,7 +462,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 type="email"
                 value={userData.email}
                 onChange={(e) => handleProfileInputChange('email', e.target.value)}
-                placeholder="ihre.email@example.com"
+                placeholder={t.profilemodal463}
                 className="w-full"
                 disabled={loadingProfile}
                 required
@@ -554,7 +554,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 id="current-password"
                 value={passwordData.current_password}
                 onChange={(e) => handlePasswordInputChange('current_password', e.target.value)}
-                placeholder="Your current password"
+                placeholder={t.profilemodal555}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loadingPassword}
@@ -572,7 +572,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 id="new-password"
                 value={passwordData.password}
                 onChange={(e) => handlePasswordInputChange('password', e.target.value)}
-                placeholder="Your new password"
+                placeholder={t.profilemodal573}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loadingPassword}
@@ -590,7 +590,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 id="confirm-password"
                 value={passwordData.password_confirmation}
                 onChange={(e) => handlePasswordInputChange('password_confirmation', e.target.value)}
-                placeholder="Repeat new password"
+                placeholder={t.profilemodal591}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loadingPassword}
@@ -610,13 +610,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
 
-        <TabPanel header="Plans & Billing" leftIcon="pi pi-credit-card">
+        <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card">
           <div className="space-y-6">
             {/* Current Plan */}
             <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold text-white">Current Plan</h3>
-                <Badge value="Free" severity="info" />
+                <Badge value={t.planmodal43} severity="info" />
               </div>
               <p className="text-gray-300 mb-4">
                 You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features!
@@ -639,7 +639,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       <li>• Community support</li>
                     </ul>
                   </div>
-                  <Badge value="Current" severity="info" />
+                  <Badge value={t.profilemodal640} severity="info" />
                 </div>
               </Card>
 
@@ -657,10 +657,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     </ul>
                   </div>
                   <Button 
-                    label="Upgrade" 
+                    label={t.profilemodal658} 
                     size="small" 
                     className="p-button-primary"
-                    onClick={() => alert('Upgrade to Premium - Coming Soon!')}
+                    onClick={() => alert(t.profilemodal661)}
                   />
                 </div>
               </Card>
@@ -679,10 +679,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     </ul>
                   </div>
                   <Button 
-                    label="Become Patron" 
+                    label={t.profilemodal680} 
                     size="small" 
                     className="p-button-help"
-                    onClick={() => alert('Become Patron - Coming Soon!')}
+                    onClick={() => alert(t.profilemodal683)}
                   />
                 </div>
               </Card>
@@ -731,7 +731,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 id="delete-password"
                 value={deleteData.password}
                 onChange={(e) => handleDeleteInputChange('password', e.target.value)}
-                placeholder="Your current password"
+                placeholder={t.profilemodal555}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loadingDelete}
@@ -743,20 +743,20 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <div className="field">
               <label htmlFor="delete-confirm" className="block text-sm font-medium mb-2">
-                Enter "DELETE" to confirm
+                Enter {t.profilemodal305} to confirm
               </label>
               <InputText
                 id="delete-confirm"
                 type="text"
                 value={deleteData.confirmText}
                 onChange={(e) => handleDeleteInputChange('confirmText', e.target.value)}
-                placeholder="DELETE"
+                placeholder={t.profilemodal305}
                 className="w-full"
                 disabled={loadingDelete}
                 required
               />
               <small className="text-gray-500">
-                You must enter exactly "DELETE" (capital letters)
+                You must enter exactly {t.profilemodal305} (capital letters)
               </small>
             </div>
 
@@ -765,7 +765,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               label={loadingDelete ? t.deleting : t.deleteAccount}
               icon={loadingDelete ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               className="w-full p-button-danger"
-              disabled={loadingDelete || deleteData.confirmText !== 'DELETE'}
+              disabled={loadingDelete || deleteData.confirmText !== t.profilemodal305}
             />
           </form>
         </TabPanel>

@@ -241,7 +241,7 @@ export default function RegisterModal({
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Your full name"
+            placeholder={t.authmodalsegistermodal239}
             className="w-full"
             disabled={loading}
             required
@@ -258,7 +258,7 @@ export default function RegisterModal({
             type="text"
             value={formData.username}
             onChange={(e) => handleInputChange('username', e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-            placeholder="username123"
+            placeholder={t.registermodal261}
             className="w-full"
             disabled={loading}
             required
@@ -279,7 +279,7 @@ export default function RegisterModal({
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder="your.email@example.com"
+            placeholder={t.forgotpasswordmodal113}
             className="w-full"
             disabled={loading}
             required
@@ -295,7 +295,7 @@ export default function RegisterModal({
             id="register-password"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            placeholder="Your password"
+            placeholder={t.authmodalsegistermodal293}
             className="w-full"
             inputClassName="w-full"
             disabled={loading}
@@ -314,7 +314,7 @@ export default function RegisterModal({
             id="register-password-confirmation"
             value={formData.password_confirmation}
             onChange={(e) => handleInputChange('password_confirmation', e.target.value)}
-            placeholder="Repeat password"
+            placeholder={t.authmodalsegistermodal312}
             className="w-full"
             inputClassName="w-full"
             disabled={loading}
@@ -337,7 +337,7 @@ export default function RegisterModal({
               label: lang.nativeName,
               value: lang.code
             }))}
-            placeholder="Select Language"
+            placeholder={t.authmodalsegistermodal335}
             className="w-full"
             disabled={loading}
             itemTemplate={(option: any) => {
@@ -381,7 +381,7 @@ export default function RegisterModal({
 
         <Button
           type="submit"
-          label={loading ? "Registration in progress..." : "Register"}
+          label={loading ? t.registermodal379 : t.authmodalsegistermodal203}
           icon={loading ? "pi pi-spinner pi-spin" : "pi pi-user-plus"}
           className="w-full"
           disabled={loading}
@@ -390,7 +390,7 @@ export default function RegisterModal({
         <div className="text-center mt-4">
           <Button
             type="button"
-            label="Already have an account? Login"
+            label={t.authmodalsegistermodal388}
             className="p-button-link p-button-sm"
             onClick={() => {
               handleHide();

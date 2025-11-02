@@ -145,7 +145,7 @@ export const de: Translations = {
   projectcontroller294: 'Nur der Projekteigentümer kann das Eigentum übertragen',
   projectcontroller300: 'Der neue Eigentümer muss ein Projektmitglied sein',
   projectcontroller361: 'Nicht autorisiert',
-  projectcontroller367: 'Projekt erfolgreich deaktiviert',
+  projectcontroller367: 'Projekt erfolgreich gelöscht',
   projectcontroller377: 'Nicht autorisiert',
   projectcontroller382: 'Projekt endgültig gelöscht',
   projectcontroller392: 'Nicht autorisiert',
@@ -1179,7 +1179,7 @@ export const de: Translations = {
   planmodal68: 'Erweiterte SQL-Funktionen',
   planmodal69: 'Teamzusammenarbeit',
   planmodal71: 'Wählen Sie Premium',
-  planmodal76: 'Geschäft',
+  planmodal76: 'Business',
   planmodal80: 'Am besten für Teams und Agenturen',
   planmodal82: 'Alle Premium-Funktionen',
   planmodal83: 'Tools für die Teamzusammenarbeit',
@@ -1337,6 +1337,7 @@ export const de: Translations = {
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleting: 'Wird gelöscht...',
+  saving: 'Wird gespeichert...',
   deleteAccount: 'Konto löschen',
 
   // resources/js\Components\AuthModals\ProfileModal.tsx
@@ -1506,10 +1507,11 @@ export const de: Translations = {
   errorfallback40: 'Fehlerdetails:',
   errorfallback58: 'Erneut versuchen',
   errorfallback65: 'Seite neu laden & Reset',
+  errorfallback65_2: ' Button löscht alle lokalen Daten (Layout, Einstellungen & Logout!) und startet die App neu.',
   errorfallback75: 'Hinweis:',
 
   // resources/js/Components/ErrorFallback.tsx
-  errorfallback77: 'Tipp: Wenn das Problem weiterhin besteht, kontaktieren Sie den Support.',
+  errorfallback77: 'Tipp: Wenn das Problem weiterhin besteht, bitte kontaktieren Sie den Support.',
 
   // resources/js\Components\ErrorFallback.tsx
   errorfallback78: 'Tipp: Wenn das Problem weiterhin besteht',
@@ -2263,7 +2265,7 @@ export const de: Translations = {
   codegenerationpanel300: 'Text/Plain',
 
   // resources/js\Components\Panels\CodeGenerationPanel.tsx
-  codegenerationpanel327: 'Testpanel zur Codegenerierung',
+  codegenerationpanel327: 'Codegenerierung',
 
   // resources/js/Components/Panels/CodeGenerationPanel.tsx
   codegenerationpanel332: 'Vorlagen-ID',
@@ -2550,7 +2552,7 @@ export const de: Translations = {
   panelsewnavigationpanel251: 'SQL exportieren',
   panelsewnavigationpanel258: 'Generator',
   panelsewnavigationpanel263: 'Debug-Handbuchgenerator',
-  panelsewnavigationpanel268: 'Codegenerierungspanel',
+  panelsewnavigationpanel268: 'Codegenerierung',
   panelsewnavigationpanel273: 'Abfrage-Generator',
   panelsewnavigationpanel281: 'Verwaltung',
   panelsewnavigationpanel285: 'Systemeinstellungen',
@@ -2588,7 +2590,7 @@ export const de: Translations = {
   panelsewnavigationpanel557: 'SQL exportieren',
   panelsewnavigationpanel565: 'Generator',
   panelsewnavigationpanel572: 'Debug-Handbuchgenerator',
-  panelsewnavigationpanel576: 'Codegenerierungspanel',
+  panelsewnavigationpanel576: 'Codegenerierung',
   panelsewnavigationpanel580: 'Abfrage-Generator',
   panelsewnavigationpanel589: 'Verwaltung',
   panelsewnavigationpanel596: 'Systemeinstellungen',
@@ -2881,7 +2883,7 @@ export const de: Translations = {
   newnavigationpanel251: 'SQL exportieren',
   newnavigationpanel258: 'Generator',
   newnavigationpanel263: 'Debug-Handbuchgenerator',
-  newnavigationpanel268: 'Codegenerierungspanel',
+  newnavigationpanel268: 'Codegenerierung',
   newnavigationpanel273: 'Abfrage-Generator',
   newnavigationpanel281: 'Verwaltung',
   newnavigationpanel285: 'Systemeinstellungen',
@@ -2919,7 +2921,7 @@ export const de: Translations = {
   newnavigationpanel557: 'SQL exportieren',
   newnavigationpanel565: 'Generator',
   newnavigationpanel572: 'Debug-Handbuchgenerator',
-  newnavigationpanel576: 'Codegenerierungspanel',
+  newnavigationpanel576: 'Codegenerierung',
   newnavigationpanel580: 'Abfrage-Generator',
   newnavigationpanel589: 'Verwaltung',
   newnavigationpanel596: 'Systemeinstellungen',
@@ -2962,6 +2964,7 @@ export const de: Translations = {
   panelt1837: 'AUSWEIS:',
   panelt1839: 'Weg:',
   panelt1842: 'Projekt-ID:',
+  panelt1843: 'Pfad:',
   panelt1845: 'Team-ID:',
   panelt1848: 'Rolle:',
   panelt1853: 'Vorlagen-ID:',
@@ -3370,7 +3373,7 @@ export const de: Translations = {
 
   // resources/js/Components/Panels/ProjectPanel.tsx
   projectpanel1356: 'Möchten Sie dieses Projekt wirklich löschen?',
-  projectpanel1362: 'Durch diese Aktion wird das Projekt deaktiviert. Sie können es später bei Bedarf wiederherstellen. Die mit diesem Projekt verknüpften Teams, Vorlagen und Datenbanken bleiben erhalten.',
+  projectpanel1362: 'Durch diese Aktion wird das Projekt und alle zugehörigen Daten ENDGÜLTIG gelöscht. Dies kann nicht rückgängig gemacht werden! Die mit diesem Projekt verknüpften Teams, Vorlagen und Datenbanken bleiben erhalten.',
 
   // resources/js\Components\Panels\ProjectPanel.tsx
   projectpanel1371: 'Stornieren',
@@ -3859,11 +3862,13 @@ export const de: Translations = {
   teamspanel270: 'Nicht authentifiziert',
   teamspanel295: 'Fehler beim Zuweisen von Teams',
   teamspanel347: 'teamChanged',
+  teamspanel349: ' Teams erfolgreich Projekten zugewiesen',
   teamspanel350: 'Fehler beim Zuweisen der Teams',
   teamspanel364: 'Nicht authentifiziert',
   teamspanel368: 'LÖSCHEN',
   teamspanel420: 'teamChanged',
   teamspanel425: 'Fehler beim Entfernen des Teams',
+  teamspanel430: 'Erfolgreich aus dem Projekt entfernt',
   teamspanel451: 'Teams werden geladen …',
   teamspanel457: 'Projektteams',
   teamspanel487: 'Projekte oder Teams suchen...',
@@ -3875,8 +3880,10 @@ export const de: Translations = {
   // resources/js\Components\Panels\TeamsPanel.tsx
   teamspanel544: 'Unbekannt',
   teamspanel552: 'Nicht zugewiesen',
+  teamspanel557: 'Zugewiesen',
   teamspanel563: 'Aus Projekt entfernen',
   teamspanel608: 'Auswahl löschen',
+  teamspanel619: 'Teams Projekten zuordnen',
   teamspanel630: 'Keine Teams gefunden',
   teamspanel675: 'Aus Projekt entfernen',
   teamspanel697: 'Teamname',
@@ -4291,7 +4298,7 @@ export const de: Translations = {
   cmspage440: 'Am besten für professionelle Entwickler',
   cmspage462: 'Wählen Sie Premium',
   cmspage473: 'AM BELIEBTESTEN',
-  cmspage474: 'Geschäft',
+  cmspage474: 'Business',
   cmspage479: 'Am besten für Teams und Agenturen',
   cmspage501: 'Wählen Sie Business',
   cmspage520: 'Unterstütze die Community',
@@ -4333,7 +4340,7 @@ export const de: Translations = {
   index662: 'Team Verwaltung',
   index676: 'Vorlage – DB-Schemaabhängigkeiten',
   index689: '🔧 Debug-Handbuchgenerator',
-  index711: 'Testpanel zur Codegenerierung',
+  index711: 'Codegenerierung',
   index724: 'Sprachmanagement',
   index737: 'Schemaübersetzung',
   index750: 'Systemeinstellungen',
@@ -4387,11 +4394,13 @@ export const de: Translations = {
   modernInterfaceDesc: 'Intuitive dock-basierte MDI-Oberfläche mit Tab-Stapelung und schwebenden Panels.',
 
   // resources/js\pages\LandingPage.tsx
+  landingpage151: ' Für immer',
   landingpage152: 'Perfekt für persönliche Projekte',
   landingpage154: 'Bis zu 3 Projekte',
   landingpage155: 'Grundlegende Vorlagen',
   landingpage156: 'SQL-Schemaanalyse',
   landingpage157: 'Unterstützung durch die Gemeinschaft',
+  landingpage158: 'Werbefinanziert',
 
   // resources/js/pages/LandingPage.tsx
   goStartFree: 'Kostenlos starten',
@@ -4410,7 +4419,7 @@ export const de: Translations = {
   goPremium: 'Premium werden',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage182: 'Geschäft',
+  landingpage182: 'Business',
   landingpage186: 'Am besten für Teams und Agenturen',
   landingpage188: 'Alle Premium-Funktionen',
   landingpage189: 'Tools für die Teamzusammenarbeit',
@@ -4418,7 +4427,7 @@ export const de: Translations = {
   landingpage191: 'Erweiterte Analysen',
   landingpage192: 'Vorrangiger Support mit SLA',
   landingpage193: 'Benutzerdefinierte Branding-Optionen',
-  landingpage195: 'Gehen Sie ins Geschäft',
+  landingpage195: 'Wählen Sie Business',
 
   // resources/js/pages/LandingPage.tsx
   patronLabel: 'Patron',
@@ -4429,14 +4438,14 @@ export const de: Translations = {
   landingpage206: 'Früher Zugriff auf Funktionen',
   landingpage207: 'Einflussentwicklung',
   landingpage208: 'Community-Discord-Zugriff',
-  landingpage209: 'Benutzerdefinierter Betrag (5–50 €+)',
+  landingpage209: 'Benutzerdefinierter Betrag ab (',
 
   // resources/js/pages/LandingPage.tsx
   becomePatron: 'Patron werden',
 
   // resources/js\pages\LandingPage.tsx
   landingpage288: 'Scoriet – Enterprise Code Generator',
-  landingpage304: 'Willkommensregisterkarte',
+  landingpage304: 'Willkommen',
   landingpage307: 'openHomeOnStart',
   landingpage311: 'Öffnen Sie diese Registerkarte beim Start der App',
 
@@ -4463,7 +4472,7 @@ export const de: Translations = {
   pricingSubtitle: 'Starten Sie kostenlos, upgraden Sie wenn Sie bereit zum Skalieren sind',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage479: 'px-3 py-1',
+  landingpage479: 'AM BELIEBTESTEN',
   landingpage486: 'Patreon',
   landingpage514: 'Frei',
 
@@ -4476,10 +4485,10 @@ export const de: Translations = {
   welcomeBack: 'Benutzer',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage573: 'Benutzer',
+  landingpage573: 'Willkommen zurück ',
 
   // resources/js/pages/LandingPage.tsx
-  currentPlan: '{t.freeLabel}-Plan',
+  currentPlan: 'Ihr Plan: ',
   freeLabel: 'Kostenlos',
   freeTier: 'Kostenlos Plan',
 
@@ -4511,10 +4520,7 @@ export const de: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Kontakt',
   communityLink: 'Community',
-  allRightsReserved: '© 2025 Scoriet. {t.allRightsReserved}.',
-
-  // resources/js\pages\LandingPage.tsx
-  landingpage674: '© 2025 Scoriet. {t.allRightsReserved}.',
+  allRightsReserved: '© 2025 Scoriet, alle Rechte vorbehalten',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Datenschutz',

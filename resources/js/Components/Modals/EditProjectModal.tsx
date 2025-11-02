@@ -5,6 +5,8 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Dropdown } from 'primereact/dropdown';
+import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Project {
   id: number;
@@ -68,6 +70,9 @@ export default function EditProjectModal({
   onSuccess,
   projectMembers = []
 }: EditProjectModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -96,7 +101,7 @@ export default function EditProjectModal({
     thousands_separator: '.',
     date_format: 'd.m.Y',
     time_format: 'H:i:s',
-    currency_symbol: '€',
+    currency_symbol: t.editprojectmodal602,
     timezone: 'Europe/Vienna',
     // API Keys
     google_translate_api_key: ''
@@ -130,7 +135,7 @@ export default function EditProjectModal({
         thousands_separator: project.thousands_separator || '.',
         date_format: project.date_format || 'd.m.Y',
         time_format: project.time_format || 'H:i:s',
-        currency_symbol: project.currency_symbol || '€',
+        currency_symbol: project.currency_symbol || t.editprojectmodal602,
         timezone: project.timezone || 'Europe/Vienna',
         // API Keys
         google_translate_api_key: project.google_translate_api_key || ''
@@ -165,7 +170,7 @@ export default function EditProjectModal({
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${project.id}`, {
@@ -180,7 +185,7 @@ export default function EditProjectModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update project');
+        throw new Error(errorData.message || t.editprojectmodal183);
       }
 
       await response.json();
@@ -193,8 +198,8 @@ export default function EditProjectModal({
         onSuccess();
       }
 
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error updating project');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.editprojectmodal197);
     } finally {
       setSaving(false);
     }
@@ -212,7 +217,7 @@ export default function EditProjectModal({
 
   return (
     <Dialog
-      header="Edit Project"
+      header={t.editprojectmodal215}
       visible={visible}
       onHide={handleCancel}
       style={{ width: '800px' }}
@@ -224,7 +229,7 @@ export default function EditProjectModal({
     >
       <TabView>
         {/* Tab 1: Project Settings */}
-        <TabPanel header="Project Settings" leftIcon="pi pi-cog">
+        <TabPanel header={t.editprojectmodal227} leftIcon="pi pi-cog">
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -237,7 +242,7 @@ export default function EditProjectModal({
                   setError('');
                 }}
                 className="w-full font-mono"
-                placeholder="my_project_name"
+                placeholder={t.editprojectmodal240}
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
@@ -257,7 +262,7 @@ export default function EditProjectModal({
                 onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
                 className="w-full"
                 rows={3}
-                placeholder="Enter project description"
+                placeholder={t.editprojectmodal260}
                 disabled={saving}
               />
             </div>
@@ -271,14 +276,14 @@ export default function EditProjectModal({
                   value={editForm.join_code}
                   onChange={(e) => setEditForm(prev => ({ ...prev, join_code: e.target.value }))}
                   className="flex-1"
-                  placeholder="Enter join code (optional)"
+                  placeholder={t.editprojectmodal274}
                   disabled={saving}
                 />
                 <Button
                   icon="pi pi-refresh"
                   className="p-button-outlined"
                   onClick={() => setEditForm(prev => ({ ...prev, join_code: 'PROJ-' + Math.random().toString(36).substring(2, 10).toUpperCase() }))}
-                  tooltip="Generate random join code"
+                  tooltip={t.editprojectmodal281}
                   disabled={saving}
                 />
               </div>
@@ -329,7 +334,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 2: Database Connection */}
-        <TabPanel header="Database Connection" leftIcon="pi pi-database">
+        <TabPanel header={t.editprojectmodal332} leftIcon="pi pi-database">
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -423,7 +428,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 3: Project Properties */}
-        <TabPanel header="Project Properties" leftIcon="pi pi-file">
+        <TabPanel header={t.editprojectmodal426} leftIcon="pi pi-file">
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -481,11 +486,11 @@ export default function EditProjectModal({
                 value={editForm.default_language}
                 onChange={(e) => setEditForm(prev => ({ ...prev, default_language: e.target.value }))}
                 options={[
-                  { label: 'English', value: 'en' },
-                  { label: 'Deutsch', value: 'de' },
-                  { label: 'Français', value: 'fr' },
-                  { label: 'Español', value: 'es' },
-                  { label: 'Italiano', value: 'it' }
+                  { label: t.editprojectmodal484, value: 'en' },
+                  { label: t.editprojectmodal485, value: 'de' },
+                  { label: t.editprojectmodal486, value: 'fr' },
+                  { label: t.editprojectmodal487, value: 'es' },
+                  { label: t.editprojectmodal488, value: 'it' }
                 ]}
                 className="w-full"
                 disabled={saving}
@@ -503,10 +508,10 @@ export default function EditProjectModal({
                 value={editForm.filename_short_length}
                 onChange={(e) => setEditForm(prev => ({ ...prev, filename_short_length: e.target.value }))}
                 options={[
-                  { label: '2 characters', value: 2 },
-                  { label: '3 characters', value: 3 },
-                  { label: '4 characters', value: 4 },
-                  { label: '5 characters', value: 5 }
+                  { label: t.editprojectmodal506, value: 2 },
+                  { label: t.editprojectmodal507, value: 3 },
+                  { label: t.editprojectmodal508, value: 4 },
+                  { label: t.editprojectmodal509, value: 5 }
                 ]}
                 className="w-full"
                 disabled={saving}
@@ -519,7 +524,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 4: Localization Settings */}
-        <TabPanel header="Localization Settings" leftIcon="pi pi-globe">
+        <TabPanel header={t.editprojectmodal522} leftIcon="pi pi-globe">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
@@ -599,13 +604,13 @@ export default function EditProjectModal({
                 <InputText
                   value={editForm.currency_symbol}
                   onChange={(e) => setEditForm({ ...editForm, currency_symbol: e.target.value })}
-                  placeholder="€"
+                  placeholder={t.editprojectmodal602}
                   maxLength={5}
                   className="w-full"
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Währungssymbol (z.B. "€", "$", "£", "CHF")
+                  Währungssymbol (z.B. t.editprojectmodal602, "$", "£", t.editprojectmodal608)
                 </div>
               </div>
 
@@ -686,14 +691,14 @@ export default function EditProjectModal({
       {/* Buttons */}
       <div className="flex justify-end space-x-2 pt-4">
         <Button
-          label="Cancel"
+          label={t.applicationsmodal432}
           icon="pi pi-times"
           onClick={handleCancel}
           className="p-button-text"
           disabled={saving}
         />
         <Button
-          label={saving ? "Saving..." : "Save Changes"}
+          label={saving ? "Saving..." : t.editprojectmodal696}
           icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
           onClick={handleSave}
           disabled={saving}

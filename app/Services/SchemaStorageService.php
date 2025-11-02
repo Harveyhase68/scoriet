@@ -135,12 +135,14 @@ class SchemaStorageService
                 SchemaField::create([
                     'table_id' => $table->id,
                     'field_name' => $fieldData['name'],
-                    'field_type' => $fieldData['type'],
+                    'field_type' => strtolower($fieldData['type']),
+                    'field_length' => $fieldData['length'] ?? null,
                     'is_unsigned' => $fieldData['unsigned'] ?? false,
                     'is_nullable' => $fieldData['nullable'] ?? true,
                     'default_value' => $this->normalizeDefaultValue($fieldData['default'] ?? null),
                     'is_auto_increment' => $fieldData['auto_increment'] ?? false,
                     'field_order' => $index + 1,
+                    'comment' => $fieldData['comment'] ?? null,
                 ]);
             }
         }
@@ -229,6 +231,8 @@ class SchemaStorageService
         $reference = SchemaForeignKeyReference::create([
             'constraint_id' => $constraint->id,
             'referenced_table_id' => $referencedTable->id,
+            'on_delete' => $referenceData['on_delete'] ?? 'NO ACTION',
+            'on_update' => $referenceData['on_update'] ?? 'NO ACTION',
         ]);
 
         // Referenced Columns speichern

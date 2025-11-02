@@ -140,7 +140,7 @@ class SchemaVersion extends Model
                     \App\Models\SchemaField::create([
                         'table_id' => $newTable->id,
                         'field_name' => $sourceField->field_name,
-                        'field_type' => $sourceField->field_type,
+                        'field_type' => strtolower($sourceField->field_type),
                         'field_length' => $sourceField->field_length,
                         'field_precision' => $sourceField->field_precision,
                         'field_scale' => $sourceField->field_scale,

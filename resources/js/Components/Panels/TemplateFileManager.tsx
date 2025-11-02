@@ -12,6 +12,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { apiClient as api } from '@/lib/api';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TemplateFile {
     id: number;
@@ -35,6 +36,9 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
     onFilesUpdate,
     onClose
 }) => {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
     const toast = useToast();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingFile, setEditingFile] = useState<TemplateFile | null>(null);
@@ -105,7 +109,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch {
-            toast.showError(`Fehler beim ${editingFile ? 'Aktualisieren' : 'Erstellen'} der Datei`);
+            toast.showError(`Fehler beim ${editingFile ? t.applicationsmodal313 : t.teammodal240} der Datei`);
         }
     };
 
@@ -113,11 +117,11 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
         try {
             const response = await api.delete(`/template-files/${id}`);
             if (response.data.success) {
-                toast.showSuccess('Datei erfolgreich gelöscht');
+                toast.showSuccess(t.templatecontroller936);
                 onFilesUpdate();
             }
         } catch {
-            toast.showError('Fehler beim Löschen der Datei');
+            toast.showError(t.templatefilemanager120);
         }
     };
 
@@ -128,18 +132,18 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 onFilesUpdate();
             }
         } catch {
-            toast.showError('Fehler beim Verschieben der Datei');
+            toast.showError(t.templatefilemanager131);
         }
     };
 
     const confirmDelete = (id: number) => {
         confirmDialog({
-            message: 'Sind Sie sicher, dass Sie diese Datei löschen möchten?',
-            header: 'Datei löschen?',
+            message: t.templatefilemanager137,
+            header: t.templatefilemanager138,
             icon: 'pi pi-exclamation-triangle',
             accept: () => handleDelete(id),
             acceptLabel: 'Ja',
-            rejectLabel: 'Nein',
+            rejectLabel: t.templatefilemanager142,
             acceptClassName: 'p-button-danger'
         });
     };
@@ -172,7 +176,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     size="small"
                     disabled={index === 0}
                     onClick={() => handleMoveFile(rowData.id, 'up')}
-                    tooltip="Nach oben"
+                    tooltip={t.templatefilemanager175}
                     tooltipOptions={{ position: 'top' }}
                 />
                 <Button
@@ -182,7 +186,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     size="small"
                     disabled={index === files.length - 1}
                     onClick={() => handleMoveFile(rowData.id, 'down')}
-                    tooltip="Nach unten"
+                    tooltip={t.templatefilemanager185}
                     tooltipOptions={{ position: 'top' }}
                 />
                 <Button
@@ -192,7 +196,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     severity="info"
                     size="small"
                     onClick={() => handleEdit(rowData)}
-                    tooltip="Bearbeiten"
+                    tooltip={t.cmsadminpanel170}
                     tooltipOptions={{ position: 'top' }}
                 />
                 <Button
@@ -202,7 +206,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     severity="danger"
                     size="small"
                     onClick={() => confirmDelete(rowData.id)}
-                    tooltip="Löschen"
+                    tooltip={t.cmsadminpanel178}
                     tooltipOptions={{ position: 'top' }}
                 />
             </div>
@@ -217,14 +221,14 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 <div className="flex gap-2">
                     <Button
                         icon="pi pi-plus"
-                        label="Neue Datei"
+                        label={t.templatefilemanager220}
                         size="small"
                         severity="success"
                         onClick={handleCreate}
                     />
                     <Button
                         icon="pi pi-times"
-                        label="Schließen"
+                        label={t.authmodalsesetpasswordmodal162}
                         size="small"
                         severity="secondary"
                         onClick={onClose}
@@ -238,18 +242,18 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                 size="small"
                 stripedRows
                 showGridlines
-                emptyMessage="Keine Dateien vorhanden"
+                emptyMessage={t.templatefilemanager241}
             >
-                <Column field="file_name" header="Name" body={nameBodyTemplate} sortable />
-                <Column field="file_type" header="Typ" body={typeBodyTemplate} sortable style={{ width: '150px' }} />
-                <Column field="file_order" header="Reihenfolge" sortable style={{ width: '120px' }} />
-                <Column header="Größe" body={sizeBodyTemplate} style={{ width: '120px' }} />
-                <Column header="Aktionen" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                <Column field="file_name" header={t.registermodal236} body={nameBodyTemplate} sortable />
+                <Column field="file_type" header={t.edittablemodal512} body={typeBodyTemplate} sortable style={{ width: '150px' }} />
+                <Column field="file_order" header={t.templatefilemanager245} sortable style={{ width: '120px' }} />
+                <Column header={t.templatefilemanager246} body={sizeBodyTemplate} style={{ width: '120px' }} />
+                <Column header={t.applicationsmodal354} body={actionsBodyTemplate} style={{ width: '200px' }} />
             </DataTable>
 
             {/* Create/Edit Modal */}
             <Dialog
-                header={editingFile ? 'Datei bearbeiten' : 'Neue Datei erstellen'}
+                header={editingFile ? 'Datei bearbeiten' : t.templatefilemanager252}
                 visible={modalVisible}
                 onHide={() => setModalVisible(false)}
                 style={{ width: '800px' }}
@@ -268,12 +272,12 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                             <Controller
                                 name="file_name"
                                 control={control}
-                                rules={{ required: 'Bitte Dateinamen eingeben!' }}
+                                rules={{ required: t.filemodal130 }}
                                 render={({ field }) => (
                                     <InputText
                                         id="file_name"
                                         {...field}
-                                        placeholder="e.g., Model.php, component.tsx"
+                                        placeholder={t.templatefilemanager276}
                                         className="w-full"
                                     />
                                 )}
@@ -291,7 +295,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                             <Controller
                                 name="file_type"
                                 control={control}
-                                rules={{ required: 'Bitte Typ auswählen!' }}
+                                rules={{ required: t.filemodal153 }}
                                 render={({ field }) => (
                                     <Dropdown
                                         id="file_type"
@@ -338,13 +342,13 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                         <Controller
                             name="file_content"
                             control={control}
-                            rules={{ required: 'Bitte Dateiinhalt eingeben!' }}
+                            rules={{ required: t.filemodal232 }}
                             render={({ field }) => (
                                 <InputTextarea
                                     id="file_content"
                                     {...field}
                                     rows={15}
-                                    placeholder="Template-Code hier eingeben..."
+                                    placeholder={t.templatefilemanager347}
                                     className="w-full font-mono"
                                 />
                             )}
@@ -358,14 +362,14 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     <div className="flex gap-2 justify-end">
                         <Button
                             type="button"
-                            label="Abbrechen"
+                            label={t.templatefilemanager361}
                             icon="pi pi-times"
                             severity="secondary"
                             onClick={() => setModalVisible(false)}
                         />
                         <Button
                             type="submit"
-                            label={editingFile ? 'Aktualisieren' : 'Erstellen'}
+                            label={editingFile ? t.applicationsmodal313 : t.teammodal240}
                             icon="pi pi-check"
                             severity="success"
                         />

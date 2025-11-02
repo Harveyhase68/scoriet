@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -9,6 +10,10 @@ interface ErrorFallbackProps {
 }
 
 export default function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const handleReloadWithReset = () => {
     // Clear all storage to reset the app completely
     sessionStorage.clear();
@@ -31,7 +36,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
 
             <Message
               severity="error"
-              text="Ein unerwarteter Fehler ist aufgetreten. Keine Sorge - Ihre Daten sind sicher."
+              text={t.errorfallback34}
               className="w-full max-w-md"
             />
           </div>
@@ -55,14 +60,14 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
 
           <div className="flex gap-3">
             <Button
-              label="Erneut versuchen"
+              label={t.errorfallback58}
               icon="pi pi-refresh"
               onClick={resetError}
               className="bg-blue-600 hover:bg-blue-700"
             />
 
             <Button
-              label="Seite neu laden & Reset"
+              label={t.errorfallback65}
               icon="pi pi-replay"
               onClick={handleReloadWithReset}
               className="bg-orange-600 hover:bg-orange-700"
@@ -72,10 +77,10 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
 
           <div className="text-xs text-gray-400 max-w-md">
             <p className="mb-2">
-              <strong className="text-orange-400">Hinweis:</strong> Der "Reset" Button löscht alle lokalen Daten (Layout, Einstellungen) und startet die App neu.
+              <strong className="text-orange-400">{t.errorfallback75}</strong> Der "{t.errorfallback65}" {t.errorfallback65_2}
             </p>
             <p>
-              Tipp: Wenn das Problem weiterhin besteht, kontaktieren Sie den Support.
+              {t.errorfallback77}
             </p>
           </div>
         </div>

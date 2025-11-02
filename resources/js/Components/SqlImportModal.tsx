@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface SqlImportModalProps {
   isOpen: boolean;
@@ -20,6 +21,10 @@ interface FloatingSchema {
 }
 
 export default function SqlImportModal({ isOpen, onClose, onSuccess, preselectedSchemaId }: SqlImportModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { selectedProject } = useProject();
   const [sqlScript, setSqlScript] = useState('');
   const [description, setDescription] = useState('');
@@ -62,7 +67,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${selectedProject.id}/editable-schemas`, {
@@ -73,7 +78,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load schemas');
+        throw new Error(t.databaseexportmodal71);
       }
 
       const data = await response.json();
@@ -84,7 +89,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         setSelectedSchemaId(data[0].id);
       }
     } catch {
-      setError(err instanceof Error ? err.message : 'Error loading schemas');
+      setError(err instanceof Error ? err.message : t.databasemanagementpanel152);
       setSchemas([]);
     } finally {
       setLoadingSchemas(false);
@@ -103,7 +108,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     if (isOpen && selectedProject) {
       loadEditableSchemas();
     } else if (isOpen && !selectedProject) {
-      setError('No project selected. Please select a project first.');
+      setError(t.databaseexportmodal169);
       setSchemas([]);
     }
   }, [isOpen, selectedProject, loadEditableSchemas]);
@@ -126,22 +131,22 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     e.preventDefault();
     
     if (!sqlScript.trim()) {
-      setError('SQL script is required');
+      setError(t.sqlparsercontroller29);
       return;
     }
 
     if (!selectedSchemaId) {
-      setError('Please select a target schema');
+      setError(t.sqlimportmodal134);
       return;
     }
 
     if (!selectedProject) {
-      setError('No project selected');
+      setError(t.databaseexportmodal344);
       return;
     }
 
     if (!selectedSchemaId) {
-      setError('No schema selected');
+      setError(t.panelt21133);
       return;
     }
 
@@ -151,7 +156,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.panelt2405);
       }
 
       const payload = {
@@ -174,7 +179,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
       if (!response.ok || !result.success) {
         // Create detailed error message
-        let errorMessage = result.error || 'Failed to import SQL';
+        let errorMessage = result.error || t.sqlimportmodal177;
         
         if (result.error_type) {
           errorMessage = `${result.error_type}: ${errorMessage}`;
@@ -200,7 +205,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       handleClose();
       
     } catch {
-      setError(err instanceof Error ? err.message : 'Import failed');
+      setError(err instanceof Error ? err.message : t.sqlimportmodal203);
     } finally {
       setLoading(false);
     }
@@ -208,7 +213,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
   return (
     <Dialog
-      header="📥 Import SQL Schema"
+      header={t.sqlimportmodal211}
       visible={isOpen}
       onHide={handleClose}
       style={{ width: '50vw', maxWidth: '800px' }}
@@ -298,7 +303,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </select>
                 ) : (
                   <div className="text-gray-400 text-sm">
-                    {selectedProject ? 'No editable schemas in project' : 'No project selected'}
+                    {selectedProject ? t.sqlimportmodal301 : t.databaseexportmodal344}
                   </div>
                 )}
               </div>
@@ -310,7 +315,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description..."
+                  placeholder={t.sqlimportmodal313}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -325,7 +330,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 <textarea
                   value={sqlScript}
                   onChange={(e) => setSqlScript(e.target.value)}
-                  placeholder="Paste your SQL CREATE TABLE statements here..."
+                  placeholder={t.sqlimportmodal328}
                   rows={12}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none font-mono text-sm resize-none"
                 />
@@ -420,7 +425,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   Importing...
                 </div>
               ) : (
-                '📥 Import Schema'
+                t.sqlimportmodal423
               )}
             </button>
           </div>

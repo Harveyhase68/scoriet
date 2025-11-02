@@ -376,6 +376,180 @@ class SchemaController extends Controller
     }
 
     /**
+     * Delete a foreign key constraint
+     */
+    public function deleteForeignKey(Request $request, $constraintId)
+    {
+        try {
+            $constraint = SchemaConstraint::findOrFail($constraintId);
+            $table = SchemaTable::findOrFail($constraint->table_id);
+            $version = SchemaVersion::findOrFail($table->version_id);
+            $schema = Schema::findOrFail($version->schema_id);
+
+            // Check if user owns the schema
+            if ($schema->owner_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthorized',
+                ], 403);
+            }
+
+            // Check if this is the latest version
+            $isLatestVersion = $version->version_number === $schema->last_version;
+
+            DB::beginTransaction();
+            try {
+                if (!$isLatestVersion) {
+                    // Create new version
+                    $newVersion = $this->schemaVersionService->createVersionFromExisting(
+                        $version,
+                        "Deleted FK constraint: {$constraint->constraint_name}"
+                    );
+
+                    // Find the constraint in the new version
+                    $newTable = SchemaTable::where('version_id', $newVersion->id)
+                        ->where('table_name', $table->table_name)
+                        ->firstOrFail();
+                    $newConstraint = SchemaConstraint::where('table_id', $newTable->id)
+                        ->where('constraint_name', $constraint->constraint_name)
+                        ->firstOrFail();
+
+                    // Delete the constraint in the new version
+                    $newConstraint->delete();
+
+                    DB::commit();
+                    return response()->json([
+                        'success' => true,
+                        'new_version' => $newVersion,
+                    ]);
+                } else {
+                    // Delete in current version
+                    $constraint->delete();
+
+                    DB::commit();
+                    return response()->json([
+                        'success' => true,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a foreign key constraint
+     */
+    public function updateForeignKey(Request $request, $constraintId)
+    {
+        $request->validate([
+            'constraint_name' => 'required|string|max:255',
+            'on_delete' => 'sometimes|string|in:CASCADE,RESTRICT,SET NULL,NO ACTION,SET DEFAULT',
+            'on_update' => 'sometimes|string|in:CASCADE,RESTRICT,SET NULL,NO ACTION,SET DEFAULT',
+        ]);
+
+        try {
+            $constraint = SchemaConstraint::with('foreignKeyReference')->findOrFail($constraintId);
+            $table = SchemaTable::findOrFail($constraint->table_id);
+            $version = SchemaVersion::findOrFail($table->version_id);
+            $schema = Schema::findOrFail($version->schema_id);
+
+            // Check if user owns the schema
+            if ($schema->owner_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthorized',
+                ], 403);
+            }
+
+            // Check if this is the latest version
+            $isLatestVersion = $version->version_number === $schema->last_version;
+
+            DB::beginTransaction();
+            try {
+                if (!$isLatestVersion) {
+                    // Create new version
+                    $newVersion = $this->schemaVersionService->createVersionFromExisting(
+                        $version,
+                        "Updated FK constraint: {$constraint->constraint_name} → {$request->constraint_name}"
+                    );
+
+                    // Find the constraint in the new version
+                    $newTable = SchemaTable::where('version_id', $newVersion->id)
+                        ->where('table_name', $table->table_name)
+                        ->firstOrFail();
+                    $newConstraint = SchemaConstraint::with('foreignKeyReference')->where('table_id', $newTable->id)
+                        ->where('constraint_name', $constraint->constraint_name)
+                        ->firstOrFail();
+
+                    // Update the constraint in the new version
+                    $newConstraint->update([
+                        'constraint_name' => $request->constraint_name,
+                    ]);
+
+                    // Update FK reference actions if provided
+                    if ($newConstraint->foreignKeyReference) {
+                        $updateData = [];
+                        if ($request->has('on_delete')) {
+                            $updateData['on_delete'] = $request->on_delete;
+                        }
+                        if ($request->has('on_update')) {
+                            $updateData['on_update'] = $request->on_update;
+                        }
+                        if (!empty($updateData)) {
+                            $newConstraint->foreignKeyReference->update($updateData);
+                        }
+                    }
+
+                    DB::commit();
+                    return response()->json([
+                        'success' => true,
+                        'new_version' => $newVersion,
+                    ]);
+                } else {
+                    // Update in current version
+                    $constraint->update([
+                        'constraint_name' => $request->constraint_name,
+                    ]);
+
+                    // Update FK reference actions if provided
+                    if ($constraint->foreignKeyReference) {
+                        $updateData = [];
+                        if ($request->has('on_delete')) {
+                            $updateData['on_delete'] = $request->on_delete;
+                        }
+                        if ($request->has('on_update')) {
+                            $updateData['on_update'] = $request->on_update;
+                        }
+                        if (!empty($updateData)) {
+                            $constraint->foreignKeyReference->update($updateData);
+                        }
+                    }
+
+                    DB::commit();
+                    return response()->json([
+                        'success' => true,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get public global schemas (Scoriet marketplace)
      */
     public function getGlobalSchemas()

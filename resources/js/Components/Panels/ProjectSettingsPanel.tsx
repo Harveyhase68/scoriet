@@ -10,6 +10,7 @@ import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { PickList } from 'primereact/picklist';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Language {
     code: string;
@@ -29,7 +30,36 @@ interface ProjectMember {
     role: string;
 }
 
+interface TemplateVariable {
+    id: number;
+    template_id: number;
+    variable_name: string;
+    description: string | null;
+    default_value: string | null;
+    is_required: boolean;
+}
+
+interface Template {
+    id: number;
+    name: string;
+    description: string | null;
+}
+
+interface TemplateWithVariables extends Template {
+    variables: TemplateVariable[];
+}
+
+// Future use: Template variable values
+interface _VariableValue {
+    variable_name: string;
+    language: string;
+    value: string;
+}
+
 export default function ProjectSettingsPanel() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
     const toast = useToast();
     const { selectedProject, loadProjects } = useProject();
     const [loading, setLoading] = useState(false);
@@ -37,6 +67,13 @@ export default function ProjectSettingsPanel() {
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+
+    // Template Variables State
+    const [templatesWithVariables, setTemplatesWithVariables] = useState<TemplateWithVariables[]>([]);
+    const [variableValues, setVariableValues] = useState<Record<string, Record<string, string>>>({});
+    const [selectedVariableLanguage, setSelectedVariableLanguage] = useState<string>('en');
+    const [loadingVariables, setLoadingVariables] = useState(false);
+    const [_savingVariables, setSavingVariables] = useState(false); // Future use
 
     const [formData, setFormData] = useState({
         // Project Settings
@@ -63,7 +100,7 @@ export default function ProjectSettingsPanel() {
         thousands_separator: '.',
         date_format: 'd.m.Y',
         time_format: 'H:i:s',
-        currency_symbol: '€',
+        currency_symbol: t.editprojectmodal602,
         timezone: 'Europe/Vienna',
         // API Keys
         google_translate_api_key: ''
@@ -142,13 +179,13 @@ export default function ProjectSettingsPanel() {
                     thousands_separator: project.thousands_separator || '.',
                     date_format: project.date_format || 'd.m.Y',
                     time_format: project.time_format || 'H:i:s',
-                    currency_symbol: project.currency_symbol || '€',
+                    currency_symbol: project.currency_symbol || t.editprojectmodal602,
                     timezone: project.timezone || 'Europe/Vienna',
                     google_translate_api_key: project.google_translate_api_key || ''
                 });
             }
         } catch {
-            toast.showError('Fehler beim Laden der Projektdaten');
+            toast.showError(t.projectsettingspanel151);
         } finally {
             setLoading(false);
         }
@@ -177,17 +214,110 @@ export default function ProjectSettingsPanel() {
         }
     }, [selectedProject]);
 
+    const loadTemplateVariables = useCallback(async () => {
+        if (!selectedProject) return;
+
+        setLoadingVariables(true);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            // Load all templates (or could be filtered by templates used in project)
+            const templatesResponse = await fetch('/api/templates', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!templatesResponse.ok) return;
+
+            const templatesData = await templatesResponse.json();
+            const templates = templatesData.templates || [];
+
+            // Load variables for each template
+            const templatesWithVars: TemplateWithVariables[] = [];
+
+            for (const template of templates) {
+                const varsResponse = await fetch(`/api/templates/${template.id}/variables`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (varsResponse.ok) {
+                    const varsData = await varsResponse.json();
+                    const variables = varsData.variables || [];
+
+                    // Only include templates that have variables
+                    if (variables.length > 0) {
+                        templatesWithVars.push({
+                            id: template.id,
+                            name: template.name,
+                            description: template.description,
+                            variables: variables,
+                        });
+                    }
+                }
+            }
+
+            setTemplatesWithVariables(templatesWithVars);
+
+            // Load current project values for all variables
+            const valuesMap: Record<string, Record<string, string>> = {};
+
+            for (const template of templatesWithVars) {
+                const valuesResponse = await fetch(
+                    `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json',
+                        },
+                    }
+                );
+
+                if (valuesResponse.ok) {
+                    const valuesData = await valuesResponse.json();
+                    const variables = valuesData.variables || [];
+
+                    // Build map: variable_name -> { language -> value }
+                    for (const variable of variables) {
+                        const key = `${template.id}_${variable.variable_name}`;
+                        valuesMap[key] = {};
+
+                        // variable.values is an object keyed by language
+                        if (variable.values) {
+                            for (const [language, valueObj] of Object.entries(variable.values)) {
+                                valuesMap[key][language] = (valueObj as any).value || '';
+                            }
+                        }
+                    }
+                }
+            }
+
+            setVariableValues(valuesMap);
+        } catch (error) {
+            console.error('Error loading template variables:', error);
+            toast.showError('Fehler beim Laden der Template-Variablen');
+        } finally {
+            setLoadingVariables(false);
+        }
+    }, [selectedProject, toast]);
+
     useEffect(() => {
         loadLanguages();
         if (selectedProject) {
             loadProjectData();
             loadProjectMembers();
+            loadTemplateVariables();
         }
-    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages]);
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables]);
 
     const handleSave = async () => {
         if (!selectedProject) {
-            toast.showError('Kein Projekt ausgewählt');
+            toast.showError(t.databaseexportmodal344);
             return;
         }
 
@@ -206,7 +336,7 @@ export default function ProjectSettingsPanel() {
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
-                toast.showError('Nicht authentifiziert');
+                toast.showError(t.applicationsmodal66);
                 return;
             }
 
@@ -222,7 +352,7 @@ export default function ProjectSettingsPanel() {
             });
 
             if (!projectResponse.ok) {
-                throw new Error('Failed to update project');
+                throw new Error(t.editprojectmodal183);
             }
 
             // Save language settings
@@ -240,15 +370,23 @@ export default function ProjectSettingsPanel() {
             });
 
             if (!settingsResponse.ok) {
-                throw new Error('Failed to save language settings');
+                throw new Error(t.projectsettingspanel243);
             }
 
-            toast.showSuccess('Projekt-Einstellungen erfolgreich gespeichert');
+            // ✅ Also save template variables
+            await saveTemplateVariablesInternal(token);
+
+            // Success message includes template variables if they exist
+            const hasTemplateVars = templatesWithVariables.length > 0;
+            const successMsg = hasTemplateVars
+                ? 'Projekt-Einstellungen und Template-Variablen erfolgreich gespeichert'
+                : t.projectsettingspanel246;
+            toast.showSuccess(successMsg);
 
             // Refresh projects to update the UI
             loadProjects();
-        } catch {
-            toast.showError('Fehler beim Speichern der Projekt-Einstellungen');
+        } catch (error) {
+            toast.showError(error instanceof Error ? error.message : t.projectsettingspanel251);
         } finally {
             setSaving(false);
         }
@@ -257,6 +395,100 @@ export default function ProjectSettingsPanel() {
     const generateJoinCode = () => {
         const code = 'PROJ-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         setFormData({ ...formData, join_code: code });
+    };
+
+    // Internal function to save template variables (called by both save buttons)
+    const saveTemplateVariablesInternal = async (token: string) => {
+        if (!selectedProject || templatesWithVariables.length === 0) {
+            return; // Nothing to save
+        }
+
+        // Build bulk update payload for each template
+        for (const template of templatesWithVariables) {
+            const valuesToSave: Array<{
+                variable_name: string;
+                language: string;
+                value: string;
+            }> = [];
+
+            // Get all active languages
+            const activeLangs = availableLanguages.filter(lang => lang.is_active);
+
+            for (const variable of template.variables) {
+                const key = `${template.id}_${variable.variable_name}`;
+
+                for (const lang of activeLangs) {
+                    const value = variableValues[key]?.[lang.code] || '';
+
+                    // Only save non-empty values (trimmed)
+                    if (value.trim() !== '') {
+                        valuesToSave.push({
+                            variable_name: variable.variable_name,
+                            language: lang.code,
+                            value: value.trim(),
+                        });
+                    }
+                }
+            }
+
+            // Bulk update via API
+            if (valuesToSave.length > 0) {
+                const response = await fetch(
+                    `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ values: valuesToSave }),
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Fehler beim Speichern der Variablen für Template "${template.name}"`);
+                }
+            }
+        }
+    };
+
+    // Future use: Save template variables
+    const _handleSaveTemplateVariables = async () => {
+        if (!selectedProject) {
+            toast.showError('Kein Projekt ausgewählt');
+            return;
+        }
+
+        setSavingVariables(true);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) {
+                toast.showError('Nicht authentifiziert');
+                setSavingVariables(false);
+                return;
+            }
+
+            await saveTemplateVariablesInternal(token);
+
+            toast.showSuccess('Template-Variablen erfolgreich gespeichert');
+        } catch (error) {
+            console.error('Error saving template variables:', error);
+            toast.showError(error instanceof Error ? error.message : 'Fehler beim Speichern der Template-Variablen');
+        } finally {
+            setSavingVariables(false);
+        }
+    };
+
+    const handleVariableValueChange = (templateId: number, variableName: string, language: string, value: string) => {
+        const key = `${templateId}_${variableName}`;
+        setVariableValues(prev => ({
+            ...prev,
+            [key]: {
+                ...(prev[key] || {}),
+                [language]: value,
+            },
+        }));
     };
 
     const transferData = availableLanguages
@@ -301,7 +533,7 @@ export default function ProjectSettingsPanel() {
                 </div>
                 <Button
                     icon="pi pi-save"
-                    label="Alle Änderungen speichern"
+                    label={t.projectsettingspanel304}
                     onClick={handleSave}
                     loading={saving}
                     severity="success"
@@ -319,7 +551,7 @@ export default function ProjectSettingsPanel() {
                                     <InputText
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="my_project_name"
+                                        placeholder={t.editprojectmodal240}
                                         className="w-full font-mono"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
@@ -335,7 +567,7 @@ export default function ProjectSettingsPanel() {
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         rows={3}
-                                        placeholder="Projektbeschreibung eingeben"
+                                        placeholder={t.editprojectmodal260}
                                         className="w-full"
                                     />
                                 </div>
@@ -348,7 +580,7 @@ export default function ProjectSettingsPanel() {
                                         <InputText
                                             value={formData.join_code}
                                             onChange={(e) => setFormData({ ...formData, join_code: e.target.value })}
-                                            placeholder="Beitrittscode (optional)"
+                                            placeholder={t.projectsettingspanel351}
                                         />
                                         <Button
                                             icon="pi pi-refresh"
@@ -541,11 +773,11 @@ export default function ProjectSettingsPanel() {
                                         value={formData.default_language}
                                         onChange={(e) => setFormData({ ...formData, default_language: e.value })}
                                         options={[
-                                            { label: 'English', value: 'en' },
-                                            { label: 'Deutsch', value: 'de' },
-                                            { label: 'Français', value: 'fr' },
-                                            { label: 'Español', value: 'es' },
-                                            { label: 'Italiano', value: 'it' }
+                                            { label: t.editprojectmodal484, value: 'en' },
+                                            { label: t.editprojectmodal485, value: 'de' },
+                                            { label: t.editprojectmodal486, value: 'fr' },
+                                            { label: t.editprojectmodal487, value: 'es' },
+                                            { label: t.editprojectmodal488, value: 'it' }
                                         ]}
                                         className="w-full"
                                     />
@@ -562,10 +794,10 @@ export default function ProjectSettingsPanel() {
                                         value={formData.filename_short_length}
                                         onChange={(e) => setFormData({ ...formData, filename_short_length: e.value })}
                                         options={[
-                                            { label: '2 Zeichen', value: 2 },
-                                            { label: '3 Zeichen', value: 3 },
-                                            { label: '4 Zeichen', value: 4 },
-                                            { label: '5 Zeichen', value: 5 }
+                                            { label: t.editprojectmodal506, value: 2 },
+                                            { label: t.editprojectmodal507, value: 3 },
+                                            { label: t.editprojectmodal508, value: 4 },
+                                            { label: t.editprojectmodal509, value: 5 }
                                         ]}
                                         className="w-full"
                                     />
@@ -651,12 +883,12 @@ export default function ProjectSettingsPanel() {
                                         <InputText
                                             value={formData.currency_symbol}
                                             onChange={(e) => setFormData({ ...formData, currency_symbol: e.target.value })}
-                                            placeholder="€"
+                                            placeholder={t.editprojectmodal602}
                                             maxLength={5}
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            z.B. "€", "$", "£", "CHF"
+                                            z.B. t.editprojectmodal602, "$", "£", t.editprojectmodal608
                                         </div>
                                     </div>
 
@@ -724,14 +956,14 @@ export default function ProjectSettingsPanel() {
                                         setSelectedLanguages(targetKeys as string[]);
                                     }}
                                     itemTemplate={(item) => `${item.title}`}
-                                    sourceHeader="Verfügbare Sprachen"
-                                    targetHeader="Aktivierte Sprachen"
+                                    sourceHeader={t.projectsettingspanel727}
+                                    targetHeader={t.projectsettingspanel728}
                                     sourceStyle={{ height: '400px' }}
                                     targetStyle={{ height: '400px' }}
                                     filter
                                     filterBy="title"
-                                    sourceFilterPlaceholder="Suchen..."
-                                    targetFilterPlaceholder="Suchen..."
+                                    sourceFilterPlaceholder={t.projectsettingspanel733}
+                                    targetFilterPlaceholder={t.projectsettingspanel733}
                                 />
 
                                 <div className="mt-6 text-gray-300 text-sm">
@@ -739,10 +971,122 @@ export default function ProjectSettingsPanel() {
                                         <strong>Ausgewählte Sprachen:</strong>{' '}
                                         {selectedLanguages.length > 0
                                             ? selectedLanguages.join(', ')
-                                            : 'Keine Sprachen ausgewählt'}
+                                            : t.projectsettingspanel742}
                                     </p>
                                 </div>
                             </div>
+                </TabPanel>
+
+                {/* Template Variables Tab */}
+                <TabPanel header={<span><i className="pi pi-code mr-2"></i>Template Variablen</span>}>
+                    <div className="max-w-6xl">
+                        <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                            <i className="pi pi-info-circle mr-2"></i>
+                            Hier können Sie die Werte für benutzerdefinierte Template-Variablen eintragen.
+                            Diese Variablen wurden vom Template-Entwickler definiert und können pro Sprache unterschiedlich sein.
+                        </div>
+
+                        {loadingVariables ? (
+                            <div className="flex justify-center py-8">
+                                <ProgressSpinner />
+                            </div>
+                        ) : templatesWithVariables.length === 0 ? (
+                            <div className="p-4 bg-gray-800 border border-gray-700 rounded text-gray-300 text-center">
+                                <i className="pi pi-info-circle mr-2"></i>
+                                Keine Template-Variablen gefunden. Template-Entwickler können benutzerdefinierte Variablen in ihren Templates definieren.
+                            </div>
+                        ) : (
+                            <>
+                                {/* Language Selector */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <i className="pi pi-globe mr-2"></i>Sprache für Variablen
+                                    </label>
+                                    <Dropdown
+                                        value={selectedVariableLanguage}
+                                        onChange={(e) => setSelectedVariableLanguage(e.value)}
+                                        options={availableLanguages
+                                            .filter(lang => lang.is_active)
+                                            .map(lang => ({
+                                                label: `${lang.native_name} (${lang.name})`,
+                                                value: lang.code,
+                                            }))}
+                                        placeholder="Sprache auswählen"
+                                        className="w-full max-w-md"
+                                    />
+                                </div>
+
+                                {/* Templates with Variables */}
+                                {templatesWithVariables.map((template) => (
+                                    <div key={template.id} className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded">
+                                        <h3 className="text-lg font-semibold text-blue-400 mb-1">
+                                            <i className="pi pi-file-code mr-2"></i>
+                                            {template.name}
+                                        </h3>
+                                        {template.description && (
+                                            <p className="text-sm text-gray-400 mb-4">{template.description}</p>
+                                        )}
+
+                                        <div className="space-y-3">
+                                            {template.variables.map((variable) => {
+                                                const key = `${template.id}_${variable.variable_name}`;
+                                                const currentValue = variableValues[key]?.[selectedVariableLanguage] || '';
+
+                                                return (
+                                                    <div key={variable.id} className="p-3 bg-gray-900 border border-gray-600 rounded">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="font-mono text-green-400 font-semibold">
+                                                                        {`{${variable.variable_name}}`}
+                                                                    </span>
+                                                                    {variable.is_required && (
+                                                                        <span className="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">
+                                                                            Erforderlich
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {variable.description && (
+                                                                    <p className="text-sm text-gray-400 mb-2">
+                                                                        {variable.description}
+                                                                    </p>
+                                                                )}
+
+                                                                {variable.default_value && (
+                                                                    <p className="text-xs text-gray-500 mb-2">
+                                                                        Standard: <span className="text-blue-300">{variable.default_value}</span>
+                                                                    </p>
+                                                                )}
+
+                                                                <InputText
+                                                                    value={currentValue}
+                                                                    onChange={(e) => handleVariableValueChange(
+                                                                        template.id,
+                                                                        variable.variable_name,
+                                                                        selectedVariableLanguage,
+                                                                        e.target.value
+                                                                    )}
+                                                                    placeholder={variable.default_value || `Wert für {${variable.variable_name}} eingeben`}
+                                                                    className="w-full"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Info: Variables are saved by main "Save All" button */}
+                                <div className="mt-6 p-3 bg-green-900 border border-green-700 rounded text-green-100 text-sm">
+                                    <i className="pi pi-info-circle mr-2"></i>
+                                    Template-Variablen werden automatisch mit dem Button "Alle Änderungen speichern" oben gespeichert.
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </TabPanel>
             </TabView>
         </div>

@@ -394,7 +394,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
             <Divider />
 
             <div className="flex justify-between items-center text-gray-400">
-              <p>&copy; 2025 Scoriet. {t.allRightsReserved}.</p>
+              <p></p>
               <div className="flex space-x-6">
                 <a href="#" className="hover:text-white">{t.privacyPolicy}</a>
                 <a href="#" className="hover:text-white">{t.termsOfService}</a>
@@ -470,7 +470,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
             {/* Business Plan */}
             <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg ring-2 ring-blue-400">
               <div className="p-6">
-                <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                <Badge value={t.cmspage473} severity="info" className="mb-4" />
                 <h3 className="text-2xl font-bold text-white mb-2">Business</h3>
                 <div className="text-3xl font-bold text-blue-400 mb-2">
                   {systemSettings ? `€${systemSettings.price_business}` : "€9.99"}

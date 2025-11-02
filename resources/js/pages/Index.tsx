@@ -40,6 +40,7 @@ const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
 const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
 const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
 const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
+const TemplateReviewPanel = lazy(() => import('@/Components/Panels/TemplateReviewPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
@@ -50,6 +51,7 @@ const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTran
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
 const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
+const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -598,6 +600,19 @@ const loadTab = (
       };
     }
 
+    case 'template-review':
+      return {
+        id,
+        title: 'Template Review Queue',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TemplateReviewPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'database-management':
     case 'database-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
@@ -708,7 +723,7 @@ const loadTab = (
     case 'code-generation':
       return {
         id,
-        title: data.title || 'Code Generation Test Panel',
+        title: data.title || 'Code Generation',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CodeGenerationPanel isActive={true} />
@@ -777,6 +792,19 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CMSAdminPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'query-builder':
+      return {
+        id,
+        title: data.title || 'Query Builder',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <QueryBuilderPanel isActive={true} />
           </Suspense>
         ),
         closable: true,

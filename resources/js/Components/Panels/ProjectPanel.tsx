@@ -17,6 +17,7 @@ import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal
 import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
 // import EditProjectModal from '@/Components/Modals/EditProjectModal'; // Replaced by ProjectSettingsPanel
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -66,6 +67,10 @@ interface Project {
 }
 
 export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   // Use global project context
   const {
     projects: globalProjects,
@@ -117,12 +122,15 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     thousands_separator: '.',
     date_format: 'd.m.Y',
     time_format: 'H:i:s',
-    currency_symbol: '€',
+    currency_symbol: t.editprojectmodal602,
     timezone: 'Europe/Vienna'
   });
   const [creating, setCreating] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSelectProjectDialog, setShowSelectProjectDialog] = useState(false);
+  const [newlyCreatedProject, setNewlyCreatedProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
@@ -169,10 +177,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       setShowApplicationsModal(true);
     };
 
-    window.addEventListener('openApplicationsModalInPanel', handleOpenApplicationsModal as EventListener);
+    window.addEventListener(t.index1621, handleOpenApplicationsModal as EventListener);
 
     return () => {
-      window.removeEventListener('openApplicationsModalInPanel', handleOpenApplicationsModal as EventListener);
+      window.removeEventListener(t.index1621, handleOpenApplicationsModal as EventListener);
     };
   }, []);
 
@@ -229,7 +237,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/projects', {
@@ -255,22 +263,16 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           throw new Error(backendError);
         }
 
-        throw new Error(errorData.message || 'Failed to create project');
+        throw new Error(errorData.message || t.projectpanel258);
       }
 
       const newProject = await response.json();
 
-      // Remember if there was no project selected before (for auto-selection)
-      const wasNoProjectSelected = !globalSelectedProject;
+      // Store the newly created project and show selection dialog
+      setNewlyCreatedProject(newProject);
+      setShowSelectProjectDialog(true);
 
-      // Set the new project as preferred if no project was selected before
-      if (wasNoProjectSelected && newProject) {
-        setPreferredProject(newProject);
-      }
-
-      // Refresh the projects list (this will auto-select the preferred project)
-      await loadProjectsFromContext();
-
+      // Close the create modal
       setShowCreateModal(false);
       setCreateForm({
         name: '',
@@ -292,16 +294,16 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         thousands_separator: '.',
         date_format: 'd.m.Y',
         time_format: 'H:i:s',
-        currency_symbol: '€',
+        currency_symbol: t.editprojectmodal602,
         timezone: 'Europe/Vienna'
       });
-      setSuccess('Project created successfully');
+      setSuccess(t.projectpanel298);
 
       // Notify NavigationPanel to refresh projects
-      window.dispatchEvent(new CustomEvent('projectChanged'));
+      window.dispatchEvent(new CustomEvent(t.projectpanel301));
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error creating project');
+      setError(error instanceof Error ? error.message : t.projectpanel304);
     } finally {
       setCreating(false);
     }
@@ -329,15 +331,50 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       thousands_separator: '.',
       date_format: 'd.m.Y',
       time_format: 'H:i:s',
-      currency_symbol: '€',
+      currency_symbol: t.editprojectmodal602,
       timezone: 'Europe/Vienna'
     });
     setError(''); // Clear errors when modal closes
     setSuccess('');
   };
 
+  const handleSelectNewProjectYes = async () => {
+    if (newlyCreatedProject) {
+      // Set the new project as preferred
+      setPreferredProject(newlyCreatedProject);
+    }
+
+    // Refresh the projects list (this will auto-select the preferred project)
+    await loadProjectsFromContext();
+
+    // Close dialog and clear state
+    setShowSelectProjectDialog(false);
+    setNewlyCreatedProject(null);
+
+    // Notify NavigationPanel to refresh projects
+    window.dispatchEvent(new CustomEvent(t.projectpanel301));
+  };
+
+  const handleSelectNewProjectNo = async () => {
+    // Just refresh the projects list without setting as preferred
+    await loadProjectsFromContext();
+
+    // Close dialog and clear state
+    setShowSelectProjectDialog(false);
+    setNewlyCreatedProject(null);
+
+    // Notify NavigationPanel to refresh projects
+    window.dispatchEvent(new CustomEvent(t.projectpanel301));
+  };
+
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
+
+    // Validate confirmation text
+    if (deleteConfirmText !== 'DELETE') {
+      setError('You must type DELETE to confirm deletion');
+      return;
+    }
 
     setDeleting(true);
     setError('');
@@ -345,7 +382,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${projectToDelete.id}`, {
@@ -358,7 +395,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete project');
+        throw new Error(errorData.message || t.projectpanel361);
       }
 
       // Refresh the projects list
@@ -366,10 +403,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       setShowDeleteModal(false);
       setProjectToDelete(null);
-      setSuccess('Project deleted successfully');
+      setDeleteConfirmText('');
+      setSuccess(t.projectpanel369);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error deleting project');
+      setError(error instanceof Error ? error.message : t.projectpanel372);
     } finally {
       setDeleting(false);
     }
@@ -378,10 +416,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const handleDeleteModalHide = () => {
     setShowDeleteModal(false);
     setProjectToDelete(null);
+    setDeleteConfirmText('');
   };
 
   const confirmDelete = (project: Project) => {
     setProjectToDelete(project);
+    setDeleteConfirmText('');
     setShowDeleteModal(true);
   };
 
@@ -402,7 +442,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/teams?all=true`, {
@@ -413,14 +453,16 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load teams');
+        throw new Error(t.projectpanel416);
       }
 
       const data = await response.json();
 
       // Filter teams for this project and build tree structure
       const allTeams = [...(data.owned_teams || []), ...(data.member_teams || [])];
-      const projectTeams = allTeams.filter(team => team.project_id === projectId);
+      const projectTeams = allTeams.filter(team =>
+        team.projects && team.projects.some((project: any) => project.id === projectId)
+      );
 
       // Build tree structure for classic TreeView
       const treeData = projectTeams.map(team => ({
@@ -448,7 +490,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${projectId}/schemas`, {
@@ -459,7 +501,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load schemas');
+        throw new Error(t.databaseexportmodal71);
       }
 
       const projectSchemas = await response.json();
@@ -489,7 +531,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${projectId}/template-usages`, {
@@ -536,7 +578,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   };
 
   const statusTemplate = () => {
-    return <Tag value="Active" severity="success" />;
+    return <Tag value={t.templatesStatusActive} severity="success" />;
   };
 
   const dateTemplate = (project: Project) => {
@@ -559,7 +601,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           icon="pi pi-eye"
           className="p-button-rounded p-button-sm"
           style={{ backgroundColor: '#1976d2', borderColor: '#1976d2', color: 'white' }}
-          tooltip="Project Overview"
+          tooltip={t.projectpanel562}
           onClick={() => {
             setSelectedProjectForOverview(project);
             setShowProjectOverviewModal(true);
@@ -572,7 +614,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         <Button
           icon="pi pi-user"
           className="p-button-rounded p-button-text p-button-sm"
-          tooltip="Manage members"
+          tooltip={t.projectpanel575}
           onClick={() => {
             setShowMembersModal(true);
           }}
@@ -580,13 +622,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-sm"
-          tooltip="Edit project"
+          tooltip={t.projectpanel583}
           onClick={() => handleEdit(project)}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-sm p-button-danger"
-          tooltip="Delete project"
+          tooltip={t.projectpanel589}
           onClick={() => confirmDelete(project)}
         />
       </div>
@@ -623,7 +665,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <div className="flex space-x-2 gap-2">
             <Button
               icon="pi pi-plus"
-              label="New Project"
+              label={t.projectpanel626}
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
               onClick={() => setShowCreateModal(true)}
@@ -631,7 +673,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             />
             <Button
               icon="pi pi-sign-in"
-              label="Join Project"
+              label={t.joincodemodal156}
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
               onClick={() => setShowJoinCodeModal(true)}
@@ -639,7 +681,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             />
             <Button
               icon="pi pi-refresh"
-              label="Refresh"
+              label={t.applicationsmodal313}
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
               onClick={loadProjectsFromContext}
@@ -668,14 +710,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               <div className="flex items-center justify-between">
                 <span className="flex items-center space-x-2">
                   <i className="pi pi-star-fill text-yellow-500"></i>
-                  <span>Current Project</span>
+                  <span>{t.projectpanel671}</span>
                 </span>
                 {currentProject && (
                   <Button
                     icon="pi pi-pencil"
                     className="p-button-sm p-button-outlined"
                     onClick={() => handleEdit()}
-                    tooltip="Edit project"
+                    tooltip={t.projectpanel583}
                   />
                 )}
               </div>
@@ -689,7 +731,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     {currentProject.name}
                   </h3>
                   <p className="text-gray-300 text-sm">
-                    {currentProject.description || 'No description provided'}
+                    {currentProject.description || t.joincodemodal220}
                   </p>
                 </div>
 
@@ -721,13 +763,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                           <Button
                             icon="pi pi-copy"
                             className="p-button-rounded p-button-text p-button-sm"
-                            tooltip="Copy join code"
+                            tooltip={t.projectpanel724}
                             onClick={() => navigator.clipboard.writeText(currentProject.join_code!)}
                           />
                         </div>
                       </div>
                       <Tag
-                        value={currentProject.is_public ? "Public" : "Private"}
+                        value={currentProject.is_public ? t.databasemanagementpanel772 : t.databasemanagementpanel771}
                         severity={currentProject.is_public ? "success" : "warning"}
                       />
                     </div>
@@ -773,7 +815,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 <h3 className="text-lg font-medium text-white mb-2">No Active Project</h3>
                 <p className="text-gray-400 mb-4">You don't have an active project yet.</p>
                 <Button
-                  label="Create Project"
+                  label={t.projectpanel776}
                   icon="pi pi-plus"
                   className="p-button-outlined"
                   onClick={() => setShowCreateModal(true)}
@@ -783,24 +825,24 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </Card>
 
           {/* Quick Actions */}
-          <Card title="Quick Actions" className="h-fit">
+          <Card title={t.projectpanel786} className="h-fit">
             <div className="grid grid-cols-2 gap-3">
               <Button
-                label="Applications"
+                label={t.projectpanel766}
                 icon="pi pi-user-plus"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => setShowApplicationsModal(true)}
                 disabled={!currentProject || !currentProject.allow_join_requests}
               />
               <Button
-                label="Project Members"
+                label={t.projectpanel796}
                 icon="pi pi-users"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => setShowMembersModal(true)}
                 disabled={!currentProject}
               />
               <Button
-                label="Teams Management"
+                label={t.projectpanel803}
                 icon="pi pi-users"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => {
@@ -812,14 +854,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
-                label="Invitations"
+                label={t.projectpanel815}
                 icon="pi pi-send"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => setShowInvitationsModal(true)}
                 disabled={!currentProject}
               />
               <Button
-                label="Templates"
+                label={t.panelsewnavigationpanel184}
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => {
@@ -835,7 +877,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
-                label="Database"
+                label={t.panelsewnavigationpanel223}
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-14"
                 onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}`, filterByProject: true })}
@@ -847,36 +889,36 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
         {/* Projects List */}
         <div className="space-y-4">
-          <Card title="All Projects" className="flex-1">
+          <Card title={t.projectpanel850} className="flex-1">
             <DataTable
               value={projects.filter(p => p.id)}
               className="p-datatable-sm"
-              emptyMessage="No projects found"
+              emptyMessage={t.panelt1813}
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 20]}
             >
-              <Column field="name" header="Project" sortable />
+              <Column field="name" header={t.manageteammodal316} sortable />
               <Column 
                 field="owner" 
-                header="Owner" 
+                header={t.manageteammodal320} 
                 body={ownerTemplate}
                 className="w-40"
               />
               <Column 
                 field="created_at" 
-                header="Created" 
+                header={t.databasemanagementpanel861} 
                 body={dateTemplate}
                 className="w-32"
                 sortable
               />
               <Column 
-                header="Status" 
+                header={t.applicationsmodal335} 
                 body={statusTemplate}
                 className="w-24"
               />
               <Column 
-                header="Actions" 
+                header={t.applicationsmodal354} 
                 body={actionTemplate}
                 className="w-32"
               />
@@ -889,7 +931,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       {/* Create Project Modal with Tabs */}
       <Dialog
-        header="Create New Project"
+        header={t.projectpanel892}
         visible={showCreateModal}
         onHide={handleCreateModalHide}
         style={{ width: '800px' }}
@@ -901,7 +943,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       >
         <TabView>
           {/* Tab 1: Project Settings */}
-          <TabPanel header="Project Settings" leftIcon="pi pi-cog">
+          <TabPanel header={t.editprojectmodal227} leftIcon="pi pi-cog">
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-name" className="block text-sm font-medium text-white mb-2">
@@ -914,7 +956,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     setCreateForm(prev => ({ ...prev, name: e.target.value }));
                     setError(''); // Clear error when user types
                   }}
-                  placeholder="my_project_name"
+                  placeholder={t.editprojectmodal240}
                   className="w-full font-mono"
                   disabled={creating}
                   required
@@ -935,7 +977,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   id="create-description"
                   value={createForm.description}
                   onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter project description (optional)"
+                  placeholder={t.projectpanel938}
                   className="w-full"
                   rows={3}
                   disabled={creating}
@@ -981,7 +1023,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 2: Database Connection */}
-          <TabPanel header="Database Connection" leftIcon="pi pi-database">
+          <TabPanel header={t.editprojectmodal332} leftIcon="pi pi-database">
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-db-name" className="block text-sm font-medium text-white mb-2">
@@ -1081,7 +1123,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 3: Project Properties */}
-          <TabPanel header="Project Properties" leftIcon="pi pi-file">
+          <TabPanel header={t.editprojectmodal426} leftIcon="pi pi-file">
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-project-directory" className="block text-sm font-medium text-white mb-2">
@@ -1143,11 +1185,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   value={createForm.default_language}
                   onChange={(e) => setCreateForm(prev => ({ ...prev, default_language: e.target.value }))}
                   options={[
-                    { label: 'English', value: 'en' },
-                    { label: 'Deutsch', value: 'de' },
-                    { label: 'Français', value: 'fr' },
-                    { label: 'Español', value: 'es' },
-                    { label: 'Italiano', value: 'it' }
+                    { label: t.editprojectmodal484, value: 'en' },
+                    { label: t.editprojectmodal485, value: 'de' },
+                    { label: t.editprojectmodal486, value: 'fr' },
+                    { label: t.editprojectmodal487, value: 'es' },
+                    { label: t.editprojectmodal488, value: 'it' }
                   ]}
                   className="w-full"
                   disabled={creating}
@@ -1166,10 +1208,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   value={createForm.filename_short_length}
                   onChange={(e) => setCreateForm(prev => ({ ...prev, filename_short_length: e.target.value }))}
                   options={[
-                    { label: '2 characters', value: 2 },
-                    { label: '3 characters', value: 3 },
-                    { label: '4 characters', value: 4 },
-                    { label: '5 characters', value: 5 }
+                    { label: t.editprojectmodal506, value: 2 },
+                    { label: t.editprojectmodal507, value: 3 },
+                    { label: t.editprojectmodal508, value: 4 },
+                    { label: t.editprojectmodal509, value: 5 }
                   ]}
                   className="w-full"
                   disabled={creating}
@@ -1182,7 +1224,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 4: Localization Settings */}
-          <TabPanel header="Localization Settings" leftIcon="pi pi-globe">
+          <TabPanel header={t.editprojectmodal522} leftIcon="pi pi-globe">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="field">
@@ -1267,7 +1309,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     id="create-currency-symbol"
                     value={createForm.currency_symbol}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, currency_symbol: e.target.value }))}
-                    placeholder="€"
+                    placeholder={t.editprojectmodal602}
                     className="w-full"
                     disabled={creating}
                     maxLength={5}
@@ -1294,7 +1336,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                       { label: 'America/New_York', value: 'America/New_York' },
                       { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
                       { label: 'Asia/Tokyo', value: 'Asia/Tokyo' },
-                      { label: 'Australia/Sydney', value: 'Australia/Sydney' },
+                      { label: t.projectpanel1297, value: t.projectpanel1297 },
                       { label: 'UTC', value: 'UTC' }
                     ]}
                     className="w-full"
@@ -1320,16 +1362,16 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </div>
         )}
 
-        <div className="flex justify-end space-x-2 pt-4">
+        <div className="flex justify-end space-x-2 pt-4 gap-2">
           <Button
-            label="Cancel"
+            label={t.applicationsmodal432}
             icon="pi pi-times"
             onClick={handleCreateModalHide}
             className="p-button-text"
             disabled={creating}
           />
           <Button
-            label={creating ? "Creating..." : "Create Project"}
+            label={creating ? t.createtablemodal614 : t.projectpanel776}
             icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
             onClick={handleCreateProject}
             disabled={creating || !createForm.name.trim()}
@@ -1339,7 +1381,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       {/* Delete Project Confirmation Modal */}
       <Dialog
-        header="Delete Project"
+        header={t.projectpanel1342}
         visible={showDeleteModal}
         onHide={handleDeleteModalHide}
         style={{ width: '450px' }}
@@ -1354,32 +1396,48 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             <i className="pi pi-exclamation-triangle text-orange-500 text-2xl mt-1"></i>
             <div>
               <h3 className="text-xl font-bold text-gray-300 mb-2">
-                Are you sure you want to delete this project?
+                {t.projectpanel1356}
               </h3>
               <p className="text-sm text-gray-600 mb-2">
                 <strong>{projectToDelete?.name}</strong>
               </p>
-              <p className="text-sm text-gray-500">
-                This action will deactivate the project. You can restore it later if needed.
-                Teams, templates, and databases associated with this project will remain intact.
+              <p className="text-sm text-red-400 mb-4">
+                {t.projectpanel1362}
               </p>
+
+              {/* Confirmation Input */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Type <strong className="text-red-400">DELETE</strong> to confirm
+                </label>
+                <InputText
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full"
+                  disabled={deleting}
+                />
+                <small className="text-gray-500 mt-1 block">
+                  You must enter exactly DELETE (capital letters)
+                </small>
+              </div>
             </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={handleDeleteModalHide}
               className="p-button-text"
               disabled={deleting}
             />
             <Button
-              label={deleting ? "Deleting..." : "Delete Project"}
+              label={deleting ? t.deleting : t.projectpanel1342}
               icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               onClick={handleDeleteProject}
               className="p-button-danger"
-              disabled={deleting}
+              disabled={deleting || deleteConfirmText !== 'DELETE'}
             />
           </div>
         </div>
@@ -1453,11 +1511,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 </div>
                 <div>
                   <span className="font-medium text-gray-300">Join Code:</span>
-                  <span className="ml-2 text-blue-400 font-mono">{selectedProjectForOverview.join_code || 'None'}</span>
+                  <span className="ml-2 text-blue-400 font-mono">{selectedProjectForOverview.join_code || t.createtablemodal482}</span>
                 </div>
                 <div className="col-span-2">
                   <span className="font-medium text-gray-300">Description:</span>
-                  <span className="ml-2 text-white">{selectedProjectForOverview.description || 'No description'}</span>
+                  <span className="ml-2 text-white">{selectedProjectForOverview.description || t.schemaexportcontroller226}</span>
                 </div>
               </div>
             </div>
@@ -1478,8 +1536,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                         <div className="flex items-center space-x-3">
                           <i className="pi pi-user text-indigo-400"></i>
                           <div>
-                            <div className="font-medium text-white">{member.user?.name || 'Unknown User'}</div>
-                            <div className="text-sm text-gray-300">{member.user?.email || 'No email'}</div>
+                            <div className="font-medium text-white">{member.user?.name || t.panelt1103}</div>
+                            <div className="text-sm text-gray-300">{member.user?.email || t.projectpanel1482}</div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -1488,7 +1546,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                             member.role === 'admin' ? 'bg-blue-100 text-blue-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {member.role || 'Member'}
+                            {member.role || t.manageteammodal394}
                           </span>
                           {member.joined_at && (
                             <div className="text-xs text-gray-400 mt-1">
@@ -1576,13 +1634,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             <div className="flex justify-end items-center pt-4 border-t border-gray-600">
               <div className="flex gap-2">
                 <Button
-                  label="Close"
+                  label={t.authmodalsesetpasswordmodal162}
                   icon="pi pi-times"
                   className="p-button-text"
                   onClick={() => setShowProjectOverviewModal(false)}
                 />
               <Button
-                label="Manage Project"
+                label={t.projectpanel1579}
                 icon="pi pi-cog"
                 className="min-w-fit whitespace-nowrap"
                 onClick={() => {
@@ -1594,6 +1652,54 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
           </div>
         )}
+      </Dialog>
+
+      {/* Select New Project Dialog */}
+      <Dialog
+        header="Project Created Successfully!"
+        visible={showSelectProjectDialog}
+        onHide={() => {
+          setShowSelectProjectDialog(false);
+          setNewlyCreatedProject(null);
+        }}
+        style={{ width: '500px' }}
+        modal
+        closable={false}
+        draggable={false}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 bg-green-900/30 border border-green-700 rounded-lg p-4">
+            <i className="pi pi-check-circle text-green-400 text-3xl"></i>
+            <div>
+              <div className="text-lg font-semibold text-white">
+                {newlyCreatedProject?.name}
+              </div>
+              <div className="text-sm text-gray-300">
+                Project has been created successfully!
+              </div>
+            </div>
+          </div>
+
+          <div className="text-gray-200 text-center py-2">
+            Do you want to select this project as your default project?
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-600">
+            <Button
+              label="No, thanks"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={handleSelectNewProjectNo}
+            />
+            <Button
+              label="Yes, select it"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleSelectNewProjectYes}
+              autoFocus
+            />
+          </div>
+        </div>
       </Dialog>
     </div>
   );

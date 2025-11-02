@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface VersionConfirmationModalProps {
   isOpen: boolean;
@@ -16,13 +17,19 @@ export default function VersionConfirmationModal({
   onNewVersion,
   onContinueEditing,
   actionDescription,
-  currentVersion = 'Current',
+  currentVersion,
   tableName
 }: VersionConfirmationModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   if (!isOpen) return null;
 
+  const displayVersion = currentVersion || t.profilemodal640;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
       <div className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-600">
@@ -66,7 +73,7 @@ export default function VersionConfirmationModal({
                 <div className="text-left">
                   <div className="font-medium text-green-400 text-base">Ja, neue Version erstellen</div>
                   <div className="text-sm text-green-300/80">
-                    {currentVersion} → {currentVersion.replace(/\d+$/, (match) => String(parseInt(match) + 1))}
+                    {displayVersion} → {displayVersion.replace(/\d+$/, (match) => String(parseInt(match) + 1))}
                   </div>
                 </div>
               </div>
@@ -80,7 +87,7 @@ export default function VersionConfirmationModal({
               <div className="flex items-center">
                 <span className="text-xl mr-3 group-hover:scale-110 transition-transform">✏️</span>
                 <div className="text-left">
-                  <div className="font-medium text-blue-400 text-base">Nein, an {currentVersion} weiterarbeiten</div>
+                  <div className="font-medium text-blue-400 text-base">Nein, an {displayVersion} weiterarbeiten</div>
                   <div className="text-sm text-blue-300/80">
                     Direkt ändern ohne neue Version
                   </div>
@@ -90,7 +97,7 @@ export default function VersionConfirmationModal({
           </div>
 
           <div className="mt-4 p-3 bg-gray-700/50 rounded text-xs text-gray-400">
-            ℹ️ Du kannst später jederzeit mit "Save as new version" eine neue Version erstellen.
+            ℹ️ Du kannst später jederzeit mit t.versionconfirmationmodal93 eine neue Version erstellen.
           </div>
         </div>
 
@@ -98,7 +105,7 @@ export default function VersionConfirmationModal({
         <div className="flex justify-end gap-3 p-4 border-t border-gray-600">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
           >
             Abbrechen
           </button>

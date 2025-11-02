@@ -7,6 +7,7 @@ import { Column } from 'primereact/column';
 import { Badge } from 'primereact/badge';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TeamMember {
   id: number;
@@ -71,6 +72,10 @@ interface MemberModalProps {
 }
 
 export default function MemberModal({ visible, onHide, team, projectId, onSave }: MemberModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -176,7 +181,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // Load team members
@@ -188,7 +193,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       });
 
       if (!teamResponse.ok) {
-        throw new Error('Failed to load team details');
+        throw new Error(t.membermodal191);
       }
 
       const teamData = await teamResponse.json();
@@ -241,7 +246,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       }
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load data');
+      setError(error instanceof Error ? error.message : t.membermodal244);
     } finally {
       setLoading(false);
     }
@@ -294,7 +299,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/teams/${team.id}/members`, {
@@ -313,14 +318,14 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to add member to team');
+        throw new Error(errorData.message || t.membermodal316);
       }
 
       await response.json();
 
       toast.current?.show({
         severity: 'success',
-        summary: 'Success',
+        summary: t.membermodal323,
         detail: `${member.user.name} added to team successfully`,
         life: 3000
       });
@@ -332,8 +337,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       // Error adding member to team
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: error instanceof Error ? error.message : 'Failed to add member to team',
+        summary: t.membermodal335,
+        detail: error instanceof Error ? error.message : t.membermodal316,
         life: 3000
       });
     } finally {
@@ -345,8 +350,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     if (member.role === 'owner') {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Warning',
-        detail: 'Cannot remove team owner',
+        summary: t.membermodal348,
+        detail: t.teamcontroller236,
         life: 3000
       });
       return;
@@ -354,7 +359,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     confirmDialog({
       message: `Remove ${member.user.name} from the team?`,
-      header: 'Remove Member',
+      header: t.manageteammodal485,
       icon: 'pi pi-exclamation-triangle',
       defaultFocus: 'reject',
       acceptClassName: 'p-button-danger',
@@ -362,7 +367,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         try {
           const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
-            throw new Error('Not authenticated');
+            throw new Error(t.applicationsmodal66);
           }
 
           const response = await fetch(`/api/teams/${team!.id}/members/${member.user_id}`, {
@@ -375,13 +380,13 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to remove member');
+            throw new Error(errorData.message || t.manageteammodal155);
           }
 
           toast.current?.show({
             severity: 'success',
-            summary: 'Success',
-            detail: 'Member removed successfully',
+            summary: t.membermodal323,
+            detail: t.teamcontroller241,
             life: 3000
           });
 
@@ -391,8 +396,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           // Error removing member
           toast.current?.show({
             severity: 'error',
-            summary: 'Error',
-            detail: error instanceof Error ? error.message : 'Failed to remove member',
+            summary: t.membermodal335,
+            detail: error instanceof Error ? error.message : t.manageteammodal155,
             life: 3000
           });
         }
@@ -404,8 +409,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     if (member.role === 'owner') {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Warning',
-        detail: 'Cannot change owner role',
+        summary: t.membermodal348,
+        detail: t.projectcontroller844,
         life: 3000
       });
       return;
@@ -414,7 +419,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/teams/${team!.id}/members/${member.user_id}/role`, {
@@ -429,13 +434,13 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update role');
+        throw new Error(errorData.message || t.membermodal432);
       }
 
       toast.current?.show({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Member role updated successfully',
+        summary: t.membermodal323,
+        detail: t.projectcontroller849,
         life: 3000
       });
 
@@ -445,8 +450,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       // Error updating role
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: error instanceof Error ? error.message : 'Failed to update role',
+        summary: t.membermodal335,
+        detail: error instanceof Error ? error.message : t.membermodal432,
         life: 3000
       });
     }
@@ -455,8 +460,8 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   if (!visible) return null;
 
   const roleOptions = [
-    { label: 'Member', value: 'member' },
-    { label: 'Admin', value: 'admin' }
+    { label: t.manageteammodal394, value: 'member' },
+    { label: t.manageteammodal395, value: 'admin' }
   ];
 
   // Column templates
@@ -476,11 +481,11 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
     const isTeamOwner = team?.project_owner_id === currentUserId;
 
-    // For project members not in team, show "Available"
+    // For project members not in team, show t.membermodal479
     if (!member.isInTeam) {
       return (
         <Badge
-          value="Available"
+          value={t.membermodal479}
           severity="success"
         />
       );
@@ -533,7 +538,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-sm p-button-danger"
-          tooltip="Remove from Team"
+          tooltip={t.membermodal536}
           onClick={() => handleRemoveMember(member)}
           disabled={assigning}
         />
@@ -546,7 +551,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         <Button
           icon="pi pi-plus"
           className="p-button-rounded p-button-text p-button-sm p-button-success"
-          tooltip="Assign to Team"
+          tooltip={t.membermodal549}
           onClick={() => handleAddMemberToTeam(member)}
           disabled={assigning}
         />
@@ -579,7 +584,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           {/* Info message */}
           <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
             <i className="pi pi-info-circle mr-2"></i>
-            Team-Mitglieder können an diesem Projekt zusammenarbeiten. Projekt-Mitglieder mit Status "Available" können zum Team hinzugefügt werden.
+            Team-Mitglieder können an diesem Projekt zusammenarbeiten. Projekt-Mitglieder mit Status {t.membermodal479} können zum Team hinzugefügt werden.
           </div>
 
           {/* Members Table */}
@@ -587,31 +592,31 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
             <DataTable
               value={getAllMembers()}
               loading={loading}
-              emptyMessage="No members found"
+              emptyMessage={t.membermodal590}
               className="p-datatable-sm"
               scrollable
               scrollHeight="400px"
             >
               <Column
                 field="user"
-                header="Member"
+                header={t.manageteammodal394}
                 body={memberBodyTemplate}
                 className="w-1/3"
               />
               <Column
                 field="role"
-                header="Role"
+                header={t.manageteammodal388}
                 body={roleBodyTemplate}
                 className="w-1/4"
               />
               <Column
                 field="joined_at"
-                header="Joined"
+                header={t.membermodal609}
                 body={joinedBodyTemplate}
                 className="w-1/4"
               />
               <Column
-                header="Actions"
+                header={t.applicationsmodal354}
                 body={actionsBodyTemplate}
                 className="w-24"
                 headerClassName="text-center"
@@ -622,7 +627,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-600 mt-4">
             <Button
-              label="Close"
+              label={t.authmodalsesetpasswordmodal162}
               icon="pi pi-times"
               className="p-button-text"
               onClick={onHide}

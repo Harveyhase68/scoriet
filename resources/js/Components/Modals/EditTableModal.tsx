@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { SchemaTable } from '@/lib/api';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TableField {
   id: string;
   name: string;
   type: string;
+  length?: number | null;
+  unsigned: boolean;
   nullable: boolean;
-  primaryKey: boolean;
   autoIncrement: boolean;
-  index: boolean;
-  unique: boolean;
+  constraintType: 'none' | 'primary' | 'index' | 'unique';
   comment: string;
   // Control Type & Link Fields
   controlType: string;
@@ -52,6 +53,21 @@ const CONTROL_TYPES = [
 ];
 
 /**
+ * Parse field type to extract base type and length
+ * e.g., "VARCHAR(50)" → { type: "varchar", length: 50 }
+ *       "INT" → { type: "int", length: null }
+ */
+function parseFieldType(fieldType: string): { type: string; length: number | null } {
+  const match = fieldType.match(/^([a-zA-Z]+)(?:\((\d+)\))?/i);
+  if (match) {
+    const type = match[1].toLowerCase();
+    const length = match[2] ? parseInt(match[2], 10) : null;
+    return { type, length };
+  }
+  return { type: fieldType.toLowerCase(), length: null };
+}
+
+/**
  * Auto-detect control type based on field type and name
  */
 function detectControlType(fieldType: string, fieldName: string, linkTable: string): string {
@@ -79,6 +95,10 @@ function detectControlType(fieldType: string, fieldName: string, linkTable: stri
 }
 
 export default function EditTableModal({ isOpen, onClose, onTableUpdated, table, loading = false }: EditTableModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [tableName, setTableName] = useState('');
   const [fileKeyName, setFileKeyName] = useState('');
   const [fileNameRenamed, setFileNameRenamed] = useState('');
@@ -166,15 +186,28 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
         // Use control_type from database, or auto-detect if not set
         const controlType = field.control_type || detectControlType(field.field_type, field.field_name, linkTable);
 
+        // Parse field type to extract base type and length
+        const { type, length } = parseFieldType(field.field_type);
+
+        // Determine constraint type from boolean flags
+        let constraintType: 'none' | 'primary' | 'index' | 'unique' = 'none';
+        if (isPrimaryKey) {
+          constraintType = 'primary';
+        } else if (isUnique) {
+          constraintType = 'unique';
+        } else if (isIndex) {
+          constraintType = 'index';
+        }
+
         return {
           id: field.id?.toString() || index.toString(),
           name: field.field_name,
-          type: field.field_type,
+          type: type,
+          length: field.field_length || length,
+          unsigned: field.is_unsigned || false,
           nullable: field.is_nullable,
-          primaryKey: isPrimaryKey,
           autoIncrement: isAutoIncrement,
-          index: isIndex,
-          unique: isUnique,
+          constraintType: constraintType,
           comment: field.comment || '',
           // Control Type & Link Fields
           controlType: controlType,
@@ -249,26 +282,12 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
   // Filter fields to show only those suitable for file keys (primary, unique, index)
   const getSuitableFileKeyFields = (): TableField[] => {
-    if (!table) return fields;
-
     const suitableFields: TableField[] = [];
 
-    // Add primary key fields
+    // Add fields with constraints (primary, unique, index)
     fields.forEach(field => {
-      if (field.primaryKey) {
+      if (field.constraintType && field.constraintType !== 'none') {
         suitableFields.push(field);
-      }
-    });
-
-    // Add fields that are part of UNIQUE constraints
-    table.constraints?.forEach(constraint => {
-      if (constraint.constraint_type === 'UNIQUE' || constraint.constraint_type === 'KEY' || constraint.constraint_type === 'INDEX') {
-        constraint.columns?.forEach(constraintCol => {
-          const field = fields.find(f => f.name === constraintCol.field_name);
-          if (field && !suitableFields.some(sf => sf.id === field.id)) {
-            suitableFields.push(field);
-          }
-        });
       }
     });
 
@@ -316,32 +335,32 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
 
     // Validation
     if (!tableName.trim()) {
-      setError('Table name is required');
+      setError(t.createtablemodal189);
       return;
     }
 
     if (fields.some(field => !field.name.trim())) {
-      setError('All fields must have a name');
+      setError(t.createtablemodal194);
       return;
     }
 
     // Check for duplicate field names
     const fieldNames = fields.map(f => f.name.toLowerCase());
     if (fieldNames.length !== new Set(fieldNames).size) {
-      setError('Field names must be unique');
+      setError(t.createtablemodal201);
       return;
     }
 
     // Validate filekeyname
     if (!fileKeyName.trim()) {
-      setError('File key name is required');
+      setError(t.edittablemodal335);
       return;
     }
 
     // Check if selected filekeyname exists in suitable fields
     const suitableFields = getSuitableFileKeyFields();
     if (!suitableFields.some(field => field.name === fileKeyName)) {
-      setError('Selected file key name must be a primary key, unique key, or indexed field');
+      setError(t.edittablemodal342);
       return;
     }
 
@@ -369,25 +388,25 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
       className="fixed inset-0 flex items-center justify-center"
       style={{
         zIndex: 999999,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        backdropFilter: 'blur(4px)'
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}
       onClick={handleClose}
     >
       <div
-        className="portal-modal-content rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-600"
         onClick={e => e.stopPropagation()}
       >
-        <div className="portal-modal-header flex justify-between items-center">
-          <h2 className="flex items-center">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-white flex items-center">
             <i className="pi pi-pencil mr-2"></i>
             Edit Table: {table?.table_name}
           </h2>
           <button
             onClick={handleClose}
             disabled={loading}
+            className="text-gray-400 hover:text-white transition-colors"
           >
-            <i className="pi pi-times"></i>
+            <i className="pi pi-times text-xl"></i>
           </button>
         </div>
 
@@ -406,7 +425,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                 onChange={(e) => setTableName(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="e.g., users, products, orders"
+                placeholder={t.createtablemodal300}
                 maxLength={64}
               />
             </div>
@@ -444,7 +463,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                   onChange={(e) => setFileNameRenamed(e.target.value)}
                   disabled={loading}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="e.g., CustomUser, ProductCatalog"
+                  placeholder={t.createtablemodal339}
                   maxLength={100}
                 />
                 <div className="text-xs text-gray-400 mt-1">
@@ -494,8 +513,8 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                 <div key={field.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
                   {/* Row 1: Main field properties */}
                   <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
-                    {/* Field Name */}
-                    <div>
+                    {/* Field Name - 2x größer */}
+                    <div className="lg:col-span-2">
                       <label className="block text-xs text-gray-200 mb-1">Name</label>
                       <input
                         type="text"
@@ -503,7 +522,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                         onChange={(e) => updateField(field.id, { name: e.target.value })}
                         disabled={loading}
                         className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                        placeholder="field_name"
+                        placeholder={t.createtablemodal398}
                       />
                     </div>
 
@@ -531,6 +550,22 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                       </select>
                     </div>
 
+                    {/* Length (for VARCHAR, CHAR, etc.) */}
+                    <div>
+                      <label className="block text-xs text-gray-200 mb-1">Length</label>
+                      <input
+                        type="number"
+                        value={field.length || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateField(field.id, { length: value ? parseInt(value, 10) : null });
+                        }}
+                        disabled={loading}
+                        placeholder="e.g., 50"
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                      />
+                    </div>
+
                     {/* Control Type */}
                     <div>
                       <label className="block text-xs text-gray-200 mb-1">Control</label>
@@ -554,8 +589,53 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                       </select>
                     </div>
 
-                    {/* Checkboxes */}
-                    <div className="flex flex-col space-y-1">
+                    {/* Constraint Type */}
+                    <div>
+                      <label className="block text-xs text-gray-200 mb-1">Constraint</label>
+                      <select
+                        value={field.constraintType}
+                        onChange={(e) => updateField(field.id, { constraintType: e.target.value as 'none' | 'primary' | 'index' | 'unique' })}
+                        disabled={loading}
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                      >
+                        <option value="none">None</option>
+                        <option value="primary">Primary Key</option>
+                        <option value="index">Index</option>
+                        <option value="unique">Unique</option>
+                      </select>
+                    </div>
+
+                    {/* Remove Button */}
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => removeField(field.id)}
+                        disabled={loading || fields.length <= 1}
+                        className="text-red-400 hover:text-red-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        title={t.createtablemodal497}
+                      >
+                        <i className="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Comment & Checkboxes */}
+                  <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
+                    {/* Comment - nimmt 4 Spalten */}
+                    <div className="lg:col-span-4">
+                      <label className="block text-xs text-gray-200 mb-1">Comment</label>
+                      <input
+                        type="text"
+                        value={field.comment}
+                        onChange={(e) => updateField(field.id, { comment: e.target.value })}
+                        disabled={loading}
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        placeholder={t.edittablemodal621}
+                      />
+                    </div>
+
+                    {/* Checkboxes - zusammen in den restlichen 3 Spalten */}
+                    <div className="lg:col-span-3 flex items-end gap-4">
                       <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
@@ -569,16 +649,13 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                       <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
-                          checked={field.primaryKey}
-                          onChange={(e) => updateField(field.id, { primaryKey: e.target.checked })}
+                          checked={field.unsigned}
+                          onChange={(e) => updateField(field.id, { unsigned: e.target.checked })}
                           disabled={loading}
                           className="mr-1"
                         />
-                        Primary Key
+                        Unsigned
                       </label>
-                    </div>
-
-                    <div className="flex flex-col space-y-1">
                       <label className="flex items-center text-xs text-gray-200">
                         <input
                           type="checkbox"
@@ -589,56 +666,10 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
                         />
                         Auto Inc.
                       </label>
-                      <label className="flex items-center text-xs text-gray-200">
-                        <input
-                          type="checkbox"
-                          checked={field.index}
-                          onChange={(e) => updateField(field.id, { index: e.target.checked })}
-                          disabled={loading}
-                          className="mr-1"
-                        />
-                        Index
-                      </label>
-                      <label className="flex items-center text-xs text-gray-200">
-                        <input
-                          type="checkbox"
-                          checked={field.unique}
-                          onChange={(e) => updateField(field.id, { unique: e.target.checked })}
-                          disabled={loading}
-                          className="mr-1"
-                        />
-                        Unique
-                      </label>
-                    </div>
-
-                    {/* Comment */}
-                    <div>
-                      <label className="block text-xs text-gray-200 mb-1">Comment</label>
-                      <input
-                        type="text"
-                        value={field.comment}
-                        onChange={(e) => updateField(field.id, { comment: e.target.value })}
-                        disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                        placeholder="Field description"
-                      />
-                    </div>
-
-                    {/* Remove Button */}
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => removeField(field.id)}
-                        disabled={loading || fields.length <= 1}
-                        className="text-red-400 hover:text-red-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                        title="Remove field"
-                      >
-                        <i className="pi pi-trash"></i>
-                      </button>
                     </div>
                   </div>
 
-                  {/* Row 2: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
+                  {/* Row 3: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
                   {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2 border-t border-gray-600">
                       {/* Link Table */}
@@ -732,19 +763,19 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
           )}
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700 mt-4">
+          <div className="flex justify-end space-x-3 pt-4 mt-4">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !tableName.trim()}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-2 rounded text-white transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors flex items-center space-x-2"
             >
               {loading ? (
                 <>

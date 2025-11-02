@@ -516,6 +516,25 @@ class SQLParser
         }
         $this->consumeToken('RPAREN');
 
+        // Parse ON DELETE and ON UPDATE actions
+        $on_delete = 'NO ACTION';
+        $on_update = 'NO ACTION';
+
+        // Check for ON DELETE
+        if ($this->currentTokenMatches('KEYWORD', 'ON')) {
+            while ($this->currentTokenMatches('KEYWORD', 'ON')) {
+                $this->consumeToken('KEYWORD', 'ON');
+
+                if ($this->currentTokenMatches('KEYWORD', 'DELETE')) {
+                    $this->consumeToken('KEYWORD', 'DELETE');
+                    $on_delete = $this->parseReferentialAction();
+                } elseif ($this->currentTokenMatches('KEYWORD', 'UPDATE')) {
+                    $this->consumeToken('KEYWORD', 'UPDATE');
+                    $on_update = $this->parseReferentialAction();
+                }
+            }
+        }
+
         $fk = [
             'type' => 'FOREIGN KEY',
             'name' => $constraint_name,
@@ -524,11 +543,40 @@ class SQLParser
                 'table' => $ref_table,
                 'columns' => $ref_cols,
             ],
+            'on_delete' => $on_delete,
+            'on_update' => $on_update,
         ];
 
         if (isset($this->table_map[$table_name])) {
             $this->table_map[$table_name]['constraints'][] = $fk;
         }
+    }
+
+    private function parseReferentialAction(): string
+    {
+        // Parse referential actions: CASCADE, RESTRICT, SET NULL, NO ACTION, SET DEFAULT
+        if ($this->currentTokenMatches('KEYWORD', 'CASCADE')) {
+            $this->consumeToken('KEYWORD', 'CASCADE');
+            return 'CASCADE';
+        } elseif ($this->currentTokenMatches('KEYWORD', 'RESTRICT')) {
+            $this->consumeToken('KEYWORD', 'RESTRICT');
+            return 'RESTRICT';
+        } elseif ($this->currentTokenMatches('KEYWORD', 'SET')) {
+            $this->consumeToken('KEYWORD', 'SET');
+            if ($this->currentTokenMatches('KEYWORD', 'NULL')) {
+                $this->consumeToken('KEYWORD', 'NULL');
+                return 'SET NULL';
+            } elseif ($this->currentTokenMatches('KEYWORD', 'DEFAULT')) {
+                $this->consumeToken('KEYWORD', 'DEFAULT');
+                return 'SET DEFAULT';
+            }
+        } elseif ($this->currentTokenMatches('KEYWORD', 'NO')) {
+            $this->consumeToken('KEYWORD', 'NO');
+            $this->consumeToken('KEYWORD', 'ACTION');
+            return 'NO ACTION';
+        }
+
+        return 'NO ACTION'; // Default
     }
 
     private function parseDropStatement()

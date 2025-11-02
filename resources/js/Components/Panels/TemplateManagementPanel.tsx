@@ -15,18 +15,20 @@ import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import FileModal from './FileModal';
 import TemplateModal from './TemplateModal';
+import VariableModal from './VariableModal';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const setFocus = () => ref.current?.focus();
 
   return (
-    <div 
-      {...rest} 
+    <div
+      {...rest}
       ref={ref}
-      tabIndex={-1} 
-      style={{ flex: 1, padding: '5px 10px', ...style }} 
-      onMouseDownCapture={setFocus} 
+      tabIndex={-1}
+      style={{ flex: 1, padding: '5px 10px', ...style }}
+      onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
       className="bg-gray-800 text-gray-100"
     >
@@ -62,6 +64,14 @@ interface TemplateFile {
     file_order: number;
 }
 
+interface TemplateVariable {
+    id?: number;
+    variable_name: string;
+    description: string | null;
+    default_value: string | null;
+    is_required: boolean;
+}
+
 interface TemplateManagementPanelProps {
     filterByProject?: boolean; // Explicit flag to control project filtering
     forceProjectId?: number; // Force a specific project ID (overrides selectedProject)
@@ -70,6 +80,10 @@ interface TemplateManagementPanelProps {
 }
 
 const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }) => {
+    // i18n setup
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
+
     // Use Project Context to get current project
     const { selectedProject } = useProject();
     const toast = useToast();
@@ -93,13 +107,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [fileModalVisible, setFileModalVisible] = useState(false);
     const [editingFile, setEditingFile] = useState<TemplateFile | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState('All');
+    const [categoryFilter, setCategoryFilter] = useState(t.templatecontroller22);
     const [cloneModalVisible, setCloneModalVisible] = useState(false);
     const [templateToClone, setTemplateToClone] = useState<Template | null>(null);
     const [cloneName, setCloneName] = useState('');
     const [cloneVisibility, setCloneVisibility] = useState<'public' | 'private'>('public');
     const [nameCheckLoading, setNameCheckLoading] = useState(false);
     const [nameExists, setNameExists] = useState(false);
+    const [templateVariables, setTemplateVariables] = useState<TemplateVariable[]>([]);
+    const [variableModalVisible, setVariableModalVisible] = useState(false);
+    const [editingVariable, setEditingVariable] = useState<TemplateVariable | null>(null);
 
     // Track if we should use forceProjectName (don't change title on selectedProject changes)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -110,14 +127,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     // No need to inject styles - using centralized CSS
     // Ant Design React 19 warnings are handled by @ant-design/v5-patch-for-react-19
 
-    const categories = ['All', 'Web', 'Mobile', 'API', 'Desktop', 'Database'];
+    const categories = [t.templatecontroller22, t.panelt3296, t.panelt3297, t.panelt3298, t.panelt3299, t.panelsewnavigationpanel223];
     const fileTypes = [
-        { label: 'Static File', value: 'static_file', description: 'Single static file (e.g. config.json)' },
-        { label: 'Static Directory (.zip)', value: 'static_directory', description: 'Static directory as ZIP archive' },
-        { label: 'Project File', value: 'project_file', description: 'Project-specific file with placeholders' },
-        { label: 'DB Table File', value: 'db_table_file', description: 'File per database table (model, controller, etc.)' },
-        { label: 'Project File (Languages)', value: 'project_file_languages', description: 'Project-specific file with language support' },
-        { label: 'DB Table File (Languages)', value: 'db_table_file_languages', description: 'File per database table with language support' }
+        { label: t.templatemanagementpanel115, value: 'static_file', description: 'Single static file (e.g. config.json)' },
+        { label: 'Static Directory (.zip)', value: 'static_directory', description: t.templatemanagementpanel116 },
+        { label: 'Project File', value: 'project_file', description: t.templatemanagementpanel117 },
+        { label: t.templatemanagementpanel118, value: 'db_table_file', description: 'File per database table (model, controller, etc.)' },
+        { label: 'Project File (Languages)', value: 'project_file_languages', description: t.templatemanagementpanel119 },
+        { label: 'DB Table File (Languages)', value: 'db_table_file_languages', description: t.templatemanagementpanel120 }
     ];
 
     useEffect(() => {
@@ -132,7 +149,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         }
     }, [filterByProject, updateTabTitle, forceProjectName]);
 
-    // No dynamic title updates for menu call - title stays as "Template Verwaltung" (all templates)
+    // No dynamic title updates for menu call - title stays as t.panelsewnavigationpanel188 (all templates)
 
 
     const loadTemplates = async () => {
@@ -147,7 +164,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             setTemplates(templates);
         } catch {
             // Error loading templates
-            toast.showError('Fehler beim Laden der Templates. Bitte zuerst einloggen.');
+            toast.showError(t.templatemanagementpanel150);
             setTemplates([]);
         } finally {
             setLoading(false);
@@ -199,7 +216,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch {
             // Error loading template details
-            toast.showError('Fehler beim Laden der Template-Details');
+            toast.showError(t.templatemanagementpanel202);
         }
     };
 
@@ -213,7 +230,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch {
             // Error hard deleting template
-            toast.showError('Fehler beim endgültigen Löschen des Templates');
+            toast.showError(t.templatemanagementpanel216);
         }
     };
 
@@ -227,7 +244,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch {
             // Error toggling template status
-            toast.showError('Fehler beim Ändern des Template-Status');
+            toast.showError(t.templatemanagementpanel230);
         }
     };
 
@@ -283,12 +300,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             });
 
             if (response.success) {
-                toast.showSuccess('Template erfolgreich geklont');
+                toast.showSuccess(t.templatecontroller649);
                 setCloneModalVisible(false);
                 loadTemplates();
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Fehler beim Klonen des Templates';
+            const errorMessage = error.response?.data?.message || t.templatemanagementpanel291;
             toast.showError(errorMessage);
         }
     };
@@ -322,6 +339,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             if (response.success) {
                 toast.showSuccess(`Template erfolgreich ${editingTemplate ? 'aktualisiert' : 'erstellt'}`);
+
+                // 🛡️ Check for security scanner warning
+                if (response.template?.auto_set_to_private) {
+                    setTimeout(() => {
+                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        if (response.template.detected_issues) {
+                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                        }
+                        toast.showWarn(warningMessage);
+                    }, 800); // 800ms delay so it shows AFTER success toast
+                }
+
                 setModalVisible(false);
                 setTemplateFiles([]);
 
@@ -332,12 +361,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch (error: any) {
             // Template submission error
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || `Fehler beim ${editingTemplate ? 'Aktualisieren' : 'Erstellen'} des Templates`;
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || `Fehler beim ${editingTemplate ? t.applicationsmodal313 : t.teammodal240} des Templates`;
             toast.showError(errorMessage);
         }
     };
 
-    // Separate save function for "Speichern" button - saves template and transitions to edit mode
+    // Separate save function for t.cmsadminpanel279 button - saves template and transitions to edit mode
     const handleSave = async (values: any) => {
         try {
             const templateData = {
@@ -356,7 +385,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             const response = await api.createTemplate(templateData);
 
             if (response.success) {
-                toast.showSuccess('Template erfolgreich gespeichert');
+                toast.showSuccess(t.templatemanagementpanel359);
+
+                // 🛡️ Check for security scanner warning
+                if (response.template?.auto_set_to_private) {
+                    setTimeout(() => {
+                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        if (response.template.detected_issues) {
+                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                        }
+                        toast.showWarn(warningMessage);
+                    }, 800); // 800ms delay
+                }
 
                 // Close the create modal
                 setModalVisible(false);
@@ -392,7 +432,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 }, 300);
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Fehler beim Speichern des Templates';
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || t.templatemanagementpanel395;
             toast.showError(errorMessage);
         }
     };
@@ -407,17 +447,17 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 const response = await api.importTemplate(templateData, false);
                 
                 if (response.success) {
-                    toast.showSuccess('Template erfolgreich importiert');
+                    toast.showSuccess(t.templatemanagementpanel410);
                     loadTemplates();
                 } else {
-                    toast.showError(response.error || 'Fehler beim Importieren des Templates');
+                    toast.showError(response.error || t.templatemanagementpanel413);
                 }
             } catch (error: any) {
                 if (error.response?.status === 409) {
                     // Template already exists
                     confirmDialog({
-                        message: 'Ein Template mit diesem Namen existiert bereits. Möchten Sie es überschreiben?',
-                        header: 'Template existiert bereits',
+                        message: t.templatemanagementpanel419,
+                        header: t.templatemanagementpanel420,
                         icon: 'pi pi-exclamation-triangle',
                         accept: async () => {
                             try {
@@ -425,20 +465,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 const response = await api.importTemplate(templateData, true);
 
                                 if (response.success) {
-                                    toast.showSuccess('Template erfolgreich importiert und überschrieben');
+                                    toast.showSuccess(t.templatemanagementpanel428);
                                     loadTemplates();
                                 }
                             } catch {
                                 // Error overwriting template
-                                toast.showError('Fehler beim Überschreiben des Templates');
+                                toast.showError(t.templatemanagementpanel433);
                             }
                         },
                         acceptLabel: 'Ja, überschreiben',
-                        rejectLabel: 'Abbrechen',
+                        rejectLabel: t.templatefilemanager361,
                         acceptClassName: 'p-button-danger'
                     });
                 } else {
-                    toast.showError('Fehler beim Importieren des Templates');
+                    toast.showError(t.templatemanagementpanel413);
                     // Import error
                 }
             }
@@ -461,10 +501,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                toast.showSuccess('Template erfolgreich exportiert');
+                toast.showSuccess(t.templatemanagementpanel464);
             }
         } catch {
-            toast.showError('Fehler beim Exportieren des Templates');
+            toast.showError(t.templatemanagementpanel467);
             // Export error
         }
     };
@@ -482,7 +522,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const handleDeleteFile = async (index: number) => {
         if (!editingTemplate) {
-            toast.showError('Kein Template ausgewählt');
+            toast.showError(t.templatemanagementpanel485);
             return;
         }
 
@@ -513,8 +553,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 // Update local state
                 setTemplateFiles(newFiles);
                 toast.showSuccess(`Datei "${fileToDelete.file_name}" erfolgreich gelöscht`);
+
+                // 🛡️ Check for security scanner warning
+                if (response.template?.auto_set_to_private) {
+                    setTimeout(() => {
+                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        if (response.template.detected_issues) {
+                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                        }
+                        toast.showWarn(warningMessage);
+                    }, 800); // 800ms delay
+                }
             } else {
-                toast.showError('Fehler beim Löschen der Datei');
+                toast.showError(t.templatefilemanager120);
             }
         } catch (error: any) {
             // File delete error
@@ -524,7 +575,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const handleFileSubmit = async (values: any) => {
         if (!editingTemplate) {
-            toast.showError('Kein Template ausgewählt');
+            toast.showError(t.templatemanagementpanel485);
             return;
         }
 
@@ -592,9 +643,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     }
                 }
 
-                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'hinzugefügt'}`);
+                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : t.templatemanagementpanel595}`);
+
+                // 🛡️ Check for security scanner warning
+                if (response.template?.auto_set_to_private) {
+                    setTimeout(() => {
+                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        if (response.template.detected_issues) {
+                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                        }
+                        toast.showWarn(warningMessage);
+                    }, 800); // 800ms delay
+                }
             } else {
-                toast.showError('Fehler beim Speichern der Datei');
+                toast.showError(t.templatemanagementpanel597);
             }
         } catch (error: any) {
             // File save error
@@ -606,22 +668,109 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         setFileModalVisible(false);
     };
 
+    // Variable management functions
+    const loadTemplateVariables = async () => {
+        if (!editingTemplate?.id) {
+            setTemplateVariables([]);
+            return;
+        }
+
+        try {
+            const response = await api.getTemplateVariables(editingTemplate.id);
+            if (response.success) {
+                setTemplateVariables(response.variables || []);
+            } else {
+                // Don't show error toast for permission denied
+                console.error('Error loading variables:', response.error);
+                setTemplateVariables([]);
+            }
+        } catch (error: any) {
+            console.error('Error loading variables:', error);
+            setTemplateVariables([]);
+        }
+    };
+
+    const handleCreateVariable = () => {
+        setEditingVariable(null);
+        setVariableModalVisible(true);
+    };
+
+    const handleEditVariable = (variable: TemplateVariable) => {
+        setEditingVariable(variable);
+        setVariableModalVisible(true);
+    };
+
+    const handleDeleteVariable = async (variableId: number) => {
+        if (!editingTemplate?.id) {
+            toast.showError('Kein Template ausgewählt');
+            return;
+        }
+
+        try {
+            const response = await api.deleteTemplateVariable(editingTemplate.id, variableId);
+            if (response.success) {
+                toast.showSuccess('Variable erfolgreich gelöscht');
+                loadTemplateVariables();
+            } else {
+                toast.showError(response.error || 'Fehler beim Löschen der Variable');
+            }
+        } catch (_error: any) {
+            toast.showError('Fehler beim Löschen der Variable');
+        }
+    };
+
+    const handleVariableSubmit = async (values: any) => {
+        if (!editingTemplate?.id) {
+            toast.showError('Kein Template ausgewählt');
+            return;
+        }
+
+        try {
+            let response;
+            if (editingVariable?.id) {
+                // Update existing variable
+                response = await api.updateTemplateVariable(editingTemplate.id, editingVariable.id, values);
+                if (response.success) {
+                    toast.showSuccess('Variable erfolgreich aktualisiert');
+                } else {
+                    toast.showError(response.error || 'Fehler beim Aktualisieren der Variable');
+                    return;
+                }
+            } else {
+                // Create new variable
+                response = await api.createTemplateVariable(editingTemplate.id, values);
+                if (response.success) {
+                    toast.showSuccess('Variable erfolgreich erstellt');
+                } else {
+                    toast.showError(response.error || 'Fehler beim Erstellen der Variable');
+                    return;
+                }
+            }
+
+            setVariableModalVisible(false);
+            setEditingVariable(null);
+            loadTemplateVariables();
+        } catch (_error: any) {
+            toast.showError('Fehler beim Speichern der Variable');
+        }
+    };
+
 
     return (
         <TabContent>
             <div className="p-4">
-                <Card title="Template Verwaltung" className="h-full">
+                <Card title={t.panelsewnavigationpanel188} className="h-full">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex gap-2">
                             <Button 
                                 icon="pi pi-plus" 
-                                label="Neues Template"
+                                label={t.templatemanagementpanel618}
                                 onClick={handleCreate}
                                 className="p-button-primary"
                             />
                             <Button 
                                 icon="pi pi-upload" 
-                                label="Import"
+                                label={t.schematranslationpanel762}
                                 onClick={() => document.getElementById('template-upload')?.click()}
                                 className="p-button-secondary"
                             />
@@ -643,14 +792,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <InputText 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Templates suchen..."
+                                placeholder={t.templatesSearchPlaceholder}
                                 className="w-64"
                             />
                             <Dropdown 
                                 value={categoryFilter} 
                                 options={categories.map(cat => ({ label: cat, value: cat }))}
                                 onChange={(e) => setCategoryFilter(e.value)}
-                                placeholder="Kategorie"
+                                placeholder={t.templatesColumnCategory}
                                 className="w-32"
                             />
                         </div>
@@ -664,15 +813,15 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         rowsPerPageOptions={[10, 25, 50]}
                         sortMode="multiple"
                         className="p-datatable-sm"
-                        emptyMessage="Keine Templates gefunden"
-                        paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+                        emptyMessage={t.templatesNoTemplatesFound}
+                        paginatorTemplate={t.languagemanagementpanel317}
                         currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
                         scrollable
                     >
-                        <Column field="name" header="Name" sortable />
+                        <Column field="name" header={t.registermodal236} sortable />
                         <Column 
                             field="category" 
-                            header="Kategorie" 
+                            header={t.templatesColumnCategory} 
                             body={(template) => (
                                 <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
                                     {template.category}
@@ -681,7 +830,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         <Column 
                             field="language" 
-                            header="Sprache"
+                            header={t.cmsadminpanel245}
                             body={(template) => (
                                 <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
                                     {template.language}
@@ -690,7 +839,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         <Column 
                             field="tags" 
-                            header="Tags" 
+                            header={t.templatemanagementpanel693} 
                             body={(template) => (
                                 <div className="flex gap-1 flex-wrap">
                                     {template.tags?.map((tag: string, index: number) => (
@@ -703,22 +852,22 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         <Column 
                             field="file_count" 
-                            header="Dateien"
+                            header={t.templatemanagementpanel706}
                             body={(template) => `${template.file_count} Dateien`}
                         />
                         <Column
                             field="is_active"
-                            header="Status"
+                            header={t.applicationsmodal335}
                             body={(template) => (
                                 <span className={`px-2 py-1 rounded text-xs ${
                                     template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
                                 }`}>
-                                    {template.is_active ? 'Aktiv' : 'Inaktiv'}
+                                    {template.is_active ? t.templatesStatusActive : t.manageteammodal328}
                                 </span>
                             )}
                         />
                         <Column
-                            header="Typ"
+                            header={t.edittablemodal512}
                             body={(template) => {
                                 if (template.is_system_template) {
                                     return (
@@ -733,18 +882,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             ? 'bg-blue-500 text-white'
                                             : 'bg-red-500 text-white'
                                     }`}>
-                                        {template.visibility === 'public' ? 'Public' : 'Private'}
+                                        {template.visibility === 'public' ? t.databasemanagementpanel772 : t.databasemanagementpanel771}
                                     </span>
                                 );
                             }}
                         />
                         <Column
                             field="created_at"
-                            header="Erstellt"
+                            header={t.databasemanagementpanel861}
                             body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
                         />
                         <Column
-                            header="Aktionen"
+                            header={t.applicationsmodal354}
                             body={(template) => {
                                 const isOwner = parseInt(template.creator_user_id) === currentUserId;
 
@@ -754,27 +903,27 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             icon="pi pi-eye"
                                             className="p-button-text p-button-sm"
                                             onClick={() => handleView(template)}
-                                            tooltip="Anzeigen"
+                                            tooltip={t.publicprojectspanel378}
                                         />
                                         {isOwner && (
                                             <Button
                                                 icon="pi pi-pencil"
                                                 className="p-button-text p-button-sm"
                                                 onClick={() => handleEdit(template)}
-                                                tooltip="Bearbeiten"
+                                                tooltip={t.cmsadminpanel170}
                                             />
                                         )}
                                         <Button
                                             icon="pi pi-download"
                                             className="p-button-text p-button-sm"
                                             onClick={() => handleExport(template)}
-                                            tooltip="Exportieren"
+                                            tooltip={t.templatemanagementpanel771}
                                         />
                                         <Button
                                             icon="pi pi-copy"
                                             className="p-button-text p-button-info p-button-sm"
                                             onClick={() => handleClone(template)}
-                                            tooltip="Klonen"
+                                            tooltip={t.templatemanagementpanel777}
                                         />
                                         {isOwner && (
                                             <>
@@ -782,17 +931,17 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                     icon={template.is_active ? "pi pi-eye-slash" : "pi pi-eye"}
                                                     className={`p-button-text p-button-sm ${template.is_active ? 'p-button-warning' : 'p-button-success'}`}
                                                     onClick={() => handleToggleActive(template)}
-                                                    tooltip={template.is_active ? "Deaktivieren" : "Aktivieren"}
+                                                    tooltip={template.is_active ? "Deaktivieren" : t.languagemanagementpanel251}
                                                 />
                                                 <Button
                                                     icon="pi pi-trash"
                                                     className="p-button-text p-button-danger p-button-sm"
                                                     onClick={() => {
-                                                        if (window.confirm('Template endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+                                                        if (window.confirm(t.templatemanagementpanel791)) {
                                                             handleHardDelete(template.id);
                                                         }
                                                     }}
-                                                    tooltip="Endgültig löschen"
+                                                    tooltip={t.templatemanagementpanel795}
                                                 />
                                             </>
                                         )}
@@ -821,6 +970,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onDeleteFile={handleDeleteFile}
                 fileTypes={fileTypes}
                 userType={userType}
+                templateVariables={templateVariables}
+                onLoadVariables={loadTemplateVariables}
+                onCreateVariable={handleCreateVariable}
+                onEditVariable={handleEditVariable}
+                onDeleteVariable={handleDeleteVariable}
             />
 
             {/* File Create/Edit Modal */}
@@ -856,7 +1010,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 {viewingTemplate && (
                     <div className="space-y-4">
                         <div>
-                            <strong>Beschreibung:</strong> {viewingTemplate.description || 'Keine Beschreibung'}
+                            <strong>Beschreibung:</strong> {viewingTemplate.description || t.schemaexportcontroller226}
                         </div>
                         <div>
                             <strong>Kategorie:</strong> <Tag value={viewingTemplate.category} severity="info" />
@@ -936,7 +1090,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <InputText
                             value={cloneName}
                             onChange={handleCloneNameChange}
-                            placeholder="Template-Name eingeben..."
+                            placeholder={t.templatemanagementpanel939}
                             className="w-full"
                             style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
                         />
@@ -974,10 +1128,21 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                     <div className="bg-gray-700 p-3 rounded text-sm">
                         <strong>Quelle:</strong> {templateToClone?.name}<br/>
-                        <strong>Typ:</strong> {templateToClone?.is_system_template ? 'System' : templateToClone?.visibility}
+                        <strong>Typ:</strong> {templateToClone?.is_system_template ? t.ultimatetemplatecontroller301 : templateToClone?.visibility}
                     </div>
                 </div>
             </Dialog>
+
+            {/* Variable Create/Edit Modal */}
+            <VariableModal
+                visible={variableModalVisible}
+                onCancel={() => {
+                    setVariableModalVisible(false);
+                    setEditingVariable(null);
+                }}
+                onSubmit={handleVariableSubmit}
+                editingVariable={editingVariable}
+            />
 
             {/* ConfirmDialog for import overwrite confirmation */}
             <ConfirmDialog />

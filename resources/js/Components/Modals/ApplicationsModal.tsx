@@ -7,6 +7,7 @@ import { Tag } from 'primereact/tag';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Application {
   id: number;
@@ -44,6 +45,10 @@ interface ApplicationsModalProps {
 }
 
 export default function ApplicationsModal({ visible, onHide, project }: ApplicationsModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +68,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${project.id}/applications`, {
@@ -75,14 +80,14 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to load applications');
+        throw new Error(errorData.message || t.applicationsmodal78);
       }
 
       const data = await response.json();
       setApplications(data.applications || []);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading applications');
+      setError(error instanceof Error ? error.message : t.applicationsmodal85);
     } finally {
       setLoading(false);
     }
@@ -103,7 +108,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/project-application-review', {
@@ -122,7 +127,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to review application');
+        throw new Error(errorData.message || t.applicationsmodal125);
       }
 
       setSuccess(`Application ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully`);
@@ -140,7 +145,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       window.dispatchEvent(event);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error reviewing application');
+      setError(error instanceof Error ? error.message : t.applicationsmodal143);
     } finally {
       setReviewing(false);
     }
@@ -225,13 +230,13 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
           <Button
             icon="pi pi-check"
             className="p-button-rounded p-button-sm p-button-success"
-            tooltip="Approve application"
+            tooltip={t.applicationsmodal228}
             onClick={() => openReviewModal(application, 'approve')}
           />
           <Button
             icon="pi pi-times"
             className="p-button-rounded p-button-sm p-button-danger"
-            tooltip="Reject application"
+            tooltip={t.applicationsmodal234}
             onClick={() => openReviewModal(application, 'reject')}
           />
         </div>
@@ -249,7 +254,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
     return (
       <div>
         <div className="text-sm">
-          {application.reviewer?.name || 'Unknown'}
+          {application.reviewer?.name || t.testprojectschemas50}
         </div>
         <div className="text-xs text-gray-500">
           {application.reviewed_at ? formatDate(application.reviewed_at) : ''}
@@ -298,7 +303,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
             <DataTable
               value={applications}
               className="p-datatable-sm"
-              emptyMessage="No applications found"
+              emptyMessage={t.applicationsmodal301}
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 20]}
@@ -310,7 +315,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
                   <Button
                     icon="pi pi-refresh"
                     className="p-button-rounded p-button-text"
-                    tooltip="Refresh"
+                    tooltip={t.applicationsmodal313}
                     onClick={loadApplications}
                     disabled={loading}
                   />
@@ -319,39 +324,39 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
             >
               <Column 
                 field="user" 
-                header="Applicant" 
+                header={t.applicationsmodal322} 
                 body={userTemplate}
                 style={{ width: '200px' }}
               />
               
               <Column 
                 field="message" 
-                header="Message" 
+                header={t.applicationsmodal329} 
                 body={messageTemplate}
               />
               
               <Column 
                 field="status" 
-                header="Status" 
+                header={t.applicationsmodal335} 
                 body={statusTemplate}
                 style={{ width: '100px' }}
               />
               
               <Column 
                 field="created_at" 
-                header="Applied" 
+                header={t.applicationsmodal342} 
                 body={(app) => formatDate(app.created_at)}
                 style={{ width: '120px' }}
               />
               
               <Column 
-                header="Reviewed By" 
+                header={t.applicationsmodal348} 
                 body={reviewTemplate}
                 style={{ width: '150px' }}
               />
               
               <Column 
-                header="Actions" 
+                header={t.applicationsmodal354} 
                 body={actionTemplate}
                 style={{ width: '100px' }}
               />
@@ -360,7 +365,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
           <div className="flex justify-end pt-4">
             <Button
-              label="Close"
+              label={t.authmodalsesetpasswordmodal162}
               icon="pi pi-times"
               onClick={handleClose}
               className="p-button-text"
@@ -371,7 +376,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
       {/* Review Application Modal */}
       <Dialog
-        header={`${reviewAction === 'approve' ? 'Approve' : 'Reject'} Application`}
+        header={`${reviewAction === 'approve' ? 'Approve' : t.applicationsmodal374} Application`}
         visible={showReviewModal}
         onHide={() => setShowReviewModal(false)}
         style={{ width: '450px' }}
@@ -409,7 +414,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
           <div className="field">
             <label htmlFor="review-notes" className="block text-sm font-medium text-gray-300 mb-2">
-              {reviewAction === 'approve' ? 'Welcome Message' : 'Rejection Reason'} (Optional)
+              {reviewAction === 'approve' ? 'Welcome Message' : t.applicationsmodal412} (Optional)
             </label>
             <InputTextarea
               id="review-notes"
@@ -417,8 +422,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
               onChange={(e) => setReviewNotes(e.target.value)}
               placeholder={
                 reviewAction === 'approve' 
-                  ? "Welcome them to the project..."
-                  : "Let them know why their application was rejected..."
+                  ? t.applicationsmodal420
+                  : t.applicationsmodal421
               }
               className="w-full"
               rows={3}
@@ -429,14 +434,14 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
           <div className="flex justify-end gap-4 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowReviewModal(false)}
               className="p-button-text"
               disabled={reviewing}
             />
             <Button
-              label={reviewing ? "Processing..." : (reviewAction === 'approve' ? 'Approve' : 'Reject')}
+              label={reviewing ? t.applicationsmodal439 : (reviewAction === 'approve' ? 'Approve' : t.applicationsmodal374)}
               icon={reviewing ? "pi pi-spinner pi-spin" : (reviewAction === 'approve' ? "pi pi-check" : "pi pi-times")}
               onClick={handleReview}
               className={reviewAction === 'approve' ? 'p-button-success' : 'p-button-danger'}

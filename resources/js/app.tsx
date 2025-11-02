@@ -1,3 +1,4 @@
+import React from 'react';
 import '../css/app.css';
 import './styles/fonts';
 
@@ -35,7 +36,7 @@ async function loadPricingData() {
         if (pricingData.success) {
             // Store pricing data in localStorage
             localStorage.setItem('pricing_data', JSON.stringify(pricingData.prices));
-            localStorage.setItem('pricing_currency', pricingData.currency || 'EUR');
+            localStorage.setItem('pricing_currency', pricingData.currency || t.app48);
             localStorage.setItem('pricing_timestamp', pricingData.updated_at || new Date().toISOString());
         } else {
             // Set fallback prices
@@ -45,7 +46,7 @@ async function loadPricingData() {
                 patron: 99.99
             };
             localStorage.setItem('pricing_data', JSON.stringify(fallbackPrices));
-            localStorage.setItem('pricing_currency', 'EUR');
+            localStorage.setItem('pricing_currency', t.app48);
             localStorage.setItem('pricing_timestamp', new Date().toISOString());
         }
     } catch {
@@ -56,7 +57,7 @@ async function loadPricingData() {
             patron: 99.99
         };
         localStorage.setItem('pricing_data', JSON.stringify(fallbackPrices));
-        localStorage.setItem('pricing_currency', 'EUR');
+        localStorage.setItem('pricing_currency', t.app48);
         localStorage.setItem('pricing_timestamp', new Date().toISOString());
     }
 }

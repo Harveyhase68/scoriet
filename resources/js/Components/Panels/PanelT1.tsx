@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TabContentProps, NavigationPanelProps } from '@/types';
 import { apiClient } from '@/lib/api';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ interface TreeNode {
 }
 
 // Generate tree data from projects, teams, and team members (optimized version)
-const generateProjectTreeData = async (): Promise<TreeNode[]> => {
+const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
   try {
     // Fetch projects with their teams in a single query
     const projects = await apiClient.getProjectsWithTeams();
@@ -144,7 +145,7 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
       // This allows users to open Database Management and assign databases to the project
       const databasesContainerNode: TreeNode = {
         id: `databases-${project.id}`,
-        name: 'Databases',
+        name: t.panelt1143,
         type: 'databases-container',
         projectId: project.id,
         projectName: project.name,
@@ -219,7 +220,7 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
         // Create "File Preview" container node
         const generatedFilesContainerNode: TreeNode = {
           id: `generated-files-${project.id}`,
-          name: 'File Preview',
+          name: t.panelt1219,
           type: 'generated-files-container',
           projectId: project.id,
           projectName: project.name,
@@ -278,19 +279,19 @@ const generateProjectTreeData = async (): Promise<TreeNode[]> => {
     return [
       {
         id: 'error-project',
-        name: 'Error Loading Projects',
+        name: t.panelt1281,
         type: 'project' as const,
         expanded: true,
         children: [
           {
             id: 'error-team',
-            name: 'Check Console for Errors',
+            name: t.panelt1287,
             type: 'team' as const,
             expanded: true,
             children: [
               {
                 id: 'error-member',
-                name: 'See browser console for details',
+                name: t.panelt1293,
                 type: 'member' as const,
                 expanded: false,
                 children: []
@@ -394,6 +395,10 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // Language state
+  const [currentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  const { t, isLoading: translationsLoading } = useTranslation(currentLanguage);
 
   // Function to refresh only the File Preview for a specific project
   const refreshFilePreview = useCallback(async (projectId: number) => {
@@ -413,7 +418,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             if (generationTreeData && generationTreeData.tree_data && generationTreeData.tree_data.length > 0) {
               const generatedFilesContainerNode: TreeNode = {
                 id: `generated-files-${projectId}`,
-                name: 'File Preview',
+                name: t.panelt1219,
                 type: 'generated-files-container',
                 projectId: projectId,
                 projectName: node.projectName,
@@ -484,10 +489,15 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
   // Load project data on component mount
   useEffect(() => {
+    // Wait for translations to load before fetching project data
+    if (translationsLoading) {
+      return;
+    }
+
     const loadProjectData = async () => {
       setLoading(true);
       try {
-        const data = await generateProjectTreeData();
+        const data = await generateProjectTreeData(t);
         setTreeData(data);
       } catch {
         // Error loading project data
@@ -508,7 +518,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
     return () => {
       window.removeEventListener('teamChanged', handleTeamChange);
     };
-  }, []);
+  }, [translationsLoading, t]);
 
   // Listen for File Preview updates
   useEffect(() => {
@@ -788,14 +798,14 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             <button
               onClick={expandAll}
               className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
-              title="Expand All"
+              title={t.panelt1791}
             >
               ⬇️
             </button>
             <button
               onClick={collapseAll}
               className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
-              title="Collapse All"
+              title={t.panelt1798}
             >
               ⬆️
             </button>
@@ -806,11 +816,11 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         <div className="flex-1 min-h-0 overflow-y-auto bg-gray-900 rounded border border-gray-600 p-2">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-400">Loading projects...</div>
+              <div className="text-gray-400">{t.projectpanel601}</div>
             </div>
           ) : treeData.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-400">No projects found</div>
+              <div className="text-gray-400">{t.projectpanel854}</div>
             </div>
           ) : (
             treeData.map((node) => (
@@ -830,22 +840,22 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         {/* Selected Item Info - fixed height */}
         {selectedNode && (
           <div className="flex-shrink-0 mt-4 p-3 bg-gray-700 rounded">
-            <h5 className="font-medium text-green-400 mb-1">Selected:</h5>
+            <h5 className="font-medium text-green-400 mb-1">{t.panelt1833}</h5>
             <div className="text-sm text-gray-300">
               <div><strong>Name:</strong> {selectedNode.name}</div>
               <div><strong>Type:</strong> {selectedNode.type}</div>
               <div><strong>ID:</strong> {selectedNode.id}</div>
               {selectedNode.path && (
-                <div><strong>Path:</strong> {selectedNode.path}</div>
+                <div><strong>{t.panelt1843}</strong> {selectedNode.path}</div>
               )}
               {selectedNode.projectId && (
-                <div><strong>Project ID:</strong> {selectedNode.projectId}</div>
+                <div><strong>{t.panelt1842}</strong> {selectedNode.projectId}</div>
               )}
               {selectedNode.teamId && (
-                <div><strong>Team ID:</strong> {selectedNode.teamId}</div>
+                <div><strong>{t.panelt1845}</strong> {selectedNode.teamId}</div>
               )}
               {selectedNode.type === 'member' && (
-                <div><strong>Role:</strong> Team Member</div>
+                <div><strong>{t.panelt1848}</strong> Team Member</div>
               )}
               {selectedNode.type === 'generated-file' && (
                 <>
@@ -870,13 +880,13 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             <div className="text-lg font-bold text-green-400">
               {treeData.reduce((acc, node) => acc + (node.children?.length || 0), treeData.length)}
             </div>
-            <div className="text-xs text-gray-400">Total Items</div>
+            <div className="text-xs text-gray-400">{t.panelt1873}</div>
           </div>
           <div className="bg-gray-700 p-2 rounded text-center">
             <div className="text-lg font-bold text-yellow-400">
               {selectedNode ? '1' : '0'}
             </div>
-            <div className="text-xs text-gray-400">Selected</div>
+            <div className="text-xs text-gray-400">{t.panelt1879}</div>
           </div>
         </div>
       </div>

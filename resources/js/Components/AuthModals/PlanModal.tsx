@@ -5,6 +5,7 @@ import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
 import { CheckIcon, HeartIcon } from '@heroicons/react/24/outline';
 import { pricingUtils } from '@/lib/api';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface PlanModalProps {
   visible: boolean;
@@ -12,6 +13,10 @@ interface PlanModalProps {
 }
 
 export default function PlanModal({ visible, onHide }: PlanModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   // Get pricing data from localStorage
   const getPricingData = () => {
     const prices = pricingUtils.getPricingData();
@@ -23,7 +28,7 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
         premium: 2.99,
         business: 9.99,
         patron: 5.00,
-        currency: 'EUR'
+        currency: t.app48
       };
     }
     
@@ -40,69 +45,69 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
   
   const pricingTiers = [
     {
-      name: 'Free',
+      name: t.planmodal43,
       price: "€0",
       period: "forever",
-      description: "Perfect for personal projects",
+      description: t.planmodal46,
       features: [
-        "Up to 3 projects",
-        "Basic templates",
-        "SQL schema parsing",
-        "Community support"
+        t.planmodal48,
+        t.planmodal49,
+        t.planmodal50,
+        t.planmodal51
       ],
-      buttonText: "Current Plan",
+      buttonText: t.planmodal53,
       buttonClass: "p-button-secondary",
       popular: false
     },
     {
-      name: 'Premium',
+      name: t.planmodal58,
       price: `${pricingData.currency}${pricingData.premium}`,
       period: "/month",
       yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
-      description: "Best for professional developers",
+      description: t.planmodal62,
       features: [
-        "Unlimited projects",
-        "Advanced templates",
-        "Custom template creation",
-        "Priority support",
-        "Advanced SQL features",
-        "Team collaboration"
+        t.planmodal64,
+        t.planmodal65,
+        t.planmodal66,
+        t.planmodal67,
+        t.planmodal68,
+        t.planmodal69
       ],
-      buttonText: "Choose Premium",
+      buttonText: t.planmodal71,
       buttonClass: "p-button-primary",
       popular: true
     },
     {
-      name: 'Business',
+      name: t.planmodal76,
       price: `${pricingData.currency}${pricingData.business}`,
       period: "/month",
       yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
-      description: "Best for teams and agencies",
+      description: t.planmodal80,
       features: [
-        "All Premium features",
-        "Team collaboration tools",
-        "Google Translate API integration",
-        "Advanced analytics",
-        "Priority support with SLA",
-        "Custom branding options"
+        t.planmodal82,
+        t.planmodal83,
+        t.planmodal84,
+        t.planmodal85,
+        t.planmodal86,
+        t.planmodal87
       ],
-      buttonText: "Choose Business",
+      buttonText: t.planmodal89,
       buttonClass: "p-button-info",
       popular: false
     },
     {
-      name: 'Patron',
+      name: t.planmodal94,
       price: `${pricingData.currency}${pricingData.patron}+`,
       period: "/month",
-      description: "Support the community",
+      description: t.planmodal97,
       features: [
-        "All Business features",
-        "Early access to features",
-        "Influence development",
-        "Community Discord access",
-        "Custom amount (€5-50+)"
+        t.planmodal99,
+        t.planmodal100,
+        t.planmodal101,
+        t.planmodal102,
+        t.planmodal103
       ],
-      buttonText: "Choose Patron",
+      buttonText: t.planmodal105,
       buttonClass: "p-button-help",
       popular: false
     }
@@ -113,7 +118,7 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
       visible={visible}
       onHide={onHide}
       modal
-      header="Choose Your Plan"
+      header={t.planmodal116}
       style={{ width: '95vw', maxWidth: '1400px' }}
       contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
       headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
@@ -124,7 +129,7 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
         <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-white">Current Plan</h3>
-            <Badge value="Free" severity="info" />
+            <Badge value={t.planmodal43} severity="info" />
           </div>
           <p className="text-gray-300">
             You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features and support the project!
@@ -140,15 +145,15 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
             >
               <div className="p-6">
                 {plan.popular && (
-                  <Badge value="MOST POPULAR" severity="info" className="mb-4" />
+                  <Badge value={t.planmodal143} severity="info" className="mb-4" />
                 )}
                 <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
                   {plan.name}
-                  {plan.name === 'Patron' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                  {plan.name === t.planmodal94 && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                 </h3>
                 <div className="text-3xl font-bold text-blue-400 mb-2">
                   {plan.price}
-                  {plan.price !== '€0' && plan.price !== 'Custom' && (
+                  {plan.price !== '€0' && plan.price !== t.planmodal151 && (
                     <span className="text-lg text-gray-400">/month</span>
                   )}
                 </div>
@@ -170,11 +175,11 @@ export default function PlanModal({ visible, onHide }: PlanModalProps) {
 
                 <Button
                   label={plan.buttonText}
-                  className={plan.name === 'Free' ? 'p-button-secondary w-full' : `${plan.buttonClass} w-full`}
+                  className={plan.name === t.planmodal43 ? 'p-button-secondary w-full' : `${plan.buttonClass} w-full`}
                   style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
-                  disabled={plan.name === 'Free'}
+                  disabled={plan.name === t.planmodal43}
                   onClick={() => {
-                    if (plan.name !== 'Free') {
+                    if (plan.name !== t.planmodal43) {
                       alert(`Upgrading to ${plan.name} - Payment integration coming soon!`);
                       onHide();
                     }

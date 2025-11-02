@@ -127,6 +127,36 @@ class ApiClient {
     return response.json();
   }
 
+  // Generic HTTP methods for convenience
+  async get(endpoint: string): Promise<any> {
+    return this.request(endpoint, { method: 'GET' });
+  }
+
+  async post(endpoint: string, data?: any): Promise<any> {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async put(endpoint: string, data?: any): Promise<any> {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete(endpoint: string): Promise<any> {
+    return this.request(endpoint, { method: 'DELETE' });
+  }
+
+  async patch(endpoint: string, data?: any): Promise<any> {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   async getAllSchemaVersions(): Promise<SchemaVersion[]> {
     const response = await this.request('/schema-versions');
     return response.versions || [];
@@ -526,6 +556,74 @@ class ApiClient {
         },
         currency: 'EUR',
         updated_at: new Date().toISOString()
+      };
+    }
+  }
+
+  // Template Variables API
+  async getTemplateVariables(templateId: number): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${templateId}/variables`);
+      return {
+        success: true,
+        variables: response.variables || []
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async createTemplateVariable(templateId: number, data: any): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${templateId}/variables`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return {
+        success: true,
+        variable: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async updateTemplateVariable(templateId: number, variableId: number, data: any): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${templateId}/variables/${variableId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      return {
+        success: true,
+        variable: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async deleteTemplateVariable(templateId: number, variableId: number): Promise<any> {
+    try {
+      await this.request(`/templates/${templateId}/variables/${variableId}`, {
+        method: 'DELETE'
+      });
+      return {
+        success: true
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }

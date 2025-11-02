@@ -1,454 +1,738 @@
-import React, { useState } from 'react';
-import { Card } from 'primereact/card';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
-import { TabPanel } from 'primereact/tabview';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
-// interface TabPanelProps {
-//   isActive: boolean;
-// }
-
-interface GeneratedFile {
-  filename: string;
-  content: string;
-  content_clean: string;
-  type: string;
-  table: string;
-  table_index: number;
-  fields_count: number;
+interface Project {
+  id: number;
+  name: string;
+  description?: string;
 }
 
-interface GTreeData {
-  gtree: Array<{
-    project: Array<{
-      projectname: string;
-      nmaxfiles: number;
-      tables: Array<{
-        tablename: string;
-        nmaxitems: number;
-        items: Array<{
-          name: string;
-          type: string;
-          controltype: number;
-        }>;
-      }>;
-    }>;
-  }>;
-  generated_files: GeneratedFile[];
+interface Template {
+  id: number;
+  name: string;
+  description?: string;
+  files?: TemplateFile[];
+}
+
+interface TemplateFile {
+  id: number;
+  file_name: string;
+  file_type: string;
+  file_path: string;
+}
+
+interface Schema {
+  id: number;
+  name: string;
+  last_version?: number;
+}
+
+interface Language {
+  code: string;
+  name: string;
+}
+
+interface Warning {
+  type: 'database' | 'language';
+  message: string;
+  templates: string[];
+}
+
+interface GenerationError {
+  file: string;
+  template: string;
+  table?: string;
+  language?: string;
+  error: string;
 }
 
 export default function CodeGenerationPanel() {
-  const [templateId, setTemplateId] = useState<string>('1');
-  const [tableIndex, setTableIndex] = useState<number>(0);
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t: _t } = useTranslation(currentLanguage); // Prefixed with _ to indicate intentionally unused
+
+  // State
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<number>>(new Set());
+  const [schemas, setSchemas] = useState<Schema[]>([]);
+  const [selectedSchemaIds, setSelectedSchemaIds] = useState<Set<number>>(new Set());
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [selectedLanguageCodes, setSelectedLanguageCodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [generationData, setGenerationData] = useState<GTreeData | null>(null);
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [executionResult, setExecutionResult] = useState<string>('');
-  const [batchProcessing, setBatchProcessing] = useState(false);
-  const [generatedCodeFiles, setGeneratedCodeFiles] = useState<{filename: string, content: string}[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<Warning[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generationErrors, setGenerationErrors] = useState<GenerationError[]>([]);
+  const [generationStats, setGenerationStats] = useState<{ errors: number; files: number } | null>(null);
 
-  const generateCode = async () => {
-    if (!templateId) return;
+  // Load user projects on mount
+  useEffect(() => {
+    loadProjects();
+  }, []);
 
-    setLoading(true);
-    setError('');
+  // Load project data when project is selected
+  useEffect(() => {
+    if (selectedProjectId) {
+      loadProjectData();
+    } else {
+      // Reset when no project selected
+      setTemplates([]);
+      setSelectedTemplateIds(new Set());
+      setSchemas([]);
+      setSelectedSchemaIds(new Set());
+      setLanguages([]);
+      setSelectedLanguageCodes(new Set());
+      setWarnings([]);
+    }
+  }, [selectedProjectId]);
 
+  // Check warnings when selections change
+  useEffect(() => {
+    if (selectedProjectId && templates.length > 0) {
+      checkWarnings();
+    }
+  }, [selectedTemplateIds, selectedSchemaIds, selectedLanguageCodes, templates]);
+
+  const loadProjects = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/template-process/${templateId}`, {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      const response = await fetch('/api/user/projects', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
-        }
+        },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setGenerationData(data);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Failed to generate code');
+      if (!response.ok) {
+        throw new Error('Failed to load projects');
       }
-    } catch {
-      setError('Failed to generate code');
+
+      const data = await response.json();
+      console.log('Projects API response:', data); // Debug log
+
+      let projectsArray = data.data || data.projects || data;
+
+      // Ensure it's an array
+      if (!Array.isArray(projectsArray)) {
+        projectsArray = [];
+      }
+
+      // Remove duplicates based on ID and filter out invalid projects
+      const seenIds = new Set();
+      const uniqueProjects = projectsArray.filter((project: Project) => {
+        // Skip projects without valid ID
+        if (!project.id || typeof project.id !== 'number') {
+          console.warn('Skipping project without valid ID:', project);
+          return false;
+        }
+
+        // Skip duplicates
+        if (seenIds.has(project.id)) {
+          console.warn('Skipping duplicate project:', project);
+          return false;
+        }
+
+        seenIds.add(project.id);
+        return true;
+      });
+
+      console.log('Unique projects:', uniqueProjects); // Debug log
+      console.log('Project IDs:', uniqueProjects.map(p => ({ id: p.id, name: p.name }))); // Debug IDs
+      setProjects(uniqueProjects);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load projects');
+      setProjects([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const executeJavaScript = () => {
-    if (!generationData || !generationData.generated_files) return;
-
-    const tableFiles = generationData.generated_files.filter(f => f.table && f.table_index === tableIndex);
-    if (tableFiles.length === 0) {
-      setExecutionResult('No files found for selected table index');
-      return;
-    }
+  const loadProjectData = async () => {
+    if (!selectedProjectId) return;
 
     try {
-      // Get the gtree data and selected file
-      const gtree = generationData.gtree;
-      const selectedFile = tableFiles[0];
+      setLoading(true);
+      setError(null);
 
-      let result = `// Executing JavaScript function for: ${selectedFile.filename}\n`;
-      result += `// Table: ${selectedFile.table} (Index: ${tableIndex})\n\n`;
-
-      // Execute the JavaScript function
-      try {
-        // Parse the function from the content
-        const functionMatch = selectedFile.content.match(/function\s+(\w+)\s*\([^)]*\)\s*\{([\s\S]*)\}/);
-        if (functionMatch) {
-          const [, functionName, functionBody] = functionMatch;
-
-          // Simple JavaScript interpretation for sContentResult
-          const lines = functionBody.split('\n');
-          let sContentResult = '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-
-            if (trimmed.startsWith('sContentResult +=')) {
-              // Extract the string being added
-              const stringMatch = trimmed.match(/sContentResult\s*\+=\s*'([^']*)';\s*$/);
-              if (stringMatch) {
-                let content = stringMatch[1];
-                // Replace \\n with actual newlines
-                content = content.replace(/\\n/g, '\n');
-                sContentResult += content;
-              }
-            } else if (trimmed.includes('for (let i = 0; i < gtree[0].project[0].tables[')) {
-              // Handle loops - execute for each item in the table
-              const table = gtree[0]?.project?.[0]?.tables?.[tableIndex];
-              if (table && table.items) {
-                // Process field loop lines following this for loop
-                let loopContent = '';
-                const nextLines = lines.slice(lines.indexOf(line) + 1);
-
-                for (const nextLine of nextLines) {
-                  const nextTrimmed = nextLine.trim();
-                  if (nextTrimmed === '}') break;
-
-                  if (nextTrimmed.startsWith('sContentResult +=')) {
-                    const loopStringMatch = nextTrimmed.match(/sContentResult\s*\+=\s*'([^']*)';\s*$/);
-                    if (loopStringMatch) {
-                      loopContent = loopStringMatch[1];
-                      break;
-                    }
-                  }
-                }
-
-                // Execute the loop for each field
-                table.items.forEach((item) => {
-                  let fieldLine = loopContent;
-                  fieldLine = fieldLine.replace(/\\n/g, '\n');
-                  // Replace any remaining template variables with actual values
-                  fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.name/g, item.name);
-                  fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.type/g, item.type);
-                  fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.controltype/g, item.controltype.toString());
-                  sContentResult += fieldLine;
-                });
-              }
-            }
-          }
-
-          result += `Generated Code Output:\n`;
-          result += `${'='.repeat(50)}\n`;
-          result += sContentResult;
-          result += `\n${'='.repeat(50)}\n`;
-          result += `\nExecution completed successfully!\n`;
-          result += `Function: ${functionName}\n`;
-          result += `Content length: ${sContentResult.length} characters\n`;
-          result += `Table fields processed: ${gtree[0]?.project?.[0]?.tables?.[tableIndex]?.items?.length || 0}\n`;
-        } else {
-          result += 'Could not parse JavaScript function\n\n';
-          result += 'Raw content:\n';
-          result += selectedFile.content;
-        }
-
-      } catch {
-        result += `Function execution error: ${execError}\n`;
-        result += `\nFunction content:\n${selectedFile.content}`;
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Authentication required');
+        return;
       }
 
-      setExecutionResult(result);
-    } catch {
-      setExecutionResult(`Execution Error: ${err}`);
-    }
-  };
-
-  const executeAllJavaScriptFunctions = () => {
-    if (!generationData || !generationData.generated_files) return;
-
-    setBatchProcessing(true);
-    const generatedFiles: {filename: string, content: string}[] = [];
-    let progressLog = 'Starting batch execution of all 278 JavaScript functions...\n\n';
-
-    try {
-      const gtree = generationData.gtree;
-
-      generationData.generated_files.forEach((file, index) => {
-        try {
-          progressLog += `Processing ${index + 1}/${generationData.generated_files.length}: ${file.filename}\n`;
-
-          // Parse and execute each JavaScript function
-          const functionMatch = file.content.match(/function\s+(\w+)\s*\([^)]*\)\s*\{([\s\S]*)\}/);
-          if (functionMatch) {
-            const [, , functionBody] = functionMatch;
-            const lines = functionBody.split('\n');
-            let sContentResult = '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-
-              if (trimmed.startsWith('sContentResult +=')) {
-                const stringMatch = trimmed.match(/sContentResult\s*\+=\s*'([^']*)';\s*$/);
-                if (stringMatch) {
-                  let content = stringMatch[1];
-                  content = content.replace(/\\n/g, '\n');
-                  sContentResult += content;
-                }
-              } else if (trimmed.includes('for (let i = 0; i < gtree[0].project[0].tables[')) {
-                // Extract table index from the line
-                const tableIndexMatch = trimmed.match(/tables\[(\d+)\]/);
-                if (tableIndexMatch) {
-                  const currentTableIndex = parseInt(tableIndexMatch[1]);
-                  const table = gtree[0]?.project?.[0]?.tables?.[currentTableIndex];
-
-                  if (table && table.items) {
-                    // Find loop content
-                    let loopContent = '';
-                    const nextLines = lines.slice(lines.indexOf(line) + 1);
-
-                    for (const nextLine of nextLines) {
-                      const nextTrimmed = nextLine.trim();
-                      if (nextTrimmed === '}') break;
-
-                      if (nextTrimmed.startsWith('sContentResult +=')) {
-                        const loopStringMatch = nextTrimmed.match(/sContentResult\s*\+=\s*'([^']*)';\s*$/);
-                        if (loopStringMatch) {
-                          loopContent = loopStringMatch[1];
-                          break;
-                        }
-                      }
-                    }
-
-                    // Execute loop for each field
-                    table.items.forEach((item) => {
-                      let fieldLine = loopContent.replace(/\\n/g, '\n');
-                      fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.name/g, item.name);
-                      fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.type/g, item.type);
-                      fieldLine = fieldLine.replace(/gtree\[0\]\.project\[0\]\.tables\[\d+\]\.items\[i\]\.controltype/g, item.controltype.toString());
-                      sContentResult += fieldLine;
-                    });
-                  }
-                }
-              }
-            }
-
-            // Store the generated file content
-            generatedFiles.push({
-              filename: file.filename,
-              content: sContentResult
-            });
-
-            progressLog += `✓ Generated ${sContentResult.length} characters\n`;
-          } else {
-            progressLog += `⚠ Could not parse function in ${file.filename}\n`;
-          }
-        } catch {
-          progressLog += `✗ Error processing ${file.filename}: ${fileError}\n`;
-        }
+      // First, load the project details to get enabled_languages
+      const projectRes = await fetch(`/api/projects/${selectedProjectId}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
       });
 
-      progressLog += `\n🎉 Batch execution completed!\n`;
-      progressLog += `Generated ${generatedFiles.length} files\n`;
-      progressLog += `Total characters: ${generatedFiles.reduce((sum, f) => sum + f.content.length, 0)}\n`;
+      if (!projectRes.ok) {
+        throw new Error('Failed to load project details');
+      }
 
-      setGeneratedCodeFiles(generatedFiles);
-      setExecutionResult(progressLog);
-    } catch {
-      setExecutionResult(`Batch execution error: ${err}\n\n${progressLog}`);
+      const projectData = await projectRes.json();
+      const project = projectData.data || projectData;
+
+      // Load templates via template-usages, schemas, and languages in parallel
+      const [templatesRes, schemasRes, allLanguagesRes] = await Promise.all([
+        fetch(`/api/projects/${selectedProjectId}/template-usages`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        }),
+        fetch(`/api/projects/${selectedProjectId}/schemas`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        }),
+        fetch('/api/active-languages', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        }),
+      ]);
+
+      if (!templatesRes.ok || !schemasRes.ok || !allLanguagesRes.ok) {
+        throw new Error('Failed to load project data');
+      }
+
+      const [templatesData, schemasData, allLanguagesData] = await Promise.all([
+        templatesRes.json(),
+        schemasRes.json(),
+        allLanguagesRes.json(),
+      ]);
+
+      console.log('Templates API response:', templatesData); // Debug log
+
+      // Extract templates from usages array
+      let templatesArray: Template[] = [];
+      if (templatesData.usages && Array.isArray(templatesData.usages)) {
+        // Each usage has a template property
+        templatesArray = templatesData.usages.map((usage: any) => usage.template).filter(Boolean);
+      }
+      console.log('Templates array:', templatesArray); // Debug log
+      const templatesWithFiles = await Promise.all(
+        (Array.isArray(templatesArray) ? templatesArray : []).map(async (template: Template) => {
+          try {
+            const filesRes = await fetch(`/api/templates/${template.id}/files`, {
+              headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            });
+            if (filesRes.ok) {
+              const filesData = await filesRes.json();
+              const filesArray = filesData.data || filesData;
+              return { ...template, files: Array.isArray(filesArray) ? filesArray : [] };
+            }
+          } catch {
+            // If files can't be loaded, continue without them
+          }
+          return template;
+        })
+      );
+
+      const schemasArray = schemasData.data || schemasData;
+
+      // Filter languages to only show project-enabled languages
+      const allLanguagesArray = allLanguagesData.data || allLanguagesData;
+      const enabledLanguageCodes = Array.isArray(project.enabled_languages)
+        ? project.enabled_languages
+        : (typeof project.enabled_languages === 'string'
+          ? JSON.parse(project.enabled_languages)
+          : []);
+
+      const projectLanguages = (Array.isArray(allLanguagesArray) ? allLanguagesArray : [])
+        .filter((lang: Language) => enabledLanguageCodes.includes(lang.code));
+
+      setTemplates(Array.isArray(templatesWithFiles) ? templatesWithFiles : []);
+      setSchemas(Array.isArray(schemasArray) ? schemasArray : []);
+      setLanguages(projectLanguages);
+
+      // Select all by default
+      setSelectedTemplateIds(new Set(templatesWithFiles.map((t: Template) => t.id)));
+      setSelectedSchemaIds(new Set((Array.isArray(schemasArray) ? schemasArray : []).map((s: Schema) => s.id)));
+      setSelectedLanguageCodes(new Set(projectLanguages.map((l: Language) => l.code)));
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to load project data');
+      setTemplates([]);
+      setSchemas([]);
+      setLanguages([]);
+      setSelectedTemplateIds(new Set());
+      setSelectedSchemaIds(new Set());
+      setSelectedLanguageCodes(new Set());
     } finally {
-      setBatchProcessing(false);
+      setLoading(false);
     }
   };
 
-  const downloadAsZip = async () => {
-    if (generatedCodeFiles.length === 0) {
-      alert('No generated files to download. Please execute all functions first.');
+  const checkWarnings = useCallback(() => {
+    const newWarnings: Warning[] = [];
+    const selectedTemplates = templates.filter(t => selectedTemplateIds.has(t.id));
+
+    // Check for database warnings
+    if (selectedSchemaIds.size === 0) {
+      const templatesNeedingDB = selectedTemplates.filter(template =>
+        template.files?.some(file =>
+          file.file_type === 'db_table_file' || file.file_type === 'db_table_file_languages'
+        )
+      );
+
+      if (templatesNeedingDB.length > 0) {
+        newWarnings.push({
+          type: 'database',
+          message: 'Some templates contain DB Table files but no database is selected. These files will not be generated.',
+          templates: templatesNeedingDB.map(t => t.name),
+        });
+      }
+    }
+
+    // Check for language warnings
+    if (selectedLanguageCodes.size === 0) {
+      const templatesNeedingLang = selectedTemplates.filter(template =>
+        template.files?.some(file =>
+          file.file_type === 'project_file_languages' || file.file_type === 'db_table_file_languages'
+        )
+      );
+
+      if (templatesNeedingLang.length > 0) {
+        newWarnings.push({
+          type: 'language',
+          message: 'Some templates contain Language files but no language is selected. These files will not be generated.',
+          templates: templatesNeedingLang.map(t => t.name),
+        });
+      }
+    }
+
+    setWarnings(newWarnings);
+  }, [templates, selectedTemplateIds, selectedSchemaIds, selectedLanguageCodes]);
+
+  const toggleTemplate = (id: number) => {
+    setSelectedTemplateIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllTemplates = () => {
+    if (selectedTemplateIds.size === templates.length) {
+      setSelectedTemplateIds(new Set());
+    } else {
+      setSelectedTemplateIds(new Set(templates.map(t => t.id)));
+    }
+  };
+
+  const toggleSchema = (id: number) => {
+    setSelectedSchemaIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllSchemas = () => {
+    if (selectedSchemaIds.size === schemas.length) {
+      setSelectedSchemaIds(new Set());
+    } else {
+      setSelectedSchemaIds(new Set(schemas.map(s => s.id)));
+    }
+  };
+
+  const toggleLanguage = (code: string) => {
+    setSelectedLanguageCodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(code)) {
+        newSet.delete(code);
+      } else {
+        newSet.add(code);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllLanguages = () => {
+    if (selectedLanguageCodes.size === languages.length) {
+      setSelectedLanguageCodes(new Set());
+    } else {
+      setSelectedLanguageCodes(new Set(languages.map(l => l.code)));
+    }
+  };
+
+  const canGenerate = (): boolean => {
+    return selectedProjectId !== null && selectedTemplateIds.size > 0;
+  };
+
+  const handleGenerateProject = async () => {
+    if (!canGenerate()) {
+      setError('Please select at least one template');
       return;
     }
 
     try {
-      // Create a simple text file with all content (later we can use JSZip)
-      let allContent = '# Generated Code Files from Template System\n\n';
-      allContent += `Generated: ${new Date().toISOString()}\n`;
-      allContent += `Template ID: ${templateId}\n`;
-      allContent += `Total Files: ${generatedCodeFiles.length}\n\n`;
+      setGenerating(true);
+      setError(null);
 
-      generatedCodeFiles.forEach((file, index) => {
-        allContent += `${'='.repeat(80)}\n`;
-        allContent += `File ${index + 1}: ${file.filename}\n`;
-        allContent += `${'='.repeat(80)}\n`;
-        allContent += file.content;
-        allContent += '\n\n';
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      console.log('🚀 Starting full project generation:', {
+        projectId: selectedProjectId,
+        templateIds: Array.from(selectedTemplateIds),
+        schemaIds: Array.from(selectedSchemaIds),
+        languageCodes: Array.from(selectedLanguageCodes),
       });
 
-      // Create and download the file
-      const blob = new Blob([allContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `generated-code-${templateId}-${new Date().getTime()}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Call backend API to generate full project
+      const response = await fetch(`/api/projects/${selectedProjectId}/generate-full-code`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/zip, application/json',
+        },
+        body: JSON.stringify({
+          template_ids: Array.from(selectedTemplateIds),
+          schema_ids: Array.from(selectedSchemaIds),
+          language_codes: Array.from(selectedLanguageCodes),
+        }),
+      });
 
-      alert(`Downloaded ${generatedCodeFiles.length} generated files as text file!`);
-    } catch {
-      alert(`Download error: ${err}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate project');
+      }
+
+      // 🔍 Extract error information from headers
+      const errorCount = parseInt(response.headers.get('X-Generation-Errors') || '0');
+      const fileCount = parseInt(response.headers.get('X-Generation-Files') || '0');
+      const errorDetailsEncoded = response.headers.get('X-Generation-Error-Details');
+      const moreErrors = parseInt(response.headers.get('X-Generation-Error-More') || '0');
+
+      // Parse error details
+      let errors: GenerationError[] = [];
+      if (errorDetailsEncoded) {
+        try {
+          const decoded = atob(errorDetailsEncoded);
+          errors = JSON.parse(decoded);
+        } catch (e) {
+          console.error('Failed to parse error details:', e);
+        }
+      }
+
+      // Update state with generation results
+      setGenerationStats({ errors: errorCount, files: fileCount });
+      setGenerationErrors(errors);
+
+      // Get the ZIP file as a blob
+      const blob = await response.blob();
+
+      // Extract filename from Content-Disposition header or create default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'generated_project.zip';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Project generated and downloaded successfully', {
+        files: fileCount,
+        errors: errorCount,
+        moreErrors: moreErrors,
+      });
+
+    } catch (err: any) {
+      console.error('❌ Generation failed:', err);
+      setError(err.message || 'Failed to generate project');
+    } finally {
+      setGenerating(false);
     }
   };
 
-  const tableOptions = generationData?.gtree?.[0]?.project?.[0]?.tables?.map((table, index) => ({
-    label: `${index}: ${table.tablename} (${table.nmaxitems} fields)`,
-    value: index
-  })) || [];
-
-  const selectedFile = generationData?.generated_files?.find(f => f.table_index === tableIndex && f.type === 'template');
-
   return (
-    <div className="h-full bg-gray-800 text-gray-100 p-4">
-      <Card className="h-full bg-gray-700 border-gray-600">
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-white mb-4">Code Generation Test Panel</h2>
+    <div className="h-full bg-gray-800 text-gray-100 p-4 overflow-auto">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
+          <h2 className="text-2xl font-bold text-white mb-6">Code Generation</h2>
 
-          {/* Input Controls */}
-          <div className="flex space-x-4 items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-white mb-2">
-                Template ID
-              </label>
-              <InputText
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                placeholder="Enter template ID (e.g., 1)"
-                className="w-full"
-              />
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded text-red-200">
+              <strong>Error:</strong> {error}
             </div>
+          )}
 
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-white mb-2">
-                Table Index
-              </label>
-              <Dropdown
-                value={tableIndex}
-                options={tableOptions}
-                onChange={(e) => setTableIndex(e.value)}
-                placeholder="Select table"
-                className="w-full"
-                disabled={!generationData}
-              />
-            </div>
-
-            <Button
-              label={loading ? "Generating..." : "Generate Code"}
-              icon={loading ? "pi pi-spinner pi-spin" : "pi pi-cog"}
-              onClick={generateCode}
-              disabled={loading || !templateId}
-              className="bg-blue-600 hover:bg-blue-700"
-            />
+          {/* Project Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-white mb-2">
+              Select Project *
+            </label>
+            <select
+              value={selectedProjectId || ''}
+              onChange={(e) => setSelectedProjectId(e.target.value ? parseInt(e.target.value) : null)}
+              disabled={loading}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a project...</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {error && (
-            <Message severity="error" text={error} className="w-full" />
-          )}
-
-          {/* Generation Summary */}
-          {generationData && (
-            <div className="bg-gray-800 p-3 rounded border border-gray-600">
-              <div className="text-sm text-gray-300">
-                <strong>Generation Summary:</strong> {generationData.generation_summary?.total_generated_files} files,
-                {generationData.generation_summary?.tables_processed} tables processed
-              </div>
+          {loading && (
+            <div className="text-center py-8 text-gray-400">
+              Loading project data...
             </div>
           )}
 
-          {/* Tab System */}
-          {selectedFile && (
-            <TabView
-              activeIndex={activeTabIndex}
-              onTabChange={(e) => setActiveTabIndex(e.index)}
-              className="bg-gray-700"
-            >
-              <TabPanel header="Clean JavaScript" className="text-gray-100">
-                <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
-                  <pre className="text-sm text-green-400 whitespace-pre-wrap font-mono">
-                    {selectedFile.content_clean || selectedFile.content}
-                  </pre>
+          {selectedProjectId && !loading && (
+            <>
+              {/* Templates Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-white">
+                    Templates * (at least 1 required)
+                  </label>
+                  <button
+                    onClick={toggleAllTemplates}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {selectedTemplateIds.size === templates.length ? 'Deselect All' : 'Select All'}
+                  </button>
                 </div>
-              </TabPanel>
-
-              <TabPanel header="Execution Result" className="text-gray-100">
-                <div className="space-y-2">
-                  <div className="flex space-x-2">
-                    <Button
-                      label="Execute Single File"
-                      icon="pi pi-play"
-                      onClick={executeJavaScript}
-                      className="bg-green-600 hover:bg-green-700"
-                      size="small"
-                    />
-
-                    <Button
-                      label={batchProcessing ? "Processing All 278..." : "Execute All Files"}
-                      icon={batchProcessing ? "pi pi-spinner pi-spin" : "pi pi-cog"}
-                      onClick={executeAllJavaScriptFunctions}
-                      className="bg-blue-600 hover:bg-blue-700"
-                      size="small"
-                      disabled={batchProcessing}
-                    />
-
-                    <Button
-                      label="Download ZIP"
-                      icon="pi pi-download"
-                      onClick={downloadAsZip}
-                      className="bg-purple-600 hover:bg-purple-700"
-                      size="small"
-                      disabled={generatedCodeFiles.length === 0}
-                    />
-                  </div>
-
-                  {generatedCodeFiles.length > 0 && (
-                    <div className="bg-green-900 p-2 rounded border border-green-600 text-sm">
-                      🎉 Ready for download: {generatedCodeFiles.length} files generated
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                  {templates.length === 0 ? (
+                    <div className="text-gray-400 text-sm">No templates available</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {templates.map(template => (
+                        <label
+                          key={template.id}
+                          className="flex items-start space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTemplateIds.has(template.id)}
+                            onChange={() => toggleTemplate(template.id)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="text-white">{template.name}</div>
+                            {template.description && (
+                              <div className="text-xs text-gray-400">{template.description}</div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
                     </div>
                   )}
+                </div>
+                <div className="mt-1 text-xs text-gray-400">
+                  {selectedTemplateIds.size} of {templates.length} selected
+                </div>
+              </div>
 
-                  <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
-                    <pre className="text-sm text-yellow-400 whitespace-pre-wrap font-mono">
-                      {executionResult || 'Click "Execute Single File" or "Execute All Files" to see results...'}
-                    </pre>
+              {/* Schemas/Databases Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-white">
+                    Databases (optional)
+                  </label>
+                  <button
+                    onClick={toggleAllSchemas}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {selectedSchemaIds.size === schemas.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                  {schemas.length === 0 ? (
+                    <div className="text-gray-400 text-sm">No databases available</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {schemas.map(schema => (
+                        <label
+                          key={schema.id}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSchemaIds.has(schema.id)}
+                            onChange={() => toggleSchema(schema.id)}
+                          />
+                          <span className="text-white">{schema.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-gray-400">
+                  {selectedSchemaIds.size} of {schemas.length} selected
+                </div>
+              </div>
+
+              {/* Languages Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-white">
+                    Languages (optional)
+                  </label>
+                  <button
+                    onClick={toggleAllLanguages}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {selectedLanguageCodes.size === languages.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                  {languages.length === 0 ? (
+                    <div className="text-gray-400 text-sm">No languages available</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {languages.map(language => (
+                        <label
+                          key={language.code}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedLanguageCodes.has(language.code)}
+                            onChange={() => toggleLanguage(language.code)}
+                          />
+                          <span className="text-white">{language.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-gray-400">
+                  {selectedLanguageCodes.size} of {languages.length} selected
+                </div>
+              </div>
+
+              {/* Warnings */}
+              {warnings.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  {warnings.map((warning, index) => (
+                    <div key={index} className="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-xl">⚠️</span>
+                        <div className="flex-1">
+                          <div className="font-medium mb-1">{warning.message}</div>
+                          <div className="text-xs">
+                            Affected templates: {warning.templates.join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Generation Errors - Scrollable List */}
+              {generationStats && generationStats.errors > 0 && (
+                <div className="mb-6 p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-2xl">🚨</span>
+                    <div>
+                      <div className="font-bold text-red-300">
+                        Syntax Errors Found During Generation
+                      </div>
+                      <div className="text-sm text-red-400">
+                        {generationStats.errors} error{generationStats.errors !== 1 ? 's' : ''} | {generationStats.files} file{generationStats.files !== 1 ? 's' : ''} generated successfully
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scrollable Error List */}
+                  <div className="max-h-96 overflow-y-auto bg-gray-900 bg-opacity-50 rounded p-3 space-y-2">
+                    {generationErrors.map((err, index) => (
+                      <div key={index} className="p-3 bg-gray-800 border border-red-800 rounded text-sm">
+                        <div className="flex items-start space-x-2">
+                          <span className="text-red-500 font-bold">#{index + 1}</span>
+                          <div className="flex-1 space-y-1">
+                            <div className="font-medium text-red-300">{err.file}</div>
+                            <div className="text-xs text-gray-400">
+                              Template: <span className="text-gray-300">{err.template}</span>
+                              {err.table && <> | Table: <span className="text-gray-300">{err.table}</span></>}
+                              {err.language && <> | Language: <span className="text-gray-300">{err.language}</span></>}
+                            </div>
+                            <div className="text-red-400 mt-1">{err.error}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {generationStats.errors > generationErrors.length && (
+                      <div className="p-3 bg-gray-800 border border-yellow-800 rounded text-sm text-yellow-400">
+                        ⚠️ {generationStats.errors - generationErrors.length} more error(s) - see ERRORS.txt in the ZIP file
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 text-xs text-red-400">
+                    💡 Tip: All errors are also saved in <strong>ERRORS.txt</strong> inside the ZIP file
                   </div>
                 </div>
-              </TabPanel>
-            </TabView>
-          )}
+              )}
 
-          {/* Performance Info */}
-          {generationData && (
-            <div className="bg-blue-900 p-3 rounded border border-blue-600">
-              <div className="text-sm text-blue-200">
-                <strong>Performance:</strong> {generationData.performance?.single_request} -
-                {generationData.performance?.total_content_size}
+              {/* Generate Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleGenerateProject}
+                  disabled={!canGenerate() || generating}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    canGenerate() && !generating
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {generating ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⚙️</span>
+                      Generating...
+                    </>
+                  ) : (
+                    '🚀 Generate Project & Download'
+                  )}
+                </button>
               </div>
-            </div>
+
+              {/* Validation Message */}
+              {selectedTemplateIds.size === 0 && (
+                <div className="mt-2 text-xs text-red-400 text-right">
+                  Please select at least one template
+                </div>
+              )}
+            </>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

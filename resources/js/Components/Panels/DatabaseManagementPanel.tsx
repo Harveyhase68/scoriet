@@ -12,6 +12,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -58,6 +59,10 @@ interface Project {
 }
 
 export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }: TabPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   // Use Project Context to get current project
   const { selectedProject: contextSelectedProject } = useProject();
   // Use forceProjectId if provided (from TreeView), otherwise use context
@@ -128,7 +133,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       const token = localStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -142,14 +147,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load schemas');
+        throw new Error(t.databaseexportmodal71);
       }
 
       const data = await response.json();
       setSchemas(data.schemas || []);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading schemas');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel152);
     } finally {
       setLoading(false);
     }
@@ -218,7 +223,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const handleExportTranslations = async () => {
     if (!contextSelectedProject || selectedLanguages.length === 0) {
-      setError('Please select at least one language');
+      setError(t.databasemanagementpanel221);
       return;
     }
 
@@ -228,7 +233,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const languagesParam = selectedLanguages.map(lang => `languages[]=${lang}`).join('&');
@@ -242,7 +247,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       });
 
       if (!response.ok) {
-        throw new Error('Failed to export translations');
+        throw new Error(t.databasemanagementpanel245);
       }
 
       const blob = await response.blob();
@@ -256,9 +261,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       document.body.removeChild(a);
 
       setShowExportDialog(false);
-      setSuccess('Translations exported successfully');
+      setSuccess(t.databasemanagementpanel259);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error exporting translations');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel261);
     } finally {
       setExporting(false);
     }
@@ -274,7 +279,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const formData = new FormData();
@@ -291,14 +296,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to import translations');
+        throw new Error(errorData.message || t.databasemanagementpanel294);
       }
 
       const result = await response.json();
       setShowImportDialog(false);
       setSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error importing translations');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel301);
     } finally {
       setImporting(false);
     }
@@ -312,7 +317,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/schemas', {
@@ -327,16 +332,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create schema');
+        throw new Error(errorData.message || t.databasemanagementpanel330);
       }
 
       await loadSchemas();
       setShowCreateModal(false);
       setCreateForm({ name: '', description: '', visibility: 'private' });
-      setSuccess('Database schema created successfully');
+      setSuccess(t.databasemanagementpanel336);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error creating schema');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel339);
     } finally {
       setCreating(false);
     }
@@ -364,7 +369,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/schemas/${editingSchema.id}`, {
@@ -379,16 +384,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update schema');
+        throw new Error(errorData.message || t.databasemanagementpanel382);
       }
 
       await loadSchemas();
       setShowEditModal(false);
       setEditingSchema(null);
-      setSuccess('Schema updated successfully');
+      setSuccess(t.schemacontroller193);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error updating schema');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel391);
     } finally {
       setSaving(false);
     }
@@ -416,7 +421,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${selectedProjectForAssociation}/schemas`, {
@@ -435,7 +440,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to associate schema');
+        throw new Error(errorData.message || t.databasemanagementpanel438);
       }
 
       setShowAssociateModal(false);
@@ -444,7 +449,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setSuccess(`Schema successfully ${associationType} to project`);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error associating schema');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel447);
     } finally {
       setAssociating(false);
     }
@@ -513,7 +518,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/projects/${projectId}/schemas/${schema.id}`, {
@@ -526,14 +531,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to remove schema from project');
+        throw new Error(errorData.message || t.databasemanagementpanel529);
       }
 
       await loadSchemas();
       setSuccess(`Schema removed from project successfully`);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error removing schema');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel536);
     }
   };
 
@@ -548,7 +553,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const handleCopySchema = (schema: FloatingSchema) => {
     setCopyingSchema(schema);
-    setCopyName(schema.name + ' (Copy)');
+    setCopyName(schema.name + t.dbschemacontroller288);
     setShowCopyModal(true);
     setError('');
     setSuccess('');
@@ -564,7 +569,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/template-db-schema/schemas/${copyingSchema.id}/copy`, {
@@ -582,7 +587,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || 'Failed to copy schema');
+        throw new Error(result.error || result.message || t.databasemanagementpanel585);
       }
 
       setShowCopyModal(false);
@@ -591,7 +596,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setSuccess(`Schema "${copyingSchema.name}" copied successfully as "${copyName}"`);
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error copying schema';
+      const errorMessage = error instanceof Error ? error.message : t.databasemanagementpanel594;
       setError(errorMessage);
     } finally {
       setCopying(false);
@@ -603,7 +608,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
     // Require exact schema name confirmation
     if (deleteConfirmText !== deletingSchema.name) {
-      setError('Schema name does not match. Please type the exact schema name to confirm deletion.');
+      setError(t.databasemanagementpanel606);
       return;
     }
 
@@ -613,7 +618,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // First attempt without force - to get deletion info
@@ -680,7 +685,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setSuccess(`Schema "${deletingSchema.name}" and all related data deleted successfully`);
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error deleting schema';
+      const errorMessage = error instanceof Error ? error.message : t.databasemanagementpanel683;
       setError(errorMessage);
     } finally {
       setDeleting(false);
@@ -711,7 +716,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <Button
               icon="pi pi-link"
               className="p-button-rounded p-button-text p-button-sm"
-              tooltip="Link to project"
+              tooltip={t.databasemanagementpanel714}
               onClick={() => handleAssociateToProject(schema)}
             />
           )
@@ -732,7 +737,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <Button
               icon="pi pi-link"
               className="p-button-rounded p-button-text p-button-sm"
-              tooltip="Associate to project"
+              tooltip={t.databasemanagementpanel735}
               onClick={() => handleAssociateToProject(schema)}
             />
           )
@@ -740,27 +745,27 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-sm"
-          tooltip="Edit schema"
+          tooltip={t.databasemanagementpanel743}
           onClick={() => handleEditSchema(schema)}
         />
         <Button
           icon="pi pi-copy"
           className="p-button-rounded p-button-text p-button-sm p-button-info"
-          tooltip="Copy database"
+          tooltip={t.databasemanagementpanel749}
           onClick={() => handleCopySchema(schema)}
         />
         {onOpenDesigner && (
           <Button
             icon="pi pi-sitemap"
             className="p-button-rounded p-button-text p-button-sm p-button-success"
-            tooltip="Open in Designer"
+            tooltip={t.databasemanagementpanel756}
             onClick={() => onOpenDesigner(schema.id, schema.name)}
           />
         )}
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-sm p-button-danger"
-          tooltip="Delete schema"
+          tooltip={t.databasemanagementpanel763}
           onClick={() => handleDeleteSchema(schema)}
         />
       </div>
@@ -768,14 +773,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   };
 
   const visibilityOptions = [
-    { label: 'Private', value: 'private' },
-    { label: 'Public', value: 'public' }
+    { label: t.databasemanagementpanel771, value: 'private' },
+    { label: t.databasemanagementpanel772, value: 'public' }
   ];
 
   const associationTypeOptions = [
-    { label: 'Linked (Read-only reference)', value: 'linked' },
-    { label: 'Cloned (Private copy)', value: 'cloned' },
-    { label: 'Imported (Merge into existing)', value: 'imported' }
+    { label: t.databasemanagementpanel776, value: 'linked' },
+    { label: t.databasemanagementpanel777, value: 'cloned' },
+    { label: t.databasemanagementpanel778, value: 'imported' }
   ];
 
   if (loading) {
@@ -795,12 +800,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <i className="pi pi-database text-2xl text-blue-600"></i>
-          <h1 className="text-2xl font-bold text-white">Database Management</h1>
+          <h1 className="text-2xl font-bold text-white">{t.databasemanagementpanel798}</h1>
         </div>
         <div className="flex space-x-2 gap-2">
           <Button
             icon="pi pi-plus"
-            label="New Database"
+            label={t.databasemanagementpanel803}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={() => setShowCreateModal(true)}
@@ -808,7 +813,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           />
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            label={t.applicationsmodal313}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={loadSchemas}
@@ -826,45 +831,45 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       )}
 
       {/* Schemas Table */}
-      <Card title="My Database Schemas" className="flex-1 mb-4">
+      <Card title={t.databasemanagementpanel829} className="flex-1 mb-4">
         <DataTable
           value={schemas}
           className="p-datatable-sm"
-          emptyMessage="No database schemas found. Create your first schema to get started."
+          emptyMessage={t.databasemanagementpanel833}
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 20]}
           scrollable
           scrollHeight="500px"
         >
-          <Column field="name" header="Schema Name" sortable />
-          <Column field="description" header="Description" />
+          <Column field="name" header={t.databasemanagementpanel840} sortable />
+          <Column field="description" header={t.createteammodal103} />
           <Column
-            header="Assigned Projects"
+            header={t.databasemanagementpanel843}
             body={projectsTemplate}
             className="w-60"
           />
           <Column
-            field="visibility"
-            header="Visibility"
+            field={t.templatemanagementpanel961}
+            header={t.databasemanagementpanel849}
             body={visibilityTemplate}
             className="w-24"
           />
           <Column
             field="owner"
-            header="Owner"
+            header={t.manageteammodal320}
             body={ownerTemplate}
             className="w-40"
           />
           <Column
             field="created_at"
-            header="Created"
+            header={t.databasemanagementpanel861}
             body={(schema) => formatDate(schema.created_at)}
             className="w-32"
             sortable
           />
           <Column
-            header="Actions"
+            header={t.applicationsmodal354}
             body={actionTemplate}
             className="w-40"
           />
@@ -873,7 +878,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Translation Export/Import */}
       {contextSelectedProject && (
-        <Card title="Translation Export/Import" className="mt-4">
+        <Card title={t.databasemanagementpanel876} className="mt-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-sm text-gray-400 mb-2">
@@ -883,14 +888,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <div className="flex gap-2">
               <Button
                 icon="pi pi-download"
-                label="Export Translations"
+                label={t.databasemanagementpanel886}
                 className="p-button-success"
                 onClick={() => setShowExportDialog(true)}
                 disabled={exporting || !contextSelectedProject}
               />
               <Button
                 icon="pi pi-upload"
-                label="Import Translations"
+                label={t.databasemanagementpanel893}
                 className="p-button-info"
                 onClick={() => setShowImportDialog(true)}
                 disabled={importing || !contextSelectedProject}
@@ -902,7 +907,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Create Schema Modal */}
       <Dialog
-        header="Create New Database Schema"
+        header={t.databasemanagementpanel905}
         visible={showCreateModal}
         onHide={() => setShowCreateModal(false)}
         style={{ width: '450px' }}
@@ -920,7 +925,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputText
               value={createForm.name}
               onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter schema name"
+              placeholder={t.databasemanagementpanel923}
               className="w-full"
               disabled={creating}
               required
@@ -934,7 +939,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputTextarea
               value={createForm.description}
               onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter schema description (optional)"
+              placeholder={t.databasemanagementpanel937}
               className="w-full"
               rows={3}
               disabled={creating}
@@ -949,7 +954,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               value={createForm.visibility}
               onChange={(e) => setCreateForm(prev => ({ ...prev, visibility: e.value }))}
               options={visibilityOptions}
-              placeholder="Select visibility"
+              placeholder={t.databasemanagementpanel952}
               className="w-full"
               disabled={creating}
             />
@@ -960,14 +965,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowCreateModal(false)}
               className="p-button-text"
               disabled={creating}
             />
             <Button
-              label={creating ? "Creating..." : "Create Schema"}
+              label={creating ? t.createtablemodal614 : t.databasemanagementpanel970}
               icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
               onClick={handleCreateSchema}
               disabled={creating || !createForm.name.trim()}
@@ -978,7 +983,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Edit Schema Modal */}
       <Dialog
-        header="Edit Database Schema"
+        header={t.databasemanagementpanel981}
         visible={showEditModal}
         onHide={() => setShowEditModal(false)}
         style={{ width: '450px' }}
@@ -996,7 +1001,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputText
               value={editForm.name}
               onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter schema name"
+              placeholder={t.databasemanagementpanel923}
               className="w-full"
               disabled={saving}
               required
@@ -1010,7 +1015,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputTextarea
               value={editForm.description}
               onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter schema description (optional)"
+              placeholder={t.databasemanagementpanel937}
               className="w-full"
               rows={3}
               disabled={saving}
@@ -1025,7 +1030,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               value={editForm.visibility}
               onChange={(e) => setEditForm(prev => ({ ...prev, visibility: e.value }))}
               options={visibilityOptions}
-              placeholder="Select visibility"
+              placeholder={t.databasemanagementpanel952}
               className="w-full"
               disabled={saving}
             />
@@ -1033,14 +1038,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowEditModal(false)}
               className="p-button-text"
               disabled={saving}
             />
             <Button
-              label={saving ? "Updating..." : "Update Schema"}
+              label={saving ? t.updating : t.databasemanagementpanel1043}
               icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
               onClick={handleUpdateSchema}
               disabled={saving || !editForm.name.trim()}
@@ -1051,7 +1056,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Associate to Project Modal */}
       <Dialog
-        header="Link Schema to Project"
+        header={t.databasemanagementpanel1054}
         visible={showAssociateModal}
         onHide={() => setShowAssociateModal(false)}
         style={{ width: '500px' }}
@@ -1067,7 +1072,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               {associatingSchema?.name}
             </h4>
             <p className="text-sm text-blue-600">
-              {associatingSchema?.description || 'No description'}
+              {associatingSchema?.description || t.schemaexportcontroller226}
             </p>
           </div>
 
@@ -1081,7 +1086,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 value={selectedProjectForAssociation}
                 onChange={(e) => setSelectedProjectForAssociation(e.value)}
                 options={projects.map(p => ({ label: p.name, value: p.id }))}
-                placeholder="Select a project"
+                placeholder={t.databasemanagementpanel1084}
                 className="w-full"
                 disabled={associating}
               />
@@ -1120,7 +1125,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputText
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
-              placeholder="Custom name for this schema in the project"
+              placeholder={t.databasemanagementpanel1123}
               className="w-full"
               disabled={associating}
             />
@@ -1128,14 +1133,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowAssociateModal(false)}
               className="p-button-text"
               disabled={associating}
             />
             <Button
-              label={associating ? "Linking..." : "Link Schema"}
+              label={associating ? "Linking..." : t.databasemanagementpanel1138}
               icon={associating ? "pi pi-spinner pi-spin" : "pi pi-link"}
               onClick={handleConfirmAssociation}
               disabled={associating || !selectedProjectForAssociation}
@@ -1207,14 +1212,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowDeleteModal(false)}
               className="p-button-text"
               disabled={deleting}
             />
             <Button
-              label={deleting ? "Deleting..." : "🗑️ Delete Forever"}
+              label={deleting ? t.deleting : t.databasemanagementpanel1217}
               icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               onClick={handleConfirmDelete}
               className="p-button-danger"
@@ -1226,7 +1231,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Export Translations Dialog */}
       <Dialog
-        header="Export Translations to Excel"
+        header={t.databasemanagementpanel1229}
         visible={showExportDialog}
         onHide={() => setShowExportDialog(false)}
         style={{ width: '500px' }}
@@ -1254,7 +1259,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               value={selectedLanguages}
               onChange={(e) => setSelectedLanguages(e.value)}
               options={languages.map(lang => ({ label: `${lang.name} (${lang.code.toUpperCase()})`, value: lang.code }))}
-              placeholder="Select languages to export"
+              placeholder={t.databasemanagementpanel1257}
               className="w-full"
               disabled={exporting}
               display="chip"
@@ -1270,14 +1275,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowExportDialog(false)}
               className="p-button-text"
               disabled={exporting}
             />
             <Button
-              label={exporting ? "Exporting..." : "Export to Excel"}
+              label={exporting ? "Exporting..." : t.databasemanagementpanel1280}
               icon={exporting ? "pi pi-spinner pi-spin" : "pi pi-download"}
               onClick={handleExportTranslations}
               disabled={exporting || selectedLanguages.length === 0}
@@ -1289,7 +1294,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Import Translations Dialog */}
       <Dialog
-        header="Import Translations from Excel"
+        header={t.databasemanagementpanel1292}
         visible={showImportDialog}
         onHide={() => setShowImportDialog(false)}
         style={{ width: '500px' }}
@@ -1321,7 +1326,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               customUpload
               uploadHandler={handleImportTranslations}
               auto={false}
-              chooseLabel="Choose Excel File"
+              chooseLabel={t.databasemanagementpanel1324}
               disabled={importing}
             />
             <small className="text-gray-600">
@@ -1335,7 +1340,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowImportDialog(false)}
               className="p-button-text"
@@ -1347,7 +1352,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Copy Schema Modal */}
       <Dialog
-        header="Copy Database Schema"
+        header={t.databasemanagementpanel1350}
         visible={showCopyModal}
         onHide={() => setShowCopyModal(false)}
         style={{ width: '500px' }}
@@ -1374,7 +1379,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputText
               value={copyName}
               onChange={(e) => setCopyName(e.target.value)}
-              placeholder="Enter name for the copied schema"
+              placeholder={t.databasemanagementpanel1377}
               className="w-full"
               disabled={copying}
               required
@@ -1392,14 +1397,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowCopyModal(false)}
               className="p-button-text"
               disabled={copying}
             />
             <Button
-              label={copying ? "Copying..." : "Copy Database"}
+              label={copying ? "Copying..." : t.databasemanagementpanel1402}
               icon={copying ? "pi pi-spinner pi-spin" : "pi pi-copy"}
               onClick={handleConfirmCopy}
               disabled={copying || !copyName.trim()}

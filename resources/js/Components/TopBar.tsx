@@ -4,8 +4,12 @@ import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Badge } from 'primereact/badge';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 export default function TopBar() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const { projects, selectedProject, setSelectedProject, loading } = useProject();
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
 
@@ -68,7 +72,7 @@ export default function TopBar() {
         <div className="flex items-center space-x-3">
           <img
             src="/images/logos/scoriet-logo.png"
-            alt="Scoriet"
+            alt={t.topbar71}
             className="h-8 w-auto"
             style={{ maxHeight: '32px', width: 'auto' }}
           />
@@ -95,11 +99,11 @@ export default function TopBar() {
             }}
             optionLabel="name"
             optionValue="id"
-            placeholder="Select Project"
+            placeholder={t.teammodal146}
             className="w-48 custom-dropdown"
             disabled={loading || !projects || projects.length === 0}
             filter
-            emptyMessage="No projects found"
+            emptyMessage={t.panelt1813}
             showClear={false}
           />
           {selectedProject && (
@@ -119,7 +123,7 @@ export default function TopBar() {
               tooltip={`${pendingApplicationsCount} pending application${pendingApplicationsCount > 1 ? 's' : ''}`}
               onClick={() => {
                 // Trigger opening Applications Modal via custom event
-                const event = new CustomEvent('openApplicationsModal', {
+                const event = new CustomEvent(t.topbar122, {
                   detail: { projectId: selectedProject.id }
                 });
                 window.dispatchEvent(event);

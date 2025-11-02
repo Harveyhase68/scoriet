@@ -13,6 +13,8 @@ class SchemaForeignKeyReference extends Model
     protected $fillable = [
         'constraint_id',
         'referenced_table_id',
+        'on_delete',
+        'on_update',
     ];
 
     public function constraint(): BelongsTo

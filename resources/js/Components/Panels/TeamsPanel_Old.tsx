@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CreateTeamModal from '@/Components/Modals/CreateTeamModal';
 import ManageTeamModal from '@/Components/Modals/ManageTeamModal';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -78,6 +79,10 @@ interface ReceivedInvitationsData {
 }
 
 export default function TeamsPanel({ isActive }: TabPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [teamsData, setTeamsData] = useState<TeamsData | null>(null);
   const [receivedInvitations, setReceivedInvitations] = useState<ReceivedInvitationsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +99,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       
       if (!token) {
-        setError('No authentication token found');
+        setError(t.teamspanel_old97);
         return;
       }
 
@@ -144,7 +149,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
 
     } catch {
       // Error fetching data
-      setError(_ instanceof Error ? _.message : 'An error occurred');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }
@@ -189,7 +194,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       }
     } catch {
       // Error accepting invitation
-      alert('Failed to accept invitation');
+      alert(t.projectinvitationcontroller150);
     }
   };
 
@@ -213,7 +218,7 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
       }
     } catch {
       // Error declining invitation
-      alert('Failed to decline invitation');
+      alert(t.projectinvitationcontroller179);
     }
   };
 
@@ -267,9 +272,9 @@ export default function TeamsPanel({ isActive }: TabPanelProps) {
         {/* Tab Navigation */}
         <div className="flex space-x-1 mt-4">
           {[
-            { key: 'owned', label: 'Owned Teams', count: teamsData?.owned_teams.length || 0 },
-            { key: 'member', label: 'Member Of', count: teamsData?.member_teams.length || 0 },
-            { key: 'invitations', label: 'Invitations', count: receivedInvitations?.invitations.length || 0 }
+            { key: 'owned', label: t.teamspanel_old270, count: teamsData?.owned_teams.length || 0 },
+            { key: 'member', label: t.teamspanel_old271, count: teamsData?.member_teams.length || 0 },
+            { key: 'invitations', label: t.projectpanel815, count: receivedInvitations?.invitations.length || 0 }
           ].map(tab => (
             <button
               key={tab.key}
