@@ -10,6 +10,7 @@ import { Tree, TreeNode } from 'primereact/tree';
 import { InputText } from 'primereact/inputtext';
 import { api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface SchemaTranslation {
   id: number;
@@ -43,6 +44,9 @@ interface SchemaField {
 }
 
 export default function SchemaTranslationPanel() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const toast = useToast();
   const { selectedProject } = useProject();
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -278,7 +282,7 @@ export default function SchemaTranslationPanel() {
 
   const handleExportTranslations = async () => {
     if (!selectedProject || selectedLanguagesForExport.length === 0) {
-      toast.showError('Please select at least one language');
+      toast.showError(t.databasemanagementpanel221);
       return;
     }
 
@@ -286,7 +290,7 @@ export default function SchemaTranslationPanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const languagesParam = selectedLanguagesForExport.map(lang => `languages[]=${lang}`).join('&');
@@ -300,7 +304,7 @@ export default function SchemaTranslationPanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to export translations');
+        throw new Error(t.databasemanagementpanel245);
       }
 
       const blob = await response.blob();
@@ -314,9 +318,9 @@ export default function SchemaTranslationPanel() {
       document.body.removeChild(a);
 
       setShowExportDialog(false);
-      toast.showSuccess('Translations exported successfully');
+      toast.showSuccess(t.databasemanagementpanel259);
     } catch (error: any) {
-      toast.showError('Failed to export: ' + (error.message || 'Unknown error'));
+      toast.showError('Failed to export: ' + (error.message || t.schematranslationpanel319));
     } finally {
       setExporting(false);
     }
@@ -331,7 +335,7 @@ export default function SchemaTranslationPanel() {
 
   const handleConfirmImport = async () => {
     if (!importFile || !selectedProject || selectedLanguagesForImport.length === 0) {
-      toast.showError('Please select a file and at least one language');
+      toast.showError(t.schematranslationpanel334);
       return;
     }
 
@@ -339,7 +343,7 @@ export default function SchemaTranslationPanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const formData = new FormData();
@@ -361,7 +365,7 @@ export default function SchemaTranslationPanel() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to import translations');
+        throw new Error(errorData.message || t.databasemanagementpanel294);
       }
 
       const result = await response.json();
@@ -374,7 +378,7 @@ export default function SchemaTranslationPanel() {
         fetchTranslationsForItem(selectedItem);
       }
     } catch (error: any) {
-      toast.showError('Failed to import: ' + (error.message || 'Unknown error'));
+      toast.showError('Failed to import: ' + (error.message || t.schematranslationpanel319));
     } finally {
       setImporting(false);
     }
@@ -382,7 +386,7 @@ export default function SchemaTranslationPanel() {
 
   const handleAutoTranslate = async () => {
     if (!selectedProject) {
-      toast.showError('No project selected');
+      toast.showError(t.databaseexportmodal344);
       return;
     }
 
@@ -446,7 +450,7 @@ export default function SchemaTranslationPanel() {
     if (!selectedProject) return;
 
     if (targetLanguagesForTranslate.length === 0) {
-      toast.showError('Please select at least one target language');
+      toast.showError(t.schematranslationpanel449);
       return;
     }
 
@@ -456,7 +460,7 @@ export default function SchemaTranslationPanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       if (translateAllItems) {
@@ -478,7 +482,7 @@ export default function SchemaTranslationPanel() {
       }
 
     } catch (error: any) {
-      toast.showError('Auto-translate failed: ' + (error.message || 'Unknown error'));
+      toast.showError('Auto-translate failed: ' + (error.message || t.schematranslationpanel319));
     } finally {
       setTranslating(false);
       setTranslationProgress({ current: 0, total: 0 });
@@ -502,7 +506,7 @@ export default function SchemaTranslationPanel() {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Translation failed');
+      throw new Error(errorData.message || t.autotranslatecontroller83);
     }
 
     const result = await response.json();
@@ -637,7 +641,7 @@ export default function SchemaTranslationPanel() {
     const isTable = !itemName.includes('.');
     if (isTable) {
       return {
-        type: 'Table',
+        type: t.translationexportcontroller78,
         icon: '📁',
         color: 'blue',
         displayName: itemName
@@ -645,7 +649,7 @@ export default function SchemaTranslationPanel() {
     } else {
       const [tableName, fieldName] = itemName.split('.');
       return {
-        type: 'Field',
+        type: t.translationexportcontroller51,
         icon: '📄',
         color: 'green',
         displayName: `${tableName}.${fieldName}`
@@ -698,7 +702,7 @@ export default function SchemaTranslationPanel() {
               <div className="flex items-center gap-2 text-blue-200">
                 <i className="pi pi-info-circle"></i>
                 <div>
-                  <p className="font-semibold">No translations found for "{selectedItem}"</p>
+                  <p className="font-semibold">{t.schematranslationpanel701} "{selectedItem}"</p>
                   <p className="text-sm text-blue-300 mt-1">
                     Enter translations below to create new entries. They will be auto-saved after 1 second of inactivity.
                   </p>
@@ -750,7 +754,7 @@ export default function SchemaTranslationPanel() {
           <div className="flex gap-2">
             <Button
               icon="pi pi-download"
-              label="Export"
+              label={t.schematranslationpanel753}
               size="small"
               severity="success"
               outlined
@@ -759,7 +763,7 @@ export default function SchemaTranslationPanel() {
             />
             <Button
               icon="pi pi-upload"
-              label="Import"
+              label={t.schematranslationpanel762}
               size="small"
               severity="info"
               outlined
@@ -768,7 +772,7 @@ export default function SchemaTranslationPanel() {
             />
             <Button
               icon="pi pi-google"
-              label="Auto-Translate"
+              label={t.schematranslationpanel771}
               size="small"
               severity="warning"
               outlined
@@ -799,7 +803,7 @@ export default function SchemaTranslationPanel() {
                     rounded
                     severity="secondary"
                     onClick={expandAll}
-                    tooltip="Expand All"
+                    tooltip={t.panelt1791}
                     tooltipOptions={{ position: 'bottom' }}
                   />
                   <Button
@@ -809,7 +813,7 @@ export default function SchemaTranslationPanel() {
                     rounded
                     severity="secondary"
                     onClick={collapseAll}
-                    tooltip="Collapse All"
+                    tooltip={t.panelt1798}
                     tooltipOptions={{ position: 'bottom' }}
                   />
                 </div>
@@ -905,7 +909,7 @@ export default function SchemaTranslationPanel() {
 
       {/* Export Dialog */}
       <Dialog
-        header="Export Translations to Excel"
+        header={t.databasemanagementpanel1229}
         visible={showExportDialog}
         onHide={() => setShowExportDialog(false)}
         style={{ width: '500px' }}
@@ -935,7 +939,7 @@ export default function SchemaTranslationPanel() {
               value={selectedLanguagesForExport}
               onChange={(e) => setSelectedLanguagesForExport(e.value)}
               options={languages.map(lang => ({ label: `${lang.name} (${lang.code.toUpperCase()})`, value: lang.code }))}
-              placeholder="Select languages to export"
+              placeholder={t.databasemanagementpanel1257}
               className="w-full"
               disabled={exporting}
               display="chip"
@@ -947,14 +951,14 @@ export default function SchemaTranslationPanel() {
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowExportDialog(false)}
               className="p-button-text"
               disabled={exporting}
             />
             <Button
-              label={exporting ? "Exporting..." : "Export to Excel"}
+              label={exporting ? "Exporting..." : t.databasemanagementpanel1280}
               icon={exporting ? "pi pi-spinner pi-spin" : "pi pi-download"}
               onClick={handleExportTranslations}
               disabled={exporting || selectedLanguagesForExport.length === 0}
@@ -966,7 +970,7 @@ export default function SchemaTranslationPanel() {
 
       {/* Import Dialog */}
       <Dialog
-        header="Import Translations from Excel"
+        header={t.databasemanagementpanel1292}
         visible={showImportDialog}
         onHide={() => {
           setShowImportDialog(false);
@@ -1003,7 +1007,7 @@ export default function SchemaTranslationPanel() {
               customUpload
               uploadHandler={handleFileSelect}
               auto={false}
-              chooseLabel={importFile ? importFile.name : "Choose Excel File"}
+              chooseLabel={importFile ? importFile.name : t.databasemanagementpanel1324}
               disabled={importing}
             />
             <small className="text-gray-400">
@@ -1019,7 +1023,7 @@ export default function SchemaTranslationPanel() {
               value={selectedLanguagesForImport}
               onChange={(e) => setSelectedLanguagesForImport(e.value)}
               options={languages.map(lang => ({ label: `${lang.name} (${lang.code.toUpperCase()})`, value: lang.code }))}
-              placeholder="Select languages to import"
+              placeholder={t.schematranslationpanel1022}
               className="w-full"
               disabled={importing}
               display="chip"
@@ -1031,7 +1035,7 @@ export default function SchemaTranslationPanel() {
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => {
                 setShowImportDialog(false);
@@ -1041,7 +1045,7 @@ export default function SchemaTranslationPanel() {
               disabled={importing}
             />
             <Button
-              label={importing ? "Importing..." : "Import Translations"}
+              label={importing ? "Importing..." : t.databasemanagementpanel893}
               icon={importing ? "pi pi-spinner pi-spin" : "pi pi-upload"}
               onClick={handleConfirmImport}
               disabled={importing || !importFile || selectedLanguagesForImport.length === 0}
@@ -1053,7 +1057,7 @@ export default function SchemaTranslationPanel() {
 
       {/* Auto-Translate Dialog */}
       <Dialog
-        header="Auto-Translate with Google Translate"
+        header={t.schematranslationpanel1056}
         visible={showAutoTranslateDialog}
         onHide={() => {
           setShowAutoTranslateDialog(false);
@@ -1071,12 +1075,12 @@ export default function SchemaTranslationPanel() {
               <i className="pi pi-info-circle"></i>
               <div>
                 <p className="font-semibold">
-                  {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : 'Auto-Translate')}
+                  {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : t.schematranslationpanel771)}
                 </p>
                 <p className="text-sm text-yellow-300 mt-1">
                   {translateAllItems
-                    ? 'All tables and fields with the source language will be translated automatically.'
-                    : 'Select the source language (must already be filled in) and target languages for translation.'
+                    ? t.schematranslationpanel1078
+                    : t.schematranslationpanel1079
                   }
                 </p>
               </div>
@@ -1087,7 +1091,7 @@ export default function SchemaTranslationPanel() {
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="translateAll"
+                id={t.schematranslationpanel1090}
                 checked={translateAllItems}
                 onChange={async (e) => {
                   setTranslateAllItems(e.target.checked);
@@ -1100,7 +1104,7 @@ export default function SchemaTranslationPanel() {
                 className="w-4 h-4"
                 disabled={translating}
               />
-              <label htmlFor="translateAll" className="text-sm font-medium text-gray-300 cursor-pointer">
+              <label htmlFor={t.schematranslationpanel1090} className="text-sm font-medium text-gray-300 cursor-pointer">
                 🚀 Translate all tables and fields
               </label>
             </div>
@@ -1145,7 +1149,7 @@ export default function SchemaTranslationPanel() {
               options={languages
                 .filter(lang => lang.code !== sourceLanguageForTranslate)
                 .map(lang => ({ label: `${lang.name} (${lang.code.toUpperCase()})`, value: lang.code }))}
-              placeholder="Select target languages"
+              placeholder={t.schematranslationpanel1148}
               className="w-full"
               display="chip"
             />
@@ -1192,7 +1196,7 @@ export default function SchemaTranslationPanel() {
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => {
                 setShowAutoTranslateDialog(false);
@@ -1202,7 +1206,7 @@ export default function SchemaTranslationPanel() {
               disabled={translating}
             />
             <Button
-              label={translating ? "Translating..." : "Translate Now"}
+              label={translating ? "Translating..." : t.schematranslationpanel1205}
               icon={translating ? "pi pi-spinner pi-spin" : "pi pi-google"}
               onClick={handleConfirmAutoTranslate}
               disabled={

@@ -5,6 +5,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -39,6 +40,10 @@ interface Application {
 }
 
 export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -58,7 +63,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -70,14 +75,14 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load applications');
+        throw new Error(t.applicationsmodal78);
       }
 
       const data = await response.json();
       setApplications(data.applications || []);
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading applications');
+      setError(_ instanceof Error ? _.message : t.applicationsmodal85);
     } finally {
       setLoading(false);
     }
@@ -161,7 +166,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       <Button
         icon="pi pi-eye"
         className="p-button-rounded p-button-text p-button-sm"
-        tooltip="View details"
+        tooltip={t.myapplicationspanel164}
         onClick={() => {
           setSelectedApplication(application);
           setShowDetailsModal(true);
@@ -214,7 +219,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         </div>
         <Button
           icon="pi pi-refresh"
-          label="Refresh"
+          label={t.applicationsmodal313}
           className="p-button-outlined"
           onClick={loadApplications}
           disabled={loading}
@@ -225,7 +230,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         <Message severity="error" text={error} className="mb-4" />
       )}
 
-      <Card title="Application History" className="flex-1">
+      <Card title={t.myapplicationspanel228} className="flex-1">
         {applications.length === 0 ? (
           <div className="text-center py-8">
             <i className="pi pi-inbox text-6xl text-gray-500 mb-4"></i>
@@ -239,33 +244,33 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
             paginator
             rows={10}
             rowsPerPageOptions={[5, 10, 20]}
-            emptyMessage="No applications found"
+            emptyMessage={t.applicationsmodal301}
             scrollable
             scrollHeight="500px"
           >
             <Column 
               field="project" 
-              header="Project" 
+              header={t.manageteammodal316} 
               body={projectTemplate}
               sortable
             />
             
             <Column 
               field="message" 
-              header="Message" 
+              header={t.applicationsmodal329} 
               body={messageTemplate}
             />
             
             <Column 
               field="status" 
-              header="Status" 
+              header={t.applicationsmodal335} 
               body={statusTemplate}
               style={{ width: '120px' }}
             />
             
             <Column 
               field="created_at" 
-              header="Applied" 
+              header={t.applicationsmodal342} 
               body={(app) => formatDate(app.created_at)}
               style={{ width: '140px' }}
               sortable
@@ -273,13 +278,13 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
             
             <Column 
               field="review_notes" 
-              header="Response" 
+              header={t.myapplicationspanel276} 
               body={reviewNotesTemplate}
               style={{ width: '150px' }}
             />
             
             <Column 
-              header="Actions" 
+              header={t.applicationsmodal354} 
               body={actionTemplate}
               style={{ width: '80px' }}
             />
@@ -289,7 +294,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
       {/* Application Details Modal */}
       <Dialog
-        header="Application Details"
+        header={t.myapplicationspanel292}
         visible={showDetailsModal}
         onHide={() => setShowDetailsModal(false)}
         style={{ width: '600px' }}
@@ -302,11 +307,11 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         {selectedApplication && (
           <div className="space-y-4">
             {/* Project Info */}
-            <Card title="Project Information">
+            <Card title={t.joincodemodal215}>
               <div className="space-y-2">
                 <div>
                   <h3 className="text-lg font-semibold">{selectedApplication.project.name}</h3>
-                  <p className="text-gray-600">{selectedApplication.project.description || 'No description provided'}</p>
+                  <p className="text-gray-600">{selectedApplication.project.description || t.joincodemodal220}</p>
                 </div>
                 <div className="flex items-center space-x-2 text-sm">
                   <i className="pi pi-user text-blue-500"></i>
@@ -319,7 +324,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
             </Card>
 
             {/* Application Info */}
-            <Card title="Application Information">
+            <Card title={t.myapplicationspanel322}>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -355,14 +360,14 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
                 {selectedApplication.status !== 'pending' && (
                   <div>
                     <span className="font-medium text-gray-700">
-                      {selectedApplication.status === 'approved' ? 'Approval' : 'Rejection'} Details:
+                      {selectedApplication.status === 'approved' ? 'Approval' : t.myapplicationspanel358} Details:
                     </span>
                     <div className="mt-1 space-y-2">
                       <div className="text-sm">
-                        <span className="font-medium">Reviewed by:</span> {selectedApplication.reviewer?.name || 'Unknown'}
+                        <span className="font-medium">Reviewed by:</span> {selectedApplication.reviewer?.name || t.testprojectschemas50}
                       </div>
                       <div className="text-sm">
-                        <span className="font-medium">Date:</span> {selectedApplication.reviewed_at ? formatDate(selectedApplication.reviewed_at) : 'Unknown'}
+                        <span className="font-medium">Date:</span> {selectedApplication.reviewed_at ? formatDate(selectedApplication.reviewed_at) : t.testprojectschemas50}
                       </div>
                       {selectedApplication.review_notes && (
                         <div className="p-3 bg-gray-50 rounded text-sm">
@@ -378,7 +383,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
             <div className="flex justify-end pt-4">
               <Button
-                label="Close"
+                label={t.authmodalsesetpasswordmodal162}
                 icon="pi pi-times"
                 onClick={() => setShowDetailsModal(false)}
                 className="p-button-text"

@@ -5,6 +5,7 @@ import { MenuItem } from 'primereact/menuitem';
 import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -13,6 +14,10 @@ interface ExtendedNavigationPanelProps extends NavigationPanelProps {
 }
 
 export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSqlImport, onOpenDatabaseExport }: ExtendedNavigationPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { selectedProject } = useProject();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
@@ -109,7 +114,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   // Main navigation menu items for TieredMenu
   const navigationItems: MenuItem[] = [
     {
-      label: 'Back to Lobby',
+      label: t.panelsewnavigationpanel112,
       icon: 'pi pi-arrow-left',
       command: () => window.location.href = '/'
     },
@@ -117,7 +122,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       separator: true
     },
     {
-      label: 'Welcome',
+      label: t.panelsewnavigationpanel120,
       icon: 'pi pi-home',
       command: () => onOpenPanel('home')
     },
@@ -125,21 +130,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       separator: true
     },
     {
-      label: 'Project',
+      label: t.manageteammodal316,
       icon: 'pi pi-briefcase',
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Project Management',
+          label: t.panelsewnavigationpanel133,
           icon: 'pi pi-home',
           command: () => onOpenPanel('project')
         },
         {
-          label: 'Settings',
+          label: t.panelsewnavigationpanel138,
           icon: 'pi pi-cog',
           items: [
             {
-              label: 'Projekt-Einstellungen',
+              label: t.panelsewnavigationpanel142,
               icon: 'pi pi-sliders-h',
               command: () => {
                 if (selectedProject) {
@@ -158,16 +163,16 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: 'Teams',
+          label: t.joincodemodal247,
           icon: 'pi pi-users',
           items: [
             {
-              label: 'Team Management',
+              label: t.panelsewnavigationpanel165,
               icon: 'pi pi-cog',
               command: () => onOpenPanel('team-management')
             },
             {
-              label: 'Teams Assignment',
+              label: t.panelsewnavigationpanel170,
               icon: 'pi pi-users',
               command: () => {
                 if (selectedProject) {
@@ -181,16 +186,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           ]
         },
         {
-          label: 'Templates',
+          label: t.panelsewnavigationpanel184,
           icon: 'pi pi-cog',
           items: [
             {
-              label: 'Template Verwaltung',
+              label: t.panelsewnavigationpanel188,
               icon: 'pi pi-list',
               command: () => onOpenPanel('template-management')
             },
             {
-              label: 'Template Assignment',
+              label: 'Template Review',
+              icon: 'pi pi-star-fill',
+              command: () => onOpenPanel('template-review')
+            },
+            {
+              label: t.panelsewnavigationpanel193,
               icon: 'pi pi-link',
               command: () => onOpenPanel('t3')
             },
@@ -198,7 +208,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               separator: true
             },
             {
-              label: 'DB Schema Dependencies',
+              label: t.panelsewnavigationpanel201,
               icon: 'pi pi-link',
               command: () => onOpenPanel('template-db-schema-dependencies')
             }
@@ -208,34 +218,34 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: 'My Applications',
+          label: t.panelsewnavigationpanel211,
           icon: 'pi pi-send',
           command: () => onOpenPanel('my-applications')
         },
         {
-          label: 'Public Projects',
+          label: t.panelsewnavigationpanel216,
           icon: 'pi pi-globe',
           command: () => onOpenPanel('public-projects')
         }
       ]
     },
     {
-      label: 'Database',
+      label: t.panelsewnavigationpanel223,
       icon: 'pi pi-database',
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Manage Databases',
+          label: t.panelsewnavigationpanel228,
           icon: 'pi pi-cog',
           command: () => onOpenPanel('database-management')
         },
         {
-          label: 'Designer',
+          label: t.panelsewnavigationpanel233,
           icon: 'pi pi-window-maximize',
           command: () => onOpenPanel('t2')
         },
         {
-          label: 'Schema Translation',
+          label: t.panelsewnavigationpanel238,
           icon: 'pi pi-language',
           command: () => onOpenPanel('schema-translation')
         },
@@ -243,51 +253,51 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: 'Import SQL',
+          label: t.panelsewnavigationpanel246,
           icon: 'pi pi-upload',
           command: () => onOpenSqlImport && onOpenSqlImport()
         },
         {
-          label: 'Export SQL',
+          label: t.panelsewnavigationpanel251,
           icon: 'pi pi-download',
           command: () => onOpenDatabaseExport && onOpenDatabaseExport()
         }
       ]
     },
     {
-      label: 'Generator',
+      label: t.panelsewnavigationpanel258,
       icon: 'pi pi-wrench',
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Debug Manual Generator',
+          label: t.panelsewnavigationpanel263,
           icon: 'pi pi-wrench',
           command: () => onOpenPanel('debug-manual-generator')
         },
         {
-          label: 'Code Generation Panel',
+          label: t.panelsewnavigationpanel268,
           icon: 'pi pi-play',
           command: () => onOpenPanel('code-generation')
         },
         {
-          label: 'Query Builder',
+          label: t.panelsewnavigationpanel273,
           icon: 'pi pi-search',
-          command: () => {/* Query builder - not implemented */}
+          command: () => onOpenPanel('query-builder')
         }
       ]
     },
     ...(userType === 'system' || userType === 'admin' ? [
       {
-        label: 'Administration',
+        label: t.panelsewnavigationpanel281,
         icon: 'pi pi-cog',
         items: [
           {
-            label: 'System Settings',
+            label: t.panelsewnavigationpanel285,
             icon: 'pi pi-cog',
             command: () => onOpenPanel('system-settings')
           },
           {
-            label: 'Language Management',
+            label: t.panelsewnavigationpanel290,
             icon: 'pi pi-globe',
             command: () => onOpenPanel('language-management')
           },
@@ -295,7 +305,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             separator: true
           },
           {
-            label: 'CMS Admin',
+            label: t.panelsewnavigationpanel298,
             icon: 'pi pi-file-edit',
             command: () => onOpenPanel('cms-admin')
           }
@@ -312,17 +322,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Profile',
+          label: t.profileTab,
           icon: 'pi pi-user-edit',
           command: () => onOpenModal?.('profile')
         },
         {
-          label: 'Change Plan',
+          label: t.panelsewnavigationpanel320,
           icon: 'pi pi-credit-card',
           command: () => onOpenModal?.('plan')
         },
         {
-          label: 'Back to Lobby',
+          label: t.panelsewnavigationpanel112,
           icon: 'pi pi-external-link',
           command: () => window.location.href = '/'
         },
@@ -330,7 +340,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: 'Logout',
+          label: t.panelsewnavigationpanel333,
           icon: 'pi pi-sign-out',
           command: () => {
             // Clear all sessionStorage
@@ -356,17 +366,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     }
   ] : [
     {
-      label: 'Account',
+      label: t.panelsewnavigationpanel359,
       icon: 'pi pi-user',
       // No command here - parent items should not execute
       items: [
         {
-          label: 'Login',
+          label: t.loginmodal212,
           icon: 'pi pi-sign-in',
           command: () => onOpenModal?.('login')
         },
         {
-          label: 'Register',
+          label: t.authmodalsegistermodal203,
           icon: 'pi pi-user-plus',
           command: () => onOpenModal?.('register')
         }
@@ -381,7 +391,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 hover:bg-gray-700 rounded transition-colors w-full flex justify-center"
-          title={isCollapsed ? 'Expand Menu' : 'Collapse Menu'}
+          title={isCollapsed ? 'Expand Menu' : t.panelsewnavigationpanel384}
         >
           <i className={`pi ${isCollapsed ? 'pi-angle-right' : 'pi-angle-left'} text-gray-400`}></i>
         </button>
@@ -410,7 +420,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               <button 
                 onClick={() => window.location.href = '/'}
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
-                title="Back to Lobby"
+                title={t.panelsewnavigationpanel112}
               >
                 <i className="pi pi-arrow-left text-gray-300"></i>
               </button>
@@ -419,7 +429,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               <button 
                 onClick={() => onOpenPanel('home')}
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
-                title="Welcome"
+                title={t.panelsewnavigationpanel120}
               >
                 <i className="pi pi-home text-gray-300"></i>
               </button>
@@ -427,20 +437,20 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             {/* Icon-only navigation with TieredMenu - only 3 main categories */}
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-briefcase text-gray-300" title="Project"></i>
+                <i className="pi pi-briefcase text-gray-300" title={t.manageteammodal316}></i>
               </button>
               {/* Popup submenu for Project */}
               <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('project')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-home"></i>
-                    <span>Project Management</span>
+                    <span>{t.newnavigationpanel133}</span>
                   </button>
 
                   <div className="relative group/settings">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-cog"></i>
-                      <span>Settings</span>
+                      <span>{t.newnavigationpanel138}</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Settings */}
@@ -485,7 +495,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           }
                         }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-users"></i>
-                          <span>Teams Assignment</span>
+                          <span>{t.newnavigationpanel170}</span>
                         </button>
                       </div>
                     </div>
@@ -502,6 +512,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-list"></i>
                           <span>Template Verwaltung</span>
+                        </button>
+                        <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-star-fill text-yellow-400"></i>
+                          <span>Template Review</span>
                         </button>
                         <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-link"></i>
@@ -530,7 +544,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-database text-gray-300" title="Database"></i>
+                <i className="pi pi-database text-gray-300" title={t.panelsewnavigationpanel223}></i>
               </button>
               {/* Popup submenu for Database */}
               <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -562,7 +576,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-wrench text-gray-300" title="Generator"></i>
+                <i className="pi pi-wrench text-gray-300" title={t.panelsewnavigationpanel258}></i>
               </button>
               {/* Popup submenu for Generator */}
               <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -573,9 +587,9 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </button>
                   <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-play"></i>
-                    <span>Code Generation Panel</span>
+                    <span>Code Generation</span>
                   </button>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-search"></i>
                     <span>Query Builder</span>
                   </button>
@@ -586,7 +600,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             {(userType === 'system' || userType === 'admin') && (
               <div className="relative group">
                 <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                  <i className="pi pi-cog text-gray-300" title="Administration"></i>
+                  <i className="pi pi-cog text-gray-300" title={t.panelsewnavigationpanel281}></i>
                 </button>
                 {/* Popup submenu for Administration */}
                 <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -632,7 +646,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             {/* Profile icon with popup menu */}
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} text-gray-300`} title={isLoggedIn ? userName : 'Account'}></i>
+                <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} text-gray-300`} title={isLoggedIn ? userName : t.panelsewnavigationpanel359}></i>
               </button>
               {/* Popup submenu for Profile */}
               <div className="absolute left-full bottom-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">

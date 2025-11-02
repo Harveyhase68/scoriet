@@ -23,6 +23,8 @@ class Template extends Model
         'is_active',
         'tags',
         'file_count',
+        'review_status',
+        'review_score',
     ];
 
     protected $casts = [
@@ -30,6 +32,7 @@ class Template extends Model
         'is_active' => 'boolean',
         'is_system_template' => 'boolean',
         'file_count' => 'integer',
+        'review_score' => 'integer',
     ];
 
     /**
@@ -94,6 +97,14 @@ class Template extends Model
     public function clones()
     {
         return $this->hasMany(Template::class, 'original_template_id');
+    }
+
+    /**
+     * Get the reviews for this template
+     */
+    public function reviews()
+    {
+        return $this->hasMany(TemplateReview::class);
     }
 
     /**
@@ -191,29 +202,32 @@ class Template extends Model
     public function scopeAccessibleByUser($query, $userId, $projectId = null)
     {
         return $query->where(function($q) use ($userId, $projectId) {
-            // System templates (always accessible if public)
+            // System templates (always accessible if public and approved)
             $q->where(function($systemQ) {
                 $systemQ->where('is_system_template', true)
-                        ->where('visibility', 'public');
+                        ->where('visibility', 'public')
+                        ->where('review_score', '>=', 5); // Only approved templates
             })
-            // User's own templates (regardless of project)
+            // User's own templates (regardless of project - no score check)
             ->orWhere(function($ownQ) use ($userId) {
                 $ownQ->where('creator_user_id', $userId)
                      ->where('is_system_template', false);
             })
-            // Public project templates from user's accessible projects
+            // Public project templates from user's accessible projects (approved only)
             ->orWhere(function($projectQ) use ($userId) {
                 $projectQ->where('is_system_template', false)
                          ->whereHas('project', function($projectAccessQ) use ($userId) {
                              $projectAccessQ->visibleTo(\App\Models\User::find($userId));
                          })
                          ->where('visibility', 'public')
+                         ->where('review_score', '>=', 5) // Only approved templates
                          ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             })
-            // Other users' public templates without project association
+            // Other users' public templates without project association (approved only)
             ->orWhere(function($publicQ) use ($userId) {
                 $publicQ->where('is_system_template', false)
                         ->where('visibility', 'public')
+                        ->where('review_score', '>=', 5) // Only approved templates
                         ->whereNull('project_id')
                         ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             });
@@ -433,5 +447,21 @@ class Template extends Model
         }
 
         return $clonedTemplate;
+    }
+
+    /**
+     * Get the custom variables defined for this template
+     */
+    public function variables()
+    {
+        return $this->hasMany(TemplateVariable::class);
+    }
+
+    /**
+     * Get the variable values for projects using this template
+     */
+    public function variableValues()
+    {
+        return $this->hasMany(ProjectTemplateVariableValue::class);
     }
 }

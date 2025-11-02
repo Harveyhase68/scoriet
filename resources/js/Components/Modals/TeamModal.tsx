@@ -8,6 +8,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { MultiSelect } from 'primereact/multiselect';
 import { Message } from 'primereact/message';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TeamMember {
   id: number;
@@ -57,6 +58,10 @@ interface TeamModalProps {
 }
 
 export default function TeamModal({ visible, onHide, team, onSave }: TeamModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { projects } = useProject();
   const [formData, setFormData] = useState<{
     name: string;
@@ -71,7 +76,21 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
 
+  const handleNameChange = (value: string) => {
+    // Convert to lowercase and remove invalid characters
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+    // Check if any characters were removed (invalid input)
+    if (value !== sanitized) {
+      setNameError('Only lowercase letters, numbers, and underscores are allowed');
+    } else {
+      setNameError(null);
+    }
+
+    setFormData(prev => ({ ...prev, name: sanitized }));
+  };
 
   useEffect(() => {
     if (visible && team) {
@@ -95,7 +114,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setError('Team name is required');
+      setError(t.teammodal98);
       return;
     }
 
@@ -105,7 +124,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const url = team ? `/api/teams/${team.id}` : '/api/teams';
@@ -129,12 +148,12 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           throw new Error(errorData.errors.name[0]);
         }
         
-        throw new Error(errorData.message || 'Failed to save team');
+        throw new Error(errorData.message || t.teammodal132);
       }
 
       onSave();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to save team');
+      setError(error instanceof Error ? error.message : t.teammodal132);
     } finally {
       setLoading(false);
     }
@@ -143,7 +162,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   if (!visible) return null;
 
   // const projectOptions = [
-  //   { label: 'Select Project', value: 0 },
+  //   { label: t.teammodal146, value: 0 },
   //   ...projects.map(project => ({
   //     label: project.name,
   //     value: project.id
@@ -152,7 +171,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
   return (
     <Dialog
-      header={team ? 'Edit Team' : 'Create New Team'}
+      header={team ? t.teammanagementpanel394 : t.teammodal155}
       visible={visible}
       onHide={onHide}
       style={{ width: '500px' }}
@@ -172,10 +191,17 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
             <InputText
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter team name"
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="gen_team_96"
               required
+              className={nameError ? 'p-invalid' : ''}
             />
+            <small className="text-gray-400 text-xs mt-1 block">
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
+            {nameError && (
+              <small className="text-red-400 text-xs mt-1 block">{nameError}</small>
+            )}
           </div>
 
           <div className="field">
@@ -186,7 +212,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               id="description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter team description (optional)"
+              placeholder={t.teammodal189}
               rows={3}
             />
           </div>
@@ -203,7 +229,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
                 value: project.id
               }))}
               onChange={(e) => setFormData(prev => ({ ...prev, project_ids: e.value }))}
-              placeholder="Select projects"
+              placeholder={t.teammodal206}
               display="chip"
               className="w-full"
             />
@@ -229,7 +255,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
         <div className="flex justify-end gap-2 pt-4 border-t border-gray-600 mt-6">
           <Button
             type="button"
-            label="Cancel"
+            label={t.applicationsmodal432}
             icon="pi pi-times"
             className="p-button-text"
             onClick={onHide}
@@ -237,7 +263,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           />
           <Button
             type="submit"
-            label={team ? 'Update' : 'Create'}
+            label={team ? 'Update' : t.teammodal240}
             icon={team ? 'pi pi-check' : 'pi pi-plus'}
             loading={loading}
           />

@@ -85,12 +85,12 @@ export default function LoginModal({
         
         // Check if this is an email verification error
         if (tokenResponse.status === 403 && errorData.email_verification_required) {
-          setError('E-Mail-Adresse muss bestätigt werden. Bitte prüfen Sie Ihre E-Mails.');
+          setError(t.loginmodal88);
           setShowResendVerification(true);
           return;
         }
         
-        throw new Error(errorData.message || 'Login failed');
+        throw new Error(errorData.message || t.authcontroller156);
       }
 
       const tokenData = await tokenResponse.json();
@@ -133,13 +133,13 @@ export default function LoginModal({
 
     } catch (error) {
       // Better error messages for common scenarios
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      const errorMessage = error instanceof Error ? error.message : t.authmodalsegistermodal109;
 
       // Check for specific error messages
-      if (errorMessage.includes('Login failed') || errorMessage.includes('invalid_grant')) {
-        setError('E-Mail/Benutzername oder Passwort ist falsch.');
+      if (errorMessage.includes(t.authcontroller156) || errorMessage.includes('invalid_grant')) {
+        setError(t.loginmodal140);
       } else if (errorMessage.includes('email_verification_required')) {
-        setError('E-Mail-Adresse muss bestätigt werden.');
+        setError(t.loginmodal142);
       } else {
         setError(errorMessage);
       }
@@ -181,12 +181,12 @@ export default function LoginModal({
         });
 
         if (resendResponse.ok) {
-          setVerificationMessage('Bestätigungs-E-Mail wurde erneut gesendet!');
+          setVerificationMessage(t.loginmodal184);
           setShowResendVerification(false);
         }
       }
     } catch {
-      setVerificationMessage('Fehler beim Senden der E-Mail. Bitte versuchen Sie es später erneut.');
+      setVerificationMessage(t.loginmodal189);
     } finally {
       setLoading(false);
     }
@@ -209,7 +209,7 @@ export default function LoginModal({
 
   return (
     <Dialog
-      header="Login"
+      header={t.loginmodal212}
       visible={visible}
       onHide={handleHide}
       style={{ width: '400px' }}
@@ -243,7 +243,7 @@ export default function LoginModal({
             </p>
             <Button
               type="button"
-              label="Bestätigungs-E-Mail erneut senden"
+              label={t.loginmodal246}
               className="p-button-sm p-button-outlined"
               onClick={handleResendVerification}
               disabled={loading}
@@ -314,7 +314,7 @@ export default function LoginModal({
             inputId="login-password-input"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'Leave empty for demo' : t.LoginPassword}
+            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? t.loginmodal317 : t.LoginPassword}
             className="w-full"
             inputClassName="w-full"
             disabled={loading}

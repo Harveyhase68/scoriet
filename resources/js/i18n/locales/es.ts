@@ -145,7 +145,7 @@ export const es: Translations = {
   projectcontroller294: 'Sólo el propietario del proyecto puede transferir la propiedad',
   projectcontroller300: 'El nuevo propietario debe ser miembro del proyecto',
   projectcontroller361: 'No autorizado',
-  projectcontroller367: 'Proyecto desactivado exitosamente',
+  projectcontroller367: 'Proyecto eliminado exitosamente',
   projectcontroller377: 'No autorizado',
   projectcontroller382: 'Proyecto eliminado permanentemente',
   projectcontroller392: 'No autorizado',
@@ -1337,6 +1337,7 @@ export const es: Translations = {
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleting: 'Eliminando...',
+  saving: 'Guardando...',
   deleteAccount: 'Eliminar cuenta',
 
   // resources/js\Components\AuthModals\ProfileModal.tsx
@@ -1506,10 +1507,11 @@ export const es: Translations = {
   errorfallback40: 'Detalles del error:',
   errorfallback58: 'Intentar otra vez',
   errorfallback65: 'Recargar página y reiniciar',
+  errorfallback65_2: ' El botón elimina todos los datos locales (diseño, configuración y cierre de sesión) y reinicia la aplicación.',
   errorfallback75: 'Un aviso:',
 
   // resources/js/Components/ErrorFallback.tsx
-  errorfallback77: 'Consejo: Si el problema persiste, contacte con el soporte técnico.',
+  errorfallback77: 'Consejo: Si el problema persiste, comuníquese con el soporte técnico.',
 
   // resources/js\Components\ErrorFallback.tsx
   errorfallback78: 'Consejo: Si el problema persiste',
@@ -2263,7 +2265,7 @@ export const es: Translations = {
   codegenerationpanel300: 'texto/sin formato',
 
   // resources/js\Components\Panels\CodeGenerationPanel.tsx
-  codegenerationpanel327: 'Panel de prueba de generación de código',
+  codegenerationpanel327: 'Generación de código',
 
   // resources/js/Components/Panels/CodeGenerationPanel.tsx
   codegenerationpanel332: 'ID de plantilla',
@@ -2550,7 +2552,7 @@ export const es: Translations = {
   panelsewnavigationpanel251: 'Exportar SQL',
   panelsewnavigationpanel258: 'Generador',
   panelsewnavigationpanel263: 'Generador de manuales de depuración',
-  panelsewnavigationpanel268: 'Panel de generación de código',
+  panelsewnavigationpanel268: 'Generación de código',
   panelsewnavigationpanel273: 'Generador de consultas',
   panelsewnavigationpanel281: 'Administración',
   panelsewnavigationpanel285: 'Configuración del sistema',
@@ -2588,7 +2590,7 @@ export const es: Translations = {
   panelsewnavigationpanel557: 'Exportar SQL',
   panelsewnavigationpanel565: 'Generador',
   panelsewnavigationpanel572: 'Generador de manuales de depuración',
-  panelsewnavigationpanel576: 'Panel de generación de código',
+  panelsewnavigationpanel576: 'Generación de código',
   panelsewnavigationpanel580: 'Generador de consultas',
   panelsewnavigationpanel589: 'Administración',
   panelsewnavigationpanel596: 'Configuración del sistema',
@@ -2881,7 +2883,7 @@ export const es: Translations = {
   newnavigationpanel251: 'Exportar SQL',
   newnavigationpanel258: 'Generador',
   newnavigationpanel263: 'Generador de manuales de depuración',
-  newnavigationpanel268: 'Panel de generación de código',
+  newnavigationpanel268: 'Generación de código',
   newnavigationpanel273: 'Generador de consultas',
   newnavigationpanel281: 'Administración',
   newnavigationpanel285: 'Configuración del sistema',
@@ -2919,7 +2921,7 @@ export const es: Translations = {
   newnavigationpanel557: 'Exportar SQL',
   newnavigationpanel565: 'Generador',
   newnavigationpanel572: 'Generador de manuales de depuración',
-  newnavigationpanel576: 'Panel de generación de código',
+  newnavigationpanel576: 'Generación de código',
   newnavigationpanel580: 'Generador de consultas',
   newnavigationpanel589: 'Administración',
   newnavigationpanel596: 'Configuración del sistema',
@@ -2962,6 +2964,7 @@ export const es: Translations = {
   panelt1837: 'IDENTIFICACIÓN:',
   panelt1839: 'Camino:',
   panelt1842: 'ID del proyecto:',
+  panelt1843: 'Camino:',
   panelt1845: 'ID del equipo:',
   panelt1848: 'Role:',
   panelt1853: 'ID de plantilla:',
@@ -3370,7 +3373,7 @@ export const es: Translations = {
 
   // resources/js/Components/Panels/ProjectPanel.tsx
   projectpanel1356: '¿Estás seguro que deseas eliminar este proyecto?',
-  projectpanel1362: 'Esta acción desactivará el proyecto. Podrás restaurarlo más tarde si lo necesitas. Los equipos, las plantillas y las bases de datos asociados a este proyecto permanecerán intactos.',
+  projectpanel1362: 'Esta acción eliminará PERMANENTEMENTE el proyecto y todos sus datos. ¡Esto no se puede deshacer! Los equipos, las plantillas y las bases de datos asociados a este proyecto permanecerán intactos.',
 
   // resources/js\Components\Panels\ProjectPanel.tsx
   projectpanel1371: 'Cancelar',
@@ -3859,11 +3862,13 @@ export const es: Translations = {
   teamspanel270: 'No autenticado',
   teamspanel295: 'No se pudieron asignar equipos',
   teamspanel347: 'equipo cambiado',
+  teamspanel349: ' equipos asignados a proyectos con éxito',
   teamspanel350: 'Error al asignar equipos',
   teamspanel364: 'No autenticado',
   teamspanel368: 'BORRAR',
   teamspanel420: 'equipo cambiado',
   teamspanel425: 'Error al eliminar el equipo',
+  teamspanel430: 'eliminado del proyecto exitosamente',
   teamspanel451: 'Cargando equipos...',
   teamspanel457: 'Equipos de proyecto',
   teamspanel487: 'Buscar proyectos o equipos...',
@@ -3875,8 +3880,10 @@ export const es: Translations = {
   // resources/js\Components\Panels\TeamsPanel.tsx
   teamspanel544: 'Desconocido',
   teamspanel552: 'Sin asignar',
+  teamspanel557: 'Asignado',
   teamspanel563: 'Eliminar del proyecto',
   teamspanel608: 'Borrar selección',
+  teamspanel619: 'Asignar equipo(s) a proyectos',
   teamspanel630: 'No se encontraron equipos',
   teamspanel675: 'Eliminar del proyecto',
   teamspanel697: 'Nombre del equipo',
@@ -4333,7 +4340,7 @@ export const es: Translations = {
   index662: 'Equipo de administración',
   index676: 'Plantilla - Dependencias del esquema de base de datos',
   index689: '🔧 Generador de manuales de depuración',
-  index711: 'Panel de prueba de generación de código',
+  index711: 'Generación de código',
   index724: 'Gestión del lenguaje',
   index737: 'Traducción de esquemas',
   index750: 'Configuración del sistema',
@@ -4387,11 +4394,13 @@ export const es: Translations = {
   modernInterfaceDesc: 'Interfaz MDI intuitiva basada en muelles con apilamiento de pestañas y paneles flotantes.',
 
   // resources/js\pages\LandingPage.tsx
+  landingpage151: ' Para siempre',
   landingpage152: 'Perfecto para proyectos personales.',
   landingpage154: 'Hasta 3 proyectos',
   landingpage155: 'Plantillas básicas',
   landingpage156: 'Análisis de esquemas SQL',
   landingpage157: 'Apoyo comunitario',
+  landingpage158: 'Financiado por publicidad',
 
   // resources/js/pages/LandingPage.tsx
   goStartFree: 'Empezar gratis',
@@ -4463,7 +4472,7 @@ export const es: Translations = {
   pricingSubtitle: 'Empiece gratis, actualice cuando esté listo para escalar',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage479: 'px-3 py-1',
+  landingpage479: 'MÁS POPULAR',
   landingpage486: 'Patreon',
   landingpage514: 'Gratis',
 
@@ -4511,10 +4520,7 @@ export const es: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Contáctenos',
   communityLink: 'Comunidad',
-  allRightsReserved: '© 2025 Scoriet. {t.todos los derechos reservados}.',
-
-  // resources/js\pages\LandingPage.tsx
-  landingpage674: '© 2025 Scoriet. {t.todos los derechos reservados}.',
+  allRightsReserved: '© 2025 Scoriet, todos los derechos reservados',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Política de privacidad',

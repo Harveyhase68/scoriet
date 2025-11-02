@@ -3,6 +3,7 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface EmailVerificationProps {
   userId?: string;
@@ -10,6 +11,10 @@ interface EmailVerificationProps {
 }
 
 export default function EmailVerification({ userId, hash }: EmailVerificationProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'already_verified'>('loading');
   const [message, setMessage] = useState<string>('');
   const [invitationAccepted, setInvitationAccepted] = useState<boolean>(false);
@@ -52,11 +57,11 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
         }, data.invitation_auto_accepted ? 3000 : 2000);  // Give more time to read the project message
       } else {
         setStatus('error');
-        setMessage(data.message || 'Fehler bei der E-Mail-Bestätigung');
+        setMessage(data.message || t.emailverification55);
       }
     } catch {
       setStatus('error');
-      setMessage('Netzwerkfehler - bitte versuchen Sie es später erneut');
+      setMessage(t.emailverification59);
     }
   }, [userId, hash]);
 
@@ -65,7 +70,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
       verifyEmail();
     } else {
       setStatus('error');
-      setMessage('Ungültiger Bestätigungslink');
+      setMessage(t.emailverification68);
     }
   }, [userId, hash, verifyEmail]);
 
@@ -138,7 +143,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
                     </div>
                   )}
                   <Button
-                    label="Go to App Now"
+                    label={t.emailverification141}
                     icon="pi pi-arrow-right"
                     onClick={() => window.location.href = '/app'}
                     className="w-full"
@@ -152,7 +157,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
                     Falls Sie weiterhin Probleme haben, kontaktieren Sie bitte den Support.
                   </p>
                   <Button
-                    label="Zur Startseite"
+                    label={t.emailverification155}
                     icon="pi pi-home"
                     onClick={handleGoToLogin}
                     className="w-full p-button-outlined"

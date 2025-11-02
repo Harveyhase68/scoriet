@@ -145,7 +145,7 @@ export const en: Translations = {
   projectcontroller294: 'Only the project owner can transfer ownership',
   projectcontroller300: 'New owner must be a project member',
   projectcontroller361: 'Unauthorized',
-  projectcontroller367: 'Project deactivated successfully',
+  projectcontroller367: 'Project deleted successfully',
   projectcontroller377: 'Unauthorized',
   projectcontroller382: 'Project permanently deleted',
   projectcontroller392: 'Unauthorized',
@@ -1337,6 +1337,7 @@ export const en: Translations = {
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleting: 'Deleting...',
+  saving: 'Saving...',
   deleteAccount: 'Delete Account',
 
   // resources/js\Components\AuthModals\ProfileModal.tsx
@@ -1506,10 +1507,11 @@ export const en: Translations = {
   errorfallback40: 'Error details:',
   errorfallback58: 'Try again',
   errorfallback65: 'Reload page & reset',
+  errorfallback65_2: ' Button deletes all local data (layout, settings & logout!) and restarts the app.',
   errorfallback75: 'A notice:',
 
   // resources/js/Components/ErrorFallback.tsx
-  errorfallback77: 'Tip: If the problem persists, contact support.',
+  errorfallback77: 'Tip: If the problem persists, please contact support.',
 
   // resources/js\Components\ErrorFallback.tsx
   errorfallback78: 'Tip: If the problem persists',
@@ -2263,7 +2265,7 @@ export const en: Translations = {
   codegenerationpanel300: 'text/plain',
 
   // resources/js\Components\Panels\CodeGenerationPanel.tsx
-  codegenerationpanel327: 'Code Generation Test Panel',
+  codegenerationpanel327: 'Code Generation',
 
   // resources/js/Components/Panels/CodeGenerationPanel.tsx
   codegenerationpanel332: 'Template ID',
@@ -2550,7 +2552,7 @@ export const en: Translations = {
   panelsewnavigationpanel251: 'Export SQL',
   panelsewnavigationpanel258: 'Generator',
   panelsewnavigationpanel263: 'Debug Manual Generator',
-  panelsewnavigationpanel268: 'Code Generation Panel',
+  panelsewnavigationpanel268: 'Code Generation',
   panelsewnavigationpanel273: 'Query Builder',
   panelsewnavigationpanel281: 'Administration',
   panelsewnavigationpanel285: 'System Settings',
@@ -2588,7 +2590,7 @@ export const en: Translations = {
   panelsewnavigationpanel557: 'Export SQL',
   panelsewnavigationpanel565: 'Generator',
   panelsewnavigationpanel572: 'Debug Manual Generator',
-  panelsewnavigationpanel576: 'Code Generation Panel',
+  panelsewnavigationpanel576: 'Code Generation',
   panelsewnavigationpanel580: 'Query Builder',
   panelsewnavigationpanel589: 'Administration',
   panelsewnavigationpanel596: 'System Settings',
@@ -2881,7 +2883,7 @@ export const en: Translations = {
   newnavigationpanel251: 'Export SQL',
   newnavigationpanel258: 'Generator',
   newnavigationpanel263: 'Debug Manual Generator',
-  newnavigationpanel268: 'Code Generation Panel',
+  newnavigationpanel268: 'Code Generation',
   newnavigationpanel273: 'Query Builder',
   newnavigationpanel281: 'Administration',
   newnavigationpanel285: 'System Settings',
@@ -2919,7 +2921,7 @@ export const en: Translations = {
   newnavigationpanel557: 'Export SQL',
   newnavigationpanel565: 'Generator',
   newnavigationpanel572: 'Debug Manual Generator',
-  newnavigationpanel576: 'Code Generation Panel',
+  newnavigationpanel576: 'Code Generation',
   newnavigationpanel580: 'Query Builder',
   newnavigationpanel589: 'Administration',
   newnavigationpanel596: 'System Settings',
@@ -2962,6 +2964,7 @@ export const en: Translations = {
   panelt1837: 'ID:',
   panelt1839: 'Path:',
   panelt1842: 'Project ID:',
+  panelt1843: 'Path:',
   panelt1845: 'Team ID:',
   panelt1848: 'Role:',
   panelt1853: 'Template ID:',
@@ -3370,7 +3373,7 @@ export const en: Translations = {
 
   // resources/js/Components/Panels/ProjectPanel.tsx
   projectpanel1356: 'Are you sure you want to delete this project?',
-  projectpanel1362: 'This action will deactivate the project. You can restore it later if needed. Teams, templates, and databases associated with this project will remain intact.',
+  projectpanel1362: 'This action will permanently delete the project and all its data. This cannot be undone! Teams, templates, and databases associated with this project will remain intact.',
 
   // resources/js\Components\Panels\ProjectPanel.tsx
   projectpanel1371: 'Cancel',
@@ -3859,11 +3862,13 @@ export const en: Translations = {
   teamspanel270: 'Not authenticated',
   teamspanel295: 'Failed to assign teams',
   teamspanel347: 'teamChanged',
+  teamspanel349: '  teams assigned to projects successfully',
   teamspanel350: 'Error assigning teams',
   teamspanel364: 'Not authenticated',
   teamspanel368: 'DELETE',
   teamspanel420: 'teamChanged',
   teamspanel425: 'Error removing team',
+  teamspanel430: 'removed from project successfully',
   teamspanel451: 'Loading teams...',
   teamspanel457: 'Project Teams',
   teamspanel487: 'Search projects or teams...',
@@ -3875,8 +3880,10 @@ export const en: Translations = {
   // resources/js\Components\Panels\TeamsPanel.tsx
   teamspanel544: 'Unknown',
   teamspanel552: 'Unassigned',
+  teamspanel557: 'Assigned',
   teamspanel563: 'Remove from project',
   teamspanel608: 'Clear Selection',
+  teamspanel619: 'Assign Team(s) to Projects',
   teamspanel630: 'No teams found',
   teamspanel675: 'Remove from project',
   teamspanel697: 'Team Name',
@@ -4333,7 +4340,7 @@ export const en: Translations = {
   index662: 'Administration Team',
   index676: 'Template - DB Schema Dependencies',
   index689: '🔧 Debug Manual Generator',
-  index711: 'Code Generation Test Panel',
+  index711: 'Code Generation',
   index724: 'Language Management',
   index737: 'Schema Translation',
   index750: 'System Settings',
@@ -4387,11 +4394,13 @@ export const en: Translations = {
   modernInterfaceDesc: 'Intuitive dock-based MDI interface with tab stacking and floating panels.',
 
   // resources/js\pages\LandingPage.tsx
+  landingpage151: ' forever',
   landingpage152: 'Perfect for personal projects',
   landingpage154: 'Up to 3 projects',
   landingpage155: 'Basic templates',
   landingpage156: 'SQL schema parsing',
   landingpage157: 'Community support',
+  landingpage158: 'Advertising-funded',
 
   // resources/js/pages/LandingPage.tsx
   goStartFree: 'Start Free',
@@ -4429,7 +4438,7 @@ export const en: Translations = {
   landingpage206: 'Early access to features',
   landingpage207: 'Influence development',
   landingpage208: 'Community Discord access',
-  landingpage209: 'Custom amount (€5-50+)',
+  landingpage209: 'Custom amount from (',
 
   // resources/js/pages/LandingPage.tsx
   becomePatron: 'Become Patron',
@@ -4463,7 +4472,7 @@ export const en: Translations = {
   pricingSubtitle: 'Start free, upgrade when you\'re ready to scale',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage479: 'px-3 py-1',
+  landingpage479: 'MOST POPULAR',
   landingpage486: 'Patreon',
   landingpage514: 'Free',
 
@@ -4476,10 +4485,10 @@ export const en: Translations = {
   welcomeBack: 'User',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage573: 'User',
+  landingpage573: 'Welcome back ',
 
   // resources/js/pages/LandingPage.tsx
-  currentPlan: '{t.freeLabel} Plan',
+  currentPlan: 'Your Plan: ',
   freeLabel: 'Free',
   freeTier: 'Free Tier',
 
@@ -4511,10 +4520,7 @@ export const en: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Contact Us',
   communityLink: 'Community',
-  allRightsReserved: '&copy; 2025 Scoriet. {t.allRightsReserved}.',
-
-  // resources/js\pages\LandingPage.tsx
-  landingpage674: '&copy; 2025 Scoriet. {t.allRightsReserved}.',
+  allRightsReserved: '© 2025 Scoriet, all rights reserved',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Privacy Policy',

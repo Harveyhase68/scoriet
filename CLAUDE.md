@@ -165,3 +165,5 @@ The application is designed around a template-based code generation system:
 - neue fenster oder panele, nimm immer als vorlage ein bestehendes fenster oder panel als vorlage, das spart zeit und nerven, auch sehen die panele und fenster dann gleich aus und wir müssen nicht das rad neu erfinden
 - keine regex bitte verwenden, das ist nicht effizient und auch die fehlersuche ist der horror, bitte vermeide regex, bzw. nur wenn es kleine bereiche sind, die wirklich sinn machen oder den code an dieser stelle kürzer machen
 - wenn du neue tabellen erstellst, bitte schau, dass die tabellen untereinander mit foreign keys verbunden sind, die master tabelle nur mit BIGINT auto-increment als foreign key verwenden, keine textkeys
+- mach kein npm run build, da wir ja mit vite live arbeiten
+- führe keinen upload zu github durch, das mache ich selbst, also kein git push usw. aber du darfst github/git als zwischenspeicher verwenden, wenn du das brauchst, aber nicht auf auf den branch direkt pushen bitte

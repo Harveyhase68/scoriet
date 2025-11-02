@@ -14,6 +14,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { InputSwitch } from 'primereact/inputswitch';
 import { Dropdown } from 'primereact/dropdown';
 import { api } from '@/lib/api';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Language {
   id: number;
@@ -46,6 +47,9 @@ interface LanguageFormData {
 }
 
 export default function LanguageManagementPanel() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const toast = useToast();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,23 +69,23 @@ export default function LanguageManagementPanel() {
     }
   });
 
-  useEffect(() => {
-    const fetchLanguages = async () => {
-        setLoading(true);
-        try {
-          const response = await api.request('/languages');
-          setLanguages(response);
-        } catch (error: any) {
-          if (error.response?.status === 403) {
-            toast.showError('Unauthorized. System admin access required.');
-          } else {
-            toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
-          }
-        } finally {
-          setLoading(false);
-        }
-    };
+  const fetchLanguages = async () => {
+    setLoading(true);
+    try {
+      const response = await api.request('/languages');
+      setLanguages(response);
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        toast.showError(t.languagecontroller17);
+      } else {
+        toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchLanguages();
   }, [toast]);
 
@@ -117,11 +121,11 @@ export default function LanguageManagementPanel() {
 
   const confirmDelete = (language: Language) => {
     confirmDialog({
-      message: 'Are you sure you want to delete this language?',
-      header: 'Delete Language',
+      message: t.languagemanagementpanel120,
+      header: t.languagemanagementpanel121,
       icon: 'pi pi-exclamation-triangle',
       accept: () => handleDelete(language),
-      acceptLabel: 'Yes',
+      acceptLabel: t.languagemanagementpanel124,
       rejectLabel: 'No',
       acceptClassName: 'p-button-danger'
     });
@@ -130,7 +134,7 @@ export default function LanguageManagementPanel() {
   const handleDelete = async (language: Language) => {
     try {
       await api.request(`/languages/${language.id}`, { method: 'DELETE' });
-      toast.showSuccess('Language deleted successfully');
+      toast.showSuccess(t.languagemanagementpanel133);
       fetchLanguages();
     } catch (error: any) {
       toast.showError('Failed to delete language: ' + (error.response?.data?.message || error.message));
@@ -139,7 +143,7 @@ export default function LanguageManagementPanel() {
 
   const handleToggleActive = async (language: Language) => {
     try {
-      await api.request(`/languages/${language.id}/toggle-active`, { method: 'PATCH' });
+      await api.request(`/languages/${language.id}/toggle-active`, { method: t.languagemanagementpanel142 });
       toast.showSuccess(`Language ${language.is_active ? 'deactivated' : 'activated'} successfully`);
       fetchLanguages();
     } catch (error: any) {
@@ -149,8 +153,8 @@ export default function LanguageManagementPanel() {
 
   const handleSetDefault = async (language: Language) => {
     try {
-      await api.request(`/languages/${language.id}/set-default`, { method: 'PATCH' });
-      toast.showSuccess('Default language updated successfully');
+      await api.request(`/languages/${language.id}/set-default`, { method: t.languagemanagementpanel142 });
+      toast.showSuccess(t.languagemanagementpanel153);
       fetchLanguages();
     } catch (error: any) {
       toast.showError('Failed to set default language: ' + (error.response?.data?.message || error.message));
@@ -164,13 +168,13 @@ export default function LanguageManagementPanel() {
           method: 'PUT',
           body: JSON.stringify(values)
         });
-        toast.showSuccess('Language updated successfully');
+        toast.showSuccess(t.languagemanagementpanel167);
       } else {
         await api.request('/languages', {
           method: 'POST',
           body: JSON.stringify(values)
         });
-        toast.showSuccess('Language created successfully');
+        toast.showSuccess(t.languagemanagementpanel173);
       }
       setModalVisible(false);
       fetchLanguages();
@@ -180,23 +184,23 @@ export default function LanguageManagementPanel() {
   };
 
   const commonFlags = [
-    { value: '🇺🇸', label: '🇺🇸 United States' },
-    { value: '🇬🇧', label: '🇬🇧 United Kingdom' },
-    { value: '🇩🇪', label: '🇩🇪 Germany' },
-    { value: '🇫🇷', label: '🇫🇷 France' },
-    { value: '🇪🇸', label: '🇪🇸 Spain' },
-    { value: '🇮🇹', label: '🇮🇹 Italy' },
-    { value: '🇳🇱', label: '🇳🇱 Netherlands' },
-    { value: '🇵🇹', label: '🇵🇹 Portugal' },
-    { value: '🇷🇺', label: '🇷🇺 Russia' },
-    { value: '🇯🇵', label: '🇯🇵 Japan' },
-    { value: '🇰🇷', label: '🇰🇷 South Korea' },
-    { value: '🇨🇳', label: '🇨🇳 China' },
-    { value: '🇧🇷', label: '🇧🇷 Brazil' },
-    { value: '🇲🇽', label: '🇲🇽 Mexico' },
-    { value: '🇨🇦', label: '🇨🇦 Canada' },
-    { value: '🇦🇺', label: '🇦🇺 Australia' },
-    { value: '🇮🇳', label: '🇮🇳 India' },
+    { value: '🇺🇸', label: t.languagemanagementpanel183 },
+    { value: '🇬🇧', label: t.languagemanagementpanel184 },
+    { value: '🇩🇪', label: t.languagemanagementpanel185 },
+    { value: '🇫🇷', label: t.languagemanagementpanel186 },
+    { value: '🇪🇸', label: t.languagemanagementpanel187 },
+    { value: '🇮🇹', label: t.languagemanagementpanel188 },
+    { value: '🇳🇱', label: t.languagemanagementpanel189 },
+    { value: '🇵🇹', label: t.languagemanagementpanel190 },
+    { value: '🇷🇺', label: t.languagemanagementpanel191 },
+    { value: '🇯🇵', label: t.languagemanagementpanel192 },
+    { value: '🇰🇷', label: t.languagemanagementpanel193 },
+    { value: '🇨🇳', label: t.languagemanagementpanel194 },
+    { value: '🇧🇷', label: t.languagemanagementpanel195 },
+    { value: '🇲🇽', label: t.languagemanagementpanel196 },
+    { value: '🇨🇦', label: t.languagemanagementpanel197 },
+    { value: '🇦🇺', label: t.languagemanagementpanel198 },
+    { value: '🇮🇳', label: t.languagemanagementpanel199 },
   ];
 
   const flagBodyTemplate = (rowData: Language) => {
@@ -211,7 +215,7 @@ export default function LanguageManagementPanel() {
     return (
       <div className="flex gap-1">
         <Tag
-          value={rowData.is_active ? 'Active' : 'Inactive'}
+          value={rowData.is_active ? t.templatesStatusActive : t.manageteammodal328}
           severity={rowData.is_active ? 'success' : 'danger'}
         />
         {rowData.is_default && <Tag value="Default" severity="warning" />}
@@ -220,7 +224,7 @@ export default function LanguageManagementPanel() {
   };
 
   const creatorBodyTemplate = (rowData: Language) => {
-    return rowData.creator?.name || 'System';
+    return rowData.creator?.name || t.ultimatetemplatecontroller301;
   };
 
   const descriptionBodyTemplate = (rowData: Language) => {
@@ -248,7 +252,7 @@ export default function LanguageManagementPanel() {
           size="small"
           severity={rowData.is_active ? "warning" : "success"}
           onClick={() => handleToggleActive(rowData)}
-          tooltip={rowData.is_active ? 'Deactivate' : 'Activate'}
+          tooltip={rowData.is_active ? 'Deactivate' : t.languagemanagementpanel251}
           tooltipOptions={{ position: 'top' }}
           disabled={rowData.is_default && rowData.is_active}
         />
@@ -261,7 +265,7 @@ export default function LanguageManagementPanel() {
             size="small"
             severity="help"
             onClick={() => handleSetDefault(rowData)}
-            tooltip="Set as Default"
+            tooltip={t.languagemanagementpanel264}
             tooltipOptions={{ position: 'top' }}
             disabled={!rowData.is_active}
           />
@@ -274,7 +278,7 @@ export default function LanguageManagementPanel() {
           size="small"
           severity="danger"
           onClick={() => confirmDelete(rowData)}
-          tooltip={rowData.is_default ? 'Cannot delete default language' : 'Delete Language'}
+          tooltip={rowData.is_default ? t.languagemanagementpanel277 : t.languagemanagementpanel121}
           tooltipOptions={{ position: 'top' }}
           disabled={rowData.is_default}
         />
@@ -297,7 +301,7 @@ export default function LanguageManagementPanel() {
           </div>
           <Button
             icon="pi pi-plus"
-            label="Add Language"
+            label={t.languagemanagementpanel300}
             size="small"
             severity="info"
             onClick={handleCreate}
@@ -309,35 +313,35 @@ export default function LanguageManagementPanel() {
         <div className="rounded-lg shadow-sm overflow-hidden bg-gray-700">
           <DataTable
             value={languages}
-            rowKey="id"
+            dataKey="id"
             loading={loading}
             paginator
             rows={20}
             rowsPerPageOptions={[10, 20, 50]}
-            paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+            paginatorTemplate={t.languagemanagementpanel317}
             currentPageReportTemplate="{first}-{last} of {total} languages"
             size="small"
             stripedRows
             showGridlines
             scrollable
             scrollHeight="calc(100vh - 300px)"
-            emptyMessage="No languages found"
+            emptyMessage={t.languagemanagementpanel324}
           >
-            <Column field="flag" header="Flag" body={flagBodyTemplate} style={{ width: '80px' }} />
-            <Column field="code" header="Code" body={codeBodyTemplate} sortable style={{ width: '100px' }} />
-            <Column field="name" header="Name" sortable style={{ width: '150px' }} />
-            <Column field="native_name" header="Native Name" sortable style={{ width: '150px' }} />
-            <Column header="Status" body={statusBodyTemplate} style={{ width: '150px' }} />
-            <Column field="sort_order" header="Sort Order" sortable style={{ width: '120px' }} />
-            <Column header="Creator" body={creatorBodyTemplate} style={{ width: '120px' }} />
-            <Column field="description" header="Description" body={descriptionBodyTemplate} />
-            <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+            <Column field="flag" header={t.languagemanagementpanel326} body={flagBodyTemplate} style={{ width: '80px' }} />
+            <Column field="code" header={t.languagemanagementpanel327} body={codeBodyTemplate} sortable style={{ width: '100px' }} />
+            <Column field="name" header={t.registermodal236} sortable style={{ width: '150px' }} />
+            <Column field="native_name" header={t.languagemanagementpanel329} sortable style={{ width: '150px' }} />
+            <Column header={t.applicationsmodal335} body={statusBodyTemplate} style={{ width: '150px' }} />
+            <Column field="sort_order" header={t.languagemanagementpanel331} sortable style={{ width: '120px' }} />
+            <Column header={t.languagemanagementpanel332} body={creatorBodyTemplate} style={{ width: '120px' }} />
+            <Column field="description" header={t.createteammodal103} body={descriptionBodyTemplate} />
+            <Column header={t.applicationsmodal354} body={actionsBodyTemplate} style={{ width: '200px' }} />
           </DataTable>
         </div>
       </div>
 
         <Dialog
-          header={editingLanguage ? 'Edit Language' : 'Add New Language'}
+          header={editingLanguage ? 'Edit Language' : t.languagemanagementpanel340}
           visible={modalVisible}
           onHide={() => setModalVisible(false)}
           style={{ width: '600px' }}
@@ -349,14 +353,14 @@ export default function LanguageManagementPanel() {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                label="Cancel"
+                label={t.applicationsmodal432}
                 icon="pi pi-times"
                 severity="secondary"
                 onClick={() => setModalVisible(false)}
               />
               <Button
                 type="button"
-                label={editingLanguage ? 'Update' : 'Create'}
+                label={editingLanguage ? 'Update' : t.teammodal240}
                 icon="pi pi-check"
                 severity="success"
                 onClick={handleSubmit(onSubmit)}
@@ -375,8 +379,8 @@ export default function LanguageManagementPanel() {
                   name="code"
                   control={control}
                   rules={{
-                    required: 'Please enter language code',
-                    maxLength: { value: 5, message: 'Code must be 5 characters or less' },
+                    required: t.languagemanagementpanel378,
+                    maxLength: { value: 5, message: t.languagemanagementpanel379 },
                     pattern: { value: /^[a-z]{2,3}(-[A-Z]{2})?$/, message: 'Please enter valid language code (e.g., en, de, en-US)' }
                   }}
                   render={({ field }) => (
@@ -407,7 +411,7 @@ export default function LanguageManagementPanel() {
                       value={field.value}
                       onChange={(e) => field.onChange(e.value)}
                       options={commonFlags}
-                      placeholder="Select flag"
+                      placeholder={t.languagemanagementpanel410}
                       showClear
                       filter
                       className="w-full"
@@ -427,14 +431,14 @@ export default function LanguageManagementPanel() {
                   name="name"
                   control={control}
                   rules={{
-                    required: 'Please enter language name',
-                    maxLength: { value: 100, message: 'Name must be 100 characters or less' }
+                    required: t.languagemanagementpanel430,
+                    maxLength: { value: 100, message: t.languagemanagementpanel431 }
                   }}
                   render={({ field }) => (
                     <InputText
                       id="name"
                       {...field}
-                      placeholder="e.g., English, German, French"
+                      placeholder={t.languagemanagementpanel437}
                       className="w-full"
                     />
                   )}
@@ -453,14 +457,14 @@ export default function LanguageManagementPanel() {
                   name="native_name"
                   control={control}
                   rules={{
-                    required: 'Please enter native language name',
-                    maxLength: { value: 100, message: 'Native name must be 100 characters or less' }
+                    required: t.languagemanagementpanel456,
+                    maxLength: { value: 100, message: t.languagemanagementpanel457 }
                   }}
                   render={({ field }) => (
                     <InputText
                       id="native_name"
                       {...field}
-                      placeholder="e.g., English, Deutsch, Français"
+                      placeholder={t.languagemanagementpanel463}
                       className="w-full"
                     />
                   )}
@@ -480,14 +484,14 @@ export default function LanguageManagementPanel() {
                 name="description"
                 control={control}
                 rules={{
-                  maxLength: { value: 1000, message: 'Description must be 1000 characters or less' }
+                  maxLength: { value: 1000, message: t.languagemanagementpanel483 }
                 }}
                 render={({ field }) => (
                   <InputTextarea
                     id="description"
                     {...field}
                     rows={3}
-                    placeholder="Optional description of the language"
+                    placeholder={t.languagemanagementpanel490}
                     className="w-full"
                   />
                 )}
@@ -507,8 +511,8 @@ export default function LanguageManagementPanel() {
                   name="sort_order"
                   control={control}
                   rules={{
-                    required: 'Please enter sort order',
-                    min: { value: 0, message: 'Sort order must be 0 or greater' }
+                    required: t.languagemanagementpanel510,
+                    min: { value: 0, message: t.languagemanagementpanel511 }
                   }}
                   render={({ field }) => (
                     <InputNumber

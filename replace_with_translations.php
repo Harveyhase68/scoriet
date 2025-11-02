@@ -113,28 +113,33 @@ class TranslationReplacer
                     continue;
                 }
 
+                // Skip technical strings that should not be translated
+                if ($this->isTechnicalString($text)) {
+                    continue;
+                }
+
                 // Escape special regex characters
                 $escapedText = preg_quote($text, '/');
 
                 // Replace in different contexts and track line numbers
                 $patterns = [
-                    // Single quotes: 'text'
+                    // JSX attribute: attribute="text" → attribute={t.key}
+                    [
+                        'pattern' => "/(\w+)=\"$escapedText\"/",
+                        'replacement' => '$1={t.' . $key . '}',
+                        'context' => 'jsx-attribute'
+                    ],
+                    // Single quotes: 'text' → t.key
                     [
                         'pattern' => "/'$escapedText'/",
-                        'replacement' => '{t.' . $key . '}',
+                        'replacement' => 't.' . $key,
                         'context' => 'single-quote'
                     ],
-                    // Double quotes: "text"
+                    // Double quotes in JS: "text" → t.key
                     [
                         'pattern' => "/\"$escapedText\"/",
-                        'replacement' => '{t.' . $key . '}',
+                        'replacement' => 't.' . $key,
                         'context' => 'double-quote'
-                    ],
-                    // JSX expression: {'text'}
-                    [
-                        'pattern' => '/\{[\'"]' . $escapedText . '[\'"]\}/',
-                        'replacement' => '{t.' . $key . '}',
-                        'context' => 'jsx-expression'
                     ],
                 ];
 
@@ -196,6 +201,56 @@ class TranslationReplacer
             // Write to log file
             $this->writeToLogFile($relativePath, $replacementLog);
         }
+    }
+
+    /**
+     * Check if a string is technical and should not be translated
+     */
+    private function isTechnicalString(string $text): bool
+    {
+        // Import/require paths
+        if (str_starts_with($text, './') || str_starts_with($text, '../') || str_starts_with($text, '@/')) {
+            return true;
+        }
+
+        // Common event names
+        $eventNames = ['languageChanged', 'applicationsUpdated', 'click', 'change', 'submit', 'focus', 'blur'];
+        if (in_array($text, $eventNames)) {
+            return true;
+        }
+
+        // HTML input types
+        $inputTypes = ['password', 'text', 'email', 'number', 'tel', 'url', 'search', 'date', 'time', 'checkbox', 'radio'];
+        if (in_array($text, $inputTypes)) {
+            return true;
+        }
+
+        // Common technical keywords (API names, variable names, format strings)
+        $technicalKeywords = [
+            'XMLHttpRequest', 'confirmText', 'rememberMe', 'PROJ-', 'index.php',
+            'd.m.Y', 'H:i:s', 'de-DE', 'en-US', 'fr-FR', 'es-ES', 'it-IT',
+            'applicationsUpdated', 'projectsUpdated', 'warning', 'error', 'success', 'info'
+        ];
+        if (in_array($text, $technicalKeywords)) {
+            return true;
+        }
+
+        // CSS classes (contains spaces and dashes)
+        if (preg_match('/^[a-z-]+(\s+[a-z-]+)+$/', $text)) {
+            return true;
+        }
+
+        // Timezone names
+        if (str_starts_with($text, 'Europe/') || str_starts_with($text, 'America/') || str_starts_with($text, 'Asia/') || $text === 'UTC') {
+            return true;
+        }
+
+        // Emoji-only strings
+        if (preg_match('/^[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]+$/u', $text)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -387,30 +442,66 @@ class TranslationReplacer
 
 // Main execution
 if (php_sapi_name() === 'cli') {
-    echo "Choose mode:\n";
-    echo "1. DRY RUN (show what would be changed, don't modify files)\n";
-    echo "2. REAL RUN (actually modify files)\n";
-    echo "\nChoice (1-2): ";
+    // Check for command line arguments
+    $mode = $argv[1] ?? null;
+    $target = $argv[2] ?? null;
+    $filePath = $argv[3] ?? null;
 
-    $handle = fopen("php://stdin", "r");
-    $modeChoice = trim(fgets($handle));
+    $dryRun = false;
+    $modeChoice = null;
+    $choice = null;
 
-    $dryRun = ($modeChoice === '1');
+    // Parse mode argument
+    if ($mode === '--dry-run' || $mode === '-d') {
+        $dryRun = true;
+        $modeChoice = '1';
+    } elseif ($mode === '--real' || $mode === '-r') {
+        $dryRun = false;
+        $modeChoice = '2';
+    }
+
+    // If no arguments, use interactive mode
+    if ($modeChoice === null) {
+        echo "Choose mode:\n";
+        echo "1. DRY RUN (show what would be changed, don't modify files)\n";
+        echo "2. REAL RUN (actually modify files)\n";
+        echo "\nChoice (1-2): ";
+
+        $handle = fopen("php://stdin", "r");
+        $modeChoice = trim(fgets($handle));
+        $dryRun = ($modeChoice === '1');
+    }
 
     $replacer = new TranslationReplacer($dryRun);
 
     // Load ALL language translations (en, de, fr, es, it)
     $replacer->loadAllTranslations();
 
-    // Ask user what to process
-    echo "\nWhat do you want to process?\n";
-    echo "1. TSX files only\n";
-    echo "2. PHP files only\n";
-    echo "3. Both TSX and PHP files\n";
-    echo "4. Single file (specify path)\n";
-    echo "\nChoice (1-4): ";
+    // Parse target argument
+    if ($target === '--tsx') {
+        $choice = '1';
+    } elseif ($target === '--php') {
+        $choice = '2';
+    } elseif ($target === '--both') {
+        $choice = '3';
+    } elseif ($target === '--file' && $filePath) {
+        $choice = '4';
+    }
 
-    $choice = trim(fgets($handle));
+    // If no target specified, ask user
+    if ($choice === null) {
+        echo "\nWhat do you want to process?\n";
+        echo "1. TSX files only\n";
+        echo "2. PHP files only\n";
+        echo "3. Both TSX and PHP files\n";
+        echo "4. Single file (specify path)\n";
+        echo "\nChoice (1-4): ";
+
+        if (!isset($handle)) {
+            $handle = fopen("php://stdin", "r");
+        }
+        $choice = trim(fgets($handle));
+    }
 
     switch ($choice) {
         case '1':
@@ -424,8 +515,13 @@ if (php_sapi_name() === 'cli') {
             $replacer->processPHPDirectory('app');
             break;
         case '4':
-            echo "Enter file path: ";
-            $filePath = trim(fgets($handle));
+            if (!$filePath) {
+                echo "Enter file path: ";
+                if (!isset($handle)) {
+                    $handle = fopen("php://stdin", "r");
+                }
+                $filePath = trim(fgets($handle));
+            }
             if (file_exists($filePath)) {
                 $ext = pathinfo($filePath, PATHINFO_EXTENSION);
                 if ($ext === 'tsx') {
@@ -444,7 +540,9 @@ if (php_sapi_name() === 'cli') {
             exit(1);
     }
 
-    fclose($handle);
+    if (isset($handle)) {
+        fclose($handle);
+    }
 
     $replacer->showSummary();
 

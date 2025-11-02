@@ -16,6 +16,7 @@ import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-markup';
 import 'prismjs/themes/prism-tomorrow.css';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Page {
   id: number;
@@ -37,14 +38,17 @@ interface PageFormData {
 }
 
 const localeOptions = [
-  { label: 'English', value: 'en' },
-  { label: 'Deutsch', value: 'de' },
-  { label: 'Français', value: 'fr' },
-  { label: 'Español', value: 'es' },
-  { label: 'Italiano', value: 'it' },
+  { label: t.editprojectmodal484, value: 'en' },
+  { label: t.editprojectmodal485, value: 'de' },
+  { label: t.editprojectmodal486, value: 'fr' },
+  { label: t.editprojectmodal487, value: 'es' },
+  { label: t.editprojectmodal488, value: 'it' },
 ];
 
 export default function CMSAdminPanel() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const toast = useToast();
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,7 +107,7 @@ export default function CMSAdminPanel() {
   const handleSave = async () => {
     // Validation
     if (!formData.slug || !formData.locale || !formData.title || !formData.content) {
-      toast.showError('Please fill in all required fields');
+      toast.showError(t.cmsadminpanel106);
       return;
     }
 
@@ -119,14 +123,14 @@ export default function CMSAdminPanel() {
             is_active: formData.is_active,
           }),
         });
-        toast.showSuccess('Page updated successfully!');
+        toast.showSuccess(t.cmsadminpanel122);
       } else {
         // Create new page
         await api.request('/admin/pages', {
           method: 'POST',
           body: JSON.stringify(formData),
         });
-        toast.showSuccess('Page created successfully!');
+        toast.showSuccess(t.cmsadminpanel129);
       }
 
       setShowDialog(false);
@@ -141,7 +145,7 @@ export default function CMSAdminPanel() {
   const handleDelete = (page: Page) => {
     confirmDialog({
       message: `Are you sure you want to delete "${page.title}"?`,
-      header: 'Confirm Deletion',
+      header: t.cmsadminpanel144,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: async () => {
@@ -149,7 +153,7 @@ export default function CMSAdminPanel() {
           await api.request(`/admin/pages/${page.id}`, {
             method: 'DELETE',
           });
-          toast.showSuccess('Page deleted successfully!');
+          toast.showSuccess(t.cmsadminpanel152);
           fetchPages();
         } catch (error: any) {
           toast.showError('Failed to delete page: ' + (error.response?.data?.message || error.message));
@@ -167,7 +171,7 @@ export default function CMSAdminPanel() {
           text
           severity="info"
           onClick={() => handleEdit(rowData)}
-          tooltip="Edit"
+          tooltip={t.cmsadminpanel170}
         />
         <Button
           icon="pi pi-trash"
@@ -175,7 +179,7 @@ export default function CMSAdminPanel() {
           text
           severity="danger"
           onClick={() => handleDelete(rowData)}
-          tooltip="Delete"
+          tooltip={t.cmsadminpanel178}
         />
         <Button
           icon="pi pi-external-link"
@@ -183,7 +187,7 @@ export default function CMSAdminPanel() {
           text
           severity="secondary"
           onClick={() => window.open(`/${rowData.locale}/${rowData.slug}`, '_blank')}
-          tooltip="View Page"
+          tooltip={t.cmsadminpanel186}
         />
       </div>
     );
@@ -192,7 +196,7 @@ export default function CMSAdminPanel() {
   const statusBodyTemplate = (rowData: Page) => {
     return (
       <span className={`px-2 py-1 rounded text-xs ${rowData.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
-        {rowData.is_active ? 'Active' : 'Inactive'}
+        {rowData.is_active ? t.templatesStatusActive : t.manageteammodal328}
       </span>
     );
   };
@@ -221,7 +225,7 @@ export default function CMSAdminPanel() {
             </p>
           </div>
           <Button
-            label="Create New Page"
+            label={t.cmsadminpanel224}
             icon="pi pi-plus"
             onClick={handleCreateNew}
             severity="success"
@@ -238,22 +242,22 @@ export default function CMSAdminPanel() {
           rowsPerPageOptions={[5, 10, 25, 50]}
           className="p-datatable-sm"
           stripedRows
-          emptyMessage="No pages found"
+          emptyMessage={t.cmsadminpanel241}
           loading={loading}
         >
-          <Column field="slug" header="Slug" sortable />
-          <Column field="locale" header="Language" sortable style={{ width: '100px' }} />
-          <Column field="title" header="Title" sortable />
-          <Column field="is_active" header="Status" body={statusBodyTemplate} sortable style={{ width: '100px' }} />
+          <Column field="slug" header={t.cmsadminpanel244} sortable />
+          <Column field="locale" header={t.cmsadminpanel245} sortable style={{ width: '100px' }} />
+          <Column field="title" header={t.cmsadminpanel246} sortable />
+          <Column field="is_active" header={t.applicationsmodal335} body={statusBodyTemplate} sortable style={{ width: '100px' }} />
           <Column
             field="updated_at"
-            header="Last Updated"
+            header={t.cmsadminpanel250}
             sortable
             style={{ width: '150px' }}
             body={(rowData) => new Date(rowData.updated_at).toLocaleDateString()}
           />
           <Column
-            header="Actions"
+            header={t.applicationsmodal354}
             body={actionBodyTemplate}
             style={{ width: '150px' }}
           />
@@ -262,21 +266,21 @@ export default function CMSAdminPanel() {
 
       {/* Create/Edit Dialog */}
       <Dialog
-        header={editingPage ? 'Edit Page' : 'Create New Page'}
+        header={editingPage ? 'Edit Page' : t.cmsadminpanel224}
         visible={showDialog}
         style={{ width: '90vw', maxWidth: '900px' }}
         onHide={() => setShowDialog(false)}
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={() => setShowDialog(false)}
               severity="secondary"
               outlined
             />
             <Button
-              label={saving ? 'Saving...' : 'Save'}
+              label={saving ? 'Saving...' : t.cmsadminpanel279}
               icon={saving ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
               onClick={handleSave}
               severity="success"
@@ -295,7 +299,7 @@ export default function CMSAdminPanel() {
               id="slug"
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              placeholder="help, impressum, privacy-policy..."
+              placeholder={t.cmsadminpanel298}
               className="w-full"
               disabled={!!editingPage}
             />
@@ -314,7 +318,7 @@ export default function CMSAdminPanel() {
               value={formData.locale}
               options={localeOptions}
               onChange={(e) => setFormData({ ...formData, locale: e.value })}
-              placeholder="Select a language"
+              placeholder={t.cmsadminpanel317}
               className="w-full"
               disabled={!!editingPage}
             />
@@ -332,7 +336,7 @@ export default function CMSAdminPanel() {
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Page title..."
+              placeholder={t.cmsadminpanel335}
               className="w-full"
             />
           </div>
@@ -357,12 +361,12 @@ export default function CMSAdminPanel() {
               </TabPanel>
 
               {/* Tab 2: HTML Source Editor with Syntax Highlighting */}
-              <TabPanel header="HTML Source" className="text-gray-100 p-0">
+              <TabPanel header={t.cmsadminpanel360} className="text-gray-100 p-0">
                 <div className="h-full bg-gray-900 border border-gray-600 rounded">
                   <div className="flex justify-between items-center p-2 border-b border-gray-600 bg-gray-800">
                     <span className="text-sm text-gray-400">HTML Quellcode mit Syntax-Highlighting</span>
                     <Button
-                      label="Formatieren"
+                      label={t.cmsadminpanel365}
                       icon="pi pi-refresh"
                       size="small"
                       onClick={() => {
@@ -390,7 +394,7 @@ export default function CMSAdminPanel() {
                       }}
                       padding={10}
                       style={{
-                        fontFamily: '"Fira Code", "Consolas", "Monaco", "Courier New", monospace',
+                        fontFamily: 't.debugmanualgeneratorpanel51, "Consolas", "Monaco", t.debugmanualgeneratorpanel1739, monospace',
                         fontSize: 14,
                         backgroundColor: '#1a1a1a',
                         color: '#d4d4d4',
@@ -399,7 +403,7 @@ export default function CMSAdminPanel() {
                         overflow: 'visible',
                       }}
                       className="html-editor"
-                      placeholder="HTML-Code hier einfügen..."
+                      placeholder={t.cmsadminpanel402}
                     />
                   </div>
                 </div>

@@ -72,7 +72,7 @@ export default function PanelT3() {
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // Always load all available templates (not filtered by project)
@@ -87,7 +87,7 @@ export default function PanelT3() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load templates');
+        throw new Error(t.panelt390);
       }
 
       const data = await response.json();
@@ -100,7 +100,7 @@ export default function PanelT3() {
       // setAvailableTemplates(templatesArray); // Initially all templates are available
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading templates');
+      setError(error instanceof Error ? error.message : t.debugmanualgeneratorpanel358);
     }
   }, []);
 
@@ -112,7 +112,7 @@ export default function PanelT3() {
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // Load project's assigned templates
@@ -145,7 +145,7 @@ export default function PanelT3() {
       }
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading project templates');
+      setError(error instanceof Error ? error.message : t.panelt3148);
     }
   }, [selectedProject, templates]);
 
@@ -198,7 +198,7 @@ export default function PanelT3() {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // Call the existing project-template assignment API
@@ -216,7 +216,7 @@ export default function PanelT3() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to assign templates');
+        throw new Error(errorData.message || t.panelt3219);
       }
 
       // Move assigned templates from available to assigned
@@ -228,7 +228,7 @@ export default function PanelT3() {
       setSuccess(`${selectedTemplateIds.length} templates assigned to project successfully`);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error assigning templates');
+      setError(error instanceof Error ? error.message : t.panelt3231);
     } finally {
       setAssigningTemplates(false);
     }
@@ -242,7 +242,7 @@ export default function PanelT3() {
       setError('');
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       // Call API to remove template from project
@@ -269,7 +269,7 @@ export default function PanelT3() {
       }
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error removing template');
+      setError(error instanceof Error ? error.message : t.panelt3272);
     }
   };
 

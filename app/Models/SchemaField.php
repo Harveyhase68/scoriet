@@ -30,6 +30,7 @@ class SchemaField extends Model
         'link_display_field',
         'link_order_field',
         'link_order_direction',
+        'editmask', // Edit mask for input validation (framework-agnostic)
     ];
 
     protected $casts = [

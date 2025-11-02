@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface PendingInvitationModalProps {
   visible: boolean;
@@ -37,6 +39,10 @@ export default function PendingInvitationModal({
   onAccepted, 
   onDeclined 
 }: PendingInvitationModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [invitation, setInvitation] = useState<PendingInvitationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -50,7 +56,7 @@ export default function PendingInvitationModal({
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -67,13 +73,13 @@ export default function PendingInvitationModal({
           onHide();
           return;
         }
-        throw new Error('Failed to load pending invitation');
+        throw new Error(t.pendinginvitationmodal70);
       }
 
       const data = await response.json();
       setInvitation(data);
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error loading invitation');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.pendinginvitationmodal76);
     } finally {
       setLoading(false);
     }
@@ -94,7 +100,7 @@ export default function PendingInvitationModal({
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -109,16 +115,16 @@ export default function PendingInvitationModal({
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Welcome to the team! 🎉');
+        setSuccess(t.pendinginvitationmodal112);
         setTimeout(() => {
           onAccepted?.();
           onHide();
         }, 2000);
       } else {
-        throw new Error(data.message || 'Failed to accept invitation');
+        throw new Error(data.message || t.projectinvitationcontroller150);
       }
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error accepting invitation');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.pendinginvitationmodal121);
     } finally {
       setProcessing(false);
     }
@@ -133,7 +139,7 @@ export default function PendingInvitationModal({
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -148,16 +154,16 @@ export default function PendingInvitationModal({
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Invitation declined');
+        setSuccess(t.projectinvitationcontroller358);
         setTimeout(() => {
           onDeclined?.();
           onHide();
         }, 1500);
       } else {
-        throw new Error(data.message || 'Failed to decline invitation');
+        throw new Error(data.message || t.projectinvitationcontroller179);
       }
-    } catch {
-      setError(_ instanceof Error ? _.message : 'Error declining invitation');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.pendinginvitationmodal160);
     } finally {
       setProcessing(false);
     }
@@ -166,14 +172,14 @@ export default function PendingInvitationModal({
   const dialogFooter = success ? null : (
     <div className="flex justify-center space-x-4">
       <Button
-        label="✅ Accept & Join Project"
+        label={t.pendinginvitationmodal169}
         icon={processing ? "pi pi-spinner pi-spin" : "pi pi-check"}
         onClick={handleAccept}
         disabled={processing || loading}
         className="p-button-success"
       />
       <Button
-        label="❌ Decline"
+        label={t.pendinginvitationmodal176}
         icon={processing ? "pi pi-spinner pi-spin" : "pi pi-times"}
         onClick={handleDecline}
         disabled={processing || loading}
@@ -186,7 +192,7 @@ export default function PendingInvitationModal({
     <Dialog
       visible={visible}
       onHide={onHide}
-      header="🎉 Project Invitation"
+      header={t.pendinginvitationmodal189}
       style={{ width: '600px' }}
       footer={dialogFooter}
       closable={!processing}

@@ -5,7 +5,7 @@ import ForgotPasswordModal from './ForgotPasswordModal';
 import ProfileModal from './ProfileModal';
 import ResetPasswordModal from './ResetPasswordModal';
 import PlanModal from './PlanModal';
-import { SupportedLanguage } from '@/i18n';
+import { SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 export type AuthModalType = 'login' | 'register' | 'forgot' | 'profile' | 'plan' | 'reset' | null;
 
@@ -28,8 +28,10 @@ export default function AuthModalManager({
   resetPasswordToken,
   resetPasswordEmail,
   isLoginClosable = true,
-  currentLanguage
+  currentLanguage: propLanguage
 }: AuthModalManagerProps) {
+  // Use prop language or fallback to stored language
+  const currentLanguage = propLanguage || getStoredLanguage();
 
   const [currentModal, setCurrentModal] = React.useState<AuthModalType>(activeModal);
 

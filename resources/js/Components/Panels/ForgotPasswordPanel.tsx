@@ -4,12 +4,17 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Steps } from 'primereact/steps';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ForgotPasswordPanelProps {
   onSwitchPanel?: (panelType: string) => void;
 }
 
 export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -26,8 +31,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
   });
 
   const steps = [
-    { label: 'Enter email' },
-    { label: 'Reset password' }
+    { label: t.forgotpasswordpanel29 },
+    { label: t.forgotpasswordpanel30 }
   ];
 
   const handleRequestReset = async (e: React.FormEvent) => {
@@ -49,14 +54,14 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Reset link could not be sent');
+        throw new Error(data.message || t.forgotpasswordpanel52);
       }
 
-      setSuccess('A reset link has been sent to your email address. Check your inbox.');
+      setSuccess(t.forgotpasswordpanel55);
       setCurrentStep(1);
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'An error has occurred');
+      setError(_ instanceof Error ? _.message : t.profilemodal346);
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
 
     // Check password confirmation
     if (resetData.password !== resetData.password_confirmation) {
-      setError('Passwords do not match');
+      setError(t.authmodalsegistermodal58);
       setLoading(false);
       return;
     }
@@ -93,10 +98,10 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Password could not be reset');
+        throw new Error(data.message || t.forgotpasswordpanel96);
       }
 
-      setSuccess('Password successfully reset! You can now log in with your new password.');
+      setSuccess(t.forgotpasswordpanel99);
       
       // Nach 3 Sekunden zum Login weiterleiten
       setTimeout(() => {
@@ -106,7 +111,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       }, 3000);
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'An error has occurred');
+      setError(_ instanceof Error ? _.message : t.profilemodal346);
     } finally {
       setLoading(false);
     }
@@ -126,7 +131,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
   return (
     <div className="flex justify-center items-center min-h-full bg-gray-50 p-4">
       <Card 
-        title="Passwort vergessen" 
+        title={t.forgotpasswordmodal73} 
         className="w-full max-w-md shadow-lg"
         pt={{
           root: { className: 'border border-gray-200' },
@@ -175,7 +180,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
+                placeholder={t.forgotpasswordmodal113}
                 className="w-full"
                 disabled={loading}
                 required
@@ -184,7 +189,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
 
             <Button
               type="submit"
-              label={loading ? "Send..." : "Send reset link"}
+              label={loading ? "Send..." : t.forgotpasswordpanel187}
               icon={loading ? "pi pi-spinner pi-spin" : "pi pi-envelope"}
               className="w-full"
               disabled={loading}
@@ -194,7 +199,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               <div className="text-center mt-4">
                 <Button
                   type="button"
-                  label="Back to Login"
+                  label={t.forgotpasswordmodal131}
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('login')}
                 />
@@ -219,7 +224,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
                 id="token"
                 value={resetData.token}
                 onChange={(e) => setResetData(prev => ({ ...prev, token: e.target.value }))}
-                placeholder="Code aus der E-Mail"
+                placeholder={t.forgotpasswordpanel222}
                 className="w-full"
                 disabled={loading}
                 required
@@ -234,17 +239,17 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
                 id="password"
                 value={resetData.password}
                 onChange={(e) => setResetData(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Neues Passwort"
+                placeholder={t.newPassword}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loading}
                 feedback={true}
                 toggleMask
                 required
-                promptLabel="Passwort eingeben"
-                weakLabel="Schwach"
-                mediumLabel="Mittel"
-                strongLabel="Stark"
+                promptLabel={t.panelsegisterpanel161}
+                weakLabel={t.panelsegisterpanel162}
+                mediumLabel={t.panelsegisterpanel163}
+                strongLabel={t.panelsegisterpanel164}
               />
             </div>
 
@@ -256,7 +261,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
                 id="password_confirmation"
                 value={resetData.password_confirmation}
                 onChange={(e) => setResetData(prev => ({ ...prev, password_confirmation: e.target.value }))}
-                placeholder="Passwort wiederholen"
+                placeholder={t.authmodalsegistermodal312}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loading}
@@ -269,7 +274,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
             <div className="flex space-x-2">
               <Button
                 type="button"
-                label="Zurück"
+                label={t.joincodemodal299}
                 icon="pi pi-arrow-left"
                 className="p-button-secondary flex-1"
                 onClick={handleBackToStep1}
@@ -277,7 +282,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               />
               <Button
                 type="submit"
-                label={loading ? "Zurücksetzen..." : "Passwort zurücksetzen"}
+                label={loading ? "Zurücksetzen..." : t.authmodalsesetpasswordmodal319}
                 icon={loading ? "pi pi-spinner pi-spin" : "pi pi-check"}
                 className="flex-1"
                 disabled={loading}
@@ -288,7 +293,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               <div className="text-center mt-4">
                 <Button
                   type="button"
-                  label="Back to Login"
+                  label={t.forgotpasswordmodal131}
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('login')}
                 />

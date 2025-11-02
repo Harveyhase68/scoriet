@@ -200,7 +200,7 @@ class I18nSetup
         // Check if there's already a React import
         if (preg_match("/^import\s+React/m", $content)) {
             // Add useState to existing React import
-            $content = preg_replace(
+            $content = preg_replace_callback(
                 "/^(import\s+React(?:,\s*\{[^}]*\})?)\s+from\s+['\"]react['\"]/m",
                 function($matches) {
                     if (strpos($matches[1], '{') !== false) {
@@ -289,16 +289,28 @@ SETUP;
 
 // Main execution
 if (php_sapi_name() === 'cli') {
-    echo "Choose mode:\n";
-    echo "1. DRY RUN (analyze only, don't modify files)\n";
-    echo "2. REAL RUN (analyze and modify files)\n";
-    echo "\nChoice (1-2): ";
+    // Check for command line arguments
+    $mode = $argv[1] ?? null;
+    $autoConfirm = ($argv[2] ?? null) === '-y';
 
-    $handle = fopen("php://stdin", "r");
-    $choice = trim(fgets($handle));
-    fclose($handle);
+    if ($mode === '--dry-run' || $mode === '-d') {
+        $dryRun = true;
+        $choice = '1';
+    } elseif ($mode === '--real' || $mode === '-r') {
+        $dryRun = false;
+        $choice = '2';
+    } else {
+        echo "Choose mode:\n";
+        echo "1. DRY RUN (analyze only, don't modify files)\n";
+        echo "2. REAL RUN (analyze and modify files)\n";
+        echo "\nChoice (1-2): ";
 
-    $dryRun = ($choice === '1');
+        $handle = fopen("php://stdin", "r");
+        $choice = trim(fgets($handle));
+        fclose($handle);
+
+        $dryRun = ($choice === '1');
+    }
 
     $setup = new I18nSetup($dryRun);
 
@@ -310,10 +322,14 @@ if (php_sapi_name() === 'cli') {
 
     // Step 3: Setup i18n in files that need it
     if ($choice === '2') {
-        echo "\nProceed with setting up i18n in files that need it? (y/n): ";
-        $handle = fopen("php://stdin", "r");
-        $confirm = trim(fgets($handle));
-        fclose($handle);
+        if ($autoConfirm) {
+            $confirm = 'y';
+        } else {
+            echo "\nProceed with setting up i18n in files that need it? (y/n): ";
+            $handle = fopen("php://stdin", "r");
+            $confirm = trim(fgets($handle));
+            fclose($handle);
+        }
 
         if (strtolower($confirm) === 'y') {
             $setup->setupI18nInFiles();

@@ -32,6 +32,7 @@ import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
 import CreateTableModal from '@/Components/Modals/CreateTableModal';
 import EditTableModal from '@/Components/Modals/EditTableModal';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface FloatingSchema {
   id: number;
@@ -69,6 +70,7 @@ interface DatabaseNodeData {
   table?: SchemaTable;
   onDelete?: (table: SchemaTable) => void;
   onEdit?: (table: SchemaTable) => void;
+  onCopy?: (table: SchemaTable) => void;
   isLatestVersion?: boolean;
 }
 
@@ -98,6 +100,10 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
 
 // Database Table Node
 const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   return (
     <div className={`shadow-lg rounded-lg border-2 w-full h-full flex flex-col ${
       selected 
@@ -136,9 +142,21 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   data.onEdit!(data.table!);
                 }}
                 className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
-                title="Tabelle bearbeiten"
+                title={t.panelt2139}
               >
                 ✏️
+              </button>
+            )}
+            {data.onCopy && data.table && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onCopy!(data.table!);
+                }}
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                title="Copy Table"
+              >
+                📋
               </button>
             )}
             {data.onDelete && data.isLatestVersion && data.table && (
@@ -148,7 +166,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   data.onDelete!(data.table!);
                 }}
                 className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
-                title="Tabelle löschen"
+                title={t.panelt2151}
               >
                 🗑️
               </button>
@@ -201,7 +219,7 @@ const nodeTypes = {
 };
 
 // Helper functions
-const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
+const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, onCopyTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
   return tables.map((table, index) => {
     // Primary Keys finden
     const primaryKeyFields = table.constraints
@@ -229,6 +247,7 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
       table: table,
       onDelete: onDeleteTable,
       onEdit: onEditTable,
+      onCopy: onCopyTable,
       isLatestVersion: isLatestVersion,
     };
 
@@ -353,6 +372,10 @@ interface PanelT2Props {
 }
 
 export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { selectedProject } = useProject();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -372,12 +395,29 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const [pendingAction, setPendingAction] = useState<'delete' | 'create' | 'edit' | null>(null);
   const [showFKActionMenu, setShowFKActionMenu] = useState(false);
   const [showDeleteFKModal, setShowDeleteFKModal] = useState(false);
+  const [showEditFKModal, setShowEditFKModal] = useState(false);
+  const [showCreateFKModal, setShowCreateFKModal] = useState(false);
   const [selectedFK, setSelectedFK] = useState<{
     constraintId: number;
     constraintName: string;
     sourceTable: string;
     targetTable: string;
   } | null>(null);
+  const [editFKName, setEditFKName] = useState('');
+  const [editFKOnDelete, setEditFKOnDelete] = useState('NO ACTION');
+  const [editFKOnUpdate, setEditFKOnUpdate] = useState('NO ACTION');
+  const [createFKSourceTableId, setCreateFKSourceTableId] = useState<number | null>(null);
+  const [createFKSourceFieldId, setCreateFKSourceFieldId] = useState<number | null>(null);
+  const [createFKTargetTableId, setCreateFKTargetTableId] = useState<number | null>(null);
+  const [createFKTargetFieldId, setCreateFKTargetFieldId] = useState<number | null>(null);
+  const [createFKName, setCreateFKName] = useState('');
+  const [createFKOnDelete, setCreateFKOnDelete] = useState('NO ACTION');
+  const [createFKOnUpdate, setCreateFKOnUpdate] = useState('NO ACTION');
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteTableName, setPasteTableName] = useState('');
+  const [pasteTableData, setPasteTableData] = useState<any>(null);
+  // Track selected tables in order of selection for FK creation
+  const [selectedTableIds, setSelectedTableIds] = useState<number[]>([]);
 
   const loadFloatingSchemas = useCallback(async (preserveSchemaId?: number) => {
     if (!selectedProject) {
@@ -402,7 +442,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Authentication required');
+          throw new Error(t.panelt2405);
         }
         throw new Error(`Failed to load schemas: ${response.statusText}`);
       }
@@ -436,11 +476,11 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load schemas';
+      const errorMessage = err instanceof Error ? err.message : t.databaseexportmodal71;
       setError(errorMessage);
       
       // If it's an auth error, clear the state
-      if (errorMessage.includes('Authentication')) {
+      if (errorMessage.includes(t.panelt2443)) {
         setNodes([]);
         setEdges([]);
         setFloatingSchemas([]);
@@ -548,7 +588,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       
       return versions;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schema versions');
+      setError(err instanceof Error ? err.message : t.databaseexportmodal114);
       setSchemaVersions([]);
       return [];
     } finally {
@@ -587,7 +627,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           version.version_number === schema.last_version;
         
         
-        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, isLatestVersion);
+        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, handleCopyTable, isLatestVersion);
         const newEdges = convertSchemaToEdges(tables);
         
         setNodes(newNodes);
@@ -599,7 +639,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setError(null); // Clear error, empty version is valid
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load schema version');
+      setError(err instanceof Error ? err.message : t.panelt2602);
     } finally {
       setLoading(false);
     }
@@ -657,6 +697,9 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   }, []);
 
   const onEdgeDoubleClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    // Clear any text selection caused by double-click
+    window.getSelection()?.removeAllRanges();
+
     // Only handle FK edges
     if (edge.data && edge.data.constraintId) {
       setSelectedFK({
@@ -680,9 +723,38 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const handleCreateNewTable = useCallback(() => {
     if (!selectedProject) return;
 
-    // Case 1: No versions exist yet - this shouldn't happen, but handle gracefully
+    // Case 1: No versions exist yet - create initial version first
     if (!selectedVersion) {
-      setError('No version available. Please create a schema version first.');
+      confirmDialog({
+        message: 'No version exists yet. Do you want to create the initial version 1?',
+        header: 'Create Initial Version',
+        icon: 'pi pi-exclamation-triangle',
+        accept: async () => {
+          try {
+            setLoading(true);
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({ description: 'Initial version' }),
+            });
+
+            if (!response.ok) throw new Error('Failed to create initial version');
+
+            // Reload versions and then open create table modal
+            await loadSchemaVersions(selectedSchema!);
+            setTimeout(() => setShowCreateTableModal(true), 300);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create initial version');
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
       return;
     }
 
@@ -696,12 +768,12 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     setPendingAction('create');
     setShowVersionModal(true);
     setPendingDeleteTable(null); // Clear any pending delete action
-  }, [selectedProject, selectedVersion]);
+  }, [selectedProject, selectedVersion, selectedSchema, loadSchemaVersions]);
 
   // Create a new table with modal data
   const handleCreateTable = useCallback(async (tableName: string, fileKeyName: string, fileNameRenamed: string, fileNameShort: string, fields: any[]) => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id) {
-      setError('No version selected or version ID missing. Please select a schema version first.');
+      setError(t.panelt2704);
       return;
     }
 
@@ -710,11 +782,14 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const columns = fields.map(field => ({
         column_name: field.name,
         data_type: field.type,
+        field_length: field.length || null,
+        is_unsigned: field.unsigned || false,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
         is_primary_key: field.constraintType === 'primary',
         is_index: field.constraintType === 'index',
         is_unique: field.constraintType === 'unique',
+        comment: field.comment || null,
         // Control Type & Link fields for ComboBox, ListBox, etc.
         control_type: field.controlType || 'TEXT',
         link_table: field.linkTable || null,
@@ -742,7 +817,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create table');
+        throw new Error(errorData.message || t.panelt2745);
       }
 
       // Close modal and refresh the schema to show the new table
@@ -752,7 +827,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create table');
+      setError(err instanceof Error ? err.message : t.panelt2745);
     } finally {
       setLoading(false);
     }
@@ -761,7 +836,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // Update an existing table with modal data
   const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id || !pendingEditTable) {
-      setError('No version selected or table to edit. Please select a schema version first.');
+      setError(t.panelt2764);
       return;
     }
 
@@ -770,11 +845,13 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const columns = fields.map(field => ({
         column_name: field.name,
         data_type: field.type,
+        field_length: field.length || null,
+        is_unsigned: field.unsigned || false,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
-        is_primary_key: field.primaryKey,
-        is_index: field.index,
-        is_unique: field.unique,
+        is_primary_key: field.constraintType === 'primary',
+        is_index: field.constraintType === 'index',
+        is_unique: field.constraintType === 'unique',
         comment: field.comment || null,
         // Control Type & Link fields for ComboBox, ListBox, etc.
         control_type: field.controlType || 'TEXT',
@@ -803,7 +880,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update table');
+        throw new Error(errorData.message || t.schemacontroller810);
       }
 
       // Close modal and refresh the schema to show the updated table
@@ -814,7 +891,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update table');
+      setError(err instanceof Error ? err.message : t.schemacontroller810);
     } finally {
       setLoading(false);
     }
@@ -823,7 +900,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // Edit a table in a new version
   const handleEditTableWithNewVersion = useCallback(async () => {
     if (!selectedSchema || !selectedSchema.id || !selectedVersion) {
-      setError('No schema or version selected. Please select a schema first.');
+      setError(t.panelt2826);
       return;
     }
 
@@ -838,7 +915,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create new version');
+        throw new Error(t.panelt2841);
       }
 
       // Reload the schema and versions to get the new version
@@ -849,7 +926,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     } catch (err) {
       // Error creating new version
-      setError(err instanceof Error ? err.message : 'Failed to create new version');
+      setError(err instanceof Error ? err.message : t.panelt2841);
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -859,7 +936,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // Create a new table in a new version
   const handleCreateTableWithNewVersion = useCallback(async () => {
     if (!selectedSchema || !selectedSchema.id || !selectedVersion) {
-      setError('No schema or version selected. Please select a schema first.');
+      setError(t.panelt2826);
       return;
     }
 
@@ -874,7 +951,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create new version');
+        throw new Error(t.panelt2841);
       }
 
       // Reload the schema and versions to get the new version
@@ -885,7 +962,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     } catch (err) {
       // Error creating new version
-      setError(err instanceof Error ? err.message : 'Failed to create new version');
+      setError(err instanceof Error ? err.message : t.panelt2841);
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -895,7 +972,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // Continue editing table in current version
   const handleContinueWithEditTable = useCallback(async () => {
     if (!selectedVersion || !selectedVersion.id) {
-      setError('No version selected. Please select a schema version first.');
+      setError(t.panelt2898);
       return;
     }
 
@@ -917,7 +994,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     } catch (err) {
       // Error marking unsaved changes
-      setError(err instanceof Error ? err.message : 'Failed to update version');
+      setError(err instanceof Error ? err.message : t.panelt2920);
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -927,7 +1004,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // Continue creating table in current version
   const handleContinueWithCreateTable = useCallback(async () => {
     if (!selectedVersion || !selectedVersion.id) {
-      setError('No version selected. Please select a schema version first.');
+      setError(t.panelt2898);
       return;
     }
 
@@ -949,7 +1026,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     } catch (err) {
       // Error marking unsaved changes
-      setError(err instanceof Error ? err.message : 'Failed to update version');
+      setError(err instanceof Error ? err.message : t.panelt2920);
     } finally {
       setShowVersionModal(false);
       setPendingAction(null);
@@ -985,6 +1062,187 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Dependencies would cause infinite re-renders
 
+  const handleCopyTable = useCallback(async (table: SchemaTable) => {
+    try {
+      // Prepare table data for clipboard (exclude Foreign Keys)
+      const tableData = {
+        _scoriet_table_copy: true, // Marker for validation
+        table_name: table.table_name,
+        comment: table.comment,
+        fields: table.fields?.map(field => ({
+          field_name: field.field_name,
+          field_type: field.field_type,
+          is_nullable: field.is_nullable,
+          is_auto_increment: field.is_auto_increment,
+          default_value: field.default_value,
+          comment: field.comment,
+        })) || [],
+        constraints: table.constraints
+          ?.filter(c => c.constraint_type !== 'FOREIGN KEY')
+          ?.map(constraint => ({
+            constraint_type: constraint.constraint_type,
+            constraint_name: constraint.constraint_name,
+            columns: constraint.columns?.map(col => col.field_name) || [],
+          })) || [],
+      };
+
+      // Copy to clipboard as JSON
+      await navigator.clipboard.writeText(JSON.stringify(tableData, null, 2));
+
+      console.log('✅ Table copied to clipboard:', table.table_name);
+      // Optional: Show toast notification here
+    } catch (err) {
+      console.error('Failed to copy table to clipboard:', err);
+      setError('Failed to copy table to clipboard. Please check browser permissions.');
+    }
+  }, []);
+
+  const handlePasteTable = useCallback(async () => {
+    if (!pasteTableName.trim() || !selectedVersion || !pasteTableData) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.applicationsmodal66);
+      }
+
+      // Convert field names to match API expectations
+      const columns = (pasteTableData.fields || []).map((field: any) => {
+        // Check if this field is in primary key constraint
+        const isPrimaryKey = pasteTableData.constraints?.some(
+          (c: any) => c.constraint_type === 'PRIMARY KEY' && c.columns?.includes(field.field_name)
+        ) || false;
+
+        // Check if this field is in unique constraint
+        const isUnique = pasteTableData.constraints?.some(
+          (c: any) => c.constraint_type === 'UNIQUE' && c.columns?.includes(field.field_name)
+        ) || false;
+
+        // Check if this field is in index
+        const isIndex = pasteTableData.constraints?.some(
+          (c: any) => (c.constraint_type === 'KEY' || c.constraint_type === 'INDEX') && c.columns?.includes(field.field_name)
+        ) || false;
+
+        return {
+          column_name: field.field_name,
+          data_type: field.field_type,
+          is_nullable: field.is_nullable,
+          is_auto_increment: field.is_auto_increment,
+          default_value: field.default_value,
+          comment: field.comment,
+          is_primary_key: isPrimaryKey,
+          is_unique: isUnique,
+          is_index: isIndex,
+        };
+      });
+
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: pasteTableName.trim(),
+          comment: pasteTableData.comment,
+          columns: columns,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to paste table');
+      }
+
+      // Close modal and reset state
+      setShowPasteModal(false);
+      setPasteTableName('');
+      setPasteTableData(null);
+
+      // If a new version was created, reload and select it
+      if (result.new_version) {
+        await loadSchemaVersions(selectedSchema!);
+        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        if (newVersion && selectedSchema) {
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }, 200);
+        }
+      } else {
+        // Just reload current version
+        if (selectedSchema && selectedVersion) {
+          await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to paste table');
+    } finally {
+      setLoading(false);
+    }
+  }, [pasteTableName, pasteTableData, selectedVersion, selectedSchema, schemaVersions, loadSchemaVersions, loadSchemaVersionWithSchema, t.applicationsmodal66]);
+
+  // Keyboard Shortcuts for Copy/Paste
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Only handle Ctrl+C and Ctrl+V (or Cmd on Mac)
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      // Ctrl+C - Copy selected table
+      if (e.key === 'c' || e.key === 'C') {
+        if (selectedNode && (selectedNode.data as any).table) {
+          e.preventDefault();
+          const table = (selectedNode.data as any).table;
+          await handleCopyTable(table);
+        }
+      }
+
+      // Ctrl+V - Paste table from clipboard
+      if (e.key === 'v' || e.key === 'V') {
+        // Don't interfere with normal paste in input fields
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+
+        e.preventDefault();
+
+        try {
+          // Try to read from clipboard
+          const clipboardText = await navigator.clipboard.readText();
+          const tableData = JSON.parse(clipboardText);
+
+          if (!tableData._scoriet_table_copy) {
+            return; // Silently ignore if not a table
+          }
+
+          // Generate suggested name
+          const baseName = tableData.table_name;
+          const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
+          let suggestedName = `${baseName}_copy`;
+          let counter = 2;
+          while (existingTables.includes(suggestedName)) {
+            suggestedName = `${baseName}_copy_${counter}`;
+            counter++;
+          }
+          setPasteTableName(suggestedName);
+          setPasteTableData(tableData);
+          setShowPasteModal(true);
+        } catch (_err) {
+          // Silently ignore errors (clipboard might contain non-JSON data)
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode, nodes, handleCopyTable]);
+
   const performDeleteTable = useCallback(async (table: SchemaTable) => {
     if (!selectedVersion) return;
 
@@ -998,7 +1256,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete table');
+        throw new Error(t.panelt21001);
       }
 
       // Reload the schema version to reflect changes
@@ -1007,7 +1265,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       }
     } catch (err) {
       // Error deleting table
-      setError(err instanceof Error ? err.message : 'Failed to delete table');
+      setError(err instanceof Error ? err.message : t.panelt21001);
     }
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema]);
 
@@ -1027,7 +1285,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     if (pendingAction === 'delete') {
       if (!pendingDeleteTable) {
-        setError('No table selected for deletion');
+        setError(t.panelt21030);
         return;
       }
 
@@ -1051,7 +1309,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           });
 
           if (!response.ok) {
-            throw new Error('Failed to create version and delete table');
+            throw new Error(t.panelt21054);
           }
 
           const result = await response.json();
@@ -1072,7 +1330,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           }
         } catch (err) {
           // Error creating new version and deleting table
-          setError(err instanceof Error ? err.message : 'Failed to create new version and delete table');
+          setError(err instanceof Error ? err.message : t.panelt21075);
         } finally {
           setShowVersionModal(false);
           setPendingDeleteTable(null);
@@ -1098,7 +1356,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
     if (pendingAction === 'delete') {
       if (!pendingDeleteTable) {
-        setError('No table selected for deletion');
+        setError(t.panelt21030);
         return;
       }
 
@@ -1119,7 +1377,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await performDeleteTable(pendingDeleteTable);
       } catch (err) {
         // Error deleting table
-        setError(err instanceof Error ? err.message : 'Failed to delete table');
+        setError(err instanceof Error ? err.message : t.panelt21001);
       } finally {
         setShowVersionModal(false);
         setPendingDeleteTable(null);
@@ -1130,18 +1388,23 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
   const handleCreateNewVersion = useCallback(async () => {
     if (!selectedSchema) {
-      setError('No schema selected');
+      setError(t.panelt21133);
       return;
     }
 
     // Calculate version numbers for confirmation
-    const currentVersion = selectedSchema.last_version || 1;
+    const currentVersion = selectedSchema.last_version || 0;
     const newVersionNumber = currentVersion + 1;
+
+    // Different message for initial version vs new version
+    const message = currentVersion === 0
+      ? `Do you want to create the initial version 1 for this schema?`
+      : `Do you want to create a new version ${newVersionNumber} from version ${currentVersion}?`;
 
     // Show confirmation dialog
     confirmDialog({
-      message: `Do you want to create a new version ${newVersionNumber} from version ${currentVersion}?`,
-      header: 'Create New Version',
+      message: message,
+      header: t.panelt21144,
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
@@ -1150,7 +1413,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
           const token = localStorage.getItem('access_token');
           if (!token) {
-            throw new Error('Not authenticated');
+            throw new Error(t.applicationsmodal66);
           }
 
           const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
@@ -1167,7 +1430,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || errorData.error || 'Failed to create new version');
+            throw new Error(errorData.message || errorData.error || t.panelt2841);
           }
 
           const newVersion = await response.json();
@@ -1182,7 +1445,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
           setError(null);
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to create new version');
+          setError(err instanceof Error ? err.message : t.panelt2841);
         } finally {
           setLoading(false);
         }
@@ -1228,7 +1491,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/constraints/${selectedFK.constraintId}/foreign-key`, {
@@ -1242,7 +1505,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || result.error || 'Failed to delete foreign key');
+        throw new Error(result.message || result.error || t.schemacontroller1328);
       }
 
       // Close modal
@@ -1267,11 +1530,151 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete foreign key');
+      setError(err instanceof Error ? err.message : t.schemacontroller1328);
     } finally {
       setLoading(false);
     }
   }, [selectedFK, selectedSchema, selectedVersion, loadSchemaVersions, loadSchemaVersionWithSchema, schemaVersions]);
+
+  const handleEditFK = useCallback(async () => {
+    if (!selectedFK || !editFKName.trim()) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.applicationsmodal66);
+      }
+
+      const response = await fetch(`/api/constraints/${selectedFK.constraintId}/foreign-key`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          constraint_name: editFKName.trim(),
+          on_delete: editFKOnDelete,
+          on_update: editFKOnUpdate,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to update foreign key');
+      }
+
+      // Close modal
+      setShowEditFKModal(false);
+      setSelectedFK(null);
+      setEditFKName('');
+
+      // If a new version was created, reload and select it
+      if (result.new_version) {
+        await loadSchemaVersions(selectedSchema!);
+        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        if (newVersion && selectedSchema) {
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }, 200);
+        }
+      } else {
+        // Just reload current version
+        if (selectedSchema && selectedVersion) {
+          await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update foreign key');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedFK, editFKName, selectedSchema, selectedVersion, loadSchemaVersions, loadSchemaVersionWithSchema, schemaVersions, t.applicationsmodal66, editFKOnDelete, editFKOnUpdate]);
+
+  const handleCreateFK = useCallback(async () => {
+    if (!createFKSourceFieldId || !createFKTargetFieldId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.applicationsmodal66);
+      }
+
+      // Get the source table from the source field
+      const sourceTable = nodes
+        .map(n => (n.data as any).table as SchemaTable | undefined)
+        .find(table =>
+          table?.fields?.some(f => f.id === createFKSourceFieldId)
+        );
+
+      if (!sourceTable) {
+        throw new Error('Source table not found');
+      }
+
+      const response = await fetch(`/api/tables/${sourceTable.id}/foreign-key`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          source_field_id: createFKSourceFieldId,
+          target_field_id: createFKTargetFieldId,
+          constraint_name: createFKName.trim() || undefined,
+          on_delete: createFKOnDelete,
+          on_update: createFKOnUpdate,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to create foreign key');
+      }
+
+      // Close modal and reset state
+      setShowCreateFKModal(false);
+      setCreateFKSourceTableId(null);
+      setCreateFKSourceFieldId(null);
+      setCreateFKTargetTableId(null);
+      setCreateFKTargetFieldId(null);
+      setCreateFKName('');
+      setCreateFKOnDelete('NO ACTION');
+      setCreateFKOnUpdate('NO ACTION');
+
+      // If a new version was created, reload and select it
+      if (result.new_version) {
+        await loadSchemaVersions(selectedSchema!);
+        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        if (newVersion && selectedSchema) {
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }, 200);
+        }
+      } else {
+        // Just reload current version
+        if (selectedSchema && selectedVersion) {
+          await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create foreign key');
+    } finally {
+      setLoading(false);
+    }
+  }, [createFKSourceFieldId, createFKTargetFieldId, createFKName, createFKOnDelete, createFKOnUpdate, nodes, selectedSchema, selectedVersion, loadSchemaVersions, loadSchemaVersionWithSchema, schemaVersions, t.applicationsmodal66]);
 
   return (
     <TabContent style={{}}>
@@ -1286,10 +1689,10 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 : selectedSchema && schemaVersions.length === 0
                   ? `${selectedSchema.name} (no versions) - empty schema`
                 : selectedSchema
-                  ? 'Loading schema versions...'
+                  ? t.panelt21289
                 : selectedProject 
-                  ? 'No schema selected'
-                  : 'No project selected'
+                  ? t.panelt21133
+                  : t.databaseexportmodal344
               }
             </p>
           </div>
@@ -1305,7 +1708,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
               disabled={!selectedProject}
             >
-              <option value="">{selectedProject ? 'Select Schema' : 'No Project Selected'}</option>
+              <option value="">{selectedProject ? 'Select Schema' : t.panelt21308}</option>
               {floatingSchemas.map(schema => {
                 const typeIcon = schema.association_type === 'linked' ? '🔗' : 
                                schema.association_type === 'cloned' ? '📋' : '📥';
@@ -1345,7 +1748,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
             
             <button
               onClick={handleRefresh}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
             >
               🔄 Refresh
@@ -1353,24 +1756,122 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
             <button
               onClick={handleCreateNewVersion}
-              className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-sm transition-colors"
+              className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedSchema}
-              title="Create a new version (copies current version)"
+              title={t.panelt21358}
             >
               ➕ New Version
             </button>
 
             <button
               onClick={() => setShowImportModal(true)}
-              className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
+              className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
             >
               📥 Import SQL
             </button>
 
             <button
+              onClick={() => {
+                // If exactly 2 tables are selected, pre-fill them as Source and Target
+                if (selectedTableIds.length === 2) {
+                  setCreateFKSourceTableId(selectedTableIds[0]);
+                  setCreateFKTargetTableId(selectedTableIds[1]);
+                }
+                setShowCreateFKModal(true);
+              }}
+              className="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm transition-colors"
+              disabled={loading || !selectedSchema || !selectedVersion}
+              title="Add Foreign Key relationship (Select 2 tables with Ctrl for auto-fill)"
+            >
+              🔗 Add FK
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  // Try to read from clipboard
+                  const clipboardText = await navigator.clipboard.readText();
+                  const tableData = JSON.parse(clipboardText);
+
+                  if (!tableData._scoriet_table_copy) {
+                    setError('Clipboard does not contain a valid Scoriet table. Please copy a table first.');
+                    return;
+                  }
+
+                  // If no version exists, create initial version first
+                  if (!selectedVersion) {
+                    confirmDialog({
+                      message: 'No version exists yet. Do you want to create the initial version 1 and paste the table?',
+                      header: 'Create Initial Version',
+                      icon: 'pi pi-exclamation-triangle',
+                      accept: async () => {
+                        try {
+                          setLoading(true);
+                          const token = localStorage.getItem('access_token');
+                          const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                              'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({ description: 'Initial version' }),
+                          });
+
+                          if (!response.ok) throw new Error('Failed to create initial version');
+
+                          // Reload versions
+                          await loadSchemaVersions(selectedSchema!);
+
+                          // Set paste data and open modal
+                          const baseName = tableData.table_name;
+                          const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
+                          let suggestedName = `${baseName}_copy`;
+                          let counter = 2;
+                          while (existingTables.includes(suggestedName)) {
+                            suggestedName = `${baseName}_copy_${counter}`;
+                            counter++;
+                          }
+                          setPasteTableName(suggestedName);
+                          setPasteTableData(tableData);
+                          setTimeout(() => setShowPasteModal(true), 300);
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Failed to create initial version');
+                        } finally {
+                          setLoading(false);
+                        }
+                      },
+                    });
+                    return;
+                  }
+
+                  // Generate suggested name
+                  const baseName = tableData.table_name;
+                  const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
+                  let suggestedName = `${baseName}_copy`;
+                  let counter = 2;
+                  while (existingTables.includes(suggestedName)) {
+                    suggestedName = `${baseName}_copy_${counter}`;
+                    counter++;
+                  }
+                  setPasteTableName(suggestedName);
+                  setPasteTableData(tableData);
+                  setShowPasteModal(true);
+                } catch (_err) {
+                  setError('No valid table found in clipboard. Please copy a table first.');
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm transition-colors"
+              disabled={loading || !selectedSchema}
+              title="Paste table from clipboard"
+            >
+              📥 Paste Table
+            </button>
+
+            <button
               onClick={handleCreateNewTable}
-              className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm transition-colors"
+              className="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
             >
               ✨ New Table
@@ -1436,7 +1937,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                         
                         const updatedNode = { ...node };
                         
-                        if (positionChange && 'positionAbsolute' in positionChange && positionChange.positionAbsolute) {
+                        if (positionChange && t.panelt21439 in positionChange && positionChange.positionAbsolute) {
                           updatedNode.position = positionChange.positionAbsolute;
                         }
                         
@@ -1467,6 +1968,41 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               onEdgeDoubleClick={onEdgeDoubleClick}
+              onSelectionChange={(params) => {
+                // Track selected table IDs in order of selection
+                const newlySelectedNodes = params.nodes;
+                const newSelectedIds = newlySelectedNodes
+                  .map(node => (node.data as any).table?.id)
+                  .filter((id): id is number => id !== undefined);
+
+                // Only update if selection actually changed (compare sets, not order)
+                setSelectedTableIds(prevIds => {
+                  // Check if sets are equal (same IDs, regardless of order)
+                  if (prevIds.length === newSelectedIds.length &&
+                      prevIds.every(id => newSelectedIds.includes(id))) {
+                    return prevIds; // No change, return same reference to prevent re-render
+                  }
+
+                  // Preserve order: keep existing selections in their order, add new ones at the end
+                  const updatedIds: number[] = [];
+
+                  // First, keep previously selected IDs that are still selected (in their original order)
+                  prevIds.forEach(id => {
+                    if (newSelectedIds.includes(id)) {
+                      updatedIds.push(id);
+                    }
+                  });
+
+                  // Then add newly selected IDs (that weren't selected before)
+                  newSelectedIds.forEach(id => {
+                    if (!updatedIds.includes(id)) {
+                      updatedIds.push(id);
+                    }
+                  });
+
+                  return updatedIds;
+                });
+              }}
               nodeTypes={nodeTypes}
               nodesDraggable={true}
               nodesConnectable={false}
@@ -1525,10 +2061,10 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                     <h3 className="text-xl font-bold mb-2">No Schema Data</h3>
                     <p className="text-sm">
                       {!selectedProject 
-                        ? 'Select a project to view schemas'
+                        ? t.panelt21528
                         : floatingSchemas.length === 0
-                          ? 'No schemas associated with this project'
-                          : 'Select a schema to visualize database structure'
+                          ? t.panelt21530
+                          : t.panelt21531
                       }
                     </p>
                     {selectedProject && floatingSchemas.length === 0 && !loading && !error && (
@@ -1592,7 +2128,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         onContinueEditing={handleVersionModalContinue}
         actionDescription={
           pendingAction === 'create'
-            ? 'eine neue Tabelle erstellen'
+            ? t.panelt21595
             : pendingAction === 'edit'
               ? `die Tabelle "${pendingEditTable?.table_name}" bearbeiten`
               : `die Tabelle "${pendingDeleteTable?.table_name}" löschen`
@@ -1624,7 +2160,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       {/* FK Action Menu */}
       {showFKActionMenu && selectedFK && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 border border-gray-600">
             <h3 className="text-lg font-bold text-white mb-4">Foreign Key Actions</h3>
 
@@ -1650,8 +2186,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               <button
                 onClick={() => {
                   setShowFKActionMenu(false);
-                  // TODO: Open Edit FK Modal in Phase 2
-                  alert('Edit FK coming in Phase 2! 🚀');
+                  setEditFKName(selectedFK.constraintName);
+                  setShowEditFKModal(true);
                 }}
                 className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
               >
@@ -1684,7 +2220,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       {/* Delete FK Modal */}
       {showDeleteFKModal && selectedFK && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
             <h3 className="text-xl font-bold text-white mb-4">Delete Foreign Key</h3>
 
@@ -1733,7 +2269,376 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
                 disabled={loading}
               >
-                {loading ? 'Deleting...' : 'Delete Foreign Key'}
+                {loading ? t.deleting : t.panelt21689}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit FK Modal */}
+      {showEditFKModal && selectedFK && (
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 border border-gray-600">
+            <h3 className="text-xl font-bold text-white mb-4">Edit Foreign Key</h3>
+
+            <div className="mb-6">
+              {/* FK Info Display */}
+              <div className="bg-gray-700 p-4 rounded border border-gray-600 mb-4">
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-400">From Table:</span>{' '}
+                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">To Table:</span>{' '}
+                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* FK Name Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Constraint Name *
+                </label>
+                <input
+                  type="text"
+                  value={editFKName}
+                  onChange={(e) => setEditFKName(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="fk_table1_table2"
+                />
+              </div>
+
+              {/* Referential Actions */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    ON DELETE
+                  </label>
+                  <select
+                    value={editFKOnDelete}
+                    onChange={(e) => setEditFKOnDelete(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="NO ACTION">NO ACTION</option>
+                    <option value="CASCADE">CASCADE</option>
+                    <option value="RESTRICT">RESTRICT</option>
+                    <option value="SET NULL">SET NULL</option>
+                    <option value="SET DEFAULT">SET DEFAULT</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    ON UPDATE
+                  </label>
+                  <select
+                    value={editFKOnUpdate}
+                    onChange={(e) => setEditFKOnUpdate(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="NO ACTION">NO ACTION</option>
+                    <option value="CASCADE">CASCADE</option>
+                    <option value="RESTRICT">RESTRICT</option>
+                    <option value="SET NULL">SET NULL</option>
+                    <option value="SET DEFAULT">SET DEFAULT</option>
+                  </select>
+                </div>
+              </div>
+
+              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                  ⚠️ A new version will be created for this change.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowEditFKModal(false);
+                  setSelectedFK(null);
+                  setEditFKName('');
+                }}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditFK}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
+                disabled={loading || !editFKName.trim()}
+              >
+                {loading ? t.saving : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create FK Modal */}
+      {showCreateFKModal && (() => {
+        // Extract tables from nodes
+        const availableTables = nodes
+          .map(n => (n.data as any).table as SchemaTable | undefined)
+          .filter((t): t is SchemaTable => !!t);
+
+        // Get fields for selected source table
+        const sourceTableFields = createFKSourceTableId
+          ? availableTables.find(t => t.id === createFKSourceTableId)?.fields || []
+          : [];
+
+        // Get fields for selected target table
+        const targetTableFields = createFKTargetTableId
+          ? availableTables.find(t => t.id === createFKTargetTableId)?.fields || []
+          : [];
+
+        return (
+          <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
+              <h3 className="text-xl font-bold text-white mb-4">Create Foreign Key</h3>
+
+              <div className="space-y-4">
+                {/* Source Table and Field */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Source Table
+                    </label>
+                    <select
+                      value={createFKSourceTableId || ''}
+                      onChange={(e) => {
+                        setCreateFKSourceTableId(e.target.value ? parseInt(e.target.value) : null);
+                        setCreateFKSourceFieldId(null); // Reset field when table changes
+                      }}
+                      disabled={loading}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select table...</option>
+                      {availableTables.map(table => (
+                        <option key={table.id} value={table.id}>{table.table_name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Source Field
+                    </label>
+                    <select
+                      value={createFKSourceFieldId || ''}
+                      onChange={(e) => setCreateFKSourceFieldId(e.target.value ? parseInt(e.target.value) : null)}
+                      disabled={loading || !createFKSourceTableId}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">Select field...</option>
+                      {sourceTableFields.map(field => (
+                        <option key={field.id} value={field.id}>
+                          {field.field_name} ({field.field_type})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Target Table and Field */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Target Table (Referenced)
+                    </label>
+                    <select
+                      value={createFKTargetTableId || ''}
+                      onChange={(e) => {
+                        setCreateFKTargetTableId(e.target.value ? parseInt(e.target.value) : null);
+                        setCreateFKTargetFieldId(null); // Reset field when table changes
+                      }}
+                      disabled={loading}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select table...</option>
+                      {availableTables.map(table => (
+                        <option key={table.id} value={table.id}>{table.table_name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Target Field (Referenced)
+                    </label>
+                    <select
+                      value={createFKTargetFieldId || ''}
+                      onChange={(e) => setCreateFKTargetFieldId(e.target.value ? parseInt(e.target.value) : null)}
+                      disabled={loading || !createFKTargetTableId}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">Select field...</option>
+                      {targetTableFields.map(field => (
+                        <option key={field.id} value={field.id}>
+                          {field.field_name} ({field.field_type})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Constraint Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Constraint Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={createFKName}
+                    onChange={(e) => setCreateFKName(e.target.value)}
+                    disabled={loading}
+                    placeholder="Auto-generated if empty"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Referential Actions */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      ON DELETE
+                    </label>
+                    <select
+                      value={createFKOnDelete}
+                      onChange={(e) => setCreateFKOnDelete(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="NO ACTION">NO ACTION</option>
+                      <option value="CASCADE">CASCADE</option>
+                      <option value="RESTRICT">RESTRICT</option>
+                      <option value="SET NULL">SET NULL</option>
+                      <option value="SET DEFAULT">SET DEFAULT</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      ON UPDATE
+                    </label>
+                    <select
+                      value={createFKOnUpdate}
+                      onChange={(e) => setCreateFKOnUpdate(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="NO ACTION">NO ACTION</option>
+                      <option value="CASCADE">CASCADE</option>
+                      <option value="RESTRICT">RESTRICT</option>
+                      <option value="SET NULL">SET NULL</option>
+                      <option value="SET DEFAULT">SET DEFAULT</option>
+                    </select>
+                  </div>
+                </div>
+
+                {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+                  <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                    ⚠️ A new version will be created for this change.
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreateFKModal(false);
+                    setCreateFKSourceTableId(null);
+                    setCreateFKSourceFieldId(null);
+                    setCreateFKTargetTableId(null);
+                    setCreateFKTargetFieldId(null);
+                    setCreateFKName('');
+                    setCreateFKOnDelete('NO ACTION');
+                    setCreateFKOnUpdate('NO ACTION');
+                  }}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFK}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors disabled:opacity-50"
+                  disabled={loading || !createFKSourceFieldId || !createFKTargetFieldId}
+                >
+                  {loading ? t.saving : 'Create Foreign Key'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Paste Table Modal */}
+      {showPasteModal && pasteTableData && (
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
+            <h3 className="text-xl font-bold text-white mb-4">Paste Table: {pasteTableData.table_name}</h3>
+
+            <div className="space-y-4">
+              {/* New Table Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  New Table Name
+                </label>
+                <input
+                  type="text"
+                  value={pasteTableName}
+                  onChange={(e) => setPasteTableName(e.target.value)}
+                  disabled={loading}
+                  placeholder="Enter new table name"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Preview of what will be copied */}
+              <div className="p-4 bg-gray-700 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-300 mb-2">What will be pasted:</h4>
+                <ul className="text-sm text-gray-400 space-y-1">
+                  <li>✅ {pasteTableData.fields?.length || 0} Fields</li>
+                  <li>✅ Primary Key</li>
+                  <li>✅ Unique Constraints</li>
+                  <li>✅ Indexes</li>
+                  <li>❌ Foreign Keys (add manually after)</li>
+                </ul>
+              </div>
+
+              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                  ⚠️ A new version will be created for this change.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteTableName('');
+                  setPasteTableData(null);
+                }}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePasteTable}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50"
+                disabled={loading || !pasteTableName.trim()}
+              >
+                {loading ? t.saving : 'Paste Table'}
               </button>
             </div>
           </div>

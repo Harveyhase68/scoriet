@@ -83,7 +83,7 @@ class SchemaExportController extends Controller
                     'fields' => $table->fields->map(function ($field) {
                         return [
                             'field_name' => $field->field_name,
-                            'field_type' => $field->field_type,
+                            'field_type' => strtolower($field->field_type),
                             'is_nullable' => $field->is_nullable,
                             'is_unsigned' => $field->is_unsigned,
                             'is_auto_increment' => $field->is_auto_increment,

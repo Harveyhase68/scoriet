@@ -153,8 +153,10 @@
   display: none !important;
 }
 
-/* Hide all checkboxes in project overview modal */
-.p-dialog .p-checkbox {
+/* Hide checkboxes ONLY in tree-view within dialogs (not form checkboxes!) */
+.p-dialog .tree-view-container .p-checkbox,
+.p-dialog .tree .p-checkbox,
+.p-dialog .tree-node .p-checkbox {
   display: none !important;
 }
 
@@ -440,6 +442,13 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
 .p-dialog .p-dialog-footer {
     background-color: #1f2937 !important;
     border-top: 1px solid #4b5563 !important;
+    padding-top: 1rem !important; /* More space from content - prevents buttons from touching border */
+    padding-bottom: 1rem !important;
+}
+
+/* Add margin-top to all buttons in dialog footer */
+.p-dialog .p-dialog-footer .p-button {
+    margin-top: 0.25rem !important;
 }
 
 /* Dialog Mask/Overlay Dark Theme */
@@ -486,15 +495,42 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
     color: #f3f4f6 !important;
 }
 
-/* Checkbox in Dialogs */
+/* Checkbox in Dialogs - Unchecked */
 .p-dialog .p-checkbox .p-checkbox-box {
     background-color: #374151 !important;
-    border: 1px solid #4b5563 !important;
+    border: 2px solid #6b7280 !important;
+    transition: all 0.2s ease !important;
+    width: 20px !important;
+    height: 20px !important;
 }
 
-.p-dialog .p-checkbox .p-checkbox-box.p-highlight {
-    background-color: #7c3aed !important;
-    border-color: #7c3aed !important;
+.p-dialog .p-checkbox .p-checkbox-box:hover {
+    border-color: #60a5fa !important;
+}
+
+/* Checkbox - Checked State (all possible selectors) */
+.p-dialog .p-checkbox.p-checkbox-checked .p-checkbox-box,
+.p-dialog .p-checkbox .p-checkbox-box.p-highlight,
+.p-dialog .p-checkbox-checked .p-checkbox-box,
+.p-dialog .p-checkbox input:checked ~ .p-checkbox-box {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Checkbox - Checked Hover */
+.p-dialog .p-checkbox.p-checkbox-checked .p-checkbox-box:hover,
+.p-dialog .p-checkbox .p-checkbox-box.p-highlight:hover,
+.p-dialog .p-checkbox-checked .p-checkbox-box:hover {
+    background-color: #2563eb !important;
+    border-color: #60a5fa !important;
+}
+
+/* Checkmark Icon - White and Bold */
+.p-dialog .p-checkbox .p-checkbox-box .p-checkbox-icon,
+.p-dialog .p-checkbox .p-checkbox-box::after {
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    font-size: 14px !important;
 }
 
 /* DataTable in Dialogs Dark Theme */
@@ -545,4 +581,40 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
 /* First element in dialog content gets extra top margin */
 .p-dialog .p-dialog-content > *:first-child {
     margin-top: 0.5rem !important;
+}
+
+/* ==============================================
+   CONFIRM DIALOG BUTTON SPACING FIX
+   ============================================== */
+
+/* Add more padding to confirm dialog buttons so they don't touch the top border */
+.p-confirm-dialog .p-dialog-footer {
+    padding-top: 1.25rem !important; /* More space from content */
+    padding-bottom: 1rem !important;
+}
+
+/* Alternative: Add margin-top to buttons in confirm dialog footer */
+.p-confirm-dialog .p-dialog-footer .p-button {
+    margin-top: 0.25rem !important;
+}
+
+/* ==============================================
+   REACTFLOW Z-INDEX FIXES
+   ============================================== */
+
+/* Ensure ReactFlow elements don't overlap custom modals */
+.react-flow {
+    z-index: 1 !important;
+}
+
+.react-flow__renderer {
+    z-index: 1 !important;
+}
+
+.react-flow__controls {
+    z-index: 10 !important;
+}
+
+.react-flow__minimap {
+    z-index: 10 !important;
 }

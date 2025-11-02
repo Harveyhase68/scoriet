@@ -5,6 +5,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Project {
   id: number;
@@ -26,6 +27,10 @@ interface JoinCodeModalProps {
 }
 
 export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [joinCode, setJoinCode] = useState('');
   const [message, setMessage] = useState('');
   const [project, setProject] = useState<Project | null>(null);
@@ -37,7 +42,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
   const handleLookupProject = async () => {
     if (!joinCode.trim()) {
-      setError('Please enter a join code');
+      setError(t.joincodemodal40);
       return;
     }
 
@@ -48,7 +53,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch(`/api/join-code/${joinCode}`, {
@@ -63,21 +68,21 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
           throw new Error("We looked everywhere, we couldn't find the code!");
         }
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid join code');
+        throw new Error(errorData.message || t.joincodemodal66);
       }
 
       const data = await response.json();
       setProject(data.project);
       
       if (data.has_applied) {
-        setError('You have already applied to this project');
+        setError(t.joincodemodal73);
         return;
       }
 
       setStep('preview');
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error looking up project');
+      setError(error instanceof Error ? error.message : t.joincodemodal80);
     } finally {
       setLoading(false);
     }
@@ -92,7 +97,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/project-applications', {
@@ -110,11 +115,11 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit application');
+        throw new Error(errorData.message || t.joincodemodal113);
       }
 
       setStep('applied');
-      setSuccess('Application submitted successfully! The project owner will review your request.');
+      setSuccess(t.joincodemodal117);
 
       // Auto-close modal after 2 seconds
       setTimeout(() => {
@@ -126,7 +131,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
       }
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error submitting application');
+      setError(error instanceof Error ? error.message : t.joincodemodal129);
     } finally {
       setApplying(false);
     }
@@ -153,9 +158,9 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
   return (
     <Dialog
       header={
-        step === 'input' ? "Join Project" :
-        step === 'preview' ? "Apply to Project" :
-        "Application Sent"
+        step === 'input' ? t.joincodemodal156 :
+        step === 'preview' ? t.joincodemodal157 :
+        t.joincodemodal158
       }
       visible={visible}
       onHide={handleClose}
@@ -191,13 +196,13 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
                   disabled={loading}
                   maxLength={13}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === t.joincodemodal194) {
                       handleLookupProject();
                     }
                   }}
                 />
                 <Button
-                  label="Lookup"
+                  label={t.joincodemodal200}
                   icon={loading ? "pi pi-spinner pi-spin" : "pi pi-search"}
                   onClick={handleLookupProject}
                   disabled={loading || !joinCode.trim()}
@@ -212,12 +217,12 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
         {step === 'preview' && project && (
           <>
-            <Card title="Project Information" className="mb-4">
+            <Card title={t.joincodemodal215} className="mb-4">
               <div className="space-y-3">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-300">{project.name}</h3>
                   <p className="text-gray-300 text-sm">
-                    {project.description || 'No description provided'}
+                    {project.description || t.joincodemodal220}
                   </p>
                 </div>
 
@@ -285,7 +290,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
         <div className="flex justify-end gap-4 pt-4">
           {step === 'input' && (
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={handleClose}
               className="p-button-text"
@@ -296,14 +301,14 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
           {step === 'preview' && (
             <>
               <Button
-                label="Back"
+                label={t.joincodemodal299}
                 icon="pi pi-arrow-left"
                 onClick={() => setStep('input')}
                 className="p-button-text"
                 disabled={applying}
               />
               <Button
-                label={applying ? "Submitting..." : "Apply to Project"}
+                label={applying ? t.joincodemodal306 : t.joincodemodal157}
                 icon={applying ? "pi pi-spinner pi-spin" : "pi pi-send"}
                 onClick={handleApply}
                 disabled={applying}
@@ -313,7 +318,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
 
           {step === 'applied' && (
             <Button
-              label="Done"
+              label={t.joincodemodal316}
               icon="pi pi-check"
               onClick={handleClose}
             />

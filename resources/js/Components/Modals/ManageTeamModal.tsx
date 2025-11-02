@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Team {
   id: number;
@@ -57,6 +58,10 @@ interface ManageTeamModalProps {
 }
 
 export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, currentUserId }: ManageTeamModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'invitations'>('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,17 +131,17 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         onTeamUpdated();
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Failed to send invitation');
+        setError(errorData.message || t.manageteammodal129);
       }
     } catch {
-      setError('Network error occurred');
+      setError(t.createteammodal52);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRemoveMember = async (userId: number) => {
-    if (!team || !confirm('Remove this member from the team?')) return;
+    if (!team || !confirm(t.manageteammodal139)) return;
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -152,10 +157,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         onTeamUpdated();
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to remove member');
+        alert(errorData.message || t.manageteammodal155);
       }
     } catch {
-      alert('Failed to remove member');
+      alert(t.manageteammodal155);
     }
   };
 
@@ -178,15 +183,15 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         onTeamUpdated();
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to change role');
+        alert(errorData.message || t.manageteammodal181);
       }
     } catch {
-      alert('Failed to change role');
+      alert(t.manageteammodal181);
     }
   };
 
   const handleCancelInvitation = async (invitationId: number) => {
-    if (!team || !confirm('Cancel this invitation?')) return;
+    if (!team || !confirm(t.manageteammodal189)) return;
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -203,10 +208,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         onTeamUpdated();
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to cancel invitation');
+        alert(errorData.message || t.manageteammodal206);
       }
     } catch {
-      alert('Failed to cancel invitation');
+      alert(t.manageteammodal206);
     }
   };
 
@@ -280,7 +285,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-700">
           {[
-            { key: 'overview', label: 'Overview', icon: 'pi-info-circle' },
+            { key: 'overview', label: t.manageteammodal283, icon: 'pi-info-circle' },
             { key: 'members', label: `Members (${team.members?.length || 0})`, icon: 'pi-users' },
             { key: 'invitations', label: `Invitations (${teamInvitations.filter(i => i.status === 'pending').length})`, icon: 'pi-envelope' }
           ].map(tab => (
@@ -318,14 +323,14 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Owner</label>
-                      <p className="text-white">{team.owner?.username || team.owner?.name || 'Unknown'}</p>
+                      <p className="text-white">{team.owner?.username || team.owner?.name || t.testprojectschemas50}</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Status</label>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         team.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {team.is_active ? 'Active' : 'Inactive'}
+                        {team.is_active ? t.templatesStatusActive : t.manageteammodal328}
                       </span>
                     </div>
                   </div>
@@ -380,7 +385,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                           value={inviteForm.invited_email}
                           onChange={(e) => setInviteForm({ ...inviteForm, invited_email: e.target.value })}
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Optional notification email"
+                          placeholder={t.manageteammodal383}
                         />
                       </div>
                     </div>
@@ -401,7 +406,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                         value={inviteForm.message}
                         onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
                         className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Welcome message for the invitation"
+                        placeholder={t.manageteammodal404}
                         rows={2}
                       />
                     </div>
@@ -466,7 +471,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                             <button
                               onClick={() => handleChangeRole(member.user_id, 'admin')}
                               className="text-blue-400 hover:text-blue-300 text-sm"
-                              title="Promote to Admin"
+                              title={t.manageteammodal469}
                             >
                               <i className="pi pi-arrow-up"></i>
                             </button>
@@ -474,7 +479,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                             <button
                               onClick={() => handleChangeRole(member.user_id, 'member')}
                               className="text-yellow-400 hover:text-yellow-300 text-sm"
-                              title="Demote to Member"
+                              title={t.manageteammodal477}
                             >
                               <i className="pi pi-arrow-down"></i>
                             </button>
@@ -482,7 +487,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                           <button
                             onClick={() => handleRemoveMember(member.user_id)}
                             className="text-red-400 hover:text-red-300 text-sm"
-                            title="Remove Member"
+                            title={t.manageteammodal485}
                           >
                             <i className="pi pi-trash"></i>
                           </button>
@@ -531,7 +536,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                           <button
                             onClick={() => handleCancelInvitation(invitation.id)}
                             className="text-red-400 hover:text-red-300 p-2"
-                            title="Cancel Invitation"
+                            title={t.manageteammodal534}
                           >
                             <i className="pi pi-times"></i>
                           </button>

@@ -1354,6 +1354,7 @@ export interface Translations {
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleting: string;
+  saving: string;
   deleteAccount: string;
 
   // resources/js\Components\AuthModals\ProfileModal.tsx
@@ -1523,6 +1524,7 @@ export interface Translations {
   errorfallback40: string;
   errorfallback58: string;
   errorfallback65: string;
+  errorfallback65_2: string;
   errorfallback75: string;
 
   // resources/js/Components/ErrorFallback.tsx
@@ -2979,6 +2981,7 @@ export interface Translations {
   panelt1837: string;
   panelt1839: string;
   panelt1842: string;
+  panelt1843: string;
   panelt1845: string;
   panelt1848: string;
   panelt1853: string;
@@ -3876,11 +3879,13 @@ export interface Translations {
   teamspanel270: string;
   teamspanel295: string;
   teamspanel347: string;
+  teamspanel349: string;
   teamspanel350: string;
   teamspanel364: string;
   teamspanel368: string;
   teamspanel420: string;
   teamspanel425: string;
+  teamspanel430: string;
   teamspanel451: string;
   teamspanel457: string;
   teamspanel487: string;
@@ -3892,8 +3897,10 @@ export interface Translations {
   // resources/js\Components\Panels\TeamsPanel.tsx
   teamspanel544: string;
   teamspanel552: string;
+  teamspanel557: string;
   teamspanel563: string;
   teamspanel608: string;
+  teamspanel619: string;
   teamspanel630: string;
   teamspanel675: string;
   teamspanel697: string;
@@ -4405,10 +4412,12 @@ export interface Translations {
 
   // resources/js\pages\LandingPage.tsx
   landingpage152: string;
+  landingpage151: string;
   landingpage154: string;
   landingpage155: string;
   landingpage156: string;
   landingpage157: string;
+  landingpage158: string;
 
   // resources/js/pages/LandingPage.tsx
   goStartFree: string;
@@ -4529,9 +4538,6 @@ export interface Translations {
   contactUsLink: string;
   communityLink: string;
   allRightsReserved: string;
-
-  // resources/js\pages\LandingPage.tsx
-  landingpage674: string;
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: string;

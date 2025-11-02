@@ -1,6 +1,7 @@
 // resources/js/Components/Panels/PanelT5.tsx - With Tree Control
 import React, { useRef, useState } from 'react';
 import { TabContentProps } from '@/types';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -35,13 +36,13 @@ const generateTreeData = (): TreeNode[] => {
   return [
     {
       id: '1',
-      name: 'Database',
+      name: t.panelsewnavigationpanel223,
       type: 'folder',
       expanded: true,
       children: [
         {
           id: '1-1',
-          name: 'Website Redesign',
+          name: t.panelt544,
           type: 'folder',
           expanded: false,
           children: [
@@ -52,7 +53,7 @@ const generateTreeData = (): TreeNode[] => {
         },
         {
           id: '1-2',
-          name: 'Mobile App',
+          name: t.panelt555,
           type: 'folder',
           expanded: true,
           children: [
@@ -64,36 +65,36 @@ const generateTreeData = (): TreeNode[] => {
               type: 'folder',
               children: [
                 { id: '1-2-3-1', name: 'Button.tsx', type: 'file' },
-                { id: '1-2-3-2', name: 'Modal.tsx', type: 'file' },
+                { id: '1-2-3-2', name: t.panelt567, type: 'file' },
               ]
             }
           ]
         },
-        { id: '1-3', name: 'README.md', type: 'file' }
+        { id: '1-3', name: t.panelt572, type: 'file' }
       ]
     },
     {
       id: '2',
-      name: 'Documents',
+      name: t.panelt577,
       type: 'folder',
       expanded: false,
       children: [
         { id: '2-1', name: 'Proposal.pdf', type: 'file' },
-        { id: '2-2', name: 'Contract.docx', type: 'file' },
+        { id: '2-2', name: t.panelt582, type: 'file' },
         {
           id: '2-3',
-          name: 'Reports',
+          name: t.panelt585,
           type: 'folder',
           children: [
-            { id: '2-3-1', name: 'Q1-Report.xlsx', type: 'file' },
-            { id: '2-3-2', name: 'Q2-Report.xlsx', type: 'file' },
+            { id: '2-3-1', name: t.panelt588, type: 'file' },
+            { id: '2-3-2', name: t.panelt589, type: 'file' },
           ]
         }
       ]
     },
     {
       id: '3',
-      name: 'Assets',
+      name: t.panelt596,
       type: 'folder',
       expanded: false,
       children: [
@@ -183,6 +184,9 @@ const TreeNodeComponent: React.FC<{
 
 // Main Panel Component
 export default function PanelT5() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const [treeData, setTreeData] = useState<TreeNode[]>(generateTreeData());
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 
@@ -237,14 +241,14 @@ export default function PanelT5() {
             <button
               onClick={expandAll}
               className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
-              title="Expand All"
+              title={t.panelt1791}
             >
               ⬇️
             </button>
             <button
               onClick={collapseAll}
               className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
-              title="Collapse All"
+              title={t.panelt1798}
             >
               ⬆️
             </button>

@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { TabPanel } from 'primereact/tabview';
 import { Avatar } from 'primereact/avatar';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface User {
   id: number;
@@ -16,6 +17,9 @@ interface User {
 }
 
 export default function ProfilePanel() {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -44,7 +48,7 @@ export default function ProfilePanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/user', {
@@ -55,7 +59,7 @@ export default function ProfilePanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Benutzer-Daten konnten nicht geladen werden');
+        throw new Error(t.profilepanel58);
       }
 
       const userData = await response.json();
@@ -66,7 +70,7 @@ export default function ProfilePanel() {
       });
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }
@@ -81,7 +85,7 @@ export default function ProfilePanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/profile/update', {
@@ -97,14 +101,14 @@ export default function ProfilePanel() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Profil konnte nicht aktualisiert werden');
+        throw new Error(data.message || t.profilepanel100);
       }
 
-      setSuccess('Profil erfolgreich aktualisiert');
+      setSuccess(t.authcontroller310);
       setUser(prev => prev ? { ...prev, ...profileData } : null);
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setUpdating(false);
     }
@@ -118,7 +122,7 @@ export default function ProfilePanel() {
 
     // Passwort-Bestätigung prüfen
     if (passwordData.password !== passwordData.password_confirmation) {
-      setError('Neue Passwörter stimmen nicht überein');
+      setError(t.profilemodal246);
       setUpdating(false);
       return;
     }
@@ -126,7 +130,7 @@ export default function ProfilePanel() {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.applicationsmodal66);
       }
 
       const response = await fetch('/api/profile/password', {
@@ -142,10 +146,10 @@ export default function ProfilePanel() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Passwort konnte nicht geändert werden');
+        throw new Error(data.message || t.profilepanel145);
       }
 
-      setSuccess('Passwort erfolgreich geändert');
+      setSuccess(t.authcontroller346);
       setPasswordData({
         current_password: '',
         password: '',
@@ -153,7 +157,7 @@ export default function ProfilePanel() {
       });
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setUpdating(false);
     }
@@ -197,7 +201,7 @@ export default function ProfilePanel() {
       )}
 
       <TabView>
-        <TabPanel header="Profil bearbeiten" leftIcon="pi pi-user">
+        <TabPanel header={t.profilepanel200} leftIcon="pi pi-user">
           <Card className="shadow-md">
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div className="field">
@@ -231,7 +235,7 @@ export default function ProfilePanel() {
 
               <Button
                 type="submit"
-                label={updating ? "Speichern..." : "Profil aktualisieren"}
+                label={updating ? "Speichern..." : t.updateProfile}
                 icon={updating ? "pi pi-spinner pi-spin" : "pi pi-save"}
                 disabled={updating}
               />
@@ -239,7 +243,7 @@ export default function ProfilePanel() {
           </Card>
         </TabPanel>
 
-        <TabPanel header="Passwort ändern" leftIcon="pi pi-key">
+        <TabPanel header={t.passwordTab} leftIcon="pi pi-key">
           <Card className="shadow-md">
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div className="field">
@@ -273,10 +277,10 @@ export default function ProfilePanel() {
                   feedback={true}
                   toggleMask
                   required
-                  promptLabel="Passwort eingeben"
-                  weakLabel="Schwach"
-                  mediumLabel="Mittel"
-                  strongLabel="Stark"
+                  promptLabel={t.panelsegisterpanel161}
+                  weakLabel={t.panelsegisterpanel162}
+                  mediumLabel={t.panelsegisterpanel163}
+                  strongLabel={t.panelsegisterpanel164}
                 />
               </div>
 
@@ -299,7 +303,7 @@ export default function ProfilePanel() {
 
               <Button
                 type="submit"
-                label={updating ? "Ändern..." : "Passwort ändern"}
+                label={updating ? t.profilepanel302 : t.passwordTab}
                 icon={updating ? "pi pi-spinner pi-spin" : "pi pi-key"}
                 disabled={updating}
               />
@@ -307,7 +311,7 @@ export default function ProfilePanel() {
           </Card>
         </TabPanel>
 
-        <TabPanel header="Account Info" leftIcon="pi pi-info-circle">
+        <TabPanel header={t.profilepanel310} leftIcon="pi pi-info-circle">
           <Card className="shadow-md">
             <div className="space-y-4">
               <div>
@@ -352,7 +356,7 @@ export default function ProfilePanel() {
                 <p className="text-gray-900">
                   {user?.last_login_at ? 
                     new Date(user.last_login_at).toLocaleString('de-DE') : 
-                    'Noch nie angemeldet'
+                    t.profilepanel355
                   }
                 </p>
               </div>

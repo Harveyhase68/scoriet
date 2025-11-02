@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TableField {
   id: string;
   name: string;
   type: string;
+  length?: number | null;
+  unsigned: boolean;
   nullable: boolean;
   autoIncrement: boolean;
   constraintType: 'none' | 'primary' | 'index' | 'unique';
+  comment: string;
   // Control Type & Link Fields
   controlType: string;
   linkTable: string;
@@ -75,6 +79,10 @@ function detectControlType(fieldType: string, fieldName: string, linkTable: stri
 }
 
 export default function CreateTableModal({ isOpen, onClose, onTableCreated, loading = false, schemaVersionId }: CreateTableModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [tableName, setTableName] = useState('');
   const [fileKeyName, setFileKeyName] = useState('');
   const [fileNameRenamed, setFileNameRenamed] = useState('');
@@ -86,9 +94,12 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
       id: '1',
       name: 'id',
       type: 'bigint',
+      length: null,
+      unsigned: false,
       nullable: false,
       autoIncrement: true,
       constraintType: 'primary',
+      comment: '',
       controlType: 'TEXT',
       linkTable: '',
       linkField: '',
@@ -140,9 +151,12 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
       id: Date.now().toString(),
       name: '',
       type: 'varchar',
+      length: null,
+      unsigned: false,
       nullable: true,
       autoIncrement: false,
       constraintType: 'none',
+      comment: '',
       controlType: 'TEXT',
       linkTable: '',
       linkField: '',
@@ -188,19 +202,19 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
     // Validation
     if (!tableName.trim()) {
-      setError('Table name is required');
+      setError(t.createtablemodal189);
       return;
     }
 
     if (fields.some(field => !field.name.trim())) {
-      setError('All fields must have a name');
+      setError(t.createtablemodal194);
       return;
     }
 
     // Check for duplicate field names
     const fieldNames = fields.map(f => f.name.toLowerCase());
     if (fieldNames.length !== new Set(fieldNames).size) {
-      setError('Field names must be unique');
+      setError(t.createtablemodal201);
       return;
     }
 
@@ -263,25 +277,25 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
       className="fixed inset-0 flex items-center justify-center"
       style={{
         zIndex: 999999,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        backdropFilter: 'blur(4px)'
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}
       onClick={handleClose}
     >
       <div
-        className="portal-modal-content rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-600"
         onClick={e => e.stopPropagation()}
       >
-        <div className="portal-modal-header flex justify-between items-center">
-          <h2 className="flex items-center">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-white flex items-center">
             <i className="pi pi-table mr-2"></i>
             Create New Table
           </h2>
           <button
             onClick={handleClose}
             disabled={loading}
+            className="text-gray-400 hover:text-white transition-colors"
           >
-            <i className="pi pi-times"></i>
+            <i className="pi pi-times text-xl"></i>
           </button>
         </div>
 
@@ -299,7 +313,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                 onChange={(e) => handleTableNameChange(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="e.g., users, products, orders"
+                placeholder={t.createtablemodal300}
                 maxLength={64}
               />
             </div>
@@ -315,7 +329,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   onChange={(e) => handleFileKeyNameChange(e.target.value)}
                   disabled={loading}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Type or select a key name"
+                  placeholder={t.createtablemodal316}
                   maxLength={64}
                   list="keynames"
                 />
@@ -338,7 +352,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   onChange={(e) => setFileNameRenamed(e.target.value)}
                   disabled={loading}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="e.g., CustomUser, ProductCatalog"
+                  placeholder={t.createtablemodal339}
                   maxLength={100}
                 />
                 <div className="text-xs text-gray-400 mt-1">
@@ -387,9 +401,9 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
               {fields.map((field) => (
                 <div key={field.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
                   {/* Row 1: Main field properties */}
-                  <div className="grid grid-cols-1 lg:grid-cols-6 gap-3 mb-3">
-                    {/* Field Name */}
-                    <div>
+                  <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
+                    {/* Field Name - 2x größer */}
+                    <div className="lg:col-span-2">
                       <label className="block text-xs text-gray-400 mb-1">Name</label>
                       <input
                         type="text"
@@ -397,7 +411,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         onChange={(e) => updateField(field.id, { name: e.target.value })}
                         disabled={loading}
                         className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                        placeholder="field_name"
+                        placeholder={t.createtablemodal398}
                       />
                     </div>
 
@@ -425,6 +439,22 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                       </select>
                     </div>
 
+                    {/* Length (for VARCHAR, CHAR, etc.) */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Length</label>
+                      <input
+                        type="number"
+                        value={field.length || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateField(field.id, { length: value ? parseInt(value, 10) : null });
+                        }}
+                        disabled={loading}
+                        placeholder="e.g., 50"
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                    </div>
+
                     {/* Control Type */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Control</label>
@@ -448,30 +478,6 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                       </select>
                     </div>
 
-                    {/* Nullable Checkbox */}
-                    <div className="flex flex-col space-y-1">
-                      <label className="flex items-center text-xs text-gray-400">
-                        <input
-                          type="checkbox"
-                          checked={field.nullable}
-                          onChange={(e) => updateField(field.id, { nullable: e.target.checked })}
-                          disabled={loading}
-                          className="mr-1"
-                        />
-                        Nullable
-                      </label>
-                      <label className="flex items-center text-xs text-gray-400">
-                        <input
-                          type="checkbox"
-                          checked={field.autoIncrement}
-                          onChange={(e) => updateField(field.id, { autoIncrement: e.target.checked })}
-                          disabled={loading}
-                          className="mr-1"
-                        />
-                        Auto Inc.
-                      </label>
-                    </div>
-
                     {/* Constraint Type */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Constraint</label>
@@ -488,7 +494,6 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                       </select>
                     </div>
 
-
                     {/* Remove Button */}
                     <div className="flex items-end">
                       <button
@@ -496,14 +501,64 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         onClick={() => removeField(field.id)}
                         disabled={loading || fields.length <= 1}
                         className="text-red-400 hover:text-red-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                        title="Remove field"
+                        title={t.createtablemodal497}
                       >
                         <i className="pi pi-trash"></i>
                       </button>
                     </div>
                   </div>
 
-                  {/* Row 2: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
+                  {/* Row 2: Comment & Checkboxes */}
+                  <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
+                    {/* Comment - nimmt 4 Spalten */}
+                    <div className="lg:col-span-4">
+                      <label className="block text-xs text-gray-400 mb-1">Comment</label>
+                      <input
+                        type="text"
+                        value={field.comment}
+                        onChange={(e) => updateField(field.id, { comment: e.target.value })}
+                        disabled={loading}
+                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        placeholder="Field description..."
+                      />
+                    </div>
+
+                    {/* Checkboxes - zusammen in den restlichen 3 Spalten */}
+                    <div className="lg:col-span-3 flex items-end gap-4">
+                      <label className="flex items-center text-xs text-gray-400">
+                        <input
+                          type="checkbox"
+                          checked={field.nullable}
+                          onChange={(e) => updateField(field.id, { nullable: e.target.checked })}
+                          disabled={loading}
+                          className="mr-1"
+                        />
+                        Nullable
+                      </label>
+                      <label className="flex items-center text-xs text-gray-400">
+                        <input
+                          type="checkbox"
+                          checked={field.unsigned}
+                          onChange={(e) => updateField(field.id, { unsigned: e.target.checked })}
+                          disabled={loading}
+                          className="mr-1"
+                        />
+                        Unsigned
+                      </label>
+                      <label className="flex items-center text-xs text-gray-400">
+                        <input
+                          type="checkbox"
+                          checked={field.autoIncrement}
+                          onChange={(e) => updateField(field.id, { autoIncrement: e.target.checked })}
+                          disabled={loading}
+                          className="mr-1"
+                        />
+                        Auto Inc.
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
                   {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2 border-t border-gray-600">
                       {/* Link Table */}
@@ -596,19 +651,19 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
             </div>
           )}
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+          <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !tableName.trim()}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-2 rounded text-white transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors flex items-center space-x-2"
             >
               {loading ? (
                 <>

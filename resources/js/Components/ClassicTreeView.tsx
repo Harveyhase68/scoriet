@@ -27,8 +27,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   isLast,
   parentLines,
   onNodeClick
-}) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+}) => {  const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
   const handleToggle = (e: React.MouseEvent) => {

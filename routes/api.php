@@ -9,12 +9,15 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SchemaController;
+use App\Http\Controllers\Api\SchemaDiffController;
 use App\Http\Controllers\ProjectApplicationController;
 use App\Http\Controllers\ProjectInvitationController;
 use App\Http\Controllers\SchemaExportController;
 use App\Http\Controllers\Api\UltimateTemplateController;
 use App\Http\Controllers\Api\TranslationExportController;
 use App\Http\Controllers\Api\AutoTranslateController;
+use App\Http\Controllers\Api\TemplateVariableController;
+use App\Http\Controllers\Api\ProjectTemplateVariableValueController;
 use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -161,7 +164,34 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'updateTemplateFile']);
     Route::delete('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'deleteTemplateFile']);
     Route::get('/templates/{id}/export', [TemplateController::class, 'exportTemplate']);
+    Route::get('/templates/{id}/download-zip', [TemplateController::class, 'downloadTemplateZip']);
     Route::post('/templates/import', [TemplateController::class, 'importTemplate']);
+
+    // Template Variables (Template-Developer defines custom variables)
+    Route::prefix('templates/{templateId}/variables')->name('api.template-variables.')->group(function () {
+        Route::get('/', [TemplateVariableController::class, 'index'])->name('index');
+        Route::post('/', [TemplateVariableController::class, 'store'])->name('store');
+        Route::put('/{id}', [TemplateVariableController::class, 'update'])->name('update');
+        Route::delete('/{id}', [TemplateVariableController::class, 'destroy'])->name('destroy');
+    });
+
+    // Project Template Variable Values (Project-User fills in values)
+    Route::prefix('projects/{projectId}/templates/{templateId}/variable-values')->name('api.project-variable-values.')->group(function () {
+        Route::get('/', [ProjectTemplateVariableValueController::class, 'index'])->name('index');
+        Route::post('/', [ProjectTemplateVariableValueController::class, 'store'])->name('store');
+        Route::post('/bulk', [ProjectTemplateVariableValueController::class, 'bulkUpdate'])->name('bulk');
+        Route::delete('/{id}', [ProjectTemplateVariableValueController::class, 'destroy'])->name('destroy');
+    });
+
+    // Template Review System (Inner Core only)
+    Route::prefix('template-reviews')->name('api.template-reviews.')->group(function () {
+        Route::get('/pending', [\App\Http\Controllers\Api\TemplateReviewController::class, 'getPendingReviews'])->name('pending');
+        Route::post('/templates/{template}/review', [\App\Http\Controllers\Api\TemplateReviewController::class, 'submitReview'])->name('submit');
+        Route::post('/templates/{template}/admin-approve', [\App\Http\Controllers\Api\TemplateReviewController::class, 'adminApprove'])->name('admin-approve');
+        Route::get('/templates/{template}/reviews', [\App\Http\Controllers\Api\TemplateReviewController::class, 'getTemplateReviews'])->name('get');
+        Route::put('/reviews/{review}', [\App\Http\Controllers\Api\TemplateReviewController::class, 'updateReview'])->name('update');
+        Route::delete('/reviews/{review}', [\App\Http\Controllers\Api\TemplateReviewController::class, 'deleteReview'])->name('delete');
+    });
 
     // Templates API (for Project Assignment)
     Route::get('/project-templates', [App\Http\Controllers\Api\TemplateController::class, 'index']);
@@ -172,6 +202,10 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/ultimate-template/{templateId}/export/{format}', [UltimateTemplateController::class, 'processTemplate'])
         ->where('format', 'json|js|javascript|php')
         ->name('api.ultimate-template.export');
+
+    // 🚀 FULL PROJECT GENERATION - Generate all code for a project
+    Route::post('/projects/{projectId}/generate-full-code', [UltimateTemplateController::class, 'generateFullProject'])
+        ->name('api.projects.generate-full-code');
 
     // 🔧 TEMPLATE FIX DEMO - Show corrected template processing
     Route::get('/template-fix-demo', function () {
@@ -346,6 +380,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schemas/{schema}/export/mysql', [SchemaExportController::class, 'exportAsMySQL']);
     Route::get('/schemas/{schema}/table-count', [SchemaExportController::class, 'getTableCount']);
 
+    // Schema Diff & Migration Generator
+    Route::post('/schema-diff/compare', [SchemaDiffController::class, 'compare']);
+
 
     // Team Invitations
     Route::post('/teams/{team}/invitations', [TeamInvitationController::class, 'store']);
@@ -407,6 +444,11 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/pages', [\App\Http\Controllers\Admin\PageController::class, 'store']);
         Route::put('/pages/{page}', [\App\Http\Controllers\Admin\PageController::class, 'update']);
         Route::delete('/pages/{page}', [\App\Http\Controllers\Admin\PageController::class, 'destroy']);
+
+        // User Management
+        Route::get('/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'index']);
+        Route::post('/users/{user}/toggle-inner-core', [\App\Http\Controllers\Admin\UserManagementController::class, 'toggleInnerCore']);
+        Route::get('/inner-core/stats', [\App\Http\Controllers\Admin\UserManagementController::class, 'getInnerCoreStats']);
     });
 });
 

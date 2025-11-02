@@ -7,6 +7,15 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Chips } from 'primereact/chips';
 import { Checkbox } from 'primereact/checkbox';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+
+interface TemplateVariable {
+    id?: number;
+    variable_name: string;
+    description: string | null;
+    default_value: string | null;
+    is_required: boolean;
+}
 
 
 interface TemplateModalProps {
@@ -22,6 +31,11 @@ interface TemplateModalProps {
     onDeleteFile: (index: number) => void;
     fileTypes: any[];
     userType?: string;
+    templateVariables?: TemplateVariable[];
+    onLoadVariables?: () => void;
+    onCreateVariable?: () => void;
+    onEditVariable?: (variable: TemplateVariable) => void;
+    onDeleteVariable?: (variableId: number) => void;
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -36,8 +50,16 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     onEditFile,
     onDeleteFile,
     fileTypes,
-    userType
+    userType,
+    templateVariables = [],
+    onLoadVariables,
+    onCreateVariable,
+    onEditVariable,
+    onDeleteVariable
 }) => {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
     const { control, handleSubmit: handleFormSubmit, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
             name: '',
@@ -74,6 +96,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setOriginalFormValues(initialValues);
             setIsSaved(true); // Existing templates are considered "saved"
             setHasFormChanges(false); // Reset form changes
+
+            // Load template variables
+            if (onLoadVariables) {
+                onLoadVariables();
+            }
         } else if (visible && !editingTemplate) {
             // Reset form for new template
             const initialValues = {
@@ -91,6 +118,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setIsSaved(false); // New templates start as unsaved
             setHasFormChanges(false); // Reset form changes
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible, editingTemplate, reset, userType]);
 
     // Don't render anything if not visible - AFTER all hooks
@@ -144,7 +172,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
     return (
         <Dialog
-            header={editingTemplate ? 'Template bearbeiten' : 'Neues Template erstellen'}
+            header={editingTemplate ? 'Template bearbeiten' : t.templatemodal147}
             visible={visible}
             onHide={onCancel}
             style={{ width: '800px' }}
@@ -163,7 +191,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         name="name"
                         control={control}
                         rules={{
-                            required: 'Bitte Template-Name eingeben!',
+                            required: t.templatemodal166,
                             pattern: {
                                 value: /^[a-z0-9]+(_[a-z0-9]+)*$/,
                                 message: 'Template-Name darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten (z.B. my_template_123)'
@@ -203,7 +231,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 id="description"
                                 {...field}
                                 rows={3}
-                                placeholder="Template Beschreibung (optional)"
+                                placeholder={t.templatemodal206}
                                 className="w-full"
                                 onChange={(e) => {
                                     field.onChange(e);
@@ -223,7 +251,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <Controller
                             name="category"
                             control={control}
-                            rules={{ required: 'Bitte Kategorie auswählen!' }}
+                            rules={{ required: t.templatemodal226 }}
                             render={({ field }) => (
                                 <Dropdown
                                     id="category"
@@ -232,7 +260,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         field.onChange(e.value);
                                         checkFormChanges();
                                     }}
-                                    options={categories.filter(cat => cat !== 'All').map(cat => ({ label: cat, value: cat }))}
+                                    options={categories.filter(cat => cat !== t.templatecontroller22).map(cat => ({ label: cat, value: cat }))}
                                     placeholder="Kategorie auswählen"
                                     className="w-full"
                                 />
@@ -251,12 +279,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <Controller
                             name="language"
                             control={control}
-                            rules={{ required: 'Bitte Sprache eingeben!' }}
+                            rules={{ required: t.templatemodal254 }}
                             render={({ field }) => (
                                 <InputText
                                     id="language"
                                     {...field}
-                                    placeholder="e.g., PHP, JavaScript, TypeScript"
+                                    placeholder={t.templatemodal259}
                                     className="w-full"
                                     onChange={(e) => {
                                         field.onChange(e);
@@ -287,7 +315,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                     field.onChange(e.value);
                                     checkFormChanges();
                                 }}
-                                placeholder="Tags hinzufügen (Enter drücken)"
+                                placeholder={t.templatemodal290}
                                 className="w-full"
                                 separator=","
                             />
@@ -304,7 +332,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <Controller
                             name="visibility"
                             control={control}
-                            rules={{ required: 'Bitte Sichtbarkeit auswählen!' }}
+                            rules={{ required: t.templatemodal307 }}
                             render={({ field }) => (
                                 <Dropdown
                                     id="visibility"
@@ -314,10 +342,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         checkFormChanges();
                                     }}
                                     options={[
-                                        { label: 'Public', value: 'public' },
-                                        { label: 'Private', value: 'private' }
+                                        { label: t.databasemanagementpanel772, value: 'public' },
+                                        { label: t.databasemanagementpanel771, value: 'private' }
                                     ]}
-                                    placeholder="Sichtbarkeit wählen"
+                                    placeholder={t.templatemodal320}
                                     className="w-full"
                                 />
                             )}
@@ -337,7 +365,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 name="is_system_template"
                                 control={control}
                                 render={({ field }) => (
-                                    <div className="flex items-center mt-2">
+                                    <div className="flex items-center gap-2 mt-2">
                                         <Checkbox
                                             inputId="is_system_template"
                                             checked={field.value}
@@ -346,7 +374,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 checkFormChanges();
                                             }}
                                         />
-                                        <label htmlFor="is_system_template" className="ml-2">
+                                        <label htmlFor="is_system_template" className="cursor-pointer text-gray-200">
                                             System Template
                                         </label>
                                     </div>
@@ -446,7 +474,119 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     ) : (
                         <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
-                            Keine Dateien hinzugefügt. Klicken Sie auf "Datei hinzufügen" um zu beginnen.
+                            Keine Dateien hinzugefügt. Klicken Sie auf t.templatemodal449 um zu beginnen.
+                        </div>
+                    )}
+                </div>
+
+                {/* Custom Variables Section */}
+                <div className="border-t pt-4 mt-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-gray-300">Custom Variables</h3>
+                        <Button
+                            size="small"
+                            icon="pi pi-plus"
+                            disabled={!isSaved && !editingTemplate}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                if (onCreateVariable) {
+                                    onCreateVariable();
+                                }
+                            }}
+                            className="p-button-primary"
+                        >
+                            Variable hinzufügen
+                        </Button>
+                    </div>
+
+                    {!isSaved && !editingTemplate && (
+                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                            Bitte speichern Sie das Template, erst dann können Sie Custom Variables zum Template hinzufügen
+                        </div>
+                    )}
+
+                    {editingTemplate && (
+                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                            Hinweis: Custom Variables erlauben Ihnen, Platzhalter wie {'{copyright}'} oder {'{company_name}'} zu definieren, die nicht in der Datenbank existieren. Diese können dann pro Projekt und Sprache vom Benutzer ausgefüllt werden.
+                        </div>
+                    )}
+
+                    {templateVariables && templateVariables.length > 0 ? (
+                        <div className="max-h-60 overflow-y-auto border border-gray-600 rounded bg-gray-700">
+                            <table className="w-full text-sm text-gray-100">
+                                <thead className="bg-gray-600 border-b border-gray-500">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left text-gray-100">Variable Name</th>
+                                        <th className="px-3 py-2 text-left text-gray-100">Beschreibung</th>
+                                        <th className="px-3 py-2 text-left text-gray-100">Default</th>
+                                        <th className="px-3 py-2 text-left text-gray-100">Pflicht</th>
+                                        <th className="px-3 py-2 text-left text-gray-100">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {templateVariables.map((variable, index) => (
+                                        <tr key={variable.id || index} className="border-t border-gray-600 hover:bg-gray-600 transition-colors">
+                                            <td className="px-3 py-2">
+                                                <div className="flex items-center text-gray-100">
+                                                    <span className="font-mono text-yellow-300">{'{' + variable.variable_name + '}'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-100">
+                                                {variable.description || '-'}
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-100">
+                                                {variable.default_value || '-'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {variable.is_required ? (
+                                                    <span className="px-2 py-1 bg-red-500 text-white rounded text-xs">
+                                                        Erforderlich
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 bg-gray-500 text-white rounded text-xs">
+                                                        Optional
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <div className="flex gap-1">
+                                                    <Button
+                                                        size="small"
+                                                        icon="pi pi-pencil"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            if (onEditVariable) {
+                                                                onEditVariable(variable);
+                                                            }
+                                                        }}
+                                                        className="p-button-text p-button-sm text-blue-400 hover:text-blue-300"
+                                                    />
+                                                    <Button
+                                                        size="small"
+                                                        icon="pi pi-trash"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            if (variable.id && onDeleteVariable) {
+                                                                if (window.confirm(`Variable "${variable.variable_name}" wirklich löschen?`)) {
+                                                                    onDeleteVariable(variable.id);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="p-button-text p-button-danger p-button-sm text-red-400 hover:text-red-300"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
+                            Keine Custom Variables definiert. Klicken Sie auf "Variable hinzufügen" um zu beginnen.
                         </div>
                     )}
                 </div>
@@ -457,7 +597,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         name="is_active"
                         control={control}
                         render={({ field }) => (
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-2">
                                 <Checkbox
                                     inputId="is_active"
                                     checked={field.value}
@@ -466,7 +606,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         checkFormChanges();
                                     }}
                                 />
-                                <label htmlFor="is_active" className="ml-2">
+                                <label htmlFor="is_active" className="cursor-pointer text-gray-200">
                                     Template ist aktiv
                                 </label>
                             </div>
@@ -488,7 +628,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             disabled={isSaved}
                             className={isSaved ? 'opacity-50' : ''}
                         >
-                            {isSaved ? 'Gespeichert ✓' : 'Speichern'}
+                            {isSaved ? 'Gespeichert ✓' : t.cmsadminpanel279}
                         </Button>
                     )}
 
@@ -499,8 +639,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         className={editingTemplate && !hasFormChanges ? 'opacity-50' : ''}
                     >
                         {editingTemplate ?
-                            (hasFormChanges ? 'Aktualisieren' : 'Keine Änderungen') :
-                            'Erstellen'
+                            (hasFormChanges ? t.applicationsmodal313 : t.templatemodal502) :
+                            t.teammodal240
                         }
                     </Button>
                 </div>

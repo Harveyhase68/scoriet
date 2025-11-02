@@ -361,10 +361,45 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Soft delete by setting is_active to false
-        $project->update(['is_active' => false]);
+        try {
+            DB::beginTransaction();
 
-        return response()->json(['message' => 'Project deactivated successfully']);
+            // Delete all project-related data (Pivot tables and HasMany relations)
+            // Teams, Templates, and Schemas themselves are NOT deleted, only the associations
+
+            // 1. Delete pivot table entries (associations with teams, schemas, templates)
+            DB::table('project_teams')->where('project_id', $project->id)->delete();
+            DB::table('project_schemas')->where('project_id', $project->id)->delete();
+            DB::table('project_template_usage')->where('project_id', $project->id)->delete();
+
+            // 2. Delete project-owned data
+            DB::table('project_applications')->where('project_id', $project->id)->delete();
+            DB::table('project_invitations')->where('project_id', $project->id)->delete();
+
+            // 3. Delete items with CASCADE (will be deleted automatically, but explicit for clarity)
+            // - project_generation_trees (has onDelete cascade)
+            // - project_template_variable_values (has onDelete cascade)
+
+            // 4. Finally, delete the project itself
+            $project->delete();
+
+            DB::commit();
+
+            return response()->json(['message' => 'Project deleted successfully']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to delete project', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to delete project',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -430,7 +465,7 @@ class ProjectController extends Controller
         }
 
         // Get ONLY teams that are assigned via pivot table to this specific project
-        $assignedTeams = \App\Models\Team::with(['owner'])
+        $assignedTeams = Team::with(['owner'])
             ->whereHas('projects', function($q) use ($project) {
                 $q->where('project_id', $project->id);
             })
@@ -937,7 +972,10 @@ class ProjectController extends Controller
         // Convert to Eloquent models with relationships loaded
         $explicitTeamProjectsModels = $explicitTeamProjects->map(function($projectData) use ($user) {
             $project = new Project($projectData);
-            $project->owner = \App\Models\User::find($projectData['owner_id']);
+            // IMPORTANT: Manually set the ID because it's not in $fillable
+            $project->id = $projectData['id'];
+            $project->exists = true; // Mark as existing record
+            $project->owner = User::find($projectData['owner_id']);
             return $project;
         });
 
@@ -959,7 +997,12 @@ class ProjectController extends Controller
         ]);
 
         // Merge and remove duplicates (in case user is both owner and team member)
-        $allProjects = $ownedProjects->merge($allTeamProjects)->unique('id');
+        $allProjects = $ownedProjects->merge($allTeamProjects)
+            ->filter(function($project) {
+                // Filter out any projects without valid ID (should never happen, but safety check)
+                return $project->id !== null && is_numeric($project->id);
+            })
+            ->unique('id');
 
         // Format projects with additional info
         $projects = $allProjects->map(function ($project) use ($user) {

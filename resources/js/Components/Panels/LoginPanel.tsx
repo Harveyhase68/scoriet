@@ -4,6 +4,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface LoginPanelProps {
   onSwitchPanel?: (panelType: string) => void;
@@ -11,6 +12,10 @@ interface LoginPanelProps {
 }
 
 export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -41,7 +46,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
       });
 
       if (!tokenResponse.ok) {
-        throw new Error('Login failed');
+        throw new Error(t.authcontroller156);
       }
 
       const tokenData = await tokenResponse.json();
@@ -71,7 +76,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
       }
       
     } catch {
-      setError(_ instanceof Error ? _.message : 'An error occurred');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }
@@ -85,7 +90,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
   return (
     <div className="flex justify-center items-center min-h-full bg-gray-900 p-4">
       <Card 
-        title="Login" 
+        title={t.loginmodal212} 
         className="w-full max-w-md shadow-lg bg-gray-800 border-gray-600"
         pt={{
           root: { className: 'border border-gray-600 bg-gray-800' },
@@ -111,7 +116,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="your.email@example.com"
+              placeholder={t.forgotpasswordmodal113}
               className="w-full"
               disabled={loading}
               required
@@ -126,7 +131,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
               id="password"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
-              placeholder="Your password"
+              placeholder={t.authmodalsegistermodal293}
               className="w-full"
               inputClassName="w-full"
               disabled={loading}
@@ -138,7 +143,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
 
           <Button
             type="submit"
-            label={loading ? "Logging in..." : "Login"}
+            label={loading ? t.LoginDoLogin : t.loginmodal212}
             icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
             className="w-full"
             disabled={loading}
@@ -157,7 +162,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
               <div>
                 <Button
                   type="button"
-                  label="Forgot password?"
+                  label={t.LoginForgotPassword}
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('forgot')}
                 />

@@ -9,6 +9,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Message } from 'primereact/message';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -30,6 +31,10 @@ interface PublicProject {
 }
 
 export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const { loadProjects: loadGlobalProjects } = useProject();
   const [projects, setProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +87,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Not authenticated');
+        setError(t.applicationsmodal66);
         return;
       }
 
@@ -94,14 +99,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load public projects');
+        throw new Error(t.publicprojectspanel97);
       }
 
       const data = await response.json();
       setProjects(data.projects || []);
 
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading public projects');
+      setError(error instanceof Error ? error.message : t.publicprojectspanel104);
     } finally {
       setLoading(false);
     }
@@ -180,10 +185,10 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         alert(`Project "${cloneForm.name}" cloned successfully! You can find it in your Projects tab.`);
       } else {
         const errorData = await response.json();
-        setCloneError(errorData.message || 'Failed to clone project');
+        setCloneError(errorData.message || t.publicprojectspanel183);
       }
     } catch (error) {
-      setCloneError(error instanceof Error ? error.message : 'Failed to clone project');
+      setCloneError(error instanceof Error ? error.message : t.publicprojectspanel183);
     } finally {
       setCloning(null);
     }
@@ -224,14 +229,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         <div className="flex space-x-2">
           <Button
             icon="pi pi-sign-in"
-            label="Join with Code"
+            label={t.publicprojectspanel227}
             className="p-button-outlined"
             onClick={() => setShowJoinCodeModal(true)}
             disabled={loading}
           />
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            label={t.applicationsmodal313}
             className="p-button-outlined"
             onClick={loadPublicProjects}
             disabled={loading}
@@ -250,7 +255,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
           <InputText
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search projects by name, description, or owner..."
+            placeholder={t.publicprojectspanel253}
             className="flex-1"
             disabled={loading}
           />
@@ -263,17 +268,17 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
           <div className="text-center py-8">
             <i className="pi pi-search text-6xl text-gray-500 mb-4"></i>
             <h3 className="text-lg font-medium text-white mb-2">
-              {searchTerm ? 'No matching projects' : 'No public projects'}
+              {searchTerm ? 'No matching projects' : t.publicprojectspanel266}
             </h3>
             <p className="text-gray-400 mb-4">
               {searchTerm 
-                ? 'Try adjusting your search terms.'
-                : 'There are no public projects available at the moment.'
+                ? t.publicprojectspanel270
+                : t.publicprojectspanel271
               }
             </p>
             {searchTerm && (
               <Button
-                label="Clear Search"
+                label={t.publicprojectspanel276}
                 icon="pi pi-times"
                 className="p-button-outlined"
                 onClick={() => setSearchTerm('')}
@@ -293,7 +298,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                         {project.name}
                       </h3>
                       <Tag
-                        value="Public"
+                        value={t.databasemanagementpanel772}
                         severity="success"
                         icon="pi pi-globe"
                         className="ml-2"
@@ -313,7 +318,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                   {/* Description */}
                   <div>
                     <p className="text-sm text-gray-300 line-clamp-3 min-h-[3.5rem]">
-                      {project.description || 'No description provided.'}
+                      {project.description || t.publicprojectspanel316}
                     </p>
                   </div>
 
@@ -335,15 +340,15 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                   <div className="pt-3 border-t border-gray-700">
                     {currentUserId === project.owner.id ? (
                       <Button
-                        label="Your Project"
+                        label={t.publicprojectspanel338}
                         icon="pi pi-user"
                         className="w-full p-button-outlined"
                         disabled
-                        tooltip="This is your own project. Use the Projects tab to duplicate it."
+                        tooltip={t.publicprojectspanel342}
                       />
                     ) : (
                       <Button
-                        label={cloning === project.id ? "Cloning..." : "Clone Project"}
+                        label={cloning === project.id ? "Cloning..." : t.publicprojectspanel346}
                         icon={cloning === project.id ? "pi pi-spinner pi-spin" : "pi pi-copy"}
                         className="w-full p-button-success"
                         onClick={() => openCloneModal(project)}
@@ -415,7 +420,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               id="clone-name"
               value={cloneForm.name}
               onChange={(e) => setCloneForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter project name"
+              placeholder={t.publicprojectspanel418}
               className="w-full"
               disabled={cloning !== null}
               required
@@ -430,7 +435,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               id="clone-description"
               value={cloneForm.description}
               onChange={(e) => setCloneForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter project description"
+              placeholder={t.editprojectmodal260}
               className="w-full"
               rows={3}
               disabled={cloning !== null}
@@ -471,14 +476,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              label="Cancel"
+              label={t.applicationsmodal432}
               icon="pi pi-times"
               onClick={handleCloneModalHide}
               className="p-button-text"
               disabled={cloning !== null}
             />
             <Button
-              label={cloning !== null ? "Cloning..." : "Clone Project"}
+              label={cloning !== null ? "Cloning..." : t.publicprojectspanel346}
               icon={cloning !== null ? "pi pi-spinner pi-spin" : "pi pi-copy"}
               onClick={handleCloneProject}
               disabled={cloning !== null || !cloneForm.name.trim()}

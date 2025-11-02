@@ -15,6 +15,7 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Card } from 'primereact/card';
 import { apiClient as api } from '@/lib/api';
 import { TabContentProps } from '@/types';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 // Global Ant Design React 19 warning suppression removed
 
@@ -80,6 +81,10 @@ interface AddDependencyModalProps {
 }
 
 const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClose, onSuccess, templateId }) => {
+    // i18n setup
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
+
     const toast = useToast();
     const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
         defaultValues: {
@@ -99,7 +104,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
             }
         } catch {
             // Failed to load DB schemas
-            toast.showError('Failed to load DB schemas');
+            toast.showError(t.templatedbschemadependenciespanel102);
         }
     }, [toast]);
 
@@ -120,16 +125,16 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 body: JSON.stringify(values),
             });
             if (response.success) {
-                toast.showSuccess('DB schema dependency added successfully');
+                toast.showSuccess(t.templatecontroller585);
                 reset();
                 onSuccess();
                 onClose();
             } else {
-                toast.showError(response.error || 'Failed to add dependency');
+                toast.showError(response.error || t.templatedbschemadependenciespanel128);
             }
         } catch (error: any) {
             // Failed to add dependency
-            const errorMessage = error.response?.data?.error || 'Failed to add dependency';
+            const errorMessage = error.response?.data?.error || t.templatedbschemadependenciespanel128;
             toast.showError(errorMessage);
         } finally {
             setLoading(false);
@@ -161,7 +166,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                     <Controller
                         name="schema_id"
                         control={control}
-                        rules={{ required: 'Please select a database schema' }}
+                        rules={{ required: t.templatedbschemadependenciespanel164 }}
                         render={({ field }) => (
                             <Dropdown
                                 id="schema_id"
@@ -173,7 +178,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                                     schema
                                 }))}
                                 optionLabel="label"
-                                placeholder="Select a database schema"
+                                placeholder={t.templatedbschemadependenciespanel176}
                                 filter
                                 className="w-full"
                                 itemTemplate={(option) => (
@@ -228,7 +233,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                             <InputText
                                 id="alias"
                                 {...field}
-                                placeholder="Enter an alias for this DB schema in the template"
+                                placeholder={t.templatedbschemadependenciespanel231}
                                 className="w-full"
                             />
                         )}
@@ -239,13 +244,13 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 <div className="flex gap-2 justify-end">
                     <Button
                         type="button"
-                        label="Cancel"
+                        label={t.applicationsmodal432}
                         severity="secondary"
                         onClick={onClose}
                     />
                     <Button
                         type="submit"
-                        label="Add Dependency"
+                        label={t.templatedbschemadependenciespanel248}
                         severity="success"
                         loading={loading}
                     />
@@ -256,6 +261,10 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
 };
 
 const TemplateDbSchemaDependenciesPanel: React.FC = () => {
+    // i18n setup
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
+
     // Using centralized CSS styles from auth-modals.css
     const toast = useToast();
 
@@ -321,7 +330,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             setTemplates(filteredTemplates);
         } catch {
             // Failed to load templates
-            toast.showError('Failed to load templates');
+            toast.showError(t.panelt390);
         } finally {
             setLoading(false);
         }
@@ -343,11 +352,11 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             if (response.success) {
                 setDependencies(response.dependencies || []);
             } else {
-                toast.showError('Failed to load template dependencies');
+                toast.showError(t.templatecontroller717);
             }
         } catch {
             // Failed to load template dependencies
-            toast.showError('Failed to load template dependencies');
+            toast.showError(t.templatecontroller717);
         } finally {
             setDependenciesLoading(false);
         }
@@ -364,16 +373,16 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 method: 'DELETE',
             });
             if (response.success) {
-                toast.showSuccess('Dependency removed successfully');
+                toast.showSuccess(t.templatedbschemadependenciespanel367);
                 if (selectedTemplate) {
                     loadTemplateDependencies(selectedTemplate.id);
                 }
             } else {
-                toast.showError('Failed to remove dependency');
+                toast.showError(t.templatecontroller827);
             }
         } catch {
             // Failed to remove dependency
-            toast.showError('Failed to remove dependency');
+            toast.showError(t.templatecontroller827);
         }
     };
 
@@ -387,7 +396,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
             <div className="flex items-center space-x-2">
                 <span className="font-medium">{rowData.name}</span>
                 <Tag value={rowData.category} severity="info" />
-                {!rowData.is_active && <Tag value="Inactive" severity="danger" />}
+                {!rowData.is_active && <Tag value={t.manageteammodal328} severity="danger" />}
             </div>
         );
     };
@@ -401,8 +410,8 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                     icon="pi pi-eye"
                     className="p-button-sm p-button-secondary"
                     disabled
-                    label="View Only"
-                    title="You can only edit your own templates"
+                    label={t.templatedbschemadependenciespanel404}
+                    title={t.templatedbschemadependenciespanel405}
                 />
             );
         }
@@ -412,7 +421,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                 icon="pi pi-arrow-right"
                 className="p-button-sm p-button-info"
                 onClick={() => handleTemplateSelect(rowData)}
-                label="Manage"
+                label={t.templatedbschemadependenciespanel415}
             />
         );
     };
@@ -437,9 +446,9 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
         return (
             <div className="flex items-center space-x-2">
                 {rowData.is_required ? (
-                    <Tag value="Required" severity="danger" />
+                    <Tag value={t.templatedbschemadependenciespanel440} severity="danger" />
                 ) : (
-                    <Tag value="Optional" severity="info" />
+                    <Tag value={t.templatedbschemadependenciespanel442} severity="info" />
                 )}
                 {rowData.alias && <Tag value={`Alias: ${rowData.alias}`} style={{ backgroundColor: '#9333ea', color: 'white' }} />}
             </div>
@@ -454,7 +463,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                         icon="pi pi-eye"
                         className="p-button-sm p-button-secondary"
                         disabled
-                        title="Read-only template"
+                        title={t.templatedbschemadependenciespanel457}
                     />
                 </div>
             );
@@ -466,7 +475,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                     icon="pi pi-trash"
                     className="p-button-sm p-button-danger"
                     onClick={() => handleRemoveDependency(rowData)}
-                    tooltip="Remove Dependency"
+                    tooltip={t.templatedbschemadependenciespanel469}
                     tooltipOptions={{ position: 'top' }}
                 />
             </div>
@@ -501,10 +510,10 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     value={templateFilter}
                                     onChange={(e) => setTemplateFilter(e.value)}
                                     options={[
-                                        { label: 'All', value: 'all' },
-                                        { label: 'System', value: 'system' },
-                                        { label: 'Public', value: 'public' },
-                                        { label: 'Project', value: 'project' }
+                                        { label: t.templatecontroller22, value: 'all' },
+                                        { label: t.ultimatetemplatecontroller301, value: 'system' },
+                                        { label: t.databasemanagementpanel772, value: 'public' },
+                                        { label: t.manageteammodal316, value: 'project' }
                                     ]}
                                     className="w-full mb-3"
                                 />
@@ -514,7 +523,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                 <InputText
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search templates..."
+                                    placeholder={t.templatesSearchPlaceholder}
                                     className="w-full"
                                     style={{ backgroundColor: '#4b5563', borderColor: '#6b7280', color: '#f3f4f6' }}
                                 />
@@ -524,7 +533,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                 <DataTable
                                     value={filteredTemplates}
                                     loading={loading}
-                                    emptyMessage="No templates available"
+                                    emptyMessage={t.templatedbschemadependenciespanel527}
                                     className="dark-table"
                                     size="small"
                                     stripedRows
@@ -533,12 +542,12 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                 >
                                     <Column
                                         field="name"
-                                        header="Template"
+                                        header={t.templatedbschemadependenciespanel536}
                                         body={templateNameBodyTemplate}
                                         style={{ minWidth: '200px' }}
                                     />
                                     <Column
-                                        header="Actions"
+                                        header={t.applicationsmodal354}
                                         body={templateActionBodyTemplate}
                                         style={{ minWidth: '100px' }}
                                     />
@@ -556,7 +565,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     <Button
                                         icon="pi pi-plus"
                                         className="p-button-sm p-button-success"
-                                        label="Add"
+                                        label={t.filemodal340}
                                         onClick={() => setAddModalVisible(true)}
                                     />
                                 )}
@@ -567,7 +576,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     <DataTable
                                         value={dependencies}
                                         loading={dependenciesLoading}
-                                        emptyMessage="No DB schema dependencies"
+                                        emptyMessage={t.templatedbschemadependenciespanel570}
                                         className="dark-table"
                                         size="small"
                                         stripedRows
@@ -575,17 +584,17 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                         scrollHeight="400px"
                                     >
                                         <Column
-                                            header="Database Schema"
+                                            header={t.databaseexportmodal325}
                                             body={dependencySchemaBodyTemplate}
                                             style={{ minWidth: '200px' }}
                                         />
                                         <Column
-                                            header="Status"
+                                            header={t.applicationsmodal335}
                                             body={dependencyStatusBodyTemplate}
                                             style={{ minWidth: '150px' }}
                                         />
                                         <Column
-                                            header="Actions"
+                                            header={t.applicationsmodal354}
                                             body={dependencyActionBodyTemplate}
                                             style={{ minWidth: '80px' }}
                                         />

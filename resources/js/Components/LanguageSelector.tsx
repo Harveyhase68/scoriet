@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Button } from 'primereact/button';
 import { OverlayPanel } from 'primereact/overlaypanel';
-import { SupportedLanguage, supportedLanguages, LanguageOption } from '@/i18n';
+import { SupportedLanguage, supportedLanguages, LanguageOption, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 
 interface LanguageSelectorProps {
@@ -16,6 +16,8 @@ export default function LanguageSelector({
   onLanguageChange,
   variant = 'button',
 }: LanguageSelectorProps) {
+  // i18n setup
+  const { t } = useTranslation(currentLanguage);
   const overlayRef = useRef<OverlayPanel>(null);
 
   const currentLang = supportedLanguages.find(lang => lang.code === currentLanguage) || supportedLanguages[0];
@@ -65,8 +67,8 @@ export default function LanguageSelector({
           paddingTop: '6px',
           paddingBottom: '6px'
         }}
-        aria-label="Select Language"
-        tooltip="Select Language"
+        aria-label={t.authmodalsegistermodal335}
+        tooltip={t.authmodalsegistermodal335}
         tooltipOptions={{ position: 'bottom' }}
       >
         {getButtonContent()}

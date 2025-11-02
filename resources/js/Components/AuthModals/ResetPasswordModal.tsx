@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ResetPasswordModalProps {
   visible: boolean;
@@ -16,6 +17,9 @@ export default function ResetPasswordModal({
   email,
   onSwitchToLogin
 }: ResetPasswordModalProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const [data, setData] = useState({
     token: token,
     email: email,
@@ -70,13 +74,13 @@ export default function ResetPasswordModal({
         } else {
           setTokenValidated(false);
           return response.json().then(data => {
-            setResetError(data.message || 'This reset link is invalid or expired.');
+            setResetError(data.message || t.authmodalsesetpasswordmodal73);
           });
         }
       })
       .catch(() => {
         setTokenValidated(false);
-        setResetError('Error validating reset link.');
+        setResetError(t.authmodalsesetpasswordmodal79);
       })
       .finally(() => {
         setValidatingToken(false);
@@ -119,16 +123,16 @@ export default function ResetPasswordModal({
           if (responseData.errors.email) {
             setResetError(Array.isArray(responseData.errors.email) ? responseData.errors.email[0] : responseData.errors.email);
           } else if (responseData.errors.password) {
-            setResetError('Password error: ' + (Array.isArray(responseData.errors.password) ? responseData.errors.password[0] : responseData.errors.password));
+            setResetError(t.authmodalsesetpasswordmodal122 + (Array.isArray(responseData.errors.password) ? responseData.errors.password[0] : responseData.errors.password));
           } else if (responseData.errors.token) {
-            setResetError('Token error: ' + (Array.isArray(responseData.errors.token) ? responseData.errors.token[0] : responseData.errors.token));
+            setResetError(t.authmodalsesetpasswordmodal124 + (Array.isArray(responseData.errors.token) ? responseData.errors.token[0] : responseData.errors.token));
           }
         } else {
-          setResetError(responseData.message || 'An unknown error occurred. Please try again.');
+          setResetError(responseData.message || t.authmodalsesetpasswordmodal127);
         }
       }
     } catch {
-      setResetError('Network error - please try again later.');
+      setResetError(t.authmodalsesetpasswordmodal131);
     } finally {
       setProcessing(false);
     }
@@ -159,7 +163,7 @@ export default function ResetPasswordModal({
             <button
               onClick={onHide}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl leading-none focus:outline-none"
-              title="Close"
+              title={t.authmodalsesetpasswordmodal162}
             >
               ×
             </button>
@@ -262,7 +266,7 @@ export default function ResetPasswordModal({
                 <input
                   id="reset-password"
                   type="password"
-                  placeholder="Enter new password"
+                  placeholder={t.authmodalsesetpasswordmodal265}
                   value={data.password}
                   onChange={(e) => updateData('password', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
@@ -284,7 +288,7 @@ export default function ResetPasswordModal({
                 <input
                   id="reset-password-confirm"
                   type="password"
-                  placeholder="Repeat password"
+                  placeholder={t.authmodalsegistermodal312}
                   value={data.password_confirmation}
                   onChange={(e) => updateData('password_confirmation', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
@@ -316,7 +320,7 @@ export default function ResetPasswordModal({
                     Resetting...
                   </span>
                 ) : (
-                  'Reset Password'
+                  t.authmodalsesetpasswordmodal319
                 )}
               </button>
 

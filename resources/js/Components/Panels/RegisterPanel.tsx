@@ -4,12 +4,17 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface RegisterPanelProps {
   onSwitchPanel?: (panelType: string) => void;
 }
 
 export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,7 +33,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
 
     // Passwort-Bestätigung prüfen
     if (formData.password !== formData.password_confirmation) {
-      setError('Passwörter stimmen nicht überein');
+      setError(t.authmodalsegistermodal58);
       setLoading(false);
       return;
     }
@@ -51,10 +56,10 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registrierung fehlgeschlagen');
+        throw new Error(data.message || t.panelsegisterpanel54);
       }
 
-      setSuccess('Registrierung erfolgreich! Sie können sich jetzt anmelden.');
+      setSuccess(t.panelsegisterpanel57);
       
       // Formular zurücksetzen
       setFormData({
@@ -72,7 +77,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
       }, 2000);
 
     } catch {
-      setError(_ instanceof Error ? _.message : 'Ein Fehler ist aufgetreten');
+      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }
@@ -87,7 +92,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
   return (
     <div className="flex justify-center items-center min-h-full bg-gray-50 p-4">
       <Card 
-        title="Registrieren" 
+        title={t.authmodalsegistermodal203} 
         className="w-full max-w-md shadow-lg"
         pt={{
           root: { className: 'border border-gray-200' },
@@ -120,7 +125,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="Ihr vollständiger Name"
+              placeholder={t.authmodalsegistermodal239}
               className="w-full"
               disabled={loading}
               required
@@ -136,7 +141,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="your.email@example.com"
+              placeholder={t.forgotpasswordmodal113}
               className="w-full"
               disabled={loading}
               required
@@ -151,17 +156,17 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
               id="password"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
-              placeholder="Mindestens 8 Zeichen"
+              placeholder={t.panelsegisterpanel154}
               className="w-full"
               inputClassName="w-full"
               disabled={loading}
               feedback={true}
               toggleMask
               required
-              promptLabel="Passwort eingeben"
-              weakLabel="Schwach"
-              mediumLabel="Mittel"
-              strongLabel="Stark"
+              promptLabel={t.panelsegisterpanel161}
+              weakLabel={t.panelsegisterpanel162}
+              mediumLabel={t.panelsegisterpanel163}
+              strongLabel={t.panelsegisterpanel164}
             />
           </div>
 
@@ -173,7 +178,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
               id="password_confirmation"
               value={formData.password_confirmation}
               onChange={(e) => handleInputChange('password_confirmation', e.target.value)}
-              placeholder="Passwort wiederholen"
+              placeholder={t.authmodalsegistermodal312}
               className="w-full"
               inputClassName="w-full"
               disabled={loading}
@@ -185,7 +190,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
 
           <Button
             type="submit"
-            label={loading ? "Registrierung läuft..." : "Registrieren"}
+            label={loading ? t.registermodal379 : t.authmodalsegistermodal203}
             icon={loading ? "pi pi-spinner pi-spin" : "pi pi-user-plus"}
             className="w-full"
             disabled={loading}
@@ -195,7 +200,7 @@ export default function RegisterPanel({ onSwitchPanel }: RegisterPanelProps) {
             <div className="text-center mt-4">
               <Button
                 type="button"
-                label="Bereits ein Konto? Anmelden"
+                label={t.panelsegisterpanel198}
                 className="p-button-link p-button-sm"
                 onClick={() => onSwitchPanel('login')}
               />

@@ -12,6 +12,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
 import TeamModal from '@/Components/Modals/TeamModal';
 import MemberModal from '@/Components/Modals/MemberModal';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -79,6 +80,10 @@ interface TeamManagementPanelProps {
 }
 
 export default function TeamManagementPanel({ filterByProject = false, updateTabTitle, forceProjectId }: TeamManagementPanelProps) {
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+
   // Use Project Context to get current project
   const { selectedProject } = useProject();
   const projectId = forceProjectId !== undefined ? forceProjectId : (filterByProject ? selectedProject?.id : undefined);
@@ -102,7 +107,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         try {
           const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
-            throw new Error('Not authenticated');
+            throw new Error(t.applicationsmodal66);
           }
 
           const response = await fetch(`/api/projects/${forceProjectId}`, {
@@ -140,7 +145,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       setLoading(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.applicationsmodal66);
       }
 
       const url = projectId ? `/api/teams?project=${projectId}` : '/api/teams?all=true';
@@ -152,7 +157,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load teams');
+        throw new Error(t.projectpanel416);
       }
 
       const data = await response.json();
@@ -171,8 +176,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     } catch {
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to load teams',
+        summary: t.membermodal335,
+        detail: t.projectpanel416,
         life: 3000
       });
     } finally {
@@ -197,7 +202,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const handleDeleteTeam = (team: Team) => {
     confirmDialog({
       message: `Are you sure you want to delete the team "${team.name}"? This action cannot be undone.`,
-      header: 'Delete Team',
+      header: t.teammanagementpanel200,
       icon: 'pi pi-exclamation-triangle',
       defaultFocus: 'reject',
       acceptClassName: 'p-button-danger',
@@ -205,7 +210,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         try {
           const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
-            throw new Error('Not authenticated');
+            throw new Error(t.applicationsmodal66);
           }
 
           const response = await fetch(`/api/teams/${team.id}`, {
@@ -218,26 +223,26 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to delete team');
+            throw new Error(errorData.message || t.teammanagementpanel221);
           }
 
           toast.current?.show({
             severity: 'success',
-            summary: 'Success',
-            detail: 'Team deleted successfully',
+            summary: t.membermodal323,
+            detail: t.teamcontroller210,
             life: 3000
           });
 
           loadTeams();
 
           // Notify NavigationPanel to refresh teams
-          window.dispatchEvent(new CustomEvent('teamChanged'));
+          window.dispatchEvent(new CustomEvent(t.panelt1506));
         } catch (error) {
           // Error deleting team
           toast.current?.show({
             severity: 'error',
-            summary: 'Error',
-            detail: error instanceof Error ? error.message : 'Failed to delete team',
+            summary: t.membermodal335,
+            detail: error instanceof Error ? error.message : t.teammanagementpanel221,
             life: 3000
           });
         }
@@ -255,13 +260,13 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     loadTeams();
     toast.current?.show({
       severity: 'success',
-      summary: 'Success',
-      detail: editingTeam ? 'Team updated successfully' : 'Team created successfully',
+      summary: t.membermodal323,
+      detail: editingTeam ? t.teamcontroller191 : t.teamcontroller117,
       life: 3000
     });
 
     // Notify NavigationPanel to refresh teams
-    window.dispatchEvent(new CustomEvent('teamChanged'));
+    window.dispatchEvent(new CustomEvent(t.panelt1506));
   };
 
   const onMembersSaved = () => {
@@ -274,7 +279,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     return (
       <div className="flex flex-wrap gap-2">
         <Button
-          label="New Team"
+          label={t.teammanagementpanel277}
           icon="pi pi-plus"
           className="p-button-success"
           onClick={handleCreateTeam}
@@ -288,7 +293,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       <div className="flex flex-wrap gap-2">
         <InputText
           type="search"
-          placeholder="Search teams here..."
+          placeholder={t.teammanagementpanel291}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="w-64"
@@ -313,7 +318,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     return (
       <div className="flex items-center gap-2">
         <i className="pi pi-user text-gray-500"></i>
-        <span>{team.owner?.username || team.owner?.name || 'Unknown'}</span>
+        <span>{team.owner?.username || team.owner?.name || t.testprojectschemas50}</span>
       </div>
     );
   };
@@ -331,7 +336,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const statusBodyTemplate = (team: Team) => {
     return (
       <Badge
-        value={team.is_active ? 'Active' : 'Inactive'}
+        value={team.is_active ? t.templatesStatusActive : t.manageteammodal328}
         severity={team.is_active ? 'success' : 'secondary'}
       />
     );
@@ -383,7 +388,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         <Button
           icon="pi pi-users"
           className="p-button-rounded p-button-text p-button-sm"
-          tooltip="Manage Members"
+          tooltip={t.teammanagementpanel386}
           onClick={() => handleManageMembers(team)}
         />
         {isOwner && (
@@ -391,13 +396,13 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             <Button
               icon="pi pi-pencil"
               className="p-button-rounded p-button-text p-button-sm"
-              tooltip="Edit Team"
+              tooltip={t.teammanagementpanel394}
               onClick={() => handleEditTeam(team)}
             />
             <Button
               icon="pi pi-trash"
               className="p-button-rounded p-button-text p-button-sm p-button-danger"
-              tooltip="Delete Team"
+              tooltip={t.teammanagementpanel200}
               onClick={() => handleDeleteTeam(team)}
             />
           </>
@@ -413,9 +418,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       
       <div className="h-full flex flex-col">
         {/* Header Card */}
-        <Card title="Team Management" className="m-4 mb-2">
+        <Card title={t.panelsewnavigationpanel165} className="m-4 mb-2">
           <div className="text-sm text-gray-400">
-            Create, manage, and organize your teams. Assign team members and control access permissions.
+            {t.teammanagementpanel417}
           </div>
         </Card>
 
@@ -436,7 +441,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 value={teams}
                 loading={loading}
                 globalFilter={globalFilter}
-                emptyMessage="No teams found"
+                emptyMessage={t.teammanagementpanel439}
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 20, 50]}
@@ -448,47 +453,47 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
               >
                 <Column
                   field="name"
-                  header="Team Name"
+                  header={t.manageteammodal312}
                   body={nameBodyTemplate}
                   sortable
                   className="w-1/4"
                 />
                 <Column
                   field="owner.name"
-                  header="Owner"
+                  header={t.manageteammodal320}
                   body={ownerBodyTemplate}
                   sortable
                   className="w-1/6"
                 />
                 <Column
                   field="members"
-                  header="Members"
+                  header={t.projectpanel748}
                   body={membersBodyTemplate}
                   className="w-24"
                 />
                 <Column
                   field="is_active"
-                  header="Status"
+                  header={t.applicationsmodal335}
                   body={statusBodyTemplate}
                   sortable
                   className="w-24"
                 />
                 <Column
                   field="projects"
-                  header="Projects"
+                  header={t.createteammodal117}
                   body={projectBodyTemplate}
                   sortable={false} // Can't sort by array of projects
                   className="w-1/6"
                 />
                 <Column
                   field="created_at"
-                  header="Created"
+                  header={t.databasemanagementpanel861}
                   body={createdBodyTemplate}
                   sortable
                   className="w-1/6"
                 />
                 <Column
-                  header="Actions"
+                  header={t.applicationsmodal354}
                   body={actionsBodyTemplate}
                   className="w-32"
                   headerClassName="text-center"

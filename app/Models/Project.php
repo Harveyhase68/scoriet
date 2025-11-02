@@ -544,4 +544,12 @@ class Project extends Model
 
         return $name;
     }
+
+    /**
+     * Get the template variable values for this project
+     */
+    public function templateVariableValues()
+    {
+        return $this->hasMany(ProjectTemplateVariableValue::class);
+    }
 }

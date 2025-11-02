@@ -498,11 +498,14 @@ class SchemaController extends Controller
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
+            'columns.*.field_length' => 'nullable|integer',
+            'columns.*.is_unsigned' => 'boolean',
             'columns.*.is_nullable' => 'boolean',
             'columns.*.is_auto_increment' => 'boolean',
             'columns.*.is_primary_key' => 'boolean',
             'columns.*.is_index' => 'boolean',
             'columns.*.is_unique' => 'boolean',
+            'columns.*.comment' => 'nullable|string',
             'columns.*.control_type' => 'nullable|string|max:30',
             'columns.*.link_table' => 'nullable|string|max:64',
             'columns.*.link_field' => 'nullable|string|max:64',
@@ -531,16 +534,30 @@ class SchemaController extends Controller
                 $uniqueFields = [];
 
                 foreach ($request->columns as $index => $columnData) {
+
+                    $fieldType = strtolower($columnData['data_type']);
+                    $fieldLength = $columnData['field_length'];
+
+                    if ($fieldLength > 0 && in_array($fieldType, ['varchar', 'char', 'binary', 'varbinary', 'datetime'])) {
+                       $combinedType = $fieldType . '(' . $fieldLength . ')';
+                    } else {
+                        $combinedType = $fieldType;
+                    }
+
                     $field = \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
-                        'field_type' => $columnData['data_type'],
+                        'field_type' => $combinedType,
+                        'field_length' => $columnData['field_length'] ?? null,
+                        'is_unsigned' => $columnData['is_unsigned'] ?? false,
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
                         'is_index' => $columnData['is_index'] ?? false,
                         'is_unique' => $columnData['is_unique'] ?? false,
-                        'field_order' => $index, // Logische Reihenfolge: 0, 1, 2, 3...
+                        'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
+                        'field_order' => $index + 1, // Logische Reihenfolge: 1, 2, 3, 4... (starts at 1)
+                        'comment' => $columnData['comment'] ?? null,
                         // Control Type & Link fields for ComboBox, ListBox, etc.
                         'control_type' => $columnData['control_type'] ?? 'TEXT',
                         'link_table' => $columnData['link_table'] ?? null,
@@ -611,6 +628,9 @@ class SchemaController extends Controller
                 }
             }
 
+            foreach ($request->columns as $index => $columnData) {
+            }
+
             $table->load('fields');
 
             return response()->json([
@@ -665,6 +685,8 @@ class SchemaController extends Controller
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
+            'columns.*.field_length' => 'nullable|integer',
+            'columns.*.is_unsigned' => 'boolean',
             'columns.*.is_nullable' => 'boolean',
             'columns.*.is_auto_increment' => 'boolean',
             'columns.*.is_primary_key' => 'boolean',
@@ -694,29 +716,79 @@ class SchemaController extends Controller
                 'file_name_short' => $request->file_name_short,
             ]);
 
-            // Delete existing fields and constraints, then recreate them
-            \App\Models\SchemaField::where('table_id', $table->id)->delete();
-            \App\Models\SchemaConstraint::where('table_id', $table->id)->delete();
+            // 🔐 SAVE FOREIGN KEYS before deleting (to restore them after update)
+            $existingForeignKeys = \App\Models\SchemaConstraint::where('table_id', $table->id)
+                ->where('constraint_type', 'FOREIGN KEY')
+                ->with([
+                    'constraintColumns.field',
+                    'foreignKeyReference.referencedTable',
+                    'foreignKeyReference.referenceColumns.referencedField'
+                ])
+                ->get()
+                ->map(function($fk) {
+                    $fkRef = $fk->foreignKeyReference;
+                    if (!$fkRef || !$fkRef->referencedTable) {
+                        return null; // Skip invalid FKs
+                    }
 
-            $createdFields = [];
+                    return [
+                        'constraint_name' => $fk->constraint_name,
+                        'constraint_type' => $fk->constraint_type,
+                        'source_fields' => $fk->constraintColumns->map(fn($col) => $col->field->field_name)->toArray(),
+                        'referenced_table_name' => $fkRef->referencedTable->table_name,
+                        'referenced_table_id' => $fkRef->referenced_table_id,
+                        'referenced_fields' => $fkRef->referenceColumns->map(fn($refCol) => $refCol->referencedField->field_name)->toArray(),
+                        'on_delete' => $fkRef->on_delete ?? 'NO ACTION',
+                        'on_update' => $fkRef->on_update ?? 'NO ACTION',
+                    ];
+                })
+                ->filter() // Remove null entries
+                ->values()
+                ->toArray();
+
+            Log::info('💾 Saved Foreign Keys before update:', ['foreign_keys' => $existingForeignKeys]);
+
+            // ✅ AKADEMISCH KORREKTE LÖSUNG: UPDATE/INSERT/DELETE statt DELETE/INSERT
+            // Lade bestehende Felder
+            $existingFields = \App\Models\SchemaField::where('table_id', $table->id)
+                ->get()
+                ->keyBy('field_name');
+
+            $updatedFields = [];
             $primaryKeyFields = [];
             $indexFields = [];
             $uniqueFields = [];
-
-            // Create new columns if provided
+            
+            // Process incoming columns
             if ($request->has('columns')) {
+                $incomingFieldNames = [];
+
                 foreach ($request->columns as $index => $columnData) {
-                    $field = \App\Models\SchemaField::create([
+                    $fieldName = $columnData['column_name'];
+                    $incomingFieldNames[] = $fieldName;
+                    
+                    $fieldType = strtolower($columnData['data_type']);
+                    $fieldLength = $columnData['field_length'];
+
+                    if ($fieldLength > 0 && in_array($fieldType, ['varchar', 'char', 'binary', 'varbinary', 'datetime'])) {
+                       $combinedType = $fieldType . '(' . $fieldLength . ')';
+                    } else {
+                        $combinedType = $fieldType;
+                    }
+
+                    $fieldData = [
                         'table_id' => $table->id,
-                        'field_name' => $columnData['column_name'],
-                        'field_type' => $columnData['data_type'],
+                        'field_name' => $fieldName,
+                        'field_type' => $combinedType,
+                        'field_length' => $columnData['field_length'] ?? null,
+                        'is_unsigned' => $columnData['is_unsigned'] ?? false,
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
                         'is_index' => $columnData['is_index'] ?? false,
                         'is_unique' => $columnData['is_unique'] ?? false,
                         'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
-                        'field_order' => $index, // Logical order: 0, 1, 2, 3...
+                        'field_order' => $index + 1, // Logical order: 1, 2, 3, 4... (starts at 1)
                         'comment' => $columnData['comment'] ?? null,
                         // Control Type & Link fields for ComboBox, ListBox, etc.
                         'control_type' => $columnData['control_type'] ?? 'TEXT',
@@ -725,9 +797,21 @@ class SchemaController extends Controller
                         'link_display_field' => $columnData['link_display_field'] ?? null,
                         'link_order_field' => $columnData['link_order_field'] ?? null,
                         'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
-                    ]);
+                    ];
 
-                    $createdFields[$columnData['column_name']] = $field;
+                    // UPDATE existing field or INSERT new field
+                    if ($existingFields->has($fieldName)) {
+                        // UPDATE: Field already exists - preserve ID!
+                        $field = $existingFields->get($fieldName);
+                        $field->update($fieldData);
+                        Log::info("✏️ UPDATED field: {$fieldName} (ID preserved: {$field->id})");
+                    } else {
+                        // INSERT: New field
+                        $field = \App\Models\SchemaField::create($fieldData);
+                        Log::info("➕ INSERTED new field: {$fieldName} (ID: {$field->id})");
+                    }
+
+                    $updatedFields[$fieldName] = $field;
 
                     // Track constraint fields
                     if (!empty($columnData['is_primary_key'])) {
@@ -740,7 +824,20 @@ class SchemaController extends Controller
                         $uniqueFields[] = $field;
                     }
                 }
+
+                // DELETE fields that are no longer in the request
+                $fieldsToDelete = $existingFields->keys()->diff($incomingFieldNames);
+                foreach ($fieldsToDelete as $fieldName) {
+                    $field = $existingFields->get($fieldName);
+                    Log::info("🗑️ DELETING removed field: {$fieldName} (ID: {$field->id})");
+                    $field->delete();
+                }
             }
+
+            // Delete old constraints (except FK - they're saved separately)
+            \App\Models\SchemaConstraint::where('table_id', $table->id)
+                ->where('constraint_type', '!=', 'FOREIGN KEY')
+                ->delete();
 
             // Create PRIMARY KEY constraint if we have primary key fields
             if (!empty($primaryKeyFields)) {
@@ -796,6 +893,90 @@ class SchemaController extends Controller
                     'field_id' => $field->id,
                     'column_order' => 0,
                 ]);
+            }
+
+            // 🔓 RESTORE FOREIGN KEYS after recreating fields
+            foreach ($existingForeignKeys as $fkData) {
+                // Map source field names to field IDs (using updated/preserved IDs)
+                $sourceFieldIds = [];
+                foreach ($fkData['source_fields'] as $fieldName) {
+                    if (isset($updatedFields[$fieldName])) {
+                        $sourceFieldIds[] = $updatedFields[$fieldName]->id;
+                    }
+                }
+
+                // Check if all source fields still exist
+                if (count($sourceFieldIds) !== count($fkData['source_fields'])) {
+                    Log::warning('⚠️ Could not restore FK (source fields missing):', [
+                        'constraint' => $fkData['constraint_name'],
+                        'fields' => $fkData['source_fields']
+                    ]);
+                    continue;
+                }
+
+                // Find referenced table (still exists, unchanged)
+                $referencedTable = \App\Models\SchemaTable::find($fkData['referenced_table_id']);
+                if (!$referencedTable) {
+                    Log::warning('⚠️ Could not restore FK (referenced table not found):', [
+                        'constraint' => $fkData['constraint_name'],
+                        'referenced_table_id' => $fkData['referenced_table_id']
+                    ]);
+                    continue;
+                }
+
+                // Find referenced field IDs
+                $referencedFieldIds = [];
+                foreach ($fkData['referenced_fields'] as $fieldName) {
+                    $refField = \App\Models\SchemaField::where('table_id', $referencedTable->id)
+                        ->where('field_name', $fieldName)
+                        ->first();
+                    if ($refField) {
+                        $referencedFieldIds[] = $refField->id;
+                    }
+                }
+
+                // Check if all referenced fields exist
+                if (count($referencedFieldIds) !== count($fkData['referenced_fields'])) {
+                    Log::warning('⚠️ Could not restore FK (referenced fields missing):', [
+                        'constraint' => $fkData['constraint_name'],
+                        'referenced_fields' => $fkData['referenced_fields']
+                    ]);
+                    continue;
+                }
+
+                // Recreate the FK constraint
+                $restoredFK = \App\Models\SchemaConstraint::create([
+                    'table_id' => $table->id,
+                    'constraint_name' => $fkData['constraint_name'],
+                    'constraint_type' => 'FOREIGN KEY',
+                ]);
+
+                // Add constraint columns (source fields)
+                foreach ($sourceFieldIds as $index => $fieldId) {
+                    \App\Models\SchemaConstraintColumn::create([
+                        'constraint_id' => $restoredFK->id,
+                        'field_id' => $fieldId,
+                        'column_order' => $index,
+                    ]);
+                }
+
+                // Add FK reference
+                $fkReference = \App\Models\SchemaForeignKeyReference::create([
+                    'constraint_id' => $restoredFK->id,
+                    'referenced_table_id' => $fkData['referenced_table_id'],
+                    'on_delete' => $fkData['on_delete'],
+                    'on_update' => $fkData['on_update'],
+                ]);
+
+                // Add referenced columns
+                foreach ($referencedFieldIds as $refFieldId) {
+                    \App\Models\SchemaForeignKeyReferenceColumn::create([
+                        'reference_id' => $fkReference->id,
+                        'referenced_field_id' => $refFieldId,
+                    ]);
+                }
+
+                Log::info('✅ Restored Foreign Key:', ['constraint' => $fkData['constraint_name']]);
             }
 
             $table->load(['fields', 'constraints']);
@@ -1141,7 +1322,7 @@ class SchemaController extends Controller
                     \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
-                        'field_type' => $columnData['data_type'],
+                        'field_type' => strtolower($columnData['data_type']),
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
@@ -1339,11 +1520,9 @@ class SchemaController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'source_field_id' => 'required|exists:schema_fields,id',
-            'target_field_id' => 'required|exists:schema_fields,id',
-            'on_delete' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
-            'on_update' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
-            'constraint_name' => 'nullable|string|max:255',
+            'constraint_name' => 'required|string|max:255',
+            'on_delete' => 'sometimes|string|in:CASCADE,SET NULL,RESTRICT,NO ACTION,SET DEFAULT',
+            'on_update' => 'sometimes|string|in:CASCADE,SET NULL,RESTRICT,NO ACTION,SET DEFAULT',
         ]);
 
         try {
@@ -1397,7 +1576,7 @@ class SchemaController extends Controller
                 }
 
                 // Update the constraint in the new version
-                $this->updateConstraintData($newConstraint, $validated);
+                $this->updateConstraintNameAndActions($newConstraint, $validated);
 
                 return response()->json([
                     'success' => true,
@@ -1409,7 +1588,7 @@ class SchemaController extends Controller
                 ]);
             } else {
                 // Latest version - update directly
-                $this->updateConstraintData($constraint, $validated);
+                $this->updateConstraintNameAndActions($constraint, $validated);
 
                 return response()->json([
                     'success' => true,
@@ -1447,8 +1626,8 @@ class SchemaController extends Controller
         $validated = $request->validate([
             'source_field_id' => 'required|exists:schema_fields,id',
             'target_field_id' => 'required|exists:schema_fields,id',
-            'on_delete' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
-            'on_update' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION',
+            'on_delete' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION,SET DEFAULT',
+            'on_update' => 'nullable|in:CASCADE,SET NULL,RESTRICT,NO ACTION,SET DEFAULT',
             'constraint_name' => 'nullable|string|max:255',
         ]);
 
@@ -1529,6 +1708,27 @@ class SchemaController extends Controller
     /**
      * Helper: Update constraint data
      */
+    private function updateConstraintNameAndActions($constraint, $validated)
+    {
+        // Update constraint name
+        $constraint->update(['constraint_name' => $validated['constraint_name']]);
+
+        // Update on_delete and on_update actions if FK reference exists
+        $fkReference = $constraint->foreignKeyReference;
+        if ($fkReference) {
+            $updateData = [];
+            if (isset($validated['on_delete'])) {
+                $updateData['on_delete'] = $validated['on_delete'];
+            }
+            if (isset($validated['on_update'])) {
+                $updateData['on_update'] = $validated['on_update'];
+            }
+            if (!empty($updateData)) {
+                $fkReference->update($updateData);
+            }
+        }
+    }
+
     private function updateConstraintData($constraint, $validated)
     {
         // Update constraint name if provided
