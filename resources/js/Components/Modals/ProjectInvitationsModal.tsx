@@ -107,7 +107,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       console.log(t.projectinvitationsmodal102);
       loadInvitations();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [visible, project]); // Removed loadInvitations from dependencies to prevent re-render loop
 
   const sendInvitation = async () => {

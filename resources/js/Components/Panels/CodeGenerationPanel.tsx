@@ -119,7 +119,6 @@ export default function CodeGenerationPanel() {
       }
 
       const data = await response.json();
-      console.log('Projects API response:', data); // Debug log
 
       let projectsArray = data.data || data.projects || data;
 
@@ -133,13 +132,11 @@ export default function CodeGenerationPanel() {
       const uniqueProjects = projectsArray.filter((project: Project) => {
         // Skip projects without valid ID
         if (!project.id || typeof project.id !== 'number') {
-          console.warn('Skipping project without valid ID:', project);
           return false;
         }
 
         // Skip duplicates
         if (seenIds.has(project.id)) {
-          console.warn('Skipping duplicate project:', project);
           return false;
         }
 
@@ -147,8 +144,6 @@ export default function CodeGenerationPanel() {
         return true;
       });
 
-      console.log('Unique projects:', uniqueProjects); // Debug log
-      console.log('Project IDs:', uniqueProjects.map((p: Project) => ({ id: p.id, name: p.name }))); // Debug IDs
       setProjects(uniqueProjects);
     } catch (err: any) {
       setError(err.message || 'Failed to load projects');
@@ -206,15 +201,12 @@ export default function CodeGenerationPanel() {
         allLanguagesRes.json(),
       ]);
 
-      console.log('Templates API response:', templatesData); // Debug log
-
       // Extract templates from usages array
       let templatesArray: Template[] = [];
       if (templatesData.usages && Array.isArray(templatesData.usages)) {
         // Each usage has a template property
         templatesArray = templatesData.usages.map((usage: any) => usage.template).filter(Boolean);
       }
-      console.log('Templates array:', templatesArray); // Debug log
       const templatesWithFiles = await Promise.all(
         (Array.isArray(templatesArray) ? templatesArray : []).map(async (template: Template) => {
           try {
@@ -388,12 +380,7 @@ export default function CodeGenerationPanel() {
         throw new Error('Authentication required');
       }
 
-      console.log('🚀 Starting HYBRID BROWSER-BASED project generation:', {
-        projectId: selectedProjectId,
-        templateIds: Array.from(selectedTemplateIds),
-        schemaIds: Array.from(selectedSchemaIds),
-        languageCodes: Array.from(selectedLanguageCodes),
-      });
+      // Starting hybrid browser-based project generation
 
       // ==========================================================================
       // STEP 1: Fetch schema data (gtree) to get tables list
@@ -432,21 +419,10 @@ export default function CodeGenerationPanel() {
       // Track which files have been added to prevent duplicates
       const addedFiles = new Set<string>();
 
-      console.log('🔍 Generation Debug:', {
-        templatesCount: selectedTemplateIds.size,
-        tablesCount: allTables.length,
-        languagesCount: selectedLangs.length
-      });
-
       // For each template
       for (const templateId of Array.from(selectedTemplateIds)) {
         const template = templates.find(t => t.id === templateId);
-        if (!template) {
-          console.warn('Template not found:', templateId);
-          continue;
-        }
-
-        console.log('📄 Processing Template:', template.name, 'ID:', templateId);
+        if (!template) continue;
 
         // Fetch template files to determine what API calls we need
         let templateFiles: any[] = [];
@@ -458,8 +434,7 @@ export default function CodeGenerationPanel() {
             const filesData = await filesResponse.json();
             templateFiles = filesData.data || filesData || [];
           }
-        } catch (err) {
-          console.error('Failed to fetch template files:', err);
+        } catch {
           continue;
         }
 
@@ -468,13 +443,6 @@ export default function CodeGenerationPanel() {
         const projectLangFiles = templateFiles.filter(f => f.file_type === 'project_file_languages');
         const tableFiles = templateFiles.filter(f => f.file_type === 'db_table_file');
         const tableLangFiles = templateFiles.filter(f => f.file_type === 'db_table_file_languages');
-
-        console.log('  📊 File Distribution:', {
-          project: projectFiles.length,
-          projectLang: projectLangFiles.length,
-          table: tableFiles.length,
-          tableLang: tableLangFiles.length
-        });
 
         // Helper function to call API and process files
         const processAPICall = async (tableName: string | null, langCode: string | null, expectedTypes: string[]) => {
@@ -490,12 +458,6 @@ export default function CodeGenerationPanel() {
             if (langCode) {
               url.searchParams.set('language_code', langCode);
             }
-
-            console.log('    🌐 API Call:', {
-              table: tableName || 'none',
-              lang: langCode || 'none',
-              expectedTypes
-            });
 
             // Fetch pre-compiled JavaScript from backend
             const response = await fetch(url.toString(), {
@@ -534,7 +496,6 @@ export default function CodeGenerationPanel() {
                 const projectFilePatterns = ['index.php', 'static.php', 'config.php', 'bootstrap.php', 'autoload.php'];
 
                 if (projectFilePatterns.includes(originalName)) {
-                  console.log(`    ⏭️  Skipping project file in table context: ${originalName}`);
                   return false;
                 }
               }
@@ -542,19 +503,14 @@ export default function CodeGenerationPanel() {
               return true;
             });
 
-            console.log(`    📦 Processing ${processedFiles.length}/${data.processed_files?.length || 0} files (filtered by type)`);
-
             for (const processedFile of processedFiles) {
               try {
                 const fileName = processedFile.filename || processedFile.original_template || 'unknown.php';
                 const compiledJS = processedFile.compiled_content;
 
                 if (!compiledJS) {
-                  console.warn(`    ⚠️ No compiled content for file: ${fileName}`);
                   continue;
                 }
-
-                console.log(`      📝 Processing: ${fileName} (${compiledJS.length} bytes)`);
 
                 // Execute compiled JavaScript IN BROWSER
                 let generatedCode = '';
@@ -585,14 +541,11 @@ export default function CodeGenerationPanel() {
                     .replace(/\\\\u000A/g, '\n')   // \\u000A → Line Feed
                     .replace(/\\\\u000D/g, '\r');  // \\u000D → Carriage Return
 
-                  console.log(`      ✅ Generated ${generatedCode.length} bytes`);
-
                   // Clean up global scope
                   delete (window as any)[functionName];
                   delete (window as any).gtree;
 
                 } catch (execError: any) {
-                  console.error('      ❌ Execution error:', execError);
                   // Clean up on error
                   delete (window as any).gtree;
                   throw new Error(`JavaScript execution failed: ${execError.message}`);
@@ -635,7 +588,6 @@ export default function CodeGenerationPanel() {
 
                 // ✅ CHECK FOR DUPLICATES - Skip if already added
                 if (addedFiles.has(fullPath)) {
-                  console.log(`      ⏭️  Skipped duplicate: ${fullPath}`);
                   continue;
                 }
 
@@ -644,47 +596,37 @@ export default function CodeGenerationPanel() {
                 addedFiles.add(fullPath);
                 fileCount++;
 
-                console.log(`      ✅ Added to ZIP: ${fullPath} (type: ${generationType})`);
-
               } catch (fileError: any) {
                 // Log error for this specific file
-                const errorDetails = {
+                errors.push({
                   file: processedFile.filename || processedFile.original_template || 'unknown',
                   template: template.name,
                   table: tableName || undefined,
                   language: langCode || undefined,
                   error: fileError.message || 'Unknown error'
-                };
-
-                console.error('      ❌ File Error:', errorDetails);
-                errors.push(errorDetails);
+                });
               }
             }
 
           } catch (error: any) {
             // Log error for this API call
-            const errorDetails = {
+            errors.push({
               file: 'API call',
               template: template.name,
               table: tableName || undefined,
               language: langCode || undefined,
               error: error.message || 'Unknown error'
-            };
-
-            console.error('    ❌ API Call Error:', errorDetails);
-            errors.push(errorDetails);
+            });
           }
         };
 
         // 1. Process project_file and static_file (once, no table/lang)
         if (projectFiles.length > 0) {
-          console.log('  📁 Processing project/static files...');
           await processAPICall(null, null, ['project_file', 'static_file']);
         }
 
         // 2. Process project_file_languages (once per language)
         if (projectLangFiles.length > 0 && selectedLangs.length > 0) {
-          console.log('  🌍 Processing project language files...');
           for (const lang of selectedLangs) {
             await processAPICall(null, lang, ['project_file_languages']);
           }
@@ -692,7 +634,6 @@ export default function CodeGenerationPanel() {
 
         // 3. Process db_table_file (once per table)
         if (tableFiles.length > 0 && allTables.length > 0) {
-          console.log('  📊 Processing table files...');
           for (const table of allTables) {
             await processAPICall(table.tablename, null, ['db_table_file']);
           }
@@ -700,7 +641,6 @@ export default function CodeGenerationPanel() {
 
         // 4. Process db_table_file_languages (once per table × language)
         if (tableLangFiles.length > 0 && allTables.length > 0 && selectedLangs.length > 0) {
-          console.log('  🌍📊 Processing table language files...');
           for (const table of allTables) {
             for (const lang of selectedLangs) {
               await processAPICall(table.tablename, lang, ['db_table_file_languages']);
@@ -752,13 +692,7 @@ export default function CodeGenerationPanel() {
       setGenerationStats({ errors: errors.length, files: fileCount });
       setGenerationErrors(errors);
 
-      console.log('✅ Browser-based generation completed:', {
-        files: fileCount,
-        errors: errors.length,
-      });
-
     } catch (err: any) {
-      console.error('❌ Browser generation failed:', err);
       setError(err.message || 'Failed to generate project');
     } finally {
       setGenerating(false);

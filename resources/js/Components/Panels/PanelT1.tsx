@@ -533,7 +533,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
     return () => {
       window.removeEventListener('filePreviewUpdate', handleFilePreviewUpdate as EventListener);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [treeData]);
 
   // Auto-polling for File Preview updates (every 5 seconds)
@@ -583,7 +583,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [treeData]);
 
   const toggleNode = (nodeId: string) => {

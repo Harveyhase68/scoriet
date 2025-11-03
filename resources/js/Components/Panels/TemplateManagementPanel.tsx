@@ -139,7 +139,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     useEffect(() => {
         loadTemplates();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [searchTerm, categoryFilter, projectId]);
 
     // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)

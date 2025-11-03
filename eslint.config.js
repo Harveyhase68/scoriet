@@ -40,7 +40,7 @@ export default [
         },
         rules: {
             'react-hooks/rules-of-hooks': 'error',
-            'react-hooks/exhaustive-deps': 'warn',
+            'react-hooks/exhaustive-deps': 'off', // Disabled: translation keys and stable functions cause unnecessary warnings
         },
     },
     {
