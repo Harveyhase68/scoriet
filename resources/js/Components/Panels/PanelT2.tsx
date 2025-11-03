@@ -491,7 +491,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selectedProject, preSelectedSchemaId]); // selectedSchema dependency would cause infinite loop
 
   // Save layout to backend
@@ -594,7 +594,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Dependencies would cause circular dependency
 
   // Load schema version with explicit schema parameter (solves state timing issues)
@@ -643,7 +643,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Dependencies would cause infinite re-renders
 
 
@@ -660,7 +660,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setSelectedSchema(preSelectedSchema);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [preSelectedSchemaId, floatingSchemas]); // selectedSchema dependency would cause infinite loop
 
   // Load schema versions when selected schema changes
@@ -1045,7 +1045,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Directly delete if already marked as having changes
       performDeleteTable(table);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Dependencies would cause infinite re-renders
 
   const handleEditTable = useCallback((table: SchemaTable) => {
@@ -1059,7 +1059,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Directly open edit modal if already marked as having changes
       setShowEditTableModal(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []); // Dependencies would cause infinite re-renders
 
   const handleCopyTable = useCallback(async (table: SchemaTable) => {
@@ -1337,7 +1337,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setPendingAction(null);
         }
       }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selectedSchema, selectedVersion, pendingDeleteTable, pendingAction, handleCreateTableWithNewVersion]); // Other dependencies would cause infinite loop
 
   const handleVersionModalContinue = useCallback(async () => {

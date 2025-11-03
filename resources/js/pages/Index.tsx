@@ -1313,7 +1313,7 @@ export default function Index(props: IndexProps = {}) {
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isAuthenticated, checkPendingInvitation]); // Dependencies would cause infinite loop
 
   // Function to close all panels
@@ -1606,7 +1606,7 @@ export default function Index(props: IndexProps = {}) {
         }
       }
     }, 50);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isAuthenticated, projects, selectedProject, setSelectedProject, updateLayout]); // Other dependencies would cause infinite loop
 
   // Handle opening designer with pre-selected schema

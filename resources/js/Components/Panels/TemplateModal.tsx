@@ -118,7 +118,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setIsSaved(false); // New templates start as unsaved
             setHasFormChanges(false); // Reset form changes
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [visible, editingTemplate, reset, userType]);
 
     // Don't render anything if not visible - AFTER all hooks
