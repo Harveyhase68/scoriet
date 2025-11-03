@@ -952,7 +952,7 @@ class TemplateController extends Controller
         $file = $template->files()->create([
             'file_name' => $validated['file_name'],
             'file_path' => $validated['file_path'] ?? $validated['file_name'], // Use provided file_path or fallback to file_name
-            'file_content' => $validated['file_content'],
+            'file_content' => $this->normalizeLineEndings($validated['file_content']), // Normalize line endings
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? 0,
             'output_path' => $validated['output_path'] ?? '/',
@@ -990,7 +990,7 @@ class TemplateController extends Controller
         $file->update([
             'file_name' => $validated['file_name'],
             'file_path' => $validated['file_path'] ?? $file->file_path, // Preserve original file_path if not provided
-            'file_content' => $validated['file_content'],
+            'file_content' => $this->normalizeLineEndings($validated['file_content']), // Normalize line endings
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? $file->file_order,
             'output_path' => $validated['output_path'] ?? $file->output_path,
@@ -1196,5 +1196,24 @@ class TemplateController extends Controller
 
         // Return the ZIP file as download and delete after sending
         return response()->download($zipFilePath, $template->name . '.zip')->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Normalize line endings in template content
+     * Converts all line endings (Linux \n, Mac \r, Windows \r\n) to consistent \r\n
+     * This prevents parsing issues when templates are copied between systems
+     */
+    private function normalizeLineEndings(string $content): string
+    {
+        // Step 1: Convert \r\n to \n (normalize to single format)
+        $content = str_replace("\r\n", "\n", $content);
+
+        // Step 2: Convert \r to \n (old Mac style)
+        $content = str_replace("\r", "\n", $content);
+
+        // Step 3: Convert all \n to \r\n (Windows style for consistency)
+        $content = str_replace("\n", "\r\n", $content);
+
+        return $content;
     }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import JSZip from 'jszip';
 
 interface Project {
   id: number;
@@ -147,7 +148,7 @@ export default function CodeGenerationPanel() {
       });
 
       console.log('Unique projects:', uniqueProjects); // Debug log
-      console.log('Project IDs:', uniqueProjects.map(p => ({ id: p.id, name: p.name }))); // Debug IDs
+      console.log('Project IDs:', uniqueProjects.map((p: Project) => ({ id: p.id, name: p.name }))); // Debug IDs
       setProjects(uniqueProjects);
     } catch (err: any) {
       setError(err.message || 'Failed to load projects');
@@ -387,85 +388,377 @@ export default function CodeGenerationPanel() {
         throw new Error('Authentication required');
       }
 
-      console.log('🚀 Starting full project generation:', {
+      console.log('🚀 Starting HYBRID BROWSER-BASED project generation:', {
         projectId: selectedProjectId,
         templateIds: Array.from(selectedTemplateIds),
         schemaIds: Array.from(selectedSchemaIds),
         languageCodes: Array.from(selectedLanguageCodes),
       });
 
-      // Call backend API to generate full project
-      const response = await fetch(`/api/projects/${selectedProjectId}/generate-full-code`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/zip, application/json',
-        },
-        body: JSON.stringify({
-          template_ids: Array.from(selectedTemplateIds),
-          schema_ids: Array.from(selectedSchemaIds),
-          language_codes: Array.from(selectedLanguageCodes),
-        }),
+      // ==========================================================================
+      // STEP 1: Fetch schema data (gtree) to get tables list
+      // ==========================================================================
+      const gtreeDataPromises = Array.from(selectedSchemaIds).map(async (schemaId) => {
+        const response = await fetch(`/api/schemas/${schemaId}/gtree`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to load schema ${schemaId}: ${errorText}`);
+        }
+        return response.json();
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate project');
-      }
+      const gtreeDataArray = await Promise.all(gtreeDataPromises);
 
-      // 🔍 Extract error information from headers
-      const errorCount = parseInt(response.headers.get('X-Generation-Errors') || '0');
-      const fileCount = parseInt(response.headers.get('X-Generation-Files') || '0');
-      const errorDetailsEncoded = response.headers.get('X-Generation-Error-Details');
-      const moreErrors = parseInt(response.headers.get('X-Generation-Error-More') || '0');
+      // Extract all tables from all schemas
+      const allTables: any[] = [];
+      gtreeDataArray.forEach(gtreeResponse => {
+        const tables = gtreeResponse.gtree?.[0]?.project?.[0]?.tables || [];
+        allTables.push(...tables);
+      });
 
-      // Parse error details
-      let errors: GenerationError[] = [];
-      if (errorDetailsEncoded) {
+      // ==========================================================================
+      // STEP 2: Generate code using HYBRID approach
+      // Backend: Compile templates to JavaScript (supports WinDev syntax)
+      // Browser: Execute compiled JavaScript
+      // ==========================================================================
+      const zip = new JSZip();
+      const errors: GenerationError[] = [];
+      let fileCount = 0;
+
+      const selectedLangs = Array.from(selectedLanguageCodes);
+
+      // Track which files have been added to prevent duplicates
+      const addedFiles = new Set<string>();
+
+      console.log('🔍 Generation Debug:', {
+        templatesCount: selectedTemplateIds.size,
+        tablesCount: allTables.length,
+        languagesCount: selectedLangs.length
+      });
+
+      // For each template
+      for (const templateId of Array.from(selectedTemplateIds)) {
+        const template = templates.find(t => t.id === templateId);
+        if (!template) {
+          console.warn('Template not found:', templateId);
+          continue;
+        }
+
+        console.log('📄 Processing Template:', template.name, 'ID:', templateId);
+
+        // Fetch template files to determine what API calls we need
+        let templateFiles: any[] = [];
         try {
-          const decoded = atob(errorDetailsEncoded);
-          errors = JSON.parse(decoded);
-        } catch (e) {
-          console.error('Failed to parse error details:', e);
+          const filesResponse = await fetch(`/api/templates/${templateId}/files`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (filesResponse.ok) {
+            const filesData = await filesResponse.json();
+            templateFiles = filesData.data || filesData || [];
+          }
+        } catch (err) {
+          console.error('Failed to fetch template files:', err);
+          continue;
+        }
+
+        // Group files by type to determine API calls needed
+        const projectFiles = templateFiles.filter(f => f.file_type === 'project_file' || f.file_type === 'static_file');
+        const projectLangFiles = templateFiles.filter(f => f.file_type === 'project_file_languages');
+        const tableFiles = templateFiles.filter(f => f.file_type === 'db_table_file');
+        const tableLangFiles = templateFiles.filter(f => f.file_type === 'db_table_file_languages');
+
+        console.log('  📊 File Distribution:', {
+          project: projectFiles.length,
+          projectLang: projectLangFiles.length,
+          table: tableFiles.length,
+          tableLang: tableLangFiles.length
+        });
+
+        // Helper function to call API and process files
+        const processAPICall = async (tableName: string | null, langCode: string | null, expectedTypes: string[]) => {
+          try {
+            // Build API URL
+            const url = new URL(`/api/ultimate-template/${templateId}`, window.location.origin);
+            url.searchParams.set('project_id', selectedProjectId!.toString());
+
+            if (tableName) {
+              url.searchParams.set('table_name', tableName);
+            }
+
+            if (langCode) {
+              url.searchParams.set('language_code', langCode);
+            }
+
+            console.log('    🌐 API Call:', {
+              table: tableName || 'none',
+              lang: langCode || 'none',
+              expectedTypes
+            });
+
+            // Fetch pre-compiled JavaScript from backend
+            const response = await fetch(url.toString(), {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              }
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`API returned ${response.status}: ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            // Check for syntax errors from backend
+            if (data.validation?.has_syntax_errors) {
+              const syntaxErrors = data.validation.syntax_errors || [];
+              const errorMsg = syntaxErrors.map((e: any) => `${e.file}: ${e.error}`).join('; ');
+              throw new Error(`Template syntax errors: ${errorMsg}`);
+            }
+
+            // Process ONLY files of expected types
+            const processedFiles = (data.processed_files || []).filter((f: any) => {
+              // First filter: Must be expected type
+              if (!expectedTypes.includes(f.generation_type)) {
+                return false;
+              }
+
+              // ✅ SECOND FILTER: If we're processing table files (table_name is set),
+              // exclude files that are clearly project-level files (index.php, static.php, config.php)
+              // even if the API marked them as db_table_file
+              if (tableName) {
+                const originalName = (f.original_template || f.file_name || '').toLowerCase();
+                const projectFilePatterns = ['index.php', 'static.php', 'config.php', 'bootstrap.php', 'autoload.php'];
+
+                if (projectFilePatterns.includes(originalName)) {
+                  console.log(`    ⏭️  Skipping project file in table context: ${originalName}`);
+                  return false;
+                }
+              }
+
+              return true;
+            });
+
+            console.log(`    📦 Processing ${processedFiles.length}/${data.processed_files?.length || 0} files (filtered by type)`);
+
+            for (const processedFile of processedFiles) {
+              try {
+                const fileName = processedFile.filename || processedFile.original_template || 'unknown.php';
+                const compiledJS = processedFile.compiled_content;
+
+                if (!compiledJS) {
+                  console.warn(`    ⚠️ No compiled content for file: ${fileName}`);
+                  continue;
+                }
+
+                console.log(`      📝 Processing: ${fileName} (${compiledJS.length} bytes)`);
+
+                // Execute compiled JavaScript IN BROWSER
+                let generatedCode = '';
+                try {
+                  // ✅ SET GTREE AS GLOBAL VARIABLE (compiled functions expect this!)
+                  (window as any).gtree = data.gtree;
+
+                  // Execute the compiled function
+                  const globalEval = eval;
+                  globalEval(compiledJS);
+
+                  // The function name is provided by the API
+                  const functionName = processedFile.function_name || 'generate_' + fileName.replace(/[^a-zA-Z0-9]/g, '_');
+                  const generatedFunction = (window as any)[functionName];
+
+                  if (!generatedFunction) {
+                    throw new Error(`Function ${functionName} not found after eval`);
+                  }
+
+                  // Execute function (gtree is available as global variable)
+                  generatedCode = generatedFunction() || '';
+
+                  // ✅ FIX DOUBLE-ESCAPED UNICODE SEQUENCES
+                  // Backend generates \\\\uXXXX (double-backslash) which becomes \\uXXXX in the string
+                  // We need to match BOTH backslashes and replace with actual character
+                  generatedCode = generatedCode
+                    .replace(/\\\\u0009/g, '\t')   // \\u0009 → Tab
+                    .replace(/\\\\u000A/g, '\n')   // \\u000A → Line Feed
+                    .replace(/\\\\u000D/g, '\r');  // \\u000D → Carriage Return
+
+                  console.log(`      ✅ Generated ${generatedCode.length} bytes`);
+
+                  // Clean up global scope
+                  delete (window as any)[functionName];
+                  delete (window as any).gtree;
+
+                } catch (execError: any) {
+                  console.error('      ❌ Execution error:', execError);
+                  // Clean up on error
+                  delete (window as any).gtree;
+                  throw new Error(`JavaScript execution failed: ${execError.message}`);
+                }
+
+                // Build file path for ZIP - USE OUTPUT_PATH FROM TEMPLATE!
+                const generationType = processedFile.generation_type || 'project_file';
+                let outputPath = processedFile.output_path || '/';
+                const apiTableName = processedFile.table || processedFile.table_name;
+                const apiLangCode = processedFile.language_code;
+
+                // ✅ REPLACE PLACEHOLDERS in output_path
+                // %1 = table name, %2 = language code
+                outputPath = outputPath
+                  .replace(/%1/g, apiTableName || '')
+                  .replace(/%2/g, apiLangCode || '');
+
+                // Start with output_path from template (remove leading /)
+                let folderPath = outputPath.replace(/^\/+/, '');
+
+                // Add language folder if needed (ONLY if not already in output_path)
+                if ((generationType === 'project_file_languages' || generationType === 'db_table_file_languages')
+                    && apiLangCode
+                    && !outputPath.includes(apiLangCode)) {
+                  folderPath = folderPath ? `${apiLangCode}/${folderPath}` : apiLangCode;
+                }
+
+                // Add table folder if needed (ONLY if not already in output_path)
+                if ((generationType === 'db_table_file' || generationType === 'db_table_file_languages')
+                    && apiTableName
+                    && !outputPath.includes(apiTableName)) {
+                  folderPath = folderPath ? `${folderPath}/${apiTableName}` : apiTableName;
+                }
+
+                // Remove trailing slashes and clean up double slashes
+                folderPath = folderPath.replace(/\/+$/, '').replace(/\/+/g, '/');
+
+                // Build full path
+                const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
+
+                // ✅ CHECK FOR DUPLICATES - Skip if already added
+                if (addedFiles.has(fullPath)) {
+                  console.log(`      ⏭️  Skipped duplicate: ${fullPath}`);
+                  continue;
+                }
+
+                // Add to ZIP
+                zip.file(fullPath, generatedCode);
+                addedFiles.add(fullPath);
+                fileCount++;
+
+                console.log(`      ✅ Added to ZIP: ${fullPath} (type: ${generationType})`);
+
+              } catch (fileError: any) {
+                // Log error for this specific file
+                const errorDetails = {
+                  file: processedFile.filename || processedFile.original_template || 'unknown',
+                  template: template.name,
+                  table: tableName || undefined,
+                  language: langCode || undefined,
+                  error: fileError.message || 'Unknown error'
+                };
+
+                console.error('      ❌ File Error:', errorDetails);
+                errors.push(errorDetails);
+              }
+            }
+
+          } catch (error: any) {
+            // Log error for this API call
+            const errorDetails = {
+              file: 'API call',
+              template: template.name,
+              table: tableName || undefined,
+              language: langCode || undefined,
+              error: error.message || 'Unknown error'
+            };
+
+            console.error('    ❌ API Call Error:', errorDetails);
+            errors.push(errorDetails);
+          }
+        };
+
+        // 1. Process project_file and static_file (once, no table/lang)
+        if (projectFiles.length > 0) {
+          console.log('  📁 Processing project/static files...');
+          await processAPICall(null, null, ['project_file', 'static_file']);
+        }
+
+        // 2. Process project_file_languages (once per language)
+        if (projectLangFiles.length > 0 && selectedLangs.length > 0) {
+          console.log('  🌍 Processing project language files...');
+          for (const lang of selectedLangs) {
+            await processAPICall(null, lang, ['project_file_languages']);
+          }
+        }
+
+        // 3. Process db_table_file (once per table)
+        if (tableFiles.length > 0 && allTables.length > 0) {
+          console.log('  📊 Processing table files...');
+          for (const table of allTables) {
+            await processAPICall(table.tablename, null, ['db_table_file']);
+          }
+        }
+
+        // 4. Process db_table_file_languages (once per table × language)
+        if (tableLangFiles.length > 0 && allTables.length > 0 && selectedLangs.length > 0) {
+          console.log('  🌍📊 Processing table language files...');
+          for (const table of allTables) {
+            for (const lang of selectedLangs) {
+              await processAPICall(table.tablename, lang, ['db_table_file_languages']);
+            }
+          }
         }
       }
 
-      // Update state with generation results
-      setGenerationStats({ errors: errorCount, files: fileCount });
-      setGenerationErrors(errors);
+      // ==========================================================================
+      // STEP 4: Add ERRORS.txt if there are errors
+      // ==========================================================================
+      if (errors.length > 0) {
+        let errorsContent = '='.repeat(80) + '\n';
+        errorsContent += 'GENERATION ERRORS REPORT\n';
+        errorsContent += '='.repeat(80) + '\n\n';
+        errorsContent += `Total Errors: ${errors.length}\n`;
+        errorsContent += `Total Files Generated: ${fileCount}\n`;
+        errorsContent += `Generated: ${new Date().toISOString()}\n\n`;
+        errorsContent += '='.repeat(80) + '\n\n';
 
-      // Get the ZIP file as a blob
-      const blob = await response.blob();
+        errors.forEach((err, index) => {
+          errorsContent += `ERROR #${index + 1}\n`;
+          errorsContent += `Template: ${err.template}\n`;
+          errorsContent += `File: ${err.file}\n`;
+          if (err.table) errorsContent += `Table: ${err.table}\n`;
+          if (err.language) errorsContent += `Language: ${err.language}\n`;
+          errorsContent += `Error: ${err.error}\n`;
+          errorsContent += '-'.repeat(80) + '\n\n';
+        });
 
-      // Extract filename from Content-Disposition header or create default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'generated_project.zip';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
+        zip.file('ERRORS.txt', errorsContent);
       }
 
-      // Create download link and trigger download
-      const url = window.URL.createObjectURL(blob);
+      // ==========================================================================
+      // STEP 5: Generate ZIP and trigger download
+      // ==========================================================================
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+      const url = window.URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = `generated_project_${Date.now()}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log('✅ Project generated and downloaded successfully', {
+      // Update state
+      setGenerationStats({ errors: errors.length, files: fileCount });
+      setGenerationErrors(errors);
+
+      console.log('✅ Browser-based generation completed:', {
         files: fileCount,
-        errors: errorCount,
-        moreErrors: moreErrors,
+        errors: errors.length,
       });
 
     } catch (err: any) {
-      console.error('❌ Generation failed:', err);
+      console.error('❌ Browser generation failed:', err);
       setError(err.message || 'Failed to generate project');
     } finally {
       setGenerating(false);
