@@ -1331,6 +1331,130 @@ Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
     }
 });
 
+// GTREE BY SCHEMA ID - Get latest version automatically
+Route::get('/schemas/{schemaId}/gtree', function ($schemaId) {
+    try {
+        // Get the latest version for this schema
+        $latestVersion = \App\Models\SchemaVersion::where('schema_id', $schemaId)
+            ->orderBy('version_number', 'desc')
+            ->first();
+
+        if (!$latestVersion) {
+            return response()->json([
+                'error' => 'No versions found for this schema',
+                'schema_id' => $schemaId
+            ], 404);
+        }
+
+        // Use the existing gtree-test logic
+        $schemaTables = \App\Models\SchemaTable::where('schema_version_id', $latestVersion->id)
+            ->with(['fields' => function($query) {
+                $query->orderBy('field_order');
+            }, 'constraints'])
+            ->get();
+
+        $projectData = [
+            'projectname' => 'GlobalProject',
+            'nmaxfiles' => $schemaTables->count(),
+            'tables' => []
+        ];
+
+        foreach ($schemaTables as $table) {
+            $fields = $table->fields;
+            $constraints = $table->constraints;
+
+            $mappedFields = $fields->map(function($field) {
+                $controltype = match($field->field_type) {
+                    'int', 'integer', 'bigint', 'smallint', 'tinyint' => 14,
+                    'varchar', 'char' => 24,
+                    'string' => 25,
+                    'text', 'longtext', 'mediumtext' => 26,
+                    'decimal', 'float', 'double' => 27,
+                    'date' => 28,
+                    'datetime', 'timestamp' => 29,
+                    'boolean', 'bool', 'tinyint(1)' => 30,
+                    default => 24
+                };
+
+                $typecast = match($field->field_type) {
+                    'int', 'integer', 'bigint', 'smallint', 'tinyint' => '(int)',
+                    'decimal', 'float', 'double' => '(float)',
+                    'boolean', 'bool', 'tinyint(1)' => '(bool)',
+                    default => ''
+                };
+
+                return [
+                    'name' => $field->field_name,
+                    'type' => $field->field_type,
+                    'controltype' => $controltype,
+                    'typecast' => $typecast,
+                    'is_nullable' => $field->is_nullable,
+                    'order' => $field->field_order
+                ];
+            })->toArray();
+
+            $mappedKeys = $constraints->map(function($constraint, $index) {
+                return [
+                    'name' => $constraint->constraint_name ?? 'key_' . ($index + 1),
+                    'id' => $index + 1,
+                    'key' => $constraint->column_name ?? '',
+                    'type' => $constraint->constraint_type ?? 'INDEX',
+                    'typecast' => ''
+                ];
+            })->toArray();
+
+            $projectData['tables'][] = [
+                'tablename' => $table->table_name,
+                'nmaxitems' => $fields->count(),
+                'nmaxsearchkeys' => $fields->count(),
+                'nmaxitemsnokey' => $fields->where('field_name', '!=', 'id')->count(),
+                'nmaxkeys' => $constraints->count(),
+                'nmaxforeignkeys' => 0,
+                'fields' => $mappedFields,
+                'keys' => $mappedKeys,
+                'filename' => $table->table_name,
+                'filenameshort' => substr($table->table_name, 0, 8),
+                'fileid' => $table->table_name,
+                'filenamecc' => ucwords(str_replace('_', '', $table->table_name)),
+                'filegeneratemasterdetail' => false,
+                'filedetailfileid' => '',
+                'filedetailfilename' => '',
+                'filedetailkey' => '',
+                'primarykeyfield' => $fields->where('field_name', 'id')->first()?->field_name
+                                 ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                                 ?? $fields->first()?->field_name
+                                 ?? 'id',
+                'filekeyname' => $fields->where('field_name', 'id')->first()?->field_name
+                             ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
+                             ?? $fields->first()?->field_name
+                             ?? 'id'
+            ];
+        }
+
+        $gtree = [
+            [
+                'project' => [$projectData]
+            ]
+        ];
+
+        return response()->json([
+            'schema_id' => $schemaId,
+            'schema_version_id' => $latestVersion->id,
+            'version_number' => $latestVersion->version_number,
+            'gtree' => $gtree,
+            'tables_count' => $schemaTables->count(),
+            'timestamp' => now()
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'error' => 'Exception occurred',
+            'message' => $e->getMessage(),
+            'schema_id' => $schemaId
+        ], 500);
+    }
+});
+
 // DEBUG: Test the exact same join-code logic without auth
 Route::get('/debug-join-code/{joinCode}', function ($joinCode) {
     $project = \App\Models\Project::where('join_code', $joinCode)
