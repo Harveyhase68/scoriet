@@ -269,7 +269,7 @@ export default function LoginModal({
             <button 
               type="button"
               className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-              onClick={() => window.location.href = 'http://10.0.0.8:8000/demo-login?user=demo-admin'}
+              onClick={() => window.location.href = 'https://demo.scoriet.dev/demo-login?user=demo-admin'}
               disabled={loading}
             >
               <strong className="text-blue-800">demo-admin</strong>
