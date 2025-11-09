@@ -38,12 +38,38 @@ export default function LandingPage() {
   const toast = useRef<Toast>(null);
   
   // State management
-  const [isDemoMode] = useState<boolean>(import.meta.env.VITE_SCORIET_DEMO === 'true'); // Set demo mode based on your app logic
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(
+    import.meta.env.VITE_SCORIET_DEMO === 'true' ||
+    sessionStorage.getItem('demo_mode') === 'true'
+  );
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // Initialize based on token existence to prevent flash of unauthenticated content
+    const localToken = localStorage.getItem('access_token');
+    const sessionToken = sessionStorage.getItem('access_token');
+    return !!(localToken || sessionToken);
+  });
+
+  // Listen for demo mode and auth changes
+  useEffect(() => {
+    const checkDemoMode = () => {
+      setIsDemoMode(
+        import.meta.env.VITE_SCORIET_DEMO === 'true' ||
+        sessionStorage.getItem('demo_mode') === 'true'
+      );
+    };
+
+    window.addEventListener('storage', checkDemoMode);
+    window.addEventListener('auth-change', checkDemoMode);
+
+    return () => {
+      window.removeEventListener('storage', checkDemoMode);
+      window.removeEventListener('auth-change', checkDemoMode);
+    };
+  }, []);
   const [openHomeOnStart, setOpenHomeOnStart] = useState<boolean>(() => {
     const setting = localStorage.getItem('open_home_on_start');
     return setting === null || setting === 'true';
@@ -301,7 +327,7 @@ export default function LandingPage() {
 
       <div className="min-h-screen bg-gray-900 text-white overflow-y-auto max-h-screen">
         {/* Settings Panel (only shown in tab view) */}
-        {isAuthenticated && window.location.pathname === '/app' && (
+        {isAuthenticated && (window.location.pathname === '/app' || window.location.pathname === '/demo-login') && (
           <div className="bg-gray-800 border-b border-gray-700 p-3">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between">
