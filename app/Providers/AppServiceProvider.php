@@ -45,22 +45,27 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
 
         // 🔒 SCHUTZ: Verhindere passport:install in bestehenden Projekten
         // Schützt OAuth Clients vor versehentlichem Überschreiben
-        if (Schema::hasTable('oauth_clients')) {
-            Artisan::command('passport:install {--force : Force the operation to run}', function () {
-                $this->error('⚠️  FEHLER: passport:install darf nicht in bestehenden Projekten ausgeführt werden!');
-                $this->error('');
-                $this->error('Die OAuth Clients existieren bereits in der Datenbank.');
-                $this->error('Ein erneutes Ausführen würde die bestehenden Clients überschreiben!');
-                $this->error('');
-                $this->info('💡 Wenn Sie neue OAuth Clients erstellen möchten, verwenden Sie:');
-                $this->info('   php artisan passport:client --password    # Password Grant Client');
-                $this->info('   php artisan passport:client --personal    # Personal Access Client');
-                $this->info('   php artisan passport:client               # Standard OAuth Client');
-                $this->error('');
-                $this->error('Dieser Schutz ist in app/Providers/AppServiceProvider.php implementiert.');
+        try {
+            // Prüfe nur wenn DB-Verbindung verfügbar (verhindert Fehler bei composer install in CI)
+            if (Schema::hasTable('oauth_clients')) {
+                Artisan::command('passport:install {--force : Force the operation to run}', function () {
+                    $this->error('⚠️  FEHLER: passport:install darf nicht in bestehenden Projekten ausgeführt werden!');
+                    $this->error('');
+                    $this->error('Die OAuth Clients existieren bereits in der Datenbank.');
+                    $this->error('Ein erneutes Ausführen würde die bestehenden Clients überschreiben!');
+                    $this->error('');
+                    $this->info('💡 Wenn Sie neue OAuth Clients erstellen möchten, verwenden Sie:');
+                    $this->info('   php artisan passport:client --password    # Password Grant Client');
+                    $this->info('   php artisan passport:client --personal    # Personal Access Client');
+                    $this->info('   php artisan passport:client               # Standard OAuth Client');
+                    $this->error('');
+                    $this->error('Dieser Schutz ist in app/Providers/AppServiceProvider.php implementiert.');
 
-                return 1; // Exit code 1 = Fehler
-            })->describe('BLOCKIERT: Passport ist bereits installiert. Schutz gegen versehentliches Überschreiben.');
+                    return 1; // Exit code 1 = Fehler
+                })->describe('BLOCKIERT: Passport ist bereits installiert. Schutz gegen versehentliches Überschreiben.');
+            }
+        } catch (\Exception $e) {
+            // DB nicht verfügbar (z.B. während composer install in CI) - ignorieren
         }
 
         // Default token expiry (will be overridden in CustomTokenController for remember_me)
