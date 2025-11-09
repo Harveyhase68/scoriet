@@ -39,9 +39,12 @@ describe('Authentication System', function () {
         $response = $this->postJson('/api/auth/register', $userData);
 
         $response->assertStatus(422)
-                ->assertJson([
-                    'message' => 'Validierungsfehler'
-                ]);
+                ->assertJsonStructure([
+                    'message',
+                    'errors',
+                    'field_errors'
+                ])
+                ->assertJsonValidationErrors(['name', 'email', 'password']);
     });
 
     test('unauthenticated user cannot access protected routes', function () {
