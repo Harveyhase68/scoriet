@@ -1643,6 +1643,7 @@ export const de: Translations = {
   editprojectmodal230: 'Projektname *',
   editprojectmodal240: 'mein_Projektname',
   editprojectmodal252: 'Beschreibung',
+  editprojectmodal569: 'Projekt-Namen werden später für URLs verwendet (username/project_name)',
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal260: 'Projektbeschreibung eingeben',
@@ -2467,7 +2468,7 @@ export const de: Translations = {
   debugmanualgeneratorpanel1270: '📄 Vorlage',
 
   // resources/js\Components\Panels\DebugManualGeneratorPanel.tsx
-  debugmanualgeneratorpanel1277: 'Template wÃ¤hlen',
+  debugmanualgeneratorpanel1277: 'Template wählen',
 
   // resources/js/Components/Panels/DebugManualGeneratorPanel.tsx
   debugmanualgeneratorpanel1284: '📝 Template Datei',

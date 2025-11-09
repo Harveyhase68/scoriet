@@ -246,7 +246,7 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Projekt-Namen werden später für URLs verwendet (username/project_name)
+                {t.editprojectmodal569}
               </div>
               <div className="text-xs text-orange-400 mt-1">
                 ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)

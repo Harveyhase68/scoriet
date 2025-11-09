@@ -84,12 +84,12 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
   const setFocus = () => ref.current?.focus();
 
   return (
-    <div 
-      {...rest} 
+    <div
+      {...rest}
       ref={ref}
-      tabIndex={-1} 
-      style={{ flex: 1, padding: '0', height: '100%', ...style }} 
-      onMouseDownCapture={setFocus} 
+      tabIndex={-1}
+      style={{ flex: 1, padding: '0', height: '100%', ...style }}
+      onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
       className="bg-gray-800 text-gray-100"
     >
@@ -105,11 +105,10 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
   const { t } = useTranslation(currentLanguage);
 
   return (
-    <div className={`shadow-lg rounded-lg border-2 w-full h-full flex flex-col ${
-      selected 
-        ? 'border-blue-400 bg-gray-700' 
-        : 'border-gray-600 bg-gray-800'
-    }`} style={{ minWidth: 250, minHeight: 150 }}>
+    <div className={`shadow-lg rounded-lg border-2 w-full h-full flex flex-col ${selected
+      ? 'border-blue-400 bg-gray-700'
+      : 'border-gray-600 bg-gray-800'
+      }`} style={{ minWidth: 250, minHeight: 150 }}>
       {/* Node Resizer - only show when selected */}
       {selected && (
         <NodeResizer
@@ -174,7 +173,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Fields - Scrollable List */}
       <div className="flex-1 p-3 overflow-hidden">
         {data.fields.length > 0 ? (
@@ -197,7 +196,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
           <div className="text-gray-400 text-xs text-center">No fields</div>
         )}
       </div>
-      
+
       {/* Handles */}
       <Handle
         type="target"
@@ -253,11 +252,11 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
 
     // Check if we have saved layout for this table
     const savedLayout = savedLayouts[table.table_name];
-    
+
     let position;
     let width = undefined;
     let height = undefined;
-    
+
     if (savedLayout) {
       // Use saved position and dimensions
       position = {
@@ -425,13 +424,13 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setSelectedSchema(null);
       setSchemaVersions([]);
       setSelectedVersion(null);
-      return;
+      return [];
     }
 
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load schemas associated with the current project
       const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
         headers: {
@@ -439,26 +438,26 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error(t.panelt2405);
         }
         throw new Error(`Failed to load schemas: ${response.statusText}`);
       }
-      
+
       const schemas = await response.json();
       setFloatingSchemas(schemas);
-      
+
       // If we're preserving a specific schema ID, find and select it
       if (preserveSchemaId) {
         const schemaToPreserve = schemas.find((s: FloatingSchema) => s.id === preserveSchemaId);
         if (schemaToPreserve) {
           setSelectedSchema(schemaToPreserve);
-          return; // Exit early, don't do auto-selection
+          return schemas; // Return schemas array
         }
       }
-      
+
       // Auto-select first editable schema only if no schema is currently selected
       // and no preSelectedSchemaId is provided
       if (!preSelectedSchemaId && !selectedSchema) {
@@ -467,7 +466,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setSelectedSchema(editableSchema);
         }
       }
-      
+
       // If preSelectedSchemaId is provided and schema exists, select it
       if (preSelectedSchemaId && !selectedSchema) {
         const preSelectedSchema = schemas.find((s: FloatingSchema) => s.id === preSelectedSchemaId);
@@ -475,10 +474,12 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setSelectedSchema(preSelectedSchema);
         }
       }
+
+      return schemas;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t.databaseexportmodal71;
       setError(errorMessage);
-      
+
       // If it's an auth error, clear the state
       if (errorMessage.includes(t.panelt2443)) {
         setNodes([]);
@@ -488,10 +489,11 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setSchemaVersions([]);
         setSelectedVersion(null);
       }
+      return [];
     } finally {
       setLoading(false);
     }
-   
+
   }, [selectedProject, preSelectedSchemaId]); // selectedSchema dependency would cause infinite loop
 
   // Save layout to backend
@@ -550,7 +552,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } catch {
       // Error loading layout
     }
-    
+
     return {};
   }, []);
 
@@ -558,24 +560,24 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load schema versions: ${response.statusText}`);
       }
-      
+
       const versions = await response.json();
       setSchemaVersions(versions);
-      
+
       // Auto-select latest version or clear if no versions
       if (versions.length > 0) {
-        const latestVersion = versions.reduce((latest: SchemaVersionExtended, current: SchemaVersionExtended) => 
+        const latestVersion = versions.reduce((latest: SchemaVersionExtended, current: SchemaVersionExtended) =>
           (current.version_number || 0) > (latest.version_number || 0) ? current : latest
         );
         await loadSchemaVersionWithSchema(schema, latestVersion);
@@ -585,7 +587,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setNodes([]);
         setEdges([]);
       }
-      
+
       return versions;
     } catch (err) {
       setError(err instanceof Error ? err.message : t.databaseexportmodal114);
@@ -594,42 +596,42 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-   
+
   }, []); // Dependencies would cause circular dependency
 
   // Load schema version with explicit schema parameter (solves state timing issues)
   const loadSchemaVersionWithSchema = useCallback(async (schema: FloatingSchema, version: SchemaVersionExtended) => {
     try {
       setLoading(true);
-      
+
       // FIRST: Set the selected version so it's available
       setSelectedVersion(version);
-      
+
       const response = await fetch(`/api/schema-versions/${version.id}/tables`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load schema version tables: ${response.statusText}`);
       }
-      
+
       const tables = await response.json();
-      
+
       if (tables && tables.length > 0) {
         // Load saved layouts for this version with explicit schema parameter
         const savedLayouts = await loadLayoutForVersion(schema, version);
-        
+
         // Check if this is the latest version - use the passed parameters, not state
-        const isLatestVersion = schema && version && 
+        const isLatestVersion = schema && version &&
           version.version_number === schema.last_version;
-        
-        
+
+
         const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, handleCopyTable, isLatestVersion);
         const newEdges = convertSchemaToEdges(tables);
-        
+
         setNodes(newNodes);
         setEdges(newEdges);
         setError(null);
@@ -643,7 +645,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     } finally {
       setLoading(false);
     }
-   
+
   }, []); // Dependencies would cause infinite re-renders
 
 
@@ -660,7 +662,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         setSelectedSchema(preSelectedSchema);
       }
     }
-   
+
   }, [preSelectedSchemaId, floatingSchemas]); // selectedSchema dependency would cause infinite loop
 
   // Load schema versions when selected schema changes
@@ -670,7 +672,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     setSelectedVersion(null);
     setNodes([]);
     setEdges([]);
-    
+
     if (selectedSchema) {
       loadSchemaVersions(selectedSchema);
     }
@@ -712,11 +714,26 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     }
   }, []);
 
-  const handleImportSuccess = () => {
+  const handleImportSuccess = async (result: any) => {
     // Reload floating schemas to include the new one
-    loadFloatingSchemas().then(() => {
-      // The new schema should be auto-selected by loadFloatingSchemas
-    });
+    const schemas = await loadFloatingSchemas();
+
+    // Automatically load the imported schema with the new version (including generated layout)
+    if (result.schema_id && result.version_number) {
+      const importedSchema = schemas.find((s: FloatingSchema) => s.id === result.schema_id);
+      if (importedSchema) {
+        setSelectedSchema(importedSchema);
+
+        // Load versions for this schema
+        const versions = await loadSchemaVersions(importedSchema);
+
+        // Find and load the newly created version
+        const newVersion = versions.find(v => v.version_number === result.version_number);
+        if (newVersion) {
+          await loadSchemaVersionWithSchema(importedSchema, newVersion);
+        }
+      }
+    }
   };
 
   // Handle creating a new table with smart version detection
@@ -1045,7 +1062,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Directly delete if already marked as having changes
       performDeleteTable(table);
     }
-   
+
   }, []); // Dependencies would cause infinite re-renders
 
   const handleEditTable = useCallback((table: SchemaTable) => {
@@ -1059,7 +1076,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Directly open edit modal if already marked as having changes
       setShowEditTableModal(true);
     }
-   
+
   }, []); // Dependencies would cause infinite re-renders
 
   const handleCopyTable = useCallback(async (table: SchemaTable) => {
@@ -1295,49 +1312,49 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         return;
       }
 
-        try {
-          // Use the new API endpoint that creates version copy AND deletes table in one operation
-          const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              description: `Table deletion: ${pendingDeleteTable.table_name}`
-            })
-          });
+      try {
+        // Use the new API endpoint that creates version copy AND deletes table in one operation
+        const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            description: `Table deletion: ${pendingDeleteTable.table_name}`
+          })
+        });
 
-          if (!response.ok) {
-            throw new Error(t.panelt21054);
-          }
-
-          const result = await response.json();
-
-          if (result.success && result.new_version_number) {
-            // Reload floating schemas to update last_version
-            await loadFloatingSchemas();
-
-            // Reload schema versions to get the new version
-            const newVersions = await loadSchemaVersions(selectedSchema);
-            const newVersion = newVersions?.find((v: SchemaVersionExtended) => v.version_number === result.new_version_number);
-
-            if (newVersion) {
-              setSelectedVersion(newVersion);
-              // Refresh the table view for the new version
-              loadSchemaVersionWithSchema(selectedSchema, newVersion);
-            }
-          }
-        } catch (err) {
-          // Error creating new version and deleting table
-          setError(err instanceof Error ? err.message : t.panelt21075);
-        } finally {
-          setShowVersionModal(false);
-          setPendingDeleteTable(null);
-          setPendingAction(null);
+        if (!response.ok) {
+          throw new Error(t.panelt21054);
         }
+
+        const result = await response.json();
+
+        if (result.success && result.new_version_number) {
+          // Reload floating schemas to update last_version
+          await loadFloatingSchemas();
+
+          // Reload schema versions to get the new version
+          const newVersions = await loadSchemaVersions(selectedSchema);
+          const newVersion = newVersions?.find((v: SchemaVersionExtended) => v.version_number === result.new_version_number);
+
+          if (newVersion) {
+            setSelectedVersion(newVersion);
+            // Refresh the table view for the new version
+            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+          }
+        }
+      } catch (err) {
+        // Error creating new version and deleting table
+        setError(err instanceof Error ? err.message : t.panelt21075);
+      } finally {
+        setShowVersionModal(false);
+        setPendingDeleteTable(null);
+        setPendingAction(null);
       }
-   
+    }
+
   }, [selectedSchema, selectedVersion, pendingDeleteTable, pendingAction, handleCreateTableWithNewVersion]); // Other dependencies would cause infinite loop
 
   const handleVersionModalContinue = useCallback(async () => {
@@ -1457,14 +1474,14 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     // Store current selections to preserve them
     const currentSchemaId = selectedSchema?.id;
     const currentVersion = selectedVersion;
-    
+
     // Clear current diagram to prevent "ghost" tables
     setNodes([]);
     setEdges([]);
-    
+
     // Reload schemas with preservation of current selection
     await loadFloatingSchemas(currentSchemaId);
-    
+
     // If we had a schema and version selected, reload the version data
     if (currentSchemaId && currentVersion) {
       setTimeout(() => {
@@ -1676,23 +1693,224 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     }
   }, [createFKSourceFieldId, createFKTargetFieldId, createFKName, createFKOnDelete, createFKOnUpdate, nodes, selectedSchema, selectedVersion, loadSchemaVersions, loadSchemaVersionWithSchema, schemaVersions, t.applicationsmodal66]);
 
+
+  const handleCreateFKClick = () => {
+    // Wenn genau 2 Tabellen ausgewählt sind, als Quelle und Ziel vorbelegen
+    if (selectedTableIds.length === 2) {
+      setCreateFKSourceTableId(selectedTableIds[0]);
+      setCreateFKTargetTableId(selectedTableIds[1]);
+    }
+    setShowCreateFKModal(true);
+  };
+
+  const handleClipboardPaste = async () => {
+
+    try {
+      // Try to read from clipboard
+      const clipboardText = await navigator.clipboard.readText();
+      const tableData = JSON.parse(clipboardText);
+
+      if (!tableData._scoriet_table_copy) {
+        setError('Clipboard does not contain a valid Scoriet table. Please copy a table first.');
+        return;
+      }
+
+      // If no version exists, create initial version first
+      if (!selectedVersion) {
+        confirmDialog({
+          message: 'No version exists yet. Do you want to create the initial version 1 and paste the table?',
+          header: 'Create Initial Version',
+          icon: 'pi pi-exclamation-triangle',
+          accept: async () => {
+            try {
+              setLoading(true);
+              const token = localStorage.getItem('access_token');
+              const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json',
+                },
+                body: JSON.stringify({ description: 'Initial version' }),
+              });
+
+              if (!response.ok) throw new Error('Failed to create initial version');
+
+              // Reload versions
+              await loadSchemaVersions(selectedSchema!);
+
+              // Set paste data and open modal
+              const baseName = tableData.table_name;
+              const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
+              let suggestedName = `${baseName}_copy`;
+              let counter = 2;
+              while (existingTables.includes(suggestedName)) {
+                suggestedName = `${baseName}_copy_${counter}`;
+                counter++;
+              }
+              setPasteTableName(suggestedName);
+              setPasteTableData(tableData);
+              setTimeout(() => setShowPasteModal(true), 300);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Failed to create initial version');
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+        return;
+      }
+
+      // Generate suggested name
+      const baseName = tableData.table_name;
+      const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
+      let suggestedName = `${baseName}_copy`;
+      let counter = 2;
+      while (existingTables.includes(suggestedName)) {
+        suggestedName = `${baseName}_copy_${counter}`;
+        counter++;
+      }
+      setPasteTableName(suggestedName);
+      setPasteTableData(tableData);
+      setShowPasteModal(true);
+    } catch {
+      setError('No valid table found in clipboard. Please copy a table first.');
+    }
+  }
+  const handleShowImportModal = () => {
+    setShowImportModal(true);
+  }
+
+  const handleSortDiagram = useCallback(async () => {
+    if (!selectedSchema || !selectedVersion || nodes.length === 0) {
+      setError('No schema, version, or tables available for sorting');
+      return;
+    }
+
+    if (!selectedProject) {
+      setError('No project selected');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Diagram-Einstellungen vom Projekt holen (mit Defaults)
+      const tableWidth = selectedProject.diagram_table_width || 280;
+      const tableHeight = selectedProject.diagram_table_height || 450;
+
+      // Tabellennamen und Fremdschlüssel aus aktuellen Nodes extrahieren
+      const tables = nodes.map(node => (node.data as any).tableName);
+      const foreignKeys: string[][] = [];
+
+      // Fremdschlüssel-Beziehungen aus den aktuellen Edges extrahieren
+      edges.forEach(edge => {
+        if (edge.data && (edge.data as any).sourceTable && (edge.data as any).targetTable) {
+          foreignKeys.push([(edge.data as any).sourceTable, (edge.data as any).targetTable]);
+        }
+      });
+
+      // DEBUG: Logge die Daten vor dem API-Aufruf
+      console.log('🐛 [FRONTEND-DEBUG] Sending to layout API:', {
+        tables: tables,
+        foreignKeys: foreignKeys,
+        projectId: selectedProject.id,
+        tablesCount: tables.length,
+        foreignKeysCount: foreignKeys.length,
+        diagramSettings: {
+          tableWidth,
+          tableHeight,
+          maxTablesPerRow: selectedProject.diagram_max_tables_per_row,
+          horizontalSpacing: selectedProject.diagram_horizontal_spacing,
+          verticalSpacing: selectedProject.diagram_vertical_spacing
+        }
+      });
+
+      const response = await fetch('/api/diagram/layout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tables: tables,
+          foreignKeys: foreignKeys,
+          project_id: selectedProject.id
+        })
+      });
+
+      const layoutData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`Failed to sort diagram: ${response.statusText}`);
+      } else {
+        console.log('🐛 [FRONTEND-DEBUG] received API answer:', {
+          tables: layoutData
+        });
+      };
+
+      if (layoutData && layoutData.nodes) {
+        // Neue Positionen auf die aktuellen Nodes anwenden
+        const updatedNodes = nodes.map(node => {
+          const tableName = (node.data as any).tableName;
+          const newPosition = layoutData.nodes[tableName];
+
+          if (newPosition) {
+            return {
+              ...node,
+              position: {
+                x: newPosition.x,
+                y: newPosition.y
+              },
+              height: tableHeight,
+              width: tableWidth,
+              measured: {
+                width: tableWidth,
+                height: tableHeight
+              }
+            };
+          }
+
+          return node;
+        });
+
+        // Layout automatisch speichern
+        await saveLayout(updatedNodes);
+
+        // Diagramm komplett aus DB neu laden (wie Refresh-Button)
+        // Dadurch werden die gespeicherten Positionen korrekt angezeigt
+        await loadSchemaVersionWithSchema(selectedSchema!, selectedVersion);
+      } else if (layoutData && layoutData.error) {
+        // Fehler vom Backend anzeigen
+        setError(layoutData.error);
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sort diagram');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedSchema, selectedVersion, selectedProject, nodes, edges, saveLayout, loadSchemaVersionWithSchema]);
+
   return (
     <TabContent style={{}}>
       <div className="h-full flex flex-col" style={{ height: '100%' }}>
         {/* Header */}
-        <div className="flex justify-between items-center p-4 bg-gray-900 border-b border-gray-600 flex-shrink-0">
+        <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-blue-400">🗃️ Database Designer</h3>
+            <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
             <p className="text-sm text-gray-400">
-              {selectedSchema && selectedVersion 
+              {selectedSchema && selectedVersion
                 ? `${selectedSchema.name} (v${selectedVersion.version_number}) - ${nodes.length} tables`
                 : selectedSchema && schemaVersions.length === 0
                   ? `${selectedSchema.name} (no versions) - empty schema`
-                : selectedSchema
-                  ? t.panelt21289
-                : selectedProject 
-                  ? t.panelt21133
-                  : t.databaseexportmodal344
+                  : selectedSchema
+                    ? t.panelt21289
+                    : selectedProject
+                      ? t.panelt21133
+                      : t.databaseexportmodal344
               }
             </p>
           </div>
@@ -1710,8 +1928,8 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
             >
               <option value="">{selectedProject ? 'Select Schema' : t.panelt21308}</option>
               {floatingSchemas.map(schema => {
-                const typeIcon = schema.association_type === 'linked' ? '🔗' : 
-                               schema.association_type === 'cloned' ? '📋' : '📥';
+                const typeIcon = schema.association_type === 'linked' ? '🔗' :
+                  schema.association_type === 'cloned' ? '📋' : '📥';
                 return (
                   <option key={schema.id} value={schema.id}>
                     {typeIcon} {schema.alias || schema.name} (v{schema.last_version || 'new'})
@@ -1719,7 +1937,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 );
               })}
             </select>
-            
+
             {/* Version Selector (only show if schema selected) */}
             {selectedSchema && schemaVersions.length > 0 && (
               <select
@@ -1734,7 +1952,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
               >
                 {schemaVersions.map(version => {
-                  const displayText = version.version_number && version.imported_at 
+                  const displayText = version.version_number && version.imported_at
                     ? `v${version.version_number} - ${new Date(version.imported_at).toLocaleDateString('de-DE')}`
                     : version.version_name;
                   return (
@@ -1745,137 +1963,75 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 })}
               </select>
             )}
-            
+          </div>
+        </div>
+
+        {/* Compact Toolbar with Icons Only */}
+        <div className="bg-gray-900 border-b border-gray-600 px-3 py-2 flex items-center justify-end">
+          <div className="flex gap-2">
             <button
               onClick={handleRefresh}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh"
             >
-              🔄 Refresh
+              <i className="pi pi-refresh"></i>
             </button>
 
             <button
               onClick={handleCreateNewVersion}
-              className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedSchema}
-              title={t.panelt21358}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t.panelt21358 || "Create New Version"}
             >
-              ➕ New Version
+              <i className="pi pi-plus"></i>
             </button>
 
             <button
-              onClick={() => setShowImportModal(true)}
-              className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm transition-colors"
+              onClick={handleShowImportModal}
               disabled={loading || !selectedProject}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Import SQL"
             >
-              📥 Import SQL
+              <i className="pi pi-upload"></i>
             </button>
 
             <button
-              onClick={() => {
-                // If exactly 2 tables are selected, pre-fill them as Source and Target
-                if (selectedTableIds.length === 2) {
-                  setCreateFKSourceTableId(selectedTableIds[0]);
-                  setCreateFKTargetTableId(selectedTableIds[1]);
-                }
-                setShowCreateFKModal(true);
-              }}
-              className="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm transition-colors"
+              onClick={handleCreateFKClick}
               disabled={loading || !selectedSchema || !selectedVersion}
-              title="Add Foreign Key relationship (Select 2 tables with Ctrl for auto-fill)"
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Add Foreign Key (Select 2 tables with Ctrl)"
             >
-              🔗 Add FK
+              <i className="pi pi-link"></i>
             </button>
 
             <button
-              onClick={async () => {
-                try {
-                  // Try to read from clipboard
-                  const clipboardText = await navigator.clipboard.readText();
-                  const tableData = JSON.parse(clipboardText);
-
-                  if (!tableData._scoriet_table_copy) {
-                    setError('Clipboard does not contain a valid Scoriet table. Please copy a table first.');
-                    return;
-                  }
-
-                  // If no version exists, create initial version first
-                  if (!selectedVersion) {
-                    confirmDialog({
-                      message: 'No version exists yet. Do you want to create the initial version 1 and paste the table?',
-                      header: 'Create Initial Version',
-                      icon: 'pi pi-exclamation-triangle',
-                      accept: async () => {
-                        try {
-                          setLoading(true);
-                          const token = localStorage.getItem('access_token');
-                          const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${token}`,
-                              'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({ description: 'Initial version' }),
-                          });
-
-                          if (!response.ok) throw new Error('Failed to create initial version');
-
-                          // Reload versions
-                          await loadSchemaVersions(selectedSchema!);
-
-                          // Set paste data and open modal
-                          const baseName = tableData.table_name;
-                          const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
-                          let suggestedName = `${baseName}_copy`;
-                          let counter = 2;
-                          while (existingTables.includes(suggestedName)) {
-                            suggestedName = `${baseName}_copy_${counter}`;
-                            counter++;
-                          }
-                          setPasteTableName(suggestedName);
-                          setPasteTableData(tableData);
-                          setTimeout(() => setShowPasteModal(true), 300);
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : 'Failed to create initial version');
-                        } finally {
-                          setLoading(false);
-                        }
-                      },
-                    });
-                    return;
-                  }
-
-                  // Generate suggested name
-                  const baseName = tableData.table_name;
-                  const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
-                  let suggestedName = `${baseName}_copy`;
-                  let counter = 2;
-                  while (existingTables.includes(suggestedName)) {
-                    suggestedName = `${baseName}_copy_${counter}`;
-                    counter++;
-                  }
-                  setPasteTableName(suggestedName);
-                  setPasteTableData(tableData);
-                  setShowPasteModal(true);
-                } catch (_err) {
-                  setError('No valid table found in clipboard. Please copy a table first.');
-                }
-              }}
-              className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm transition-colors"
+              onClick={handleClipboardPaste}
               disabled={loading || !selectedSchema}
-              title="Paste table from clipboard"
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Paste Table from Clipboard"
             >
-              📥 Paste Table
+              <i className="pi pi-clipboard"></i>
             </button>
 
             <button
               onClick={handleCreateNewTable}
-              className="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors"
               disabled={loading || !selectedProject}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Create New Table"
             >
-              ✨ New Table
+              <i className="pi pi-table"></i>
             </button>
+
+            <button
+              onClick={handleSortDiagram}
+              disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sort the diagram"
+            >
+              <i className="pi pi-sync"></i>
+            </button>
+
           </div>
         </div>
 
@@ -1885,7 +2041,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
             <div className="flex items-center">
               <span className="mr-2">⚠️</span>
               <span>{error}</span>
-              <button 
+              <button
                 onClick={() => setError(null)}
                 className="ml-auto text-red-400 hover:text-red-200"
               >
@@ -1914,19 +2070,19 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               onNodesChange={(changes) => {
                 // First apply the changes normally
                 onNodesChange(changes);
-                
+
                 // Check if we have position or dimension changes
-                const relevantChanges = changes.filter(change => 
+                const relevantChanges = changes.filter(change =>
                   (change.type === 'position' && change.positionAbsolute) ||
                   (change.type === 'dimensions' && change.dimensions)
                 );
-                
+
                 if (relevantChanges.length > 0) {
                   // Debounce the save operation - clear any existing timeout
                   if (window.layoutSaveTimeout) {
                     clearTimeout(window.layoutSaveTimeout);
                   }
-                  
+
                   window.layoutSaveTimeout = setTimeout(() => {
                     // Get current nodes with applied changes
                     setNodes(currentNodes => {
@@ -1934,30 +2090,34 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                       const updatedNodes = currentNodes.map(node => {
                         const positionChange = changes.find((c: any) => c.id === node.id && c.type === 'position');
                         const dimensionChange = changes.find((c: any) => c.id === node.id && c.type === 'dimensions');
-                        
+
                         const updatedNode = { ...node };
-                        
-                        if (positionChange && t.panelt21439 in positionChange && positionChange.positionAbsolute) {
-                          updatedNode.position = positionChange.positionAbsolute;
+
+                        if (
+                          positionChange &&
+                          t.panelt21439 in positionChange &&
+                          'positionAbsolute' in positionChange
+                        ) {
+                          updatedNode.position = (positionChange as any).positionAbsolute;
                         }
-                        
+
                         if (dimensionChange && 'dimensions' in dimensionChange && dimensionChange.dimensions) {
                           updatedNode.width = dimensionChange.dimensions.width;
                           updatedNode.height = dimensionChange.dimensions.height;
                         }
-                        
+
                         return updatedNode;
                       });
-                      
+
                       // Save the layout with current node positions and sizes
                       const nodesToSave = updatedNodes.filter(node =>
                         node.data && (node.data as any).tableName
                       );
-                      
+
                       if (nodesToSave.length > 0) {
                         saveLayout(nodesToSave);
                       }
-                      
+
                       return currentNodes; // Return unchanged nodes (ReactFlow handles the state)
                     });
                   }, 1500);
@@ -1979,7 +2139,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 setSelectedTableIds(prevIds => {
                   // Check if sets are equal (same IDs, regardless of order)
                   if (prevIds.length === newSelectedIds.length &&
-                      prevIds.every(id => newSelectedIds.includes(id))) {
+                    prevIds.every(id => newSelectedIds.includes(id))) {
                     return prevIds; // No change, return same reference to prevent re-render
                   }
 
@@ -2014,28 +2174,28 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               defaultViewport={{ zoom: 0.8, x: 0, y: 0 }}
               className="bg-gray-800"
               proOptions={{ hideAttribution: true }}
-              style={{ 
+              style={{
                 width: '100%',
                 height: '100%',
                 backgroundColor: '#1f2937'
               }}
             >
-              <Controls 
+              <Controls
                 className="react-flow-controls-dark"
                 style={{ background: '#374151', border: '1px solid #4b5563' }}
               />
-              <MiniMap 
+              <MiniMap
                 className="react-flow-minimap-dark"
-                style={{ 
-                  background: '#374151', 
-                  border: '1px solid #4b5563' 
+                style={{
+                  background: '#374151',
+                  border: '1px solid #4b5563'
                 }}
                 nodeColor="#6b7280"
                 maskColor="rgba(0, 0, 0, 0.6)"
               />
-              <Background 
-                variant={BackgroundVariant.Dots} 
-                gap={20} 
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={20}
                 size={1}
                 color="#4b5563"
                 style={{ backgroundColor: '#1f2937' }}
@@ -2060,7 +2220,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                     <div className="text-6xl mb-4">📊</div>
                     <h3 className="text-xl font-bold mb-2">No Schema Data</h3>
                     <p className="text-sm">
-                      {!selectedProject 
+                      {!selectedProject
                         ? t.panelt21528
                         : floatingSchemas.length === 0
                           ? t.panelt21530
@@ -2108,7 +2268,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       </div>
 
       {/* SQL Import Modal */}
-      <SqlImportModal 
+      <SqlImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}

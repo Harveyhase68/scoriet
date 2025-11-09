@@ -419,6 +419,7 @@ export default function LandingPage() {
               {!isDemoMode ? (
                 <Button
                   label={t.startFree}
+                  icon="pi pi-flag"
                   className="p-button-primary"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('register')}

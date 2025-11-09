@@ -25,7 +25,8 @@
       "Bash(php:*)",
       "Bash(npm run build:prod:*)",
       "Bash(rm:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

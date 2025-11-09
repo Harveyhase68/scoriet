@@ -103,7 +103,7 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
     );
   }
 
-  // Editable version - convert Unicode escapes for editing
+  // Editable version - with line numbers
   const displayCodeForEdit = code
     .replace(/\\u000A/g, '\\n')   // \u000A → \n (for display)
     .replace(/\\u000D/g, '\\r')   // \u000D → \r (for display)
@@ -121,24 +121,72 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
     }
   };
 
+  const editLines = displayCodeForEdit.split('\n');
+
   return (
-    <Editor
-      value={displayCodeForEdit}
-      onValueChange={handleChange}
-      highlight={highlightCode}
-      padding={10}
-      style={{
-        fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
-        fontSize: 14,
-        lineHeight: 1.4,
-        minHeight: '400px',
-        width: '100%',
-        backgroundColor: '#1a1a1a',
-        color: '#d4d4d4',
-      }}
-      className="code-editor"
-      placeholder="// Enter your JavaScript code here..."
-    />
+    <div className="line-numbers-container" style={{
+      display: 'flex',
+      backgroundColor: '#1a1a1a',
+      color: '#d4d4d4',
+      fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
+      fontSize: '14px',
+      lineHeight: '20px',
+      minHeight: '100%',
+      width: '100%',
+      position: 'relative'
+    }}>
+      {/* Line Numbers */}
+      <div className="line-numbers" style={{
+        padding: '10px 8px 10px 4px',
+        backgroundColor: '#0d1117',
+        color: '#6e7681',
+        borderRight: '1px solid #30363d',
+        textAlign: 'right',
+        userSelect: 'none',
+        minWidth: `${maxLineNumberWidth * 0.8 + 1}em`,
+        flexShrink: 0,
+        zIndex: 1,
+        position: 'relative'
+      }}>
+        {editLines.map((_, index) => (
+          <div key={index} style={{
+            height: '20px',
+            lineHeight: '20px',
+            fontSize: '14px'
+          }}>
+            {index + 1}
+          </div>
+        ))}
+      </div>
+
+      {/* Editable Code Content */}
+      <div style={{
+        flex: 1,
+        overflow: 'auto',
+        position: 'relative',
+        minWidth: 0
+      }}>
+        <Editor
+          value={displayCodeForEdit}
+          onValueChange={handleChange}
+          highlight={highlightCode}
+          padding={10}
+          style={{
+            fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
+            fontSize: 14,
+            lineHeight: '20px',
+            minHeight: '400px',
+            width: '100%',
+            backgroundColor: '#1a1a1a',
+            color: '#d4d4d4',
+            outline: 'none'
+          }}
+          className="code-editor"
+          placeholder="// Enter your JavaScript code here..."
+          textareaClassName="code-editor-textarea"
+        />
+      </div>
+    </div>
   );
 };
 
@@ -2118,10 +2166,17 @@ function ${functionName}() {
                       color: #d4d4d4 !important;
                       background: transparent !important;
                       resize: none;
+                      white-space: pre !important;
+                      overflow-wrap: normal !important;
+                      word-break: normal !important;
+                      overflow-x: auto !important;
                     }
                     .code-editor pre {
                       background: transparent !important;
                       margin: 0;
+                      white-space: pre !important;
+                      overflow-wrap: normal !important;
+                      word-break: normal !important;
                     }
                   `}</style>
                 </div>

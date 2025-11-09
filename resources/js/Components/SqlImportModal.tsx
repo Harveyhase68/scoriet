@@ -88,7 +88,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       if (data.length > 0 && !selectedSchemaId && !preselectedSchemaId) {
         setSelectedSchemaId(data[0].id);
       }
-    } catch {
+    } catch (err) {
       setError(err instanceof Error ? err.message : t.databasemanagementpanel152);
       setSchemas([]);
     } finally {
@@ -204,7 +204,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       onSuccess(result);
       handleClose();
       
-    } catch {
+    } catch (err) {
       setError(err instanceof Error ? err.message : t.sqlimportmodal203);
     } finally {
       setLoading(false);

@@ -6,6 +6,7 @@ import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import ProjectWizardModal from '@/Components/ProjectWizardModal';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -18,15 +19,19 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
-  const { selectedProject } = useProject();
+  const { selectedProject, loadProjects, setSelectedProject } = useProject();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
+  const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Load from localStorage, default to true (collapsed)
     const saved = localStorage.getItem('navigation_collapsed');
     return saved === null ? true : JSON.parse(saved);
   });
+
+  // 🎯 DEMO MODE DETECTION
+  const isDemoMode = sessionStorage.getItem('demo_mode') === 'true';
 
   // Helper function to update auth status
   const updateAuthStatus = async () => {
@@ -96,6 +101,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       updateAuthStatus();
     };
 
+    // Auto-open wizard for new users
+    const shouldShowWizard = localStorage.getItem('scoriet_show_wizard_on_start');
+    if (shouldShowWizard !== 'false' && isLoggedIn) {
+      // Only show automatically once per session
+      const shownThisSession = sessionStorage.getItem('scoriet_wizard_shown_this_session');
+      if (!shownThisSession) {
+        setShowWizard(true);
+        sessionStorage.setItem('scoriet_wizard_shown_this_session', 'true');
+      }
+    }
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth-change', handleAuthChange);
 
@@ -125,6 +141,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       label: t.panelsewnavigationpanel120,
       icon: 'pi pi-home',
       command: () => onOpenPanel('home')
+    },
+    {
+      label: 'Project Setup Wizard',
+      icon: 'pi pi-sparkles',
+      command: () => setShowWizard(true)
     },
     {
       separator: true
@@ -326,11 +347,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-user-edit',
           command: () => onOpenModal?.('profile')
         },
-        {
+        // 🎯 Hide "Change Plan" in DEMO mode
+        ...(!isDemoMode ? [{
           label: t.panelsewnavigationpanel320,
           icon: 'pi pi-credit-card',
           command: () => onOpenModal?.('plan')
-        },
+        }] : []),
         {
           label: t.panelsewnavigationpanel112,
           icon: 'pi pi-external-link',
@@ -343,22 +365,22 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: t.panelsewnavigationpanel333,
           icon: 'pi pi-sign-out',
           command: () => {
-            // Clear all sessionStorage
+            // 🎯 DEMO MODE: Redirect to main site, not demo subdomain
+            if (isDemoMode) {
+              sessionStorage.clear();
+              localStorage.clear();
+              document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+              window.location.href = 'https://scoriet.dev';
+              return;
+            }
+
+            // Normal logout
             sessionStorage.clear();
-
-            // Clear all localStorage (including layout, navigation state, etc.)
             localStorage.clear();
-
-            // Set logout flag after clearing (to prevent login modal popup)
             localStorage.setItem('logout_in_progress', 'true');
-
-            // Clear cookies
             document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
             setIsLoggedIn(false);
             setUserName('');
-
-            // Redirect to lobby immediately
             window.location.href = '/';
           }
         }
@@ -375,11 +397,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-sign-in',
           command: () => onOpenModal?.('login')
         },
-        {
+        // 🎯 Hide "Register" button in DEMO mode
+        ...(!isDemoMode ? [{
           label: t.authmodalsegistermodal203,
           icon: 'pi pi-user-plus',
           command: () => onOpenModal?.('register')
-        }
+        }] : [])
       ]
     }
   ];
@@ -426,12 +449,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               </button>
             </div>
             <div className="relative group">
-              <button 
+              <button
                 onClick={() => onOpenPanel('home')}
                 className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
                 title={t.panelsewnavigationpanel120}
               >
                 <i className="pi pi-home text-gray-300"></i>
+              </button>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={() => setShowWizard(true)}
+                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                title="Project Setup Wizard"
+              >
+                <i className="pi pi-sparkles text-gray-300"></i>
               </button>
             </div>
             {/* Icon-only navigation with TieredMenu - only 3 main categories */}
@@ -657,17 +689,29 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <i className="pi pi-user-edit"></i>
                         <span>Profile</span>
                       </button>
-                      <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                        <i className="pi pi-credit-card"></i>
-                        <span>Change Plan</span>
-                      </button>
+                      {/* 🎯 Hide "Change Plan" in DEMO mode */}
+                      {!isDemoMode && (
+                        <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-credit-card"></i>
+                          <span>Change Plan</span>
+                        </button>
+                      )}
                       <button onClick={() => window.location.href = '/'} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-external-link"></i>
                         <span>Back to Lobby</span>
                       </button>
                       <div className="border-t border-gray-600 my-2"></div>
                       <button onClick={() => {
-                        // Set logout flag to prevent login modal popup
+                        // 🎯 DEMO MODE: Redirect to main site, not demo subdomain
+                        if (isDemoMode) {
+                          sessionStorage.clear();
+                          localStorage.clear();
+                          document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                          window.location.href = 'https://scoriet.dev';
+                          return;
+                        }
+
+                        // Normal logout
                         localStorage.setItem('logout_in_progress', 'true');
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('refresh_token');
@@ -679,7 +723,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                         setIsLoggedIn(false);
                         setUserName('');
-                        // Redirect to lobby immediately
                         window.location.href = '/';
                       }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-sign-out"></i>
@@ -692,10 +735,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <i className="pi pi-sign-in"></i>
                         <span>Login</span>
                       </button>
-                      <button onClick={() => onOpenModal?.('register')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                        <i className="pi pi-user-plus"></i>
-                        <span>Register</span>
-                      </button>
+                      {/* 🎯 Hide "Register" button in DEMO mode */}
+                      {!isDemoMode && (
+                        <button onClick={() => onOpenModal?.('register')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-user-plus"></i>
+                          <span>Register</span>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -704,6 +750,39 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           </div>
         )}
       </div>
+
+      {/* Project Wizard Modal */}
+      <ProjectWizardModal
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+        onSuccess={async (createdProjectId: number) => {
+          setShowWizard(false);
+
+          // Reload projects list
+          await loadProjects();
+
+          // Find and set the newly created project as selected
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          if (token) {
+            try {
+              const response = await fetch(`/api/projects/${createdProjectId}`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json',
+                },
+              });
+
+              if (response.ok) {
+                const newProject = await response.json();
+                setSelectedProject(newProject);
+                localStorage.setItem('scoriet_selected_project_id', createdProjectId.toString());
+              }
+            } catch (err) {
+              console.error('Error loading new project:', err);
+            }
+          }
+        }}
+      />
     </div>
   );
 }

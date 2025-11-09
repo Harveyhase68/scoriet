@@ -37,6 +37,11 @@ export default function LoginModal({
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
+  // Check if we're on demo subdomain
+  const isDemoMode = window.location.hostname === 'demo.scoriet.dev' ||
+                     window.location.hostname === 'demo.localhost' ||
+                     import.meta.env.VITE_SCORIET_DEMO === 'true';
+
   // Listen for language changes
   useEffect(() => {
     const handleLanguageChange = (event: CustomEvent) => {
@@ -220,26 +225,26 @@ export default function LoginModal({
       className="p-dialog-custom"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <Message 
-            severity="error" 
-            text={error} 
+        {!isDemoMode && error && (
+          <Message
+            severity="error"
+            text={error}
             className="w-full"
           />
         )}
 
-        {verificationMessage && (
-          <Message 
-            severity="success" 
-            text={verificationMessage} 
+        {!isDemoMode && verificationMessage && (
+          <Message
+            severity="success"
+            text={verificationMessage}
             className="w-full"
           />
         )}
 
-        {showResendVerification && (
+        {!isDemoMode && showResendVerification && (
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-700 mb-2">
-              Ihre E-Mail-Adresse ist noch nicht bestätigt. 
+              Ihre E-Mail-Adresse ist noch nicht bestätigt.
             </p>
             <Button
               type="button"
@@ -289,93 +294,98 @@ export default function LoginModal({
           </p>
         </div>
 
-        <div className="field">
-          <label htmlFor="login-email" className="block text-sm font-medium mb-2">
-            {t.LoginEmailOrUserName}
-          </label>
-          <InputText
-            id="login-email"
-            type="text"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : t.LoginEmailOrUserNameHint}
-            className="w-full"
-            disabled={loading}
-            required
-          />
-        </div>
+        {/* Normal login fields - only show if NOT in demo mode */}
+        {!isDemoMode && (
+          <>
+            <div className="field">
+              <label htmlFor="login-email" className="block text-sm font-medium mb-2">
+                {t.LoginEmailOrUserName}
+              </label>
+              <InputText
+                id="login-email"
+                type="text"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : t.LoginEmailOrUserNameHint}
+                className="w-full"
+                disabled={loading}
+                required
+              />
+            </div>
 
-        <div className="field">
-          <label htmlFor="login-password" className="block text-sm font-medium mb-2">
-            {t.LoginPassword}
-          </label>
-          <Password
-            id="login-password"
-            inputId="login-password-input"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? t.loginmodal317 : t.LoginPassword}
-            className="w-full"
-            inputClassName="w-full"
-            disabled={loading}
-            feedback={false}
-            toggleMask
-            autoComplete="current-password"
-            required={formData.email !== 'demo-admin' && formData.email !== 'demo-user'}
-          />
-        </div>
+            <div className="field">
+              <label htmlFor="login-password" className="block text-sm font-medium mb-2">
+                {t.LoginPassword}
+              </label>
+              <Password
+                id="login-password"
+                inputId="login-password-input"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? t.loginmodal317 : t.LoginPassword}
+                className="w-full"
+                inputClassName="w-full"
+                disabled={loading}
+                feedback={false}
+                toggleMask
+                autoComplete="current-password"
+                required={formData.email !== 'demo-admin' && formData.email !== 'demo-user'}
+              />
+            </div>
 
-        <div className="field">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="remember-me"
-              checked={formData.rememberMe}
-              onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
+            <div className="field">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="remember-me"
+                  checked={formData.rememberMe}
+                  onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
+                  disabled={loading}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="remember-me" className="text-sm cursor-pointer">
+                  {t.LoginStayLoggedIn}
+                </label>
+              </div>
+              <div className="text-xs text-gray-500 mt-1 ml-6">
+                {t.LoginStayLoggedInTooltip}
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              label={loading ? t.LoginDoLogin : t.LoginButton}
+              icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
+              className="w-full"
               disabled={loading}
-              className="w-4 h-4"
             />
-            <label htmlFor="remember-me" className="text-sm cursor-pointer">
-              {t.LoginStayLoggedIn}
-            </label>
-          </div>
-          <div className="text-xs text-gray-500 mt-1 ml-6">
-            {t.LoginStayLoggedInTooltip}
-          </div>
-        </div>
 
-        <Button
-          type="submit"
-          label={loading ? t.LoginDoLogin : t.LoginButton}
-          icon={loading ? "pi pi-spinner pi-spin" : "pi pi-sign-in"}
-          className="w-full"
-          disabled={loading}
-        />
-
-        <div className="text-center space-y-2 mt-4">
-          <div>
-            <Button
-              type="button"
-              label={t.LoginRegister}
-              className="p-button-link p-button-sm"
-              onClick={() => {
-                handleHide();
-                onSwitchToRegister();
-              }}
-            />
-          </div>
-          <div>
-            <Button
-              type="button"
-              label={t.LoginForgotPassword}
-              className="p-button-link p-button-sm"
-              onClick={() => {
-                handleHide();
-                onSwitchToForgotPassword();
-              }}
-            />
-          </div>
-        </div>
+            <div className="text-center space-y-2 mt-4">
+              <div>
+                <Button
+                  type="button"
+                  label={t.LoginRegister}
+                  className="p-button-link p-button-sm"
+                  onClick={() => {
+                    handleHide();
+                    onSwitchToRegister();
+                  }}
+                />
+              </div>
+              <div>
+                <Button
+                  type="button"
+                  label={t.LoginForgotPassword}
+                  className="p-button-link p-button-sm"
+                  onClick={() => {
+                    handleHide();
+                    onSwitchToForgotPassword();
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </form>
     </Dialog>
   );
