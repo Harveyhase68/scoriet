@@ -1085,14 +1085,15 @@ export default function Index(props: IndexProps = {}) {
             sessionStorage.setItem('demo_mode', 'true');
             sessionStorage.setItem('demo_user', demoUser);
 
-            // Show success message if toast is available
-            if (toast.current && demoMessage) {
+            // Show success message only once per session (not on every F5)
+            if (toast.current && demoMessage && !sessionStorage.getItem('demo_toast_shown')) {
               toast.current.show({
                 severity: 'success',
                 summary: 'Demo Mode',
                 detail: demoMessage,
                 life: 5000
               });
+              sessionStorage.setItem('demo_toast_shown', 'true');
             }
 
             // Trigger auth change event

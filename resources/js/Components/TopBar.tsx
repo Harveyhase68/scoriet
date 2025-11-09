@@ -13,6 +13,24 @@ export default function TopBar() {
   const { projects, selectedProject, setSelectedProject, loading } = useProject();
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
 
+  // 🎯 DEMO MODE DETECTION
+  const [isDemoMode, setIsDemoMode] = useState(sessionStorage.getItem('demo_mode') === 'true');
+
+  // Listen for demo mode changes
+  useEffect(() => {
+    const checkDemoMode = () => {
+      setIsDemoMode(sessionStorage.getItem('demo_mode') === 'true');
+    };
+
+    window.addEventListener('storage', checkDemoMode);
+    window.addEventListener('auth-change', checkDemoMode);
+
+    return () => {
+      window.removeEventListener('storage', checkDemoMode);
+      window.removeEventListener('auth-change', checkDemoMode);
+    };
+  }, []);
+
   // Load pending applications count for selected project
   const loadPendingApplications = useCallback(async () => {
     if (!selectedProject || !selectedProject.is_owner) {
@@ -66,7 +84,7 @@ export default function TopBar() {
   }, [selectedProject, loadPendingApplications]);
 
   return (
-    <div className="h-12 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-4">
+    <div className="h-12 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-4 relative">
       {/* Left: Logo and Brand */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
@@ -79,6 +97,18 @@ export default function TopBar() {
           <div className="text-xs text-gray-500">Enterprise Code Generator</div>
         </div>
       </div>
+
+      {/* 🎯 CENTER: DEMO Logo (only in demo mode) */}
+      {isDemoMode && (
+        <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
+          <img
+            src="/images/logos/demo.png"
+            alt="DEMO MODE"
+            className="h-10 w-auto"
+            style={{ maxHeight: '40px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))' }}
+          />
+        </div>
+      )}
 
       {/* Right: Project Selector and other controls */}
       <div className="flex items-center space-x-4">
