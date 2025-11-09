@@ -1125,6 +1125,11 @@ export default function Index(props: IndexProps = {}) {
       return null;
     }
 
+    // 🎯 DEMO MODE: Don't show login modal, wait for auto-login
+    if (demoLogin || sessionStorage.getItem('demo_mode') === 'true') {
+      return null;
+    }
+
     // Show login modal immediately if not authenticated
     return 'login';
   });
@@ -1316,8 +1321,9 @@ export default function Index(props: IndexProps = {}) {
       // Auto-open login modal if not authenticated and no modal is open (but not during logout)
       // Only do this on initial load, not when switching between auth modals
       const isLoggingOut = localStorage.getItem('logout_in_progress');
+      const isDemoMode = sessionStorage.getItem('demo_mode') === 'true';
       if (!isAuthenticated && !activeModal && !resetToken && !isLoggingOut &&
-          !localStorage.getItem('auth_modal_interaction')) {
+          !localStorage.getItem('auth_modal_interaction') && !isDemoMode) {
         setActiveModal('login');
       }
     };
