@@ -21,6 +21,12 @@ interface Project {
   can_join?: boolean;
   default_language?: string;
   enabled_languages?: string[];
+  // Diagram Settings
+  diagram_max_tables_per_row?: number;
+  diagram_table_width?: number;
+  diagram_table_height?: number;
+  diagram_horizontal_spacing?: number;
+  diagram_vertical_spacing?: number;
   owner: {
     id: number;
     name: string;

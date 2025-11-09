@@ -89,6 +89,12 @@ export default function ProjectSettingsPanel() {
         database_port: '3306',
         database_username: '',
         database_password: '',
+        // Diagram Settings
+        diagram_max_tables_per_row: 20,
+        diagram_table_width: 280,
+        diagram_table_height: 450,
+        diagram_horizontal_spacing: 600,
+        diagram_vertical_spacing: 700,
         // Project Properties
         project_directory: '',
         project_url: '',
@@ -170,6 +176,11 @@ export default function ProjectSettingsPanel() {
                     database_port: project.database_port || '3306',
                     database_username: project.database_username || '',
                     database_password: project.database_password || '',
+                    diagram_max_tables_per_row: project.diagram_max_tables_per_row || 20,
+                    diagram_table_width: project.diagram_table_width || 280,
+                    diagram_table_height: project.diagram_table_height || 450,
+                    diagram_horizontal_spacing: project.diagram_horizontal_spacing || 600,
+                    diagram_vertical_spacing: project.diagram_vertical_spacing || 700,
                     project_directory: project.project_directory || '',
                     project_url: project.project_url || '',
                     start_page: project.start_page || 'index.php',
@@ -555,7 +566,7 @@ export default function ProjectSettingsPanel() {
                                         className="w-full font-mono"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Projekt-Namen werden später für URLs verwendet (username/project_name)
+                                        {t.editprojectmodal569}
                                     </div>
                                 </div>
 
@@ -715,6 +726,96 @@ export default function ProjectSettingsPanel() {
                                         feedback={false}
                                         toggleMask
                                     />
+                                </div>
+                            </div>
+                </TabPanel>
+                <TabPanel header={<span><i className="pi pi-sitemap mr-2"></i>Diagram Settings</span>}>
+                            <div className="space-y-4 max-w-3xl">
+                                <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                                    <i className="pi pi-info-circle mr-2"></i>
+                                    Konfigurieren Sie die Standard-Einstellungen für automatisches Diagram-Layout.
+                                    Diese Werte werden beim "Sort the Diagram" Button verwendet.
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Max. Tabellen pro Zeile
+                                        </label>
+                                        <InputText
+                                            type="number"
+                                            value={formData.diagram_max_tables_per_row.toString()}
+                                            onChange={(e) => setFormData({ ...formData, diagram_max_tables_per_row: parseInt(e.target.value) || 20 })}
+                                            placeholder="20"
+                                            className="w-full"
+                                        />
+                                        <small className="text-gray-400">Maximale Anzahl der Tabellen in einer Zeile</small>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Tabellen Breite (px)
+                                        </label>
+                                        <InputText
+                                            type="number"
+                                            value={formData.diagram_table_width.toString()}
+                                            onChange={(e) => setFormData({ ...formData, diagram_table_width: parseInt(e.target.value) || 280 })}
+                                            placeholder="280"
+                                            className="w-full"
+                                        />
+                                        <small className="text-gray-400">Breite der Tabellen-Boxen im Diagramm</small>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Tabellen Höhe (px)
+                                        </label>
+                                        <InputText
+                                            type="number"
+                                            value={formData.diagram_table_height.toString()}
+                                            onChange={(e) => setFormData({ ...formData, diagram_table_height: parseInt(e.target.value) || 450 })}
+                                            placeholder="450"
+                                            className="w-full"
+                                        />
+                                        <small className="text-gray-400">Maximale Höhe der Tabellen-Boxen</small>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Horizontaler Abstand (px)
+                                        </label>
+                                        <InputText
+                                            type="number"
+                                            value={formData.diagram_horizontal_spacing.toString()}
+                                            onChange={(e) => setFormData({ ...formData, diagram_horizontal_spacing: parseInt(e.target.value) || 600 })}
+                                            placeholder="600"
+                                            className="w-full"
+                                        />
+                                        <small className="text-gray-400">Horizontaler Abstand zwischen Tabellen</small>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Vertikaler Abstand (px)
+                                        </label>
+                                        <InputText
+                                            type="number"
+                                            value={formData.diagram_vertical_spacing.toString()}
+                                            onChange={(e) => setFormData({ ...formData, diagram_vertical_spacing: parseInt(e.target.value) || 700 })}
+                                            placeholder="700"
+                                            className="w-full"
+                                        />
+                                        <small className="text-gray-400">Vertikaler Abstand zwischen Zeilen</small>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 p-4 bg-gray-700 rounded">
+                                    <h4 className="font-semibold mb-2 text-gray-200">Vorschau Werte:</h4>
+                                    <div className="text-sm text-gray-300 space-y-1">
+                                        <div>• Max Tabellen pro Zeile: <span className="text-blue-400">{formData.diagram_max_tables_per_row}</span></div>
+                                        <div>• Tabellen Größe: <span className="text-blue-400">{formData.diagram_table_width}px × {formData.diagram_table_height}px</span></div>
+                                        <div>• Abstände: <span className="text-blue-400">{formData.diagram_horizontal_spacing}px horizontal, {formData.diagram_vertical_spacing}px vertikal</span></div>
+                                    </div>
                                 </div>
                             </div>
                 </TabPanel>
@@ -945,12 +1046,14 @@ export default function ProjectSettingsPanel() {
                                 <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
                                     <i className="pi pi-info-circle mr-2"></i>
                                     Wählen Sie die Sprachen aus, die für die Code-Generierung in diesem Projekt verwendet werden sollen.
-                                    Verschieben Sie die gewünschten Sprachen nach rechts.
+                                    Verschieben Sie die gewünschten Sprachen nach rechts und nutzen Sie die Pfeiltasten um die Reihenfolge zu ändern.
                                 </div>
 
                                 <PickList
                                     source={transferData.filter(lang => !selectedLanguages.includes(lang.key))}
-                                    target={transferData.filter(lang => selectedLanguages.includes(lang.key))}
+                                    target={selectedLanguages
+                                        .map(key => transferData.find(lang => lang.key === key))
+                                        .filter(lang => lang !== undefined)}
                                     onChange={(e) => {
                                         const targetKeys = e.target.map((item: any) => item.key);
                                         setSelectedLanguages(targetKeys as string[]);
@@ -964,6 +1067,8 @@ export default function ProjectSettingsPanel() {
                                     filterBy="title"
                                     sourceFilterPlaceholder={t.projectsettingspanel733}
                                     targetFilterPlaceholder={t.projectsettingspanel733}
+                                    showSourceControls={false}
+                                    showTargetControls={true}
                                 />
 
                                 <div className="mt-6 text-gray-300 text-sm">

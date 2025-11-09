@@ -976,10 +976,14 @@ interface IndexProps {
   // Reset password props when passed via URL parameters
   resetToken?: string;
   resetEmail?: string;
+  // Demo mode props
+  demoLogin?: boolean;
+  demoUser?: 'demo-admin' | 'demo-user';
+  demoMessage?: string;
 }
 
 export default function Index(props: IndexProps = {}) {
-  const { resetToken, resetEmail } = props;
+  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage } = props;
   const ref = useRef<any>(null);
   const toast = useRef<Toast>(null);
 
@@ -1037,6 +1041,76 @@ export default function Index(props: IndexProps = {}) {
   useEffect(() => {
     // Layout restoration handled silently
   }, []);
+
+  // 🎯 DEMO AUTO-LOGIN
+  useEffect(() => {
+    if (demoLogin && demoUser) {
+      const performDemoLogin = async () => {
+        try {
+          // Demo credentials
+          const credentials = {
+            email: demoUser,
+            password: 'demo123' // Demo password
+          };
+
+          // Get OAuth client credentials from env
+          const clientId = import.meta.env.VITE_PASSPORT_CLIENT_ID;
+          const clientSecret = import.meta.env.VITE_PASSPORT_CLIENT_SECRET;
+
+          // Request OAuth token
+          const response = await fetch('/oauth/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              grant_type: 'password',
+              client_id: clientId,
+              client_secret: clientSecret,
+              username: credentials.email,
+              password: credentials.password,
+              scope: '',
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+
+            // Store tokens in sessionStorage (not persistent for demo)
+            sessionStorage.setItem('access_token', data.access_token);
+            sessionStorage.setItem('refresh_token', data.refresh_token);
+
+            // Mark as demo mode
+            sessionStorage.setItem('demo_mode', 'true');
+            sessionStorage.setItem('demo_user', demoUser);
+
+            // Show success message if toast is available
+            if (toast.current && demoMessage) {
+              toast.current.show({
+                severity: 'success',
+                summary: 'Demo Mode',
+                detail: demoMessage,
+                life: 5000
+              });
+            }
+
+            // Trigger auth change event
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('auth-change'));
+
+            console.log(`✅ Demo auto-login successful: ${demoUser}`);
+          } else {
+            console.error('❌ Demo auto-login failed:', await response.text());
+          }
+        } catch (error) {
+          console.error('❌ Demo auto-login error:', error);
+        }
+      };
+
+      performDemoLogin();
+    }
+  }, [demoLogin, demoUser, demoMessage]);
 
   // Auth Modal State - Initialize based on authentication status
   const [activeModal, setActiveModal] = useState<AuthModalType>(() => {

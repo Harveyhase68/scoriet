@@ -395,7 +395,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  
+
   // Language state
   const [currentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t, isLoading: translationsLoading } = useTranslation(currentLanguage);

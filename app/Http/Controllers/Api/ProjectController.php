@@ -130,6 +130,12 @@ class ProjectController extends Controller
             'database_port' => 'nullable|string|max:10',
             'database_username' => 'nullable|string|max:255',
             'database_password' => 'nullable|string|max:255',
+            // Diagram settings
+            'diagram_max_tables_per_row' => 'nullable|integer|min:1|max:100',
+            'diagram_table_width' => 'nullable|integer|min:100|max:1000',
+            'diagram_table_height' => 'nullable|integer|min:100|max:2000',
+            'diagram_horizontal_spacing' => 'nullable|integer|min:100|max:2000',
+            'diagram_vertical_spacing' => 'nullable|integer|min:100|max:2000',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',
@@ -174,6 +180,12 @@ class ProjectController extends Controller
             'database_port' => $validated['database_port'] ?? '3306',
             'database_username' => $validated['database_username'] ?? null,
             'database_password' => $validated['database_password'] ?? null,
+            // Diagram settings
+            'diagram_max_tables_per_row' => $validated['diagram_max_tables_per_row'] ?? 20,
+            'diagram_table_width' => $validated['diagram_table_width'] ?? 280,
+            'diagram_table_height' => $validated['diagram_table_height'] ?? 450,
+            'diagram_horizontal_spacing' => $validated['diagram_horizontal_spacing'] ?? 600,
+            'diagram_vertical_spacing' => $validated['diagram_vertical_spacing'] ?? 700,
             // Project paths
             'project_directory' => $validated['project_directory'] ?? null,
             'project_url' => $validated['project_url'] ?? null,
@@ -268,6 +280,12 @@ class ProjectController extends Controller
             'database_port' => 'nullable|string|max:10',
             'database_username' => 'nullable|string|max:255',
             'database_password' => 'nullable|string|max:255',
+            // Diagram settings
+            'diagram_max_tables_per_row' => 'nullable|integer|min:1|max:100',
+            'diagram_table_width' => 'nullable|integer|min:100|max:1000',
+            'diagram_table_height' => 'nullable|integer|min:100|max:2000',
+            'diagram_horizontal_spacing' => 'nullable|integer|min:100|max:2000',
+            'diagram_vertical_spacing' => 'nullable|integer|min:100|max:2000',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',

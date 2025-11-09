@@ -1,13 +1,216 @@
-import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useState, useEffect, useRef } from 'react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useToast } from '@/contexts/ToastContext';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { FileUpload } from 'primereact/fileupload';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { EditorState, Extension } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { defaultKeymap } from '@codemirror/commands';
+import { php } from '@codemirror/lang-php';
+import { javascript } from '@codemirror/lang-javascript';
+import { css } from '@codemirror/lang-css';
+import { html } from '@codemirror/lang-html';
+import { json } from '@codemirror/lang-json';
+import { sql } from '@codemirror/lang-sql';
+import { xml } from '@codemirror/lang-xml';
+import { cpp } from '@codemirror/lang-cpp';
+import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
+import { rust } from '@codemirror/lang-rust';
+import { markdown } from '@codemirror/lang-markdown';
+import { yaml } from '@codemirror/lang-yaml';
+import { oneDark } from '@codemirror/theme-one-dark';
+
+// Detect language based on file extension
+const getLanguageExtension = (fileName: string): Extension => {
+    if (!fileName) return php(); // Default to PHP
+
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+    const languageMap: { [key: string]: Extension } = {
+        'php': php(),
+        'js': javascript(),
+        'jsx': javascript({ jsx: true }),
+        'ts': javascript({ typescript: true }),
+        'tsx': javascript({ jsx: true, typescript: true }),
+        'css': css(),
+        'scss': css(),
+        'sass': css(),
+        'html': html(),
+        'htm': html(),
+        'json': json(),
+        'sql': sql(),
+        'xml': xml(),
+        'cpp': cpp(),
+        'cc': cpp(),
+        'cxx': cpp(),
+        'c': cpp(),
+        'h': cpp(),
+        'hpp': cpp(),
+        'hxx': cpp(),
+        'py': python(),
+        'pyw': python(),
+        'java': java(),
+        'rs': rust(),
+        'md': markdown(),
+        'markdown': markdown(),
+        'yml': yaml(),
+        'yaml': yaml(),
+    };
+
+    return languageMap[ext] || php(); // Default to PHP if unknown
+};
+
+// Get display name for language badge
+const getLanguageDisplayName = (fileName: string): string => {
+    if (!fileName) return 'PHP';
+
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+    const displayNames: { [key: string]: string } = {
+        'php': 'PHP',
+        'js': 'JavaScript',
+        'jsx': 'JSX',
+        'ts': 'TypeScript',
+        'tsx': 'TSX',
+        'css': 'CSS',
+        'scss': 'SCSS',
+        'sass': 'SASS',
+        'html': 'HTML',
+        'htm': 'HTML',
+        'json': 'JSON',
+        'sql': 'SQL',
+        'xml': 'XML',
+        'cpp': 'C++',
+        'cc': 'C++',
+        'cxx': 'C++',
+        'c': 'C',
+        'h': 'C/C++',
+        'hpp': 'C++',
+        'hxx': 'C++',
+        'py': 'Python',
+        'pyw': 'Python',
+        'java': 'Java',
+        'rs': 'Rust',
+        'md': 'Markdown',
+        'markdown': 'Markdown',
+        'yml': 'YAML',
+        'yaml': 'YAML',
+    };
+
+    return displayNames[ext] || 'PHP';
+};
+
+// CodeMirror 6 Editor Component - Multi-Language Support
+const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder }: {
+    value: string;
+    onChange: (value: string) => void;
+    fileName: string;
+    _placeholder?: string;
+}) => {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const viewRef = useRef<EditorView | null>(null);
+
+    useEffect(() => {
+        if (!editorRef.current) return;
+
+        const languageExtension = getLanguageExtension(fileName);
+
+        // Create CodeMirror 6 editor
+        const startState = EditorState.create({
+            doc: value || '',
+            extensions: [
+                lineNumbers(),
+                languageExtension,
+                oneDark,
+                keymap.of(defaultKeymap),
+                EditorView.updateListener.of((update) => {
+                    if (update.docChanged) {
+                        const newValue = update.state.doc.toString();
+                        onChange(newValue);
+                    }
+                }),
+                EditorView.theme({
+                    "&": {
+                        fontSize: "14px",
+                        fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
+                        height: "500px",
+                        maxHeight: "60vh"
+                    },
+                    ".cm-scroller": {
+                        overflow: "auto"
+                    }
+                })
+            ]
+        });
+
+        const view = new EditorView({
+            state: startState,
+            parent: editorRef.current
+        });
+
+        viewRef.current = view;
+
+        return () => {
+            view.destroy();
+        };
+    }, [fileName]); // Recreate editor when language changes
+
+    // Update editor when value changes externally
+    useEffect(() => {
+        if (viewRef.current) {
+            const currentValue = viewRef.current.state.doc.toString();
+            if (currentValue !== value) {
+                viewRef.current.dispatch({
+                    changes: {
+                        from: 0,
+                        to: currentValue.length,
+                        insert: value || ''
+                    }
+                });
+            }
+        }
+    }, [value]);
+
+    const languageLabel = getLanguageDisplayName(fileName);
+
+    return (
+        <div style={{ position: 'relative' }}>
+            {/* Language Badge */}
+            <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '24px',
+                backgroundColor: '#30363d',
+                color: '#8b949e',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                zIndex: 10,
+                userSelect: 'none',
+                pointerEvents: 'none'
+            }}>
+                {languageLabel}
+            </div>
+
+            {/* CodeMirror Editor */}
+            <div
+                ref={editorRef}
+                style={{
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                }}
+            />
+        </div>
+    );
+};
 
 interface FileModalProps {
     visible: boolean;
@@ -41,6 +244,9 @@ const FileModal: React.FC<FileModalProps> = ({
     });
     const [contentMode, setContentMode] = useState<'text' | 'zip'>('text');
     const [uploadedFile, setUploadedFile] = useState<any>(null);
+
+    // Watch file_name for language detection
+    const fileName = useWatch({ control, name: 'file_name' }) || '';
 
     // All hooks must be called before any early returns
     React.useEffect(() => {
@@ -224,7 +430,7 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 </div>
 
-                {/* Text Content Input */}
+                {/* Text Content Input with Syntax Highlighting */}
                 {contentMode === 'text' && (
                     <div>
                         <label htmlFor="file_content" className="block text-sm font-medium mb-2">
@@ -235,10 +441,10 @@ const FileModal: React.FC<FileModalProps> = ({
                             control={control}
                             rules={{ required: contentMode === 'text' ? t.filemodal232 : false }}
                             render={({ field }) => (
-                                <InputTextarea
-                                    id="file_content"
-                                    {...field}
-                                    rows={15}
+                                <MultiLanguageCodeEditor
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    fileName={fileName}
                                     placeholder={`Template-Code hier eingeben...
 
 Platzhalter-Beispiele:
@@ -256,7 +462,6 @@ Schleifen und Logik:
     $p_{item.name} = {item.typecast}"";
   {endif}
 {endfor}`}
-                                    className="w-full font-mono"
                                 />
                             )}
                         />
@@ -347,6 +552,7 @@ Schleifen und Logik:
                     />
                 </div>
             </form>
+
         </Dialog>
     );
 };

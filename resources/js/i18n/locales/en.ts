@@ -1643,6 +1643,7 @@ export const en: Translations = {
   editprojectmodal230: 'Project Name *',
   editprojectmodal240: 'my_project_name',
   editprojectmodal252: 'Description',
+  editprojectmodal569: 'Project names are later used for URLs (username/project_name)',
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal260: 'Enter project description',
@@ -4464,7 +4465,7 @@ export const en: Translations = {
   gotoApp: 'Goto App',
   title: 'Enterprise Code Generator',
   subtitle: 'Transform your database schemas into production-ready code with intelligent templates. Reduce development time by 80% with automated code generation.',
-  startFree: 'Start Free\', ',
+  startFree: 'Start Free',
   tryDemo: 'Try Demo',
   watchDemo: 'Watch Demo',
   featuresTitle: 'Powerful Features for Modern Development',

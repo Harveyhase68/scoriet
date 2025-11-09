@@ -1660,6 +1660,8 @@ export interface Translations {
   editprojectmodal230: string;
   editprojectmodal240: string;
   editprojectmodal252: string;
+  editprojectmodal569: string;
+  editprojectmodal569: string;
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal260: string;

@@ -1643,6 +1643,7 @@ export const fr: Translations = {
   editprojectmodal230: 'Nom du projet *',
   editprojectmodal240: 'mon_nom_de_projet',
   editprojectmodal252: 'Description',
+  editprojectmodal569: 'Les noms de projet sont ensuite utilisés pour les URL (nom_utilisateur/nom_du_projet).',
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal260: 'Entrez la description du projet',

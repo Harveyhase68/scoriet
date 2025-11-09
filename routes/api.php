@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\ProjectTemplateVariableValueController;
 use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DiagramLayoutController;
 
 // Manual OAuth token route for API with email verification check
 use App\Http\Controllers\CustomTokenController;
@@ -70,7 +71,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
     
     // Token validation endpoint for Reset Password Modal
-    Route::post('/validate-reset-token', function (\Illuminate\Http\Request $request) {
+    Route::post('/validate-reset-token', function (Request $request) {
         $request->validate([
             'token' => 'required|string',
             'email' => 'required|email',
@@ -207,6 +208,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/projects/{projectId}/generate-full-code', [UltimateTemplateController::class, 'generateFullProject'])
         ->name('api.projects.generate-full-code');
 
+    Route::post('/diagram/layout', [DiagramLayoutController::class, 'generate']);
+
     // 🔧 TEMPLATE FIX DEMO - Show corrected template processing
     Route::get('/template-fix-demo', function () {
         return response()->json([
@@ -248,7 +251,7 @@ Route::middleware('auth:api')->group(function () {
 
     // 🎯 SIMPLE FIXED ENGINE - Folgt GENAU deinem Vorschlag
     Route::get('/simple-fixed-demo', function () {
-        return response()->json(\App\Services\SimpleFixedTemplateEngine::solvYourExactProblem());
+        return response()->json(SimpleFixedTemplateEngine::solvYourExactProblem());
     });
 
     Route::post('/templates/link', [App\Http\Controllers\Api\TemplateController::class, 'linkToProject']);
@@ -432,11 +435,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/schema-translations/bulk-update', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'bulkUpdate']);
 
     // Translation Export/Import
-    Route::get('/translations/export', [\App\Http\Controllers\Api\TranslationExportController::class, 'export']);
-    Route::post('/translations/import', [\App\Http\Controllers\Api\TranslationExportController::class, 'import']);
+    Route::get('/translations/export', [TranslationExportController::class, 'export']);
+    Route::post('/translations/import', [TranslationExportController::class, 'import']);
 
     // Auto-Translate
-    Route::post('/translations/auto-translate', [\App\Http\Controllers\Api\AutoTranslateController::class, 'translate']);
+    Route::post('/translations/auto-translate', [AutoTranslateController::class, 'translate']);
 
     // CMS Admin (System Admin only)
     Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
@@ -518,7 +521,7 @@ Route::get('/debug-export-error/{schema}', function($schema) {
 
         // Try to generate SQL to see where it fails
         try {
-            $controller = app(\App\Http\Controllers\SchemaExportController::class);
+            $controller = app(SchemaExportController::class);
             $reflection = new ReflectionClass($controller);
             $method = $reflection->getMethod('generateMySQLScript');
             $method->setAccessible(true);
@@ -1887,7 +1890,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                     $generatedContent = str_replace('{tablename}', $table['tablename'], $generatedContent);
 
                     // 🎯 USE SIMPLE FIXED TEMPLATE ENGINE - Folgt GENAU deinem Vorschlag
-                    $simpleEngine = new \App\Services\SimpleFixedTemplateEngine($gtree, $tableIndex, $table['tablename']);
+                    $simpleEngine = new SimpleFixedTemplateEngine($gtree, $tableIndex, $table['tablename']);
                     $generatedContent = $simpleEngine->processTemplate($content);
 
                     // Clean content for better readability and replace escaped newlines with placeholders
@@ -1928,7 +1931,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                 }
             } else {
                 // Project-level file - Use SAME SimpleFixedTemplateEngine
-                $simpleEngine = new \App\Services\SimpleFixedTemplateEngine($gtree, 0); // Use table index 0 for project files
+                $simpleEngine = new SimpleFixedTemplateEngine($gtree, 0); // Use table index 0 for project files
                 $generatedContent = $simpleEngine->processTemplate($content);
 
                 // Clean content for better readability

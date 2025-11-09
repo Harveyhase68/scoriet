@@ -118,19 +118,106 @@ class SqlParserController extends Controller
             // Store parsed tables in the new version using the existing service
             $this->schemaStorageService->storeParsedTablesInVersion($schemaVersion, $parsedTables);
 
-            // Copy schema_designer_layouts from previous version (if exists)
-            if ($schema->last_version > 1) {
-                $previousVersion = $schema->last_version - 1;
-                $previousLayouts = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
-                    ->where('version_number', $previousVersion)
-                    ->get();
+            // 🎯 AUTOMATISCHES LAYOUT: Nur bei erster Version (wenn DB leer ist)
+            if ($schema->last_version == 1) {
+                \Log::info("🎯 [AUTO-LAYOUT] Generating automatic layout for first import (schema {$schema->id}, version {$schemaVersion->version_number})");
 
-                foreach ($previousLayouts as $layout) {
-                    \App\Models\SchemaDesignerLayout::create([
-                        'schema_id' => $schema->id,
-                        'version_number' => $schemaVersion->version_number,
-                        'layout_data' => $layout->layout_data,
+                try {
+                    // Tabellennamen extrahieren
+                    $tableNames = [];
+                    foreach ($parsedTables as $tableData) {
+                        if (isset($tableData['table_name'])) {
+                            $tableNames[] = $tableData['table_name'];
+                        }
+                    }
+
+                    // Foreign Keys extrahieren
+                    $foreignKeys = [];
+                    foreach ($parsedTables as $tableData) {
+                        if (isset($tableData['constraints'])) {
+                            foreach ($tableData['constraints'] as $constraint) {
+                                if (isset($constraint['type']) && $constraint['type'] === 'FOREIGN KEY') {
+                                    if (isset($constraint['references_table']) && isset($tableData['table_name'])) {
+                                        // [from_table, to_table] Format
+                                        $foreignKeys[] = [$tableData['table_name'], $constraint['references_table']];
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    \Log::info("🎯 [AUTO-LAYOUT] Extracted data", [
+                        'tables' => $tableNames,
+                        'foreignKeys' => $foreignKeys
                     ]);
+
+                    // Projekt-Einstellungen laden für Diagram-Layout
+                    $project = $schema->projects()->first();
+                    $settings = null;
+                    if ($project) {
+                        $settings = [
+                            'maxNodesPerLevel' => $project->diagram_max_tables_per_row ?? 20,
+                            'xStep' => $project->diagram_horizontal_spacing ?? 600,
+                            'yStep' => $project->diagram_vertical_spacing ?? 700,
+                            'tableWidth' => $project->diagram_table_width ?? 280,
+                            'tableHeight' => $project->diagram_table_height ?? 450,
+                        ];
+                        \Log::info("🎯 [AUTO-LAYOUT] Using project settings from project {$project->id}", $settings);
+                    }
+
+                    // Layout generieren mit interner Methode
+                    $diagramLayoutController = new \App\Http\Controllers\DiagramLayoutController();
+                    $layoutPositions = $diagramLayoutController->generateLayoutInternal($tableNames, $foreignKeys, $settings);
+
+                    // Layout in Datenbank speichern
+                    if (!empty($layoutPositions)) {
+                        // Konvertiere das Layout-Format: ['table' => ['x' => x, 'y' => y]]
+                        // zu: ['table' => ['x_position' => x, 'y_position' => y, 'width' => w, 'height' => h]]
+                        $formattedLayout = [];
+                        $tableWidth = $settings['tableWidth'] ?? 280;
+                        $tableHeight = $settings['tableHeight'] ?? 450;
+
+                        foreach ($layoutPositions as $tableName => $position) {
+                            $formattedLayout[$tableName] = [
+                                'x_position' => $position['x'],
+                                'y_position' => $position['y'],
+                                'width' => $tableWidth,
+                                'height' => $tableHeight,
+                            ];
+                        }
+
+                        \App\Models\SchemaDesignerLayout::create([
+                            'schema_id' => $schema->id,
+                            'version_number' => $schemaVersion->version_number,
+                            'layout_data' => $formattedLayout, // Laravel cast macht automatisch json_encode
+                        ]);
+
+                        \Log::info("🎯 [AUTO-LAYOUT] Successfully generated and saved layout for " . count($layoutPositions) . " tables");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("🎯 [AUTO-LAYOUT] Failed to generate automatic layout: " . $e->getMessage());
+                    \Log::error("🎯 [AUTO-LAYOUT] Exception details:", [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Nicht kritisch - Import wird trotzdem fortgesetzt
+                }
+            } else {
+                // Copy schema_designer_layouts from previous version (if exists)
+                if ($schema->last_version > 1) {
+                    $previousVersion = $schema->last_version - 1;
+                    $previousLayouts = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
+                        ->where('version_number', $previousVersion)
+                        ->get();
+
+                    foreach ($previousLayouts as $layout) {
+                        \App\Models\SchemaDesignerLayout::create([
+                            'schema_id' => $schema->id,
+                            'version_number' => $schemaVersion->version_number,
+                            'layout_data' => $layout->layout_data,
+                        ]);
+                    }
                 }
             }
 
