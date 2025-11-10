@@ -201,7 +201,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadProjectMembers = async (projectId: number) => {
     setLoadingMembersData(true);
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${projectId}/members`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -235,7 +235,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -380,7 +380,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -440,7 +440,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadTeamsForProject = async (projectId: number) => {
     setLoadingTeamsData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -488,7 +488,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadSchemasForProject = async (projectId: number) => {
     setLoadingSchemasData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -529,7 +529,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadTemplatesForProject = async (projectId: number) => {
     setLoadingTemplatesData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }

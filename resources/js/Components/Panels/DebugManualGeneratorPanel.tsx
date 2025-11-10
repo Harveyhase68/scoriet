@@ -387,7 +387,7 @@ export default function DebugManualGeneratorPanel({
 
   const loadTemplates = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         return;
       }
@@ -434,7 +434,7 @@ export default function DebugManualGeneratorPanel({
 
   const loadTemplateFiles = useCallback(async (templateId: number) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
       const response = await fetch(`/api/template-output/${templateId}`, {
         headers: {
@@ -496,7 +496,7 @@ export default function DebugManualGeneratorPanel({
 
   const loadSchemaTables = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const allTables: SchemaTable[] = [];
@@ -690,7 +690,7 @@ export default function DebugManualGeneratorPanel({
 
   const loadLanguages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         return;
       }
@@ -846,7 +846,7 @@ export default function DebugManualGeneratorPanel({
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
       // Build URL with project parameter to ensure backend uses only linked schemas
       const url = new URL(`/api/ultimate-template/${selectedTemplate}`, window.location.origin);

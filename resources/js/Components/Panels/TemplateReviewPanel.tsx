@@ -199,7 +199,7 @@ const TemplateReviewPanel: React.FC = () => {
 
     try {
       // Get auth token
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
       // Create download link with auth header
       const link = document.createElement('a');

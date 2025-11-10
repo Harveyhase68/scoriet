@@ -233,7 +233,7 @@ export default function EditTableModal({ isOpen, onClose, onTableUpdated, table,
   // Fetch available tables from schema version
   const fetchAvailableTables = async (schemaVersionId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/schema-versions/${schemaVersionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,

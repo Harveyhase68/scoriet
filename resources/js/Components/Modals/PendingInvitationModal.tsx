@@ -54,7 +54,7 @@ export default function PendingInvitationModal({
       setLoading(true);
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -98,7 +98,7 @@ export default function PendingInvitationModal({
       setProcessing(true);
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -137,7 +137,7 @@ export default function PendingInvitationModal({
       setProcessing(true);
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;

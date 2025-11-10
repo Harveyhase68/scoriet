@@ -131,7 +131,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setLoading(true);
       setError('');
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -178,7 +178,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const loadProjects = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/projects', {
@@ -199,7 +199,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const loadLanguages = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/active-languages', {
@@ -231,7 +231,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -277,7 +277,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -315,7 +315,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -367,7 +367,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -419,7 +419,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -516,7 +516,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       setError('');
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -567,7 +567,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -616,7 +616,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }

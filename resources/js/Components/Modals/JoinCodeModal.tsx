@@ -51,7 +51,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
     setProject(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -95,7 +95,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }

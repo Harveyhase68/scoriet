@@ -112,7 +112,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
   const loadUserData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      // Check both localStorage and sessionStorage (demo mode uses sessionStorage)
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setProfileError(t.profilemodal115);
         return;
@@ -164,7 +165,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setProfileSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.profilemodal115);
       }
@@ -216,7 +217,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
 
       // Also save to backend
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (token) {
         await fetch('/api/profile/update', {
           method: 'PUT',
@@ -251,7 +252,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.profilemodal115);
       }
@@ -311,7 +312,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.profilemodal115);
       }

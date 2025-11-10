@@ -1116,7 +1116,7 @@ export default function Index(props: IndexProps = {}) {
   // Auth Modal State - Initialize based on authentication status
   const [activeModal, setActiveModal] = useState<AuthModalType>(() => {
     // Check if user is authenticated on initial load
-    const localToken = localStorage.getItem('access_token');
+    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
     const isLoggingOut = localStorage.getItem('logout_in_progress');
     const authenticated = !!(localToken || sessionToken);
@@ -1137,7 +1137,7 @@ export default function Index(props: IndexProps = {}) {
   
   // Auth State Management - Initialize based on token existence
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const localToken = localStorage.getItem('access_token');
+    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
     return !!(localToken || sessionToken);
   });
@@ -1193,7 +1193,7 @@ export default function Index(props: IndexProps = {}) {
   const checkPendingInvitation = useCallback(async () => {
     try {
       // Multiple auth checks to prevent race conditions
-      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!accessToken) {
         return;
       }
@@ -1238,7 +1238,7 @@ export default function Index(props: IndexProps = {}) {
   React.useEffect(() => {
     const checkAuthStatus = async () => {
       // Check both localStorage (Remember Me) and sessionStorage (Session only)
-      const localToken = localStorage.getItem('access_token');
+      const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const sessionToken = sessionStorage.getItem('access_token');
       const token = localToken || sessionToken;
 
@@ -1270,7 +1270,7 @@ export default function Index(props: IndexProps = {}) {
               // Check for pending invitations if just became authenticated
               // Add delay to ensure all auth state is stable
               setTimeout(() => {
-                if (isAuthenticated && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
+                if (isAuthenticated && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
                   checkPendingInvitation();
                 }
               }, 1000);
@@ -1331,7 +1331,7 @@ export default function Index(props: IndexProps = {}) {
 
     // Initial check - only if we don't already know the user is authenticated
     // This prevents the login modal from flashing when user is already logged in
-    const localToken = localStorage.getItem('access_token');
+    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
     const hasToken = !!(localToken || sessionToken);
 
@@ -1344,7 +1344,7 @@ export default function Index(props: IndexProps = {}) {
       checkAuthStatus();
       
       // If logged out, close all panels
-      const localToken = localStorage.getItem('access_token');
+      const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const sessionToken = sessionStorage.getItem('access_token');
       if (!localToken && !sessionToken) {
         closeAllPanels();

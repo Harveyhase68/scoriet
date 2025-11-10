@@ -35,7 +35,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   // Helper function to update auth status
   const updateAuthStatus = async () => {
-    const localToken = localStorage.getItem('access_token');
+    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
     const token = localToken || sessionToken;
     
@@ -762,7 +762,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           await loadProjects();
 
           // Find and set the newly created project as selected
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (token) {
             try {
               const response = await fetch(`/api/projects/${createdProjectId}`, {

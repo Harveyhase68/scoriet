@@ -73,7 +73,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
 
   const loadSystemSettings = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch('/settings', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
@@ -98,7 +98,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   // Check authentication on component mount
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const isAuth = !!token;
       setIsAuthenticated(isAuth);
       if (isAuth && !userData) {
@@ -111,7 +111,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
 
   const loadUserData = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/user', {
@@ -158,7 +158,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   };
 
   const handleLoginSuccess = () => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (token) {
       setIsAuthenticated(true);
       loadUserData();

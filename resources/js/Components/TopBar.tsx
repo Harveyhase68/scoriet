@@ -39,7 +39,7 @@ export default function TopBar() {
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch(`/api/projects/${selectedProject.id}/applications`, {

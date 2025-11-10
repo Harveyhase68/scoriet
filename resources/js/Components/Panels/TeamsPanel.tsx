@@ -91,7 +91,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
     if (forceProjectId !== undefined) {
       const loadForcedProject = async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
             throw new Error(t.applicationsmodal66);
           }
@@ -141,7 +141,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   // Load teams assigned to a specific project
   const loadProjectTeams = useCallback(async (projectId: number) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token || !projectId) {
         return;
       }
@@ -182,7 +182,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   const loadProjects = async () => {
     try {
       // setLoadingProjects(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -227,7 +227,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
   const loadAllTeams = async () => {
     try {
       setError('');
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -270,7 +270,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -364,7 +364,7 @@ export default function TeamsPanel({ filterByProject = false, source = 'menu', f
 
     try {
       setError('');
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }

@@ -434,7 +434,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       // Load schemas associated with the current project
       const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -514,7 +514,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ layouts })
@@ -539,7 +539,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         `/api/floating-schemas/${schema.id}/layouts/${version.version_number}`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
             'Content-Type': 'application/json'
           }
         }
@@ -563,7 +563,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       const response = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -609,7 +609,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
       const response = await fetch(`/api/schema-versions/${version.id}/tables`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -749,7 +749,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         accept: async () => {
           try {
             setLoading(true);
-            const token = localStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
               method: 'POST',
               headers: {
@@ -820,7 +820,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Accept': 'application/json',
         },
         body: JSON.stringify({
@@ -883,7 +883,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Accept': 'application/json',
         },
         body: JSON.stringify({
@@ -926,7 +926,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -962,7 +962,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -998,7 +998,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -1030,7 +1030,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -1121,7 +1121,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -1267,7 +1267,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${table.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -1317,7 +1317,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -1382,7 +1382,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
             'Content-Type': 'application/json'
           }
         });
@@ -1428,7 +1428,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           setLoading(true);
           setError(null);
 
-          const token = localStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
             throw new Error(t.applicationsmodal66);
           }
@@ -1506,7 +1506,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -1560,7 +1560,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -1621,7 +1621,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -1724,7 +1724,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           accept: async () => {
             try {
               setLoading(true);
-              const token = localStorage.getItem('access_token');
+              const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
               const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
                 method: 'POST',
                 headers: {
@@ -1831,7 +1831,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       const response = await fetch('/api/diagram/layout', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

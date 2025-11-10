@@ -114,7 +114,7 @@ export default function ProjectSettingsPanel() {
 
     const loadLanguages = useCallback(async () => {
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) return;
 
             const response = await fetch('/api/active-languages', {
@@ -138,7 +138,7 @@ export default function ProjectSettingsPanel() {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) return;
 
             // Load project settings including enabled_languages
@@ -206,7 +206,7 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) return;
 
             const response = await fetch(`/api/projects/${selectedProject.id}/members`, {
@@ -230,7 +230,7 @@ export default function ProjectSettingsPanel() {
 
         setLoadingVariables(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) return;
 
             // Load all templates (or could be filtered by templates used in project)
@@ -345,7 +345,7 @@ export default function ProjectSettingsPanel() {
 
         setSaving(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
                 toast.showError(t.applicationsmodal66);
                 return;
@@ -473,7 +473,7 @@ export default function ProjectSettingsPanel() {
 
         setSavingVariables(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
                 toast.showError('Nicht authentifiziert');
                 setSavingVariables(false);

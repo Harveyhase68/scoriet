@@ -26,7 +26,8 @@
       "Bash(npm run build:prod:*)",
       "Bash(rm:*)",
       "Bash(npm install:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

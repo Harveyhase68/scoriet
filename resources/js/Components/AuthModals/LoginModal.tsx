@@ -15,10 +15,10 @@ interface LoginModalProps {
   closable?: boolean;
 }
 
-export default function LoginModal({ 
-  visible, 
-  onHide, 
-  onSwitchToRegister, 
+export default function LoginModal({
+  visible,
+  onHide,
+  onSwitchToRegister,
   onSwitchToForgotPassword,
   onLoginSuccess,
   closable = true
@@ -28,6 +28,19 @@ export default function LoginModal({
     password: '',
     rememberMe: false
   });
+
+  // 🎯 Helper: Get demo URL based on environment (local vs production)
+  const getDemoUrl = (userType: 'demo-admin' | 'demo-user'): string => {
+    const hostname = window.location.hostname;
+    const isLocalDev = hostname === 'localhost' ||
+                       hostname === '127.0.0.1' ||
+                       hostname.includes('.local') ||
+                       hostname.startsWith('10.') ||
+                       hostname.startsWith('192.168.');
+
+    const demoHost = isLocalDev ? 'http://demo.scoriet.local' : 'https://demo.scoriet.dev';
+    return `${demoHost}/demo-login?user=${userType}`;
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showResendVerification, setShowResendVerification] = useState(false);
@@ -39,7 +52,7 @@ export default function LoginModal({
 
   // Check if we're on demo subdomain
   const isDemoMode = window.location.hostname === 'demo.scoriet.dev' ||
-                     window.location.hostname === 'demo.localhost' ||
+                     window.location.hostname === 'demo.scoriet.local' ||
                      import.meta.env.VITE_SCORIET_DEMO === 'true';
 
   // Listen for language changes
@@ -63,7 +76,11 @@ export default function LoginModal({
     // Check for demo users and redirect
     if (formData.email === 'demo-admin' || formData.email === 'demo-user') {
       // Redirect to demo subdomain with user type
-      window.location.href = `https://demo.scoriet.dev/demo-login?user=${formData.email}`;
+      if (window.location.hostname === 'scoriet.local') {
+        window.location.href = `https://demo.scoriet.dev/demo-login?user=${formData.email}`;
+      } else {
+        window.location.href = `https://demo.scoriet.local/demo-login?user=${formData.email}`;
+      }
       return;
     }
 
@@ -266,10 +283,10 @@ export default function LoginModal({
             {t.LoginDemoDescription}
           </p>
           <div className="space-y-2">
-            <button 
+            <button
               type="button"
               className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-              onClick={() => window.location.href = 'https://demo.scoriet.dev/demo-login?user=demo-admin'}
+              onClick={() => window.location.href = getDemoUrl('demo-admin')}
               disabled={loading}
             >
               <strong className="text-blue-800">demo-admin</strong>
@@ -277,10 +294,10 @@ export default function LoginModal({
              {t. LoginDemoAdmin}
               </span>
             </button>
-            <button 
+            <button
               type="button"
               className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-              onClick={() => window.location.href = 'https://demo.scoriet.dev/demo-login?user=demo-user'}
+              onClick={() => window.location.href = getDemoUrl('demo-user')}
               disabled={loading}
             >
               <strong className="text-blue-800">demo-user</strong>
