@@ -61,7 +61,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       setLoading(true);
       setError('');
       
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;

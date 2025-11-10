@@ -61,7 +61,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
   const loadCurrentUser = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/user', {
@@ -85,7 +85,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       setLoading(true);
       setError('');
       
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -150,7 +150,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
     setCloning(projectToClone.id);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
       const response = await fetch('/api/projects', {
         method: 'POST',

@@ -64,7 +64,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,7 +107,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/floating-schemas/${schemaId}/versions`, {
         headers: {
           'Authorization': `Bearer ${token}`,

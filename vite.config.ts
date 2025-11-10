@@ -14,6 +14,12 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    server: {
+        host: 'scoriet.local',
+        port: 5173,
+        origin: 'http://scoriet.local:5173',
+        cors: true,
+    },    
     esbuild: {
         jsx: 'automatic',
     },

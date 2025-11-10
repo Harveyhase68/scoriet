@@ -120,7 +120,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
   // Fetch available tables from schema version
   const fetchAvailableTables = async (svId: number) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/schema-versions/${svId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,

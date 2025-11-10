@@ -74,7 +74,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       // NEVER clear success message during reload - let it auto-expire
       // setSuccess(''); // <-- REMOVED
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -122,7 +122,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       setSuccess('');
       console.log(t.projectinvitationsmodal118);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
@@ -210,7 +210,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) return;
 
           const response = await fetch(`/api/projects/${project.id}/invitations/${invitation.id}`, {
@@ -249,7 +249,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       icon: 'pi pi-send',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) return;
 
           // Send a new invitation with the same details

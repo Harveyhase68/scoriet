@@ -179,7 +179,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -297,7 +297,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     setAssigning(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -365,7 +365,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
             throw new Error(t.applicationsmodal66);
           }
@@ -417,7 +417,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }

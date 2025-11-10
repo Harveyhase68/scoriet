@@ -82,7 +82,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !isAdmin) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${team.id}/invitations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -113,7 +113,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${team.id}/invitations`, {
         method: 'POST',
         headers: {
@@ -144,7 +144,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !confirm(t.manageteammodal139)) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${team.id}/members/${userId}`, {
         method: 'DELETE',
         headers: {
@@ -168,7 +168,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${team.id}/members/${userId}/role`, {
         method: 'PUT',
         headers: {
@@ -194,7 +194,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !confirm(t.manageteammodal189)) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/teams/${team.id}/invitations/${invitationId}`, {
         method: 'DELETE',
         headers: {

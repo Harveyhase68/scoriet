@@ -49,7 +49,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       setLoading(true);
       setError('');
 
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${project.id}/members`, {
         headers: {
           'Accept': 'application/json',
@@ -85,7 +85,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       setError('');
       setSuccess('');
 
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${project.id}/members`, {
         method: 'DELETE',
         headers: {
@@ -115,7 +115,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
       setError('');
       setSuccess('');
 
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       const response = await fetch(`/api/projects/${project.id}/members/role`, {
         method: 'PUT',
         headers: {

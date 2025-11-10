@@ -65,7 +65,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -154,7 +154,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.panelt2405);
       }

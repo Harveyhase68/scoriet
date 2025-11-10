@@ -107,7 +107,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load languages
   const loadLanguages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/active-languages', {
@@ -129,7 +129,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load existing schemas
   const loadExistingSchemas = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/schemas', {
@@ -151,7 +151,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load templates
   const loadTemplates = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/templates', {
@@ -189,7 +189,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     const timeoutId = setTimeout(async () => {
       setCheckingProjectName(true);
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
         if (!token) return;
 
         const response = await fetch('/api/projects', {
@@ -290,7 +290,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Not authenticated');
       }

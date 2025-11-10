@@ -105,7 +105,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     if (forceProjectId !== undefined) {
       const loadForcedProject = async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
             throw new Error(t.applicationsmodal66);
           }
@@ -143,7 +143,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const loadTeams = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
@@ -208,7 +208,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) {
             throw new Error(t.applicationsmodal66);
           }

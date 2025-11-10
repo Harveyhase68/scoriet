@@ -48,7 +48,7 @@ export default function LandingPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     // Initialize based on token existence to prevent flash of unauthenticated content
-    const localToken = localStorage.getItem('access_token');
+    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
     return !!(localToken || sessionToken);
   });
@@ -107,7 +107,7 @@ export default function LandingPage() {
   const loadUserData = async () => {
     try {
       // Check both localStorage and sessionStorage for token
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setIsAuthenticated(false);
         setUserData(null);
@@ -283,7 +283,7 @@ export default function LandingPage() {
 
   const handleLoginSuccess = () => {
     // After successful login, check auth state from both storages
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (token) {
       setIsAuthenticated(true);
       loadUserData();

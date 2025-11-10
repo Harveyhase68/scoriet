@@ -101,7 +101,7 @@ export default function CodeGenerationPanel() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError('Authentication required');
         return;
@@ -160,7 +160,7 @@ export default function CodeGenerationPanel() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError('Authentication required');
         return;
@@ -375,7 +375,7 @@ export default function CodeGenerationPanel() {
       setGenerating(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Authentication required');
       }
