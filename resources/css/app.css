@@ -618,3 +618,31 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
 .react-flow__minimap {
     z-index: 10 !important;
 }
+
+/* ==============================================
+   DATATABLE PAGINATION DROPDOWN FIX
+   ============================================== */
+
+/* Fix vertical alignment of selected value in pagination dropdown */
+.p-datatable .p-paginator .p-dropdown .p-dropdown-label {
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+/* Ensure dropdown trigger is vertically centered */
+.p-datatable .p-paginator .p-dropdown {
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 0rem !important;
+}
+
+.p-dropdown:hover {
+    border-color: #4b5563 !important;
+}
+.p-dropdown:focus-hover {
+    border-color: #4b5563 !important;
+}

@@ -152,7 +152,9 @@ return [
 
     'redis' => [
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
+        // FORCE Predis due to $_SERVER override issue on WAMP
+        // env('REDIS_CLIENT') returns 'phpredis' even though .env has 'predis'
+        'client' => 'predis',
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),

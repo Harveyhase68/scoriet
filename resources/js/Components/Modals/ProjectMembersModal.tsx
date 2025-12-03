@@ -241,7 +241,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
   const modalHeader = (
     <div className="flex items-center space-x-3">
       <i className="pi pi-users text-blue-500"></i>
-      <span>Project Members - {project?.name}</span>
+      <span>{t.projectpanel796} - {project?.name}</span>
     </div>
   );
 
@@ -297,7 +297,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
             </DataTable>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.authmodalsesetpasswordmodal162}
               icon="pi pi-times"

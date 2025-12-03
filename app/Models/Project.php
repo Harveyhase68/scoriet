@@ -36,6 +36,7 @@ class Project extends Model
         'project_url',
         'start_page',
         'default_language',
+        'archive_format',
         'filename_short_length',
         'decimal_separator',
         'thousands_separator',
@@ -45,6 +46,9 @@ class Project extends Model
         'timezone',
         'enabled_languages',
         'google_translate_api_key',
+        'protected_files',
+        'install_script',
+        'update_script',
     ];
 
     protected $casts = [
@@ -55,6 +59,9 @@ class Project extends Model
         'enabled_languages' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'protected_files' => 'array',
+        'install_script' => 'array',
+        'update_script' => 'array',
     ];
 
     protected $with = ['owner'];
@@ -79,15 +86,14 @@ class Project extends Model
     }
 
     /**
-     * Get templates associated with this project (legacy - needs updating)
-     * TODO: Update this relationship for the new floating schemas system
+     * Get templates associated with this project
      */
     public function templates(): BelongsToMany
     {
-        // For now, return empty collection to avoid SQL errors
-        // This needs to be properly implemented with the new schema system
-        return $this->belongsToMany(Template::class, 'project_templates', 'project_id', 'template_id')
-                    ->whereRaw('1 = 0'); // Always return empty result set
+        return $this->belongsToMany(Template::class, 'project_template_usage', 'project_id', 'template_id')
+                    ->withPivot(['usage_type', 'alias', 'config', 'is_active', 'used_at'])
+                    ->withTimestamps()
+                    ->wherePivot('is_active', true);
     }
 
     /**

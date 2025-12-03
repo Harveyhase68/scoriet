@@ -9,6 +9,9 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { Toast } from 'primereact/toast';
 import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { de } from '@/i18n/locales/de';
+import { en } from '@/i18n/locales/en';
 
 // Global window interface for tab data
 declare global {
@@ -19,6 +22,17 @@ declare global {
       forceProjectName?: string;
       title?: string;
       updateTitleCallback?: (newTitle: string) => void;
+      // Debug manual generator properties
+      tableId?: number;
+      tableName?: string;
+      schemaId?: number;
+      projectId?: number;
+      projectName?: string;
+      templateId?: number;
+      fileId?: number;
+      fileName?: string;
+      languageId?: number;
+      languageCode?: string;
     }>;
   }
 }
@@ -46,12 +60,14 @@ const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseM
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
 const DebugManualGeneratorPanel = lazy(() => import('@/Components/Panels/DebugManualGeneratorPanel'));
 const CodeGenerationPanel = lazy(() => import('@/Components/Panels/CodeGenerationPanel'));
+const DeploymentLogPanel = lazy(() => import('@/Components/Panels/DeploymentLogPanel'));
 const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageManagementPanel'));
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
 const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
 const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPanel'));
+const CacheDebugPanel = lazy(() => import('@/Components/Panels/CacheDebugPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -229,9 +245,11 @@ const updateTabTitle = (dockRef: any, setLayout: any, tabId: string, newTitle: s
 // ✅ CORRECTED loadTab function with Lazy Loading!
 const loadTab = (
   data: any,
+  t: any,
   handleOpenDesigner?: (schemaId: number) => void,
   openPanelFn?: (panelId: string, data?: any) => void,
-  updateTitleCallback?: (newTitle: string) => void
+  updateTitleCallback?: (newTitle: string) => void,
+  tFallback?: any
 ) => {
   const { id } = data;
 
@@ -330,9 +348,17 @@ const loadTab = (
     const databaseForceProjectName = databaseStoredData.forceProjectName as string | undefined;
     const databaseActualUpdateTitleCallback = databaseStoredData.updateTitleCallback || updateTitleCallback;
 
+    // Determine title: use forceProjectName if available, otherwise fallback
+    const dbTitle = t?.index625 || tFallback?.index625 || 'Database Management';
+    const databaseTitle = data.title ||
+                         databaseStoredData.title ||
+                         (databaseShouldShowProjectFilter && databaseForceProjectName
+                           ? `${dbTitle}: ${databaseForceProjectName}`
+                           : dbTitle);
+
     return {
       id,
-      title: data.title || databaseStoredData.title || 'Database Management',
+      title: databaseTitle,
       content: (
         <Suspense fallback={<PanelLoader />}>
           <DatabaseManagementPanel
@@ -399,10 +425,10 @@ const loadTab = (
     case 'landing':
       return {
         id: 'home',
-        title: data.title || 'Welcome',
+        title: data.title || t?.index400 || tFallback?.index400 || 'Welcome',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <LandingPage isAuthenticated={true} />
+            <LandingPage />
           </Suspense>
         ),
         closable: true,
@@ -412,7 +438,7 @@ const loadTab = (
     case 't2':
       return {
         id,
-        title: data.title || 'Database Designer',
+        title: data.title || t?.index413 || tFallback?.index413 || 'Database Designer',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PanelT2 preSelectedSchemaId={data.preSelectedSchemaId} />
@@ -438,10 +464,23 @@ const loadTab = (
     case 't5':
       return {
         id,
-        title: data.title || 'Database Explorer',
+        title: data.title || 'Navigation',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PanelT5 />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'cache-debug':
+      return {
+        id,
+        title: data.title || 'Cache Debug',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <CacheDebugPanel />
           </Suspense>
         ),
         closable: true,
@@ -479,7 +518,6 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TeamsPanel
-              isActive={true}
               filterByProject={teamsShouldShowProjectFilter}
               forceProjectId={teamsForceProjectId}
               updateTabTitle={teamsActualUpdateTitleCallback}
@@ -637,7 +675,7 @@ const loadTab = (
 
       return {
         id,
-        title: data.title || 'Database Management',
+        title: data.title || t?.index625 || tFallback?.index625 || 'Database Management',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <DatabaseManagementPanel isActive={true} onOpenDesigner={handleOpenDesigner} filterByProject={dbShouldShowProjectFilter} updateTabTitle={dbActualUpdateTitleCallback} />
@@ -726,7 +764,20 @@ const loadTab = (
         title: data.title || 'Code Generation',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <CodeGenerationPanel isActive={true} />
+            <CodeGenerationPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'deployment-log':
+      return {
+        id,
+        title: data.title || 'Deployment Log',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <DeploymentLogPanel />
           </Suspense>
         ),
         closable: true,
@@ -986,7 +1037,13 @@ export default function Index(props: IndexProps = {}) {
   const { resetToken, resetEmail, demoLogin, demoUser, demoMessage } = props;
   const ref = useRef<any>(null);
   const toast = useRef<Toast>(null);
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
+  // Fallback translations if lazy loading hasn't completed yet
+  const tFallback = currentLanguage === 'de' ? de : en;
+  
   // Project context
   const { projects, selectedProject, setSelectedProject } = useProject();
 
@@ -1588,7 +1645,7 @@ export default function Index(props: IndexProps = {}) {
           updateTabTitle(ref, setLayout, uniqueTabId, newTitle);
         };
 
-        const newTab = loadTab({ id: uniqueTabId, ...data }, handleOpenDesigner, openPanel, updateTitleCallback);
+        const newTab = loadTab({ id: uniqueTabId, ...data }, t, handleOpenDesigner, openPanel, updateTitleCallback, tFallback);
 
         if (newTab) {
           const currentLayout = ref.current.saveLayout();
@@ -2044,7 +2101,7 @@ useHotkeys('alt+n', () => {
       />
 
       <ErrorBoundary
-        FallbackComponent={ErrorFallback}
+        FallbackComponent={(props) => <ErrorFallback {...props} resetError={props.resetErrorBoundary} />}
       >
         <ProjectProvider>
         <div 
@@ -2097,7 +2154,7 @@ useHotkeys('alt+n', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={(data: any) => loadTab(data, handleOpenDesigner, openPanel)}
+                  loadTab={(data: any) => loadTab(data, t, handleOpenDesigner, openPanel, undefined, tFallback)}
                   groups={groups}
                   style={{
                     position: 'absolute',

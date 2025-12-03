@@ -52,6 +52,10 @@ interface Template {
     visibility: 'public' | 'private';
     is_system_template: boolean;
     files?: TemplateFile[];
+    review_status: 'draft' | 'pending_review' | 'approved' | 'rejected';
+    review_score: number;
+    linked_project_ids?: number[];
+    linked_projects?: Array<{ id: number; name: string; is_active: boolean }>;
 }
 
 interface TemplateFile {
@@ -95,10 +99,27 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     // Get current user ID and type for permission checks
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
     const userType = localStorage.getItem('user_type') || 'free';
+    const isInnerCore = localStorage.getItem('is_inner_core') === '1';
 
     // State variables
-    const [templates, setTemplates] = useState<Template[]>([]);
-    const [loading, setLoading] = useState(false);
+    //const [templates, setTemplates] = useState<Template[]>([]);
+    const [myTemplates, setMyTemplates] = useState<Template[]>([]);
+    const [communityTemplates, setCommunityTemplates] = useState<Template[]>([]);
+    //const [loading, setLoading] = useState(false);
+    const [myTemplatesLoading, setMyTemplatesLoading] = useState(false);
+    const [communityLoading, setCommunityLoading] = useState(false);
+
+    // Filters for My Templates
+    const [myTypeFilter, setMyTypeFilter] = useState('all'); // 'all', 'private', 'public', 'system'
+    const [myLanguageFilter, setMyLanguageFilter] = useState('all');
+    const [myCategoryFilter, setMyCategoryFilter] = useState(t.templatecontroller22);
+    const [mySearchTerm, setMySearchTerm] = useState('');
+
+    // Filters for Community Templates
+    const [communitySearchTerm, setCommunitySearchTerm] = useState('');
+    const [communityTypeFilter, setCommunityTypeFilter] = useState('all'); // 'all', 'system', 'public'
+    const [communityLanguageFilter, setCommunityLanguageFilter] = useState('all');
+    const [communityCategoryFilter, setCommunityCategoryFilter] = useState(t.templatecontroller22);
     const [modalVisible, setModalVisible] = useState(false);
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
@@ -106,8 +127,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [templateFiles, setTemplateFiles] = useState<TemplateFile[]>([]);
     const [fileModalVisible, setFileModalVisible] = useState(false);
     const [editingFile, setEditingFile] = useState<TemplateFile | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState(t.templatecontroller22);
+    //const [searchTerm, setSearchTerm] = useState('');
+    //const [categoryFilter, setCategoryFilter] = useState(t.templatecontroller22);
     const [cloneModalVisible, setCloneModalVisible] = useState(false);
     const [templateToClone, setTemplateToClone] = useState<Template | null>(null);
     const [cloneName, setCloneName] = useState('');
@@ -117,6 +138,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [templateVariables, setTemplateVariables] = useState<TemplateVariable[]>([]);
     const [variableModalVisible, setVariableModalVisible] = useState(false);
     const [editingVariable, setEditingVariable] = useState<TemplateVariable | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const [linkModalVisible, setLinkModalVisible] = useState(false);
+    const [templateToLink, setTemplateToLink] = useState<Template | null>(null);
+    const [allProjects, setAllProjects] = useState<any[]>([]);
+    const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+    const [loadingProjects, setLoadingProjects] = useState(false);
+    const [toggleActiveModalVisible, setToggleActiveModalVisible] = useState(false);
+    const [templateToToggle, setTemplateToToggle] = useState<Template | null>(null);
+    const [projectActivationStates, setProjectActivationStates] = useState<{[key: number]: boolean}>({});
 
     // Track if we should use forceProjectName (don't change title on selectedProject changes)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -130,7 +163,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const categories = [t.templatecontroller22, t.panelt3296, t.panelt3297, t.panelt3298, t.panelt3299, t.panelsewnavigationpanel223];
     const fileTypes = [
         { label: t.templatemanagementpanel115, value: 'static_file', description: 'Single static file (e.g. config.json)' },
-        { label: 'Static Directory (.zip)', value: 'static_directory', description: t.templatemanagementpanel116 },
+        { label: 'Static Directory (Archive)', value: 'static_directory', description: t.templatemanagementpanel116 },
         { label: 'Project File', value: 'project_file', description: t.templatemanagementpanel117 },
         { label: t.templatemanagementpanel118, value: 'db_table_file', description: 'File per database table (model, controller, etc.)' },
         { label: 'Project File (Languages)', value: 'project_file_languages', description: t.templatemanagementpanel119 },
@@ -139,8 +172,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     useEffect(() => {
         loadTemplates();
-         
-    }, [searchTerm, categoryFilter, projectId]);
+        loadMyTemplates();
+        loadCommunityTemplates();
+    }, [projectId]);
+
+    // Reload my templates when filters change
+    useEffect(() => {
+        loadMyTemplates();
+    }, [myTypeFilter, myLanguageFilter, myCategoryFilter, mySearchTerm]);
+
+    // Reload community templates when filters change
+    useEffect(() => {
+        loadCommunityTemplates();
+    }, [communitySearchTerm, communityTypeFilter, communityLanguageFilter, communityCategoryFilter]);
 
     // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
     useEffect(() => {
@@ -168,6 +212,145 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             setTemplates([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Load user's own templates (original, cloned, linked, public)
+    const loadMyTemplates = async () => {
+        setMyTemplatesLoading(true);
+        try {
+            const allTemplates = await api.getAllTemplates({
+                active_only: false,
+                project_id: projectId
+            });
+
+            // Special handling for system users:
+            // - System/Admin users: Show ALL their templates including system templates
+            // - Normal users (free/premium): Show templates they created OR templates linked to their projects
+            const isSystemUser = userType === 'system' || userType === 'admin';
+
+            // Filter: User's own templates (creator) OR templates linked to user's projects
+            let filtered = allTemplates.filter((t: Template) => {
+                const isMyTemplate = parseInt(String(t.creator_user_id)) === currentUserId;
+                const isLinkedToMyProjects = (t.linked_project_ids?.length || 0) > 0;
+
+                // Show if user created it OR if it's linked to user's projects
+                if (isMyTemplate || isLinkedToMyProjects) {
+                    // System users can see all, including system templates
+                    if (isSystemUser) {
+                        return true;
+                    }
+                    // Normal users: Don't show system templates they didn't create (unless linked)
+                    if (t.is_system_template && !isMyTemplate && isLinkedToMyProjects) {
+                        return true; // Show linked system templates
+                    }
+                    if (t.is_system_template && !isMyTemplate) {
+                        return false; // Don't show non-linked system templates
+                    }
+                    return true;
+                }
+
+                return false;
+            });
+
+            // Apply type filter (private/public/system)
+            if (myTypeFilter !== 'all') {
+                if (myTypeFilter === 'system') {
+                    filtered = filtered.filter((t: Template) => t.is_system_template);
+                } else if (myTypeFilter === 'private') {
+                    filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'private');
+                } else if (myTypeFilter === 'public') {
+                    filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'public');
+                }
+            }
+
+            // Apply language filter
+            if (myLanguageFilter !== 'all') {
+                filtered = filtered.filter((t: Template) => t.language === myLanguageFilter);
+            }
+
+            // Apply category filter
+            if (myCategoryFilter !== t.templatecontroller22) {
+                filtered = filtered.filter((t: Template) => t.category === myCategoryFilter);
+            }
+
+            // Apply search
+            if (mySearchTerm) {
+                const search = mySearchTerm.toLowerCase();
+                filtered = filtered.filter((t: Template) =>
+                    t.name?.toLowerCase().includes(search) ||
+                    t.description?.toLowerCase().includes(search)
+                );
+            }
+
+            setMyTemplates(filtered);
+        } catch (error) {
+            console.error('Error loading my templates:', error);
+            setMyTemplates([]);
+        } finally {
+            setMyTemplatesLoading(false);
+        }
+    };
+
+    // Load community templates (system + public from others)
+    const loadCommunityTemplates = async () => {
+        setCommunityLoading(true);
+        try {
+            const allTemplates = await api.getAllTemplates({
+                active_only: false,
+                project_id: projectId
+            });
+
+            // Check if current user is a reviewer (system/admin/inner_core)
+            const isReviewer = userType === 'system' || userType === 'admin' || isInnerCore;
+
+            // Filter: System templates OR public templates (from anyone, including user)
+            let filtered = allTemplates.filter((t: Template) => {
+                // System templates are ALWAYS shown (no review required)
+                if (t.is_system_template) {
+                    return true;
+                }
+
+                // Public templates: Only show if approved OR user is reviewer
+                if (t.visibility === 'public') {
+                    return t.review_status === 'approved' || isReviewer;
+                }
+
+                return false;
+            });
+
+            // Apply type filter
+            if (communityTypeFilter === 'system') {
+                filtered = filtered.filter((t: Template) => t.is_system_template);
+            } else if (communityTypeFilter === 'public') {
+                filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'public');
+            }
+
+            // Apply language filter
+            if (communityLanguageFilter !== 'all') {
+                filtered = filtered.filter((t: Template) => t.language === communityLanguageFilter);
+            }
+
+            // Apply category filter
+            if (communityCategoryFilter !== t.templatecontroller22) {
+                filtered = filtered.filter((t: Template) => t.category === communityCategoryFilter);
+            }
+
+            // Apply search
+            if (communitySearchTerm) {
+                const search = communitySearchTerm.toLowerCase();
+                filtered = filtered.filter((t: Template) =>
+                    t.name?.toLowerCase().includes(search) ||
+                    t.description?.toLowerCase().includes(search)
+                );
+            }
+
+            setCommunityTemplates(filtered);
+        } catch (error) {
+            console.error('Error loading community templates:', error);
+            setCommunityTemplates([]);
+        } finally {
+            setCommunityLoading(false);
         }
     };
 
@@ -221,30 +404,91 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     };
 
 
-    const handleHardDelete = async (id: number) => {
+    const confirmDelete = (template: Template) => {
+        setTemplateToDelete(template);
+        setDeleteConfirmText('');
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteModalHide = () => {
+        setShowDeleteModal(false);
+        setTemplateToDelete(null);
+        setDeleteConfirmText('');
+    };
+
+    const handleDeleteTemplate = async () => {
+        if (!templateToDelete) return;
+
+        // Validate confirmation text
+        if (deleteConfirmText !== 'DELETE') {
+            toast.showError('You must type DELETE to confirm deletion');
+            return;
+        }
+
+        setDeleting(true);
+
         try {
-            const response = await api.hardDeleteTemplate(id);
+            const response = await api.hardDeleteTemplate(templateToDelete.id);
             if (response.success) {
                 toast.showSuccess('Template endgültig gelöscht');
-                loadTemplates();
+                await loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                setShowDeleteModal(false);
+                setTemplateToDelete(null);
+                setDeleteConfirmText('');
             }
         } catch {
             // Error hard deleting template
             toast.showError(t.templatemanagementpanel216);
+        } finally {
+            setDeleting(false);
         }
     };
 
     const handleToggleActive = async (template: Template) => {
+        // Open modal to manage project-specific activation
+        setTemplateToToggle(template);
+
+        // Initialize activation states from linked_projects
+        const initialStates: {[key: number]: boolean} = {};
+        template.linked_projects?.forEach(project => {
+            initialStates[project.id] = project.is_active;
+        });
+        setProjectActivationStates(initialStates);
+
+        setToggleActiveModalVisible(true);
+    };
+
+    const handleToggleProjectActivation = (projectId: number) => {
+        setProjectActivationStates(prev => ({
+            ...prev,
+            [projectId]: !prev[projectId]
+        }));
+    };
+
+    const handleApplyActivationChanges = async () => {
+        if (!templateToToggle) return;
+
         try {
-            const response = await api.toggleTemplateActive(template.id);
-            if (response.success) {
-                const newStatus = response.is_active ? 'aktiviert' : 'deaktiviert';
-                toast.showSuccess(`Template ${newStatus}`);
-                loadTemplates();
+            // Update is_active for each linked project
+            for (const [projectIdStr, isActive] of Object.entries(projectActivationStates)) {
+                const projectId = parseInt(projectIdStr);
+                await fetch(`/api/templates/${templateToToggle.id}/projects/${projectId}/toggle-active`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ is_active: isActive })
+                });
             }
-        } catch {
-            // Error toggling template status
-            toast.showError(t.templatemanagementpanel230);
+
+            toast.showSuccess('Verknüpfungen erfolgreich aktualisiert');
+            setToggleActiveModalVisible(false);
+            loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+        } catch (error: any) {
+            console.error('Error updating activations:', error);
+            toast.showError('Fehler beim Aktualisieren der Verknüpfungen');
         }
     };
 
@@ -302,10 +546,55 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             if (response.success) {
                 toast.showSuccess(t.templatecontroller649);
                 setCloneModalVisible(false);
-                loadTemplates();
+                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
             }
         } catch (error: any) {
             const errorMessage = error.response?.data?.message || t.templatemanagementpanel291;
+            toast.showError(errorMessage);
+        }
+    };
+
+    const handleOpenLinkModal = async (template: Template) => {
+        setTemplateToLink(template);
+        setLoadingProjects(true);
+        setLinkModalVisible(true);
+
+        try {
+            // Load all user's projects
+            const projects = await api.getUserProjects();
+            setAllProjects(projects || []);
+
+            // Use linked_project_ids from template object (already loaded)
+            setLinkedProjectIds(template.linked_project_ids || []);
+        } catch (error) {
+            console.error('Error loading projects:', error);
+            toast.showError('Fehler beim Laden der Projekte');
+            setAllProjects([]);
+            setLinkedProjectIds([]);
+        } finally {
+            setLoadingProjects(false);
+        }
+    };
+
+    const handleToggleProjectLink = (projectId: number) => {
+        if (linkedProjectIds.includes(projectId)) {
+            setLinkedProjectIds(linkedProjectIds.filter(id => id !== projectId));
+        } else {
+            setLinkedProjectIds([...linkedProjectIds, projectId]);
+        }
+    };
+
+    const handleApplyProjectLinks = async () => {
+        if (!templateToLink) return;
+
+        try {
+            // Apply the links
+            await api.updateTemplateProjectLinks(templateToLink.id, linkedProjectIds);
+            toast.showSuccess('Template-Verknüpfungen erfolgreich aktualisiert');
+            setLinkModalVisible(false);
+            loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || 'Fehler beim Aktualisieren der Verknüpfungen';
             toast.showError(errorMessage);
         }
     };
@@ -321,6 +610,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 is_active: values.is_active !== false,
                 visibility: values.visibility || 'public',
                 is_system_template: values.is_system_template || false,
+                protected_files: values.protected_files || [],
+                install_script: values.install_script || [],
+                update_script: values.update_script || [],
                 files: templateFiles.map((file, index) => ({
                     file_name: file.file_name,
                     file_content: file.file_content,
@@ -356,7 +648,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 // Small delay to ensure DB transaction is complete
                 setTimeout(() => {
-                    loadTemplates();
+                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
                 }, 500);
             }
         } catch (error: any) {
@@ -378,6 +670,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 is_active: values.is_active,
                 visibility: values.visibility || 'public',
                 is_system_template: values.is_system_template || false,
+                protected_files: values.protected_files || [],
+                install_script: values.install_script || [],
+                update_script: values.update_script || [],
                 files: [] // No files when just saving for the first time
             };
 
@@ -404,7 +699,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 // Load the newly created template and open edit modal
                 setTimeout(async () => {
-                    await loadTemplates();
+                    await loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
 
                     // Find the newly created template by ID
                     const newTemplate = response.template;
@@ -438,17 +733,34 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     };
 
     const handleImport = (file: File) => {
+        const filename = file.name.toLowerCase();
+
+        // Check if it's an archive file (ZIP, TAR.GZ, TAR.XZ)
+        const isArchive = filename.endsWith('.zip') ||
+                         filename.endsWith('.tar.gz') ||
+                         filename.endsWith('.tar.xz') ||
+                         filename.endsWith('.gz') ||
+                         filename.endsWith('.tar') ||
+                         filename.endsWith('.xz');
+
+        if (isArchive) {
+            // Handle archive import
+            handleArchiveImport(file);
+            return false;
+        }
+
+        // Handle JSON import (original logic)
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const templateData = JSON.parse(e.target?.result as string);
-                
+
                 // Use the new import API endpoint
                 const response = await api.importTemplate(templateData, false);
-                
+
                 if (response.success) {
                     toast.showSuccess(t.templatemanagementpanel410);
-                    loadTemplates();
+                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
                 } else {
                     toast.showError(response.error || t.templatemanagementpanel413);
                 }
@@ -466,7 +778,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                                 if (response.success) {
                                     toast.showSuccess(t.templatemanagementpanel428);
-                                    loadTemplates();
+                                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
                                 }
                             } catch {
                                 // Error overwriting template
@@ -487,25 +799,121 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         return false;
     };
 
-    const handleExport = async (template: Template) => {
+    const handleArchiveImport = async (file: File) => {
+        console.log('handleArchiveImport called with file:', file.name, file.type, file.size);
+
         try {
-            const response = await api.exportTemplate(template.id);
-            if (response.success) {
-                const dataStr = JSON.stringify(response.export_data, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(dataBlob);
+            const formData = new FormData();
+            formData.append('template_file', file);
+            formData.append('overwrite_existing', 'false');
+
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+
+            console.log('Sending archive import request to /api/templates/import');
+
+            const response = await fetch('/api/templates/import', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                toast.showSuccess(data.message || 'Template erfolgreich aus Archiv importiert');
+                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+            } else if (response.status === 409) {
+                // Template already exists - ask for overwrite
+                confirmDialog({
+                    message: 'Ein Template mit diesem Namen existiert bereits. Möchten Sie es überschreiben?',
+                    header: 'Template existiert bereits',
+                    icon: 'pi pi-exclamation-triangle',
+                    accept: async () => {
+                        try {
+                            const formDataOverwrite = new FormData();
+                            formDataOverwrite.append('template_file', file);
+                            formDataOverwrite.append('overwrite_existing', 'true');
+
+                            const responseOverwrite = await fetch('/api/templates/import', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                },
+                                body: formDataOverwrite,
+                            });
+
+                            const dataOverwrite = await responseOverwrite.json();
+
+                            if (responseOverwrite.ok && dataOverwrite.success) {
+                                toast.showSuccess(dataOverwrite.message || 'Template erfolgreich überschrieben');
+                                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                            } else {
+                                toast.showError(dataOverwrite.error || 'Fehler beim Überschreiben des Templates');
+                            }
+                        } catch (error: any) {
+                            toast.showError('Fehler beim Überschreiben des Templates: ' + error.message);
+                        }
+                    },
+                    acceptLabel: 'Ja, überschreiben',
+                    rejectLabel: 'Abbrechen',
+                    acceptClassName: 'p-button-danger'
+                });
+            } else {
+                toast.showError(data.error || 'Fehler beim Importieren des Archivs');
+            }
+        } catch (error: any) {
+            toast.showError('Fehler beim Importieren des Archivs: ' + error.message);
+        }
+    };
+
+    const handleExport = async (template: Template, format: 'json' | 'zip' | 'tar.gz' | 'tar.xz' = 'json') => {
+        try {
+            if (format !== 'json') {
+                // Download as archive (ZIP/TAR.GZ/TAR.XZ)
+                const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+
+                const response = await fetch(`/api/templates/${template.id}/download-archive?format=${format}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to download ${format.toUpperCase()}`);
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = response.filename || `${template.name.replace(/\s+/g, '_')}_template.json`;
+                link.download = `${template.name}.${format}`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                toast.showSuccess(t.templatemanagementpanel464);
+                toast.showSuccess(`Template als ${format.toUpperCase()} heruntergeladen`);
+            } else {
+                // Export as JSON (original logic)
+                const response = await api.exportTemplate(template.id);
+                if (response.success) {
+                    const dataStr = JSON.stringify(response.export_data, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = response.filename || `${template.name.replace(/\s+/g, '_')}_template.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    toast.showSuccess(t.templatemanagementpanel464);
+                }
             }
-        } catch {
-            toast.showError(t.templatemanagementpanel467);
-            // Export error
+        } catch (error: any) {
+            toast.showError(t.templatemanagementpanel467 + ': ' + error.message);
         }
     };
 
@@ -579,15 +987,52 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             return;
         }
 
+        // 🎯 Handle ZIP upload: Convert to Base64
+        let fileContent = values.file_content;
+        let contentType = 'text';
+        let zipFilename = null;
+        let managedFilesList = null;
+
+        if (values.zip_file) {
+            // User uploaded a ZIP file
+            try {
+                const reader = new FileReader();
+                const base64Promise = new Promise<string>((resolve, reject) => {
+                    reader.onload = () => {
+                        const base64 = reader.result as string;
+                        // Remove data:application/zip;base64, prefix
+                        resolve(base64.split(',')[1]);
+                    };
+                    reader.onerror = reject;
+                });
+
+                reader.readAsDataURL(values.zip_file);
+                fileContent = await base64Promise;
+                contentType = 'zip';
+                zipFilename = values.zip_file.name;
+            } catch (error) {
+                toast.showError('Fehler beim Verarbeiten der ZIP-Datei: ' + error.message);
+                return;
+            }
+        } else if (values.managed_files && values.managed_files.length > 0) {
+            // User uploaded individual files via File Manager
+            managedFilesList = values.managed_files;
+            contentType = 'zip'; // Will be converted to ZIP by backend
+            zipFilename = values.file_name; // Use the template file name
+        }
+
         const fileData = {
             file_name: values.file_name,
-            file_content: values.file_content,
+            file_content: fileContent,
             file_type: values.file_type,
             file_order: values.file_order || templateFiles.length,
             output_path: values.output_path || '/',
+            content_type: contentType,
+            zip_filename: zipFilename,
+            managed_files: managedFilesList, // 🆕 List of individual files
         };
 
-        try {
+        try{
             // Save file immediately to the template via API
             const templateData = {
                 name: editingTemplate.name,
@@ -596,16 +1041,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 language: editingTemplate.language,
                 tags: editingTemplate.tags || [],
                 is_active: editingTemplate.is_active !== false,
-                files: editingFile 
-                    ? templateFiles.map(f => 
-                        f.id === editingFile.id 
+                files: editingFile
+                    ? templateFiles.map(f =>
+                        f.id === editingFile.id
                             ? { ...fileData, file_order: f.file_order }
                             : {
                                 file_name: f.file_name,
                                 file_content: f.file_content,
                                 file_type: f.file_type,
                                 file_order: f.file_order,
-                                output_path: f.output_path || '/'
+                                output_path: f.output_path || '/',
+                                content_type: f.content_type || 'text',
+                                zip_filename: f.zip_filename || null
                             }
                       )
                     : [...templateFiles.map(f => ({
@@ -613,34 +1060,25 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         file_content: f.file_content,
                         file_type: f.file_type,
                         file_order: f.file_order,
-                        output_path: f.output_path || '/'
+                        output_path: f.output_path || '/',
+                        content_type: f.content_type || 'text',
+                        zip_filename: f.zip_filename || null
                       })), fileData]
             };
 
             const response = await api.updateTemplate(editingTemplate.id, templateData);
 
             if (response.success) {
-                // Update local state with new file data
-                if (editingFile) {
-                    // Update existing file
-                    const newFiles = templateFiles.map(f =>
-                        f.id === editingFile.id
-                            ? { ...fileData, id: editingFile.id, file_path: '', output_path: values.output_path || '/' }
-                            : f
-                    );
-                    setTemplateFiles(newFiles);
-                } else {
-                    // Add new file - reload from server to get proper ID
-                    const templateResponse = await api.getTemplate(editingTemplate.id);
-                    if (templateResponse.success) {
-                        // Ensure output_path is properly set for each file
-                        const files = templateResponse.template.files || [];
-                        const filesWithOutputPath = files.map((file: TemplateFile) => ({
-                            ...file,
-                            output_path: file.output_path || '/'
-                        }));
-                        setTemplateFiles(filesWithOutputPath);
-                    }
+                // 🎯 Always reload from server to ensure all fields are correct (including content_type, zip_filename)
+                const templateResponse = await api.getTemplate(editingTemplate.id);
+                if (templateResponse.success) {
+                    // Ensure output_path is properly set for each file
+                    const files = templateResponse.template.files || [];
+                    const filesWithOutputPath = files.map((file: TemplateFile) => ({
+                        ...file,
+                        output_path: file.output_path || '/'
+                    }));
+                    setTemplateFiles(filesWithOutputPath);
                 }
 
                 toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : t.templatemanagementpanel595}`);
@@ -756,58 +1194,96 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     };
 
 
+    // Get unique languages from both tables
+    const uniqueMyLanguages = Array.from(new Set(myTemplates.map(t => t.language).filter(Boolean)));
+    const uniqueCommunityLanguages = Array.from(new Set(communityTemplates.map(t => t.language).filter(Boolean)));
+
     return (
         <TabContent>
             <div className="p-4">
-                <Card title={t.panelsewnavigationpanel188} className="h-full">
+                {/* Header with Action Buttons */}
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-white">{t.panelsewnavigationpanel188}</h2>
+                    <div className="flex gap-2">
+                        <Button
+                            icon="pi pi-plus"
+                            label={t.templatemanagementpanel618}
+                            onClick={handleCreate}
+                            className="p-button-primary"
+                        />
+                        <Button
+                            icon="pi pi-upload"
+                            label={t.schematranslationpanel762}
+                            onClick={() => document.getElementById('template-upload')?.click()}
+                            className="p-button-secondary"
+                        />
+                        <input
+                            id="template-upload"
+                            type="file"
+                            accept=".json,.zip,.tar.gz,.gz,.tar,.xz,application/json,application/zip,application/gzip,application/x-gzip,application/x-tar,application/x-xz"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    handleImport(file);
+                                    e.target.value = '';
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+
+                {/* MY TEMPLATES TABLE */}
+                <Card title="Meine Templates" className="mb-4">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex gap-2">
-                            <Button 
-                                icon="pi pi-plus" 
-                                label={t.templatemanagementpanel618}
-                                onClick={handleCreate}
-                                className="p-button-primary"
+                            {/* Type Filter - show 'system' option only for system/admin/inner_core users */}
+                            <Dropdown
+                                value={myTypeFilter}
+                                options={
+                                    userType === 'system' || userType === 'admin' || isInnerCore
+                                        ? [
+                                            { label: 'Alle', value: 'all' },
+                                            { label: 'Privat', value: 'private' },
+                                            { label: 'Öffentlich', value: 'public' },
+                                            { label: 'System', value: 'system' }
+                                        ]
+                                        : [
+                                            { label: 'Alle', value: 'all' },
+                                            { label: 'Privat', value: 'private' },
+                                            { label: 'Öffentlich', value: 'public' }
+                                        ]
+                                }
+                                onChange={(e) => setMyTypeFilter(e.value)}
+                                placeholder="Typ"
+                                className="w-32"
                             />
-                            <Button 
-                                icon="pi pi-upload" 
-                                label={t.schematranslationpanel762}
-                                onClick={() => document.getElementById('template-upload')?.click()}
-                                className="p-button-secondary"
+                            <Dropdown
+                                value={myLanguageFilter}
+                                options={[{ label: 'Alle Sprachen', value: 'all' }, ...uniqueMyLanguages.map(l => ({ label: l, value: l }))]}
+                                onChange={(e) => setMyLanguageFilter(e.value)}
+                                placeholder="Sprache"
+                                className="w-40"
                             />
-                            <input
-                                id="template-upload"
-                                type="file"
-                                accept=".json"
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        handleImport(file);
-                                        e.target.value = '';
-                                    }
-                                }}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <InputText 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder={t.templatesSearchPlaceholder}
-                                className="w-64"
-                            />
-                            <Dropdown 
-                                value={categoryFilter} 
+                            <Dropdown
+                                value={myCategoryFilter}
                                 options={categories.map(cat => ({ label: cat, value: cat }))}
-                                onChange={(e) => setCategoryFilter(e.value)}
+                                onChange={(e) => setMyCategoryFilter(e.value)}
                                 placeholder={t.templatesColumnCategory}
                                 className="w-32"
+                            />
+                            <InputText
+                                value={mySearchTerm}
+                                onChange={(e) => setMySearchTerm(e.target.value)}
+                                placeholder={t.templatesSearchPlaceholder}
+                                className="w-64"
                             />
                         </div>
                     </div>
 
                     <DataTable
-                        value={templates}
-                        loading={loading}
+                        value={myTemplates}
+                        loading={myTemplatesLoading}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[10, 25, 50]}
@@ -821,7 +1297,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column field="name" header={t.registermodal236} sortable />
                         <Column 
                             field="category" 
-                            header={t.templatesColumnCategory} 
+                            header={t.templatesColumnCategory}
                             body={(template) => (
                                 <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
                                     {template.category}
@@ -837,9 +1313,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 </span>
                             )}
                         />
-                        <Column 
-                            field="tags" 
-                            header={t.templatemanagementpanel693} 
+                        <Column
+                            field="tags"
+                            header={t.templatemanagementpanel693}
                             body={(template) => (
                                 <div className="flex gap-1 flex-wrap">
                                     {template.tags?.map((tag: string, index: number) => (
@@ -848,22 +1324,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         </span>
                                     ))}
                                 </div>
-                            )}
-                        />
-                        <Column 
-                            field="file_count" 
-                            header={t.templatemanagementpanel706}
-                            body={(template) => `${template.file_count} Dateien`}
-                        />
-                        <Column
-                            field="is_active"
-                            header={t.applicationsmodal335}
-                            body={(template) => (
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                    template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
-                                }`}>
-                                    {template.is_active ? t.templatesStatusActive : t.manageteammodal328}
-                                </span>
                             )}
                         />
                         <Column
@@ -888,6 +1348,49 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             }}
                         />
                         <Column
+                            field="file_count"
+                            header={t.templatemanagementpanel706}
+                            body={(template) => `${template.file_count} Dateien`}
+                        />
+                        <Column
+                            header="Projekte"
+                            body={(template) => {
+                                const count = template.linked_project_ids?.length || 0;
+                                const activeProjects = template.linked_projects?.filter(p => p.is_active) || [];
+                                const inactiveProjects = template.linked_projects?.filter(p => !p.is_active) || [];
+
+                                let tooltipText = '';
+                                if (activeProjects.length > 0) {
+                                    tooltipText += 'Aktiv: ' + activeProjects.map(p => p.name).join(', ');
+                                }
+                                if (inactiveProjects.length > 0) {
+                                    if (tooltipText) tooltipText += '\n';
+                                    tooltipText += 'Inaktiv: ' + inactiveProjects.map(p => p.name).join(', ');
+                                }
+                                if (!tooltipText) tooltipText = 'Keine Projekte verknüpft';
+
+                                return (
+                                    <span
+                                        className="px-2 py-1 bg-cyan-500 text-white rounded text-xs cursor-help"
+                                        title={tooltipText}
+                                    >
+                                        {count} {count === 1 ? 'Projekt' : 'Projekte'}
+                                    </span>
+                                );
+                            }}
+                        />
+                        <Column
+                            field="is_active"
+                            header={t.applicationsmodal335}
+                            body={(template) => (
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                    template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                                }`}>
+                                    {template.is_active ? t.templatesStatusActive : t.manageteammodal328}
+                                </span>
+                            )}
+                        />
+                        <Column
                             field="created_at"
                             header={t.databasemanagementpanel861}
                             body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
@@ -896,9 +1399,25 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             header={t.applicationsmodal354}
                             body={(template) => {
                                 const isOwner = parseInt(template.creator_user_id) === currentUserId;
+                                const hasLinkedProjects = (template.linked_project_ids?.length || 0) > 0;
 
                                 return (
                                     <div className="flex gap-1">
+                                        <Button
+                                            icon="pi pi-link"
+                                            className="p-button-text p-button-success p-button-sm"
+                                            onClick={() => handleOpenLinkModal(template)}
+                                            tooltip="Mit Projekten verknüpfen"
+                                        />
+                                        {/* Toggle active button - show if template has linked projects */}
+                                        {hasLinkedProjects && (
+                                            <Button
+                                                icon="pi pi-eye-slash"
+                                                className="p-button-text p-button-warning p-button-sm"
+                                                onClick={() => handleToggleActive(template)}
+                                                tooltip="Verknüpfungen verwalten"
+                                            />
+                                        )}
                                         <Button
                                             icon="pi pi-eye"
                                             className="p-button-text p-button-sm"
@@ -916,8 +1435,53 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         <Button
                                             icon="pi pi-download"
                                             className="p-button-text p-button-sm"
-                                            onClick={() => handleExport(template)}
-                                            tooltip={t.templatemanagementpanel771}
+                                            onClick={(e) => {
+                                                // Show context menu for export format
+                                                const menu = document.createElement('div');
+                                                menu.className = 'absolute bg-gray-700 border border-gray-600 rounded shadow-lg z-50';
+                                                menu.style.top = `${e.clientY}px`;
+                                                menu.style.left = `${e.clientX}px`;
+                                                menu.innerHTML = `
+                                                    <div class="py-1">
+                                                        <button class="export-json w-full px-4 py-2 text-left hover:bg-gray-600 text-white">JSON exportieren</button>
+                                                        <button class="export-zip w-full px-4 py-2 text-left hover:bg-gray-600 text-white">ZIP exportieren</button>
+                                                        <button class="export-tar-gz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">TAR.GZ exportieren</button>
+                                                        <button class="export-tar-xz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">TAR.XZ exportieren</button>
+                                                    </div>
+                                                `;
+                                                document.body.appendChild(menu);
+
+                                                menu.querySelector('.export-json')?.addEventListener('click', () => {
+                                                    handleExport(template, 'json');
+                                                    document.body.removeChild(menu);
+                                                });
+
+                                                menu.querySelector('.export-zip')?.addEventListener('click', () => {
+                                                    handleExport(template, 'zip');
+                                                    document.body.removeChild(menu);
+                                                });
+
+                                                menu.querySelector('.export-tar-gz')?.addEventListener('click', () => {
+                                                    handleExport(template, 'tar.gz');
+                                                    document.body.removeChild(menu);
+                                                });
+
+                                                menu.querySelector('.export-tar-xz')?.addEventListener('click', () => {
+                                                    handleExport(template, 'tar.xz');
+                                                    document.body.removeChild(menu);
+                                                });
+
+                                                // Close menu when clicking outside
+                                                setTimeout(() => {
+                                                    document.addEventListener('click', function closeMenu() {
+                                                        if (document.body.contains(menu)) {
+                                                            document.body.removeChild(menu);
+                                                        }
+                                                        document.removeEventListener('click', closeMenu);
+                                                    });
+                                                }, 100);
+                                            }}
+                                            tooltip="Template exportieren (JSON/ZIP)"
                                         />
                                         <Button
                                             icon="pi pi-copy"
@@ -928,23 +1492,220 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         {isOwner && (
                                             <>
                                                 <Button
-                                                    icon={template.is_active ? "pi pi-eye-slash" : "pi pi-eye"}
-                                                    className={`p-button-text p-button-sm ${template.is_active ? 'p-button-warning' : 'p-button-success'}`}
-                                                    onClick={() => handleToggleActive(template)}
-                                                    tooltip={template.is_active ? "Deaktivieren" : t.languagemanagementpanel251}
-                                                />
-                                                <Button
                                                     icon="pi pi-trash"
                                                     className="p-button-text p-button-danger p-button-sm"
-                                                    onClick={() => {
-                                                        if (window.confirm(t.templatemanagementpanel791)) {
-                                                            handleHardDelete(template.id);
-                                                        }
-                                                    }}
+                                                    onClick={() => confirmDelete(template)}
                                                     tooltip={t.templatemanagementpanel795}
                                                 />
                                             </>
                                         )}
+                                    </div>
+                                );
+                            }}
+                        />
+                    </DataTable>
+                </Card>
+
+                {/* COMMUNITY TEMPLATES TABLE */}
+                <Card title="System & Öffentliche Templates" className="mb-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex gap-2">
+                            <Dropdown
+                                value={communityTypeFilter}
+                                options={[
+                                    { label: 'Alle', value: 'all' },
+                                    { label: 'System', value: 'system' },
+                                    { label: 'Öffentlich', value: 'public' }
+                                ]}
+                                onChange={(e) => setCommunityTypeFilter(e.value)}
+                                placeholder="Typ"
+                                className="w-32"
+                            />
+                            <Dropdown
+                                value={communityLanguageFilter}
+                                options={[{ label: 'Alle Sprachen', value: 'all' }, ...uniqueCommunityLanguages.map(l => ({ label: l, value: l }))]}
+                                onChange={(e) => setCommunityLanguageFilter(e.value)}
+                                placeholder="Sprache"
+                                className="w-40"
+                            />
+                            <Dropdown
+                                value={communityCategoryFilter}
+                                options={categories.map(cat => ({ label: cat, value: cat }))}
+                                onChange={(e) => setCommunityCategoryFilter(e.value)}
+                                placeholder={t.templatesColumnCategory}
+                                className="w-32"
+                            />
+                            <InputText
+                                value={communitySearchTerm}
+                                onChange={(e) => setCommunitySearchTerm(e.target.value)}
+                                placeholder={t.templatesSearchPlaceholder}
+                                className="w-64"
+                            />
+                        </div>
+                    </div>
+
+                    <DataTable
+                        value={communityTemplates}
+                        loading={communityLoading}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[10, 25, 50]}
+                        sortMode="multiple"
+                        className="p-datatable-sm"
+                        emptyMessage={t.templatesNoTemplatesFound}
+                        paginatorTemplate={t.languagemanagementpanel317}
+                        currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                        scrollable
+                    >
+                        <Column field="name" header={t.registermodal236} sortable />
+                        <Column
+                            field="category"
+                            header={t.templatesColumnCategory}
+                            body={(template) => (
+                                <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
+                                    {template.category}
+                                </span>
+                            )}
+                        />
+                        <Column
+                            field="language"
+                            header={t.cmsadminpanel245}
+                            body={(template) => (
+                                <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                                    {template.language}
+                                </span>
+                            )}
+                        />
+                        <Column
+                            header={t.edittablemodal512}
+                            body={(template) => {
+                                if (template.is_system_template) {
+                                    return (
+                                        <span className="px-2 py-1 bg-purple-500 text-white rounded text-xs">
+                                            System
+                                        </span>
+                                    );
+                                }
+                                return (
+                                    <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
+                                        {t.databasemanagementpanel772}
+                                    </span>
+                                );
+                            }}
+                        />
+                        <Column
+                            field="file_count"
+                            header={t.templatemanagementpanel706}
+                            body={(template) => `${template.file_count} Dateien`}
+                        />
+                        <Column
+                            header="Projekte"
+                            body={(template) => {
+                                const count = template.linked_project_ids?.length || 0;
+                                const activeProjects = template.linked_projects?.filter(p => p.is_active) || [];
+                                const inactiveProjects = template.linked_projects?.filter(p => !p.is_active) || [];
+
+                                let tooltipText = '';
+                                if (activeProjects.length > 0) {
+                                    tooltipText += 'Aktiv: ' + activeProjects.map(p => p.name).join(', ');
+                                }
+                                if (inactiveProjects.length > 0) {
+                                    if (tooltipText) tooltipText += '\n';
+                                    tooltipText += 'Inaktiv: ' + inactiveProjects.map(p => p.name).join(', ');
+                                }
+                                if (!tooltipText) tooltipText = 'Keine Projekte verknüpft';
+
+                                return (
+                                    <span
+                                        className="px-2 py-1 bg-cyan-500 text-white rounded text-xs cursor-help"
+                                        title={tooltipText}
+                                    >
+                                        {count} {count === 1 ? 'Projekt' : 'Projekte'}
+                                    </span>
+                                );
+                            }}
+                        />
+                        <Column
+                            header="Review Score"
+                            body={(template) => {
+                                // System templates don't need review scores
+                                if (template.is_system_template) {
+                                    return null;
+                                }
+
+                                // Only show score for reviewers on non-approved public templates
+                                const isReviewer = userType === 'system' || userType === 'admin' || isInnerCore;
+                                const needsReview = template.review_status !== 'approved';
+
+                                if (!isReviewer || !needsReview) {
+                                    return null;
+                                }
+
+                                const score = template.review_score || 0;
+                                const maxScore = 5;
+                                const isLowScore = score < maxScore;
+
+                                return (
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                        isLowScore ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+                                    }`}>
+                                        {score}/{maxScore}
+                                    </span>
+                                );
+                            }}
+                        />
+                        <Column
+                            field="created_at"
+                            header={t.databasemanagementpanel861}
+                            body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
+                        />
+                        <Column
+                            header={t.applicationsmodal354}
+                            body={(template) => {
+                                // Check if already cloned
+                                const isAlreadyCloned = myTemplates.some(t =>
+                                    t.name === template.name && parseInt(String(t.creator_user_id)) === currentUserId
+                                );
+
+                                // Check if this is user's own template
+                                const isOwnTemplate = parseInt(String(template.creator_user_id)) === currentUserId;
+
+                                // Check if template is linked to any of user's projects
+                                const hasLinkedProjects = (template.linked_project_ids?.length || 0) > 0;
+
+                                return (
+                                    <div className="flex gap-1">
+                                        {/* Link button only for templates NOT created by current user */}
+                                        {!isOwnTemplate && (
+                                            <Button
+                                                icon="pi pi-link"
+                                                className="p-button-text p-button-success p-button-sm"
+                                                onClick={() => handleOpenLinkModal(template)}
+                                                tooltip="Mit Projekten verknüpfen"
+                                            />
+                                        )}
+                                        {/* Toggle active button - only show if template is linked */}
+                                        {hasLinkedProjects && (
+                                            <Button
+                                                icon="pi pi-eye-slash"
+                                                className="p-button-text p-button-warning p-button-sm"
+                                                onClick={() => handleToggleActive(template)}
+                                                tooltip="Verknüpfungen verwalten"
+                                            />
+                                        )}
+                                        <Button
+                                            icon="pi pi-eye"
+                                            className="p-button-text p-button-sm"
+                                            onClick={() => handleView(template)}
+                                            tooltip={t.publicprojectspanel378}
+                                        />
+                                        <Button
+                                            icon="pi pi-copy"
+                                            className={`p-button-text p-button-sm ${isAlreadyCloned ? 'p-button-secondary opacity-50' : 'p-button-info'}`}
+                                            onClick={() => handleClone(template)}
+                                            tooltip={isAlreadyCloned ? "Bereits gecloned" : "Clone"}
+                                            disabled={isAlreadyCloned}
+                                        />
                                     </div>
                                 );
                             }}
@@ -958,7 +1719,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={modalVisible}
                 onCancel={() => {
                     setModalVisible(false);
-                    loadTemplates(); // Reload templates when modal is closed
+                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates(); // Reload templates when modal is closed
                 }}
                 onSubmit={handleSubmit}
                 onSave={handleSave}
@@ -1010,7 +1771,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 {viewingTemplate && (
                     <div className="space-y-4">
                         <div>
-                            <strong>Beschreibung:</strong> {viewingTemplate.description || t.schemaexportcontroller226}
+                            <strong>{t.templatemanagementpanel859}</strong> {viewingTemplate.description || t.schemaexportcontroller226}
                         </div>
                         <div>
                             <strong>Kategorie:</strong> <Tag value={viewingTemplate.category} severity="info" />
@@ -1143,6 +1904,200 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onSubmit={handleVariableSubmit}
                 editingVariable={editingVariable}
             />
+
+            {/* Delete Template Confirmation Modal */}
+            <Dialog
+                header="Template löschen"
+                visible={showDeleteModal}
+                onHide={handleDeleteModalHide}
+                style={{ width: '450px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
+                className="p-dialog-custom"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                        <i className="pi pi-exclamation-triangle text-orange-500 text-2xl mt-1"></i>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-300 mb-2">
+                                Permanentes Löschen
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2">
+                                {templateToDelete && (
+                                    <>
+                                        Das Template <strong>{templateToDelete.name}</strong> wird permanent gelöscht.
+                                    </>
+                                )}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Alle Dateien, Variablen und Konfigurationen werden unwiderruflich entfernt.
+                            </p>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                    Gib <strong>DELETE</strong> ein, um zu bestätigen:
+                                </label>
+                                <InputText
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    placeholder="DELETE"
+                                    className="w-full"
+                                    disabled={deleting}
+                                />
+                                <small className="text-gray-500 mt-1 block">
+                                    Du musst exakt DELETE (Großbuchstaben) eingeben
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-4 gap-2">
+                        <Button
+                            label="Abbrechen"
+                            icon="pi pi-times"
+                            onClick={handleDeleteModalHide}
+                            className="p-button-text"
+                            disabled={deleting}
+                        />
+                        <Button
+                            label={deleting ? 'Lösche...' : 'Template löschen'}
+                            icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
+                            onClick={handleDeleteTemplate}
+                            className="p-button-danger"
+                            disabled={deleting || deleteConfirmText !== 'DELETE'}
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
+            {/* Link Template to Projects Modal */}
+            <Dialog
+                header={`Template verknüpfen: ${templateToLink?.name}`}
+                visible={linkModalVisible}
+                onHide={() => setLinkModalVisible(false)}
+                footer={
+                    <>
+                        <Button
+                            onClick={() => setLinkModalVisible(false)}
+                            className="p-button-secondary"
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            onClick={handleApplyProjectLinks}
+                            className="p-button-primary"
+                            disabled={loadingProjects}
+                        >
+                            Anwenden
+                        </Button>
+                    </>
+                }
+                style={{ width: '600px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
+            >
+                {loadingProjects ? (
+                    <div className="flex justify-center items-center py-8">
+                        <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {allProjects.length === 0 ? (
+                            <div className="text-center text-gray-500 py-4">
+                                Keine Projekte gefunden
+                            </div>
+                        ) : (
+                            allProjects.map((project) => (
+                                <div
+                                    key={project.id}
+                                    className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                                    onClick={() => handleToggleProjectLink(project.id)}
+                                >
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={linkedProjectIds.includes(project.id)}
+                                            onChange={() => handleToggleProjectLink(project.id)}
+                                            className="w-4 h-4 cursor-pointer"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <div>
+                                            <div className="font-semibold text-white">{project.name}</div>
+                                            {project.description && (
+                                                <div className="text-sm text-gray-400">{project.description}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Toggle Project Activation Modal */}
+            <Dialog
+                header={`Verknüpfungen verwalten: ${templateToToggle?.name}`}
+                visible={toggleActiveModalVisible}
+                onHide={() => setToggleActiveModalVisible(false)}
+                footer={
+                    <>
+                        <Button
+                            onClick={() => setToggleActiveModalVisible(false)}
+                            className="p-button-secondary"
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            onClick={handleApplyActivationChanges}
+                            className="p-button-primary"
+                        >
+                            Speichern
+                        </Button>
+                    </>
+                }
+                style={{ width: '600px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
+            >
+                <div className="space-y-2">
+                    {(templateToToggle?.linked_projects?.length || 0) === 0 ? (
+                        <div className="text-center text-gray-500 py-4">
+                            Keine Projekte verknüpft
+                        </div>
+                    ) : (
+                        templateToToggle?.linked_projects?.map((project) => (
+                            <div
+                                key={project.id}
+                                className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                                onClick={() => handleToggleProjectActivation(project.id)}
+                            >
+                                <div className="flex items-center gap-3 flex-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={projectActivationStates[project.id] || false}
+                                        onChange={() => handleToggleProjectActivation(project.id)}
+                                        className="w-4 h-4 cursor-pointer"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div>
+                                        <div className="font-semibold text-white">{project.name}</div>
+                                        <div className="text-sm text-gray-400">
+                                            {projectActivationStates[project.id] ? 'Aktiv' : 'Inaktiv'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Dialog>
 
             {/* ConfirmDialog for import overwrite confirmation */}
             <ConfirmDialog />

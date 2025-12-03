@@ -87,6 +87,51 @@ class SchemaStorageService
         });
     }
 
+    /**
+     * Store schema in an existing FloatingSchema (creates a new version)
+     */
+    public function storeSchemaInExisting(array $parsedTables, int $schemaId, ?string $description = null)
+    {
+        return DB::transaction(function () use ($parsedTables, $schemaId, $description) {
+            // Get existing schema
+            $schema = \App\Models\FloatingSchema::find($schemaId);
+            if (!$schema) {
+                throw new \Exception("Schema with ID {$schemaId} not found");
+            }
+
+            // Create new version (increment last_version)
+            $newVersionNumber = $schema->last_version + 1;
+
+            $schemaVersion = SchemaVersion::create([
+                'version_name' => $schema->name . ' v' . $newVersionNumber,
+                'description' => $description,
+                'schema_id' => $schema->id,
+                'version_number' => $newVersionNumber,
+            ]);
+
+            $tableMap = []; // For foreign key references
+
+            // First phase: Save tables and fields
+            foreach ($parsedTables as $tableData) {
+                $table = $this->storeTable($schemaVersion, $tableData);
+                $tableMap[$tableData['table_name']] = $table;
+
+                $this->storeFields($table, $tableData['fields']);
+            }
+
+            // Second phase: Store constraints (after all tables exist)
+            foreach ($parsedTables as $tableData) {
+                $table = $tableMap[$tableData['table_name']];
+                $this->storeConstraints($table, $tableData['constraints'], $tableMap);
+            }
+
+            // Update schema's last_version
+            $schema->update(['last_version' => $newVersionNumber]);
+
+            return $schemaVersion;
+        });
+    }
+
     private function storeTable(SchemaVersion $schemaVersion, array $tableData): SchemaTable
     {
         // Check if table already exists in this schema version
@@ -291,7 +336,7 @@ class SchemaStorageService
     }
 
     /**
-     * Store parsed tables in an existing schema version
+     * Store parsed tables in an existing schema version (REPLACES all tables)
      */
     public function storeParsedTablesInVersion(SchemaVersion $schemaVersion, array $parsedTables)
     {
@@ -310,6 +355,42 @@ class SchemaStorageService
                 $tableMap[$tableData['table_name']] = $table;
 
                 $this->storeFields($table, $tableData['fields']);
+            }
+
+            // Second phase: Store constraints (after all tables exist)
+            foreach ($parsedTables as $tableData) {
+                $table = $tableMap[$tableData['table_name']];
+                $this->storeConstraints($table, $tableData['constraints'], $tableMap);
+            }
+
+            return $schemaVersion;
+        });
+    }
+
+    /**
+     * Add parsed tables to an existing schema version (WITHOUT deleting existing tables)
+     */
+    public function addTablesToVersion(SchemaVersion $schemaVersion, array $parsedTables)
+    {
+        return DB::transaction(function () use ($schemaVersion, $parsedTables) {
+            // DON'T clear existing tables - we're ADDING to the version
+
+            // 🔧 PRIMARY KEY MIGRATION - Preserve {filekeyname} across versions
+            $parsedTables = $this->migratePrimaryKeysFromPreviousVersion($schemaVersion, $parsedTables);
+
+            // Get existing tables in this version to build complete tableMap
+            $existingTables = SchemaTable::where('schema_version_id', $schemaVersion->id)->get();
+            $tableMap = [];
+            foreach ($existingTables as $existingTable) {
+                $tableMap[$existingTable->table_name] = $existingTable;
+            }
+
+            // First phase: Save NEW tables and fields
+            foreach ($parsedTables as $tableData) {
+                $table = $this->storeTable($schemaVersion, $tableData); // storeTable checks for duplicates
+                $tableMap[$tableData['table_name']] = $table;
+
+                $this->storeFields($table, $tableData['fields']); // storeFields checks for duplicates
             }
 
             // Second phase: Store constraints (after all tables exist)

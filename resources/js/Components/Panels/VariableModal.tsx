@@ -113,7 +113,7 @@ const VariableModal: React.FC<VariableModalProps> = ({
                 {/* Description */}
                 <div>
                     <label htmlFor="description" className="block text-sm font-medium mb-2">
-                        Beschreibung
+                        {t.templatemanagementpanel859}
                     </label>
                     <Controller
                         name="description"

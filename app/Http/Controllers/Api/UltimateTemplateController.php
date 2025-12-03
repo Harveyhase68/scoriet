@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\UltimateTemplateEngine;
+use App\Services\TemplateCacheService;
 use App\Models\Template;
 use App\Models\Project;
 use App\Models\FloatingSchema;
@@ -13,6 +14,7 @@ use App\Models\Language;
 use App\Models\SchemaTranslation;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * 🚀 ULTIMATE TEMPLATE CONTROLLER
@@ -73,8 +75,46 @@ class UltimateTemplateController extends Controller
             $allSyntaxErrors = []; // Collect all syntax errors across all files
             $allSyntaxWarnings = []; // Collect all syntax warnings across all files
 
+            // 🎯 Initialize cache service (only if enabled in config)
+            $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
+
             foreach ($template->files as $file) {
-                $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                // 🎯 Skip ZIP files - they are handled client-side in CodeGenerationPanel
+                if ($file->content_type === 'zip') {
+                    continue;
+                }
+
+                // 🚀 CACHE: Try to get from cache first
+                $fileResult = null;
+                if ($cacheService && $compile) {
+                    try {
+                        $fileResult = $cacheService->getOrCompile(
+                            templateId: $templateId,
+                            fileId: $file->id,
+                            tableName: $tableName,
+                            languageCode: $languageCode,
+                            compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
+                                \Log::info("🔥 [CACHE MISS] Compiling template file {$file->id} ({$file->file_name})");
+                                return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                            },
+                            includeSource: $includeSource
+                        );
+
+                        if ($fileResult) {
+                            \Log::info("✅ [CACHE HIT] Loaded from cache: file {$file->id} ({$file->file_name})");
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning("⚠️ [CACHE ERROR] Cache lookup failed for file {$file->id}: {$e->getMessage()}. Compiling without cache.");
+                        $fileResult = null;
+                    }
+                }
+
+                // Fallback: No cache or cache disabled
+                if (!$fileResult) {
+                    \Log::info("🔨 [NO CACHE] Compiling without cache: file {$file->id} ({$file->file_name})");
+                    $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                }
+
                 $processedFiles[] = $fileResult;
 
                 // ✅ Collect syntax errors from this file
@@ -201,7 +241,7 @@ class UltimateTemplateController extends Controller
      *
      * Creates the most comprehensive gtree structure possible
      */
-    private function buildUltimateGtree(?int $projectId, int $templateId, Template $template): array
+    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template): array
     {
         // Load project and schema data
         $actualProject = $projectId ? Project::find($projectId) : null;
@@ -229,15 +269,8 @@ class UltimateTemplateController extends Controller
                     ->first();
 
                 if ($latestVersion) {
-                    $versionTables = SchemaTable::where('schema_version_id', $latestVersion->id)
-                        ->with([
-                            'floatingSchema', // 🔗 Load schema info for database name
-                            'fields' => function($query) {
-                                $query->orderBy('field_order');
-                            },
-                            'constraints.constraintColumns.field' // 🎯 Load nested relationships for constraint columns
-                        ])
-                        ->get();
+                    // 🚀 CACHE: Load schema tables from cache if available
+                    $versionTables = $this->getCachedSchemaTables($latestVersion->id);
                     $schemaTables = $schemaTables->merge($versionTables);
                 }
             }
@@ -245,13 +278,8 @@ class UltimateTemplateController extends Controller
 
         // Fallback to demo data
         if ($schemaTables->isEmpty()) {
-            $schemaTables = SchemaTable::where('schema_version_id', 1)
-                ->with([
-                    'floatingSchema', // 🔗 Load schema info for database name
-                    'fields',
-                    'constraints.constraintColumns.field' // 🎯 Load nested relationships for constraint columns
-                ])
-                ->get();
+            // 🚀 CACHE: Load demo schema tables from cache if available
+            $schemaTables = $this->getCachedSchemaTables(1);
 
             // Also load schema name and description for demo data
             if (empty($schemaName) || empty($schemaDescription)) {
@@ -340,6 +368,33 @@ class UltimateTemplateController extends Controller
                 'generated_at' => now()->toISOString(),
             ]
         ];
+    }
+
+    /**
+     * Get schema tables from cache or database
+     * Caches the complete schema table data with all relationships for fast access
+     *
+     * @param int $schemaVersionId
+     * @return \Illuminate\Support\Collection
+     */
+    private function getCachedSchemaTables(int $schemaVersionId)
+    {
+        $cacheKey = "schema_tables:{$schemaVersionId}";
+        $ttl = now()->addHours(24);
+
+        return Cache::remember($cacheKey, $ttl, function() use ($schemaVersionId) {
+            \Log::info("🔥 [SCHEMA CACHE MISS] Loading schema tables from database for version {$schemaVersionId}");
+
+            return SchemaTable::where('schema_version_id', $schemaVersionId)
+                ->with([
+                    'floatingSchema', // 🔗 Load schema info for database name
+                    'fields' => function($query) {
+                        $query->orderBy('field_order');
+                    },
+                    'constraints.constraintColumns.field' // 🎯 Load nested relationships for constraint columns
+                ])
+                ->get();
+        });
     }
 
     /**
@@ -1454,6 +1509,11 @@ class UltimateTemplateController extends Controller
 
                 // Process each file in the template
                 foreach ($template->files as $file) {
+                    // 🎯 Skip ZIP files - they are handled client-side in CodeGenerationPanel
+                    if ($file->content_type === 'zip') {
+                        continue;
+                    }
+
                     $fileType = $file->file_type ?? 'project_file';
 
                     if ($fileType === 'db_table_file' || $fileType === 'db_table_file_languages') {
@@ -1821,6 +1881,235 @@ JS;
     }
 
     /**
+     * 🚀 BATCH TEMPLATE PROCESSING
+     *
+     * Process templates for multiple tables in a single request
+     * Massive performance improvement: 1 HTTP request instead of 36+
+     *
+     * @param Request $request - Body: { tables: string[], project_id: int, language_code?: string }
+     * @param int $templateId
+     * @return JsonResponse
+     */
+    public function processTemplateBatch(Request $request, int $templateId): JsonResponse
+    {
+        $startTime = microtime(true);
+
+        // 🧹 CRITICAL: Clear memory from previous request in same PHP worker
+        gc_collect_cycles();
+        if (function_exists('gc_mem_caches')) {
+            gc_mem_caches(); // PHP 7.0+ - Clear internal caches
+        }
+
+        // 🔥 DISABLE QUERY LOGGING: Massive memory saver!
+        \DB::connection()->disableQueryLog();
+
+        try {
+            // Validate template exists
+            $template = Template::with('files')->find($templateId);
+            if (!$template) {
+                return response()->json([
+                    'error' => 'Template not found',
+                    'template_id' => $templateId
+                ], 404);
+            }
+
+            // Get request parameters
+            $tables = $request->input('tables', []); // Array of table names (or null for project files)
+            $projectId = $request->input('project_id');
+            $languageCode = $request->input('language_code', null);
+            $compile = $request->input('compile', true);
+            $includeSource = $request->input('include_source', false);
+            $includeGtree = $request->input('include_gtree', false); // 🚀 NEW: Only send gtree when requested!
+
+            if (!$projectId) {
+                return response()->json([
+                    'error' => 'project_id is required'
+                ], 400);
+            }
+
+            $memoryStart = memory_get_usage(true);
+            \Log::info("🚀 [BATCH] Processing {$templateId} for " . count($tables) . " tables", [
+                'templateId' => $templateId,
+                'projectId' => $projectId,
+                'tableCount' => count($tables),
+                'languageCode' => $languageCode,
+                'includeGtree' => $includeGtree ? 'YES' : 'NO',
+                'memoryStart' => round($memoryStart / 1024 / 1024, 2) . ' MB'
+            ]);
+
+            // Initialize cache service
+            $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
+
+            // 🚀 OPTIMIZATION: Cache gtree in Redis (MASSIVE PERFORMANCE BOOST!)
+            // Build gtree only ONCE per project+template, reuse for 24 hours
+            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
+            $gtreeData = null;
+
+            // Try to get from cache first
+            if ($cacheService) {
+                $cachedGtree = \Cache::get($gtreeCacheKey);
+                if ($cachedGtree) {
+                    $gtreeData = ['gtree' => $cachedGtree];
+                    \Log::info("✅ [GTREE CACHE HIT] Loaded from Redis (saved ~6s + 46 MB!)");
+                }
+            }
+
+            // Build gtree if not cached
+            if (!$gtreeData) {
+                \Log::info("❌ [GTREE CACHE MISS] Building gtree...");
+                $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template);
+
+                // Cache for 24 hours
+                if ($cacheService) {
+                    \Cache::put($gtreeCacheKey, $gtreeData['gtree'], now()->addHours(24));
+                }
+
+                if ($includeGtree) {
+                    $memoryAfterGtree = memory_get_usage(true);
+                    \Log::info("📊 [MEMORY] After gtree: " . round($memoryAfterGtree / 1024 / 1024, 2) . " MB (+" . round(($memoryAfterGtree - $memoryStart) / 1024 / 1024, 2) . " MB)");
+                }
+            }
+
+            $engine = new UltimateTemplateEngine($gtreeData['gtree']);
+
+            // Process each table
+            $results = [];
+            $tableCount = 0;
+            foreach ($tables as $tableName) {
+                $tableCount++;
+                try {
+
+                    // Process template files for this table
+                    $processedFiles = [];
+
+                    foreach ($template->files as $file) {
+                        // Skip ZIP files
+                        if ($file->content_type === 'zip') {
+                            continue;
+                        }
+
+                        // Try cache first
+                        $fileResult = null;
+                        if ($cacheService && $compile) {
+                            try {
+                                $fileResult = $cacheService->getOrCompile(
+                                    templateId: $templateId,
+                                    fileId: $file->id,
+                                    tableName: $tableName,
+                                    languageCode: $languageCode,
+                                    compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
+                                        \Log::info("🔥 [BATCH CACHE MISS] Compiling file {$file->id} for table {$tableName}");
+                                        return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                                    }
+                                );
+
+                                if ($fileResult) {
+                                    \Log::info("✅ [BATCH CACHE HIT] file {$file->id} for table {$tableName}");
+                                }
+                            } catch (\Exception $e) {
+                                \Log::warning("⚠️ [BATCH CACHE ERROR] file {$file->id}: {$e->getMessage()}");
+                                $fileResult = null;
+                            }
+                        }
+
+                        // Fallback: compile without cache
+                        if (!$fileResult) {
+                            $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                        }
+
+                        $processedFiles[] = $fileResult;
+
+                        // 🧹 AGGRESSIVE MEMORY CLEANUP: Clear file result after adding
+                        unset($fileResult);
+                    }
+
+                    // Store result for this table (WITHOUT gtree to save memory!)
+                    $tableKey = $tableName ?? 'project';
+                    $results[$tableKey] = [
+                        'table_name' => $tableName,
+                        'compiled_templates' => $processedFiles,
+                    ];
+
+                    // 🧹 AGGRESSIVE MEMORY CLEANUP: Clear processed files after storing
+                    unset($processedFiles);
+
+                    // 🧹 Force garbage collection every 2 tables
+                    if ($tableCount % 2 === 0) {
+                        gc_collect_cycles();
+                        $memoryAfterTable = memory_get_usage(true);
+                        $totalTables = count($tables);
+                        \Log::info("📊 [MEMORY] After table {$tableCount}/{$totalTables}: " . round($memoryAfterTable / 1024 / 1024, 2) . " MB");
+                    }
+
+                } catch (\Exception $e) {
+                    \Log::error("❌ [BATCH] Failed to process table {$tableName}", [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+
+                    $tableKey = $tableName ?? 'project';
+                    $results[$tableKey] = [
+                        'table_name' => $tableName,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+
+            $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+            $memoryBeforeResponse = memory_get_usage(true);
+            $memoryPeak = memory_get_peak_usage(true);
+
+            \Log::info("✅ [BATCH] Completed in {$executionTime}ms for " . count($tables) . " tables");
+            \Log::info("📊 [MEMORY] Before response: " . round($memoryBeforeResponse / 1024 / 1024, 2) . " MB | Peak: " . round($memoryPeak / 1024 / 1024, 2) . " MB");
+
+            // 🚀 Build response with optional gtree (MASSIVE BANDWIDTH SAVE!)
+            $response = response()->json([
+                'success' => true,
+                'template_id' => $templateId,
+                'project_id' => $projectId,
+                'gtree' => $includeGtree ? $gtreeData['gtree'] : null, // 🚀 Only send 100 MB gtree when needed!
+                'results' => $results,
+                'performance' => [
+                    'execution_time_ms' => $executionTime,
+                    'tables_count' => count($tables),
+                    'avg_time_per_table_ms' => count($tables) > 0 ? round($executionTime / count($tables), 2) : 0,
+                ]
+            ]);
+
+            // 🧹 AGGRESSIVE MEMORY CLEANUP: Free everything for next request in same worker
+            unset($engine, $gtreeData, $results, $template, $cacheService);
+
+            // Clear Eloquent's model cache (prevents memory leak between requests)
+            Template::clearBootedModels();
+            \App\Models\SchemaTable::clearBootedModels();
+
+            gc_collect_cycles();
+            if (function_exists('gc_mem_caches')) {
+                gc_mem_caches();
+            }
+
+            // Re-enable query logging for other requests
+            \DB::connection()->enableQueryLog();
+
+            return $response;
+
+        } catch (\Exception $e) {
+            \Log::error("❌ [BATCH] Fatal error", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Re-enable query logging even on error
+            \DB::connection()->enableQueryLog();
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Helper: Recursively delete directory
      */
     private function deleteDirectory($dir): bool
@@ -1844,5 +2133,81 @@ JS;
         }
 
         return rmdir($dir);
+    }
+
+    /**
+     * 🖥️ CLI GENERATION
+     *
+     * Generate code for CLI client
+     * Returns generated files and gtree without creating archive
+     *
+     * @param int $projectId
+     * @param int $templateId
+     * @return array
+     */
+    public function generateForCli(int $projectId, int $templateId): array
+    {
+        try {
+            // Get project and template
+            $project = Project::find($projectId);
+            $template = Template::with('files')->find($templateId);
+
+            if (!$project || !$template) {
+                return [
+                    'success' => false,
+                    'errors' => ['Project or template not found'],
+                ];
+            }
+
+            // Build gtree and generate code
+            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template);
+
+            // buildUltimateGtree returns ['gtree' => ...], not ['success' => ...]
+            if (!isset($gtreeData['gtree']) || empty($gtreeData['gtree'])) {
+                return [
+                    'success' => false,
+                    'errors' => ['Failed to build generation tree - no gtree data'],
+                ];
+            }
+
+            // Generate files using template engine
+            $engine = new UltimateTemplateEngine($gtreeData['gtree']);
+            $generatedFiles = [];
+
+            foreach ($template->files as $templateFile) {
+                try {
+                    // Process template for each file
+                    // The engine already has gtree in constructor, processTemplate uses it internally
+                    $renderedContent = $engine->processTemplate(
+                        $templateFile->file_content,
+                        'generate', // function name
+                        null, // tableIndex (null = all tables)
+                        false // includeSource
+                    );
+
+                    $generatedFiles[] = [
+                        'path' => $templateFile->file_path,
+                        'filename' => $templateFile->file_name,
+                        'content' => $renderedContent,
+                    ];
+                } catch (\Exception $e) {
+                    // Log error but continue with other files
+                    \Log::error("CLI Generation failed for file {$templateFile->file_name}: " . $e->getMessage());
+                }
+            }
+
+            return [
+                'success' => true,
+                'files' => $generatedFiles,
+                'gtree' => $gtreeData['gtree'],
+                'files_count' => count($generatedFiles),
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'errors' => [$e->getMessage()],
+            ];
+        }
     }
 }

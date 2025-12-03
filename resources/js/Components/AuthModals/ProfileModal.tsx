@@ -434,7 +434,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
               />
               <small className="text-gray-500">
-                The username cannot be changed after registration.
+                {t.profilemodal510}
               </small>
             </div>
 
@@ -613,20 +613,20 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
         <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card">
           <div className="space-y-6">
-            {/* Current Plan */}
+            {/* {t.profilemodal616} */}
             <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+                <h3 className="text-lg font-semibold text-white">{t.profilemodal616}</h3>
                 <Badge value={t.planmodal43} severity="info" />
               </div>
               <p className="text-gray-300 mb-4">
-                You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features!
+                {t.landingpage762}<strong className="text-blue-400">Free plan</strong>. {t.landingpage762a}
               </p>
             </div>
 
             {/* Available Plans */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Available Plans</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">{t.profilemodal626}</h3>
               
               {/* Free Plan */}
               <Card className="border-l-4 border-l-gray-400 bg-gray-700">
@@ -635,9 +635,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     <h4 className="font-semibold text-white">Free</h4>
                     <p className="text-2xl font-bold text-white mb-2">€0 <span className="text-sm font-normal text-gray-300">forever</span></p>
                     <ul className="text-sm text-gray-300 space-y-1">
-                      <li>• Up to 3 projects</li>
-                      <li>• Basic templates</li>
-                      <li>• Community support</li>
+                      <li>{t.profilemodal635}</li>
+                      <li>{t.profilemodal636}</li>
+                      <li>{t.profilemodal637}</li>
                     </ul>
                   </div>
                   <Badge value={t.profilemodal640} severity="info" />
@@ -649,12 +649,36 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-semibold text-white">Premium</h4>
-                    <p className="text-2xl font-bold text-blue-400 mb-2">€2.99 <span className="text-sm font-normal text-gray-300">/month</span></p>
+                    <p className="text-2xl font-bold text-blue-400 mb-2">€29.99 <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
                     <ul className="text-sm text-gray-300 space-y-1">
-                      <li>• Unlimited projects</li>
-                      <li>• Advanced templates</li>
-                      <li>• Priority support</li>
-                      <li>• Team collaboration</li>
+                      <li>{t.profilemodal651}</li>
+                      <li>{t.profilemodal652}</li>
+                      <li>{t.profilemodal653}</li>
+                      <li>{t.profilemodal654}</li>
+                    </ul>
+                  </div>
+                  <Button 
+                    label={t.profilemodal658} 
+                    size="small" 
+                    className="p-button-primary"
+                    onClick={() => alert(t.profilemodal661)}
+                  />
+                </div>
+              </Card>
+
+              {/* Business Plan */}
+              <Card className="border-l-4 border-l-blue-500 bg-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-white">Business</h4>
+                    <p className="text-2xl font-bold text-blue-400 mb-2">€49.99 <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      <li>{t.profilemodal684}</li>
+                      <li>{t.profilemodal685}</li>
+                      <li>{t.profilemodal686}</li>
+                      <li>{t.profilemodal687}</li>
+                      <li>{t.profilemodal688}</li>
+                      <li>{t.profilemodal689}</li>
                     </ul>
                   </div>
                   <Button 
@@ -671,12 +695,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-semibold text-white">Patron</h4>
-                    <p className="text-2xl font-bold text-purple-400 mb-2">€5+ <span className="text-sm font-normal text-gray-300">/month</span></p>
+                    <p className="text-2xl font-bold text-purple-400 mb-2">€69+ <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
                     <ul className="text-sm text-gray-300 space-y-1">
-                      <li>• All Premium features</li>
-                      <li>• Early access to features</li>
-                      <li>• Community Discord access</li>
-                      <li>• Custom amount (€5-50+)</li>
+                      <li>{t.profilemodal673}</li>
+                      <li>{t.profilemodal674}</li>
+                      <li>{t.profilemodal675}</li>
+                      <li>{t.profilemodal676}</li>
                     </ul>
                   </div>
                   <Button 
@@ -715,18 +739,18 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 Warning: Delete account
               </h3>
               <p className="text-red-700 text-sm mb-3">
-                This action cannot be undone. Your account and all associated data will be permanently deleted.
+                {t.profilemodal714}
               </p>
               <ul className="text-red-700 text-sm list-disc list-inside space-y-1">
-                <li>All your projects and templates will be deleted</li>
-                <li>Your team memberships will be terminated</li>
-                <li>This action cannot be undone</li>
+                <li>{t.profilemodal718}</li>
+                <li>{t.profilemodal719}</li>
+                <li>{t.profilemodal720}</li>
               </ul>
             </div>
 
             <div className="field">
               <label htmlFor="delete-password" className="block text-sm font-medium mb-2">
-                Confirm current password
+                {t.profilemodal725}
               </label>
               <Password
                 id="delete-password"
@@ -744,20 +768,20 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <div className="field">
               <label htmlFor="delete-confirm" className="block text-sm font-medium mb-2">
-                Enter {t.profilemodal305} to confirm
+                Enter "DELETE" to confirm
               </label>
               <InputText
                 id="delete-confirm"
                 type="text"
                 value={deleteData.confirmText}
                 onChange={(e) => handleDeleteInputChange('confirmText', e.target.value)}
-                placeholder={t.profilemodal305}
+                placeholder="DELETE"
                 className="w-full"
                 disabled={loadingDelete}
                 required
               />
               <small className="text-gray-500">
-                You must enter exactly {t.profilemodal305} (capital letters)
+                You must enter exactly "DELETE" (capital letters)
               </small>
             </div>
 
@@ -766,7 +790,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               label={loadingDelete ? t.deleting : t.deleteAccount}
               icon={loadingDelete ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               className="w-full p-button-danger"
-              disabled={loadingDelete || deleteData.confirmText !== t.profilemodal305}
+              disabled={loadingDelete || deleteData.confirmText !== "DELETE"}
             />
           </form>
         </TabPanel>

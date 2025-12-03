@@ -18,6 +18,9 @@ class Template extends Model
         'visibility',
         'is_system_template',
         'original_template_id',
+        'template_type',
+        'history',
+        'community_rating',
         'category',
         'language',
         'is_active',
@@ -25,6 +28,9 @@ class Template extends Model
         'file_count',
         'review_status',
         'review_score',
+        'protected_files',
+        'install_script',
+        'update_script',
     ];
 
     protected $casts = [
@@ -33,6 +39,11 @@ class Template extends Model
         'is_system_template' => 'boolean',
         'file_count' => 'integer',
         'review_score' => 'integer',
+        'protected_files' => 'array',
+        'install_script' => 'array',
+        'update_script' => 'array',
+        'history' => 'array',
+        'community_rating' => 'array',
     ];
 
     /**
@@ -202,32 +213,23 @@ class Template extends Model
     public function scopeAccessibleByUser($query, $userId, $projectId = null)
     {
         return $query->where(function($q) use ($userId, $projectId) {
-            // System templates (always accessible if public and approved)
-            $q->where(function($systemQ) {
-                $systemQ->where('is_system_template', true)
-                        ->where('visibility', 'public')
-                        ->where('review_score', '>=', 5); // Only approved templates
-            })
-            // User's own templates (regardless of project - no score check)
-            ->orWhere(function($ownQ) use ($userId) {
-                $ownQ->where('creator_user_id', $userId)
-                     ->where('is_system_template', false);
-            })
-            // Public project templates from user's accessible projects (approved only)
+            // System templates (ALWAYS accessible, no review required)
+            $q->where('is_system_template', true)
+            // User's own templates (ALL of them, including system templates they created)
+            ->orWhere('creator_user_id', $userId)
+            // Public project templates from user's accessible projects (any score - frontend filters by reviewer status)
             ->orWhere(function($projectQ) use ($userId) {
                 $projectQ->where('is_system_template', false)
                          ->whereHas('project', function($projectAccessQ) use ($userId) {
                              $projectAccessQ->visibleTo(\App\Models\User::find($userId));
                          })
                          ->where('visibility', 'public')
-                         ->where('review_score', '>=', 5) // Only approved templates
                          ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             })
-            // Other users' public templates without project association (approved only)
+            // Other users' public templates without project association (any score - frontend filters by reviewer status)
             ->orWhere(function($publicQ) use ($userId) {
                 $publicQ->where('is_system_template', false)
                         ->where('visibility', 'public')
-                        ->where('review_score', '>=', 5) // Only approved templates
                         ->whereNull('project_id')
                         ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             });
@@ -423,6 +425,9 @@ class Template extends Model
             'is_active' => true,
             'tags' => $this->tags,
             'file_count' => $this->file_count,
+            'protected_files' => $this->protected_files,
+            'install_script' => $this->install_script,
+            'update_script' => $this->update_script,
         ]);
 
         // Clone template files
@@ -463,5 +468,130 @@ class Template extends Model
     public function variableValues()
     {
         return $this->hasMany(ProjectTemplateVariableValue::class);
+    }
+
+    /**
+     * Check if template is a clone
+     */
+    public function isClone(): bool
+    {
+        return $this->template_type === 'cloned';
+    }
+
+    /**
+     * Check if template is linked
+     */
+    public function isLinked(): bool
+    {
+        return $this->template_type === 'linked';
+    }
+
+    /**
+     * Check if template is original
+     */
+    public function isOriginal(): bool
+    {
+        return $this->template_type === 'original';
+    }
+
+    /**
+     * Get community warning status
+     */
+    public function hasWarning(): bool
+    {
+        $rating = $this->community_rating ?? [];
+        $negative = $rating['negative'] ?? 0;
+        return $negative >= 5;
+    }
+
+    /**
+     * Get community verified status
+     */
+    public function isCommunityVerified(): bool
+    {
+        $rating = $this->community_rating ?? [];
+        $positive = $rating['positive'] ?? 0;
+        return $positive >= 5;
+    }
+
+    /**
+     * Add history entry when template is published
+     */
+    public function addHistoryEntry($userId, $changesDescription = null): void
+    {
+        $history = $this->history ?? [];
+
+        // Initialize history if this is first publish
+        if (empty($history)) {
+            $history = [
+                'original_creator_id' => $this->creator_user_id,
+                'original_created_at' => $this->created_at->toIso8601String(),
+                'forks' => []
+            ];
+        }
+
+        // Add new fork entry
+        $history['forks'][] = [
+            'user_id' => $userId,
+            'forked_at' => now()->toIso8601String(),
+            'published_at' => now()->toIso8601String(),
+            'changes_description' => $changesDescription
+        ];
+
+        $this->history = $history;
+        $this->save();
+    }
+
+    /**
+     * Update community rating
+     */
+    public function updateCommunityRating($positive = 0, $negative = 0, $warning = null): void
+    {
+        $rating = $this->community_rating ?? [
+            'total_reviews' => 0,
+            'positive' => 0,
+            'negative' => 0,
+            'warnings' => [],
+            'last_reviewed_at' => null
+        ];
+
+        $rating['positive'] += $positive;
+        $rating['negative'] += $negative;
+        $rating['total_reviews'] = $rating['positive'] + $rating['negative'];
+        $rating['last_reviewed_at'] = now()->toIso8601String();
+
+        if ($warning) {
+            $rating['warnings'][] = $warning;
+        }
+
+        $this->community_rating = $rating;
+        $this->save();
+    }
+
+    /**
+     * Scope to get only user's own templates (original + cloned)
+     */
+    public function scopeOwnedBy($query, $userId)
+    {
+        return $query->where('creator_user_id', $userId)
+                    ->whereIn('template_type', ['original', 'cloned']);
+    }
+
+    /**
+     * Scope to get community templates (system + public from other users)
+     */
+    public function scopeCommunity($query, $userId)
+    {
+        return $query->where(function($q) use ($userId) {
+            // System templates
+            $q->where('is_system_template', true)
+              ->where('visibility', 'public')
+            // OR public templates from other users
+              ->orWhere(function($publicQ) use ($userId) {
+                  $publicQ->where('is_system_template', false)
+                          ->where('visibility', 'public')
+                          ->where('creator_user_id', '!=', $userId);
+              });
+        });
     }
 }

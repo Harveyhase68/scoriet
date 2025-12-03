@@ -13,10 +13,11 @@ class FloatingSchema extends Model
     
     protected $fillable = [
         'name',
-        'description', 
+        'description',
         'owner_id',
         'visibility',
-        'last_version'
+        'last_version',
+        'is_system_schema'
     ];
 
     /**

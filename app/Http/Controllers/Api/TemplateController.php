@@ -64,6 +64,44 @@ class TemplateController extends Controller
             });
         }
 
+        // Add linked project IDs to all templates (only projects user has access to)
+        $templates->map(function ($template) use ($user) {
+            // Get all linked project IDs from project_template_usage (including inactive)
+            $linkedProjectsData = \DB::table('project_template_usage')
+                ->where('template_id', $template->id)
+                ->select('project_id', 'is_active')
+                ->get();
+
+            $allLinkedProjectIds = $linkedProjectsData->pluck('project_id')->toArray();
+
+            // Filter to only include projects the user has access to
+            $accessibleProjects = Project::whereIn('id', $allLinkedProjectIds)
+                ->where(function($query) use ($user) {
+                    // User's own projects
+                    $query->where('owner_id', $user->id)
+                        // OR projects where user is a team member
+                        ->orWhereHas('teams.members', function($teamQuery) use ($user) {
+                            $teamQuery->where('user_id', $user->id);
+                        });
+                })
+                ->select('id', 'name')
+                ->get();
+
+            // Add is_active status to each project
+            $accessibleProjectsWithStatus = $accessibleProjects->map(function($project) use ($linkedProjectsData) {
+                $linkData = $linkedProjectsData->firstWhere('project_id', $project->id);
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'is_active' => $linkData ? (bool)$linkData->is_active : false
+                ];
+            });
+
+            $template->linked_project_ids = $accessibleProjects->pluck('id')->toArray();
+            $template->linked_projects = $accessibleProjectsWithStatus->toArray();
+            return $template;
+        });
+
         return response()->json([
             'templates' => $templates,
             'system_templates' => $templates->where('is_system_template', true)->values(),
@@ -364,13 +402,30 @@ class TemplateController extends Controller
             'is_active' => 'boolean',
             'visibility' => 'nullable|in:public,private',
             'is_system_template' => 'nullable|boolean',
+            'protected_files' => 'nullable|array',
+            'protected_files.*' => 'string',
+            'install_script' => 'nullable|array',
+            'install_script.*.step' => 'required|integer',
+            'install_script.*.description' => 'required|string',
+            'install_script.*.command' => 'nullable|string',
+            'update_script' => 'nullable|array',
+            'update_script.*.step' => 'required|integer',
+            'update_script.*.description' => 'required|string',
+            'update_script.*.command' => 'nullable|string',
             'files' => 'array',
             'files.*.file_name' => 'required|string',
             'files.*.file_path' => 'nullable|string',
-            'files.*.file_content' => 'required|string',
+            'files.*.file_content' => 'nullable|string', // 🆕 Nullable for managed_files mode
             'files.*.file_type' => 'required|string',
             'files.*.file_order' => 'integer',
             'files.*.output_path' => 'nullable|string',
+            'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
+            'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
+            'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
+            'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
+            'files.*.managed_files.*.relativePath' => 'nullable|string',
+            'files.*.managed_files.*.content' => 'required_with:files.*.managed_files|string',
+            'files.*.managed_files.*.size' => 'required_with:files.*.managed_files|integer',
         ]);
 
         // Only system users can create system templates
@@ -386,18 +441,49 @@ class TemplateController extends Controller
             'is_active' => $validated['is_active'] ?? true,
             'visibility' => $validated['visibility'] ?? 'public',
             'is_system_template' => $isSystemTemplate,
+            'protected_files' => $validated['protected_files'] ?? [],
+            'install_script' => $validated['install_script'] ?? [],
+            'update_script' => $validated['update_script'] ?? [],
         ]);
 
         // Add files if provided
         if (isset($validated['files'])) {
             foreach ($validated['files'] as $fileData) {
+                $processedContent = null;
+
+                // 🆕 Check if this is a managed files list (File Manager mode)
+                if (isset($fileData['managed_files']) && is_array($fileData['managed_files']) && count($fileData['managed_files']) > 0) {
+                    // Create ZIP from managed files list
+                    \Log::info("Creating ZIP from managed files", ['count' => count($fileData['managed_files'])]);
+
+                    try {
+                        $zipBase64 = $this->createZipFromFileList($fileData['managed_files']);
+                        $processedContent = [
+                            'file_content' => $zipBase64,
+                            'content_type' => 'zip',
+                            'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                        ];
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
+                        throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
+                    }
+                } else {
+                    // Process archive content (auto-converts TAR.GZ/TAR.XZ to ZIP)
+                    $processedContent = $this->processArchiveFileContent(
+                        $fileData['file_content'],
+                        $fileData['zip_filename'] ?? $fileData['file_name']
+                    );
+                }
+
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
                     'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
-                    'file_content' => $fileData['file_content'],
+                    'file_content' => $processedContent['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
                     'output_path' => $fileData['output_path'] ?? '/',
+                    'content_type' => $processedContent['content_type'], // Auto-detected
+                    'zip_filename' => $processedContent['zip_filename'], // Original filename preserved
                 ]);
             }
         }
@@ -456,13 +542,30 @@ class TemplateController extends Controller
             'is_active' => 'boolean',
             'visibility' => 'nullable|in:public,private',
             'is_system_template' => 'nullable|boolean',
+            'protected_files' => 'nullable|array',
+            'protected_files.*' => 'string',
+            'install_script' => 'nullable|array',
+            'install_script.*.step' => 'required|integer',
+            'install_script.*.description' => 'required|string',
+            'install_script.*.command' => 'nullable|string',
+            'update_script' => 'nullable|array',
+            'update_script.*.step' => 'required|integer',
+            'update_script.*.description' => 'required|string',
+            'update_script.*.command' => 'nullable|string',
             'files' => 'array',
             'files.*.file_name' => 'required|string',
             'files.*.file_path' => 'nullable|string',
-            'files.*.file_content' => 'required|string',
+            'files.*.file_content' => 'nullable|string', // 🆕 Nullable for managed_files mode
             'files.*.file_type' => 'required|string',
             'files.*.file_order' => 'integer',
             'files.*.output_path' => 'nullable|string',
+            'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
+            'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
+            'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
+            'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
+            'files.*.managed_files.*.relativePath' => 'nullable|string',
+            'files.*.managed_files.*.content' => 'required_with:files.*.managed_files|string',
+            'files.*.managed_files.*.size' => 'required_with:files.*.managed_files|integer',
         ]);
 
         // Only system users can set/change system template flag
@@ -473,6 +576,9 @@ class TemplateController extends Controller
             'language' => $validated['language'],
             'tags' => $validated['tags'] ?? [],
             'is_active' => $validated['is_active'] ?? true,
+            'protected_files' => $validated['protected_files'] ?? [],
+            'install_script' => $validated['install_script'] ?? [],
+            'update_script' => $validated['update_script'] ?? [],
         ];
 
         if (isset($validated['visibility'])) {
@@ -545,13 +651,41 @@ class TemplateController extends Controller
             $template->files()->delete();
 
             foreach ($validated['files'] as $fileData) {
+                $processedContent = null;
+
+                // 🆕 Check if this is a managed files list (File Manager mode)
+                if (isset($fileData['managed_files']) && is_array($fileData['managed_files']) && count($fileData['managed_files']) > 0) {
+                    // Create ZIP from managed files list
+                    \Log::info("Creating ZIP from managed files", ['count' => count($fileData['managed_files'])]);
+
+                    try {
+                        $zipBase64 = $this->createZipFromFileList($fileData['managed_files']);
+                        $processedContent = [
+                            'file_content' => $zipBase64,
+                            'content_type' => 'zip',
+                            'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                        ];
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
+                        throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
+                    }
+                } else {
+                    // Process archive content (auto-converts TAR.GZ/TAR.XZ to ZIP)
+                    $processedContent = $this->processArchiveFileContent(
+                        $fileData['file_content'],
+                        $fileData['zip_filename'] ?? $fileData['file_name']
+                    );
+                }
+
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
                     'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
-                    'file_content' => $fileData['file_content'],
+                    'file_content' => $processedContent['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
                     'output_path' => $fileData['output_path'] ?? '/',
+                    'content_type' => $processedContent['content_type'], // Auto-detected
+                    'zip_filename' => $processedContent['zip_filename'], // Original filename preserved
                 ]);
             }
 
@@ -1215,5 +1349,1305 @@ class TemplateController extends Controller
         $content = str_replace("\n", "\r\n", $content);
 
         return $content;
+    }
+
+    /**
+     * Download template as archive (ZIP, TAR.GZ, TAR.XZ)
+     */
+    public function downloadTemplateArchive(Request $request, $templateId)
+    {
+        $user = auth()->user();
+        $format = $request->query('format', 'zip');
+
+        if (!in_array($format, ['zip', 'tar.gz', 'tar.xz'])) {
+            return response()->json(['error' => 'Invalid format'], 400);
+        }
+
+        $template = Template::with(['files', 'creator'])->find($templateId);
+
+        if (!$template) {
+            return response()->json(['message' => 'Template not found.'], 404);
+        }
+
+        if ($template->creator_user_id != $user->id &&
+            !in_array($user->user_type, ['admin', 'system']) &&
+            !$user->is_inner_core) {
+            return response()->json(['message' => 'Unauthorized to download this template.'], 403);
+        }
+
+        $tempDir = storage_path('app/temp/template_export_' . uniqid());
+        \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
+
+        try {
+            // Debug: Log all files being exported
+            \Log::info('Exporting template files', [
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'file_count' => $template->files->count(),
+                'files' => $template->files->map(function ($file) {
+                    return [
+                        'name' => $file->file_name,
+                        'path' => $file->file_path,
+                        'type' => $file->file_type,
+                        'content_type' => $file->content_type,
+                        'has_content' => !empty($file->file_content),
+                    ];
+                })->toArray()
+            ]);
+
+            // Detect duplicate file names and prepare archive file mapping
+            $fileNameCount = [];
+            $fileArchiveMapping = []; // Maps original file to archive filename
+
+            foreach ($template->files as $file) {
+                $fileName = $file->file_name;
+
+                if (!isset($fileNameCount[$fileName])) {
+                    $fileNameCount[$fileName] = 0;
+                }
+                $fileNameCount[$fileName]++;
+            }
+
+            // Build file data with archive_source for duplicates
+            $filesData = [];
+            $fileNameCounter = [];
+
+            foreach ($template->files as $file) {
+                $fileName = $file->file_name;
+                $isDuplicate = $fileNameCount[$fileName] > 1;
+
+                if ($isDuplicate) {
+                    // Track how many times we've seen this filename
+                    if (!isset($fileNameCounter[$fileName])) {
+                        $fileNameCounter[$fileName] = 0;
+                    }
+                    $fileNameCounter[$fileName]++;
+
+                    // Generate unique archive name: app.php.1, app.php.2, etc.
+                    $archiveFileName = $fileName . '.' . $fileNameCounter[$fileName];
+                    $fileArchiveMapping[$file->id] = $archiveFileName;
+
+                    $filesData[] = [
+                        'file_name' => $fileName,
+                        'archive_source' => $archiveFileName,  // Only for duplicates
+                        'output_path' => $file->output_path,
+                        'file_type' => $file->file_type,
+                        'file_order' => $file->file_order,
+                    ];
+                } else {
+                    // No duplicate - no archive_source needed
+                    $fileArchiveMapping[$file->id] = $fileName;
+
+                    $filesData[] = [
+                        'file_name' => $fileName,
+                        'output_path' => $file->output_path,
+                        'file_type' => $file->file_type,
+                        'file_order' => $file->file_order,
+                    ];
+                }
+            }
+
+            // Add template metadata as JSON (WITHOUT file_content - files are in archive)
+            $templateData = [
+                'template' => [
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'category' => $template->category,
+                    'language' => $template->language,
+                    'tags' => $template->tags,
+                    'is_active' => $template->is_active,
+                ],
+                'files' => $filesData,
+            ];
+            \Illuminate\Support\Facades\File::put(
+                $tempDir . '/template.json',
+                json_encode($templateData, JSON_PRETTY_PRINT)
+            );
+
+            // Add README
+            $readme = "Template: {$template->name}\n";
+            $readme .= "Description: {$template->description}\n";
+            $readme .= "Category: {$template->category}\n";
+            $readme .= "Language: {$template->language}\n";
+            if ($template->creator) {
+                $readme .= "Creator: {$template->creator->name} ({$template->creator->email})\n";
+            }
+            $readme .= "Created: {$template->created_at}\n";
+            $readme .= "\nScoriet Template Export\n";
+            $readme .= "https://scoriet.com\n";
+            \Illuminate\Support\Facades\File::put($tempDir . '/README.txt', $readme);
+
+            // Add all template files (flat structure - all in root, with unique names for duplicates)
+            $writtenFiles = [];
+            foreach ($template->files as $file) {
+                // Skip template.json and README.txt to avoid conflicts
+                if (in_array($file->file_name, ['template.json', 'README.txt'])) {
+                    \Log::info("Skipping file: {$file->file_name}");
+                    continue;
+                }
+
+                // Use mapped archive filename (handles duplicates)
+                $archiveFileName = $fileArchiveMapping[$file->id];
+                $filePath = $tempDir . '/' . $archiveFileName;
+
+                \Log::info("Writing file to archive", [
+                    'file_name' => $file->file_name,
+                    'archive_name' => $archiveFileName,
+                    'output_path' => $file->output_path,
+                    'content_type' => $file->content_type,
+                    'content_length' => strlen($file->file_content)
+                ]);
+
+                // Handle different content types
+                if ($file->content_type === 'zip') {
+                    // ZIP file - decode base64 and save as binary
+                    $binaryContent = base64_decode($file->file_content);
+                    \Illuminate\Support\Facades\File::put($filePath, $binaryContent);
+                } else {
+                    // Regular file - save as-is
+                    \Illuminate\Support\Facades\File::put($filePath, $file->file_content);
+                }
+
+                $writtenFiles[] = $archiveFileName;
+            }
+
+            \Log::info("Written files to temp directory", [
+                'temp_dir' => $tempDir,
+                'file_count' => count($writtenFiles),
+                'files' => $writtenFiles
+            ]);
+
+            // Create archive
+            $archiveName = $template->name . '_' . time();
+            $archivePath = storage_path('app/temp/' . $archiveName);
+
+            if ($format === 'zip') {
+                $zip = new \ZipArchive();
+                $zipPath = $archivePath . '.zip';
+
+                if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    throw new \Exception('Failed to create ZIP archive');
+                }
+
+                $this->addFilesToZipRecursive($zip, $tempDir, '');
+                $zip->close();
+                $finalArchive = $zipPath;
+
+            } elseif ($format === 'tar.gz') {
+                $tarPath = $archivePath . '.tar';
+                $phar = new \PharData($tarPath);
+                $phar->buildFromDirectory($tempDir);
+                $phar->compress(\Phar::GZ);
+                \Illuminate\Support\Facades\File::delete($tarPath);
+                $finalArchive = $tarPath . '.gz';
+
+            } elseif ($format === 'tar.xz') {
+                $xzAvailable = shell_exec('which xz 2>/dev/null') || shell_exec('where xz 2>nul');
+
+                if (!$xzAvailable) {
+                    $tarPath = $archivePath . '.tar';
+                    $phar = new \PharData($tarPath);
+                    $phar->buildFromDirectory($tempDir);
+                    $phar->compress(\Phar::GZ);
+                    \Illuminate\Support\Facades\File::delete($tarPath);
+                    $finalArchive = $tarPath . '.gz';
+                    $format = 'tar.gz';
+                } else {
+                    $tarPath = $archivePath . '.tar';
+                    $phar = new \PharData($tarPath);
+                    $phar->buildFromDirectory($tempDir);
+                    $xzPath = $archivePath . '.tar.xz';
+                    shell_exec(sprintf('xz -z -9 -c %s > %s', escapeshellarg($tarPath), escapeshellarg($xzPath)));
+                    \Illuminate\Support\Facades\File::delete($tarPath);
+                    $finalArchive = $xzPath;
+                }
+            }
+
+            return response()->download($finalArchive, $template->name . '.' . $format)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            \Log::error('Template archive download failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Failed to create archive: ' . $e->getMessage()], 500);
+        } finally {
+            if (\Illuminate\Support\Facades\File::exists($tempDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
+            }
+        }
+    }
+
+    private function addFilesToZipRecursive($zip, $sourceDir, $relativePath)
+    {
+        // Use Symfony Finder to include hidden files (files starting with .)
+        $finder = new \Symfony\Component\Finder\Finder();
+        $finder->files()->in($sourceDir)->depth(0)->ignoreDotFiles(false);
+
+        foreach ($finder as $file) {
+            $filename = $file->getFilename();
+            $localPath = $relativePath ? $relativePath . '/' . $filename : $filename;
+
+            \Log::info("Adding file to ZIP", [
+                'filename' => $filename,
+                'local_path' => $localPath,
+                'real_path' => $file->getRealPath()
+            ]);
+
+            $zip->addFile($file->getRealPath(), $localPath);
+        }
+
+        // Process subdirectories
+        $directories = \Illuminate\Support\Facades\File::directories($sourceDir);
+        foreach ($directories as $directory) {
+            $dirname = basename($directory);
+            $localPath = $relativePath ? $relativePath . '/' . $dirname : $dirname;
+            $this->addFilesToZipRecursive($zip, $directory, $localPath);
+        }
+    }
+
+    /**
+     * Import template from JSON data OR archive file (ZIP, TAR.GZ, TAR.XZ)
+     */
+    public function import(Request $request)
+    {
+        try {
+            // Check if this is a file upload or JSON data
+            if ($request->hasFile('template_file')) {
+                return $this->importFromArchive($request);
+            }
+
+            // Original JSON import logic
+            $validated = $request->validate([
+                'template_data' => 'required|array',
+                'template_data.template' => 'required|array',
+                'template_data.template.name' => 'required|string|max:255',
+                'template_data.template.description' => 'nullable|string',
+                'template_data.template.category' => ['required', Rule::in(['Web', 'Mobile', 'API', 'Desktop', 'Database'])],
+                'template_data.template.language' => 'required|string|max:50',
+                'template_data.template.tags' => 'nullable|array',
+                'template_data.template.is_active' => 'nullable|boolean',
+                'template_data.files' => 'nullable|array',
+                'template_data.files.*.file_name' => 'required|string',
+                'template_data.files.*.file_path' => 'nullable|string',
+                'template_data.files.*.file_content' => 'required|string',
+                'template_data.files.*.file_type' => 'nullable|string|max:50',
+                'template_data.files.*.file_order' => 'nullable|integer',
+                'overwrite_existing' => 'boolean',
+            ]);
+
+            $templateData = $validated['template_data']['template'];
+            $filesData = $validated['template_data']['files'] ?? [];
+            $overwriteExisting = $validated['overwrite_existing'] ?? false;
+
+            // Check if template with same name exists
+            $existingTemplate = Template::where('name', $templateData['name'])->first();
+            if ($existingTemplate && !$overwriteExisting) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                    'existing_template_id' => $existingTemplate->id,
+                ], 409);
+            }
+
+            // If overwriting, delete existing template
+            if ($existingTemplate && $overwriteExisting) {
+                $existingTemplate->delete();
+            }
+
+            // Create new template
+            $template = Template::create([
+                'name' => $templateData['name'],
+                'description' => $templateData['description'] ?? null,
+                'category' => $templateData['category'],
+                'language' => $templateData['language'],
+                'tags' => $templateData['tags'] ?? [],
+                'is_active' => $templateData['is_active'] ?? true,
+                'file_count' => count($filesData),
+            ]);
+
+            // Create template files
+            foreach ($filesData as $index => $fileData) {
+                $template->files()->create([
+                    'file_name' => $fileData['file_name'],
+                    'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileData['file_name']}",
+                    'file_content' => $fileData['file_content'],
+                    'file_type' => $fileData['file_type'] ?? 'template',
+                    'file_order' => $fileData['file_order'] ?? $index,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'template' => $template->load('files'),
+                'message' => $overwriteExisting ? 'Template successfully imported and replaced existing one' : 'Template successfully imported',
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Import template from archive file (ZIP, TAR.GZ, TAR.XZ)
+     */
+    private function importFromArchive(Request $request)
+    {
+        $validated = $request->validate([
+            'template_file' => 'required|file|mimes:zip,gz,tar,xz|max:51200', // Max 50MB
+            'overwrite_existing' => 'nullable|in:true,false,0,1', // Accept boolean or string
+        ]);
+
+        $file = $request->file('template_file');
+        // Convert string 'true'/'false' or '1'/'0' to boolean
+        $overwriteExisting = filter_var($validated['overwrite_existing'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $filename = $file->getClientOriginalName();
+
+        // Create temp directory
+        $tempDir = storage_path('app/temp/template_import_' . uniqid());
+        \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
+
+        try {
+            // Detect archive type and extract
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            if ($extension === 'zip') {
+                $this->extractZip($file->getRealPath(), $tempDir);
+            } elseif (in_array($extension, ['gz', 'tar'])) {
+                // Check if it's tar.gz or plain tar
+                if (str_ends_with(strtolower($filename), '.tar.gz')) {
+                    $this->extractTarGz($file->getRealPath(), $tempDir);
+                } elseif ($extension === 'tar') {
+                    // Plain TAR file
+                    $this->extractTar($file->getRealPath(), $tempDir);
+                } else {
+                    throw new \Exception('Only TAR, TAR.GZ archives are supported (not standalone .gz files)');
+                }
+            } elseif ($extension === 'xz') {
+                if (str_ends_with(strtolower($filename), '.tar.xz')) {
+                    $this->extractTarXz($file->getRealPath(), $tempDir);
+                } else {
+                    throw new \Exception('Only TAR.XZ archives are supported (not standalone .xz files)');
+                }
+            } else {
+                throw new \Exception('Unsupported archive format');
+            }
+
+            // Check if template.json exists in archive
+            $templateJsonPath = $tempDir . '/template.json';
+            $hasTemplateJson = \Illuminate\Support\Facades\File::exists($templateJsonPath);
+
+            if ($hasTemplateJson) {
+                // Import from template.json (includes metadata)
+                $jsonContent = \Illuminate\Support\Facades\File::get($templateJsonPath);
+                $templateData = json_decode($jsonContent, true);
+
+                if (!$templateData || !isset($templateData['template'])) {
+                    throw new \Exception('Invalid template.json format');
+                }
+
+                $templateInfo = $templateData['template'];
+                $filesData = $templateData['files'] ?? [];
+
+                // Check if template exists
+                $existingTemplate = Template::where('name', $templateInfo['name'])->first();
+                if ($existingTemplate && !$overwriteExisting) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'existing_template_id' => $existingTemplate->id,
+                    ], 409);
+                }
+
+                // Delete existing template if overwriting
+                if ($existingTemplate && $overwriteExisting) {
+                    $existingTemplate->delete();
+                }
+
+                // Create template with metadata from JSON
+                $template = Template::create([
+                    'name' => $templateInfo['name'],
+                    'description' => $templateInfo['description'] ?? '',
+                    'category' => $templateInfo['category'] ?? 'Web',
+                    'language' => $templateInfo['language'] ?? 'PHP',
+                    'tags' => $templateInfo['tags'] ?? [],
+                    'is_active' => $templateInfo['is_active'] ?? true,
+                    'file_count' => count($filesData),
+                    'creator_user_id' => Auth::user()->id, // Set current user as creator
+                ]);
+
+                // Create template files - read content from physical files in archive
+                foreach ($filesData as $index => $fileData) {
+                    $fileName = $fileData['file_name'];
+
+                    // Check if archive_source is specified (for duplicate filenames)
+                    $archiveFileName = $fileData['archive_source'] ?? $fileName;
+                    $physicalFilePath = $tempDir . '/' . $archiveFileName;
+
+                    // Read file content from extracted archive (not from JSON)
+                    $fileContent = '';
+                    $contentType = 'text'; // Default
+                    $zipFilename = null;
+
+                    if (\Illuminate\Support\Facades\File::exists($physicalFilePath)) {
+                        // Check if this is a ZIP file (binary file)
+                        $isZipFile = $this->isZipFile($physicalFilePath);
+
+                        if ($isZipFile) {
+                            // ZIP file - read as binary and encode to base64
+                            $fileContent = base64_encode(\Illuminate\Support\Facades\File::get($physicalFilePath));
+                            $contentType = 'zip';
+                            $zipFilename = $fileName; // Store original filename
+                        } else {
+                            // Regular text file
+                            $fileContent = \Illuminate\Support\Facades\File::get($physicalFilePath);
+                            $contentType = 'text';
+                        }
+                    } else {
+                        // Fallback: if file_content is in JSON (old format), use it
+                        $fileContent = $fileData['file_content'] ?? '';
+                    }
+
+                    $template->files()->create([
+                        'file_name' => $fileName,
+                        'file_path' => $fileData['file_path'] ?? $fileName,  // Legacy compatibility
+                        'output_path' => $fileData['output_path'] ?? null,  // Ausgabeverzeichnis
+                        'file_content' => $fileContent,
+                        'file_type' => $fileData['file_type'] ?? 'template',
+                        'file_order' => $fileData['file_order'] ?? $index,
+                        'content_type' => $contentType,
+                        'zip_filename' => $zipFilename,
+                    ]);
+                }
+
+            } else {
+                // No template.json - import files directly (legacy mode)
+                $templateFiles = $this->readTemplateFilesFromDirectory($tempDir);
+
+                if (empty($templateFiles)) {
+                    throw new \Exception('No template files found in archive');
+                }
+
+                // Generate template name from filename (without extension)
+                $templateName = preg_replace('/\.(zip|tar\.gz|tar\.xz)$/i', '', $filename);
+                $templateName = preg_replace('/[^a-z0-9_]/', '_', strtolower($templateName));
+
+                // Check if template exists
+                $existingTemplate = Template::where('name', $templateName)->first();
+                if ($existingTemplate && !$overwriteExisting) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'existing_template_id' => $existingTemplate->id,
+                    ], 409);
+                }
+
+                // Delete existing template if overwriting
+                if ($existingTemplate && $overwriteExisting) {
+                    $existingTemplate->delete();
+                }
+
+                // Create template
+                $template = Template::create([
+                    'name' => $templateName,
+                    'description' => 'Imported from ' . $filename,
+                    'category' => 'Web', // Default category
+                    'language' => 'PHP', // Default language
+                    'tags' => [],
+                    'is_active' => true,
+                    'file_count' => count($templateFiles),
+                    'creator_user_id' => Auth::user()->id, // Set current user as creator
+                ]);
+
+                // Create template files
+                foreach ($templateFiles as $index => $fileData) {
+                    $template->files()->create([
+                        'file_name' => $fileData['file_name'],
+                        'file_path' => $fileData['file_path'],
+                        'file_content' => $fileData['file_content'],
+                        'file_type' => $fileData['file_type'] ?? 'template',
+                        'file_order' => $index,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'template' => $template->load('files'),
+                'message' => 'Template successfully imported from archive',
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Template import from archive failed', [
+                'error' => $e->getMessage(),
+                'file' => $filename,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to import template: ' . $e->getMessage(),
+            ], 400);
+
+        } finally {
+            // Clean up temp directory
+            if (\Illuminate\Support\Facades\File::exists($tempDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
+            }
+        }
+    }
+
+    /**
+     * Extract ZIP archive
+     */
+    private function extractZip(string $zipPath, string $destination): void
+    {
+        $zip = new \ZipArchive();
+
+        if ($zip->open($zipPath) !== true) {
+            throw new \Exception('Failed to open ZIP archive');
+        }
+
+        $zip->extractTo($destination);
+        $zip->close();
+    }
+
+    /**
+     * Extract plain TAR archive
+     */
+    private function extractTar(string $tarPath, string $destination): void
+    {
+        try {
+            $phar = new \PharData($tarPath);
+            $phar->extractTo($destination, null, true);
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract TAR archive: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Extract TAR.GZ archive
+     */
+    private function extractTarGz(string $tarGzPath, string $destination): void
+    {
+        try {
+            $phar = new \PharData($tarGzPath);
+            $phar->extractTo($destination, null, true);
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract TAR.GZ archive: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Extract TAR.XZ archive
+     */
+    private function extractTarXz(string $tarXzPath, string $destination): void
+    {
+        // Check if xz command is available
+        $xzAvailable = shell_exec('which xz 2>/dev/null') || shell_exec('where xz 2>nul');
+
+        if (!$xzAvailable) {
+            throw new \Exception('TAR.XZ extraction not available (requires xz command). Please use ZIP or TAR.GZ format instead.');
+        }
+
+        try {
+            // First decompress .xz to .tar
+            $tarPath = $tarXzPath . '.tmp.tar';
+            $command = sprintf('xz -d -c %s > %s', escapeshellarg($tarXzPath), escapeshellarg($tarPath));
+            shell_exec($command);
+
+            if (!file_exists($tarPath)) {
+                throw new \Exception('XZ decompression failed');
+            }
+
+            // Then extract tar
+            $phar = new \PharData($tarPath);
+            $phar->extractTo($destination, null, true);
+
+            // Clean up temp tar file
+            if (file_exists($tarPath)) {
+                unlink($tarPath);
+            }
+
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract TAR.XZ archive: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Read template files from extracted directory
+     */
+    private function readTemplateFilesFromDirectory(string $directory): array
+    {
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $relativePath = str_replace($directory . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace('\\', '/', $relativePath);
+
+                $files[] = [
+                    'file_name' => $file->getFilename(),
+                    'file_path' => $relativePath,
+                    'file_content' => file_get_contents($file->getPathname()),
+                    'file_type' => $this->detectFileType($file->getFilename()),
+                ];
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Detect file type from filename
+     */
+    private function detectFileType(string $filename): string
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        $typeMap = [
+            'php' => 'template',
+            'html' => 'template',
+            'js' => 'static_file',
+            'css' => 'static_file',
+            'json' => 'static_file',
+            'xml' => 'static_file',
+            'sql' => 'db_table_file',
+        ];
+
+        return $typeMap[$extension] ?? 'template';
+    }
+
+    /**
+     * Create ZIP archive from list of managed files
+     * @param array $files Array of ['name' => '', 'relativePath' => '', 'content' => 'base64', 'size' => 0]
+     * @return string Base64 encoded ZIP content
+     */
+    private function createZipFromFileList(array $files): string
+    {
+        $zipPath = storage_path('app/temp/managed_files_' . uniqid() . '.zip');
+        $zip = new \ZipArchive();
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \Exception('Failed to create ZIP archive from managed files');
+        }
+
+        try {
+            foreach ($files as $file) {
+                $fileName = $file['name'];
+                $relativePath = rtrim($file['relativePath'] ?? '', '/');
+                $fullPath = $relativePath ? $relativePath . '/' . $fileName : $fileName;
+
+                // Decode base64 content
+                $binaryContent = base64_decode($file['content'], true);
+                if ($binaryContent === false) {
+                    throw new \Exception("Failed to decode content for file: {$fileName}");
+                }
+
+                // Add file to ZIP with relative path
+                $zip->addFromString($fullPath, $binaryContent);
+            }
+
+            $zip->close();
+
+            // Read ZIP file and encode as base64
+            $zipContent = \Illuminate\Support\Facades\File::get($zipPath);
+            $zipBase64 = base64_encode($zipContent);
+
+            // Clean up
+            \Illuminate\Support\Facades\File::delete($zipPath);
+
+            return $zipBase64;
+
+        } catch (\Exception $e) {
+            $zip->close();
+            if (\Illuminate\Support\Facades\File::exists($zipPath)) {
+                \Illuminate\Support\Facades\File::delete($zipPath);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Check if a file is a ZIP archive by reading magic bytes
+     */
+    private function isZipFile(string $filePath): bool
+    {
+        if (!file_exists($filePath)) {
+            return false;
+        }
+
+        // Read first 4 bytes to check for ZIP signature
+        $handle = fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $bytes = fread($handle, 4);
+        fclose($handle);
+
+        if ($bytes === false || strlen($bytes) < 4) {
+            return false;
+        }
+
+        // ZIP files start with PK\x03\x04 (50 4B 03 04 in hex)
+        // Also check for empty ZIP: PK\x05\x06 (50 4B 05 06)
+        // And spanned ZIP: PK\x07\x08 (50 4B 07 08)
+        return substr($bytes, 0, 2) === 'PK' && (
+            ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04 ||  // Normal ZIP
+            ord($bytes[2]) === 0x05 && ord($bytes[3]) === 0x06 ||  // Empty ZIP
+            ord($bytes[2]) === 0x07 && ord($bytes[3]) === 0x08     // Spanned ZIP
+        );
+    }
+
+    /**
+     * Check if a file is an archive (ZIP, TAR.GZ, TAR.XZ) by reading magic bytes
+     * Returns the archive type: 'zip', 'tar.gz', 'tar.xz', or false if not an archive
+     */
+    private function isArchiveFile(string $filePath)
+    {
+        if (!file_exists($filePath)) {
+            return false;
+        }
+
+        // Read first 6 bytes to detect different archive formats
+        $handle = fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $bytes = fread($handle, 6);
+        fclose($handle);
+
+        if ($bytes === false || strlen($bytes) < 2) {
+            return false;
+        }
+
+        // Check ZIP signature: PK (50 4B)
+        if (strlen($bytes) >= 4 && substr($bytes, 0, 2) === 'PK' && (
+            ord($bytes[2]) === 0x03 && ord($bytes[3]) === 0x04 ||  // Normal ZIP
+            ord($bytes[2]) === 0x05 && ord($bytes[3]) === 0x06 ||  // Empty ZIP
+            ord($bytes[2]) === 0x07 && ord($bytes[3]) === 0x08     // Spanned ZIP
+        )) {
+            return 'zip';
+        }
+
+        // Check GZIP signature: 1F 8B (TAR.GZ starts with this)
+        if (strlen($bytes) >= 2 && ord($bytes[0]) === 0x1F && ord($bytes[1]) === 0x8B) {
+            return 'tar.gz';
+        }
+
+        // Check XZ signature: FD 37 7A 58 5A 00 (TAR.XZ starts with this)
+        if (strlen($bytes) >= 6 &&
+            ord($bytes[0]) === 0xFD &&
+            ord($bytes[1]) === 0x37 &&
+            ord($bytes[2]) === 0x7A &&
+            ord($bytes[3]) === 0x58 &&
+            ord($bytes[4]) === 0x5A &&
+            ord($bytes[5]) === 0x00) {
+            return 'tar.xz';
+        }
+
+        return false;
+    }
+
+    /**
+     * Convert TAR.GZ or TAR.XZ archive to ZIP format
+     * Returns the path to the newly created ZIP file
+     */
+    private function convertArchiveToZip(string $archivePath, string $archiveType): string
+    {
+        $tempExtractDir = storage_path('app/temp/archive_extract_' . uniqid());
+        \Illuminate\Support\Facades\File::makeDirectory($tempExtractDir, 0755, true);
+
+        try {
+            // Extract the archive based on type
+            if ($archiveType === 'tar.gz') {
+                $this->extractTarGz($archivePath, $tempExtractDir);
+            } elseif ($archiveType === 'tar.xz') {
+                $this->extractTarXz($archivePath, $tempExtractDir);
+            } else {
+                throw new \Exception('Unsupported archive type for conversion: ' . $archiveType);
+            }
+
+            // Create a new ZIP archive
+            $zipPath = storage_path('app/temp/converted_' . uniqid() . '.zip');
+            $zip = new \ZipArchive();
+
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception('Failed to create ZIP archive during conversion');
+            }
+
+            // Add all extracted files to the ZIP
+            $this->addFilesToZipRecursive($zip, $tempExtractDir, '');
+            $zip->close();
+
+            return $zipPath;
+
+        } finally {
+            // Clean up temporary extraction directory
+            if (\Illuminate\Support\Facades\File::exists($tempExtractDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($tempExtractDir);
+            }
+        }
+    }
+
+    /**
+     * Process archive file content - converts TAR.GZ/TAR.XZ to ZIP automatically
+     * Takes Base64 encoded content, returns processed Base64 content
+     */
+    private function processArchiveFileContent(string $fileContent, string $originalFilename): array
+    {
+        // Check if content starts with "data:" (base64 data URL format)
+        $isDataUrl = str_starts_with($fileContent, 'data:');
+
+        if ($isDataUrl) {
+            // Extract base64 part from data URL (format: data:mime/type;base64,XXXXX)
+            $parts = explode(',', $fileContent, 2);
+            if (count($parts) !== 2) {
+                return [
+                    'file_content' => $fileContent,
+                    'content_type' => 'text',
+                    'zip_filename' => null,
+                ];
+            }
+            $base64Content = $parts[1];
+        } else {
+            $base64Content = $fileContent;
+        }
+
+        // Decode base64 to get binary content
+        $binaryContent = base64_decode($base64Content, true);
+
+        if ($binaryContent === false) {
+            // Not base64 - treat as text
+            return [
+                'file_content' => $fileContent,
+                'content_type' => 'text',
+                'zip_filename' => null,
+            ];
+        }
+
+        // Write to temporary file to check magic bytes
+        $tempFilePath = storage_path('app/temp/archive_check_' . uniqid());
+        \Illuminate\Support\Facades\File::put($tempFilePath, $binaryContent);
+
+        try {
+            // Check archive type using magic bytes
+            $archiveType = $this->isArchiveFile($tempFilePath);
+
+            if ($archiveType === false) {
+                // Not an archive - treat as text
+                return [
+                    'file_content' => $fileContent,
+                    'content_type' => 'text',
+                    'zip_filename' => null,
+                ];
+            }
+
+            // If it's TAR.GZ or TAR.XZ, convert to ZIP
+            if ($archiveType === 'tar.gz' || $archiveType === 'tar.xz') {
+                \Log::info("Converting {$archiveType} to ZIP", ['filename' => $originalFilename]);
+
+                // Rename temp file with correct extension for PharData
+                $tempFilePathWithExt = $tempFilePath . '.' . $archiveType;
+                rename($tempFilePath, $tempFilePathWithExt);
+
+                $zipPath = $this->convertArchiveToZip($tempFilePathWithExt, $archiveType);
+
+                // Clean up renamed temp file
+                if (\Illuminate\Support\Facades\File::exists($tempFilePathWithExt)) {
+                    \Illuminate\Support\Facades\File::delete($tempFilePathWithExt);
+                }
+
+                // Read ZIP file and encode as base64
+                $zipContent = \Illuminate\Support\Facades\File::get($zipPath);
+                $zipBase64 = base64_encode($zipContent);
+
+                // Clean up converted ZIP
+                \Illuminate\Support\Facades\File::delete($zipPath);
+
+                return [
+                    'file_content' => $zipBase64,
+                    'content_type' => 'zip',
+                    'zip_filename' => $originalFilename, // Keep original filename
+                ];
+            }
+
+            // If it's already ZIP, just return as-is
+            if ($archiveType === 'zip') {
+                return [
+                    'file_content' => $base64Content, // Use cleaned base64 (without data URL prefix)
+                    'content_type' => 'zip',
+                    'zip_filename' => $originalFilename,
+                ];
+            }
+
+            // Fallback
+            return [
+                'file_content' => $fileContent,
+                'content_type' => 'text',
+                'zip_filename' => null,
+            ];
+
+        } finally {
+            // Clean up temp file (original without extension)
+            if (\Illuminate\Support\Facades\File::exists($tempFilePath)) {
+                \Illuminate\Support\Facades\File::delete($tempFilePath);
+            }
+
+            // Also clean up any renamed temp files with extensions
+            $possibleExtensions = ['tar.gz', 'tar.xz'];
+            foreach ($possibleExtensions as $ext) {
+                $tempFileWithExt = $tempFilePath . '.' . $ext;
+                if (\Illuminate\Support\Facades\File::exists($tempFileWithExt)) {
+                    \Illuminate\Support\Facades\File::delete($tempFileWithExt);
+                }
+            }
+        }
+    }
+
+    /**
+     * Link a template to projects (creates reference, gets updates)
+     * POST /api/templates/{id}/link
+     */
+    public function linkTemplate(Request $request, int $id): JsonResponse
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Template not found',
+            ], 404);
+        }
+
+        $user = $request->user();
+
+        // Check if user can use this template
+        if (!$template->canBeUsedBy($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to link this template',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'project_ids' => 'required|array|min:1',
+            'project_ids.*' => 'exists:projects,id',
+        ]);
+
+        $linkedCount = 0;
+        $errors = [];
+
+        foreach ($validated['project_ids'] as $projectId) {
+            $project = Project::find($projectId);
+
+            if (!$project || !$project->userCanAccess($user)) {
+                $errors[] = "Access denied to project #{$projectId}";
+                continue;
+            }
+
+            // Check if already linked
+            $existing = $project->templates()->where('templates.id', $template->id)->first();
+            if ($existing) {
+                $errors[] = "Template already linked to project #{$projectId}";
+                continue;
+            }
+
+            // Link template to project
+            $project->templates()->attach($template->id);
+            $linkedCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Template linked to {$linkedCount} project(s)",
+            'linked_count' => $linkedCount,
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
+     * Unlink a template from projects
+     * POST /api/templates/{id}/unlink
+     */
+    public function unlinkTemplate(Request $request, int $id): JsonResponse
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Template not found',
+            ], 404);
+        }
+
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'project_ids' => 'required|array|min:1',
+            'project_ids.*' => 'exists:projects,id',
+        ]);
+
+        $unlinkedCount = 0;
+        $errors = [];
+
+        foreach ($validated['project_ids'] as $projectId) {
+            $project = Project::find($projectId);
+
+            if (!$project || !$project->userCanAccess($user)) {
+                $errors[] = "Access denied to project #{$projectId}";
+                continue;
+            }
+
+            // Unlink template from project
+            $project->templates()->detach($template->id);
+            $unlinkedCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Template unlinked from {$unlinkedCount} project(s)",
+            'unlinked_count' => $unlinkedCount,
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
+     * Get user's own templates (for upper table)
+     * GET /api/templates/my-templates
+     */
+    public function getMyTemplates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $templates = Template::ownedBy($user->id)
+            ->with(['creator', 'originalTemplate', 'project'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'templates' => $templates,
+        ]);
+    }
+
+    /**
+     * Get community templates (system + public from others)
+     * GET /api/templates/community
+     */
+    public function getCommunityTemplates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = Template::community($user->id)
+            ->with(['creator', 'originalTemplate']);
+
+        // Apply filters
+        if ($request->has('type')) {
+            $type = $request->input('type');
+            if ($type === 'system') {
+                $query->where('is_system_template', true);
+            } elseif ($type === 'community') {
+                $query->where('is_system_template', false);
+            }
+        }
+
+        if ($request->has('language')) {
+            $query->where('language', $request->input('language'));
+        }
+
+        if ($request->has('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        if ($request->has('search')) {
+            $query->search($request->input('search'));
+        }
+
+        $templates = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'templates' => $templates,
+        ]);
+    }
+
+    /**
+     * Get linked projects for a template
+     */
+    public function getLinkedProjects($id): JsonResponse
+    {
+        $user = Auth::user();
+        $template = Template::findOrFail($id);
+
+        // Check if user owns this template or can use it
+        if ($template->creator_user_id != $user->id && !$template->canBeUsedBy($user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
+        // Get linked project IDs from project_template_usage table
+        $projectIds = \DB::table('project_template_usage')
+            ->where('template_id', $template->id)
+            ->where('is_active', true)
+            ->pluck('project_id')
+            ->toArray();
+
+        return response()->json([
+            'success' => true,
+            'project_ids' => $projectIds
+        ]);
+    }
+
+    /**
+     * Update linked projects for a template
+     */
+    public function updateLinkedProjects(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $template = Template::findOrFail($id);
+
+        \Log::info('updateLinkedProjects START', [
+            'template_id' => $id,
+            'user_id' => $user->id,
+            'request_project_ids' => $request->input('project_ids')
+        ]);
+
+        // Check if user can link this template
+        // System templates and public templates can be linked by anyone
+        // Private templates can only be linked by their creator
+        $canLink = $template->is_system_template
+                || $template->visibility === 'public'
+                || $template->creator_user_id == $user->id;
+
+        if (!$canLink) {
+            \Log::warning('updateLinkedProjects UNAUTHORIZED', [
+                'template_id' => $id,
+                'user_id' => $user->id,
+                'is_system' => $template->is_system_template,
+                'visibility' => $template->visibility,
+                'creator' => $template->creator_user_id
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Sie haben keine Berechtigung, dieses Template zu verknüpfen'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'project_ids' => 'array', // Allow empty array to remove all links
+            'project_ids.*' => 'integer|exists:projects,id'
+        ]);
+
+        $newProjectIds = $validated['project_ids'];
+        \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
+
+        // Get current linked projects (only for user's accessible projects)
+        $userAccessibleProjectIds = Project::where(function($query) use ($user) {
+            $query->where('owner_id', $user->id)
+                ->orWhereHas('teams.members', function($teamQuery) use ($user) {
+                    $teamQuery->where('user_id', $user->id);
+                });
+        })->pluck('id')->toArray();
+
+        // Filter to only user's projects
+        $newProjectIds = array_intersect($newProjectIds, $userAccessibleProjectIds);
+
+        // Get current linked projects (only user's projects)
+        $currentProjectIds = \DB::table('project_template_usage')
+            ->where('template_id', $template->id)
+            ->whereIn('project_id', $userAccessibleProjectIds)
+            ->pluck('project_id')
+            ->toArray();
+
+        // Determine which to add and which to remove
+        $toAdd = array_diff($newProjectIds, $currentProjectIds);
+        $toRemove = array_diff($currentProjectIds, $newProjectIds);
+
+        // Remove unlinked projects (only user's projects)
+        if (!empty($toRemove)) {
+            \DB::table('project_template_usage')
+                ->where('template_id', $template->id)
+                ->whereIn('project_id', $toRemove)
+                ->whereIn('project_id', $userAccessibleProjectIds) // Only remove user's projects
+                ->delete();
+        }
+
+        // Add new linked projects
+        foreach ($toAdd as $projectId) {
+            $project = Project::find($projectId);
+
+            // Check if user has access to this project
+            if (!$project || !$project->userCanAccess($user)) {
+                continue;
+            }
+
+            \DB::table('project_template_usage')->updateOrInsert(
+                [
+                    'project_id' => $projectId,
+                    'template_id' => $template->id
+                ],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Template-Verknüpfungen erfolgreich aktualisiert'
+        ]);
+    }
+
+    /**
+     * Toggle is_active status for a specific project-template link
+     */
+    public function toggleProjectLinkActive(Request $request, $templateId, $projectId): JsonResponse
+    {
+        $user = Auth::user();
+        $template = Template::findOrFail($templateId);
+        $project = Project::findOrFail($projectId);
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Sie haben keine Berechtigung für dieses Projekt'
+            ], 403);
+        }
+
+        // Check if user can use this template
+        if (!$template->canBeUsedBy($user) && $template->creator_user_id != $user->id) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Sie haben keine Berechtigung, dieses Template zu verwenden'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'is_active' => 'required|boolean'
+        ]);
+
+        // Update the is_active status
+        \DB::table('project_template_usage')
+            ->where('template_id', $templateId)
+            ->where('project_id', $projectId)
+            ->update([
+                'is_active' => $validated['is_active'],
+                'updated_at' => now()
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Verknüpfung erfolgreich aktualisiert'
+        ]);
     }
 }

@@ -142,6 +142,7 @@ class ProjectController extends Controller
             // Project properties
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
+            'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
             // Localization settings
             'decimal_separator' => 'nullable|string|max:1',
@@ -292,6 +293,7 @@ class ProjectController extends Controller
             // Project properties
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
+            'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
             // Localization settings
             'decimal_separator' => 'nullable|string|max:1',
@@ -696,24 +698,76 @@ class ProjectController extends Controller
     public function getProjectSchemas(Project $project): JsonResponse
     {
         $user = Auth::user();
-        
+
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        $schemas = $project->floatingSchemas()
+        // Get all schemas linked to the project
+        $linkedSchemas = $project->floatingSchemas()
             ->with(['owner'])
             ->get()
             ->map(function ($schema) {
-                return array_merge($schema->toArray(), [
+                return [
+                    'id' => $schema->id,
+                    'name' => $schema->name,
+                    'description' => $schema->description,
+                    'owner_id' => $schema->owner_id,
+                    'visibility' => $schema->visibility,
+                    'last_version' => $schema->last_version,
+                    'is_system_schema' => $schema->is_system_schema,
+                    'created_at' => $schema->created_at,
+                    'updated_at' => $schema->updated_at,
                     'association_type' => $schema->pivot->association_type,
                     'alias' => $schema->pivot->alias,
                     'associated_at' => $schema->pivot->created_at,
-                ]);
+                    'owner' => $schema->owner ? [
+                        'id' => $schema->owner->id,
+                        'name' => $schema->owner->name,
+                        'username' => $schema->owner->username,
+                    ] : null,
+                ];
             });
 
-        return response()->json($schemas);
+        // Get all schemas owned by the current user (regardless of link status)
+        $ownedSchemas = FloatingSchema::where('owner_id', $user->id)
+            ->with(['owner'])
+            ->get()
+            ->map(function ($schema) use ($linkedSchemas) {
+                // Check if already linked
+                $existingLink = $linkedSchemas->firstWhere('id', $schema->id);
+                if ($existingLink) {
+                    return null; // Already in linked schemas
+                }
+
+                // Add as unlinked schema
+                return [
+                    'id' => $schema->id,
+                    'name' => $schema->name,
+                    'description' => $schema->description,
+                    'owner_id' => $schema->owner_id,
+                    'visibility' => $schema->visibility,
+                    'last_version' => $schema->last_version,
+                    'is_system_schema' => $schema->is_system_schema,
+                    'created_at' => $schema->created_at,
+                    'updated_at' => $schema->updated_at,
+                    'association_type' => null,
+                    'alias' => null,
+                    'associated_at' => null,
+                    'owner' => $schema->owner ? [
+                        'id' => $schema->owner->id,
+                        'name' => $schema->owner->name,
+                        'username' => $schema->owner->username,
+                    ] : null,
+                ];
+            })
+            ->filter(); // Remove nulls
+
+        // Merge owned schemas with linked schemas (use concat for arrays)
+        $allSchemas = $linkedSchemas->concat($ownedSchemas)->values();
+
+        return response()->json($allSchemas);
     }
 
     /**
@@ -918,12 +972,35 @@ class ProjectController extends Controller
             'enabled_languages' => 'nullable|array',
             'enabled_languages.*' => 'string|max:10',
             'default_language' => 'nullable|string|max:10',
+            'protected_files' => 'nullable|array',
+            'protected_files.*' => 'string',
+            'install_script' => 'nullable|array',
+            'install_script.*.step' => 'required|integer',
+            'install_script.*.description' => 'required|string',
+            'install_script.*.command' => 'nullable|string',
+            'update_script' => 'nullable|array',
+            'update_script.*.step' => 'required|integer',
+            'update_script.*.description' => 'required|string',
+            'update_script.*.command' => 'nullable|string',
         ]);
 
-        $project->update([
+        $updateData = [
             'enabled_languages' => $validated['enabled_languages'] ?? [],
             'default_language' => $validated['default_language'] ?? $project->default_language,
-        ]);
+        ];
+
+        // Add deployment-related fields if provided
+        if (isset($validated['protected_files'])) {
+            $updateData['protected_files'] = $validated['protected_files'];
+        }
+        if (isset($validated['install_script'])) {
+            $updateData['install_script'] = $validated['install_script'];
+        }
+        if (isset($validated['update_script'])) {
+            $updateData['update_script'] = $validated['update_script'];
+        }
+
+        $project->update($updateData);
 
         return response()->json([
             'message' => 'Project settings updated successfully',
@@ -946,6 +1023,9 @@ class ProjectController extends Controller
         return response()->json([
             'enabled_languages' => $project->enabled_languages ?? [],
             'default_language' => $project->default_language,
+            'protected_files' => $project->protected_files ?? [],
+            'install_script' => $project->install_script ?? [],
+            'update_script' => $project->update_script ?? [],
         ]);
     }
 
@@ -1094,6 +1174,28 @@ class ProjectController extends Controller
             'message' => 'Generation tree made regenerated successfully',
             'tree_data' => $generationTree->tree_data,
             'generated_at' => $generationTree->generated_at,
+        ]);
+    }
+
+    /**
+     * Get templates linked to this project with their protected_files
+     */
+    public function getTemplatesWithProtectedFiles(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Load templates from project_template_usage with protected_files
+        $templates = $project->templates()
+            ->select(['templates.id', 'templates.name', 'templates.protected_files'])
+            ->get();
+
+        return response()->json([
+            'templates' => $templates
         ]);
     }
 }

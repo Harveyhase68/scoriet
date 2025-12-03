@@ -287,6 +287,9 @@ class UltimateTemplateEngine
             'decimalsep', 'thousandsep', 'dateformat', 'timeformat',
             'currencysym', 'timezone',
 
+            // LANGUAGE VARIABLES (selected/current language)
+            'languageid', 'languagename', 'languagetoken', 'selectedlanguage',
+
             // TEMPLATE INFO
             'templateid', 'projecttemplateid', 'templatename',
             'templatecategory', 'templatedescription',

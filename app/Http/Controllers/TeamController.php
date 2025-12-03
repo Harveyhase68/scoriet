@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Team;
 use App\Models\TeamMember;
+use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -364,5 +365,72 @@ class TeamController extends Controller
             });
 
         return response()->json($members->values());
+    }
+
+    /**
+     * Update project links for a team
+     */
+    public function updateProjectLinks(Request $request, $teamId)
+    {
+        $user = Auth::user();
+        $team = Team::findOrFail($teamId);
+
+        // Check if user is team member
+        if (!$team->isMember($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'project_ids' => 'required|array',
+            'project_ids.*' => 'integer|exists:projects,id'
+        ]);
+
+        $newProjectIds = $validated['project_ids'];
+
+        // Get current linked projects
+        $currentProjectIds = \DB::table('project_teams')
+            ->where('team_id', $team->id)
+            ->pluck('project_id')
+            ->toArray();
+
+        // Determine which to add and which to remove
+        $toAdd = array_diff($newProjectIds, $currentProjectIds);
+        $toRemove = array_diff($currentProjectIds, $newProjectIds);
+
+        // Remove unlinked projects
+        if (!empty($toRemove)) {
+            \DB::table('project_teams')
+                ->where('team_id', $team->id)
+                ->whereIn('project_id', $toRemove)
+                ->delete();
+        }
+
+        // Add new linked projects
+        foreach ($toAdd as $projectId) {
+            $project = Project::find($projectId);
+
+            // Check if user has access to this project
+            if (!$project || !$project->userCanAccess($user)) {
+                continue;
+            }
+
+            \DB::table('project_teams')->updateOrInsert(
+                [
+                    'project_id' => $projectId,
+                    'team_id' => $team->id
+                ],
+                [
+                    'assigned_by' => $user->id,
+                    'assigned_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Team-Verknüpfungen erfolgreich aktualisiert'
+        ]);
     }
 }

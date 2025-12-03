@@ -52,6 +52,11 @@ class Team extends Model
         return $this->members()->where('user_id', $user->id)->exists();
     }
 
+    public function isMember(int $userId): bool
+    {
+        return $this->members()->where('user_id', $userId)->exists();
+    }
+
     public function getUserRole(User $user): ?string
     {
         $member = $this->members()->where('user_id', $user->id)->first();

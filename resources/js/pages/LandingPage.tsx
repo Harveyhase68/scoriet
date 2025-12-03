@@ -89,9 +89,9 @@ export default function LandingPage() {
     // Fallback to defaults if no pricing data available
     if (!prices) {
       return {
-        premium: 2.99,
-        business: 9.99,
-        patron: 5.00,
+        premium: 29.99,
+        business: 49.99,
+        patron: 69.00,
         currency: 'EUR'
       };
     }
@@ -192,7 +192,7 @@ export default function LandingPage() {
       name: t.premiumLabel,
       plan: "premium",
       price: `${pricingData.currency}${pricingData.premium}`,
-      period: "/month",
+      period: t.landingpage627,
       yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
       description: t.landingpage168,
       features: [
@@ -211,7 +211,7 @@ export default function LandingPage() {
       name: t.landingpage182,
       plan: "business",
       price: `${pricingData.currency}${pricingData.business}`,
-      period: "/month",
+      period: t.landingpage627,
       yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
       description: t.landingpage186,
       features: [
@@ -230,7 +230,7 @@ export default function LandingPage() {
       name: t.patronLabel,
       plan: "patron",
       price: `${pricingData.currency}${pricingData.patron}+`,
-      period: "/month",
+      period: t.landingpage627,
       description: t.landingpage203,
       features: [
         t.landingpage205,
@@ -624,7 +624,7 @@ export default function LandingPage() {
                       <div className="text-3xl font-bold text-blue-400 mb-2">
                         {plan.price}
                         {plan.plan !== 'free' && plan.plan !== 'patron' && (
-                          <span className="text-lg text-gray-400">/month</span>
+                          <span className="text-lg text-gray-400">{t.landingpage627}</span>
                         )}
                       </div>
                       <p className="text-gray-300 mb-6">{plan.description}</p>
@@ -644,7 +644,7 @@ export default function LandingPage() {
                       className={plan.name === t.freeLabel ? 'p-button-secondary' : plan.buttonClass}
                       style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                       disabled={plan.name === t.freeLabel}
-                      onClick={() => plan.name !== t.freeLabel && alert(`Upgrading to ${plan.name} - Coming Soon!`)}
+                      onClick={() => plan.name !== t.freeLabel && alert(t.landingpage802+`${plan.name}`+t.landingpage647)}
                     />
                   </Card>
                 ))}
@@ -735,7 +735,7 @@ export default function LandingPage() {
             <source src="/video/Scoriet.avi" type="video/x-msvideo" />
             <source src="/video/Scoriet.mp4" type="video/mp4" />
             <source src="/video/Scoriet.webm" type="video/webm" />
-            Ihr Browser unterstützt das Video-Element nicht.
+            {t.landingpage738}
           </video>
         </div>
       </Dialog>
@@ -745,7 +745,7 @@ export default function LandingPage() {
         visible={showPlanModal}
         onHide={() => setShowPlanModal(false)}
         modal
-        header="Choose Your Plan"
+        header={t.cmspage412}
         style={{ width: '95vw', maxWidth: '1400px' }}
         contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
         headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
@@ -755,11 +755,11 @@ export default function LandingPage() {
           {/* Current Plan Status */}
           <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+              <h3 className="text-lg font-semibold text-white">{t.cmspage422}</h3>
               <Badge value="Free" severity="info" />
             </div>
             <p className="text-gray-300">
-              You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features and support the project!
+              {t.landingpage762}<strong className="text-blue-400">Free plan</strong>. {t.landingpage762a}
             </p>
           </div>
 
@@ -778,7 +778,7 @@ export default function LandingPage() {
                   <div className="text-3xl font-bold text-blue-400 mb-2">
                     {plan.price}
                     {plan.price !== 'Free' && plan.price !== 'Custom' && (
-                      <span className="text-lg text-gray-400">/month</span>
+                      <span className="text-lg text-gray-400">{t.landingpage627}</span>
                     )}
                   </div>
                   <p className="text-gray-300 mb-6">{plan.description}</p>
@@ -793,13 +793,13 @@ export default function LandingPage() {
                   </ul>
                   
                   <Button 
-                    label={plan.name === 'Free' ? 'Current Plan' : `Choose ${plan.name}`}
+                    label={plan.name === 'Free' ? 'Current Plan' : t.landingpage796+`${plan.name}`}
                     className={plan.name === 'Free' ? 'p-button-secondary w-full' : `${plan.buttonClass} w-full`}
                     style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
                     disabled={plan.name === 'Free'}
                     onClick={() => {
                       if (plan.name !== 'Free') {
-                        alert(`Upgrading to ${plan.name} - Payment integration coming soon!`);
+                        alert(t.landingpage802+`${plan.name}`+t.landingpage802a);
                         setShowPlanModal(false);
                       }
                     }}
@@ -811,7 +811,7 @@ export default function LandingPage() {
 
           {/* Footer Note */}
           <div className="text-center text-gray-400 text-sm">
-            <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
+            <p>{t.landingpage814}</p>
           </div>
         </div>
       </Dialog>

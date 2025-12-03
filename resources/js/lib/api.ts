@@ -346,6 +346,33 @@ class ApiClient {
     }
   }
 
+  async getTemplateLinkedProjects(templateId: number): Promise<any> {
+    try {
+      const response = await this.request(`/templates/${templateId}/linked-projects`);
+      return {
+        success: true,
+        project_ids: response.project_ids || []
+      };
+    } catch (error) {
+      return {
+        success: false,
+        project_ids: [],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async updateTemplateProjectLinks(templateId: number, projectIds: number[]): Promise<any> {
+    const response = await this.request(`/templates/${templateId}/linked-projects`, {
+      method: 'PUT',
+      body: JSON.stringify({ project_ids: projectIds }),
+    });
+    return {
+      success: true,
+      ...response
+    };
+  }
+
   async exportTemplate(id: number): Promise<any> {
     try {
       const response = await this.request(`/templates/${id}/export`);
