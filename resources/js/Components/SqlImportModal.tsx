@@ -356,7 +356,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       let result: any;
       try {
         result = await response.json();
-      } catch (jsonError) {
+      } catch {
         // If JSON parsing fails, get text response for debugging
         const textResponse = await response.text();
         console.error('SQL Import Error - Response:', textResponse);

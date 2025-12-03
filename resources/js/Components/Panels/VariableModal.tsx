@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TemplateVariable {
     id?: number;
@@ -35,6 +36,9 @@ const VariableModal: React.FC<VariableModalProps> = ({
             is_required: false
         }
     });
+
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
 
     useEffect(() => {
         if (visible && editingVariable) {
