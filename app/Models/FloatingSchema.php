@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class FloatingSchema extends Model
 {
     protected $table = 'schemas';
-    
+
     protected $fillable = [
         'name',
         'description',
@@ -18,6 +18,14 @@ class FloatingSchema extends Model
         'visibility',
         'last_version',
         'is_system_schema'
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'is_system_schema' => 'boolean',
+        'last_version' => 'integer',
     ];
 
     /**
