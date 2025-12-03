@@ -43,7 +43,8 @@
       "Bash(npm run build:types:*)",
       "Bash(cmd.exe /c \"dir /b C:\\wamp\\www\\scoriet\\app\\Models | findstr /i schema\")",
       "Bash(cmd.exe /c \"findstr /n \"^}\" c:\\wamp\\www\\scoriet\\resources\\js\\Components\\Panels\\DatabaseManagementPanel.tsx | tail -5\")",
-      "Bash(cmd.exe /c \"dir /s /b C:\\wamp\\www\\scoriet\\resources\\js\\Components | findstr /i schema\")"
+      "Bash(cmd.exe /c \"dir /s /b C:\\wamp\\www\\scoriet\\resources\\js\\Components | findstr /i schema\")",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []
