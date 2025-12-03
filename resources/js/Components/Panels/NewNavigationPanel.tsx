@@ -106,17 +106,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       updateAuthStatus();
     };
 
-    // Auto-open wizard for new users
-    const shouldShowWizard = localStorage.getItem('scoriet_show_wizard_on_start');
-    if (shouldShowWizard !== 'false' && isLoggedIn) {
-      // Only show automatically once per session
-      const shownThisSession = sessionStorage.getItem('scoriet_wizard_shown_this_session');
-      if (!shownThisSession) {
-        setShowWizard(true);
-        sessionStorage.setItem('scoriet_wizard_shown_this_session', 'true');
-      }
-    }
-
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth-change', handleAuthChange);
 
@@ -131,6 +120,30 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       clearInterval(tokenCheckInterval);
     };
   }, []);
+
+  // Auto-open wizard for users - runs on mount AND when isLoggedIn changes
+  React.useEffect(() => {
+    // Check if we should show wizard
+    const checkAndShowWizard = () => {
+      if (!isLoggedIn) return; // Wait until user is logged in
+
+      const shouldShowWizard = localStorage.getItem('scoriet_show_wizard_on_start');
+      if (shouldShowWizard === 'false') return; // User explicitly disabled auto-show
+
+      // Only show automatically once per session
+      const shownThisSession = sessionStorage.getItem('scoriet_wizard_shown_this_session');
+      if (shownThisSession) return; // Already shown this session
+
+      // Show wizard and mark as shown
+      setShowWizard(true);
+      sessionStorage.setItem('scoriet_wizard_shown_this_session', 'true');
+    };
+
+    // Small delay to ensure UI is ready and auth state is settled
+    const timer = setTimeout(checkAndShowWizard, 800);
+
+    return () => clearTimeout(timer);
+  }, [isLoggedIn]); // Run on mount and when isLoggedIn changes
 
   // Main navigation menu items for TieredMenu
   const navigationItems: MenuItem[] = [
@@ -715,6 +728,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         sessionStorage.removeItem('access_token');
                         sessionStorage.removeItem('refresh_token');
                         sessionStorage.removeItem('user');
+                        sessionStorage.removeItem('scoriet_wizard_shown_this_session'); // Clear wizard flag on logout
                         document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                         setIsLoggedIn(false);
                         setUserName('');
