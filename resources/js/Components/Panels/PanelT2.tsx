@@ -398,8 +398,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     // If no schema selected, not read-only
     if (!selectedSchema) return false;
 
-    // Only the owner can edit their schema - use loose equality to handle string/number mismatch
-    const isOwner = selectedSchema.owner_id == currentUserId;
+    // Only the owner can edit their schema - explicit string conversion like PHP
+    const isOwner = String(selectedSchema.owner_id) === String(currentUserId);
     return !isOwner;
   }, [isReadOnly, selectedSchema, currentUserId]);
   const [schemaVersions, setSchemaVersions] = useState<SchemaVersionExtended[]>([]);
@@ -665,7 +665,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
         // Calculate read-only mode based on schema ownership
         const userId = parseInt(localStorage.getItem('user_id') || '0');
-        const isReadOnlyMode = schema.owner_id != userId;
+        const isReadOnlyMode = String(schema.owner_id) !== String(userId); // Explicit string conversion like PHP
 
         const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, handleCopyTable, isLatestVersion, isReadOnlyMode);
         const newEdges = convertSchemaToEdges(tables);

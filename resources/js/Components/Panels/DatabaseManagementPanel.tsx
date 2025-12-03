@@ -179,7 +179,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       // Filter: User's own schemas (owner) OR schemas linked to user's projects
       let filtered = allSchemas.filter((s: FloatingSchema) => {
-        const isMySchema = s.owner_id === currentUserId;
+        const isMySchema = String(s.owner_id) === String(currentUserId); // Explicit string conversion like PHP
         const isLinkedToMyProjects = (s.projects_count || 0) > 0;
 
         // Show if user owns it OR if it's linked to user's projects
@@ -941,7 +941,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     const currentProjectLink = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
 
     // Check ownership and permissions
-    const isOwner = schema.owner_id === currentUserId;
+    const isOwner = String(schema.owner_id) === String(currentUserId); // Explicit string conversion like PHP
     const isSystemSchema = schema.is_system_schema;
     const canEdit = isOwner || (isSystemUser && isSystemSchema); // Owner can edit, or System-User can edit System-Schemas
     const canDelete = isOwner; // Only owner can delete
