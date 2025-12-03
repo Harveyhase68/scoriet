@@ -144,9 +144,10 @@ export default function LoginModal({
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        // Store user_id and user_type in localStorage for later use
+        // Store user_id, user_type and is_inner_core in localStorage for later use
         localStorage.setItem('user_id', userData.id.toString());
         localStorage.setItem('user_type', userData.user_type || 'free');
+        localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
       }
 
       // Success - close modal

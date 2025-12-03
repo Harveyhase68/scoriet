@@ -474,7 +474,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
             </div>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"

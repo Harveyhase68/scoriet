@@ -27,6 +27,13 @@ interface Project {
   diagram_table_height?: number;
   diagram_horizontal_spacing?: number;
   diagram_vertical_spacing?: number;
+  // Database Connection Settings
+  database_type?: string;
+  database_server?: string;
+  database_port?: string;
+  database_name?: string;
+  database_username?: string;
+  database_password?: string;
   owner: {
     id: number;
     name: string;
@@ -42,7 +49,7 @@ interface ProjectContextType {
   loadProjects: () => Promise<void>;
   loading: boolean;
   clearSavedProject: () => void;
-  setPreferredProject: (project: Project) => void;
+  setPreferredProject: (project: Project | null) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);

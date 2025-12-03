@@ -11,6 +11,8 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { PickList } from 'primereact/picklist';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { ProjectProtectedFilesView } from '@/Components/ProjectProtectedFilesView';
+import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
 
 interface Language {
     code: string;
@@ -43,6 +45,7 @@ interface Template {
     id: number;
     name: string;
     description: string | null;
+    protected_files?: string[];
 }
 
 interface TemplateWithVariables extends Template {
@@ -75,6 +78,12 @@ export default function ProjectSettingsPanel() {
     const [loadingVariables, setLoadingVariables] = useState(false);
     const [_savingVariables, setSavingVariables] = useState(false); // Future use
 
+    // Protected Files and Deployment Scripts State
+    const [projectProtectedFiles, setProjectProtectedFiles] = useState<string[]>([]);
+    const [projectInstallScript, setProjectInstallScript] = useState<ScriptStep[]>([]);
+    const [projectUpdateScript, setProjectUpdateScript] = useState<ScriptStep[]>([]);
+    const [linkedTemplates, setLinkedTemplates] = useState<Template[]>([]); // For showing template protected files
+
     const [formData, setFormData] = useState({
         // Project Settings
         name: '',
@@ -100,6 +109,7 @@ export default function ProjectSettingsPanel() {
         project_url: '',
         start_page: 'index.php',
         default_language: 'en',
+        archive_format: 'zip',
         filename_short_length: 2,
         // Localization Settings
         decimal_separator: ',',
@@ -152,6 +162,11 @@ export default function ProjectSettingsPanel() {
             if (settingsResponse.ok) {
                 const settings = await settingsResponse.json();
                 setSelectedLanguages(settings.enabled_languages || []);
+
+                // Load protected files and deployment scripts
+                setProjectProtectedFiles(settings.protected_files || []);
+                setProjectInstallScript(settings.install_script || []);
+                setProjectUpdateScript(settings.update_script || []);
             }
 
             // Load full project data
@@ -185,6 +200,7 @@ export default function ProjectSettingsPanel() {
                     project_url: project.project_url || '',
                     start_page: project.start_page || 'index.php',
                     default_language: project.default_language || 'en',
+                    archive_format: project.archive_format || 'zip',
                     filename_short_length: project.filename_short_length || 2,
                     decimal_separator: project.decimal_separator || ',',
                     thousands_separator: project.thousands_separator || '.',
@@ -201,6 +217,45 @@ export default function ProjectSettingsPanel() {
             setLoading(false);
         }
     }, [selectedProject, toast]);
+
+    const loadLinkedTemplates = useCallback(async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            // Load project with templates relationship
+            const response = await fetch(`/api/projects/${selectedProject.id}/templates-with-protected-files`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setLinkedTemplates(data.templates || []);
+            } else {
+                // Fallback: Try loading templates directly
+                console.log('Fallback: Loading templates via project_id filter');
+                const fallbackResponse = await fetch(`/api/templates?project_id=${selectedProject.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (fallbackResponse.ok) {
+                    const templates = await fallbackResponse.json();
+                    setLinkedTemplates(templates || []);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading linked templates:', error);
+            setLinkedTemplates([]);
+        }
+    }, [selectedProject]);
 
     const loadProjectMembers = useCallback(async () => {
         if (!selectedProject) return;
@@ -323,8 +378,9 @@ export default function ProjectSettingsPanel() {
             loadProjectData();
             loadProjectMembers();
             loadTemplateVariables();
+            loadLinkedTemplates();
         }
-    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables]);
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates]);
 
     const handleSave = async () => {
         if (!selectedProject) {
@@ -377,6 +433,9 @@ export default function ProjectSettingsPanel() {
                 body: JSON.stringify({
                     enabled_languages: selectedLanguages,
                     default_language: formData.default_language,
+                    protected_files: projectProtectedFiles,
+                    install_script: projectInstallScript,
+                    update_script: projectUpdateScript,
                 }),
             });
 
@@ -536,7 +595,7 @@ export default function ProjectSettingsPanel() {
             <div className="mb-6 flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-100">
-                        Projekt-Einstellungen
+                        {t.newnavigationpanel142}
                     </h2>
                     <p className="text-gray-400 mt-2">
                         Projekt: <span className="font-semibold text-gray-200">{selectedProject.name}</span>
@@ -553,11 +612,11 @@ export default function ProjectSettingsPanel() {
             </div>
 
             <TabView className="flex-1">
-                <TabPanel header={<span><i className="pi pi-cog mr-2"></i>Allgemein</span>}>
+                <TabPanel header={<span><i className="pi pi-cog mr-2"></i>{t.projectsettingspanel313}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Projektname *
+                                        {t.projectsettingspanel316}
                                     </label>
                                     <InputText
                                         value={formData.name}
@@ -572,7 +631,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Beschreibung
+                                        {t.projectsettingspanel331}
                                     </label>
                                     <InputTextarea
                                         value={formData.description}
@@ -585,7 +644,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Beitrittscode
+                                        {t.projectsettingspanel344}
                                     </label>
                                     <div className="p-inputgroup">
                                         <InputText
@@ -600,7 +659,7 @@ export default function ProjectSettingsPanel() {
                                         />
                                     </div>
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Benutzer können diesem Projekt mit diesem Code beitreten
+                                        {t.projectsettingspanel359}
                                     </div>
                                 </div>
 
@@ -612,18 +671,18 @@ export default function ProjectSettingsPanel() {
                                             onChange={(e) => setFormData({ ...formData, is_public: e.checked || false })}
                                         />
                                         <label htmlFor="is_public" className="ml-2 text-gray-300">
-                                            Öffentliches Projekt
+                                            {t.publicprojectspanel448}
                                         </label>
                                     </div>
                                     <div className="text-xs text-gray-400 mt-1 ml-6">
-                                        Dieses Projekt für alle Benutzer sichtbar machen
+                                        {t.projectsettingspanel375}
                                     </div>
                                 </div>
 
                                 {selectedProject.is_owner && projectMembers.length > 0 && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Eigentümerschaft übertragen
+                                            {t.projectsettingspanel382}
                                         </label>
                                         <Dropdown
                                             value={formData.new_owner_id || null}
@@ -634,22 +693,22 @@ export default function ProjectSettingsPanel() {
                                                     label: `Übertragen an ${member.user.name} (${member.user.email}) - ${member.role}`,
                                                     value: member.user_id
                                                 }))}
-                                            placeholder={`Aktueller Eigentümer: ${selectedProject.owner.name}`}
+                                            placeholder={`${t.projectsettingspanel639}: ${selectedProject.owner.name}`}
                                             className="w-full"
                                             showClear
                                         />
                                         <div className="text-xs text-yellow-500 mt-1">
-                                            ⚠️ Warnung: Sie verlieren Ihre Eigentümerrechte nach der Übertragung!
+                                            {t.projectsettingspanel644}
                                         </div>
                                     </div>
                                 )}
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-database mr-2"></i>Datenbank</span>}>
+                <TabPanel header={<span><i className="pi pi-database mr-2"></i>{t.projectsettingspanel405}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Datenbankname
+                                        {t.projectsettingspanel408}
                                     </label>
                                     <InputText
                                         value={formData.database_name}
@@ -661,7 +720,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Datenbanktyp
+                                        {t.projectsettingspanel420}
                                     </label>
                                     <Dropdown
                                         value={formData.database_type}
@@ -704,7 +763,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Benutzername
+                                        {t.projectsettingspanel463}
                                     </label>
                                     <InputText
                                         value={formData.database_username}
@@ -716,7 +775,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Passwort
+                                        {t.projectsettingspanel475}
                                     </label>
                                     <PrimePassword
                                         value={formData.database_password}
@@ -729,18 +788,17 @@ export default function ProjectSettingsPanel() {
                                 </div>
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-sitemap mr-2"></i>Diagram Settings</span>}>
+                <TabPanel header={<span><i className="pi pi-sitemap mr-2"></i>{t.projectsettingspanel734}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
                                     <i className="pi pi-info-circle mr-2"></i>
-                                    Konfigurieren Sie die Standard-Einstellungen für automatisches Diagram-Layout.
-                                    Diese Werte werden beim "Sort the Diagram" Button verwendet.
+                                    {t.projectsettingspanel738}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Max. Tabellen pro Zeile
+                                            {t.projectsettingspanel744}
                                         </label>
                                         <InputText
                                             type="number"
@@ -749,12 +807,12 @@ export default function ProjectSettingsPanel() {
                                             placeholder="20"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">Maximale Anzahl der Tabellen in einer Zeile</small>
+                                        <small className="text-gray-400">{t.projectsettingspanel753}</small>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Tabellen Breite (px)
+                                            {t.projectsettingspanel758}
                                         </label>
                                         <InputText
                                             type="number"
@@ -763,12 +821,12 @@ export default function ProjectSettingsPanel() {
                                             placeholder="280"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">Breite der Tabellen-Boxen im Diagramm</small>
+                                        <small className="text-gray-400">{t.projectsettingspanel767}</small>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Tabellen Höhe (px)
+                                            {t.projectsettingspanel772}
                                         </label>
                                         <InputText
                                             type="number"
@@ -777,12 +835,12 @@ export default function ProjectSettingsPanel() {
                                             placeholder="450"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">Maximale Höhe der Tabellen-Boxen</small>
+                                        <small className="text-gray-400">{t.projectsettingspanel781}</small>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Horizontaler Abstand (px)
+                                            {t.projectsettingspanel786}
                                         </label>
                                         <InputText
                                             type="number"
@@ -791,12 +849,12 @@ export default function ProjectSettingsPanel() {
                                             placeholder="600"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">Horizontaler Abstand zwischen Tabellen</small>
+                                        <small className="text-gray-400">{t.projectsettingspanel795}</small>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Vertikaler Abstand (px)
+                                            {t.projectsettingspanel800}
                                         </label>
                                         <InputText
                                             type="number"
@@ -805,25 +863,25 @@ export default function ProjectSettingsPanel() {
                                             placeholder="700"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">Vertikaler Abstand zwischen Zeilen</small>
+                                        <small className="text-gray-400">{t.projectsettingspanel809}</small>
                                     </div>
                                 </div>
 
                                 <div className="mt-6 p-4 bg-gray-700 rounded">
-                                    <h4 className="font-semibold mb-2 text-gray-200">Vorschau Werte:</h4>
+                                    <h4 className="font-semibold mb-2 text-gray-200">{t.projectsettingspanel814}</h4>
                                     <div className="text-sm text-gray-300 space-y-1">
-                                        <div>• Max Tabellen pro Zeile: <span className="text-blue-400">{formData.diagram_max_tables_per_row}</span></div>
-                                        <div>• Tabellen Größe: <span className="text-blue-400">{formData.diagram_table_width}px × {formData.diagram_table_height}px</span></div>
-                                        <div>• Abstände: <span className="text-blue-400">{formData.diagram_horizontal_spacing}px horizontal, {formData.diagram_vertical_spacing}px vertikal</span></div>
+                                        <div>• {t.projectsettingspanel816} <span className="text-blue-400">{formData.diagram_max_tables_per_row}</span></div>
+                                        <div>• {t.projectsettingspanel817} <span className="text-blue-400">{formData.diagram_table_width}px × {formData.diagram_table_height}px</span></div>
+                                        <div>• {t.projectsettingspanel818} <span className="text-blue-400">{formData.diagram_horizontal_spacing}px {t.projectsettingspanel818a}, {formData.diagram_vertical_spacing}px {t.projectsettingspanel818b}</span></div>
                                     </div>
                                 </div>
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-file mr-2"></i>Eigenschaften</span>}>
+                <TabPanel header={<span><i className="pi pi-file mr-2"></i>{t.projectsettingspanel489}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Projektverzeichnis
+                                        {t.projectsettingspanel492}
                                     </label>
                                     <InputText
                                         value={formData.project_directory}
@@ -832,13 +890,13 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Pfad wo generierte Dateien gespeichert werden sollen
+                                        {t.projectsettingspanel501}
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Projekt-URL
+                                        {t.projectsettingspanel507}
                                     </label>
                                     <InputText
                                         value={formData.project_url}
@@ -847,13 +905,13 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        URL für den Zugriff auf das Projekt
+                                        {t.projectsettingspanel516}
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Startseite
+                                        {t.projectsettingspanel522}
                                     </label>
                                     <InputText
                                         value={formData.start_page}
@@ -862,13 +920,13 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Haupt-Einstiegsdatei (z.B. index.php, main.py, app.js)
+                                        {t.projectsettingspanel866}
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Standard-Sprache
+                                        {t.projectsettingspanel872}
                                     </label>
                                     <Dropdown
                                         value={formData.default_language}
@@ -883,13 +941,32 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Standard-Sprache für Projekt-Generierung
+                                        {t.projectsettingspanel552}
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Dateiname Kurzlänge
+                                        {t.projectsettingspanel893}
+                                    </label>
+                                    <Dropdown
+                                        value={formData.archive_format}
+                                        onChange={(e) => setFormData({ ...formData, archive_format: e.value })}
+                                        options={[
+                                            { label: 'ZIP (Windows, Standard)', value: 'zip' },
+                                            { label: 'TAR.GZ (Linux, gute Kompression)', value: 'tar.gz' },
+                                            { label: 'TAR.XZ (Linux, beste Kompression)', value: 'tar.xz' }
+                                        ]}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs text-gray-400 mt-1">
+                                        {t.projectsettingspanel906}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        {t.projectsettingspanel558}
                                     </label>
                                     <Dropdown
                                         value={formData.filename_short_length}
@@ -903,17 +980,17 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        Länge der kurzen Dateinamen im Database Designer (z.B. "us" für users)
+                                        {t.projectsettingspanel926}
                                     </div>
                                 </div>
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-globe mr-2"></i>Lokalisierung</span>}>
+                <TabPanel header={<span><i className="pi pi-globe mr-2"></i>{t.projectsettingspanel932}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Dezimaltrennzeichen
+                                            {t.projectsettingspanel582}
                                         </label>
                                         <InputText
                                             value={formData.decimal_separator}
@@ -923,13 +1000,13 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            z.B. "," für 1,23 oder "." für 1.23
+                                            {t.projectsettingspanel946}
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Tausendertrennzeichen
+                                            {t.projectsettingspanel598}
                                         </label>
                                         <InputText
                                             value={formData.thousands_separator}
@@ -939,7 +1016,7 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            z.B. "." für 1.234 oder "," für 1,234
+                                            {t.projectsettingspanel962}
                                         </div>
                                     </div>
                                 </div>
@@ -947,7 +1024,7 @@ export default function ProjectSettingsPanel() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Datumsformat
+                                            {t.projectsettingspanel616}
                                         </label>
                                         <InputText
                                             value={formData.date_format}
@@ -956,13 +1033,13 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            PHP Format (z.B. "d.m.Y" für 31.12.2024)
+                                            {t.projectsettingspanel979}
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Zeitformat
+                                            {t.projectsettingspanel631}
                                         </label>
                                         <InputText
                                             value={formData.time_format}
@@ -971,7 +1048,7 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            PHP Format (z.B. "H:i:s" für 14:30:00)
+                                            {t.projectsettingspanel995}
                                         </div>
                                     </div>
                                 </div>
@@ -979,7 +1056,7 @@ export default function ProjectSettingsPanel() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Währungssymbol
+                                            {t.projectpanel1263}
                                         </label>
                                         <InputText
                                             value={formData.currency_symbol}
@@ -989,13 +1066,13 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <div className="text-xs text-gray-400 mt-1">
-                                            z.B. t.editprojectmodal602, "$", "£", t.editprojectmodal608
+                                            {t.projectsettingspanel1012}
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Zeitzone
+                                            {t.editprojectmodal613}
                                         </label>
                                         <Dropdown
                                             value={formData.timezone}
@@ -1020,7 +1097,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Google Translate API-Schlüssel
+                                        {t.projectsettingspanel689}
                                     </label>
                                     <PrimePassword
                                         value={formData.google_translate_api_key}
@@ -1031,25 +1108,25 @@ export default function ProjectSettingsPanel() {
                                         toggleMask
                                     />
                                     <div className="text-xs text-gray-400 mt-1">
-                                        API-Schlüssel für automatische Übersetzungen via Google Translate
+                                        {t.projectsettingspanel700}
                                     </div>
                                     <div className="text-xs text-blue-400 mt-1">
                                         🔗 <a href="https://cloud.google.com/translate/docs/setup" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">
-                                            Google Cloud Console - API Key erstellen
+                                            {t.projectsettingspanel1058}
                                         </a>
                                     </div>
                                 </div>
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-comments mr-2"></i>Sprachen</span>}>
+                <TabPanel header={<span><i className="pi pi-comments mr-2"></i>{t.projectsettingspanel711}</span>}>
                             <div className="max-w-4xl">
                                 <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
                                     <i className="pi pi-info-circle mr-2"></i>
-                                    Wählen Sie die Sprachen aus, die für die Code-Generierung in diesem Projekt verwendet werden sollen.
-                                    Verschieben Sie die gewünschten Sprachen nach rechts und nutzen Sie die Pfeiltasten um die Reihenfolge zu ändern.
+                                    {t.projectsettingspanel1068}
                                 </div>
 
                                 <PickList
+                                    dataKey="key"
                                     source={transferData.filter(lang => !selectedLanguages.includes(lang.key))}
                                     target={selectedLanguages
                                         .map(key => transferData.find(lang => lang.key === key))
@@ -1083,12 +1160,11 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
 
                 {/* Template Variables Tab */}
-                <TabPanel header={<span><i className="pi pi-code mr-2"></i>Template Variablen</span>}>
+                <TabPanel header={<span><i className="pi pi-code mr-2"></i>{t.projectsettingspanel1108}</span>}>
                     <div className="max-w-6xl">
                         <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
                             <i className="pi pi-info-circle mr-2"></i>
-                            Hier können Sie die Werte für benutzerdefinierte Template-Variablen eintragen.
-                            Diese Variablen wurden vom Template-Entwickler definiert und können pro Sprache unterschiedlich sein.
+                            {t.projectsettingspanel1111}
                         </div>
 
                         {loadingVariables ? (
@@ -1098,14 +1174,14 @@ export default function ProjectSettingsPanel() {
                         ) : templatesWithVariables.length === 0 ? (
                             <div className="p-4 bg-gray-800 border border-gray-700 rounded text-gray-300 text-center">
                                 <i className="pi pi-info-circle mr-2"></i>
-                                Keine Template-Variablen gefunden. Template-Entwickler können benutzerdefinierte Variablen in ihren Templates definieren.
+                                {t.projectsettingspanel1122}
                             </div>
                         ) : (
                             <>
                                 {/* Language Selector */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        <i className="pi pi-globe mr-2"></i>Sprache für Variablen
+                                        <i className="pi pi-globe mr-2"></i>{t.projectsettingspanel1129}
                                     </label>
                                     <Dropdown
                                         value={selectedVariableLanguage}
@@ -1191,6 +1267,33 @@ export default function ProjectSettingsPanel() {
                                 </div>
                             </>
                         )}
+                    </div>
+                </TabPanel>
+
+                {/* Protected Files Tab */}
+                <TabPanel header="Protected Files">
+                    <div className="p-4">
+                        <ProjectProtectedFilesView
+                            templates={linkedTemplates}
+                            projectProtectedFiles={projectProtectedFiles}
+                            onProjectProtectedFilesChange={setProjectProtectedFiles}
+                        />
+                    </div>
+                </TabPanel>
+
+                {/* Deployment Scripts Tab */}
+                <TabPanel header="Deployment Scripts">
+                    <div className="p-4">
+                        <DeploymentScriptsEditor
+                            installScript={projectInstallScript}
+                            updateScript={projectUpdateScript}
+                            onInstallScriptChange={setProjectInstallScript}
+                            onUpdateScriptChange={setProjectUpdateScript}
+                        />
+                        <div className="mt-6 p-3 bg-green-900 border border-green-700 rounded text-green-100 text-sm">
+                            <i className="pi pi-info-circle mr-2"></i>
+                            Deployment scripts will be saved automatically with the "Save All" button above.
+                        </div>
                     </div>
                 </TabPanel>
             </TabView>

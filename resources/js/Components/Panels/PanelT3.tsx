@@ -320,7 +320,7 @@ export default function PanelT3() {
             {selectedProject && (
               <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
                 <i className="pi pi-briefcase"></i>
-                <span>{t.templatesWorkingOn}: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
+                <span>{t.schematranslationpanel820}: <strong>{selectedProject.name}</strong> by {selectedProject.owner.name}</span>
               </div>
             )}
             

@@ -15,7 +15,10 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    // FORCE Redis due to $_SERVER override issue on WAMP
+    // env('CACHE_STORE') returns 'file' even though .env has 'redis'
+    // This is because $_SERVER['CACHE_STORE'] is set before Laravel loads .env
+    'default' => 'redis',
 
     /*
     |--------------------------------------------------------------------------

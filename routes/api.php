@@ -134,6 +134,20 @@ Route::get('/pricing', function () {
 
 // Protected Routes (require authentication)
 Route::middleware('auth:api')->group(function () {
+    // Generated Project Upload/Download (for deployment)
+    Route::post('/generated-projects/upload', [App\Http\Controllers\Api\GeneratedProjectUploadController::class, 'upload']);
+    Route::get('/generated-projects/download/{filename}', [App\Http\Controllers\Api\GeneratedProjectUploadController::class, 'download']);
+
+    // Deployment Logs
+    Route::get('/projects/{projectId}/deployment-logs', [App\Http\Controllers\Api\DeploymentLogController::class, 'index']);
+    Route::delete('/projects/{projectId}/deployment-logs', [App\Http\Controllers\Api\DeploymentLogController::class, 'clear']);
+    Route::get('/deployment-logs/task/{taskId}', [App\Http\Controllers\Api\DeploymentLogController::class, 'byTask']);
+    Route::post('/deployment-logs', [App\Http\Controllers\Api\DeploymentLogController::class, 'store']);
+
+    // Archive Generation
+    Route::post('/archives/create', [App\Http\Controllers\Api\ArchiveController::class, 'create'])
+        ->name('api.archives.create');
+
     // User Management
     Route::get('/user', [AuthController::class, 'user']);
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
@@ -156,17 +170,25 @@ Route::middleware('auth:api')->group(function () {
     
     // Template Management (for Template Management Panel)
     Route::get('/templates/check-name', [TemplateController::class, 'checkTemplateName']); // Check if name exists (MUST be before apiResource)
+    Route::get('/templates/my-templates', [TemplateController::class, 'getMyTemplates']); // Get user's own templates
+    Route::get('/templates/community', [TemplateController::class, 'getCommunityTemplates']); // Get system/community templates
     Route::apiResource('templates', TemplateController::class);
     Route::delete('/templates/{template}/force', [TemplateController::class, 'forceDestroy']); // Hard delete
     Route::patch('/templates/{template}/toggle', [TemplateController::class, 'toggleActive']); // Toggle active status
-    Route::post('/templates/{template}/clone', [TemplateController::class, 'cloneTemplate']); // Clone template
+    Route::post('/templates/{id}/clone', [TemplateController::class, 'cloneTemplate']); // Clone template with history
+    Route::post('/templates/{id}/link', [TemplateController::class, 'linkTemplate']); // Link template to projects
+    Route::post('/templates/{id}/unlink', [TemplateController::class, 'unlinkTemplate']); // Unlink template from projects
+    Route::get('/templates/{id}/linked-projects', [TemplateController::class, 'getLinkedProjects']); // Get linked project IDs
+    Route::put('/templates/{id}/linked-projects', [TemplateController::class, 'updateLinkedProjects']); // Update linked projects
+    Route::patch('/templates/{templateId}/projects/{projectId}/toggle-active', [TemplateController::class, 'toggleProjectLinkActive']); // Toggle project link active status
     Route::get('/templates/{id}/files', [TemplateController::class, 'getTemplateFiles']);
     Route::post('/templates/{id}/files', [TemplateController::class, 'addTemplateFile']);
     Route::put('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'updateTemplateFile']);
     Route::delete('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'deleteTemplateFile']);
     Route::get('/templates/{id}/export', [TemplateController::class, 'exportTemplate']);
     Route::get('/templates/{id}/download-zip', [TemplateController::class, 'downloadTemplateZip']);
-    Route::post('/templates/import', [TemplateController::class, 'importTemplate']);
+    Route::get('/templates/{id}/download-archive', [TemplateController::class, 'downloadTemplateArchive']);
+    Route::post('/templates/import', [TemplateController::class, 'import']);
 
     // Template Variables (Template-Developer defines custom variables)
     Route::prefix('templates/{templateId}/variables')->name('api.template-variables.')->group(function () {
@@ -200,6 +222,8 @@ Route::middleware('auth:api')->group(function () {
     // 🚀 ULTIMATE TEMPLATE ENGINE - Enhanced template processing with 50+ variables
     Route::get('/ultimate-template/{templateId}', [UltimateTemplateController::class, 'processTemplate'])
         ->name('api.ultimate-template.process');
+    Route::post('/ultimate-template/{templateId}/batch', [UltimateTemplateController::class, 'processTemplateBatch'])
+        ->name('api.ultimate-template.process-batch');
     Route::get('/ultimate-template/{templateId}/export/{format}', [UltimateTemplateController::class, 'processTemplate'])
         ->where('format', 'json|js|javascript|php')
         ->name('api.ultimate-template.export');
@@ -329,6 +353,7 @@ Route::middleware('auth:api')->group(function () {
     // Project Settings
     Route::get('/projects/{project}/settings', [ProjectController::class, 'getSettings']);
     Route::put('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
+    Route::get('/projects/{project}/templates-with-protected-files', [ProjectController::class, 'getTemplatesWithProtectedFiles']);
 
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {
@@ -347,6 +372,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);
+    Route::put('/teams/{team}/projects', [TeamController::class, 'updateProjectLinks']); // Update team-project links
     
     // Project Schema Management
     Route::post('/projects/{project}/schemas', [ProjectController::class, 'associateSchema']);
@@ -357,10 +383,13 @@ Route::middleware('auth:api')->group(function () {
     // Schema Management
     Route::apiResource('schemas', SchemaController::class);
     Route::get('/projects/{project}/available-schemas', [SchemaController::class, 'getAvailableForProject']);
-    
+    Route::get('/schemas/{id}/linked-projects', [SchemaController::class, 'getLinkedProjects']); // Get linked project IDs
+    Route::put('/schemas/{id}/linked-projects', [SchemaController::class, 'updateLinkedProjects']); // Update linked projects
+
     // Floating Schema Version Management
     Route::get('/floating-schemas/{schema}/versions', [SchemaController::class, 'getSchemaVersions']);
     Route::post('/floating-schemas/{schema}/versions', [SchemaController::class, 'createNewVersion']);
+    Route::delete('/floating-schemas/{schema}/versions/{version}', [SchemaController::class, 'deleteVersion']);
     Route::post('/floating-schemas/{schema}/create-version-and-table', [SchemaController::class, 'createVersionAndTable']);
     Route::get('/schema-versions/{version}/tables', [SchemaController::class, 'getVersionTables']);
     Route::post('/schema-versions/{version}/tables', [SchemaController::class, 'createTable']);
@@ -1996,3 +2025,38 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
         ], 500);
     }
 });
+
+// Cache Management Routes
+Route::middleware('auth:api')->group(function () {
+    Route::get('/cache/stats', [App\Http\Controllers\Api\CacheController::class, 'stats']);
+    Route::post('/cache/clear', [App\Http\Controllers\Api\CacheController::class, 'clear']);
+    Route::post('/cache/cleanup', [App\Http\Controllers\Api\CacheController::class, 'cleanup']);
+    Route::post('/cache/test-generation', [App\Http\Controllers\Api\CacheController::class, 'testGeneration']);
+
+    // Cache Inspector
+    Route::get('/cache/inspect', [App\Http\Controllers\Api\CacheController::class, 'inspect']);
+    Route::post('/cache/get-content', [App\Http\Controllers\Api\CacheController::class, 'getContent']);
+
+    // Cache Precompilation & Progress
+    Route::post('/cache/precompile/start', [App\Http\Controllers\Api\CacheController::class, 'startPrecompilation']);
+    Route::get('/cache/precompile/progress', [App\Http\Controllers\Api\CacheController::class, 'getProgress']);
+
+    // User online status (heartbeat)
+    Route::post('/user/heartbeat', [App\Http\Controllers\Api\CacheController::class, 'updateOnlineStatus']);
+});
+
+// Service (scoriet-svc) Routes
+Route::middleware('auth:api')->prefix('svc')->group(function () {
+    // Queue polling (called by scoriet-svc)
+    Route::get('/queue', [App\Http\Controllers\Api\SvcController::class, 'getQueue']);
+
+    // Task status and completion
+    Route::get('/tasks/{id}', [App\Http\Controllers\Api\SvcController::class, 'getTaskStatus']);
+    Route::post('/tasks/{id}/complete', [App\Http\Controllers\Api\SvcController::class, 'completeTask']);
+    Route::post('/tasks/{id}/fail', [App\Http\Controllers\Api\SvcController::class, 'failTask']);
+
+    // Task creation (called from GUI)
+    Route::post('/tasks/database-import', [App\Http\Controllers\Api\SvcController::class, 'createDatabaseImportTask']);
+    Route::post('/tasks/project-download', [App\Http\Controllers\Api\SvcController::class, 'createProjectDownloadTask']);
+});
+

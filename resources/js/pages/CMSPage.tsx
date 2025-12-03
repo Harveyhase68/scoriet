@@ -88,9 +88,9 @@ export default function CMSPage({ title, content }: CMSPageProps) {
     } catch {
       // Error loading system settings - use defaults
       setSystemSettings({
-        price_premium: 2.99,
-        price_business: 9.99,
-        price_patron: 5.00,
+        price_premium: 29.99,
+        price_business: 49.99,
+        price_patron: 69.00,
       });
     }
   };
@@ -409,7 +409,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
         visible={showPlanModal}
         onHide={() => setShowPlanModal(false)}
         modal
-        header="Choose Your Plan"
+        header={t.cmspage412}
         style={{ width: '95vw', maxWidth: '1400px' }}
         contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
         headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
@@ -419,11 +419,11 @@ export default function CMSPage({ title, content }: CMSPageProps) {
           {/* Current Plan Status */}
           <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+              <h3 className="text-lg font-semibold text-white">{t.cmspage422}</h3>
               <Badge value="Free" severity="info" />
             </div>
             <p className="text-gray-300">
-              You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features and support the project!
+              {t.cmspage387}<strong className="text-blue-400">Free plan</strong>. {t.cmspage45}
             </p>
           </div>
 

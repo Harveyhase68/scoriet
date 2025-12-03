@@ -24,7 +24,7 @@ class DemoUsersSeeder extends Seeder
                 'name' => 'Demo Administrator',
                 'email' => 'demo-admin',
                 'password' => Hash::make('demo123'),
-                'user_type' => 'admin',
+                'user_type' => 'system',
                 'email_verified_at' => now(),
             ]
         );

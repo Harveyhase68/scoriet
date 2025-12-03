@@ -29,7 +29,7 @@ interface FloatingSchema {
   description?: string;
   owner_id: number;
   visibility: 'public' | 'private';
-  is_template_schema: boolean;
+  is_system_schema: boolean;
   owner: {
     id: number;
     name: string;
@@ -67,11 +67,27 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const { selectedProject: contextSelectedProject } = useProject();
   // Use forceProjectId if provided (from TreeView), otherwise use context
   const projectId = forceProjectId || (filterByProject ? contextSelectedProject?.id : undefined);
-  const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Get current user type for system schema checkbox
+  const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+  const userType = localStorage.getItem('user_type') || 'free';
+  const isSystemUser = userType === 'system' || userType === 'admin';
+
+  const [mySchemas, setMySchemas] = useState<FloatingSchema[]>([]);
+  const [communitySchemas, setCommunitySchemas] = useState<FloatingSchema[]>([]);
+  const [mySchemasLoading, setMySchemasLoading] = useState(true);
+  const [communityLoading, setCommunityLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+
+  // Filters for My Schemas
+  const [myTypeFilter, setMyTypeFilter] = useState('all'); // 'all', 'private', 'public', 'system'
+  const [mySearchTerm, setMySearchTerm] = useState('');
+
+  // Filters for Community Schemas
+  const [communityTypeFilter, setCommunityTypeFilter] = useState('all'); // 'all', 'system', 'public'
+  const [communitySearchTerm, setCommunitySearchTerm] = useState('');
 
   // Translation Export/Import
   const [languages, setLanguages] = useState<Array<{ code: string; name: string }>>([]);
@@ -86,7 +102,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [createForm, setCreateForm] = useState({
     name: '',
     description: '',
-    visibility: 'private' as 'public' | 'private'
+    visibility: 'private' as 'public' | 'private',
+    is_system_schema: false
   });
   const [creating, setCreating] = useState(false);
 
@@ -96,7 +113,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
-    visibility: 'private' as 'public' | 'private'
+    visibility: 'private' as 'public' | 'private',
+    is_system_schema: false
   });
 
   // Associate to project modal
@@ -126,9 +144,17 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [copyName, setCopyName] = useState('');
   const [copying, setCopying] = useState(false);
 
-  const loadSchemas = useCallback(async () => {
+  // Link schema to projects modal
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [schemaToLink, setSchemaToLink] = useState<FloatingSchema | null>(null);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // Load user's own schemas (own, team, linked system/public schemas)
+  const loadMySchemas = useCallback(async () => {
     try {
-      setLoading(true);
+      setMySchemasLoading(true);
       setError('');
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -137,9 +163,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         return;
       }
 
-      // Always load ALL schemas (no project filter)
-      const url = '/api/schemas';
-      const response = await fetch(url, {
+      const response = await fetch('/api/schemas', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -151,22 +175,149 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       }
 
       const data = await response.json();
-      setSchemas(data.schemas || []);
+      const allSchemas = data.schemas || [];
+
+      // Filter: User's own schemas (owner) OR schemas linked to user's projects
+      let filtered = allSchemas.filter((s: FloatingSchema) => {
+        const isMySchema = s.owner_id === currentUserId;
+        const isLinkedToMyProjects = (s.projects_count || 0) > 0;
+
+        // Show if user owns it OR if it's linked to user's projects
+        if (isMySchema || isLinkedToMyProjects) {
+          // System users can see all, including system schemas
+          if (isSystemUser) {
+            return true;
+          }
+          // Normal users: Don't show system schemas they didn't create (unless linked)
+          if (s.is_system_schema && !isMySchema && isLinkedToMyProjects) {
+            return true; // Show linked system schemas
+          }
+          if (s.is_system_schema && !isMySchema) {
+            return false; // Don't show non-linked system schemas
+          }
+          return true;
+        }
+
+        return false;
+      });
+
+      // Apply type filter (private/public/system)
+      if (myTypeFilter !== 'all') {
+        if (myTypeFilter === 'system') {
+          filtered = filtered.filter((s: FloatingSchema) => s.is_system_schema);
+        } else if (myTypeFilter === 'private') {
+          filtered = filtered.filter((s: FloatingSchema) => !s.is_system_schema && s.visibility === 'private');
+        } else if (myTypeFilter === 'public') {
+          filtered = filtered.filter((s: FloatingSchema) => !s.is_system_schema && s.visibility === 'public');
+        }
+      }
+
+      // Apply search
+      if (mySearchTerm) {
+        const search = mySearchTerm.toLowerCase();
+        filtered = filtered.filter((s: FloatingSchema) =>
+          s.name?.toLowerCase().includes(search) ||
+          s.description?.toLowerCase().includes(search)
+        );
+      }
+
+      setMySchemas(filtered);
 
     } catch (error) {
       setError(error instanceof Error ? error.message : t.databasemanagementpanel152);
     } finally {
-      setLoading(false);
+      setMySchemasLoading(false);
     }
-  }, []);
+  }, [myTypeFilter, mySearchTerm, currentUserId, isSystemUser, t]);
+
+  // Load community schemas (system + public from others)
+  const loadCommunitySchemas = useCallback(async () => {
+    try {
+      setCommunityLoading(true);
+      setError('');
+
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        setError(t.applicationsmodal66);
+        return;
+      }
+
+      const response = await fetch('/api/schemas', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(t.databaseexportmodal71);
+      }
+
+      const data = await response.json();
+      const allSchemas = data.schemas || [];
+
+      // Filter: System schemas OR public schemas (from anyone)
+      let filtered = allSchemas.filter((s: FloatingSchema) => {
+        // System schemas are ALWAYS shown
+        if (s.is_system_schema) {
+          return true;
+        }
+
+        // Public schemas from anyone
+        if (s.visibility === 'public') {
+          return true;
+        }
+
+        return false;
+      });
+
+      // Apply type filter
+      if (communityTypeFilter === 'system') {
+        filtered = filtered.filter((s: FloatingSchema) => s.is_system_schema);
+      } else if (communityTypeFilter === 'public') {
+        filtered = filtered.filter((s: FloatingSchema) => !s.is_system_schema && s.visibility === 'public');
+      }
+
+      // Apply search
+      if (communitySearchTerm) {
+        const search = communitySearchTerm.toLowerCase();
+        filtered = filtered.filter((s: FloatingSchema) =>
+          s.name?.toLowerCase().includes(search) ||
+          s.description?.toLowerCase().includes(search)
+        );
+      }
+
+      setCommunitySchemas(filtered);
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel152);
+    } finally {
+      setCommunityLoading(false);
+    }
+  }, [communityTypeFilter, communitySearchTerm, t]);
 
   // Load schemas when panel becomes active
   useEffect(() => {
     if (isActive) {
-      loadSchemas();
+      loadMySchemas();
+      loadCommunitySchemas();
       loadLanguages();
     }
-  }, [isActive, loadSchemas]);
+  }, [isActive, loadMySchemas, loadCommunitySchemas]);
+
+  // Reload my schemas when filters change
+  useEffect(() => {
+    if (isActive) {
+      loadMySchemas();
+    }
+  }, [myTypeFilter, mySearchTerm]);
+
+  // Reload community schemas when filters change
+  useEffect(() => {
+    if (isActive) {
+      loadCommunitySchemas();
+    }
+  }, [communityTypeFilter, communitySearchTerm]);
 
   // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
   useEffect(() => {
@@ -335,9 +486,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         throw new Error(errorData.message || t.databasemanagementpanel330);
       }
 
-      await loadSchemas();
+      await loadMySchemas();
+      await loadCommunitySchemas();
       setShowCreateModal(false);
-      setCreateForm({ name: '', description: '', visibility: 'private' });
+      setCreateForm({ name: '', description: '', visibility: 'private', is_system_schema: false });
       setSuccess(t.databasemanagementpanel336);
 
     } catch (error) {
@@ -352,7 +504,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setEditForm({
       name: schema.name,
       description: schema.description || '',
-      visibility: schema.visibility
+      visibility: schema.visibility,
+      is_system_schema: schema.is_system_schema
     });
     setShowEditModal(true);
     setError('');
@@ -387,7 +540,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         throw new Error(errorData.message || t.databasemanagementpanel382);
       }
 
-      await loadSchemas();
+      await loadMySchemas();
+      await loadCommunitySchemas();
       setShowEditModal(false);
       setEditingSchema(null);
       setSuccess(t.schemacontroller193);
@@ -445,7 +599,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       setShowAssociateModal(false);
       setAssociatingSchema(null);
-      await loadSchemas(); // Reload schemas to update the UI
+      await loadMySchemas(); // Reload schemas to update the UI
+      await loadCommunitySchemas();
       setSuccess(`Schema successfully ${associationType} to project`);
 
     } catch (error) {
@@ -466,9 +621,19 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   };
 
   const visibilityTemplate = (schema: FloatingSchema) => {
+    // Show "System" badge for system schemas
+    if (schema.is_system_schema) {
+      return (
+        <Tag
+          value="System"
+          severity="info"
+        />
+      );
+    }
+
     return (
-      <Tag 
-        value={schema.visibility} 
+      <Tag
+        value={schema.visibility}
         severity={schema.visibility === 'public' ? 'success' : 'warning'}
       />
     );
@@ -485,29 +650,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const projectsTemplate = (schema: FloatingSchema) => {
     const projects = schema.projects || [];
-    
+
     if (projects.length === 0) {
       return <span className="text-gray-500 text-sm">Not assigned</span>;
     }
 
+    // Build tooltip content with all project names
+    const tooltipContent = projects.map(p => p.name).join('\n');
+
     return (
-      <div className="space-y-1">
-        {projects.map((project) => (
-          <div key={project.id} className="flex items-center space-x-2">
-            <Tag 
-              value={project.association_type} 
-              severity={
-                project.association_type === 'linked' ? 'info' : 
-                project.association_type === 'cloned' ? 'success' : 'warning'
-              }
-              className="text-xs"
-            />
-            <span className="text-sm font-medium">{project.name}</span>
-            {project.alias && (
-              <span className="text-xs text-gray-500">({project.alias})</span>
-            )}
-          </div>
-        ))}
+      <div title={tooltipContent}>
+        <Tag
+          icon="pi pi-link"
+          value={`${projects.length} ${projects.length === 1 ? 'Project' : 'Projects'}`}
+          severity="info"
+          className="cursor-help"
+        />
       </div>
     );
   };
@@ -534,7 +692,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         throw new Error(errorData.message || t.databasemanagementpanel529);
       }
 
-      await loadSchemas();
+      await loadMySchemas();
+      await loadCommunitySchemas();
       setSuccess(`Schema removed from project successfully`);
 
     } catch (error) {
@@ -592,7 +751,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       setShowCopyModal(false);
       setCopyingSchema(null);
-      await loadSchemas();
+      await loadMySchemas();
+      await loadCommunitySchemas();
       setSuccess(`Schema "${copyingSchema.name}" copied successfully as "${copyName}"`);
 
     } catch (error) {
@@ -606,9 +766,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const handleConfirmDelete = async () => {
     if (!deletingSchema) return;
 
-    // Require exact schema name confirmation
-    if (deleteConfirmText !== deletingSchema.name) {
-      setError(t.databasemanagementpanel606);
+    // Require DELETE confirmation
+    if (deleteConfirmText !== 'DELETE') {
+      setError('You must type DELETE to confirm deletion');
       return;
     }
 
@@ -681,7 +841,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setShowDeleteModal(false);
       setDeletingSchema(null);
       setDeleteInfo(null);
-      await loadSchemas();
+      await loadMySchemas();
+      await loadCommunitySchemas();
       setSuccess(`Schema "${deletingSchema.name}" and all related data deleted successfully`);
 
     } catch (error) {
@@ -692,6 +853,85 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
   };
 
+  // Link Modal Functions
+  const handleOpenLinkModal = async (schema: FloatingSchema) => {
+    setSchemaToLink(schema);
+    setLoadingProjects(true);
+    setLinkModalVisible(true);
+
+    try {
+      // Load all user's projects
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load projects');
+      }
+
+      const data = await response.json();
+      setAllProjects(data.projects || []);
+
+      // Get currently linked project IDs from schema
+      const linkedIds = schema.projects?.map(p => p.id) || [];
+      setLinkedProjectIds(linkedIds);
+
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      setError('Fehler beim Laden der Projekte');
+      setAllProjects([]);
+      setLinkedProjectIds([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const handleToggleProjectLink = (projectId: number) => {
+    if (linkedProjectIds.includes(projectId)) {
+      setLinkedProjectIds(linkedProjectIds.filter(id => id !== projectId));
+    } else {
+      setLinkedProjectIds([...linkedProjectIds, projectId]);
+    }
+  };
+
+  const handleApplyProjectLinks = async () => {
+    if (!schemaToLink) return;
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/schemas/${schemaToLink.id}/linked-projects`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_ids: linkedProjectIds }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Fehler beim Aktualisieren der Verknüpfungen');
+      }
+
+      setSuccess('Schema-Verknüpfungen erfolgreich aktualisiert');
+      setLinkModalVisible(false);
+      await loadMySchemas();
+      await loadCommunitySchemas();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Fehler beim Aktualisieren der Verknüpfungen';
+      setError(errorMessage);
+    }
+  };
+
   const actionTemplate = (schema: FloatingSchema) => {
     const projects = schema.projects || [];
 
@@ -699,6 +939,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     const currentProjectId = projectId; // This is forceProjectId || contextSelectedProject?.id
     const isLinkedToCurrentProject = currentProjectId ? projects.some(p => p.id === currentProjectId) : false;
     const currentProjectLink = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
+
+    // Check ownership and permissions
+    const isOwner = schema.owner_id === currentUserId;
+    const isSystemSchema = schema.is_system_schema;
+    const canEdit = isOwner || (isSystemUser && isSystemSchema); // Owner can edit, or System-User can edit System-Schemas
+    const canDelete = isOwner; // Only owner can delete
 
     return (
       <div className="flex space-x-1">
@@ -721,33 +967,24 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             />
           )
         ) : (
-          // When NOT filtering by project: Show all project associations
-          projects.length > 0 ? (
-            projects.map((project) => (
-              <button
-                key={project.id}
-                className="inline-flex items-center justify-center w-10 h-10 text-white bg-red-600 hover:bg-red-700 rounded-full text-base font-medium transition-colors duration-200 border border-red-600 hover:border-red-700 shadow-sm hover:shadow-md"
-                title={`Remove from ${project.name}`}
-                onClick={() => handleRemoveFromProject(schema, project.id)}
-              >
-                <i className="pi pi-times text-base"></i>
-              </button>
-            ))
-          ) : (
+          // When NOT filtering by project: Show multi-link button
+          <>
             <Button
               icon="pi pi-link"
-              className="p-button-rounded p-button-text p-button-sm"
-              tooltip={t.databasemanagementpanel735}
-              onClick={() => handleAssociateToProject(schema)}
+              className="p-button-rounded p-button-text p-button-sm p-button-success"
+              tooltip="Mit Projekten verknüpfen"
+              onClick={() => handleOpenLinkModal(schema)}
             />
-          )
+          </>
         )}
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-rounded p-button-text p-button-sm"
-          tooltip={t.databasemanagementpanel743}
-          onClick={() => handleEditSchema(schema)}
-        />
+        {canEdit && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-rounded p-button-text p-button-sm"
+            tooltip={t.databasemanagementpanel743}
+            onClick={() => handleEditSchema(schema)}
+          />
+        )}
         <Button
           icon="pi pi-copy"
           className="p-button-rounded p-button-text p-button-sm p-button-info"
@@ -762,12 +999,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             onClick={() => onOpenDesigner(schema.id, schema.name)}
           />
         )}
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-sm p-button-danger"
-          tooltip={t.databasemanagementpanel763}
-          onClick={() => handleDeleteSchema(schema)}
-        />
+        {canDelete && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-text p-button-sm p-button-danger"
+            tooltip={t.databasemanagementpanel763}
+            onClick={() => handleDeleteSchema(schema)}
+          />
+        )}
       </div>
     );
   };
@@ -783,21 +1022,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     { label: t.databasemanagementpanel778, value: 'imported' }
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-          <p className="text-gray-600">Loading database schemas...</p>
-        </div>
-      </div>
-    );
-  }
+  // No global loading screen - show loading per table
 
   return (
-    <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col h-full bg-gray-900 text-white overflow-hidden">
+      <div className="flex-shrink-0 p-6 pb-0">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <i className="pi pi-database text-2xl text-blue-600"></i>
           <h1 className="text-2xl font-bold text-white">{t.databasemanagementpanel798}</h1>
@@ -809,38 +1040,132 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={() => setShowCreateModal(true)}
-            disabled={loading}
+            disabled={mySchemasLoading || communityLoading}
           />
           <Button
             icon="pi pi-refresh"
             label={t.applicationsmodal313}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={loadSchemas}
-            disabled={loading}
+            onClick={() => {
+              loadMySchemas();
+              loadCommunitySchemas();
+            }}
+            disabled={mySchemasLoading || communityLoading}
           />
         </div>
       </div>
 
-      {error && (
-        <Message severity="error" text={error} className="mb-4" />
-      )}
+        {error && (
+          <Message severity="error" text={error} className="mb-4" />
+        )}
 
-      {success && (
-        <Message severity="success" text={success} className="mb-4" />
-      )}
+        {success && (
+          <Message severity="success" text={success} className="mb-4" />
+        )}
+      </div>
 
-      {/* Schemas Table */}
-      <Card title={t.databasemanagementpanel829} className="flex-1 mb-4">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
+        {/* MY SCHEMAS TABLE */}
+        <Card title="Meine Datenbanken" className="mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            {/* Type Filter - show 'system' option only for system/admin users */}
+            <Dropdown
+              value={myTypeFilter}
+              options={[
+                { label: 'Alle', value: 'all' },
+                { label: 'Private', value: 'private' },
+                { label: 'Public', value: 'public' },
+                ...(isSystemUser ? [{ label: 'System', value: 'system' }] : [])
+              ]}
+              onChange={(e) => setMyTypeFilter(e.value)}
+              placeholder="Type"
+              className="w-32"
+            />
+            <InputText
+              value={mySearchTerm}
+              onChange={(e) => setMySearchTerm(e.target.value)}
+              placeholder="Suche..."
+              className="w-64"
+            />
+          </div>
+        </div>
         <DataTable
-          value={schemas}
+          value={mySchemas}
+          loading={mySchemasLoading}
           className="p-datatable-sm"
-          emptyMessage={t.databasemanagementpanel833}
+          emptyMessage="Keine Schemas gefunden"
           paginator
           rows={10}
-          rowsPerPageOptions={[5, 10, 20]}
-          scrollable
-          scrollHeight="500px"
+          rowsPerPageOptions={[5, 10, 20, 50]}
+        >
+          <Column field="name" header={t.databasemanagementpanel840} sortable />
+          <Column field="description" header={t.createteammodal103} />
+          <Column
+            header={t.databasemanagementpanel843}
+            body={projectsTemplate}
+            className="w-60"
+          />
+          <Column
+            field={t.templatemanagementpanel961}
+            header={t.databasemanagementpanel849}
+            body={visibilityTemplate}
+            className="w-24"
+          />
+          <Column
+            field="owner"
+            header={t.manageteammodal320}
+            body={ownerTemplate}
+            className="w-40"
+          />
+          <Column
+            field="created_at"
+            header={t.databasemanagementpanel861}
+            body={(schema) => formatDate(schema.created_at)}
+            className="w-32"
+            sortable
+          />
+          <Column
+            header={t.applicationsmodal354}
+            body={actionTemplate}
+            className="w-40"
+          />
+        </DataTable>
+      </Card>
+
+      {/* COMMUNITY SCHEMAS TABLE */}
+      <Card title="System & Öffentliche Datenbanken" className="mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <Dropdown
+              value={communityTypeFilter}
+              options={[
+                { label: 'Alle', value: 'all' },
+                { label: 'System', value: 'system' },
+                { label: 'Public', value: 'public' }
+              ]}
+              onChange={(e) => setCommunityTypeFilter(e.value)}
+              placeholder="Type"
+              className="w-32"
+            />
+            <InputText
+              value={communitySearchTerm}
+              onChange={(e) => setCommunitySearchTerm(e.target.value)}
+              placeholder="Suche..."
+              className="w-64"
+            />
+          </div>
+        </div>
+        <DataTable
+          value={communitySchemas}
+          loading={communityLoading}
+          className="p-datatable-sm"
+          emptyMessage="Keine Schemas gefunden"
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 20, 50]}
         >
           <Column field="name" header={t.databasemanagementpanel840} sortable />
           <Column field="description" header={t.createteammodal103} />
@@ -963,7 +1288,27 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             </small>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          {/* System Schema Checkbox - only for system/admin users */}
+          {isSystemUser && (
+            <div className="field flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_system_schema"
+                checked={createForm.is_system_schema}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, is_system_schema: e.target.checked }))}
+                className="w-4 h-4 cursor-pointer"
+                disabled={creating}
+              />
+              <label htmlFor="is_system_schema" className="text-sm font-medium text-gray-200 cursor-pointer">
+                Is System Database
+              </label>
+              <small className="text-gray-500 ml-2">
+                (System databases are available to all users)
+              </small>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
@@ -1035,6 +1380,26 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={saving}
             />
           </div>
+
+          {/* System Schema Checkbox - only for system/admin users */}
+          {isSystemUser && (
+            <div className="field flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit_is_system_schema"
+                checked={editForm.is_system_schema}
+                onChange={(e) => setEditForm(prev => ({ ...prev, is_system_schema: e.target.checked }))}
+                className="w-4 h-4 cursor-pointer"
+                disabled={saving}
+              />
+              <label htmlFor="edit_is_system_schema" className="text-sm font-medium text-gray-200 cursor-pointer">
+                Is System Database
+              </label>
+              <small className="text-gray-500 ml-2">
+                (System databases are available to all users)
+              </small>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
@@ -1131,7 +1496,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
@@ -1165,7 +1530,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <div className="p-4 bg-red-50 border border-red-200 rounded">
             <div className="flex items-center mb-2">
               <i className="pi pi-exclamation-triangle text-red-600 mr-2"></i>
-              <h4 className="font-bold text-red-800">⚠️ Permanent Deletion Warning</h4>
+              <h4 className="font-bold text-red-800">{t.databasemanagementpanel1163}</h4>
             </div>
             <p className="text-red-700 text-sm mb-3">
               This action will permanently delete the schema and <strong>ALL</strong> related data:
@@ -1188,19 +1553,19 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="field">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type the schema name <strong>"{deletingSchema?.name}"</strong> to confirm deletion:
+              Gib <strong>DELETE</strong> ein, um zu bestätigen:
             </label>
             <input
               type="text"
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder={`Type "${deletingSchema?.name}" here`}
+              placeholder="DELETE"
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
               disabled={deleting}
               autoComplete="off"
             />
             <small className="text-gray-600">
-              Schema name must match exactly (case-sensitive)
+              Du musst exakt DELETE (Großbuchstaben) eingeben
             </small>
           </div>
 
@@ -1210,7 +1575,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             </div>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
@@ -1223,7 +1588,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
               onClick={handleConfirmDelete}
               className="p-button-danger"
-              disabled={deleting || deleteConfirmText !== deletingSchema?.name}
+              disabled={deleting || deleteConfirmText !== 'DELETE'}
             />
           </div>
         </div>
@@ -1338,7 +1703,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <Message severity="error" text={error} />
           )}
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
@@ -1413,6 +1778,74 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           </div>
         </div>
       </Dialog>
+
+      {/* Link Schema to Projects Modal */}
+      <Dialog
+        header={`Schema verknüpfen: ${schemaToLink?.name}`}
+        visible={linkModalVisible}
+        onHide={() => setLinkModalVisible(false)}
+        footer={
+          <>
+            <Button
+              onClick={() => setLinkModalVisible(false)}
+              className="p-button-secondary"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleApplyProjectLinks}
+              className="p-button-primary"
+              disabled={loadingProjects}
+            >
+              Anwenden
+            </Button>
+          </>
+        }
+        style={{ width: '600px' }}
+        modal
+        closable
+        draggable={true}
+        resizable={true}
+      >
+        {loadingProjects ? (
+          <div className="flex justify-center items-center py-8">
+            <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {allProjects.length === 0 ? (
+              <div className="text-center text-gray-500 py-4">
+                Keine Projekte gefunden
+              </div>
+            ) : (
+              allProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                  onClick={() => handleToggleProjectLink(project.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={linkedProjectIds.includes(project.id)}
+                      onChange={() => handleToggleProjectLink(project.id)}
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div>
+                      <div className="font-semibold text-white">{project.name}</div>
+                      {project.description && (
+                        <div className="text-sm text-gray-400">{project.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </Dialog>
+      </div>
     </div>
   );
 }

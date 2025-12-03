@@ -167,3 +167,4 @@ The application is designed around a template-based code generation system:
 - wenn du neue tabellen erstellst, bitte schau, dass die tabellen untereinander mit foreign keys verbunden sind, die master tabelle nur mit BIGINT auto-increment als foreign key verwenden, keine textkeys
 - mach kein npm run build, da wir ja mit vite live arbeiten
 - führe keinen upload zu github durch, das mache ich selbst, also kein git push usw. aber du darfst github/git als zwischenspeicher verwenden, wenn du das brauchst, aber nicht auf auf den branch direkt pushen bitte
+- MySQL auf meinen PC ist unter localhost und username root und passwort admin

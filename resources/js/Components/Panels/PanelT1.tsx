@@ -537,6 +537,10 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
   }, [treeData]);
 
   // Auto-polling for File Preview updates (every 5 seconds)
+  // DEACTIVATED: Polling for generation tree updates (was causing ~32s overhead during sync generation)
+  // This polling is only needed for async queue jobs in production
+  // TODO: Re-enable conditionally when queue mode is async
+  /*
   useEffect(() => {
     // Extract project IDs from tree data
     const projectIds = treeData
@@ -548,13 +552,13 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
     // Store last update timestamps for each project
     const lastUpdateTimestamps: Record<number, string> = {};
-    
+
     // Initialize timestamps from current tree data
     projectIds.forEach(projectId => {
       const generatedFilesNode = treeData
         .find(node => node.id === `project-${projectId}`)?.children
         ?.find(child => child.type === 'generated-files-container');
-      
+
       if (generatedFilesNode) {
         lastUpdateTimestamps[projectId] = new Date().toISOString();
       }
@@ -572,7 +576,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
           if (response.data.has_updates && response.data.tree_data) {
             // Update the timestamp
             lastUpdateTimestamps[projectId] = response.data.last_update;
-            
+
             // Refresh only the File Preview
             refreshFilePreview(projectId);
           }
@@ -583,8 +587,9 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-     
+
   }, [treeData]);
+  */
 
   const toggleNode = (nodeId: string) => {
     const updateNode = (nodes: TreeNode[]): TreeNode[] => {
@@ -641,7 +646,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           const panelData = {
             type: 'project',
-            title: `Project Management: ${actualProjectName}`,
+            title: t.projectpanel615 + `: ${actualProjectName}`,
             projectId: node.projectId,
             projectName: actualProjectName,
             actualProjectName: actualProjectName,

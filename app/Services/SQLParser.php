@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Exception;
+
 class SQLParser
 {
     private $tokens;
@@ -32,6 +34,13 @@ class SQLParser
                 $this->parseAlterStatement();
             } elseif ($this->currentTokenMatches('KEYWORD', 'DROP')) {
                 $this->parseDropStatement();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'DELIMITER')) {
+                // Skip DELIMITER statements - we don't need them for schema
+                $this->position++;
+                // Skip the delimiter value (e.g., $$, //, etc.)
+                if ($this->currentToken()) {
+                    $this->position++;
+                }
             } else {
                 $this->position++;
             }
@@ -133,6 +142,17 @@ class SQLParser
     private function parseCreateStatement()
     {
         $this->consumeToken('KEYWORD', 'CREATE');
+
+        // Check what comes after CREATE
+        $nextToken = $this->currentToken();
+
+        // We only care about CREATE TABLE - skip everything else
+        if (!$nextToken || !$this->currentTokenMatches('KEYWORD', 'TABLE')) {
+            // Skip this statement (PROCEDURE, TRIGGER, VIEW, FUNCTION, etc.)
+            $this->skipToSemicolonOrEnd();
+            return;
+        }
+
         $this->consumeToken('KEYWORD', 'TABLE');
 
         // Optional IF NOT EXISTS
@@ -454,6 +474,17 @@ class SQLParser
     private function parseAlterStatement()
     {
         $this->consumeToken('KEYWORD', 'ALTER');
+
+        // Check what comes after ALTER
+        $nextToken = $this->currentToken();
+
+        // We only care about ALTER TABLE - skip everything else
+        if (!$nextToken || !$this->currentTokenMatches('KEYWORD', 'TABLE')) {
+            // Skip this statement (PROCEDURE, TRIGGER, VIEW, FUNCTION, etc.)
+            $this->skipToSemicolonOrEnd();
+            return;
+        }
+
         $this->consumeToken('KEYWORD', 'TABLE');
 
         // Table name
@@ -466,7 +497,22 @@ class SQLParser
             throw new Exception("Expected table name, got {$table_name_token->type}");
         }
 
+        // Check if this is ADD CONSTRAINT (Foreign Key) - the only ALTER we care about
+        if (!$this->currentTokenMatches('KEYWORD', 'ADD')) {
+            // Skip this ALTER TABLE (MODIFY, DROP, CHANGE, etc.)
+            $this->skipToSemicolonOrEnd();
+            return;
+        }
+
         $this->consumeToken('KEYWORD', 'ADD');
+
+        // Check if it's ADD CONSTRAINT - if not, skip (could be ADD INDEX, ADD KEY, etc.)
+        if (!$this->currentTokenMatches('KEYWORD', 'CONSTRAINT')) {
+            // Skip this ALTER TABLE (ADD INDEX, ADD FULLTEXT KEY, etc.)
+            $this->skipToSemicolonOrEnd();
+            return;
+        }
+
         $this->consumeToken('KEYWORD', 'CONSTRAINT');
 
         // Constraint name
@@ -582,6 +628,17 @@ class SQLParser
     private function parseDropStatement()
     {
         $this->consumeToken('KEYWORD', 'DROP');
+
+        // Check what comes after DROP
+        $nextToken = $this->currentToken();
+
+        // We only care about DROP TABLE - skip everything else
+        if (!$nextToken || !$this->currentTokenMatches('KEYWORD', 'TABLE')) {
+            // Skip this statement (PROCEDURE, TRIGGER, VIEW, FUNCTION, etc.)
+            $this->skipToSemicolonOrEnd();
+            return;
+        }
+
         $this->consumeToken('KEYWORD', 'TABLE');
 
         // Optional IF EXISTS

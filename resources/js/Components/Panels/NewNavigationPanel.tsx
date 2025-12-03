@@ -23,6 +23,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
+  const [isInnerCore, setIsInnerCore] = useState<boolean>(false);
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Load from localStorage, default to true (collapsed)
@@ -53,6 +54,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setIsLoggedIn(true);
           setUserName(user.name || user.email);
           setUserType(user.user_type || '');
+          setIsInnerCore(user.is_inner_core || false);
           return true;
         } else {
           // Token invalid - clean up and notify other components
@@ -66,6 +68,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setIsLoggedIn(false);
           setUserName('');
           setUserType('');
+          setIsInnerCore(false);
 
           // Trigger storage event to notify other components (like Index.tsx)
           window.dispatchEvent(new Event('storage'));
@@ -74,12 +77,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       } catch {
         setIsLoggedIn(false);
         setUserName('');
+        setIsInnerCore(false);
         return false;
       }
     } else {
       setIsLoggedIn(false);
       setUserName('');
       setUserType('');
+      setIsInnerCore(false);
       return false;
     }
   };
@@ -170,7 +175,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               command: () => {
                 if (selectedProject) {
                   onOpenPanel('project-settings', {
-                    title: `Projekt-Einstellungen (${selectedProject.name})`
+                    title: `${t.newnavigationpanel142} (${selectedProject.name})`
                   });
                 } else {
                   // If no project selected, open project management first
@@ -192,18 +197,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               icon: 'pi pi-cog',
               command: () => onOpenPanel('team-management')
             },
-            {
-              label: t.panelsewnavigationpanel170,
-              icon: 'pi pi-users',
-              command: () => {
-                if (selectedProject) {
-                  onOpenPanel('teams-filtered', { title: `Teams Management - ${selectedProject.name}`, filterByProject: true, source: 'menu' });
-                } else {
-                  // If no project selected, open project management first
-                  onOpenPanel('project');
-                }
-              }
-            },
           ]
         },
         {
@@ -215,16 +208,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               icon: 'pi pi-list',
               command: () => onOpenPanel('template-management')
             },
-            {
+            // Only show Template Review for Inner Core members
+            ...(isInnerCore ? [{
               label: 'Template Review',
               icon: 'pi pi-star-fill',
               command: () => onOpenPanel('template-review')
-            },
-            {
-              label: t.panelsewnavigationpanel193,
-              icon: 'pi pi-link',
-              command: () => onOpenPanel('t3')
-            },
+            }] : []),
             {
               separator: true
             },
@@ -304,7 +293,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: t.panelsewnavigationpanel273,
           icon: 'pi pi-search',
           command: () => onOpenPanel('query-builder')
-        }
+        },
+        ...(userType === 'system' ? [
+          {
+            separator: true
+          },
+          {
+            label: 'Cache Debug',
+            icon: 'pi pi-server',
+            command: () => onOpenPanel('cache-debug')
+          }
+        ] : [])
       ]
     },
     ...(userType === 'system' || userType === 'admin' ? [
@@ -491,14 +490,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <button onClick={() => {
                           if (selectedProject) {
                             onOpenPanel('project-settings', {
-                              title: `Projekt-Einstellungen (${selectedProject.name})`
+                              title: `${t.newnavigationpanel142} (${selectedProject.name})`
                             });
                           } else {
                             onOpenPanel('project');
                           }
                         }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-sliders-h"></i>
-                          <span>Projekt-Einstellungen</span>
+                          <span>{t.newnavigationpanel142})</span>
                         </button>
                       </div>
                     </div>
@@ -518,24 +517,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           <i className="pi pi-cog"></i>
                           <span>Team Management</span>
                         </button>
-                        <button onClick={() => {
-                          if (selectedProject) {
-                            onOpenPanel('teams-filtered', { title: `Teams Management - ${selectedProject.name}`, filterByProject: true, source: 'menu' });
-                          } else {
-                            // If no project selected, open project management first
-                            onOpenPanel('project');
-                          }
-                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-users"></i>
-                          <span>{t.newnavigationpanel170}</span>
-                        </button>
                       </div>
                     </div>
                   </div>
                   <div className="relative group/sub">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-cog"></i>
-                      <span>Templates</span>
+                      <span>{t.newnavigationpanel184}</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Templates */}
@@ -543,20 +531,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-list"></i>
-                          <span>Template Verwaltung</span>
+                          <span>{t.newnavigationpanel188}</span>
                         </button>
-                        <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-star-fill text-yellow-400"></i>
-                          <span>Template Review</span>
-                        </button>
-                        <button onClick={() => onOpenPanel('t3')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-link"></i>
-                          <span>Template Assignment</span>
-                        </button>
-                        <div className="border-t border-gray-600 my-1"></div>
+                        {/* Only show Template Review for Inner Core members */}
+                        {isInnerCore && (
+                          <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                            <i className="pi pi-star-fill text-yellow-400"></i>
+                            <span>{t.panelsewnavigationpanel496}</span>
+                          </button>
+                        )}
                         <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-link"></i>
-                          <span>DB Schema Dependencies</span>
+                          <span>{t.panelsewnavigationpanel201}</span>
                         </button>
                       </div>
                     </div>
@@ -564,11 +550,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenPanel('my-applications')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-send"></i>
-                    <span>My Applications</span>
+                    <span>{t.panelsewnavigationpanel211}</span>
                   </button>
                   <button onClick={() => onOpenPanel('public-projects')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-globe"></i>
-                    <span>Public Projects</span>
+                    <span>{t.panelsewnavigationpanel216}</span>
                   </button>
                 </div>
               </div>
@@ -583,24 +569,24 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-cog"></i>
-                    <span>Manage Databases</span>
+                    <span>{t.panelsewnavigationpanel540}</span>
                   </button>
                   <button onClick={() => onOpenPanel('t2')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-window-maximize"></i>
-                    <span>Designer</span>
+                    <span>{t.panelsewnavigationpanel544}</span>
                   </button>
                   <button onClick={() => onOpenPanel('schema-translation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-language"></i>
-                    <span>Schema Translation</span>
+                    <span>{t.panelsewnavigationpanel548}</span>
                   </button>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-upload"></i>
-                    <span>Import SQL</span>
+                    <span>{t.panelsewnavigationpanel246}</span>
                   </button>
                   <button onClick={() => onOpenDatabaseExport && onOpenDatabaseExport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-download"></i>
-                    <span>Export SQL</span>
+                    <span>{t.panelsewnavigationpanel251}</span>
                   </button>
                 </div>
               </div>
@@ -619,12 +605,21 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </button>
                   <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-play"></i>
-                    <span>Code Generation</span>
+                    <span>{t.panelsewnavigationpanel576}</span>
                   </button>
                   <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-search"></i>
-                    <span>Query Builder</span>
+                    <span>{t.panelsewnavigationpanel580}</span>
                   </button>
+                  {userType === 'system' && (
+                    <>
+                      <div className="border-t border-gray-600 my-2"></div>
+                      <button onClick={() => onOpenPanel('cache-debug')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        <i className="pi pi-server"></i>
+                        <span>Cache Debug</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -687,18 +682,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <>
                       <button onClick={() => onOpenModal?.('profile')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-user-edit"></i>
-                        <span>Profile</span>
+                        <span>{t.newnavigationpanel315}</span>
                       </button>
                       {/* 🎯 Hide "Change Plan" in DEMO mode */}
                       {!isDemoMode && (
                         <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-credit-card"></i>
-                          <span>Change Plan</span>
+                          <span>{t.newnavigationpanel320}</span>
                         </button>
                       )}
                       <button onClick={() => window.location.href = '/'} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-external-link"></i>
-                        <span>Back to Lobby</span>
+                        <span>{t.newnavigationpanel325}</span>
                       </button>
                       <div className="border-t border-gray-600 my-2"></div>
                       <button onClick={() => {
@@ -726,7 +721,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         window.location.href = '/';
                       }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                         <i className="pi pi-sign-out"></i>
-                        <span>Logout</span>
+                        <span>{t.panelsewnavigationpanel333}</span>
                       </button>
                     </>
                   ) : (

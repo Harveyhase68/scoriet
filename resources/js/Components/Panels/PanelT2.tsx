@@ -31,6 +31,7 @@ import SqlImportModal from '@/Components/SqlImportModal';
 import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
 import CreateTableModal from '@/Components/Modals/CreateTableModal';
 import EditTableModal from '@/Components/Modals/EditTableModal';
+import DeleteVersionDialog from '@/Components/Panels/DeleteVersionDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
@@ -41,6 +42,9 @@ interface FloatingSchema {
   last_version: number;
   association_type: 'linked' | 'cloned' | 'imported';
   alias?: string;
+  owner_id?: number;
+  is_system_schema?: boolean;
+  visibility?: 'public' | 'private';
 }
 
 interface SchemaVersionExtended {
@@ -72,6 +76,7 @@ interface DatabaseNodeData {
   onEdit?: (table: SchemaTable) => void;
   onCopy?: (table: SchemaTable) => void;
   isLatestVersion?: boolean;
+  isReadOnly?: boolean;
 }
 
 interface DatabaseNodeProps {
@@ -109,8 +114,8 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
       ? 'border-blue-400 bg-gray-700'
       : 'border-gray-600 bg-gray-800'
       }`} style={{ minWidth: 250, minHeight: 150 }}>
-      {/* Node Resizer - only show when selected */}
-      {selected && (
+      {/* Node Resizer - only show when selected AND not read-only */}
+      {selected && !data.isReadOnly && (
         <NodeResizer
           color="#3b82f6"
           isVisible={selected}
@@ -134,7 +139,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
             <div className="text-sm font-bold text-white">{data.tableName}</div>
           </div>
           <div className="flex items-center gap-1">
-            {data.onEdit && data.isLatestVersion && data.table && (
+            {data.onEdit && data.isLatestVersion && data.table && !data.isReadOnly && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -158,7 +163,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                 📋
               </button>
             )}
-            {data.onDelete && data.isLatestVersion && data.table && (
+            {data.onDelete && data.isLatestVersion && data.table && !data.isReadOnly && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -218,7 +223,7 @@ const nodeTypes = {
 };
 
 // Helper functions
-const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, onCopyTable?: (table: SchemaTable) => void, isLatestVersion?: boolean): Node[] => {
+const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, onCopyTable?: (table: SchemaTable) => void, isLatestVersion?: boolean, isReadOnly?: boolean): Node[] => {
   return tables.map((table, index) => {
     // Primary Keys finden
     const primaryKeyFields = table.constraints
@@ -248,6 +253,7 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
       onEdit: onEditTable,
       onCopy: onCopyTable,
       isLatestVersion: isLatestVersion,
+      isReadOnly: isReadOnly,
     };
 
     // Check if we have saved layout for this table
@@ -317,7 +323,7 @@ const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string
       width,
       height,
       data: nodeData,
-      draggable: true,
+      draggable: !isReadOnly,
       selectable: true,
       style: {
         width: width,
@@ -368,9 +374,10 @@ const convertSchemaToEdges = (tables: SchemaTable[]): Edge[] => {
 
 interface PanelT2Props {
   preSelectedSchemaId?: number;
+  isReadOnly?: boolean;
 }
 
-export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
+export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: PanelT2Props) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -381,12 +388,27 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [floatingSchemas, setFloatingSchemas] = useState<FloatingSchema[]>([]);
   const [selectedSchema, setSelectedSchema] = useState<FloatingSchema | null>(null);
+
+  // Compute read-only mode: Simple rule - only owner can edit
+  const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+  const effectiveReadOnly = React.useMemo(() => {
+    // If explicitly set via prop, use that
+    if (isReadOnly) return true;
+
+    // If no schema selected, not read-only
+    if (!selectedSchema) return false;
+
+    // Only the owner can edit their schema - use loose equality to handle string/number mismatch
+    const isOwner = selectedSchema.owner_id == currentUserId;
+    return !isOwner;
+  }, [isReadOnly, selectedSchema, currentUserId]);
   const [schemaVersions, setSchemaVersions] = useState<SchemaVersionExtended[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<SchemaVersionExtended | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
+  const [showDeleteVersionDialog, setShowDeleteVersionDialog] = useState(false);
   const [showCreateTableModal, setShowCreateTableModal] = useState(false);
   const [showEditTableModal, setShowEditTableModal] = useState(false);
   const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
@@ -458,20 +480,33 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         }
       }
 
-      // Auto-select first editable schema only if no schema is currently selected
-      // and no preSelectedSchemaId is provided
-      if (!preSelectedSchemaId && !selectedSchema) {
-        const editableSchema = schemas.find((s: FloatingSchema) => s.association_type !== 'linked');
-        if (editableSchema) {
-          setSelectedSchema(editableSchema);
-        }
-      }
+      // Auto-select schema based on priority:
+      // 1. preSelectedSchemaId (from props)
+      // 2. Last selected schema from localStorage
+      // 3. First schema in the list
+      if (!selectedSchema) {
+        let schemaToSelect: FloatingSchema | undefined;
 
-      // If preSelectedSchemaId is provided and schema exists, select it
-      if (preSelectedSchemaId && !selectedSchema) {
-        const preSelectedSchema = schemas.find((s: FloatingSchema) => s.id === preSelectedSchemaId);
-        if (preSelectedSchema) {
-          setSelectedSchema(preSelectedSchema);
+        // Priority 1: preSelectedSchemaId from props
+        if (preSelectedSchemaId) {
+          schemaToSelect = schemas.find((s: FloatingSchema) => s.id === preSelectedSchemaId);
+        }
+
+        // Priority 2: Last selected schema from localStorage
+        if (!schemaToSelect) {
+          const lastSelectedSchemaId = localStorage.getItem('last_selected_schema_id');
+          if (lastSelectedSchemaId) {
+            schemaToSelect = schemas.find((s: FloatingSchema) => s.id === parseInt(lastSelectedSchemaId));
+          }
+        }
+
+        // Priority 3: First schema in the list
+        if (!schemaToSelect && schemas.length > 0) {
+          schemaToSelect = schemas[0];
+        }
+
+        if (schemaToSelect) {
+          setSelectedSchema(schemaToSelect);
         }
       }
 
@@ -628,8 +663,11 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
         const isLatestVersion = schema && version &&
           version.version_number === schema.last_version;
 
+        // Calculate read-only mode based on schema ownership
+        const userId = parseInt(localStorage.getItem('user_id') || '0');
+        const isReadOnlyMode = schema.owner_id != userId;
 
-        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, handleCopyTable, isLatestVersion);
+        const newNodes = convertSchemaToNodes(tables, savedLayouts, handleDeleteTable, handleEditTable, handleCopyTable, isLatestVersion, isReadOnlyMode);
         const newEdges = convertSchemaToEdges(tables);
 
         setNodes(newNodes);
@@ -677,6 +715,33 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       loadSchemaVersions(selectedSchema);
     }
   }, [selectedSchema, loadSchemaVersions, setNodes, setEdges]);
+
+  // Save selected schema ID to localStorage when it changes
+  useEffect(() => {
+    if (selectedSchema) {
+      localStorage.setItem('last_selected_schema_id', selectedSchema.id.toString());
+    }
+  }, [selectedSchema]);
+
+  // Update nodes when effectiveReadOnly changes
+  useEffect(() => {
+    // Only update if we have nodes and a selected version
+    setNodes(currentNodes => {
+      if (currentNodes.length === 0 || !selectedVersion || !selectedSchema) {
+        return currentNodes;
+      }
+
+      // Update each node's data.isReadOnly property
+      return currentNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          isReadOnly: effectiveReadOnly
+        },
+        draggable: !effectiveReadOnly
+      }));
+    });
+  }, [effectiveReadOnly, selectedVersion, selectedSchema]);
 
   const onConnect = useCallback(
     (params: Connection) =>
@@ -1499,6 +1564,63 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
     }
   }, [selectedSchema, selectedVersion, loadFloatingSchemas, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
 
+  const handleDeleteVersion = useCallback(async (versionId: number) => {
+    if (!selectedSchema) {
+      setError('No schema selected');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions/${versionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || 'Failed to delete version');
+      }
+
+      // Reload schema versions
+      await loadSchemaVersions(selectedSchema);
+
+      // If we deleted the currently selected version, select the latest remaining version
+      if (selectedVersion?.id === versionId) {
+        const remainingVersions = schemaVersions.filter(v => v.id !== versionId);
+        if (remainingVersions.length > 0) {
+          const latestVersion = remainingVersions.reduce((latest, current) =>
+            (current.version_number || 0) > (latest.version_number || 0) ? current : latest
+          );
+          setTimeout(() => {
+            loadSchemaVersionWithSchema(selectedSchema, latestVersion);
+          }, 200);
+        } else {
+          // No versions left, clear diagram
+          setNodes([]);
+          setEdges([]);
+          setSelectedVersion(null);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete version');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedSchema, selectedVersion, schemaVersions, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
+
   const handleDeleteFK = useCallback(async () => {
     if (!selectedFK) return;
 
@@ -1899,20 +2021,27 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
       <div className="h-full flex flex-col" style={{ height: '100%' }}>
         {/* Header */}
         <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
-          <div>
-            <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
-            <p className="text-sm text-gray-400">
-              {selectedSchema && selectedVersion
-                ? `${selectedSchema.name} (v${selectedVersion.version_number}) - ${nodes.length} tables`
-                : selectedSchema && schemaVersions.length === 0
-                  ? `${selectedSchema.name} (no versions) - empty schema`
-                  : selectedSchema
-                    ? t.panelt21289
-                    : selectedProject
-                      ? t.panelt21133
-                      : t.databaseexportmodal344
-              }
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
+              <p className="text-sm text-gray-400">
+                {selectedSchema && selectedVersion
+                  ? `${selectedSchema.name} (v${selectedVersion.version_number}) - ${nodes.length} tables`
+                  : selectedSchema && schemaVersions.length === 0
+                    ? `${selectedSchema.name} (no versions) - empty schema`
+                    : selectedSchema
+                      ? t.panelt21289
+                      : selectedProject
+                        ? t.panelt21133
+                        : t.databaseexportmodal344
+                }
+              </p>
+            </div>
+            {effectiveReadOnly && (
+              <span className="px-3 py-1 text-xs font-semibold text-yellow-200 bg-yellow-900 border border-yellow-700 rounded">
+                READ-ONLY
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             {/* Schema Selector */}
@@ -1980,54 +2109,63 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
 
             <button
               onClick={handleCreateNewVersion}
-              disabled={loading || !selectedSchema}
+              disabled={loading || !selectedSchema || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title={t.panelt21358 || "Create New Version"}
+              title={effectiveReadOnly ? "Read-only mode" : (t.panelt21358 || "Create New Version")}
             >
               <i className="pi pi-plus"></i>
             </button>
 
             <button
+              onClick={() => setShowDeleteVersionDialog(true)}
+              disabled={loading || !selectedSchema || schemaVersions.length <= 1 || effectiveReadOnly}
+              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:text-red-300"
+              title={effectiveReadOnly ? "Read-only mode" : "Delete Version"}
+            >
+              <i className="pi pi-times"></i>
+            </button>
+
+            <button
               onClick={handleShowImportModal}
-              disabled={loading || !selectedProject}
+              disabled={loading || !selectedProject || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Import SQL"
+              title={effectiveReadOnly ? "Read-only mode" : "Import SQL"}
             >
               <i className="pi pi-upload"></i>
             </button>
 
             <button
               onClick={handleCreateFKClick}
-              disabled={loading || !selectedSchema || !selectedVersion}
+              disabled={loading || !selectedSchema || !selectedVersion || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Add Foreign Key (Select 2 tables with Ctrl)"
+              title={effectiveReadOnly ? "Read-only mode" : "Add Foreign Key (Select 2 tables with Ctrl)"}
             >
               <i className="pi pi-link"></i>
             </button>
 
             <button
               onClick={handleClipboardPaste}
-              disabled={loading || !selectedSchema}
+              disabled={loading || !selectedSchema || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Paste Table from Clipboard"
+              title={effectiveReadOnly ? "Read-only mode" : "Paste Table from Clipboard"}
             >
               <i className="pi pi-clipboard"></i>
             </button>
 
             <button
               onClick={handleCreateNewTable}
-              disabled={loading || !selectedProject}
+              disabled={loading || !selectedProject || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Create New Table"
+              title={effectiveReadOnly ? "Read-only mode" : "Create New Table"}
             >
               <i className="pi pi-table"></i>
             </button>
 
             <button
               onClick={handleSortDiagram}
-              disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0}
+              disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0 || effectiveReadOnly}
               className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Sort the diagram"
+              title={effectiveReadOnly ? "Read-only mode" : "Sort the diagram"}
             >
               <i className="pi pi-sync"></i>
             </button>
@@ -2068,7 +2206,19 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
               nodes={nodes}
               edges={edges}
               onNodesChange={(changes) => {
-                // First apply the changes normally
+                // Block position/dimension changes in read-only mode
+                if (effectiveReadOnly) {
+                  // Filter out position and dimension changes, but allow selection changes
+                  const filteredChanges = changes.filter(change =>
+                    change.type !== 'position' && change.type !== 'dimensions'
+                  );
+                  if (filteredChanges.length > 0) {
+                    onNodesChange(filteredChanges);
+                  }
+                  return;
+                }
+
+                // Apply the changes normally
                 onNodesChange(changes);
 
                 // Check if we have position or dimension changes
@@ -2164,7 +2314,7 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
                 });
               }}
               nodeTypes={nodeTypes}
-              nodesDraggable={true}
+              nodesDraggable={!effectiveReadOnly}
               nodesConnectable={false}
               elementsSelectable={true}
               selectNodesOnDrag={false}
@@ -2804,6 +2954,23 @@ export default function PanelT2({ preSelectedSchemaId }: PanelT2Props) {
           </div>
         </div>
       )}
+
+      {/* Delete Version Dialog */}
+      <DeleteVersionDialog
+        visible={showDeleteVersionDialog}
+        onHide={() => setShowDeleteVersionDialog(false)}
+        onConfirm={handleDeleteVersion}
+        schemaName={selectedSchema?.name || ''}
+        versions={schemaVersions.map(v => ({
+          id: v.id,
+          version_number: v.version_number || 0,
+          description: v.description,
+          tables_count: v.tables?.length || 0,
+          imported_at: v.imported_at,
+          created_at: v.created_at
+        }))}
+        currentVersionId={selectedVersion?.id}
+      />
 
       {/* PrimeReact ConfirmDialog for version creation confirmation */}
       <ConfirmDialog />

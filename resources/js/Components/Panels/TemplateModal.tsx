@@ -5,9 +5,14 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
+import { AutoComplete } from 'primereact/autocomplete';
 import { Chips } from 'primereact/chips';
 import { Checkbox } from 'primereact/checkbox';
+//import { TabView, TabPanel } from 'primereact/tabview';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { usePage } from '@inertiajs/react';
+import { ProtectedFilesEditor } from '@/Components/ProtectedFilesEditor';
+import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
 
 interface TemplateVariable {
     id?: number;
@@ -44,7 +49,6 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     onSubmit,
     onSave,
     editingTemplate,
-    categories,
     templateFiles,
     onCreateFile,
     onEditFile,
@@ -60,6 +64,15 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Get template categories and languages from Inertia props
+  const { props } = usePage<any>();
+  const templateCategories = props.templateCategories || [];
+  const templateLanguages = props.templateLanguages || [];
+
+  // AutoComplete filtered suggestions
+  const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
+  const [filteredLanguages, setFilteredLanguages] = useState<string[]>([]);
     const { control, handleSubmit: handleFormSubmit, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
             name: '',
@@ -77,6 +90,16 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [hasFormChanges, setHasFormChanges] = useState(false);
     const [originalFormValues, setOriginalFormValues] = useState<any>(null);
+
+    // Protected files and deployment scripts state
+    const [protectedFiles, setProtectedFiles] = useState<string[]>([]);
+    const [installScript, setInstallScript] = useState<ScriptStep[]>([]);
+    const [updateScript, setUpdateScript] = useState<ScriptStep[]>([]);
+
+    // Store original protected files and scripts for change detection
+    const [originalProtectedFiles, setOriginalProtectedFiles] = React.useState<string[]>([]);
+    const [originalInstallScript, setOriginalInstallScript] = React.useState<ScriptStep[]>([]);
+    const [originalUpdateScript, setOriginalUpdateScript] = React.useState<ScriptStep[]>([]);
 
     // All hooks must be called before any early returns
     useEffect(() => {
@@ -96,6 +119,20 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setOriginalFormValues(initialValues);
             setIsSaved(true); // Existing templates are considered "saved"
             setHasFormChanges(false); // Reset form changes
+
+            // Load protected files and scripts
+            const loadedProtectedFiles = editingTemplate.protected_files || [];
+            const loadedInstallScript = editingTemplate.install_script || [];
+            const loadedUpdateScript = editingTemplate.update_script || [];
+
+            setProtectedFiles(loadedProtectedFiles);
+            setInstallScript(loadedInstallScript);
+            setUpdateScript(loadedUpdateScript);
+
+            // Store originals for change detection
+            setOriginalProtectedFiles(loadedProtectedFiles);
+            setOriginalInstallScript(loadedInstallScript);
+            setOriginalUpdateScript(loadedUpdateScript);
 
             // Load template variables
             if (onLoadVariables) {
@@ -117,21 +154,38 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setOriginalFormValues(initialValues);
             setIsSaved(false); // New templates start as unsaved
             setHasFormChanges(false); // Reset form changes
+
+            // Reset protected files and scripts for new template
+            setProtectedFiles([]);
+            setInstallScript([]);
+            setUpdateScript([]);
+
+            // Reset originals
+            setOriginalProtectedFiles([]);
+            setOriginalInstallScript([]);
+            setOriginalUpdateScript([]);
         }
      
     }, [visible, editingTemplate, reset, userType]);
 
+    // Effect to check for changes when protected files or scripts change
+    useEffect(() => {
+        if (editingTemplate) {
+            checkFormChanges();
+        }
+    }, [protectedFiles, installScript, updateScript]);
+
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
 
-    // Check for form changes (excluding files)
+    // Check for form changes (including protected files and scripts)
     const checkFormChanges = () => {
         if (!originalFormValues) return;
 
         const currentValues = getValues();
-        const fieldsToCheck = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template'];
+        const fieldsToCheck: (keyof typeof currentValues)[] = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template'];
 
-        const hasChanges = fieldsToCheck.some(field => {
+        const formFieldsChanged = fieldsToCheck.some(field => {
             const original = originalFormValues[field];
             const current = currentValues[field];
 
@@ -143,6 +197,13 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             return original !== current;
         });
 
+        // Check if protected files or scripts changed
+        const protectedFilesChanged = JSON.stringify(protectedFiles) !== JSON.stringify(originalProtectedFiles);
+        const installScriptChanged = JSON.stringify(installScript) !== JSON.stringify(originalInstallScript);
+        const updateScriptChanged = JSON.stringify(updateScript) !== JSON.stringify(originalUpdateScript);
+
+        const hasChanges = formFieldsChanged || protectedFilesChanged || installScriptChanged || updateScriptChanged;
+
         setHasFormChanges(hasChanges);
     };
 
@@ -150,7 +211,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         try {
             setIsLoading(true);
             if (onSave) {
-                await onSave(values);
+                // Include protected files and scripts in the save
+                const saveData = {
+                    ...values,
+                    protected_files: protectedFiles,
+                    install_script: installScript,
+                    update_script: updateScript
+                };
+                await onSave(saveData);
                 setIsSaved(true);
             }
         } catch {
@@ -162,7 +230,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
     const handleSubmit = handleFormSubmit(async (values) => {
         try {
-            await onSubmit(values);
+            // Include protected files and scripts in the submission
+            const submissionData = {
+                ...values,
+                protected_files: protectedFiles,
+                install_script: installScript,
+                update_script: updateScript
+            };
+            await onSubmit(submissionData);
             reset();
             setIsSaved(false);
         } catch {
@@ -172,7 +247,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
     return (
         <Dialog
-            header={editingTemplate ? 'Template bearbeiten' : t.templatemodal147}
+            header={editingTemplate ? t.templatemodal186 : t.templatemodal147}
             visible={visible}
             onHide={onCancel}
             style={{ width: '800px' }}
@@ -185,7 +260,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Template Name */}
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium mb-2">
-                        Name *
+                        {t.templatemodal199}
                     </label>
                     <Controller
                         name="name"
@@ -194,7 +269,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             required: t.templatemodal166,
                             pattern: {
                                 value: /^[a-z0-9]+(_[a-z0-9]+)*$/,
-                                message: 'Template-Name darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten (z.B. my_template_123)'
+                                message: t.templatemodal208
                             }
                         }}
                         render={({ field }) => (
@@ -214,14 +289,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <small className="text-red-400 mt-1 block">{errors.name.message}</small>
                     )}
                     <div className="text-xs text-gray-500 mt-1">
-                        Template-Namen werden später für URLs verwendet (username/template_name)
+                        {t.templatemodal228}
                     </div>
                 </div>
 
                 {/* Description */}
                 <div>
                     <label htmlFor="description" className="block text-sm font-medium mb-2">
-                        Beschreibung
+                        {t.templatemanagementpanel859}
                     </label>
                     <Controller
                         name="description"
@@ -242,60 +317,85 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     />
                 </div>
 
-                <div className="flex gap-4">
-                    {/* Category */}
-                    <div className="flex-1">
-                        <label htmlFor="category" className="block text-sm font-medium mb-2">
-                            Kategorie *
-                        </label>
-                        <Controller
-                            name="category"
-                            control={control}
-                            rules={{ required: t.templatemodal226 }}
-                            render={({ field }) => (
-                                <Dropdown
-                                    id="category"
-                                    value={field.value}
-                                    onChange={(e) => {
-                                        field.onChange(e.value);
-                                        checkFormChanges();
-                                    }}
-                                    options={categories.filter(cat => cat !== t.templatecontroller22).map(cat => ({ label: cat, value: cat }))}
-                                    placeholder="Kategorie auswählen"
-                                    className="w-full"
-                                />
-                            )}
-                        />
-                        {errors.category && (
-                            <small className="text-red-400 mt-1 block">{errors.category.message}</small>
+                {/* Category - Full Width with AutoComplete */}
+                <div>
+                    <label htmlFor="category" className="block text-sm font-medium mb-2">
+                        {t.templatemodal220}
+                    </label>
+                    <Controller
+                        name="category"
+                        control={control}
+                        rules={{ required: t.templatemodal226 }}
+                        render={({ field }) => (
+                            <AutoComplete
+                                id="category"
+                                value={field.value}
+                                suggestions={filteredCategories}
+                                completeMethod={(e) => {
+                                    const query = e.query.toLowerCase();
+                                    const filtered = templateCategories.filter((cat: string) =>
+                                        cat.toLowerCase().includes(query)
+                                    );
+                                    setFilteredCategories(filtered);
+                                }}
+                                onChange={(e) => {
+                                    field.onChange(e.value);
+                                    checkFormChanges();
+                                }}
+                                placeholder={t.templatemodal281}
+                                className="w-full"
+                                inputClassName="w-full"
+                                dropdown
+                                forceSelection={false}
+                            />
                         )}
+                    />
+                    {errors.category && (
+                        <small className="text-red-400 mt-1 block">{errors.category.message}</small>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                        {t.templatemodal293} {templateCategories.slice(0, 5).join(', ')}...
                     </div>
+                </div>
 
-                    {/* Language */}
-                    <div className="flex-1">
-                        <label htmlFor="language" className="block text-sm font-medium mb-2">
-                            Sprache *
-                        </label>
-                        <Controller
-                            name="language"
-                            control={control}
-                            rules={{ required: t.templatemodal254 }}
-                            render={({ field }) => (
-                                <InputText
-                                    id="language"
-                                    {...field}
-                                    placeholder={t.templatemodal259}
-                                    className="w-full"
-                                    onChange={(e) => {
-                                        field.onChange(e);
-                                        checkFormChanges();
-                                    }}
-                                />
-                            )}
-                        />
-                        {errors.language && (
-                            <small className="text-red-400 mt-1 block">{errors.language.message}</small>
+                {/* Language - Full Width with AutoComplete */}
+                <div>
+                    <label htmlFor="language" className="block text-sm font-medium mb-2">
+                        {t.templatemodal248}
+                    </label>
+                    <Controller
+                        name="language"
+                        control={control}
+                        rules={{ required: t.templatemodal254 }}
+                        render={({ field }) => (
+                            <AutoComplete
+                                id="language"
+                                value={field.value}
+                                suggestions={filteredLanguages}
+                                completeMethod={(e) => {
+                                    const query = e.query.toLowerCase();
+                                    const filtered = templateLanguages.filter((lang: string) =>
+                                        lang.toLowerCase().includes(query)
+                                    );
+                                    setFilteredLanguages(filtered);
+                                }}
+                                onChange={(e) => {
+                                    field.onChange(e.value);
+                                    checkFormChanges();
+                                }}
+                                placeholder={t.templatemodal322}
+                                className="w-full"
+                                inputClassName="w-full"
+                                dropdown
+                                forceSelection={false}
+                            />
                         )}
+                    />
+                    {errors.language && (
+                        <small className="text-red-400 mt-1 block">{errors.language.message}</small>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                        {t.templatemodal334} {templateLanguages.slice(0, 5).join(', ')}...
                     </div>
                 </div>
 
@@ -327,7 +427,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {/* Visibility */}
                     <div className="flex-1">
                         <label htmlFor="visibility" className="block text-sm font-medium mb-2">
-                            Sichtbarkeit *
+                            {t.templatemodal366}
                         </label>
                         <Controller
                             name="visibility"
@@ -359,7 +459,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {userType === 'system' && (
                         <div className="flex-1">
                             <label htmlFor="is_system_template" className="block text-sm font-medium mb-2">
-                                System Template
+                                {t.templatemodal399}
                             </label>
                             <Controller
                                 name="is_system_template"
@@ -375,7 +475,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             }}
                                         />
                                         <label htmlFor="is_system_template" className="cursor-pointer text-gray-200">
-                                            System Template
+                                            {t.templatemodal399}
                                         </label>
                                     </div>
                                 )}
@@ -387,7 +487,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Template Files Section */}
                 <div className="border-t pt-4 mt-4">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-300">Template Dateien</h3>
+                        <h3 className="text-lg font-semibold text-gray-300">{t.templatemodal362}</h3>
                         <Button
                             size="small"
                             icon="pi pi-plus"
@@ -399,19 +499,19 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             }}
                             className="p-button-primary"
                         >
-                            Datei hinzufügen
+                            {t.templatemodal438}
                         </Button>
                     </div>
 
                    {!isSaved && !editingTemplate && (
                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
-                           Bitte speichern Sie das Template, erst dann können Sie Dateien zum Template hinzufügen
+                           {t.templatemodal444}
                        </div>
                    )}
 
                    {editingTemplate && (
                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
-                           Hinweis: Dateien werden sofort dem Template zugewiesen. Änderungen an Template-Details (Name, Beschreibung, etc.) müssen separat gespeichert werden.
+                           {t.templatemodal450}
                        </div>
                    )}
                     
@@ -441,7 +541,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2 text-gray-100">
-                                                {file.file_content?.length || 0} Zeichen
+                                                {file.file_content?.length || 0} {t.templatemodal480}
                                             </td>
                                             <td className="px-3 py-2">
                                                 <div className="flex gap-1">
@@ -474,7 +574,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     ) : (
                         <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
-                            Keine Dateien hinzugefügt. Klicken Sie auf t.templatemodal449 um zu beginnen.
+                            {t.templatemodal513}
                         </div>
                     )}
                 </div>
@@ -482,7 +582,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Custom Variables Section */}
                 <div className="border-t pt-4 mt-4">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-300">Custom Variables</h3>
+                        <h3 className="text-lg font-semibold text-gray-300">{t.templatemodal521}</h3>
                         <Button
                             size="small"
                             icon="pi pi-plus"
@@ -496,19 +596,19 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             }}
                             className="p-button-primary"
                         >
-                            Variable hinzufügen
+                            {t.templatemodal535}
                         </Button>
                     </div>
 
                     {!isSaved && !editingTemplate && (
                         <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
-                            Bitte speichern Sie das Template, erst dann können Sie Custom Variables zum Template hinzufügen
+                            {t.templatemodal541}
                         </div>
                     )}
 
                     {editingTemplate && (
                         <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
-                            Hinweis: Custom Variables erlauben Ihnen, Platzhalter wie {'{copyright}'} oder {'{company_name}'} zu definieren, die nicht in der Datenbank existieren. Diese können dann pro Projekt und Sprache vom Benutzer ausgefüllt werden.
+                            {t.templatemodal547}
                         </div>
                     )}
 
@@ -541,11 +641,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             <td className="px-3 py-2">
                                                 {variable.is_required ? (
                                                     <span className="px-2 py-1 bg-red-500 text-white rounded text-xs">
-                                                        Erforderlich
+                                                        {t.templatemodal580}
                                                     </span>
                                                 ) : (
                                                     <span className="px-2 py-1 bg-gray-500 text-white rounded text-xs">
-                                                        Optional
+                                                        {t.templatemodal584}
                                                     </span>
                                                 )}
                                             </td>
@@ -586,7 +686,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     ) : (
                         <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
-                            Keine Custom Variables definiert. Klicken Sie auf "Variable hinzufügen" um zu beginnen.
+                            {t.templatemodal625}
                         </div>
                     )}
                 </div>
@@ -607,16 +707,36 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                     }}
                                 />
                                 <label htmlFor="is_active" className="cursor-pointer text-gray-200">
-                                    Template ist aktiv
+                                    {t.templatemodal646}
                                 </label>
                             </div>
                         )}
                     />
                 </div>
 
+                {/* Protected Files Section */}
+                <div className="border-t pt-4 mt-4">
+                    <h3 className="text-lg font-semibold text-gray-300 mb-4">Protected Files</h3>
+                    <ProtectedFilesEditor
+                        files={protectedFiles}
+                        onChange={setProtectedFiles}
+                    />
+                </div>
+
+                {/* Deployment Scripts Section */}
+                <div className="border-t pt-4 mt-4">
+                    <h3 className="text-lg font-semibold text-gray-300 mb-4">Deployment Scripts</h3>
+                    <DeploymentScriptsEditor
+                        installScript={installScript}
+                        updateScript={updateScript}
+                        onInstallScriptChange={setInstallScript}
+                        onUpdateScriptChange={setUpdateScript}
+                    />
+                </div>
+
                 <div className="flex gap-2 justify-end">
                     <Button type="button" onClick={onCancel}>
-                        Abbrechen
+                        {t.templatemodal655}
                     </Button>
 
                     {/* Save button - only for new templates */}
@@ -628,7 +748,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             disabled={isSaved}
                             className={isSaved ? 'opacity-50' : ''}
                         >
-                            {isSaved ? 'Gespeichert ✓' : t.cmsadminpanel279}
+                            {isSaved ? t.templatemodal667 : t.cmsadminpanel279}
                         </Button>
                     )}
 

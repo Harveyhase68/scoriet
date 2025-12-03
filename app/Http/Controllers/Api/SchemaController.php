@@ -47,20 +47,33 @@ class SchemaController extends Controller
 
         $schemas = $query->latest()->get()
             ->map(function ($schema) use ($user) {
-                // Get project associations with pivot data
-                $projects = $schema->projects->map(function ($project) {
-                    return [
-                        'id' => $project->id,
-                        'name' => $project->name,
-                        'association_type' => $project->pivot->association_type,
-                        'alias' => $project->pivot->alias,
-                    ];
-                });
+                // Get user's accessible projects (own projects + team projects)
+                $userAccessibleProjectIds = Project::where(function($query) use ($user) {
+                    $query->where('owner_id', $user->id)
+                        ->orWhereHas('teams.members', function($teamQuery) use ($user) {
+                            $teamQuery->where('user_id', $user->id);
+                        });
+                })->pluck('id')->toArray();
+
+                // Filter projects to only show those the user has access to
+                $projects = $schema->projects
+                    ->filter(function($project) use ($userAccessibleProjectIds) {
+                        return in_array($project->id, $userAccessibleProjectIds);
+                    })
+                    ->map(function ($project) {
+                        return [
+                            'id' => $project->id,
+                            'name' => $project->name,
+                            'association_type' => $project->pivot->association_type,
+                            'alias' => $project->pivot->alias,
+                        ];
+                    })
+                    ->values(); // Reset array keys
 
                 return array_merge($schema->toArray(), [
                     'is_owner' => $schema->owner_id === (string)$user->id,
                     'tables_count' => 0, // TODO: Implement proper tables count
-                    'projects_count' => $schema->projects()->count(),
+                    'projects_count' => $projects->count(), // Count only accessible projects
                     'projects' => $projects,
                 ]);
             });
@@ -89,10 +102,20 @@ class SchemaController extends Controller
             ],
             'description' => 'nullable|string|max:1000',
             'visibility' => 'required|in:public,private',
+            'is_system_schema' => 'sometimes|boolean',
         ]);
 
         // Add owner_id to the validated data
         $validated['owner_id'] = $user->id;
+
+        // Only system/admin users can create system schemas
+        if (isset($validated['is_system_schema']) && $validated['is_system_schema']) {
+            if ($user->user_type !== 'system' && $user->user_type !== 'admin') {
+                $validated['is_system_schema'] = false;
+            }
+        } else {
+            $validated['is_system_schema'] = false;
+        }
 
         $schema = FloatingSchema::create($validated);
 
@@ -150,7 +173,15 @@ class SchemaController extends Controller
             ],
             'description' => 'nullable|string|max:1000',
             'visibility' => 'required|in:public,private',
+            'is_system_schema' => 'sometimes|boolean',
         ]);
+
+        // Only system/admin users can change system schema status
+        if (isset($validated['is_system_schema'])) {
+            if ($user->user_type !== 'system' && $user->user_type !== 'admin') {
+                $validated['is_system_schema'] = $schema->is_system_schema; // Keep original value
+            }
+        }
 
         $schema->update($validated);
         $schema->load('owner');
@@ -1257,6 +1288,46 @@ class SchemaController extends Controller
     }
 
     /**
+     * Delete a schema version (HARD delete - permanent!)
+     */
+    public function deleteVersion(FloatingSchema $schema, SchemaVersion $version): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user can edit this schema
+        if (!$schema->canBeEditedBy($user)) {
+            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+        }
+
+        // Check if version belongs to this schema
+        if ($version->schema_id !== $schema->id) {
+            return response()->json(['message' => 'Version does not belong to this schema'], 400);
+        }
+
+        // Check if this is the last version
+        $versionCount = $schema->versions()->count();
+        if ($versionCount <= 1) {
+            return response()->json(['message' => 'Cannot delete the only version. Delete the schema instead.'], 422);
+        }
+
+        try {
+            // Hard delete
+            $version->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Schema version deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete version',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Create a new version and add a table to it
      */
     public function createVersionAndTable(Request $request, FloatingSchema $schema): JsonResponse
@@ -1814,6 +1885,136 @@ class SchemaController extends Controller
         \App\Models\SchemaForeignKeyReferenceColumn::create([
             'reference_id' => $fkReference->id,
             'referenced_field_id' => $targetField->id,
+        ]);
+    }
+
+    /**
+     * Get linked projects for a schema
+     */
+    public function getLinkedProjects($id)
+    {
+        $user = Auth::user();
+        $schema = FloatingSchema::findOrFail($id);
+
+        // Check if user owns this schema or can access it
+        if ($schema->owner_id != $user->id && !$schema->canBeAccessedBy($user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
+        // Get linked project IDs from project_schemas table
+        $projectIds = \DB::table('project_schemas')
+            ->where('schema_id', $schema->id)
+            ->pluck('project_id')
+            ->toArray();
+
+        return response()->json([
+            'success' => true,
+            'project_ids' => $projectIds
+        ]);
+    }
+
+    /**
+     * Update linked projects for a schema
+     */
+    public function updateLinkedProjects(Request $request, $id)
+    {
+        $user = Auth::user();
+        $schema = FloatingSchema::findOrFail($id);
+
+        \Log::info('updateLinkedProjects START', [
+            'schema_id' => $id,
+            'user_id' => $user->id,
+            'request_project_ids' => $request->input('project_ids')
+        ]);
+
+        // Check if user can link this schema
+        // System schemas and public schemas can be linked by anyone
+        // Private schemas can only be linked by their owner
+        $canLink = $schema->is_system_schema
+                || $schema->visibility === 'public'
+                || $schema->owner_id == $user->id;
+
+        if (!$canLink) {
+            \Log::warning('updateLinkedProjects UNAUTHORIZED', [
+                'schema_id' => $id,
+                'user_id' => $user->id,
+                'is_system' => $schema->is_system_schema,
+                'visibility' => $schema->visibility,
+                'owner' => $schema->owner_id
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Sie haben keine Berechtigung, dieses Schema zu verknüpfen'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'project_ids' => 'array', // Allow empty array to remove all links
+            'project_ids.*' => 'integer|exists:projects,id'
+        ]);
+
+        $newProjectIds = $validated['project_ids'] ?? [];
+        \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
+
+        // Get current user's accessible projects
+        $userAccessibleProjectIds = Project::where(function($query) use ($user) {
+            $query->where('owner_id', $user->id)
+                ->orWhereHas('teams.members', function($teamQuery) use ($user) {
+                    $teamQuery->where('user_id', $user->id);
+                });
+        })->pluck('id')->toArray();
+
+        // Filter to only user's projects
+        $newProjectIds = array_intersect($newProjectIds, $userAccessibleProjectIds);
+
+        // Get current linked projects (only user's projects)
+        $currentProjectIds = \DB::table('project_schemas')
+            ->where('schema_id', $schema->id)
+            ->whereIn('project_id', $userAccessibleProjectIds)
+            ->pluck('project_id')
+            ->toArray();
+
+        // Determine which to add and which to remove
+        $toAdd = array_diff($newProjectIds, $currentProjectIds);
+        $toRemove = array_diff($currentProjectIds, $newProjectIds);
+
+        // Remove unlinked projects (only user's projects)
+        if (!empty($toRemove)) {
+            \DB::table('project_schemas')
+                ->where('schema_id', $schema->id)
+                ->whereIn('project_id', $toRemove)
+                ->whereIn('project_id', $userAccessibleProjectIds) // Only remove user's projects
+                ->delete();
+        }
+
+        // Add new linked projects
+        foreach ($toAdd as $projectId) {
+            $project = Project::find($projectId);
+
+            // Check if user has access to this project
+            if (!$project || !$project->userCanAccess($user)) {
+                continue;
+            }
+
+            \DB::table('project_schemas')->updateOrInsert(
+                [
+                    'project_id' => $projectId,
+                    'schema_id' => $schema->id
+                ],
+                [
+                    'association_type' => 'linked',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schema-Verknüpfungen erfolgreich aktualisiert'
         ]);
     }
 }

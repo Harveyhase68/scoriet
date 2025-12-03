@@ -9,6 +9,7 @@ import { InputText } from 'primereact/inputtext';
 import { Badge } from 'primereact/badge';
 import { Toolbar } from 'primereact/toolbar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import TeamModal from '@/Components/Modals/TeamModal';
 import MemberModal from '@/Components/Modals/MemberModal';
@@ -97,6 +98,13 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [selectedTeamForMembers, setSelectedTeamForMembers] = useState<Team | null>(null);
+
+  // Project link modal states
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [teamToLink, setTeamToLink] = useState<Team | null>(null);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   
   const toast = useRef<Toast>(null);
 
@@ -274,6 +282,77 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     loadTeams();
   };
 
+  // Handle opening link modal
+  const handleOpenLinkModal = async (team: Team) => {
+    setTeamToLink(team);
+    setLoadingProjects(true);
+    setLinkModalVisible(true);
+
+    try {
+      // Load all user's projects
+      const projects = await fetch('/api/user/projects', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Accept': 'application/json'
+        }
+      }).then(res => res.json()).then(data => data.projects || []);
+
+      setAllProjects(projects);
+
+      // Load linked projects for this team
+      const linkedProjects = team.projects?.map(p => p.id) || [];
+      setLinkedProjectIds(linkedProjects);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      toast.current?.show({ severity: 'error', summary: 'Fehler', detail: 'Fehler beim Laden der Projekte' });
+      setAllProjects([]);
+      setLinkedProjectIds([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const handleToggleProjectLink = (projectId: number) => {
+    if (linkedProjectIds.includes(projectId)) {
+      setLinkedProjectIds(linkedProjectIds.filter(id => id !== projectId));
+    } else {
+      setLinkedProjectIds([...linkedProjectIds, projectId]);
+    }
+  };
+
+  const handleApplyProjectLinks = async () => {
+    if (!teamToLink) return;
+
+    try {
+      console.log('Updating team links:', teamToLink.id, 'with projects:', linkedProjectIds);
+      const response = await fetch(`/api/teams/${teamToLink.id}/projects`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ project_ids: linkedProjectIds })
+      });
+
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.error || responseData.message || 'Failed to update team links');
+      }
+
+      toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Team-Verknüpfungen erfolgreich aktualisiert' });
+      setLinkModalVisible(false);
+      loadTeams();
+    } catch (error: any) {
+      console.error('Error updating team links:', error);
+      const errorMsg = error.message || 'Fehler beim Aktualisieren der Verknüpfungen';
+      toast.current?.show({ severity: 'error', summary: 'Fehler', detail: errorMsg });
+    }
+  };
+
   // Toolbar content
   const leftToolbarTemplate = () => {
     return (
@@ -385,6 +464,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     
     return (
       <div className="flex gap-1">
+        <Button
+          icon="pi pi-link"
+          className="p-button-rounded p-button-text p-button-success p-button-sm"
+          tooltip="Mit Projekten verknüpfen"
+          onClick={() => handleOpenLinkModal(team)}
+        />
         <Button
           icon="pi pi-users"
           className="p-button-rounded p-button-text p-button-sm"
@@ -520,6 +605,71 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         team={selectedTeamForMembers}
         onSave={onMembersSaved}
       />
+
+      {/* Link Team to Projects Modal */}
+      <Dialog
+        header={`Team verknüpfen: ${teamToLink?.name}`}
+        visible={linkModalVisible}
+        onHide={() => setLinkModalVisible(false)}
+        footer={
+          <>
+            <Button
+              label="Abbrechen"
+              onClick={() => setLinkModalVisible(false)}
+              className="p-button-secondary"
+            />
+            <Button
+              label="Anwenden"
+              onClick={handleApplyProjectLinks}
+              className="p-button-primary"
+              disabled={loadingProjects}
+            />
+          </>
+        }
+        style={{ width: '600px' }}
+        modal
+        closable
+        draggable={true}
+        resizable={true}
+      >
+        {loadingProjects ? (
+          <div className="flex justify-center items-center py-8">
+            <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {allProjects.length === 0 ? (
+              <div className="text-center text-gray-500 py-4">
+                Keine Projekte gefunden
+              </div>
+            ) : (
+              allProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                  onClick={() => handleToggleProjectLink(project.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={linkedProjectIds.includes(project.id)}
+                      onChange={() => handleToggleProjectLink(project.id)}
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div>
+                      <div className="font-semibold text-white">{project.name}</div>
+                      {project.description && (
+                        <div className="text-sm text-gray-400">{project.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </Dialog>
     </TabContent>
   );
 }

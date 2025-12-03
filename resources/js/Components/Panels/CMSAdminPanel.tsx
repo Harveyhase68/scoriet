@@ -394,7 +394,7 @@ export default function CMSAdminPanel() {
                       }}
                       padding={10}
                       style={{
-                        fontFamily: 't.debugmanualgeneratorpanel51, "Consolas", "Monaco", t.debugmanualgeneratorpanel1739, monospace',
+                        fontFamily: 't.debugmanualgeneratorpanel51, "Consolas", "Monaco", "Courier New", monospace',
                         fontSize: 14,
                         backgroundColor: '#1a1a1a',
                         color: '#d4d4d4',

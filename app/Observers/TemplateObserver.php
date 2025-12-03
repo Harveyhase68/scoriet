@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Template;
 use App\Jobs\RegenerateProjectGenerationTree;
+use App\Services\TemplateCacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,6 +16,10 @@ class TemplateObserver
     public function created(Template $template): void
     {
         Log::info("🧪 [TEMPLATE-OBSERVER] created event triggered for template {$template->id} ({$template->name})");
+
+        // Invalidate cache for this template
+        app(TemplateCacheService::class)->invalidateTemplate($template->id);
+
         // Note: Jobs are also dispatched directly in TemplateController::store()
         // But we'll also dispatch here for consistency
         $this->regenerateAffectedProjects($template, 'created');
@@ -25,6 +30,9 @@ class TemplateObserver
      */
     public function updated(Template $template): void
     {
+        // Invalidate cache when template is updated
+        app(TemplateCacheService::class)->invalidateTemplate($template->id);
+
         $this->regenerateAffectedProjects($template, 'updated');
     }
 
@@ -33,6 +41,9 @@ class TemplateObserver
      */
     public function deleted(Template $template): void
     {
+        // Invalidate cache when template is deleted
+        app(TemplateCacheService::class)->invalidateTemplate($template->id);
+
         $this->regenerateAffectedProjects($template, 'deleted');
     }
 

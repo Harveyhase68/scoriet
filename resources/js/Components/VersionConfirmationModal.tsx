@@ -34,7 +34,7 @@ export default function VersionConfirmationModal({
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-600">
           <h3 className="text-lg font-semibold text-white">
-            💡 Neue Version erstellen?
+            {t.versionconfirmationmodal29}
           </h3>
           <button
             onClick={onClose}
@@ -48,17 +48,17 @@ export default function VersionConfirmationModal({
         <div className="p-6">
           <div className="mb-6">
             <p className="text-gray-300 mb-2">
-              Du bist dabei <span className="font-semibold text-blue-400">{actionDescription}</span>.
+              {t.versionconfirmationmodal51}<span className="font-semibold text-blue-400">{actionDescription}</span>.
             </p>
             {tableName && (
               <div className="mt-4 p-3 bg-red-900 border border-red-500 rounded">
                 <p className="text-red-200 font-bold text-center">
-                  ⚠️ WARNUNG: Tabelle "{tableName}" wird gelöscht!
+                  {t.versionconfirmationmodal56} "{tableName}" {t.versionconfirmationmodal56a}
                 </p>
               </div>
             )}
             <p className="text-gray-400 text-sm">
-              Möchtest du dafür eine neue Version erstellen?
+              {t.versionconfirmationmodal53}
             </p>
           </div>
 
@@ -71,7 +71,7 @@ export default function VersionConfirmationModal({
               <div className="flex items-center">
                 <span className="text-xl mr-3 group-hover:scale-110 transition-transform">🔄</span>
                 <div className="text-left">
-                  <div className="font-medium text-green-400 text-base">Ja, neue Version erstellen</div>
+                  <div className="font-medium text-green-400 text-base">{t.versionconfirmationmodal67}</div>
                   <div className="text-sm text-green-300/80">
                     {displayVersion} → {displayVersion.replace(/\d+$/, (match) => String(parseInt(match) + 1))}
                   </div>
@@ -87,9 +87,9 @@ export default function VersionConfirmationModal({
               <div className="flex items-center">
                 <span className="text-xl mr-3 group-hover:scale-110 transition-transform">✏️</span>
                 <div className="text-left">
-                  <div className="font-medium text-blue-400 text-base">Nein, an {displayVersion} weiterarbeiten</div>
+                  <div className="font-medium text-blue-400 text-base">{t.versionconfirmationmodal90}{displayVersion}{t.versionconfirmationmodal90a}</div>
                   <div className="text-sm text-blue-300/80">
-                    Direkt ändern ohne neue Version
+                    {t.versionconfirmationmodal84}
                   </div>
                 </div>
               </div>
@@ -97,7 +97,7 @@ export default function VersionConfirmationModal({
           </div>
 
           <div className="mt-4 p-3 bg-gray-700/50 rounded text-xs text-gray-400">
-            ℹ️ Du kannst später jederzeit mit t.versionconfirmationmodal93 eine neue Version erstellen.
+            {t.versionconfirmationmodal92}
           </div>
         </div>
 
@@ -107,7 +107,7 @@ export default function VersionConfirmationModal({
             onClick={onClose}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
           >
-            Abbrechen
+            {t.versionconfirmationmodal102}
           </button>
         </div>
       </div>

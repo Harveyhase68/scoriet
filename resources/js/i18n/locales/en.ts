@@ -1258,7 +1258,7 @@ export const en: Translations = {
 
   // resources/js\Components\AuthModals\ProfileModal.tsx
   profilemodal498: 'Select Language',
-  profilemodal510: 'Select Language',
+  profilemodal510: 'The username cannot be changed after registration.',
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   updating: 'Updating...',
@@ -1310,6 +1310,13 @@ export const en: Translations = {
   profilemodal676: '• Custom amount (€5-50+)',
   profilemodal680: 'Become Patron',
   profilemodal683: 'Become Patron - Coming Soon!',
+  profilemodal739: 'Warning: Delete account',
+  profilemodal684: '• All premium features',
+  profilemodal685: '• Tools for team collaboration',
+  profilemodal686: '• Google Translate API-Integration',
+  profilemodal687: '• Advanced Analyses',
+  profilemodal688: '• Priority support with SLA',
+  profilemodal689: '• Custom branding options',
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleteTab: 'Delete Account',
@@ -1642,7 +1649,8 @@ export const en: Translations = {
   // resources/js/Components/Modals/EditProjectModal.tsx
   editprojectmodal230: 'Project Name *',
   editprojectmodal240: 'my_project_name',
-  editprojectmodal252: 'Description',
+  editprojectmodal252: '✓ Allowed: Lowercase letters, numbers, underscores (e.g. my_project_123)',
+  editprojectmodal258: 'Description',
   editprojectmodal569: 'Project names are later used for URLs (username/project_name)',
 
   // resources/js\Components\Modals\EditProjectModal.tsx
@@ -2388,13 +2396,13 @@ export const en: Translations = {
   databasemanagementpanel1123: 'Custom name for this schema in the project',
   databasemanagementpanel1131: 'Cancel',
   databasemanagementpanel1138: 'Link Schema',
-  databasemanagementpanel1163: '⚠️ Permanent Deletion Warning',
+  databasemanagementpanel1163: 'Permanent Deletion Warning',
   databasemanagementpanel1166: 'ALL',
   databasemanagementpanel1174: '🎨 All schema designer layouts',
   databasemanagementpanel1175: '⚙️ All constraints and relationships',
   databasemanagementpanel1180: 'cannot be undone',
   databasemanagementpanel1210: 'Cancel',
-  databasemanagementpanel1217: '🗑️ Delete Forever',
+  databasemanagementpanel1217: 'Delete Forever',
   databasemanagementpanel1229: 'Export Translations to Excel',
 
   // resources/js/Components/Panels/DatabaseManagementPanel.tsx
@@ -2431,6 +2439,50 @@ export const en: Translations = {
   debugmanualgeneratorpanel136: 'The generated JavaScript code appears here...',
   debugmanualgeneratorpanel162: 'Clipboard API not available. Please copy manually:',
   debugmanualgeneratorpanel165: 'Clipboard access not possible. Please check your browser settings.',
+
+  debugmanualgeneratorpanel214:   ' Clipboard API not available. Please copy manually:',
+  debugmanualgeneratorpanel217:   ' errors copying to the clipboard',
+  debugmanualgeneratorpanel486:   ' No valid template files for template',
+  debugmanualgeneratorpanel486a:  ' found',
+  debugmanualgeneratorpanel490:   ' errors loading template files:',
+  debugmanualgeneratorpanel990:   ' Backend template too extensive',
+  debugmanualgeneratorpanel990a:  ' of max.',
+  debugmanualgeneratorpanel990b:  ' Template contains too many tables or complex structures.',
+  debugmanualgeneratorpanel1035:  ' ❌ File not found for selected configuration',
+  debugmanualgeneratorpanel1036:  ' 🔍 Desired configuration:',
+  debugmanualgeneratorpanel1037:  ' Template:',
+  debugmanualgeneratorpanel1038:  ' File:',
+  debugmanualgeneratorpanel1039:  ' Type:',
+  debugmanualgeneratorpanel1047:  ' Language:',
+  debugmanualgeneratorpanel1050:  '📋 Available files',
+  debugmanualgeneratorpanel1056:  ' more',
+  debugmanualgeneratorpanel1060:  '💡 Solution: Check template configuration and backend response.',
+  debugmanualgeneratorpanel1092:  '⚠️ Memory warning:',
+  debugmanualgeneratorpanel1092a: '% of memory is used. The template might be too complex for safe operation.',
+  debugmanualgeneratorpanel1129:  'Function ',
+  debugmanualgeneratorpanel1129a: ' not found in global scope',
+  debugmanualgeneratorpanel1144:  '⚠️ WARNING: Template execution took',
+  debugmanualgeneratorpanel1144a: ' ms (>5s). Consider template simplification.',
+  debugmanualgeneratorpanel1148:  '📊 Performance: ',
+  debugmanualgeneratorpanel1148a:  ' ms, memory:',
+  debugmanualgeneratorpanel1155:  '❌ Execution failed!\n\nPlease check the',
+  debugmanualgeneratorpanel1155a: 'Tab for details.\n\nError:',
+  debugmanualgeneratorpanel1201:  '❌ JavaScript syntax error in the template',
+  debugmanualgeneratorpanel1201a: '🔍 Problem: ',
+  debugmanualgeneratorpanel1201b: '💡 Common causes:\n\n• Missing or extra quotation marks\n• Incomplete variables such as {item.\n• Incorrect parentheses in loops\n• Special characters that need to be escaped\n\n🛠️ Solution: Check template syntax and {variablename} placeholders.',
+  debugmanualgeneratorpanel1208:  '❌ Template variable not found',
+  debugmanualgeneratorpanel1208a: '🔍 Problem: Variable ',
+  debugmanualgeneratorpanel1208b: 'is undefined\n\n📄 Details:',
+  debugmanualgeneratorpanel1208c: '💡 Possible causes:\n• gtree was not loaded\n• Table/project not selected\n• Variable does not exist in the data structure\n• Typo in variable name\n\n🛠️ Solution: Check the',
+  debugmanualgeneratorpanel1208d: ' Variable or select table/project.',
+  debugmanualgeneratorpanel1211:  '❌ Template type error',
+  debugmanualgeneratorpanel1211a: '🔍 Problem: ',
+  debugmanualgeneratorpanel1211b: '💡 Common Causes:\n\n• Accessing undefined/null values\n• Incorrect array accesses such as tables[]\n• Missing lang arrays in gtree\n• Incorrect selectedlanguageindex\n\n🛠️ Solution: Check data structures and array accesses.',
+  debugmanualgeneratorpanel1214:  '❌ Template execution error',
+  debugmanualgeneratorpanel1214a: '🔍 Problem: ',
+  debugmanualgeneratorpanel1214b: '📝 Type:',
+  debugmanualgeneratorpanel1214c: '💡 Debug Tips:\n\n• Open the browser console (F12) for details\n• Check the generated JavaScript\n• Simplify the template for testing\n\n🛠️ If problems persist: Simplify the template syntax.',
+
   debugmanualgeneratorpanel352: 'No templates found. Please create templates first in Template Management.',
   debugmanualgeneratorpanel358: 'Error loading templates',
   debugmanualgeneratorpanel420: 'Error loading template files',
@@ -2471,26 +2523,26 @@ export const en: Translations = {
   debugmanualgeneratorpanel1277: 'Choose template',
 
   // resources/js/Components/Panels/DebugManualGeneratorPanel.tsx
-  debugmanualgeneratorpanel1284: '📝 Template Datei',
+  debugmanualgeneratorpanel1284: '📝 Template File',
 
   // resources/js\Components\Panels\DebugManualGeneratorPanel.tsx
   debugmanualgeneratorpanel1293: 'Select file',
   debugmanualgeneratorpanel1302: '(not required)',
   debugmanualgeneratorpanel1310: 'Not required for this file type',
-  debugmanualgeneratorpanel1319: '(not required)',
-  debugmanualgeneratorpanel1325: 'Not required for this file type',
+  debugmanualgeneratorpanel1319: '(required)',
+  debugmanualgeneratorpanel1325: '❌ Template Syntax Errors',
   debugmanualgeneratorpanel1334: '(not required)',
-  debugmanualgeneratorpanel1342: 'Choose language',
-  debugmanualgeneratorpanel1355: 'includeTemplateSource',
+  debugmanualgeneratorpanel1342: '🌐 Choose language',
+  debugmanualgeneratorpanel1355: '🏗️ Project:',
   debugmanualgeneratorpanel1360: 'Include template source in code',
   debugmanualgeneratorpanel1369: 'Get code',
   debugmanualgeneratorpanel1377: 'Execute code',
   debugmanualgeneratorpanel1385: '🔍 Debug Helper',
   debugmanualgeneratorpanel1396: 'Not selected',
-  debugmanualgeneratorpanel1397: 'Not selected',
+  debugmanualgeneratorpanel1397: 'Fix these syntax errors before generating code. The template will not work correctly!',
   debugmanualgeneratorpanel1398: 'Unknown',
   debugmanualgeneratorpanel1399: 'Not selected',
-  debugmanualgeneratorpanel1400: 'Not selected',
+  debugmanualgeneratorpanel1400: '⚠️ Generated code may contain errors or invalid JavaScript!',
   debugmanualgeneratorpanel1473: '🔴 No project selected for project_file template',
   debugmanualgeneratorpanel1476: '🔴 No table selected for db_table_file template',
   debugmanualgeneratorpanel1479: '🟡 No language selected for language-enabled template',
@@ -2507,10 +2559,10 @@ export const en: Translations = {
   debugmanualgeneratorpanel1683: 'Generierter PHP-Code',
   debugmanualgeneratorpanel1686: 'Copy code',
   debugmanualgeneratorpanel1724: 'Download failed.',
-  debugmanualgeneratorpanel1739: 'Courier New',
+  debugmanualgeneratorpanel1739: '⚠️ Template Syntax Warnings',
   debugmanualgeneratorpanel1744: 'Click \'Run Code\' to see the result...',
   debugmanualgeneratorpanel1750: '3. 🔍 Debug Helper',
-  debugmanualgeneratorpanel1755: 'Courier New',
+  debugmanualgeneratorpanel1755: 'These warnings won\'t break your code, but consider fixing them for better template quality.',
   debugmanualgeneratorpanel1760: 'Click on \'🔍 Debug Helper\' to see the debug information...',
 
   // resources/js\Components\PanelsegisterPanel.tsx
@@ -2549,7 +2601,7 @@ export const en: Translations = {
   panelsewnavigationpanel228: 'Manage Databases',
   panelsewnavigationpanel233: 'Designer',
   panelsewnavigationpanel238: 'Schema Translation',
-  panelsewnavigationpanel246: 'Import SQL',
+  panelsewnavigationpanel246: 'Import Schema',
   panelsewnavigationpanel251: 'Export SQL',
   panelsewnavigationpanel258: 'Generator',
   panelsewnavigationpanel263: 'Debug Manual Generator',
@@ -2577,7 +2629,7 @@ export const en: Translations = {
   panelsewnavigationpanel469: 'Teams',
   panelsewnavigationpanel477: 'Team Management',
   panelsewnavigationpanel488: 'Teams Assignment',
-  panelsewnavigationpanel496: 'Templates',
+  panelsewnavigationpanel496: 'Template Review',
   panelsewnavigationpanel504: 'Template management',
   panelsewnavigationpanel508: 'Template Assignment',
   panelsewnavigationpanel513: 'DB Schema Dependencies',
@@ -2587,7 +2639,7 @@ export const en: Translations = {
   panelsewnavigationpanel540: 'Manage Databases',
   panelsewnavigationpanel544: 'Designer',
   panelsewnavigationpanel548: 'Schema Translation',
-  panelsewnavigationpanel553: 'Import SQL',
+  panelsewnavigationpanel553: 'Import Schema',
   panelsewnavigationpanel557: 'Export SQL',
   panelsewnavigationpanel565: 'Generator',
   panelsewnavigationpanel572: 'Debug Manual Generator',
@@ -2880,7 +2932,7 @@ export const en: Translations = {
   newnavigationpanel228: 'Manage Databases',
   newnavigationpanel233: 'Designer',
   newnavigationpanel238: 'Schema Translation',
-  newnavigationpanel246: 'Import SQL',
+  newnavigationpanel246: 'Import Schema',
   newnavigationpanel251: 'Export SQL',
   newnavigationpanel258: 'Generator',
   newnavigationpanel263: 'Debug Manual Generator',
@@ -2918,7 +2970,7 @@ export const en: Translations = {
   newnavigationpanel540: 'Manage Databases',
   newnavigationpanel544: 'Designer',
   newnavigationpanel548: 'Schema Translation',
-  newnavigationpanel553: 'Import SQL',
+  newnavigationpanel553: 'Import Schema',
   newnavigationpanel557: 'Export SQL',
   newnavigationpanel565: 'Generator',
   newnavigationpanel572: 'Debug Manual Generator',
@@ -3114,7 +3166,7 @@ export const en: Translations = {
   panelt3323: 'by ',
 
   // resources/js/Components/Panels/PanelT3.tsx
-  templatesWorkingOn: 'by {selectedProject.owner.name}',
+  templatesWorkingOn: 'by ',
   templatesSelectProjectHint: 'Please select a project from the navigation to manage templates',
   templatesSearchPlaceholder: 'Search templates...',
   templatesFilterCategory: 'Filter by category',
@@ -3215,7 +3267,7 @@ export const en: Translations = {
 
   // resources/js\Components\Panels\ProjectPanel.tsx
   projectpanel118: 'd.m.Y',
-  projectpanel119: 'H:i:s',
+  projectpanel119: 'Current: ',
   projectpanel121: 'Europe/Vienna',
   projectpanel224: 'Project names may only contain lowercase letters (a-z)',
   projectpanel232: 'Not authenticated',
@@ -3461,7 +3513,7 @@ export const en: Translations = {
 
   // resources/js\Components\Panels\ProjectSettingsPanel.tsx
   projectsettingspanel304: 'Save all changes',
-  projectsettingspanel313: 'Generally',
+  projectsettingspanel313: 'Common',
 
   // resources/js/Components/Panels/ProjectSettingsPanel.tsx
   projectsettingspanel316: 'Project name *',
@@ -3482,13 +3534,13 @@ export const en: Translations = {
   projectsettingspanel382: 'Transfer ownership',
 
   // resources/js\Components\Panels\ProjectSettingsPanel.tsx
-  projectsettingspanel405: 'database',
+  projectsettingspanel405: 'Database',
 
   // resources/js/Components/Panels/ProjectSettingsPanel.tsx
   projectsettingspanel408: 'Database name',
   projectsettingspanel420: 'Database type',
-  projectsettingspanel463: 'user name',
-  projectsettingspanel475: 'password',
+  projectsettingspanel463: 'User name',
+  projectsettingspanel475: 'Password',
 
   // resources/js\Components\Panels\ProjectSettingsPanel.tsx
   projectsettingspanel489: 'Characteristics',
@@ -3545,7 +3597,9 @@ export const en: Translations = {
 
   // resources/js\Components\Panels\ProjectSettingsPanel.tsx
   projectsettingspanel637: 'H:i:s',
+  projectsettingspanel639: 'Current owner',
   projectsettingspanel641: 'H:i:s',
+  projectsettingspanel644: '⚠️ Warning: You will lose your ownership rights after the transfer!',
 
   // resources/js/Components/Panels/ProjectSettingsPanel.tsx
   projectsettingspanel658: 'z.B. \'€\', \'$\', \'£\', \'CHF\'',
@@ -3572,9 +3626,43 @@ export const en: Translations = {
   projectsettingspanel727: 'Available languages',
   projectsettingspanel728: 'Activated languages',
   projectsettingspanel733: 'Seek...',
-  projectsettingspanel734: 'Seek...',
+  projectsettingspanel734: 'Diagram Settings',
+  projectsettingspanel738: 'Configure the default settings for automatic diagram layout. These values ​​will be used for the "Sort the Diagram" button.',
   projectsettingspanel739: 'Selected languages:',
   projectsettingspanel742: 'No languages selected',
+  projectsettingspanel744: 'Max. tables per row',
+  projectsettingspanel753:  'Maximum number of tables in one row',
+  projectsettingspanel758:  'Table width (px)',
+  projectsettingspanel767:  'Width of the table boxes in the diagram',
+  projectsettingspanel772:  'Table height (px)',
+  projectsettingspanel781:  'Maximum height of table boxes',
+  projectsettingspanel786:  'Horizontal spacing (px)',
+  projectsettingspanel795:  'Horizontal spacing between tables',
+  projectsettingspanel800:  'Vertical spacing (px)',
+  projectsettingspanel809:  'Vertical spacing between lines',
+  projectsettingspanel814:  'Preview values:',
+  projectsettingspanel816:  'Preview values:',
+  projectsettingspanel817:  'Maximum tables per row:',
+  projectsettingspanel818:  'Table size:',
+  projectsettingspanel818a: 'horizontal',
+  projectsettingspanel818b: 'vertical',
+  projectsettingspanel866:  'Main entry file (e.g., index.php, main.py, app.js)',
+  projectsettingspanel872:  'Standard language',
+  projectsettingspanel893:  'Archive-Format',
+  projectsettingspanel906:  'Format for generated code archives (ZIP for Windows, TAR.GZ/XZ for Linux)',
+  projectsettingspanel926:  'Length of short filenames in the Database Designer (e.g., "us" for users)',
+  projectsettingspanel946:  'e.g. "," for 1.23 or "." for 1.23',
+  projectsettingspanel962:  'e.g. "." for 1.234 or "," for 1,234',
+  projectsettingspanel979:  'PHP format (e.g. "d.m.Y" for 31.12.2024)',
+  projectsettingspanel995:  'PHP format (e.g. "H:i:s" for 14:30:00)',
+  projectsettingspanel1012: 'e.g. "€", "$", "£", "CHF"',
+  projectsettingspanel1058: 'Google Cloud Console - Create API Key',
+  projectsettingspanel1068: 'Select the languages to use for code generation in this project. Move the desired languages to the right and use the arrow keys to change their order.',
+  projectsettingspanel1111: 'Here you can enter the values for custom template variables. These variables were defined by the template developer and can differ for each language.',
+  projectsettingspanel1122: 'No template variables were found. Template developers can define custom variables in their templates.',
+  projectsettingspanel1129: 'Language for variables',
+  projectsettingspanel932: 'Localization',
+  projectsettingspanel1108: 'Template variables',
 
   // resources/js\Components\Panels\PublicProjectsPanel.tsx
   publicprojectspanel85: 'Not authenticated',
@@ -3694,7 +3782,7 @@ export const en: Translations = {
   schematranslationpanel802: 'Expand All',
   schematranslationpanel812: 'Collapse All',
   schematranslationpanel818: 'Select tables and fields to translate',
-  schematranslationpanel820: 'Project: {selectedProject.name}',
+  schematranslationpanel820: 'Project: ',
   schematranslationpanel827: 'Please select a project first',
   schematranslationpanel830: 'Loading schema...',
   schematranslationpanel834: 'No schema tables found',
@@ -4116,6 +4204,33 @@ export const en: Translations = {
   // resources/js\Components\Panels\TemplateModal.tsx
   templatemodal206: 'Template description (optional)',
 
+  // resources/js\Components\Panels\TemplateModal.tsx
+  templatemodal186: 'Edit template',
+  templatemodal199: 'Name *',
+  templatemodal208: 'Template names are later used for URLs (username/template_name)',
+  templatemodal228: 'Template names may only contain lowercase letters, numbers, and underscores (e.g., my_template_123).',
+  templatemodal281: 'Select or enter a category (e.g., Backend, API, Web)',
+  templatemodal293: 'Any categories allowed - suggestions:',
+  templatemodal322: 'Select or enter a language (e.g., PHP, JavaScript, Python)',
+  templatemodal334: 'Any language allowed - suggestions:',
+  templatemodal366: 'Visibility *',
+  templatemodal399: 'System Template',
+  templatemodal438: 'Add file',
+  templatemodal444: 'Please save the template; only then can you add files to the template.',
+  templatemodal450: 'Note: Files are immediately assigned to the template. Changes to template details (name, description, etc.) must be saved separately.',
+  templatemodal513: 'No files added. Click on t.templatemodal449 to begin.',
+  templatemodal521: 'Custom Variables',
+  templatemodal535: 'Add variable',
+  templatemodal541: 'Please save the template; only then can you add custom variables to the template.',
+  templatemodal547: 'Note: Custom variables allow you to define placeholders such as {copyright} or {company_name} that do not exist in the database. These can then be filled in by the user for each project and language.',
+  templatemodal580: 'Necessary',
+  templatemodal584: 'Optional',
+  templatemodal625: 'No custom variables defined. Click "Add variable" to begin.',
+  templatemodal646: 'Template is active',
+  templatemodal655: 'Cancel',
+  templatemodal667: 'Saved ✓Category *',
+  templatemodal480: 'Characters',
+
   // resources/js/Components/Panels/TemplateModal.tsx
   templatemodal220: 'Category *',
 
@@ -4187,7 +4302,7 @@ export const en: Translations = {
   sqlimportmodal154: 'Authentication required',
   sqlimportmodal177: 'Failed to import SQL',
   sqlimportmodal203: 'Import failed',
-  sqlimportmodal211: '📥 Import SQL Schema',
+  sqlimportmodal211: '📥 Import Schema',
   sqlimportmodal234: 'Import database schema from SQL script',
 
   // resources/js/Components/SqlImportModal.tsx
@@ -4233,6 +4348,11 @@ export const en: Translations = {
 
   // resources/js/Components/VersionConfirmationModal.tsx
   versionconfirmationmodal29: '💡 Create a new version?',
+  versionconfirmationmodal51:  'You\'re about to ',
+  versionconfirmationmodal56:  '⚠️ WARNING: Table ',
+  versionconfirmationmodal56a: 'will be deleted!',
+  versionconfirmationmodal90:  'No, continue working on ',
+  versionconfirmationmodal90a: '!',
   versionconfirmationmodal53: 'Would you like to create a new version for this?',
 
   // resources/js\Components\VersionConfirmationModal.tsx
@@ -4281,7 +4401,7 @@ export const en: Translations = {
   apits553: 'EUR',
 
   // resources/js\pages\CMSPage.tsx
-  cmspage45: 'languageChanged',
+  cmspage45: 'Upgrade to unlock more features and support the project!',
   cmspage194: 'BETA',
   cmspage208: 'Home',
   cmspage352: 'Scoriet',
@@ -4290,7 +4410,7 @@ export const en: Translations = {
   cmspage353: 'The future of code generation. Built by developers, for developers.',
 
   // resources/js\pages\CMSPage.tsx
-  cmspage387: 'imprint',
+  cmspage387: 'You\'re currently on the ',
   cmspage412: 'Choose Your Plan',
   cmspage422: 'Current Plan',
   cmspage423: 'Free',
@@ -4540,6 +4660,15 @@ export const en: Translations = {
   landingpage769: 'Free',
   landingpage782: 'You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.',
   landingpage801: 'Registration Successful',
+  landingpage762:  'You\'re currently on the ',
+  landingpage762a: 'Upgrade to unlock more features and support the project!',
+  landingpage814:  'You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.',
+  landingpage796:  'Choose ',
+  landingpage802:  'Upgrading to ',
+  landingpage802a: ' - Payment integration coming soon!',
+  landingpage738:  'Your browser does not support the video element.',
+  landingpage647:  ' - Coming Soon!',
+  landingpage627:  '/month',
 
   // resources/js\pages\ProjectInvitationResponse.tsx
   projectinvitationresponse70: 'Invalid or expired invitation',

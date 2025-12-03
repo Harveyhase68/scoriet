@@ -1327,6 +1327,13 @@ export interface Translations {
   profilemodal676: string;
   profilemodal680: string;
   profilemodal683: string;
+  profilemodal739:string;
+  profilemodal684:string;
+  profilemodal685:string;
+  profilemodal686:string;
+  profilemodal687:string;
+  profilemodal688:string;
+  profilemodal689:string;
 
   // resources/js/Components/AuthModals/ProfileModal.tsx
   deleteTab: string;
@@ -1660,9 +1667,9 @@ export interface Translations {
   editprojectmodal230: string;
   editprojectmodal240: string;
   editprojectmodal252: string;
+  editprojectmodal258: string;
   editprojectmodal569: string;
-  editprojectmodal569: string;
-
+  
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal260: string;
 
@@ -2449,6 +2456,48 @@ export interface Translations {
   debugmanualgeneratorpanel136: string;
   debugmanualgeneratorpanel162: string;
   debugmanualgeneratorpanel165: string;
+  debugmanualgeneratorpanel214: string;
+  debugmanualgeneratorpanel217: string;
+  debugmanualgeneratorpanel486: string;
+  debugmanualgeneratorpanel486a: string;
+  debugmanualgeneratorpanel490: string;
+  debugmanualgeneratorpanel990: string;
+  debugmanualgeneratorpanel990a: string;
+  debugmanualgeneratorpanel990b: string;
+  debugmanualgeneratorpanel1035: string;
+  debugmanualgeneratorpanel1036: string;
+  debugmanualgeneratorpanel1037: string;
+  debugmanualgeneratorpanel1038: string;
+  debugmanualgeneratorpanel1039: string;
+  debugmanualgeneratorpanel1047: string;
+  debugmanualgeneratorpanel1050: string;
+  debugmanualgeneratorpanel1056: string;
+  debugmanualgeneratorpanel1060: string;
+  debugmanualgeneratorpanel1092: string;
+  debugmanualgeneratorpanel1092a: string;
+  debugmanualgeneratorpanel1129: string;
+  debugmanualgeneratorpanel1129a: string;
+  debugmanualgeneratorpanel1144: string;
+  debugmanualgeneratorpanel1144a: string;
+  debugmanualgeneratorpanel1148: string;
+  debugmanualgeneratorpanel1148a: string;
+  debugmanualgeneratorpanel1155: string;
+  debugmanualgeneratorpanel1155a: string;
+  debugmanualgeneratorpanel1201: string;
+  debugmanualgeneratorpanel1201a: string;
+  debugmanualgeneratorpanel1201b: string;
+  debugmanualgeneratorpanel1208: string;
+  debugmanualgeneratorpanel1208a: string;
+  debugmanualgeneratorpanel1208b: string;
+  debugmanualgeneratorpanel1208c: string;
+  debugmanualgeneratorpanel1208d: string;
+  debugmanualgeneratorpanel1211: string;
+  debugmanualgeneratorpanel1211a: string;
+  debugmanualgeneratorpanel1211b: string;
+  debugmanualgeneratorpanel1214: string;
+  debugmanualgeneratorpanel1214a: string;
+  debugmanualgeneratorpanel1214b: string;
+  debugmanualgeneratorpanel1214c: string;
   debugmanualgeneratorpanel352: string;
   debugmanualgeneratorpanel358: string;
   debugmanualgeneratorpanel420: string;
@@ -3563,7 +3612,9 @@ export interface Translations {
 
   // resources/js\Components\Panels\ProjectSettingsPanel.tsx
   projectsettingspanel637: string;
+  projectsettingspanel639: string;
   projectsettingspanel641: string;
+  projectsettingspanel644: string;
 
   // resources/js/Components/Panels/ProjectSettingsPanel.tsx
   projectsettingspanel658: string;
@@ -3591,8 +3642,42 @@ export interface Translations {
   projectsettingspanel728: string;
   projectsettingspanel733: string;
   projectsettingspanel734: string;
+  projectsettingspanel738: string;
   projectsettingspanel739: string;
   projectsettingspanel742: string;
+  projectsettingspanel744: string;
+  projectsettingspanel753:  string;
+  projectsettingspanel758:  string;
+  projectsettingspanel767:  string;
+  projectsettingspanel772:  string;
+  projectsettingspanel781:  string;
+  projectsettingspanel786:  string;
+  projectsettingspanel795:  string;
+  projectsettingspanel800:  string;
+  projectsettingspanel809:  string;
+  projectsettingspanel814:  string;
+  projectsettingspanel816:  string;
+  projectsettingspanel817:  string;
+  projectsettingspanel818:  string;
+  projectsettingspanel818a: string;
+  projectsettingspanel818b: string;
+  projectsettingspanel866:  string;
+  projectsettingspanel872:  string;
+  projectsettingspanel893:  string;
+  projectsettingspanel906:  string;
+  projectsettingspanel926:  string;
+  projectsettingspanel946:  string;
+  projectsettingspanel962:  string;
+  projectsettingspanel979:  string;
+  projectsettingspanel995:  string;
+  projectsettingspanel1012: string;
+  projectsettingspanel1058: string;
+  projectsettingspanel1068: string;
+  projectsettingspanel1111: string;
+  projectsettingspanel1122: string;
+  projectsettingspanel1129: string;
+  projectsettingspanel932: string;
+  projectsettingspanel1108: string;
 
   // resources/js\Components\Panels\PublicProjectsPanel.tsx
   publicprojectspanel85: string;
@@ -4134,6 +4219,32 @@ export interface Translations {
   // resources/js\Components\Panels\TemplateModal.tsx
   templatemodal206: string;
 
+templatemodal186: string;
+templatemodal199: string;
+templatemodal208: string;
+templatemodal228: string;
+templatemodal281: string;
+templatemodal293: string;
+templatemodal322: string;
+templatemodal334: string;
+templatemodal366: string;
+templatemodal399: string;
+templatemodal438: string;
+templatemodal444: string;
+templatemodal450: string;
+templatemodal513: string;
+templatemodal521: string;
+templatemodal535: string;
+templatemodal541: string;
+templatemodal547: string;
+templatemodal580: string;
+templatemodal584: string;
+templatemodal625: string;
+templatemodal646: string;
+templatemodal655: string;
+templatemodal667: string;
+templatemodal480: string;
+
   // resources/js/Components/Panels/TemplateModal.tsx
   templatemodal220: string;
 
@@ -4251,6 +4362,11 @@ export interface Translations {
 
   // resources/js/Components/VersionConfirmationModal.tsx
   versionconfirmationmodal29: string;
+  versionconfirmationmodal51:  string;
+  versionconfirmationmodal56:  string;
+  versionconfirmationmodal56a: string;
+  versionconfirmationmodal90:  string;
+  versionconfirmationmodal90a: string;
   versionconfirmationmodal53: string;
 
   // resources/js\Components\VersionConfirmationModal.tsx
@@ -4558,6 +4674,15 @@ export interface Translations {
   landingpage769: string;
   landingpage782: string;
   landingpage801: string;
+  landingpage762: string;
+  landingpage762a: string;
+  landingpage814: string;
+  landingpage796: string;
+  landingpage802: string;
+  landingpage802a: string;
+  landingpage738: string;
+  landingpage647: string;
+  landingpage627: string;
 
   // resources/js\pages\ProjectInvitationResponse.tsx
   projectinvitationresponse70: string;

@@ -249,13 +249,13 @@ export default function EditProjectModal({
                 {t.editprojectmodal569}
               </div>
               <div className="text-xs text-orange-400 mt-1">
-                ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
+                {t.editprojectmodal252}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Description
+                {t.editprojectmodal258}
               </label>
               <InputTextarea
                 value={editForm.description}
@@ -689,7 +689,7 @@ export default function EditProjectModal({
       )}
 
       {/* Buttons */}
-      <div className="flex justify-end space-x-2 pt-4">
+      <div className="flex justify-end space-x-2 pt-4 gap-2">
         <Button
           label={t.applicationsmodal432}
           icon="pi pi-times"

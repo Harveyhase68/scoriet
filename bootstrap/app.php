@@ -7,6 +7,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Http\Middleware\CreateFreshApiToken;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -15,7 +17,31 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // CLI Routes (separate from web/api for better security)
+            Route::prefix('cli')
+                ->middleware('api')
+                ->group(base_path('routes/cli.php'));
+        }
     )
+    ->withSchedule(function (Schedule $schedule) {
+        // 🧪 TEST: Heartbeat every minute (zum Testen - kann später gelöscht werden)
+        $schedule->call(function () {
+            \Log::info('💓 Scheduler Heartbeat: ' . now()->toDateTimeString());
+        })->everyMinute();
+
+        // 🔥 Warm cache every 6 hours (keeps cache fresh)
+        $schedule->command('cache:warm')
+            ->everySixHours()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // 🔥 Force rebuild cache daily at 3 AM (ensures fresh data)
+        $schedule->command('cache:warm --force')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+    })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

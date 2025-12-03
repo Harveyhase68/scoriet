@@ -29,11 +29,21 @@ interface Project {
   id: number;
   name: string;
   description: string;
+  owner_id: number;
+  is_active: boolean;
   is_public?: boolean;
   join_code?: string;
   allow_join_requests?: boolean;
   is_owner?: boolean;
   can_join?: boolean;
+  default_language?: string;
+  enabled_languages?: string[];
+  // Diagram Settings
+  diagram_max_tables_per_row?: number;
+  diagram_table_width?: number;
+  diagram_table_height?: number;
+  diagram_horizontal_spacing?: number;
+  diagram_vertical_spacing?: number;
   owner: {
     id: number;
     name: string;
@@ -193,7 +203,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       // Open the project settings panel with the current project
       onOpenPanel('project-settings', {
-        title: `Projekt-Einstellungen (${project.name})`
+        title: `${t.newnavigationpanel142} (${project.name})`
       });
     }
   };
@@ -654,10 +664,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <div className="flex items-center space-x-3">
             <i className="pi pi-briefcase text-2xl text-blue-600"></i>
             <div>
-              <h1 className="text-2xl font-bold text-white">Project Management</h1>
+              <h1 className="text-2xl font-bold text-white">{t.projectpanel615}</h1>
               {currentProject && (
                 <p className="text-sm text-gray-300">
-                  Current: <span className="text-blue-400 font-medium">{currentProject.name}</span>
+                  {t.projectpanel119}<span className="text-blue-400 font-medium">{currentProject.name}</span>
                 </p>
               )}
             </div>
@@ -737,7 +747,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-300">Owner:</span>
+                    <span className="font-medium text-gray-300">{t.projectpanel698}</span>
                     <div className="flex items-center space-x-1 mt-1">
                       <i className="pi pi-user text-blue-400"></i>
                       <span className="text-gray-200">{currentProject.owner.name}</span>
@@ -745,7 +755,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   </div>
 
                   <div>
-                    <span className="font-medium text-gray-300">Created:</span>
+                    <span className="font-medium text-gray-300">{t.projectpanel706}</span>
                     <div className="mt-1 text-gray-200">{formatDate(currentProject.created_at)}</div>
                   </div>
                 </div>
@@ -965,7 +975,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   {t.editprojectmodal569}
                 </div>
                 <div className="text-xs text-orange-400 mt-1">
-                  ✓ Erlaubt: Kleinbuchstaben, Zahlen, Unterstriche (z.B. my_project_123)
+                  {t.editprojectmodal252}
                 </div>
               </div>
 
@@ -1424,7 +1434,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
@@ -1484,7 +1494,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       {/* Project Overview Modal */}
       <Dialog
-        header={`Project Overview: ${selectedProjectForOverview?.name || ''}`}
+        header={t.projectpanel562+`: ${selectedProjectForOverview?.name || ''}`}
         visible={showProjectOverviewModal}
         onHide={() => setShowProjectOverviewModal(false)}
         style={{ width: '800px' }}
@@ -1495,26 +1505,26 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <div className="space-y-6">
             {/* Project Properties */}
             <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">📋 Project Properties</h3>
+              <h3 className="text-lg font-semibold mb-3 text-white">{t.editprojectmodal426}</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-medium text-gray-300">Name:</span>
+                  <span className="font-medium text-gray-300">{t.projectpanel1443}</span>
                   <span className="ml-2 text-white">{selectedProjectForOverview.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">Owner:</span>
+                  <span className="font-medium text-gray-300">{t.projectpanel1447}</span>
                   <span className="ml-2 text-white">{selectedProjectForOverview.owner.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">Created:</span>
+                  <span className="font-medium text-gray-300">{t.projectpanel1451}</span>
                   <span className="ml-2 text-white">{formatDate(selectedProjectForOverview.created_at)}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">Join Code:</span>
+                  <span className="font-medium text-gray-300">{t.projectpanel1449}</span>
                   <span className="ml-2 text-blue-400 font-mono">{selectedProjectForOverview.join_code || t.createtablemodal482}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="font-medium text-gray-300">Description:</span>
+                  <span className="font-medium text-gray-300">{t.projectpanel1453}</span>
                   <span className="ml-2 text-white">{selectedProjectForOverview.description || t.schemaexportcontroller226}</span>
                 </div>
               </div>
@@ -1522,11 +1532,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Project Members Section */}
             <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">👤 Project Members</h3>
+              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1467}</h3>
               {loadingMembersData ? (
                 <div className="flex items-center justify-center py-4">
                   <i className="pi pi-spinner pi-spin text-indigo-400 mr-2"></i>
-                  <span className="text-indigo-300">Loading members...</span>
+                  <span className="text-indigo-300">{t.projectpanel1471}</span>
                 </div>
               ) : projectMembers.length > 0 ? (
                 <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '200px', overflow: 'auto' }}>
@@ -1568,7 +1578,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Teams Section with TreeView */}
             <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">👥 Teams & Members</h3>
+              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1513}</h3>
               {loadingTeamsData ? (
                 <div className="flex items-center justify-center py-4">
                   <i className="pi pi-spinner pi-spin text-blue-400 mr-2"></i>
@@ -1590,7 +1600,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Database Schemas Section */}
             <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">🗄️ Database Schemas</h3>
+              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1535}</h3>
               {loadingSchemasData ? (
                 <div className="flex items-center justify-center p-4">
                   <i className="pi pi-spin pi-spinner text-green-400 mr-2"></i>
@@ -1611,7 +1621,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Templates Section */}
             <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">📄 Linked Templates</h3>
+              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1556}</h3>
               {loadingTemplatesData ? (
                 <div className="flex items-center justify-center p-4">
                   <i className="pi pi-spin pi-spinner text-purple-400 mr-2"></i>

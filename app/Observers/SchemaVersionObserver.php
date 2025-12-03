@@ -4,8 +4,10 @@ namespace App\Observers;
 
 use App\Models\SchemaVersion;
 use App\Jobs\RegenerateProjectGenerationTree;
+use App\Services\TemplateCacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class SchemaVersionObserver
 {
@@ -15,6 +17,13 @@ class SchemaVersionObserver
     public function created(SchemaVersion $schemaVersion): void
     {
         Log::info("SchemaVersionObserver: created event triggered for schema version {$schemaVersion->id}");
+
+        // Clear all template cache as schema version changed
+        app(TemplateCacheService::class)->clearAll();
+
+        // 🆕 INVALIDATE NEW CACHE KEYS (schema_data + gtree)
+        $this->invalidateSchemaCache($schemaVersion);
+
         $this->regenerateAffectedProjects($schemaVersion, 'created');
     }
 
@@ -23,6 +32,12 @@ class SchemaVersionObserver
      */
     public function updated(SchemaVersion $schemaVersion): void
     {
+        // Clear all template cache as schema version changed
+        app(TemplateCacheService::class)->clearAll();
+
+        // 🆕 INVALIDATE NEW CACHE KEYS (schema_data + gtree)
+        $this->invalidateSchemaCache($schemaVersion);
+
         $this->regenerateAffectedProjects($schemaVersion, 'updated');
     }
 
@@ -31,6 +46,12 @@ class SchemaVersionObserver
      */
     public function deleted(SchemaVersion $schemaVersion): void
     {
+        // Clear all template cache as schema version changed
+        app(TemplateCacheService::class)->clearAll();
+
+        // 🆕 INVALIDATE NEW CACHE KEYS (schema_data + gtree)
+        $this->invalidateSchemaCache($schemaVersion);
+
         $this->regenerateAffectedProjects($schemaVersion, 'deleted');
     }
 
@@ -71,6 +92,42 @@ class SchemaVersionObserver
                 }
             } catch (\Exception $e) {
                 Log::error("Failed to dispatch/run regeneration job for project {$projectId}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Invalidate schema data cache for affected projects
+     */
+    private function invalidateSchemaCache(SchemaVersion $schemaVersion): void
+    {
+        // Get affected projects via schema → projects
+        if ($schemaVersion->schema) {
+            $projectIds = $schemaVersion->schema->projects()->pluck('projects.id')->toArray();
+
+            foreach ($projectIds as $projectId) {
+                // 1. Delete Schema Data Cache
+                $schemaCacheKey = "schema_data:{$projectId}";
+                if (Cache::has($schemaCacheKey)) {
+                    Cache::forget($schemaCacheKey);
+                    Log::info("🗑️ [CACHE INVALIDATED] Schema cache for project #{$projectId}", [
+                        'schema_version' => $schemaVersion->id,
+                        'cache_key' => $schemaCacheKey,
+                    ]);
+                }
+
+                // 2. Delete Gtree Cache for all templates
+                $templates = \App\Models\Template::all();
+                foreach ($templates as $template) {
+                    $gtreeCacheKey = "gtree:{$projectId}:{$template->id}";
+                    if (Cache::has($gtreeCacheKey)) {
+                        Cache::forget($gtreeCacheKey);
+                        Log::info("🗑️ [CACHE INVALIDATED] Gtree cache for project #{$projectId} template #{$template->id}", [
+                            'schema_version' => $schemaVersion->id,
+                            'cache_key' => $gtreeCacheKey,
+                        ]);
+                    }
+                }
             }
         }
     }

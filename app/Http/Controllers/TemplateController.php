@@ -385,11 +385,17 @@ class TemplateController extends Controller
     }
 
     /**
-     * Import template from JSON data
+     * Import template from JSON data OR archive file (ZIP, TAR.GZ, TAR.XZ)
      */
     public function import(Request $request)
     {
         try {
+            // Check if this is a file upload or JSON data
+            if ($request->hasFile('template_file')) {
+                return $this->importFromArchive($request);
+            }
+
+            // Original JSON import logic
             $validated = $request->validate([
                 'template_data' => 'required|array',
                 'template_data.template' => 'required|array',
@@ -762,5 +768,473 @@ class TemplateController extends Controller
         \Log::info("🧪 [TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
         \Log::info("🧪 [TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
         \Log::info("🧪 [TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
+    }
+
+    /**
+     * Import template from archive file (ZIP, TAR.GZ, TAR.XZ)
+     */
+    private function importFromArchive(Request $request)
+    {
+        $validated = $request->validate([
+            'template_file' => 'required|file|mimes:zip,gz,tar,xz|max:51200', // Max 50MB
+            'overwrite_existing' => 'boolean',
+        ]);
+
+        $file = $request->file('template_file');
+        $overwriteExisting = $validated['overwrite_existing'] ?? false;
+        $filename = $file->getClientOriginalName();
+
+        // Create temp directory
+        $tempDir = storage_path('app/temp/template_import_' . uniqid());
+        \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
+
+        try {
+            // Detect archive type and extract
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            if ($extension === 'zip') {
+                $this->extractZip($file->getRealPath(), $tempDir);
+            } elseif (in_array($extension, ['gz', 'tar'])) {
+                // Check if it's tar.gz
+                if (str_ends_with(strtolower($filename), '.tar.gz')) {
+                    $this->extractTarGz($file->getRealPath(), $tempDir);
+                } else {
+                    throw new \Exception('Only TAR.GZ archives are supported (not standalone .gz or .tar files)');
+                }
+            } elseif ($extension === 'xz') {
+                if (str_ends_with(strtolower($filename), '.tar.xz')) {
+                    $this->extractTarXz($file->getRealPath(), $tempDir);
+                } else {
+                    throw new \Exception('Only TAR.XZ archives are supported (not standalone .xz files)');
+                }
+            } else {
+                throw new \Exception('Unsupported archive format');
+            }
+
+            // Check if template.json exists in archive
+            $templateJsonPath = $tempDir . '/template.json';
+            $hasTemplateJson = \Illuminate\Support\Facades\File::exists($templateJsonPath);
+
+            if ($hasTemplateJson) {
+                // Import from template.json (includes metadata)
+                $jsonContent = \Illuminate\Support\Facades\File::get($templateJsonPath);
+                $templateData = json_decode($jsonContent, true);
+
+                if (!$templateData || !isset($templateData['template'])) {
+                    throw new \Exception('Invalid template.json format');
+                }
+
+                $templateInfo = $templateData['template'];
+                $filesData = $templateData['files'] ?? [];
+
+                // Check if template exists
+                $existingTemplate = Template::where('name', $templateInfo['name'])->first();
+                if ($existingTemplate && !$overwriteExisting) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'existing_template_id' => $existingTemplate->id,
+                    ], 409);
+                }
+
+                // Delete existing template if overwriting
+                if ($existingTemplate && $overwriteExisting) {
+                    $existingTemplate->delete();
+                }
+
+                // Create template with metadata from JSON
+                $template = Template::create([
+                    'name' => $templateInfo['name'],
+                    'description' => $templateInfo['description'] ?? '',
+                    'category' => $templateInfo['category'] ?? 'Web',
+                    'language' => $templateInfo['language'] ?? 'PHP',
+                    'tags' => $templateInfo['tags'] ?? [],
+                    'is_active' => $templateInfo['is_active'] ?? true,
+                    'file_count' => count($filesData),
+                ]);
+
+                // Create template files - read content from physical files in archive
+                foreach ($filesData as $index => $fileData) {
+                    $fileName = $fileData['file_name'];
+
+                    // Check if archive_source is specified (for duplicate filenames)
+                    $archiveFileName = $fileData['archive_source'] ?? $fileName;
+                    $physicalFilePath = $tempDir . '/' . $archiveFileName;
+
+                    // Read file content from extracted archive (not from JSON)
+                    if (\Illuminate\Support\Facades\File::exists($physicalFilePath)) {
+                        $fileContent = \Illuminate\Support\Facades\File::get($physicalFilePath);
+                    } else {
+                        // Fallback: if file_content is in JSON (old format), use it
+                        $fileContent = $fileData['file_content'] ?? '';
+                    }
+
+                    $template->files()->create([
+                        'file_name' => $fileName,
+                        'file_path' => $fileData['file_path'] ?? $fileName,  // Legacy compatibility
+                        'output_path' => $fileData['output_path'] ?? null,  // Ausgabeverzeichnis
+                        'file_content' => $fileContent,
+                        'file_type' => $fileData['file_type'] ?? 'template',
+                        'file_order' => $fileData['file_order'] ?? $index,
+                    ]);
+                }
+
+            } else {
+                // No template.json - import files directly (legacy mode)
+                $templateFiles = $this->readTemplateFilesFromDirectory($tempDir);
+
+                if (empty($templateFiles)) {
+                    throw new \Exception('No template files found in archive');
+                }
+
+                // Generate template name from filename (without extension)
+                $templateName = preg_replace('/\.(zip|tar\.gz|tar\.xz)$/i', '', $filename);
+                $templateName = preg_replace('/[^a-z0-9_]/', '_', strtolower($templateName));
+
+                // Check if template exists
+                $existingTemplate = Template::where('name', $templateName)->first();
+                if ($existingTemplate && !$overwriteExisting) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'existing_template_id' => $existingTemplate->id,
+                    ], 409);
+                }
+
+                // Delete existing template if overwriting
+                if ($existingTemplate && $overwriteExisting) {
+                    $existingTemplate->delete();
+                }
+
+                // Create template
+                $template = Template::create([
+                    'name' => $templateName,
+                    'description' => 'Imported from ' . $filename,
+                    'category' => 'Web', // Default category
+                    'language' => 'PHP', // Default language
+                    'tags' => [],
+                    'is_active' => true,
+                    'file_count' => count($templateFiles),
+                ]);
+
+                // Create template files
+                foreach ($templateFiles as $index => $fileData) {
+                    $template->files()->create([
+                        'file_name' => $fileData['file_name'],
+                        'file_path' => $fileData['file_path'],
+                        'file_content' => $fileData['file_content'],
+                        'file_type' => $fileData['file_type'] ?? 'template',
+                        'file_order' => $index,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'template' => $template->load('files'),
+                'message' => 'Template successfully imported from archive',
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Template import from archive failed', [
+                'error' => $e->getMessage(),
+                'file' => $filename,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to import template: ' . $e->getMessage(),
+            ], 400);
+
+        } finally {
+            // Clean up temp directory
+            if (\Illuminate\Support\Facades\File::exists($tempDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
+            }
+        }
+    }
+
+    /**
+     * Extract ZIP archive
+     */
+    private function extractZip(string $zipPath, string $destination): void
+    {
+        $zip = new \ZipArchive();
+
+        if ($zip->open($zipPath) !== true) {
+            throw new \Exception('Failed to open ZIP archive');
+        }
+
+        $zip->extractTo($destination);
+        $zip->close();
+    }
+
+    /**
+     * Extract TAR.GZ archive
+     */
+    private function extractTarGz(string $tarGzPath, string $destination): void
+    {
+        try {
+            $phar = new \PharData($tarGzPath);
+            $phar->extractTo($destination, null, true);
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract TAR.GZ archive: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Extract TAR.XZ archive
+     */
+    private function extractTarXz(string $tarXzPath, string $destination): void
+    {
+        // Check if xz command is available
+        $xzAvailable = shell_exec('which xz 2>/dev/null') || shell_exec('where xz 2>nul');
+
+        if (!$xzAvailable) {
+            throw new \Exception('TAR.XZ extraction not available (requires xz command). Please use ZIP or TAR.GZ format instead.');
+        }
+
+        try {
+            // First decompress .xz to .tar
+            $tarPath = $tarXzPath . '.tmp.tar';
+            $command = sprintf('xz -d -c %s > %s', escapeshellarg($tarXzPath), escapeshellarg($tarPath));
+            shell_exec($command);
+
+            if (!file_exists($tarPath)) {
+                throw new \Exception('XZ decompression failed');
+            }
+
+            // Then extract tar
+            $phar = new \PharData($tarPath);
+            $phar->extractTo($destination, null, true);
+
+            // Clean up temp tar file
+            if (file_exists($tarPath)) {
+                unlink($tarPath);
+            }
+
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract TAR.XZ archive: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Read template files from extracted directory
+     */
+    private function readTemplateFilesFromDirectory(string $directory): array
+    {
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $relativePath = str_replace($directory . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace('\\', '/', $relativePath);
+
+                $files[] = [
+                    'file_name' => $file->getFilename(),
+                    'file_path' => $relativePath,
+                    'file_content' => file_get_contents($file->getPathname()),
+                    'file_type' => $this->detectFileType($file->getFilename()),
+                ];
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Detect file type from filename
+     */
+    private function detectFileType(string $filename): string
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        $typeMap = [
+            'php' => 'template',
+            'html' => 'template',
+            'js' => 'static_file',
+            'css' => 'static_file',
+            'json' => 'static_file',
+            'xml' => 'static_file',
+            'sql' => 'db_table_file',
+        ];
+
+        return $typeMap[$extension] ?? 'template';
+    }
+
+    /**
+     * Download template as archive (ZIP, TAR.GZ, TAR.XZ)
+     */
+    public function downloadTemplateArchive(Request $request, $templateId)
+    {
+        $user = auth()->user();
+        $format = $request->query('format', 'zip'); // Default to ZIP
+
+        // Validate format
+        if (!in_array($format, ['zip', 'tar.gz', 'tar.xz'])) {
+            return response()->json(['error' => 'Invalid format'], 400);
+        }
+
+        // Find template
+        $template = Template::with(['files', 'creator'])->find($templateId);
+
+        if (!$template) {
+            return response()->json(['message' => 'Template not found.'], 404);
+        }
+
+        // Check permissions
+        if ($template->creator_user_id != $user->id &&
+            !in_array($user->user_type, ['admin', 'system']) &&
+            !$user->is_inner_core) {
+            return response()->json(['message' => 'Unauthorized to download this template.'], 403);
+        }
+
+        // Create temporary directory
+        $tempDir = storage_path('app/temp/template_export_' . uniqid());
+        \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
+
+        try {
+            // Add template metadata as JSON (for re-import)
+            $templateData = [
+                'template' => [
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'category' => $template->category,
+                    'language' => $template->language,
+                    'tags' => $template->tags,
+                    'is_active' => $template->is_active,
+                ],
+                'files' => $template->files->map(function ($file) {
+                    return [
+                        'file_name' => $file->file_name,
+                        'file_path' => $file->file_path,
+                        'file_content' => $file->file_content,
+                        'file_type' => $file->file_type,
+                        'file_order' => $file->file_order,
+                    ];
+                })->toArray(),
+            ];
+            \Illuminate\Support\Facades\File::put(
+                $tempDir . '/template.json',
+                json_encode($templateData, JSON_PRETTY_PRINT)
+            );
+
+            // Add README
+            $readme = "Template: {$template->name}\n";
+            $readme .= "Description: {$template->description}\n";
+            $readme .= "Category: {$template->category}\n";
+            $readme .= "Language: {$template->language}\n";
+            if ($template->creator) {
+                $readme .= "Creator: {$template->creator->name} ({$template->creator->email})\n";
+            }
+            $readme .= "Created: {$template->created_at}\n";
+            $readme .= "\nScoriet Template Export\n";
+            $readme .= "https://scoriet.com\n";
+            \Illuminate\Support\Facades\File::put($tempDir . '/README.txt', $readme);
+
+            // Add all template files
+            foreach ($template->files as $file) {
+                $filePath = $tempDir . '/' . $file->file_name;
+                \Illuminate\Support\Facades\File::put($filePath, $file->file_content);
+            }
+
+            // Create archive based on format
+            $archiveName = $template->name . '_' . time();
+            $archivePath = storage_path('app/temp/' . $archiveName);
+
+            if ($format === 'zip') {
+                $zip = new \ZipArchive();
+                $zipPath = $archivePath . '.zip';
+
+                if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    throw new \Exception('Failed to create ZIP archive');
+                }
+
+                $this->addFilesToZipRecursive($zip, $tempDir, '');
+                $zip->close();
+
+                $finalArchive = $zipPath;
+
+            } elseif ($format === 'tar.gz') {
+                $tarPath = $archivePath . '.tar';
+                $phar = new \PharData($tarPath);
+                $phar->buildFromDirectory($tempDir);
+                $phar->compress(\Phar::GZ);
+
+                \Illuminate\Support\Facades\File::delete($tarPath);
+                $finalArchive = $tarPath . '.gz';
+
+            } elseif ($format === 'tar.xz') {
+                // Check if xz is available
+                $xzAvailable = shell_exec('which xz 2>/dev/null') || shell_exec('where xz 2>nul');
+
+                if (!$xzAvailable) {
+                    // Fallback to TAR.GZ
+                    $tarPath = $archivePath . '.tar';
+                    $phar = new \PharData($tarPath);
+                    $phar->buildFromDirectory($tempDir);
+                    $phar->compress(\Phar::GZ);
+
+                    \Illuminate\Support\Facades\File::delete($tarPath);
+                    $finalArchive = $tarPath . '.gz';
+                    $format = 'tar.gz'; // Update format for download name
+                } else {
+                    $tarPath = $archivePath . '.tar';
+                    $phar = new \PharData($tarPath);
+                    $phar->buildFromDirectory($tempDir);
+
+                    $xzPath = $archivePath . '.tar.xz';
+                    $command = sprintf('xz -z -9 -c %s > %s', escapeshellarg($tarPath), escapeshellarg($xzPath));
+                    shell_exec($command);
+
+                    \Illuminate\Support\Facades\File::delete($tarPath);
+                    $finalArchive = $xzPath;
+                }
+            }
+
+            // Return download and clean up
+            return response()->download($finalArchive, $template->name . '.' . $format)
+                ->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            \Log::error('Template archive download failed', [
+                'error' => $e->getMessage(),
+                'template_id' => $templateId,
+                'format' => $format,
+            ]);
+
+            return response()->json(['error' => 'Failed to create archive: ' . $e->getMessage()], 500);
+
+        } finally {
+            // Clean up temp directory
+            if (\Illuminate\Support\Facades\File::exists($tempDir)) {
+                \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
+            }
+        }
+    }
+
+    /**
+     * Recursively add files to ZIP archive
+     */
+    private function addFilesToZipRecursive($zip, $sourceDir, $relativePath)
+    {
+        $files = \Illuminate\Support\Facades\File::files($sourceDir);
+        $directories = \Illuminate\Support\Facades\File::directories($sourceDir);
+
+        foreach ($files as $file) {
+            $filename = basename($file);
+            $localPath = $relativePath ? $relativePath . '/' . $filename : $filename;
+            $zip->addFile($file, $localPath);
+        }
+
+        foreach ($directories as $directory) {
+            $dirname = basename($directory);
+            $localPath = $relativePath ? $relativePath . '/' . $dirname : $dirname;
+            $this->addFilesToZipRecursive($zip, $directory, $localPath);
+        }
     }
 }
