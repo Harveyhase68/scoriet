@@ -15,6 +15,8 @@ import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
 import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal';
 import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
+import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 // import EditProjectModal from '@/Components/Modals/EditProjectModal'; // Replaced by ProjectSettingsPanel
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -157,6 +159,40 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [loadingMembersData, setLoadingMembersData] = useState(false);
 
+  // Project unlock and plan modals
+  const [showProjectUnlockModal, setShowProjectUnlockModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Load user data when panel becomes active
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (!token) return;
+
+        const response = await fetch('/api/user', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setCurrentUser(userData);
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    };
+
+    if (isActive) {
+      loadUserData();
+    }
+  }, [isActive]);
+
   // Load projects when panel becomes active
   useEffect(() => {
     if (isActive) {
@@ -230,6 +266,51 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
   };
 
+  /**
+   * Pre-check before showing "Create Project" modal
+   * - Check if user is Free and already has 1 project
+   * - If yes, show ProjectUnlockModal first (50 credits required)
+   * - If not enough credits, offer to buy credits
+   * - Only after confirmation, show the Create Project modal
+   */
+  const handleCreateProjectClick = async () => {
+    // Check if user is Free type
+    if (!currentUser) {
+      setError('Bitte melden Sie sich an, um Projekte zu erstellen');
+      return;
+    }
+
+    const isFreeUser = currentUser.user_type === 'free' || !currentUser.user_type;
+
+    // If user is Free, check project count
+    if (isFreeUser) {
+      const userProjectCount = projects.filter(p => p.owner_id === currentUser.id && p.is_active).length;
+
+      // If user already has 1 project (the limit for free users)
+      if (userProjectCount >= 1) {
+        // Show ProjectUnlockModal - user needs to pay 50 credits
+        setShowProjectUnlockModal(true);
+        return;
+      }
+    }
+
+    // User is not Free, or has no projects yet -> show create modal directly
+    setShowCreateModal(true);
+  };
+
+  const handleProjectUnlockConfirm = () => {
+    // User confirmed they want to spend 50 credits
+    // Credits will be deducted automatically by the backend when the project is created
+    // Close unlock modal and open create modal
+    setShowProjectUnlockModal(false);
+    setShowCreateModal(true);
+  };
+
+  const handleBuyCredits = () => {
+    // Open Plan Modal on "Buy Credits" tab (tab index 1)
+    setPlanModalInitialTab(1);
+    setShowPlanModal(true);
+  };
 
   const handleCreateProject = async () => {
     setCreating(true);
@@ -262,7 +343,19 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
+        // Handle insufficient credits error
+        if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
+          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setShowCreateModal(false);
+
+          // Open Plan Modal on "Buy Credits" tab
+          setPlanModalInitialTab(1);
+          setShowPlanModal(true);
+          setCreating(false);
+          return;
+        }
+
         // Handle Laravel validation errors
         if (errorData.errors && errorData.errors.name) {
           // Check if it's a regex validation error and provide better message
@@ -277,6 +370,20 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       }
 
       const newProject = await response.json();
+
+      // Reload user data to get updated credits
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
+        // Notify other components (like navigation) about credit change
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
+      }
 
       // Store the newly created project and show selection dialog
       setNewlyCreatedProject(newProject);
@@ -410,6 +517,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       // Refresh the projects list
       await loadProjectsFromContext();
+
+      // Notify Navigation Panel to refresh the tree (removes deleted project from polling)
+      window.dispatchEvent(new CustomEvent('projectChanged', { detail: { deleted: true, projectId: projectToDelete.id } }));
 
       setShowDeleteModal(false);
       setProjectToDelete(null);
@@ -678,7 +788,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               label={t.projectpanel626}
               className="p-button-text"
               style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreateProjectClick}
               disabled={contextLoading}
             />
             <Button
@@ -828,7 +938,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   label={t.projectpanel776}
                   icon="pi pi-plus"
                   className="p-button-outlined"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={handleCreateProjectClick}
                 />
               </div>
             )}
@@ -1641,7 +1751,31 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end items-center pt-4 border-t border-gray-600">
+            <div className="flex justify-between items-center pt-4 border-t border-gray-600">
+              {/* Left side - Public Link */}
+              <div>
+                {selectedProjectForOverview.is_public && selectedProjectForOverview.owner?.username && (
+                  <Button
+                    label={t.copyPublicLink || 'Copy Public Link'}
+                    icon="pi pi-link"
+                    className="p-button-outlined p-button-success"
+                    onClick={() => {
+                      const publicUrl = `${window.location.origin}/project/${selectedProjectForOverview.owner.username}/${selectedProjectForOverview.name}`;
+                      navigator.clipboard.writeText(publicUrl).then(() => {
+                        setSuccess(t.publicLinkCopied || 'Public link copied to clipboard!');
+                        setTimeout(() => setSuccess(''), 3000);
+                      });
+                    }}
+                  />
+                )}
+                {!selectedProjectForOverview.is_public && (
+                  <span className="text-gray-400 text-sm italic">
+                    <i className="pi pi-lock mr-1"></i>
+                    {t.projectNotPublic || 'Project is private - make it public to share'}
+                  </span>
+                )}
+              </div>
+              {/* Right side - Close & Settings */}
               <div className="flex gap-2">
                 <Button
                   label={t.authmodalsesetpasswordmodal162}
@@ -1711,6 +1845,24 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </div>
         </div>
       </Dialog>
+
+      {/* Project Unlock Modal - Shows before creating 2nd project as Free user */}
+      <ProjectUnlockModal
+        visible={showProjectUnlockModal}
+        onHide={() => setShowProjectUnlockModal(false)}
+        onConfirm={handleProjectUnlockConfirm}
+        onBuyCredits={handleBuyCredits}
+        onUpgradePatron={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
+        currentCredits={currentUser?.credits || 0}
+        creditCost={50}
+      />
+
+      {/* Plan Modal - For buying credits or upgrading subscription */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={() => setShowPlanModal(false)}
+        initialTab={planModalInitialTab}
+      />
     </div>
   );
 }

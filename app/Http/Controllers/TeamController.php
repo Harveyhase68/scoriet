@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Project;
+use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Routing\Controller;
@@ -56,9 +58,31 @@ class TeamController extends Controller
                                ->get();
         }
 
+        // Calculate subscription info for free users
+        $subscriptionInfo = null;
+        $isFreeUser = $user->user_type === 'free' || !$user->user_type;
+
+        if ($isFreeUser) {
+            // Count active team subscriptions (not expired)
+            $activeSubscriptionsCount = Subscription::countActiveForUser($user->id, Subscription::TYPE_TEAM);
+
+            // Free users have: 0 free teams + number of active subscriptions
+            $maxAllowedTeams = 0 + $activeSubscriptionsCount;
+            $ownedTeamsCount = $ownedTeams->count();
+
+            $subscriptionInfo = [
+                'active_subscriptions' => $activeSubscriptionsCount,
+                'owned_teams' => $ownedTeamsCount,
+                'max_allowed' => $maxAllowedTeams,
+                'needs_unlock' => $ownedTeamsCount >= $maxAllowedTeams,
+                'free_teams_allowed' => 0, // Teams are not free for free users
+            ];
+        }
+
         return response()->json([
             'owned_teams' => $ownedTeams,
-            'member_teams' => $memberTeams
+            'member_teams' => $memberTeams,
+            'subscription_info' => $subscriptionInfo,
         ]);
     }
 
@@ -90,33 +114,103 @@ class TeamController extends Controller
             ], 422);
         }
 
-        // Create the team
-        $team = Team::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'project_owner_id' => $user->id,
-        ]);
+        // Check if user needs to pay for team (Free users only)
+        $isFreeUser = $user->user_type === 'free' || !$user->user_type;
+        $needsPayment = false;
+        $requiredCredits = 50;
 
-        // Add the creator as owner
-        TeamMember::create([
-            'team_id' => $team->id,
-            'user_id' => $user->id,
-            'role' => 'owner',
-            'joined_at' => now()
-        ]);
+        if ($isFreeUser) {
+            // Count active team subscriptions
+            $activeSubscriptionsCount = Subscription::countActiveForUser($user->id, Subscription::TYPE_TEAM);
 
-        // Assign team to selected projects
-        foreach ($request->project_ids as $projectId) {
-            $team->projects()->attach($projectId, [
-                'assigned_by' => $user->id,
-                'assigned_at' => now()
-            ]);
+            // Count owned teams
+            $ownedTeamsCount = Team::where('project_owner_id', $user->id)->count();
+
+            // Free users get 0 free teams, only subscription slots
+            $maxAllowedTeams = 0 + $activeSubscriptionsCount;
+
+            if ($ownedTeamsCount >= $maxAllowedTeams) {
+                $needsPayment = true;
+
+                // Check if user has enough credits
+                if ($user->credits < $requiredCredits) {
+                    return response()->json([
+                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits um ein neues Team freizuschalten.",
+                        'error_code' => 'INSUFFICIENT_CREDITS',
+                        'required_credits' => $requiredCredits,
+                        'current_credits' => $user->credits,
+                    ], 402);
+                }
+            }
         }
 
-        return response()->json([
-            'message' => 'Team created successfully',
-            'team' => $team->load(['members.user', 'projects'])
-        ], 201);
+        // Use transaction to ensure all-or-nothing operation
+        try {
+            $result = DB::transaction(function () use ($user, $request, $needsPayment, $requiredCredits) {
+                // 1. Create the team first
+                $team = Team::create([
+                    'name' => $request->name,
+                    'description' => $request->description,
+                    'project_owner_id' => $user->id,
+                ]);
+
+                // 2. If payment needed, create subscription for this team
+                if ($needsPayment) {
+                    Subscription::create([
+                        'user_id' => $user->id,
+                        'subscription_type' => Subscription::TYPE_TEAM,
+                        'entity_id' => $team->id,
+                        'is_free_tier' => false,
+                        'expires_at' => now()->addYear(),
+                        'is_active' => true,
+                    ]);
+                }
+
+                // 3. Add the creator as owner
+                TeamMember::create([
+                    'team_id' => $team->id,
+                    'user_id' => $user->id,
+                    'role' => 'owner',
+                    'joined_at' => now()
+                ]);
+
+                // 4. Assign team to selected projects
+                foreach ($request->project_ids as $projectId) {
+                    $team->projects()->attach($projectId, [
+                        'assigned_by' => $user->id,
+                        'assigned_at' => now()
+                    ]);
+                }
+
+                // 5. Deduct credits and record transaction (only after everything else succeeded)
+                if ($needsPayment) {
+                    $user->credits -= $requiredCredits;
+                    $user->save();
+
+                    \App\Models\CreditTransaction::create([
+                        'user_id' => $user->id,
+                        'amount' => -$requiredCredits,
+                        'type' => 'teams_unlock',
+                        'description' => "Team freischalten: {$request->name}",
+                    ]);
+                }
+
+                return $team;
+            });
+
+            return response()->json([
+                'message' => 'Team created successfully',
+                'team' => $result->load(['members.user', 'projects']),
+                'credits_deducted' => $needsPayment ? $requiredCredits : 0,
+                'new_credits_balance' => $user->fresh()->credits,
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to create team: ' . $e->getMessage(),
+                'error_code' => 'TRANSACTION_FAILED',
+            ], 500);
+        }
     }
 
     /**

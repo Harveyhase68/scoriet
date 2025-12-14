@@ -59,6 +59,11 @@ class CustomTokenController extends AccessTokenController
                             'email_verification_required' => true
                         ], 403);
                     }
+
+                    // Try to claim monthly credits for this user (if eligible)
+                    if ($user) {
+                        $user->claimMonthlyCredits();
+                    }
                 }
             }
 
@@ -71,6 +76,9 @@ class CustomTokenController extends AccessTokenController
                         'message' => 'The provided credentials are incorrect.'
                     ], 401);
                 }
+
+                // Try to claim monthly credits (50 credits if eligible)
+                $creditsAwarded = $user->claimMonthlyCredits();
 
                 // Create custom token with extended expiry
                 $tokenResult = $user->createToken('RememberMe Token');
@@ -85,6 +93,7 @@ class CustomTokenController extends AccessTokenController
                     'refresh_token' => null, // Not implemented for custom tokens yet
                     'token_type' => 'Bearer',
                     'expires_in' => 30 * 24 * 60 * 60, // 30 days in seconds
+                    'monthly_credits_awarded' => $creditsAwarded,
                 ]);
             }
 

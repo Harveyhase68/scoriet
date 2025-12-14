@@ -12,6 +12,7 @@ use App\Models\SchemaVersion;
 use App\Models\SchemaTable;
 use App\Models\Language;
 use App\Models\SchemaTranslation;
+use App\Services\CreditService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -27,6 +28,55 @@ use Illuminate\Support\Facades\Cache;
  */
 class UltimateTemplateController extends Controller
 {
+    /**
+     * 💰 CHARGE CREDITS FOR GENERATION
+     *
+     * This endpoint should be called BEFORE starting a full project generation.
+     * It checks if user has enough credits and deducts them.
+     * Patron Monthly users are free.
+     *
+     * POST /api/generation/charge
+     */
+    public function chargeForGeneration(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized',
+            ], 401);
+        }
+
+        $projectId = $request->input('project_id');
+
+        // Check and charge credits
+        $chargeResult = CreditService::chargeForGeneration(
+            $user,
+            $projectId ? (int)$projectId : null,
+            null,
+            'web'
+        );
+
+        if (!$chargeResult['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => 'insufficient_credits',
+                'message' => $chargeResult['message'],
+                'credits_required' => CreditService::GENERATION_COST,
+                'credits_available' => $user->credits,
+            ], 402); // 402 Payment Required
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $chargeResult['message'],
+            'credits_charged' => $chargeResult['credits_charged'],
+            'credits_remaining' => $user->fresh()->credits,
+            'is_free' => $chargeResult['credits_charged'] === 0,
+        ]);
+    }
+
     /**
      * 🎯 ULTIMATE TEMPLATE PROCESSING
      *
@@ -1420,6 +1470,21 @@ class UltimateTemplateController extends Controller
         $startTime = microtime(true);
 
         try {
+            // 💰 CREDIT CHECK: Charge 5 credits for full project generation (skip for Patron Monthly)
+            $user = $request->user();
+            if ($user) {
+                $chargeResult = CreditService::chargeForGeneration($user, $projectId, null, 'web');
+
+                if (!$chargeResult['success']) {
+                    return response()->json([
+                        'error' => 'Insufficient credits',
+                        'message' => $chargeResult['message'],
+                        'credits_required' => CreditService::GENERATION_COST,
+                        'credits_available' => $user->credits,
+                    ], 402); // 402 Payment Required
+                }
+            }
+
             // Validate input
             $request->validate([
                 'template_ids' => 'required|array|min:1',

@@ -784,10 +784,10 @@ export default function SchemaTranslationPanel() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Panel - Schema Tree */}
         <div
-          className="flex-shrink-0 border-r border-gray-600 bg-gray-700 flex flex-col relative"
+          className="flex-shrink-0 border-r border-gray-600 bg-gray-700 flex flex-col relative h-full"
           style={{ width: `${sidebarWidth}px` }}
         >
           <div className="p-4 border-b border-gray-600 flex-shrink-0">
@@ -824,7 +824,7 @@ export default function SchemaTranslationPanel() {
               <p className="text-xs text-blue-300 mt-1">Project: {selectedProject.name}</p>
             )}
           </div>
-          <div className="flex-1 p-4 overflow-y-auto overflow-x-hidden">
+          <div className="flex-1 p-4 overflow-y-auto overflow-x-auto min-h-0">
             {!selectedProject ? (
               <div className="text-center text-gray-400 mt-8">
                 <div className="text-2xl mb-2">📋</div>
@@ -862,8 +862,7 @@ export default function SchemaTranslationPanel() {
                 }}
                 expandedKeys={expandedKeys}
                 onToggle={(e) => setExpandedKeys(e.value)}
-                className="bg-transparent w-full h-full schema-tree-compact"
-                style={{ height: '100%' }}
+                className="bg-transparent schema-tree-compact"
               />
             )}
           </div>
@@ -902,7 +901,7 @@ export default function SchemaTranslationPanel() {
         </div>
 
         {/* Right Panel - Translation Detail */}
-        <div className="flex-1 bg-gray-800">
+        <div className="flex-1 bg-gray-800 h-full min-w-0">
           {renderTranslationDetail()}
         </div>
       </div>
@@ -1222,12 +1221,23 @@ export default function SchemaTranslationPanel() {
 
       {/* Custom CSS for compact tree */}
       <style>{`
+        .schema-tree-compact {
+          width: 100% !important;
+          height: auto !important;
+          background: #1f2937 !important;
+        }
+        .schema-tree-compact .p-tree-container {
+          width: 100% !important;
+          overflow: visible !important;
+          background: #1f2937 !important;
+        }
         .schema-tree-compact .p-treenode {
           padding: 0.125rem 0 !important;
         }
         .schema-tree-compact .p-treenode-content {
           padding: 0.125rem 0.5rem !important;
           min-height: 1.5rem !important;
+          background: transparent !important;
         }
         .schema-tree-compact .p-tree-toggler {
           width: 1.25rem !important;

@@ -201,4 +201,13 @@ class FloatingSchema extends Model
 
         return $clone;
     }
+
+    /**
+     * Get the subscription for this schema
+     */
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'entity_id')
+                    ->where('subscription_type', Subscription::TYPE_SCHEMA);
+    }
 }

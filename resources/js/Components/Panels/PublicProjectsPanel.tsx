@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -8,6 +8,7 @@ import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
 import { Message } from 'primereact/message';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
@@ -26,6 +27,8 @@ interface PublicProject {
   };
   is_public: boolean;
   teams_count: number;
+  schemas_count: number;
+  templates_count: number;
   can_join: boolean;
   created_at: string;
 }
@@ -52,6 +55,16 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   });
   const [cloneError, setCloneError] = useState<string>('');
 
+  // Subscription/credits state
+  const [currentUser, setCurrentUser] = useState<{ credits: number; user_type?: string } | null>(null);
+  const [needsCredits, setNeedsCredits] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [_subscriptionInfo, setSubscriptionInfo] = useState<{
+    owned_projects: number;
+    max_allowed: number;
+    needs_unlock: boolean;
+  } | null>(null);
+
   useEffect(() => {
     if (isActive) {
       loadPublicProjects();
@@ -61,7 +74,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
   const loadCurrentUser = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
       const response = await fetch('/api/user', {
@@ -74,11 +87,40 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       if (response.ok) {
         const userData = await response.json();
         setCurrentUserId(userData.id);
+        setCurrentUser(userData);
       }
     } catch {
       // Error loading current user
     }
   };
+
+  // Check if user needs credits for cloning (free users with max projects)
+  const checkSubscription = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      // Load user's projects to check subscription status
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.subscription_info) {
+          setSubscriptionInfo(data.subscription_info);
+          // Free users need credits if they're at their limit
+          const isFreeUser = currentUser?.user_type === 'free' || !currentUser?.user_type;
+          setNeedsCredits(isFreeUser && data.subscription_info.needs_unlock);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking subscription:', err);
+    }
+  }, [currentUser]);
 
   const loadPublicProjects = async () => {
     try {
@@ -133,7 +175,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
     return baseName;
   };
 
-  const openCloneModal = (project: PublicProject) => {
+  const openCloneModal = async (project: PublicProject) => {
     const suggestedName = generateCloneName(project.name);
     setProjectToClone(project);
     setCloneForm({
@@ -143,6 +185,9 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
     });
     setShowCloneModal(true);
     setCloneError('');
+
+    // Check subscription status when opening modal
+    await checkSubscription();
   };
 
   const handleCloneProject = async () => {
@@ -182,10 +227,25 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         // Also refresh the global project dropdown
         await loadGlobalProjects();
 
+        // Reload user to update credits
+        await loadCurrentUser();
+
+        // Dispatch event to notify other components (like navigation) about credit change
+        if (needsCredits) {
+          window.dispatchEvent(new CustomEvent('creditsChanged'));
+        }
+
         alert(`Project "${cloneForm.name}" cloned successfully! You can find it in your Projects tab.`);
       } else {
         const errorData = await response.json();
-        setCloneError(errorData.message || t.publicprojectspanel183);
+
+        // Handle insufficient credits error
+        if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
+          setCloneError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setNeedsCredits(true);
+        } else {
+          setCloneError(errorData.message || t.publicprojectspanel183);
+        }
       }
     } catch (error) {
       setCloneError(error instanceof Error ? error.message : t.publicprojectspanel183);
@@ -323,16 +383,22 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                   </div>
 
                   {/* Stats */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-1">
-                        <i className="pi pi-users text-blue-400"></i>
-                        <span className="text-gray-300">{project.teams_count} teams</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <i className="pi pi-calendar text-gray-400"></i>
-                        <span className="text-gray-400">{formatDate(project.created_at)}</span>
-                      </div>
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <div className="flex items-center space-x-1">
+                      <i className="pi pi-users text-blue-400"></i>
+                      <span className="text-gray-300">{project.teams_count}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <i className="pi pi-database text-purple-400"></i>
+                      <span className="text-gray-300">{project.schemas_count || 0}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <i className="pi pi-file text-green-400"></i>
+                      <span className="text-gray-300">{project.templates_count || 0}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <i className="pi pi-calendar text-gray-400"></i>
+                      <span className="text-gray-400">{formatDate(project.created_at)}</span>
                     </div>
                   </div>
 
@@ -454,11 +520,9 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 Public Project
               </label>
             </div>
-            <p className="text-xs text-gray-300 mb-3">
+            <p className="text-xs text-gray-300">
               Public projects are visible to all users and can be discovered in the project gallery.
-            </p>
-            <p className="text-xs text-yellow-400">
-              💡 Note: Private projects may require premium features.
+              Private projects are only visible to you and your team members.
             </p>
           </div>
 
@@ -468,7 +532,43 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 <div className="font-medium text-gray-300 mb-1">Original Project:</div>
                 <div className="text-white">{projectToClone.name}</div>
                 <div className="text-gray-400 text-xs mt-1">
-                  by {projectToClone.owner.name} • Credits will be preserved
+                  by {projectToClone.owner.name}
+                </div>
+                <div className="flex gap-4 mt-2 text-xs">
+                  <span className="text-blue-400">
+                    <i className="pi pi-database mr-1"></i>
+                    {projectToClone.schemas_count || 0} Schemas
+                  </span>
+                  <span className="text-green-400">
+                    <i className="pi pi-file mr-1"></i>
+                    {projectToClone.templates_count || 0} Templates
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Credit warning for free users at limit */}
+          {needsCredits && (
+            <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-700">
+              <div className="text-sm">
+                <div className="font-medium text-yellow-300 mb-1">
+                  <i className="pi pi-exclamation-triangle mr-2"></i>
+                  50 Credits erforderlich
+                </div>
+                <p className="text-gray-300 text-xs mb-2">
+                  Sie haben Ihr kostenloses Projekt-Limit erreicht. Das Clonen dieses Projekts kostet 50 Credits (1 Jahr gültig).
+                </p>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">Ihre Credits: <strong className="text-white">{currentUser?.credits || 0}</strong></span>
+                  {(currentUser?.credits || 0) < 50 && (
+                    <Button
+                      label="Credits kaufen"
+                      icon="pi pi-shopping-cart"
+                      className="p-button-sm p-button-warning"
+                      onClick={() => setShowPlanModal(true)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -483,14 +583,32 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               disabled={cloning !== null}
             />
             <Button
-              label={cloning !== null ? "Cloning..." : t.publicprojectspanel346}
+              label={
+                cloning !== null
+                  ? "Cloning..."
+                  : needsCredits
+                    ? `Clone (50 Credits)`
+                    : t.publicprojectspanel346
+              }
               icon={cloning !== null ? "pi pi-spinner pi-spin" : "pi pi-copy"}
               onClick={handleCloneProject}
-              disabled={cloning !== null || !cloneForm.name.trim()}
+              disabled={cloning !== null || !cloneForm.name.trim() || (needsCredits && (currentUser?.credits || 0) < 50)}
             />
           </div>
         </div>
       </Dialog>
+
+      {/* Plan/Credits Modal */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={() => {
+          setShowPlanModal(false);
+          // Refresh user data after potential credit purchase
+          loadCurrentUser();
+          checkSubscription();
+        }}
+        initialTab={1}
+      />
     </div>
   );
 }

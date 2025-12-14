@@ -13,6 +13,8 @@ import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -106,6 +108,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     is_system_schema: false
   });
   const [creating, setCreating] = useState(false);
+
+  // Schema unlock and plan modals
+  const [showSchemaUnlockModal, setShowSchemaUnlockModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Edit schema modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -296,6 +304,34 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
   }, [communityTypeFilter, communitySearchTerm, t]);
 
+  // Load user data when panel becomes active
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (!token) return;
+
+        const response = await fetch('/api/user', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setCurrentUser(userData);
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    };
+
+    if (isActive) {
+      loadUserData();
+    }
+  }, [isActive]);
+
   // Load schemas when panel becomes active
   useEffect(() => {
     if (isActive) {
@@ -460,6 +496,45 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
   };
 
+  // Pre-check before opening create schema modal
+  const handleCreateSchemaClick = async () => {
+    if (!currentUser) {
+      setError('Bitte melden Sie sich an, um Datenbanken zu erstellen');
+      return;
+    }
+
+    const isFreeUser = currentUser.user_type === 'free' || !currentUser.user_type;
+
+    // If user is Free, check schema count
+    if (isFreeUser) {
+      // Count user's schemas (filter from mySchemas)
+      const userSchemaCount = mySchemas.filter(s => s.owner_id === currentUser.id).length;
+
+      // If user already has 1 schema (the limit for free users)
+      if (userSchemaCount >= 1) {
+        // Show SchemaUnlockModal
+        setShowSchemaUnlockModal(true);
+        return;
+      }
+    }
+
+    // User is not Free, or has no schemas yet -> show create modal directly
+    setShowCreateModal(true);
+  };
+
+  const handleSchemaUnlockConfirm = () => {
+    // User confirmed they want to spend 50 credits
+    // Close unlock modal and open create modal
+    setShowSchemaUnlockModal(false);
+    setShowCreateModal(true);
+  };
+
+  const handleBuyCredits = () => {
+    // Open Plan Modal on "Buy Credits" tab (tab index 1)
+    setPlanModalInitialTab(1);
+    setShowPlanModal(true);
+  };
+
   const handleCreateSchema = async () => {
     setCreating(true);
     setError('');
@@ -483,7 +558,34 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Handle insufficient credits error
+        if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
+          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setShowCreateModal(false);
+          setCreating(false);
+
+          // Open Plan Modal on "Buy Credits" tab
+          setPlanModalInitialTab(1);
+          setShowPlanModal(true);
+          return;
+        }
+
         throw new Error(errorData.message || t.databasemanagementpanel330);
+      }
+
+      // Reload user data to get updated credits
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
+        // Notify other components (like navigation) about credit change
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
       }
 
       await loadMySchemas();
@@ -1039,7 +1141,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             label={t.databasemanagementpanel803}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleCreateSchemaClick}
             disabled={mySchemasLoading || communityLoading}
           />
           <Button
@@ -1845,6 +1947,27 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           </div>
         )}
       </Dialog>
+
+      {/* Schema Unlock Modal - Shows before creating 2nd database as Free user */}
+      <ProjectUnlockModal
+        visible={showSchemaUnlockModal}
+        onHide={() => setShowSchemaUnlockModal(false)}
+        onConfirm={handleSchemaUnlockConfirm}
+        onBuyCredits={handleBuyCredits}
+        onUpgradePatron={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
+        currentCredits={currentUser?.credits || 0}
+        creditCost={50}
+        resourceType="database"
+        currentCount={mySchemas.filter(s => s.owner_id === currentUser?.id).length}
+        maxFreeCount={1}
+      />
+
+      {/* Plan Modal - For buying credits or upgrading subscription */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={() => setShowPlanModal(false)}
+        initialTab={planModalInitialTab}
+      />
       </div>
     </div>
   );

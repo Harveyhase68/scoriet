@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
@@ -13,6 +13,7 @@ import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { ProtectedFilesEditor } from '@/Components/ProtectedFilesEditor';
 import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface TemplateVariable {
     id?: number;
@@ -73,7 +74,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   // AutoComplete filtered suggestions
   const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
   const [filteredLanguages, setFilteredLanguages] = useState<string[]>([]);
-    const { control, handleSubmit: handleFormSubmit, reset, getValues, formState: { errors } } = useForm({
+
+  // Private template unlock state
+  const [currentUser, setCurrentUser] = useState<{ credits: number; user_type?: string } | null>(null);
+  const [needsPrivateUnlock, setNeedsPrivateUnlock] = useState(false);
+  const [privateUnlockConfirmed, setPrivateUnlockConfirmed] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
+      const { control, handleSubmit: handleFormSubmit, reset, getValues, watch, formState: { errors } } = useForm({
         defaultValues: {
             name: '',
             description: '',
@@ -100,6 +108,99 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     const [originalProtectedFiles, setOriginalProtectedFiles] = React.useState<string[]>([]);
     const [originalInstallScript, setOriginalInstallScript] = React.useState<ScriptStep[]>([]);
     const [originalUpdateScript, setOriginalUpdateScript] = React.useState<ScriptStep[]>([]);
+
+    // Check if private template needs unlock (for free users)
+    const checkPrivateTemplateSubscription = useCallback(async () => {
+        setCheckingSubscription(true);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) {
+                setCheckingSubscription(false);
+                return;
+            }
+
+            // Load user data
+            const userResponse = await fetch('/api/user', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                setCurrentUser(userData);
+
+                const isFreeUser = userData.user_type === 'free' || !userData.user_type;
+
+                // If not a free user, they can create unlimited private templates
+                if (!isFreeUser) {
+                    setNeedsPrivateUnlock(false);
+                    setCheckingSubscription(false);
+                    return;
+                }
+
+                // Load existing private template subscriptions count
+                const subsResponse = await fetch('/api/template-subscriptions/count', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (subsResponse.ok) {
+                    const subsData = await subsResponse.json();
+                    setExistingPrivateSubscriptions(subsData.count || 0);
+                }
+
+                // Free users need to unlock private templates
+                setNeedsPrivateUnlock(true);
+            }
+        } catch (err) {
+            console.error('Error checking private template subscription:', err);
+        } finally {
+            setCheckingSubscription(false);
+        }
+    }, []);
+
+    // Refresh user credits
+    const refreshCredits = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch('/api/user', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                setCurrentUser(userData);
+            }
+        } catch (err) {
+            console.error('Error refreshing credits:', err);
+        }
+    }, []);
+
+    // Handle unlock confirmation
+    const handlePrivateUnlockConfirm = () => {
+        setPrivateUnlockConfirmed(true);
+        setNeedsPrivateUnlock(false);
+    };
+
+    // Handle buy credits
+    const handleBuyCredits = () => {
+        setShowPlanModal(true);
+    };
+
+    // Handle plan modal close
+    const handlePlanModalClose = () => {
+        setShowPlanModal(false);
+        refreshCredits();
+    };
 
     // All hooks must be called before any early returns
     useEffect(() => {
@@ -138,6 +239,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             if (onLoadVariables) {
                 onLoadVariables();
             }
+
+            // Reset unlock states for editing
+            setNeedsPrivateUnlock(false);
+            setPrivateUnlockConfirmed(false);
         } else if (visible && !editingTemplate) {
             // Reset form for new template
             const initialValues = {
@@ -164,8 +269,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setOriginalProtectedFiles([]);
             setOriginalInstallScript([]);
             setOriginalUpdateScript([]);
+
+            // Reset unlock states for new template
+            setNeedsPrivateUnlock(false);
+            setPrivateUnlockConfirmed(false);
         }
-     
+
     }, [visible, editingTemplate, reset, userType]);
 
     // Effect to check for changes when protected files or scripts change
@@ -229,23 +338,20 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     });
 
     const handleSubmit = handleFormSubmit(async (values) => {
-        try {
-            // Include protected files and scripts in the submission
-            const submissionData = {
-                ...values,
-                protected_files: protectedFiles,
-                install_script: installScript,
-                update_script: updateScript
-            };
-            await onSubmit(submissionData);
-            reset();
-            setIsSaved(false);
-        } catch {
-            // Submit failed
-        }
+        // Include protected files and scripts in the submission
+        const submissionData = {
+            ...values,
+            protected_files: protectedFiles,
+            install_script: installScript,
+            update_script: updateScript
+        };
+        await onSubmit(submissionData);
+        reset();
+        setIsSaved(false);
     });
 
     return (
+        <>
         <Dialog
             header={editingTemplate ? t.templatemodal186 : t.templatemodal147}
             visible={visible}
@@ -424,36 +530,60 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 </div>
 
                 <div className="flex gap-4">
-                    {/* Visibility */}
-                    <div className="flex-1">
-                        <label htmlFor="visibility" className="block text-sm font-medium mb-2">
-                            {t.templatemodal366}
-                        </label>
-                        <Controller
-                            name="visibility"
-                            control={control}
-                            rules={{ required: t.templatemodal307 }}
-                            render={({ field }) => (
-                                <Dropdown
-                                    id="visibility"
-                                    value={field.value}
-                                    onChange={(e) => {
-                                        field.onChange(e.value);
-                                        checkFormChanges();
-                                    }}
-                                    options={[
-                                        { label: t.databasemanagementpanel772, value: 'public' },
-                                        { label: t.databasemanagementpanel771, value: 'private' }
-                                    ]}
-                                    placeholder={t.templatemodal320}
-                                    className="w-full"
-                                />
+                    {/* Visibility - Hidden if locked (cloned from store) */}
+                    {editingTemplate?.visibility_locked ? (
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium mb-2">
+                                {t.templatemodal366}
+                            </label>
+                            <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                                <div className="flex items-center gap-2">
+                                    <i className="pi pi-lock text-yellow-500"></i>
+                                    <span className="text-gray-300">Private (gesperrt)</span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Von einem gekauften Template geklont - Sichtbarkeit kann nicht geändert werden
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1">
+                            <label htmlFor="visibility" className="block text-sm font-medium mb-2">
+                                {t.templatemodal366}
+                            </label>
+                            <Controller
+                                name="visibility"
+                                control={control}
+                                rules={{ required: t.templatemodal307 }}
+                                render={({ field }) => (
+                                    <Dropdown
+                                        id="visibility"
+                                        value={field.value}
+                                        onChange={(e) => {
+                                            field.onChange(e.value);
+                                            checkFormChanges();
+                                            // Check if private template unlock is needed for new templates
+                                            if (e.value === 'private' && !editingTemplate && !privateUnlockConfirmed) {
+                                                checkPrivateTemplateSubscription();
+                                            } else if (e.value === 'public' || e.value === 'store') {
+                                                setNeedsPrivateUnlock(false);
+                                            }
+                                        }}
+                                        options={[
+                                            { label: t.databasemanagementpanel772 + ' (FREE)', value: 'public' },
+                                            { label: t.databasemanagementpanel771 + ' (50 Credits/Jahr)', value: 'private' },
+                                            { label: 'Store (Approval required)', value: 'store' }
+                                        ]}
+                                        placeholder={t.templatemodal320}
+                                        className="w-full"
+                                    />
+                                )}
+                            />
+                            {errors.visibility && (
+                                <small className="text-red-400 mt-1 block">{errors.visibility.message}</small>
                             )}
-                        />
-                        {errors.visibility && (
-                            <small className="text-red-400 mt-1 block">{errors.visibility.message}</small>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* System Template (conditional) */}
                     {userType === 'system' && (
@@ -483,6 +613,112 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     )}
                 </div>
+
+                {/* Private Template Unlock Section - Only for new templates with private visibility */}
+                {!editingTemplate && getValues().visibility === 'private' && (
+                    <div className="space-y-3 mt-4">
+                        {checkingSubscription ? (
+                            <div className="py-4 text-center bg-gray-800 rounded-lg border border-gray-700">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                                <p className="text-gray-400 text-sm">Überprüfe Subscription...</p>
+                            </div>
+                        ) : needsPrivateUnlock ? (
+                            <>
+                                <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
+                                    <p className="text-yellow-300 text-sm mb-1">
+                                        <i className="pi pi-lock mr-2"></i>
+                                        <strong>Private Template - Premium Feature</strong>
+                                    </p>
+                                    <p className="text-gray-300 text-xs">
+                                        Private Templates kosten <strong>50 Credits pro Jahr</strong>. Öffentliche Templates sind kostenlos!
+                                    </p>
+                                </div>
+
+                                <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                                    <div className="flex justify-between items-center text-sm mb-1">
+                                        <span className="text-gray-300">Ihre Credits:</span>
+                                        <span className="text-white font-bold">{currentUser?.credits || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm mb-1">
+                                        <span className="text-gray-300">Benötigt:</span>
+                                        <span className="text-yellow-400 font-bold">50</span>
+                                    </div>
+                                    <hr className="border-gray-700 my-1" />
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-300">Danach:</span>
+                                        <span className={`font-bold ${(currentUser?.credits || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {(currentUser?.credits || 0) >= 50 ? (currentUser?.credits || 0) - 50 : `${50 - (currentUser?.credits || 0)} fehlen`}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {(currentUser?.credits || 0) < 50 && (
+                                    <div className="bg-red-900/20 border border-red-700 rounded-lg p-2">
+                                        <p className="text-red-300 text-xs">
+                                            Sie benötigen <strong>{50 - (currentUser?.credits || 0)} weitere Credits</strong>.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    {(currentUser?.credits || 0) >= 50 ? (
+                                        <Button
+                                            type="button"
+                                            onClick={handlePrivateUnlockConfirm}
+                                            className="flex-1 p-button-success p-button-sm"
+                                            icon="pi pi-unlock"
+                                            label="Freischalten (50 Credits)"
+                                        />
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            onClick={handleBuyCredits}
+                                            className="flex-1 p-button-warning p-button-sm"
+                                            icon="pi pi-shopping-cart"
+                                            label="Credits kaufen"
+                                        />
+                                    )}
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            reset({ ...getValues(), visibility: 'public' });
+                                            setNeedsPrivateUnlock(false);
+                                        }}
+                                        className="p-button-secondary p-button-sm"
+                                        icon="pi pi-globe"
+                                        label="Öffentlich"
+                                    />
+                                </div>
+                            </>
+                        ) : privateUnlockConfirmed ? (
+                            <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
+                                <p className="text-green-300 text-sm flex items-center gap-2">
+                                    <i className="pi pi-check-circle"></i>
+                                    <strong>Freigeschaltet!</strong> 50 Credits werden beim Speichern abgezogen.
+                                </p>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
+
+                {/* Store Template Info Section */}
+                {watch('visibility') === 'store' && (
+                    <div className="space-y-3 mt-4">
+                        <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-3">
+                            <p className="text-purple-300 text-sm mb-2">
+                                <i className="pi pi-shopping-cart mr-2"></i>
+                                <strong>Store Template - Verkaufe dein Template!</strong>
+                            </p>
+                            <p className="text-gray-300 text-xs mb-2">
+                                Dein Template wird im Store angezeigt, sobald es von einem Admin freigegeben wurde oder 5+ positive Reviews hat.
+                            </p>
+                            <p className="text-gray-400 text-xs">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                Preiseinstellung und Media-Upload sind nach dem Speichern im <strong>Store-Tab</strong> des Template Managements verfügbar.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Template Files Section */}
                 <div className="border-t pt-4 mt-4">
@@ -745,8 +981,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             type="button"
                             onClick={handleSave}
                             loading={isLoading}
-                            disabled={isSaved}
-                            className={isSaved ? 'opacity-50' : ''}
+                            disabled={isSaved || (getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)}
+                            className={(isSaved || (getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)) ? 'opacity-50' : ''}
+                            tooltip={getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? 'Bitte erst "Freischalten" klicken' : undefined}
                         >
                             {isSaved ? t.templatemodal667 : t.cmsadminpanel279}
                         </Button>
@@ -755,8 +992,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     <Button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={editingTemplate && !hasFormChanges}
-                        className={editingTemplate && !hasFormChanges ? 'opacity-50' : ''}
+                        disabled={(editingTemplate && !hasFormChanges) || (!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)}
+                        className={((editingTemplate && !hasFormChanges) || (!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)) ? 'opacity-50' : ''}
+                        tooltip={!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? 'Bitte erst "Freischalten" klicken' : undefined}
                     >
                         {editingTemplate ?
                             (hasFormChanges ? t.applicationsmodal313 : t.templatemodal502) :
@@ -766,6 +1004,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 </div>
             </form>
         </Dialog>
+        <PlanModal
+            visible={showPlanModal}
+            onHide={handlePlanModalClose}
+            initialTab={1}
+        />
+        </>
     );
 };
 

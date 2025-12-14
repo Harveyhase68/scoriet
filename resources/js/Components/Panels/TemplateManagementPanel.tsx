@@ -10,33 +10,13 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
+import { TabView, TabPanel } from 'primereact/tabview';
 import { apiClient as api } from '@/lib/api';
-import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import FileModal from './FileModal';
 import TemplateModal from './TemplateModal';
 import VariableModal from './VariableModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
-
-const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const setFocus = () => ref.current?.focus();
-
-  return (
-    <div
-      {...rest}
-      ref={ref}
-      tabIndex={-1}
-      style={{ flex: 1, padding: '5px 10px', ...style }}
-      onMouseDownCapture={setFocus}
-      onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
-    >
-      {children}
-    </div>
-  );
-};
-
 
 interface Template {
     id: number;
@@ -49,13 +29,20 @@ interface Template {
     file_count: number;
     created_at: string;
     creator_user_id: number;
-    visibility: 'public' | 'private';
+    visibility: 'public' | 'private' | 'store';
     is_system_template: boolean;
     files?: TemplateFile[];
     review_status: 'draft' | 'pending_review' | 'approved' | 'rejected';
     review_score: number;
     linked_project_ids?: number[];
     linked_projects?: Array<{ id: number; name: string; is_active: boolean }>;
+    // Store fields
+    price_type?: 'credits' | 'euros' | null;
+    price_credits?: number | null;
+    price_euros?: number | null;
+    is_store_approved?: boolean;
+    sales_count?: number;
+    total_revenue?: number;
 }
 
 interface TemplateFile {
@@ -102,12 +89,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const isInnerCore = localStorage.getItem('is_inner_core') === '1';
 
     // State variables
-    //const [templates, setTemplates] = useState<Template[]>([]);
     const [myTemplates, setMyTemplates] = useState<Template[]>([]);
     const [communityTemplates, setCommunityTemplates] = useState<Template[]>([]);
-    //const [loading, setLoading] = useState(false);
+    const [purchasedTemplates, setPurchasedTemplates] = useState<Template[]>([]);
     const [myTemplatesLoading, setMyTemplatesLoading] = useState(false);
     const [communityLoading, setCommunityLoading] = useState(false);
+    const [purchasedLoading, setPurchasedLoading] = useState(false);
 
     // Filters for My Templates
     const [myTypeFilter, setMyTypeFilter] = useState('all'); // 'all', 'private', 'public', 'system'
@@ -117,7 +104,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     // Filters for Community Templates
     const [communitySearchTerm, setCommunitySearchTerm] = useState('');
-    const [communityTypeFilter, setCommunityTypeFilter] = useState('all'); // 'all', 'system', 'public'
+    const [communityTypeFilter, setCommunityTypeFilter] = useState('all'); // 'all', 'system', 'public', 'store'
     const [communityLanguageFilter, setCommunityLanguageFilter] = useState('all');
     const [communityCategoryFilter, setCommunityCategoryFilter] = useState(t.templatecontroller22);
     const [modalVisible, setModalVisible] = useState(false);
@@ -127,8 +114,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [templateFiles, setTemplateFiles] = useState<TemplateFile[]>([]);
     const [fileModalVisible, setFileModalVisible] = useState(false);
     const [editingFile, setEditingFile] = useState<TemplateFile | null>(null);
-    //const [searchTerm, setSearchTerm] = useState('');
-    //const [categoryFilter, setCategoryFilter] = useState(t.templatecontroller22);
     const [cloneModalVisible, setCloneModalVisible] = useState(false);
     const [templateToClone, setTemplateToClone] = useState<Template | null>(null);
     const [cloneName, setCloneName] = useState('');
@@ -151,6 +136,29 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [templateToToggle, setTemplateToToggle] = useState<Template | null>(null);
     const [projectActivationStates, setProjectActivationStates] = useState<{[key: number]: boolean}>({});
 
+    // Store Settings Modal
+    const [storeSettingsModalVisible, setStoreSettingsModalVisible] = useState(false);
+    const [templateForStoreSettings, setTemplateForStoreSettings] = useState<Template | null>(null);
+    const [storePriceType, setStorePriceType] = useState<'credits' | 'euros'>('credits');
+    const [storePriceCredits, setStorePriceCredits] = useState<number>(50);
+    const [storePriceEuros, setStorePriceEuros] = useState<number>(1.00);
+    const [savingStoreSettings, setSavingStoreSettings] = useState(false);
+    const [storeSettingsTab, setStoreSettingsTab] = useState(0);
+
+    // Media State
+    const [templateMedia, setTemplateMedia] = useState<{
+        logo: any | null;
+        images: any[];
+        videos: any[];
+    }>({ logo: null, images: [], videos: [] });
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingImages, setUploadingImages] = useState(false);
+    const [addingVideo, setAddingVideo] = useState(false);
+    const [newVideoUrl, setNewVideoUrl] = useState('');
+    const [newVideoTitle, setNewVideoTitle] = useState('');
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const imagesInputRef = useRef<HTMLInputElement>(null);
+
     // Track if we should use forceProjectName (don't change title on selectedProject changes)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const useForceProjectName = useRef(!!forceProjectName);
@@ -171,9 +179,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     ];
 
     useEffect(() => {
-        loadTemplates();
         loadMyTemplates();
         loadCommunityTemplates();
+        loadPurchasedTemplates();
     }, [projectId]);
 
     // Reload my templates when filters change
@@ -195,26 +203,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     // No dynamic title updates for menu call - title stays as t.panelsewnavigationpanel188 (all templates)
 
-
-    const loadTemplates = async () => {
-        setLoading(true);
-        try {
-            const templates = await api.getAllTemplates({
-                category: categoryFilter,
-                search: searchTerm,
-                active_only: false,
-                project_id: projectId
-            });
-            setTemplates(templates);
-        } catch {
-            // Error loading templates
-            toast.showError(t.templatemanagementpanel150);
-            setTemplates([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     // Load user's own templates (original, cloned, linked, public)
     const loadMyTemplates = async () => {
         setMyTemplatesLoading(true);
@@ -226,7 +214,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             // Special handling for system users:
             // - System/Admin users: Show ALL their templates including system templates
-            // - Normal users (free/premium): Show templates they created OR templates linked to their projects
+            // - Normal users (free/patron): Show templates they created OR templates linked to their projects
             const isSystemUser = userType === 'system' || userType === 'admin';
 
             // Filter: User's own templates (creator) OR templates linked to user's projects
@@ -253,7 +241,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 return false;
             });
 
-            // Apply type filter (private/public/system)
+            // Apply type filter (private/public/store/system)
             if (myTypeFilter !== 'all') {
                 if (myTypeFilter === 'system') {
                     filtered = filtered.filter((t: Template) => t.is_system_template);
@@ -261,6 +249,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'private');
                 } else if (myTypeFilter === 'public') {
                     filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'public');
+                } else if (myTypeFilter === 'store') {
+                    filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'store');
                 }
             }
 
@@ -302,9 +292,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             });
 
             // Check if current user is a reviewer (system/admin/inner_core)
-            const isReviewer = userType === 'system' || userType === 'admin' || isInnerCore;
+            const isReviewer = userType === 'system' || userType === 'admin' || userType === 'review' || isInnerCore;
 
-            // Filter: System templates OR public templates (from anyone, including user)
+            // Filter: System templates OR public templates OR store templates (from anyone, including user)
             let filtered = allTemplates.filter((t: Template) => {
                 // System templates are ALWAYS shown (no review required)
                 if (t.is_system_template) {
@@ -316,6 +306,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     return t.review_status === 'approved' || isReviewer;
                 }
 
+                // Store templates: Only show if approved OR user is reviewer
+                if (t.visibility === 'store') {
+                    return t.is_store_approved || isReviewer;
+                }
+
                 return false;
             });
 
@@ -324,6 +319,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 filtered = filtered.filter((t: Template) => t.is_system_template);
             } else if (communityTypeFilter === 'public') {
                 filtered = filtered.filter((t: Template) => !t.is_system_template && t.visibility === 'public');
+            } else if (communityTypeFilter === 'store') {
+                filtered = filtered.filter((t: Template) => t.visibility === 'store');
             }
 
             // Apply language filter
@@ -351,6 +348,31 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             setCommunityTemplates([]);
         } finally {
             setCommunityLoading(false);
+        }
+    };
+
+    // Load purchased templates from store
+    const loadPurchasedTemplates = async () => {
+        setPurchasedLoading(true);
+        try {
+            const response = await api.request('/store/my-purchases?per_page=100');
+
+            // Extract templates from purchases and format them
+            const templates: Template[] = (response.data || [])
+                .filter((purchase: any) => purchase.template)
+                .map((purchase: any) => ({
+                    ...purchase.template,
+                    is_purchased: true,
+                    purchase_date: purchase.created_at,
+                    seller_username: purchase.seller?.username || purchase.template?.creator?.username,
+                }));
+
+            setPurchasedTemplates(templates);
+        } catch (error) {
+            console.error('Error loading purchased templates:', error);
+            setPurchasedTemplates([]);
+        } finally {
+            setPurchasedLoading(false);
         }
     };
 
@@ -431,7 +453,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             const response = await api.hardDeleteTemplate(templateToDelete.id);
             if (response.success) {
                 toast.showSuccess('Template endgültig gelöscht');
-                await loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                await loadMyTemplates();
+                await loadCommunityTemplates();
                 setShowDeleteModal(false);
                 setTemplateToDelete(null);
                 setDeleteConfirmText('');
@@ -485,7 +508,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             toast.showSuccess('Verknüpfungen erfolgreich aktualisiert');
             setToggleActiveModalVisible(false);
-            loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+            loadMyTemplates();
+            loadCommunityTemplates();
         } catch (error: any) {
             console.error('Error updating activations:', error);
             toast.showError('Fehler beim Aktualisieren der Verknüpfungen');
@@ -495,7 +519,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const handleClone = (template: Template) => {
         setTemplateToClone(template);
         setCloneName(template.name);
-        setCloneVisibility('public');
+        // Purchased templates must be cloned as private
+        const isPurchased = (template as any).is_purchased || template.visibility === 'store';
+        setCloneVisibility(isPurchased ? 'private' : 'public');
         setNameExists(false);
         setCloneModalVisible(true);
 
@@ -546,11 +572,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             if (response.success) {
                 toast.showSuccess(t.templatecontroller649);
                 setCloneModalVisible(false);
-                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                loadMyTemplates();
+                loadCommunityTemplates();
             }
         } catch (error: any) {
+            console.error('Clone error:', error.response?.data);
             const errorMessage = error.response?.data?.message || t.templatemanagementpanel291;
-            toast.showError(errorMessage);
+            const debugInfo = error.response?.data?.debug;
+            if (debugInfo) {
+                console.log('Debug info:', debugInfo);
+                toast.showError(`${errorMessage} (User ID: ${debugInfo.your_user_id})`);
+            } else {
+                toast.showError(errorMessage);
+            }
         }
     };
 
@@ -592,11 +626,217 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             await api.updateTemplateProjectLinks(templateToLink.id, linkedProjectIds);
             toast.showSuccess('Template-Verknüpfungen erfolgreich aktualisiert');
             setLinkModalVisible(false);
-            loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+            loadMyTemplates();
+            loadCommunityTemplates();
         } catch (error: any) {
             const errorMessage = error.response?.data?.message || 'Fehler beim Aktualisieren der Verknüpfungen';
             toast.showError(errorMessage);
         }
+    };
+
+    // Store Settings Handlers
+    const openStoreSettings = async (template: Template) => {
+        setTemplateForStoreSettings(template);
+        setStorePriceType(template.price_type || 'credits');
+        setStorePriceCredits(template.price_credits || 50);
+        setStorePriceEuros(template.price_euros || 1.00);
+        setStoreSettingsTab(0);
+        setNewVideoUrl('');
+        setNewVideoTitle('');
+        setTemplateMedia({ logo: null, images: [], videos: [] });
+        setStoreSettingsModalVisible(true);
+        // Load media asynchronously
+        await loadTemplateMedia(template.id);
+    };
+
+    const handleSaveStoreSettings = async () => {
+        if (!templateForStoreSettings) return;
+
+        // Validate
+        if (storePriceType === 'credits' && storePriceCredits < 50) {
+            toast.showError('Minimum 50 Credits erforderlich');
+            return;
+        }
+        if (storePriceType === 'euros' && storePriceEuros < 1.00) {
+            toast.showError('Minimum 1.00 EUR erforderlich');
+            return;
+        }
+
+        setSavingStoreSettings(true);
+        try {
+            await api.request(`/store/templates/${templateForStoreSettings.id}/price`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    price_type: storePriceType,
+                    price_credits: storePriceType === 'credits' ? storePriceCredits : null,
+                    price_euros: storePriceType === 'euros' ? storePriceEuros : null,
+                }),
+            });
+            toast.showSuccess('Store-Einstellungen gespeichert');
+            setStoreSettingsModalVisible(false);
+            loadMyTemplates();
+        } catch (error: any) {
+            toast.showError(error.message || 'Fehler beim Speichern');
+        } finally {
+            setSavingStoreSettings(false);
+        }
+    };
+
+    // Media Handler Functions
+    const loadTemplateMedia = async (templateId: number) => {
+        try {
+            const response = await api.request(`/templates/${templateId}/media`);
+            // Response format: { logo: ..., images: [...], videos: [...] }
+            setTemplateMedia({
+                logo: response.logo || null,
+                images: response.images || [],
+                videos: response.videos || [],
+            });
+        } catch (error) {
+            console.error('Error loading media:', error);
+            setTemplateMedia({ logo: null, images: [], videos: [] });
+        }
+    };
+
+    const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!templateForStoreSettings || !event.target.files || event.target.files.length === 0) return;
+
+        const file = event.target.files[0];
+        if (!file.type.startsWith('image/')) {
+            toast.showError('Bitte nur Bilddateien hochladen');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast.showError('Logo darf maximal 2MB groß sein');
+            return;
+        }
+
+        setUploadingLogo(true);
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+
+            const response = await api.uploadFile(`/templates/${templateForStoreSettings.id}/media/logo`, formData);
+            if (response.success) {
+                toast.showSuccess('Logo hochgeladen');
+                await loadTemplateMedia(templateForStoreSettings.id);
+            }
+        } catch (error: any) {
+            toast.showError(error.message || 'Fehler beim Hochladen');
+        } finally {
+            setUploadingLogo(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    };
+
+    const handleImagesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!templateForStoreSettings || !event.target.files || event.target.files.length === 0) return;
+
+        const files = Array.from(event.target.files);
+        const invalidFiles = files.filter(f => !f.type.startsWith('image/'));
+        if (invalidFiles.length > 0) {
+            toast.showError('Bitte nur Bilddateien hochladen');
+            return;
+        }
+
+        const oversizedFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+        if (oversizedFiles.length > 0) {
+            toast.showError('Bilder dürfen maximal 5MB groß sein');
+            return;
+        }
+
+        setUploadingImages(true);
+        try {
+            const formData = new FormData();
+            files.forEach((file) => {
+                formData.append('images[]', file);
+            });
+
+            const response = await api.uploadFile(`/templates/${templateForStoreSettings.id}/media/images`, formData);
+            if (response.success) {
+                toast.showSuccess(`${files.length} Bild(er) hochgeladen`);
+                await loadTemplateMedia(templateForStoreSettings.id);
+            }
+        } catch (error: any) {
+            toast.showError(error.message || 'Fehler beim Hochladen');
+        } finally {
+            setUploadingImages(false);
+            if (imagesInputRef.current) imagesInputRef.current.value = '';
+        }
+    };
+
+    const handleAddVideo = async () => {
+        if (!templateForStoreSettings || !newVideoUrl.trim()) {
+            toast.showError('Bitte eine Video-URL eingeben');
+            return;
+        }
+
+        // Validate YouTube/Vimeo URL
+        const youtubePattern = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)/;
+        const vimeoPattern = /^(https?:\/\/)?(www\.)?vimeo\.com\//;
+
+        if (!youtubePattern.test(newVideoUrl) && !vimeoPattern.test(newVideoUrl)) {
+            toast.showError('Bitte eine gültige YouTube oder Vimeo URL eingeben');
+            return;
+        }
+
+        setAddingVideo(true);
+        try {
+            const response = await api.request(`/templates/${templateForStoreSettings.id}/media/videos`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    video_url: newVideoUrl,
+                    title: newVideoTitle || null,
+                }),
+            });
+            if (response.success) {
+                toast.showSuccess('Video hinzugefügt');
+                setNewVideoUrl('');
+                setNewVideoTitle('');
+                await loadTemplateMedia(templateForStoreSettings.id);
+            }
+        } catch (error: any) {
+            toast.showError(error.message || 'Fehler beim Hinzufügen');
+        } finally {
+            setAddingVideo(false);
+        }
+    };
+
+    const handleDeleteMedia = async (mediaId: number, mediaType: string) => {
+        if (!templateForStoreSettings) return;
+
+        confirmDialog({
+            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? 'Bild' : 'Video'} wirklich löschen?`,
+            header: 'Löschen bestätigen',
+            icon: 'pi pi-exclamation-triangle',
+            acceptClassName: 'p-button-danger',
+            accept: async () => {
+                try {
+                    await api.request(`/templates/${templateForStoreSettings.id}/media/${mediaId}`, {
+                        method: 'DELETE',
+                    });
+                    toast.showSuccess('Gelöscht');
+                    await loadTemplateMedia(templateForStoreSettings.id);
+                } catch (error: any) {
+                    toast.showError(error.message || 'Fehler beim Löschen');
+                }
+            },
+        });
+    };
+
+    const getVideoEmbedUrl = (url: string): string => {
+        // YouTube
+        const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+        if (youtubeMatch) {
+            return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+        }
+        // Vimeo
+        const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+        if (vimeoMatch) {
+            return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+        }
+        return url;
     };
 
     const handleSubmit = async (values: any) => {
@@ -646,10 +886,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 setModalVisible(false);
                 setTemplateFiles([]);
 
-                // Small delay to ensure DB transaction is complete
-                setTimeout(() => {
-                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
-                }, 500);
+                // 🔄 Refresh table immediately after template creation/update
+                await loadMyTemplates();
+                await loadCommunityTemplates();
             }
         } catch (error: any) {
             // Template submission error
@@ -697,9 +936,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 setModalVisible(false);
                 setTemplateFiles([]);
 
+                // 🔄 Refresh tables immediately
+                await loadMyTemplates();
+                await loadCommunityTemplates();
+
                 // Load the newly created template and open edit modal
                 setTimeout(async () => {
-                    await loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
 
                     // Find the newly created template by ID
                     const newTemplate = response.template;
@@ -760,7 +1002,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 if (response.success) {
                     toast.showSuccess(t.templatemanagementpanel410);
-                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                    loadMyTemplates();
+                    loadCommunityTemplates();
                 } else {
                     toast.showError(response.error || t.templatemanagementpanel413);
                 }
@@ -778,7 +1021,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                                 if (response.success) {
                                     toast.showSuccess(t.templatemanagementpanel428);
-                                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                                    loadMyTemplates();
+                                    loadCommunityTemplates();
                                 }
                             } catch {
                                 // Error overwriting template
@@ -823,7 +1067,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             if (response.ok && data.success) {
                 toast.showSuccess(data.message || 'Template erfolgreich aus Archiv importiert');
-                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                loadMyTemplates();
+                loadCommunityTemplates();
             } else if (response.status === 409) {
                 // Template already exists - ask for overwrite
                 confirmDialog({
@@ -848,7 +1093,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                             if (responseOverwrite.ok && dataOverwrite.success) {
                                 toast.showSuccess(dataOverwrite.message || 'Template erfolgreich überschrieben');
-                                loadTemplates(); loadMyTemplates(); loadCommunityTemplates();
+                                loadMyTemplates();
+                                loadCommunityTemplates();
                             } else {
                                 toast.showError(dataOverwrite.error || 'Fehler beim Überschreiben des Templates');
                             }
@@ -1199,10 +1445,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const uniqueCommunityLanguages = Array.from(new Set(communityTemplates.map(t => t.language).filter(Boolean)));
 
     return (
-        <TabContent>
-            <div className="p-4">
-                {/* Header with Action Buttons */}
-                <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col h-full bg-gray-800 text-gray-100">
+            {/* Header - Fixed at top */}
+            <div className="flex-shrink-0 p-4 pb-2">
+                <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-white">{t.panelsewnavigationpanel188}</h2>
                     <div className="flex gap-2">
                         <Button
@@ -1232,6 +1478,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto">
+                <div className="px-4 pb-4">
 
                 {/* MY TEMPLATES TABLE */}
                 <Card title="Meine Templates" className="mb-4">
@@ -1251,7 +1502,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         : [
                                             { label: 'Alle', value: 'all' },
                                             { label: 'Privat', value: 'private' },
-                                            { label: 'Öffentlich', value: 'public' }
+                                            { label: 'Öffentlich', value: 'public' },
+                                            { label: 'Store', value: 'store' }
                                         ]
                                 }
                                 onChange={(e) => setMyTypeFilter(e.value)}
@@ -1292,10 +1544,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         emptyMessage={t.templatesNoTemplatesFound}
                         paginatorTemplate={t.languagemanagementpanel317}
                         currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
-                        scrollable
                     >
                         <Column field="name" header={t.registermodal236} sortable />
-                        <Column 
+                        <Column
                             field="category" 
                             header={t.templatesColumnCategory}
                             body={(template) => (
@@ -1336,13 +1587,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         </span>
                                     );
                                 }
+                                const visibilityConfig: Record<string, { bg: string; label: string }> = {
+                                    'public': { bg: 'bg-blue-500', label: t.databasemanagementpanel772 },
+                                    'private': { bg: 'bg-red-500', label: t.databasemanagementpanel771 },
+                                    'store': { bg: 'bg-purple-500', label: 'Store' }
+                                };
+                                const config = visibilityConfig[template.visibility] || visibilityConfig['public'];
                                 return (
-                                    <span className={`px-2 py-1 rounded text-xs ${
-                                        template.visibility === 'public'
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-red-500 text-white'
-                                    }`}>
-                                        {template.visibility === 'public' ? t.databasemanagementpanel772 : t.databasemanagementpanel771}
+                                    <span className={`px-2 py-1 rounded text-xs ${config.bg} text-white`}>
+                                        {config.label}
+                                        {template.visibility === 'store' && !template.is_store_approved && (
+                                            <i className="pi pi-clock ml-1 text-xs" title="Warten auf Freigabe"></i>
+                                        )}
                                     </span>
                                 );
                             }}
@@ -1489,6 +1745,15 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             onClick={() => handleClone(template)}
                                             tooltip={t.templatemanagementpanel777}
                                         />
+                                        {/* Store Settings Button - only for store templates owned by user */}
+                                        {isOwner && template.visibility === 'store' && (
+                                            <Button
+                                                icon="pi pi-shopping-cart"
+                                                className="p-button-text p-button-warning p-button-sm"
+                                                onClick={() => openStoreSettings(template)}
+                                                tooltip="Store-Einstellungen (Preis & Media)"
+                                            />
+                                        )}
                                         {isOwner && (
                                             <>
                                                 <Button
@@ -1507,7 +1772,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 </Card>
 
                 {/* COMMUNITY TEMPLATES TABLE */}
-                <Card title="System & Öffentliche Templates" className="mb-4">
+                <Card title="System, Öffentliche & Store Templates" className="mb-4">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex gap-2">
                             <Dropdown
@@ -1515,7 +1780,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 options={[
                                     { label: 'Alle', value: 'all' },
                                     { label: 'System', value: 'system' },
-                                    { label: 'Öffentlich', value: 'public' }
+                                    { label: 'Öffentlich', value: 'public' },
+                                    { label: 'Store', value: 'store' }
                                 ]}
                                 onChange={(e) => setCommunityTypeFilter(e.value)}
                                 placeholder="Typ"
@@ -1555,7 +1821,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         emptyMessage={t.templatesNoTemplatesFound}
                         paginatorTemplate={t.languagemanagementpanel317}
                         currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
-                        scrollable
                     >
                         <Column field="name" header={t.registermodal236} sortable />
                         <Column
@@ -1584,6 +1849,21 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         <span className="px-2 py-1 bg-purple-500 text-white rounded text-xs">
                                             System
                                         </span>
+                                    );
+                                }
+                                if (template.visibility === 'store') {
+                                    const priceText = template.price_type === 'euros' && template.price_euros != null
+                                        ? `${Number(template.price_euros).toFixed(2)} €`
+                                        : template.price_type === 'credits' && template.price_credits != null
+                                            ? `${template.price_credits} Credits`
+                                            : 'Preis n/a';
+                                    return (
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="px-2 py-1 bg-orange-500 text-white rounded text-xs">
+                                                Store
+                                            </span>
+                                            <span className="text-xs text-gray-400">{priceText}</span>
+                                        </div>
                                     );
                                 }
                                 return (
@@ -1626,32 +1906,47 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             }}
                         />
                         <Column
-                            header="Review Score"
+                            header="Status"
                             body={(template) => {
                                 // System templates don't need review scores
                                 if (template.is_system_template) {
-                                    return null;
+                                    return (
+                                        <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                                            Aktiv
+                                        </span>
+                                    );
                                 }
 
-                                // Only show score for reviewers on non-approved public templates
                                 const isReviewer = userType === 'system' || userType === 'admin' || isInnerCore;
-                                const needsReview = template.review_status !== 'approved';
-
-                                if (!isReviewer || !needsReview) {
-                                    return null;
-                                }
-
                                 const score = template.review_score || 0;
                                 const maxScore = 5;
-                                const isLowScore = score < maxScore;
+                                const isApproved = template.visibility === 'store'
+                                    ? template.is_store_approved
+                                    : template.review_status === 'approved';
 
-                                return (
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                        isLowScore ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                                    }`}>
-                                        {score}/{maxScore}
-                                    </span>
-                                );
+                                // For approved templates - show green approved badge
+                                if (isApproved) {
+                                    return (
+                                        <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                                            Freigegeben
+                                        </span>
+                                    );
+                                }
+
+                                // For reviewers, show score on non-approved templates
+                                if (isReviewer) {
+                                    return (
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="px-2 py-1 bg-yellow-500 text-white rounded text-xs">
+                                                Prüfung
+                                            </span>
+                                            <span className="text-xs text-gray-400">{score}/{maxScore} Punkte</span>
+                                        </div>
+                                    );
+                                }
+
+                                // For non-reviewers, don't show pending templates (but this shouldn't happen due to filter)
+                                return null;
                             }}
                         />
                         <Column
@@ -1712,6 +2007,93 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                     </DataTable>
                 </Card>
+
+                {/* PURCHASED TEMPLATES TABLE */}
+                {purchasedTemplates.length > 0 && (
+                    <Card
+                        title={
+                            <div className="flex items-center gap-2">
+                                <i className="pi pi-shopping-cart text-purple-500"></i>
+                                <span>Gekaufte Templates</span>
+                                <Tag value={purchasedTemplates.length.toString()} severity="info" className="ml-2" />
+                            </div>
+                        }
+                        className="mb-4"
+                    >
+                        <DataTable
+                            value={purchasedTemplates}
+                            loading={purchasedLoading}
+                            paginator
+                            rows={10}
+                            rowsPerPageOptions={[10, 25, 50]}
+                            sortMode="multiple"
+                            className="p-datatable-sm"
+                            emptyMessage="Keine gekauften Templates gefunden"
+                            paginatorTemplate={t.languagemanagementpanel317}
+                            currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                        >
+                            <Column field="name" header={t.registermodal236} sortable />
+                            <Column
+                                field="category"
+                                header={t.templatesColumnCategory}
+                                body={(template) => (
+                                    <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
+                                        {template.category}
+                                    </span>
+                                )}
+                            />
+                            <Column
+                                field="language"
+                                header={t.cmsadminpanel245}
+                                body={(template) => (
+                                    <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
+                                        {template.language}
+                                    </span>
+                                )}
+                            />
+                            <Column
+                                header="Verkäufer"
+                                body={(template) => (
+                                    <span className="text-gray-300 text-sm">
+                                        {template.seller_username || template.creator?.username || 'Unknown'}
+                                    </span>
+                                )}
+                            />
+                            <Column
+                                header="Status"
+                                body={() => (
+                                    <Tag value="Gekauft" severity="success" icon="pi pi-check" />
+                                )}
+                            />
+                            <Column
+                                header={t.usercontroller56}
+                                body={(template) => (
+                                    <div className="flex gap-1">
+                                        <Button
+                                            icon="pi pi-eye"
+                                            className="p-button-text p-button-sm"
+                                            onClick={() => handleView(template)}
+                                            tooltip="Ansehen"
+                                        />
+                                        <Button
+                                            icon="pi pi-link"
+                                            className="p-button-text p-button-sm p-button-success"
+                                            onClick={() => handleOpenLinkModal(template)}
+                                            tooltip="Projekt verknüpfen"
+                                        />
+                                        <Button
+                                            icon="pi pi-copy"
+                                            className="p-button-text p-button-sm p-button-info"
+                                            onClick={() => handleClone(template)}
+                                            tooltip="Clone & Anpassen"
+                                        />
+                                    </div>
+                                )}
+                            />
+                        </DataTable>
+                    </Card>
+                )}
+                </div>
             </div>
 
             {/* Create/Edit Modal */}
@@ -1719,7 +2101,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={modalVisible}
                 onCancel={() => {
                     setModalVisible(false);
-                    loadTemplates(); loadMyTemplates(); loadCommunityTemplates(); // Reload templates when modal is closed
+                    loadMyTemplates();
+                    loadCommunityTemplates(); // Reload templates when modal is closed
                 }}
                 onSubmit={handleSubmit}
                 onSave={handleSave}
@@ -1872,20 +2255,35 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         )}
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-2">
-                            Sichtbarkeit
-                        </label>
-                        <select
-                            value={cloneVisibility}
-                            onChange={(e) => setCloneVisibility(e.target.value as 'public' | 'private')}
-                            className="w-full p-2 border rounded"
-                            style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
-                        >
-                            <option value="public">Public (für alle sichtbar)</option>
-                            <option value="private">Private (nur für Sie)</option>
-                        </select>
-                    </div>
+                    {/* Hide visibility selector for purchased templates - they must be private */}
+                    {!((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
+                        <div>
+                            <label className="block text-sm font-medium mb-2">
+                                Sichtbarkeit
+                            </label>
+                            <select
+                                value={cloneVisibility}
+                                onChange={(e) => setCloneVisibility(e.target.value as 'public' | 'private')}
+                                className="w-full p-2 border rounded"
+                                style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                            >
+                                <option value="public">Public (für alle sichtbar)</option>
+                                <option value="private">Private (nur für Sie)</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Show info for purchased templates */}
+                    {((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
+                        <div className="p-3 bg-blue-900/30 rounded-lg border border-blue-700">
+                            <div className="flex items-center gap-2 text-blue-300">
+                                <i className="pi pi-info-circle"></i>
+                                <span className="text-sm">
+                                    Gekaufte Templates werden als <strong>Private</strong> geklont.
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="bg-gray-700 p-3 rounded text-sm">
                         <strong>Quelle:</strong> {templateToClone?.name}<br/>
@@ -2099,9 +2497,326 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 </div>
             </Dialog>
 
+            {/* Store Settings Modal */}
+            <Dialog
+                header={`Store-Einstellungen: ${templateForStoreSettings?.name}`}
+                visible={storeSettingsModalVisible}
+                onHide={() => setStoreSettingsModalVisible(false)}
+                style={{ width: '700px' }}
+                modal
+                closable
+                draggable={true}
+                resizable={true}
+            >
+                {/* Status Info */}
+                <div className="p-3 rounded mb-4" style={{ backgroundColor: templateForStoreSettings?.is_store_approved ? '#065f46' : '#78350f' }}>
+                    <div className="flex items-center gap-2">
+                        <i className={`pi ${templateForStoreSettings?.is_store_approved ? 'pi-check-circle' : 'pi-clock'}`}></i>
+                        <span>
+                            {templateForStoreSettings?.is_store_approved
+                                ? 'Freigegeben - Dein Template ist im Store sichtbar'
+                                : 'Warten auf Freigabe - Sichtbar nach Admin-Approval oder 5+ Reviews'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Sales Stats */}
+                {templateForStoreSettings?.sales_count !== undefined && templateForStoreSettings.sales_count > 0 && (
+                    <div className="grid grid-cols-2 gap-4 p-3 rounded mb-4" style={{ backgroundColor: '#1f2937' }}>
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-green-400">{templateForStoreSettings.sales_count}</div>
+                            <div className="text-sm text-gray-400">Verkäufe</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-2xl font-bold text-yellow-400">
+                                {templateForStoreSettings.total_revenue?.toFixed(2) || '0.00'}
+                            </div>
+                            <div className="text-sm text-gray-400">Einnahmen (Gesamt)</div>
+                        </div>
+                    </div>
+                )}
+
+                <TabView activeIndex={storeSettingsTab} onTabChange={(e) => setStoreSettingsTab(e.index)}>
+                    {/* Tab 1: Price Settings */}
+                    <TabPanel header="Preis" leftIcon="pi pi-money-bill mr-2">
+                        <div className="space-y-4">
+                            {/* Price Type Selection */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2">
+                                    Zahlungsart
+                                </label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="priceType"
+                                            checked={storePriceType === 'credits'}
+                                            onChange={() => setStorePriceType('credits')}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>Credits</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="priceType"
+                                            checked={storePriceType === 'euros'}
+                                            onChange={() => setStorePriceType('euros')}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>EUR (via Stripe/PayPal)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Price Input */}
+                            {storePriceType === 'credits' ? (
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Preis in Credits (Minimum: 50)
+                                    </label>
+                                    <InputText
+                                        type="number"
+                                        value={storePriceCredits.toString()}
+                                        onChange={(e) => setStorePriceCredits(parseInt(e.target.value) || 50)}
+                                        min={50}
+                                        className="w-full"
+                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                    />
+                                    <small className="text-gray-400 mt-1 block">
+                                        Du erhältst 80%: {Math.floor(storePriceCredits * 0.8)} Credits pro Verkauf
+                                    </small>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Preis in EUR (Minimum: 1.00)
+                                    </label>
+                                    <InputText
+                                        type="number"
+                                        value={storePriceEuros.toString()}
+                                        onChange={(e) => setStorePriceEuros(parseFloat(e.target.value) || 1.00)}
+                                        min={1}
+                                        step={0.01}
+                                        className="w-full"
+                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                    />
+                                    <small className="text-gray-400 mt-1 block">
+                                        Du erhältst 80%: {(storePriceEuros * 0.8).toFixed(2)} EUR pro Verkauf
+                                    </small>
+                                </div>
+                            )}
+
+                            {/* Revenue Split Info */}
+                            <div className="p-3 rounded text-sm" style={{ backgroundColor: '#1e3a5f' }}>
+                                <i className="pi pi-info-circle mr-2"></i>
+                                <strong>Erlösverteilung:</strong> 80% an dich, 20% Plattformgebühr
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button
+                                    label="Abbrechen"
+                                    icon="pi pi-times"
+                                    onClick={() => setStoreSettingsModalVisible(false)}
+                                    className="p-button-text"
+                                />
+                                <Button
+                                    label={savingStoreSettings ? 'Speichere...' : 'Speichern'}
+                                    icon={savingStoreSettings ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
+                                    onClick={handleSaveStoreSettings}
+                                    className="p-button-success"
+                                    disabled={savingStoreSettings}
+                                />
+                            </div>
+                        </div>
+                    </TabPanel>
+
+                    {/* Tab 2: Media */}
+                    <TabPanel header="Media" leftIcon="pi pi-images mr-2">
+                        <div className="space-y-6">
+                            {/* Logo Section */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <i className="pi pi-image text-blue-400"></i>
+                                    Logo
+                                </h4>
+                                <div className="flex items-start gap-4">
+                                    {/* Logo Preview */}
+                                    <div
+                                        className="w-32 h-32 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden"
+                                        style={{ borderColor: '#4B5563', backgroundColor: '#1f2937' }}
+                                    >
+                                        {templateMedia.logo ? (
+                                            <img
+                                                src={`/api/media/${templateMedia.logo.id}/serve`}
+                                                alt="Logo"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="text-center text-gray-500">
+                                                <i className="pi pi-image text-3xl mb-1"></i>
+                                                <div className="text-xs">Kein Logo</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Logo Actions */}
+                                    <div className="flex flex-col gap-2">
+                                        <input
+                                            ref={logoInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleLogoUpload}
+                                            className="hidden"
+                                        />
+                                        <Button
+                                            label={uploadingLogo ? 'Hochladen...' : 'Logo hochladen'}
+                                            icon={uploadingLogo ? 'pi pi-spinner pi-spin' : 'pi pi-upload'}
+                                            onClick={() => logoInputRef.current?.click()}
+                                            className="p-button-sm"
+                                            disabled={uploadingLogo}
+                                        />
+                                        {templateMedia.logo && (
+                                            <Button
+                                                label="Löschen"
+                                                icon="pi pi-trash"
+                                                onClick={() => handleDeleteMedia(templateMedia.logo.id, 'logo')}
+                                                className="p-button-sm p-button-danger p-button-outlined"
+                                            />
+                                        )}
+                                        <small className="text-gray-400">Max. 2MB, wird auf 256x256 skaliert</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Images Section */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <i className="pi pi-images text-green-400"></i>
+                                    Screenshots / Bilder
+                                </h4>
+                                <input
+                                    ref={imagesInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImagesUpload}
+                                    className="hidden"
+                                />
+                                <Button
+                                    label={uploadingImages ? 'Hochladen...' : 'Bilder hochladen'}
+                                    icon={uploadingImages ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
+                                    onClick={() => imagesInputRef.current?.click()}
+                                    className="p-button-sm mb-3"
+                                    disabled={uploadingImages}
+                                />
+                                <small className="text-gray-400 ml-2">Max. 5MB pro Bild, mehrere möglich</small>
+
+                                {/* Images Gallery */}
+                                {templateMedia.images.length > 0 ? (
+                                    <div className="grid grid-cols-3 gap-3 mt-3">
+                                        {templateMedia.images.map((image: any) => (
+                                            <div key={image.id} className="relative group">
+                                                <img
+                                                    src={`/api/media/${image.id}/serve`}
+                                                    alt={image.title || 'Screenshot'}
+                                                    className="w-full h-24 object-cover rounded-lg border border-gray-600"
+                                                />
+                                                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                                    <Button
+                                                        icon="pi pi-trash"
+                                                        onClick={() => handleDeleteMedia(image.id, 'image')}
+                                                        className="p-button-sm p-button-danger p-button-rounded"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 text-center text-gray-500 border-2 border-dashed rounded-lg" style={{ borderColor: '#4B5563' }}>
+                                        <i className="pi pi-images text-2xl mb-2"></i>
+                                        <div className="text-sm">Noch keine Bilder hochgeladen</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Videos Section */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <i className="pi pi-youtube text-red-400"></i>
+                                    Videos (YouTube / Vimeo)
+                                </h4>
+
+                                {/* Add Video Form */}
+                                <div className="flex gap-2 mb-3">
+                                    <InputText
+                                        value={newVideoUrl}
+                                        onChange={(e) => setNewVideoUrl(e.target.value)}
+                                        placeholder="https://youtube.com/watch?v=... oder https://vimeo.com/..."
+                                        className="flex-1"
+                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                    />
+                                    <Button
+                                        label={addingVideo ? '...' : 'Hinzufügen'}
+                                        icon={addingVideo ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
+                                        onClick={handleAddVideo}
+                                        className="p-button-sm"
+                                        disabled={addingVideo || !newVideoUrl.trim()}
+                                    />
+                                </div>
+                                <InputText
+                                    value={newVideoTitle}
+                                    onChange={(e) => setNewVideoTitle(e.target.value)}
+                                    placeholder="Video-Titel (optional)"
+                                    className="w-full mb-3"
+                                    style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                />
+
+                                {/* Videos List */}
+                                {templateMedia.videos.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {templateMedia.videos.map((video: any) => (
+                                            <div key={video.id} className="p-3 rounded-lg" style={{ backgroundColor: '#1f2937' }}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <div className="font-medium">{video.title || 'Video'}</div>
+                                                        <div className="text-xs text-gray-400 truncate max-w-md">{video.video_url}</div>
+                                                    </div>
+                                                    <Button
+                                                        icon="pi pi-trash"
+                                                        onClick={() => handleDeleteMedia(video.id, 'video')}
+                                                        className="p-button-sm p-button-danger p-button-text"
+                                                    />
+                                                </div>
+                                                {/* Video Embed Preview */}
+                                                <div className="aspect-video w-full rounded overflow-hidden">
+                                                    <iframe
+                                                        src={getVideoEmbedUrl(video.video_url)}
+                                                        className="w-full h-full"
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    ></iframe>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 text-center text-gray-500 border-2 border-dashed rounded-lg" style={{ borderColor: '#4B5563' }}>
+                                        <i className="pi pi-video text-2xl mb-2"></i>
+                                        <div className="text-sm">Noch keine Videos hinzugefügt</div>
+                                        <div className="text-xs mt-1">YouTube und Vimeo Links werden als eingebettete Videos angezeigt</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </TabPanel>
+                </TabView>
+            </Dialog>
+
             {/* ConfirmDialog for import overwrite confirmation */}
             <ConfirmDialog />
-        </TabContent>
+        </div>
     );
 };
 

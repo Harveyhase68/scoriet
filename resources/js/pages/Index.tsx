@@ -54,6 +54,7 @@ const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
 const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
 const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
 const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateManagementPanel'));
+const TemplateStorePanel = lazy(() => import('@/Components/Panels/TemplateStorePanel'));
 const TemplateReviewPanel = lazy(() => import('@/Components/Panels/TemplateReviewPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
@@ -64,6 +65,7 @@ const DeploymentLogPanel = lazy(() => import('@/Components/Panels/DeploymentLogP
 const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageManagementPanel'));
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
+const PayoutAdminPanel = lazy(() => import('@/Components/Panels/PayoutAdminPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
 const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
 const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPanel'));
@@ -651,6 +653,19 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'template-store':
+      return {
+        id,
+        title: 'Template Store',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TemplateStorePanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'database-management':
     case 'database-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
@@ -817,6 +832,19 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <SystemSettingsPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'payout-admin':
+      return {
+        id,
+        title: data.title || 'Auszahlungen',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PayoutAdminPanel />
           </Suspense>
         ),
         closable: true,

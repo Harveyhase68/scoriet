@@ -4603,6 +4603,7 @@ export const en: Translations = {
   startFreeTrial: 'Start Free Trial',
   tryDemoNow: 'Try Demo Now',
   contactSales: 'Contact Sales',
+  goToApp: 'Go to App',
   welcomeBack: 'User',
 
   // resources/js\pages\LandingPage.tsx
@@ -4612,6 +4613,7 @@ export const en: Translations = {
   currentPlan: 'Your Plan: ',
   freeLabel: 'Free',
   freeTier: 'Free Tier',
+  registerFirst: 'Register & Choose Plan',
 
   // resources/js\pages\LandingPage.tsx
   landingpage589: 'MOST POPULAR',
@@ -4872,4 +4874,29 @@ export const en: Translations = {
 
   // routes\web.php
   web50: 'Demo mode activated! Data is reset every 20 minutes.',
+
+  //js/components/AuthModals/CreditPurchaseModal.tsx
+  creditpurchasemodal72: '💳 Buy Credits',
+
+  // resources/js/pages/PublicProjectPage.tsx
+  publicProjectBy: 'by',
+  publicProjectPoweredBy: 'Powered by',
+  publicProjectTagline: 'Enterprise Code Generator',
+  projectSettings: 'Project Settings',
+  languages: 'Languages',
+  dateFormat: 'Date Format',
+  timeFormat: 'Time Format',
+  currency: 'Currency',
+  timezone: 'Timezone',
+  teams: 'Teams',
+  templates: 'Templates',
+  databases: 'Databases',
+  created: 'Created',
+  lastUpdated: 'Last updated',
+
+  // resources/js/Components/Panels/ProjectPanel.tsx - Public Link
+  copyPublicLink: 'Copy Public Link',
+  publicLinkCopied: 'Public link copied to clipboard!',
+  projectNotPublic: 'Project is private - make it public to share',
+
 };

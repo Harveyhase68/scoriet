@@ -420,9 +420,12 @@ export default function DebugManualGeneratorPanel({
           templatesArray = data.templates;
         }
 
-        setTemplates(templatesArray);
+        // Filter out inactive templates (is_active = false means template has schadcode or is disabled)
+        const activeTemplates = templatesArray.filter((t: Template) => t.is_active !== false);
 
-        if (templatesArray.length === 0) {
+        setTemplates(activeTemplates);
+
+        if (activeTemplates.length === 0) {
           setError(t.debugmanualgeneratorpanel352);
         }
       } else {

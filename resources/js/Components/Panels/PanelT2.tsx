@@ -145,7 +145,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   e.stopPropagation();
                   data.onEdit!(data.table!);
                 }}
-                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
                 title={t.panelt2139}
               >
                 ✏️
@@ -169,7 +169,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   e.stopPropagation();
                   data.onDelete!(data.table!);
                 }}
-                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
                 title={t.panelt2151}
               >
                 🗑️

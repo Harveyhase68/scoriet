@@ -8,15 +8,19 @@ class Settings extends Model
 {
     protected $fillable = [
         'global_google_translate_key',
-        'price_premium',
-        'price_business',
-        'price_patron',
+        'price_patron_annual',
+        'price_patron_monthly',
+        'price_credits_500',
+        'price_credits_1000',
+        'price_credits_2500',
     ];
 
     protected $casts = [
-        'price_premium' => 'decimal:2',
-        'price_business' => 'decimal:2',
-        'price_patron' => 'decimal:2',
+        'price_patron_annual' => 'decimal:2',
+        'price_patron_monthly' => 'decimal:2',
+        'price_credits_500' => 'decimal:2',
+        'price_credits_1000' => 'decimal:2',
+        'price_credits_2500' => 'decimal:2',
     ];
 
     /**
@@ -28,9 +32,11 @@ class Settings extends Model
 
         if (!$settings) {
             $settings = self::create([
-                'price_premium' => 9.99,
-                'price_business' => 29.99,
-                'price_patron' => 99.99,
+                'price_patron_annual' => 34.90,
+                'price_patron_monthly' => 49.90,
+                'price_credits_500' => 9.90,
+                'price_credits_1000' => 17.90,
+                'price_credits_2500' => 29.90,
             ]);
         }
 

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Template;
+use App\Models\TemplatePurchase;
 use App\Models\Project;
 use App\Models\ProjectTemplateUsage;
+use App\Models\Subscription;
 use App\Services\CodeScannerService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -400,7 +402,7 @@ class TemplateController extends Controller
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
             'is_active' => 'boolean',
-            'visibility' => 'nullable|in:public,private',
+            'visibility' => 'nullable|in:public,private,store',
             'is_system_template' => 'nullable|boolean',
             'protected_files' => 'nullable|array',
             'protected_files.*' => 'string',
@@ -431,27 +433,76 @@ class TemplateController extends Controller
         // Only system users can create system templates
         $isSystemTemplate = ($user->user_type === 'system' && ($validated['is_system_template'] ?? false));
 
-        $template = Template::create([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'category' => $validated['category'],
-            'language' => $validated['language'],
-            'tags' => $validated['tags'] ?? [],
-            'creator_user_id' => $user->id,
-            'is_active' => $validated['is_active'] ?? true,
-            'visibility' => $validated['visibility'] ?? 'public',
-            'is_system_template' => $isSystemTemplate,
-            'protected_files' => $validated['protected_files'] ?? [],
-            'install_script' => $validated['install_script'] ?? [],
-            'update_script' => $validated['update_script'] ?? [],
-        ]);
+        // Check if user needs to pay for private template (Free users only)
+        $wantsPrivate = ($validated['visibility'] ?? 'public') === 'private';
+        $isFreeUser = $user->user_type === 'free' || !$user->user_type;
+        $needsPayment = false;
+        $requiredCredits = 50;
 
-        // Add files if provided
+        if ($wantsPrivate && $isFreeUser) {
+            // Check if user has enough credits
+            if ($user->credits < $requiredCredits) {
+                return response()->json([
+                    'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
+                    'error_code' => 'INSUFFICIENT_CREDITS',
+                    'required_credits' => $requiredCredits,
+                    'current_credits' => $user->credits,
+                ], 402);
+            }
+            $needsPayment = true;
+        }
+
+        // Use transaction for credit operations
+        $template = \DB::transaction(function () use ($user, $validated, $isSystemTemplate, $needsPayment, $requiredCredits, $request) {
+            $template = Template::create([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'category' => $validated['category'],
+                'language' => $validated['language'],
+                'tags' => $validated['tags'] ?? [],
+                'creator_user_id' => $user->id,
+                'is_active' => $validated['is_active'] ?? true,
+                'visibility' => $validated['visibility'] ?? 'public',
+                'is_system_template' => $isSystemTemplate,
+                'protected_files' => $validated['protected_files'] ?? [],
+                'install_script' => $validated['install_script'] ?? [],
+                'update_script' => $validated['update_script'] ?? [],
+            ]);
+
+            // If payment needed, deduct credits and create subscription
+            if ($needsPayment) {
+                // Create subscription
+                Subscription::create([
+                    'user_id' => $user->id,
+                    'subscription_type' => Subscription::TYPE_TEMPLATE,
+                    'entity_id' => $template->id,
+                    'is_free_tier' => false,
+                    'expires_at' => now()->addYear(),
+                    'is_active' => true,
+                ]);
+
+                // Deduct credits
+                $user->credits -= $requiredCredits;
+                $user->save();
+
+                // Record the credit transaction
+                \App\Models\CreditTransaction::create([
+                    'user_id' => $user->id,
+                    'amount' => -$requiredCredits,
+                    'type' => 'templates_unlock',
+                    'description' => "Privates Template: {$validated['name']}",
+                ]);
+            }
+
+            return $template;
+        });
+
+        // Add files if provided (moved outside transaction for performance)
         if (isset($validated['files'])) {
             foreach ($validated['files'] as $fileData) {
                 $processedContent = null;
 
-                // 🆕 Check if this is a managed files list (File Manager mode)
+                // Check if this is a managed files list (File Manager mode)
                 if (isset($fileData['managed_files']) && is_array($fileData['managed_files']) && count($fileData['managed_files']) > 0) {
                     // Create ZIP from managed files list
                     \Log::info("Creating ZIP from managed files", ['count' => count($fileData['managed_files'])]);
@@ -477,13 +528,13 @@ class TemplateController extends Controller
 
                 $template->files()->create([
                     'file_name' => $fileData['file_name'],
-                    'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
+                    'file_path' => $fileData['file_path'] ?? $fileData['file_name'],
                     'file_content' => $processedContent['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
                     'output_path' => $fileData['output_path'] ?? '/',
-                    'content_type' => $processedContent['content_type'], // Auto-detected
-                    'zip_filename' => $processedContent['zip_filename'], // Original filename preserved
+                    'content_type' => $processedContent['content_type'],
+                    'zip_filename' => $processedContent['zip_filename'],
                 ]);
             }
         }
@@ -491,10 +542,20 @@ class TemplateController extends Controller
         // Update file_count based on actual number of files
         $template->update(['file_count' => $template->files()->count()]);
 
-        // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template
+        // Set review_status to pending_review if visibility is public or store
+        if (in_array($template->visibility, ['public', 'store'])) {
+            $template->update(['review_status' => 'pending_review']);
+        }
+
+        // QUEUE JOBS: Dispatch regeneration jobs for projects using this template
         $this->dispatchRegenerationJobsForTemplate($template);
 
-        return response()->json($template->load('files'), 201);
+        return response()->json([
+            'success' => true,
+            'template' => $template->load('files'),
+            'credits_deducted' => $needsPayment ? $requiredCredits : 0,
+            'new_credits_balance' => $user->fresh()->credits,
+        ], 201);
     }
 
     /**
@@ -509,7 +570,10 @@ class TemplateController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json($template->load(['files', 'creator']));
+        return response()->json([
+            'success' => true,
+            'template' => $template->load(['files', 'creator']),
+        ]);
     }
 
     /**
@@ -540,7 +604,7 @@ class TemplateController extends Controller
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
             'is_active' => 'boolean',
-            'visibility' => 'nullable|in:public,private',
+            'visibility' => 'nullable|in:public,private,store',
             'is_system_template' => 'nullable|boolean',
             'protected_files' => 'nullable|array',
             'protected_files.*' => 'string',
@@ -581,8 +645,50 @@ class TemplateController extends Controller
             'update_script' => $validated['update_script'] ?? [],
         ];
 
+        // Check if user needs to pay for changing to private (Free users only)
+        $changingToPrivate = isset($validated['visibility']) &&
+                             $validated['visibility'] === 'private' &&
+                             $template->visibility !== 'private';
+        $isFreeUser = $user->user_type === 'free' || !$user->user_type;
+        $needsPaymentForPrivate = false;
+        $requiredCredits = 50;
+
+        if ($changingToPrivate && $isFreeUser) {
+            // Check if user already has an active subscription for this template
+            $hasActiveSubscription = Subscription::hasActiveSubscription(
+                $user->id,
+                Subscription::TYPE_TEMPLATE,
+                $template->id
+            );
+
+            if (!$hasActiveSubscription) {
+                // Check if user has enough credits
+                if ($user->credits < $requiredCredits) {
+                    return response()->json([
+                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
+                        'error_code' => 'INSUFFICIENT_CREDITS',
+                        'required_credits' => $requiredCredits,
+                        'current_credits' => $user->credits,
+                    ], 402);
+                }
+                $needsPaymentForPrivate = true;
+            }
+        }
+
+        // Check visibility lock - cloned store templates cannot change visibility
         if (isset($validated['visibility'])) {
-            $updateData['visibility'] = $validated['visibility'];
+            if ($template->visibility_locked) {
+                // Visibility is locked - ignore the visibility change request silently
+                // or return error if they explicitly try to change it
+                if ($validated['visibility'] !== $template->visibility) {
+                    return response()->json([
+                        'message' => 'Die Sichtbarkeit dieses Templates kann nicht geändert werden, da es von einem gekauften Template geklont wurde.',
+                        'error_code' => 'VISIBILITY_LOCKED',
+                    ], 403);
+                }
+            } else {
+                $updateData['visibility'] = $validated['visibility'];
+            }
         }
 
         if ($user->user_type === 'system' && isset($validated['is_system_template'])) {
@@ -590,21 +696,21 @@ class TemplateController extends Controller
         }
 
         // 🛡️ SECURITY SCAN: Check for malicious code
-        // Scan wenn: (1) Template wird auf public gesetzt ODER (2) Template IST bereits public UND Dateien werden geändert
+        // Scan wenn: (1) Template wird auf public/store gesetzt ODER (2) Template IST bereits public/store UND Dateien werden geändert
         $scanResult = null;
         $needsScan = false;
-        $isBecomingPublic = false;
-        $wasPublicBeforeUpdate = $template->visibility === 'public';
+        $isBecomingPublicOrStore = false;
+        $wasPublicOrStoreBeforeUpdate = in_array($template->visibility, ['public', 'store']);
         $autoSetToPrivate = false;
 
-        // Fall 1: Template wird gerade auf public gesetzt (von private/unlisted zu public)
-        if (isset($validated['visibility']) && $validated['visibility'] === 'public' && $template->visibility !== 'public') {
+        // Fall 1: Template wird gerade auf public oder store gesetzt (von private zu public/store)
+        if (isset($validated['visibility']) && in_array($validated['visibility'], ['public', 'store']) && !in_array($template->visibility, ['public', 'store'])) {
             $needsScan = true;
-            $isBecomingPublic = true;
+            $isBecomingPublicOrStore = true;
         }
 
-        // Fall 2: Template IST bereits public UND Dateien werden geändert
-        if ($template->visibility === 'public' && isset($validated['files'])) {
+        // Fall 2: Template IST bereits public/store UND Dateien werden geändert
+        if (in_array($template->visibility, ['public', 'store']) && isset($validated['files'])) {
             $needsScan = true;
         }
 
@@ -632,19 +738,44 @@ class TemplateController extends Controller
                 \Log::warning('Code Scanner: Malicious code detected - automatically set template to private', [
                     'template_id' => $template->id,
                     'template_name' => $template->name,
-                    'was_trying_to_go_public' => $isBecomingPublic,
-                    'was_already_public' => $wasPublicBeforeUpdate,
+                    'was_trying_to_go_public_or_store' => $isBecomingPublicOrStore,
+                    'was_already_public_or_store' => $wasPublicOrStoreBeforeUpdate,
                     'scan_result' => $scanResult,
                 ]);
             }
 
-            // If becoming public and no warnings, set review_status to pending_review
-            if ($isBecomingPublic && !($scanResult['blocked'] ?? false) && $scanResult['summary']['warning_count'] === 0) {
+            // If becoming public/store and no warnings, set review_status to pending_review
+            if ($isBecomingPublicOrStore && !($scanResult['blocked'] ?? false) && $scanResult['summary']['warning_count'] === 0) {
                 $updateData['review_status'] = 'pending_review';
             }
         }
 
         $template->update($updateData);
+
+        // Process payment for private template if needed
+        if ($needsPaymentForPrivate) {
+            // Create subscription
+            Subscription::create([
+                'user_id' => $user->id,
+                'subscription_type' => Subscription::TYPE_TEMPLATE,
+                'entity_id' => $template->id,
+                'is_free_tier' => false,
+                'expires_at' => now()->addYear(),
+                'is_active' => true,
+            ]);
+
+            // Deduct credits
+            $user->credits -= $requiredCredits;
+            $user->save();
+
+            // Record the credit transaction
+            \App\Models\CreditTransaction::create([
+                'user_id' => $user->id,
+                'amount' => -$requiredCredits,
+                'type' => 'templates_unlock',
+                'description' => "Privates Template: {$template->name}",
+            ]);
+        }
 
         // Update files - delete existing and recreate
         if (isset($validated['files'])) {
@@ -699,12 +830,18 @@ class TemplateController extends Controller
         // Return response with scan result if available
         $response = $template->load('files');
 
+        // Build response data
+        $responseData = ['success' => true, 'template' => $response];
+
+        // Add credits info if payment was made
+        if ($needsPaymentForPrivate) {
+            $responseData['credits_deducted'] = $requiredCredits;
+            $responseData['new_credits_balance'] = $user->fresh()->credits;
+        }
+
         if ($scanResult !== null) {
-            $responseData = [
-                'template' => $response,
-                'scan_result' => $scanResult,
-                'warnings_found' => $scanResult['summary']['warning_count'] > 0,
-            ];
+            $responseData['scan_result'] = $scanResult;
+            $responseData['warnings_found'] = $scanResult['summary']['warning_count'] > 0;
 
             // If template was automatically set to private due to malicious code
             if ($autoSetToPrivate) {
@@ -720,11 +857,9 @@ class TemplateController extends Controller
                     $responseData['detected_issues'] = implode(', ', $detectedPatterns);
                 }
             }
-
-            return response()->json($responseData);
         }
 
-        return response()->json($response);
+        return response()->json($responseData);
     }
 
     /**
@@ -817,9 +952,24 @@ class TemplateController extends Controller
     /**
      * Clone a template
      */
-    public function cloneTemplate(Request $request, Template $template): JsonResponse
+    public function cloneTemplate(Request $request, $id): JsonResponse
     {
         $user = Auth::user();
+
+        // Load template manually since route uses {id} not {template}
+        $template = Template::find($id);
+        if (!$template) {
+            return response()->json(['message' => 'Template nicht gefunden'], 404);
+        }
+
+        // Debug logging
+        \Log::info('Clone attempt', [
+            'user_id' => $user->id,
+            'template_id' => $template->id,
+            'template_visibility' => $template->visibility,
+            'template_creator' => $template->creator_user_id,
+            'has_purchased' => $template->visibility === 'store' ? TemplatePurchase::hasPurchased($user->id, $template->id) : 'N/A',
+        ]);
 
         $validated = $request->validate([
             'name' => [
@@ -835,8 +985,31 @@ class TemplateController extends Controller
 
         // Check if user can view the source template
         if (!$template->canBeViewedBy($user)) {
-            return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu klonen'], 403);
+            $hasPurchased = $template->visibility === 'store' ? TemplatePurchase::hasPurchased($user->id, $template->id) : false;
+            \Log::warning('Clone permission denied', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'template_id' => $template->id,
+                'template_visibility' => $template->visibility,
+                'has_purchased' => $hasPurchased,
+                'reason' => 'canBeViewedBy returned false'
+            ]);
+            return response()->json([
+                'message' => 'Sie haben keine Berechtigung, dieses Template zu klonen. ' .
+                    ($template->visibility === 'store' && !$hasPurchased
+                        ? 'Dieses Store-Template wurde nicht von Ihrem Konto gekauft.'
+                        : ''),
+                'debug' => [
+                    'your_user_id' => $user->id,
+                    'template_visibility' => $template->visibility,
+                    'has_purchased' => $hasPurchased,
+                ]
+            ], 403);
         }
+
+        // Store templates (purchased) must be cloned as private
+        $isFromStore = $template->visibility === 'store';
+        $visibility = $isFromStore ? 'private' : $validated['visibility'];
 
         // Create the cloned template
         $clonedTemplate = Template::create([
@@ -846,10 +1019,12 @@ class TemplateController extends Controller
             'language' => $template->language,
             'tags' => $template->tags,
             'creator_user_id' => $user->id,
-            'visibility' => $validated['visibility'],
+            'visibility' => $visibility,
+            'visibility_locked' => $isFromStore, // Lock visibility for store-purchased templates
             'is_active' => true,
             'is_system_template' => false, // Cloned templates are never system templates
             'file_count' => $template->file_count,
+            'cloned_from_template_id' => $isFromStore ? $template->id : null, // Track source for plagiarism detection
         ]);
 
         // Clone template files
@@ -864,6 +1039,7 @@ class TemplateController extends Controller
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Template erfolgreich geklont',
             'template' => $clonedTemplate->load('files'),
         ]);
@@ -2522,9 +2698,11 @@ class TemplateController extends Controller
         // Check if user can link this template
         // System templates and public templates can be linked by anyone
         // Private templates can only be linked by their creator
+        // Store templates can be linked if purchased
         $canLink = $template->is_system_template
                 || $template->visibility === 'public'
-                || $template->creator_user_id == $user->id;
+                || $template->creator_user_id == $user->id
+                || $template->canBeUsedBy($user);  // This checks if user purchased store templates
 
         if (!$canLink) {
             \Log::warning('updateLinkedProjects UNAUTHORIZED', [
@@ -2648,6 +2826,20 @@ class TemplateController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Verknüpfung erfolgreich aktualisiert'
+        ]);
+    }
+
+    /**
+     * Get count of active private template subscriptions for current user
+     */
+    public function getSubscriptionCount(Request $request)
+    {
+        $user = $request->user();
+
+        $count = Subscription::countActiveForUser($user->id, Subscription::TYPE_TEMPLATE);
+
+        return response()->json([
+            'count' => $count
         ]);
     }
 }

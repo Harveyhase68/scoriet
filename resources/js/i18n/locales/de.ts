@@ -4515,7 +4515,7 @@ export const de: Translations = {
   modernInterfaceDesc: 'Intuitive dock-basierte MDI-Oberfläche mit Tab-Stapelung und schwebenden Panels.',
 
   // resources/js\pages\LandingPage.tsx
-  landingpage151: ' Für immer',
+  landingpage151: '/Für immer',
   landingpage152: 'Perfekt für persönliche Projekte',
   landingpage154: 'Bis zu 3 Projekte',
   landingpage155: 'Grundlegendes Template',
@@ -4603,6 +4603,7 @@ export const de: Translations = {
   startFreeTrial: 'Kostenlose Testversion starten',
   tryDemoNow: 'Demo jetzt testen',
   contactSales: 'Vertrieb kontaktieren',
+  goToApp: 'Zur App',
   welcomeBack: 'Benutzer',
 
   // resources/js\pages\LandingPage.tsx
@@ -4612,6 +4613,7 @@ export const de: Translations = {
   currentPlan: 'Ihr Plan: ',
   freeLabel: 'Kostenlos',
   freeTier: 'Kostenlos Plan',
+  registerFirst: 'Registrieren & Plan wählen',
 
   // resources/js\pages\LandingPage.tsx
   landingpage589: 'AM BELIEBTESTEN',
@@ -4872,4 +4874,29 @@ export const de: Translations = {
 
   // routes\web.php
   web50: 'Demo-Modus aktiviert! Daten werden alle 20 Minuten zurückgesetzt.',
+
+  //js/components/AuthModals/CreditPurchaseModal.tsx
+  creditpurchasemodal72: '💳 Credits kaufen',
+
+  // resources/js/pages/PublicProjectPage.tsx
+  publicProjectBy: 'von',
+  publicProjectPoweredBy: 'Powered by',
+  publicProjectTagline: 'Enterprise Code Generator',
+  projectSettings: 'Projekteinstellungen',
+  languages: 'Sprachen',
+  dateFormat: 'Datumsformat',
+  timeFormat: 'Zeitformat',
+  currency: 'Währung',
+  timezone: 'Zeitzone',
+  teams: 'Teams',
+  templates: 'Vorlagen',
+  databases: 'Datenbanken',
+  created: 'Erstellt',
+  lastUpdated: 'Zuletzt aktualisiert',
+
+  // resources/js/Components/Panels/ProjectPanel.tsx - Public Link
+  copyPublicLink: 'Öffentlichen Link kopieren',
+  publicLinkCopied: 'Öffentlicher Link in die Zwischenablage kopiert!',
+  projectNotPublic: 'Projekt ist privat - auf öffentlich setzen um zu teilen',
+
 };

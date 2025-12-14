@@ -25,10 +25,14 @@ class TemplateReviewController extends Controller
             ], 403);
         }
 
-        // Get templates with visibility = 'public' and review_score < 5
+        // Get templates with visibility = 'public' OR 'store'
+        // Only show templates with review_status = 'pending_review' OR 'approved'
+        // NEVER show 'draft' or 'rejected' templates!
+        // Approved templates are shown so reviewers can give additional +1 votes
         $templates = Template::with(['creator', 'reviews.reviewer', 'project', 'files'])
-            ->where('visibility', 'public')
-            ->where('review_score', '<', 5)
+            ->whereIn('visibility', ['public', 'store'])
+            ->whereIn('review_status', ['pending_review', 'approved'])
+            ->orderBy('review_score', 'asc') // Show templates needing most help first
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -77,18 +81,16 @@ class TemplateReviewController extends Controller
             ], 404);
         }
 
-        // Check if template is public and not yet fully approved
-        if ($template->visibility !== 'public') {
+        // Check if template is public or store and not yet fully approved
+        if (!in_array($template->visibility, ['public', 'store'])) {
             return response()->json([
-                'message' => 'Only public templates can be reviewed.',
+                'message' => 'Only public or store templates can be reviewed.',
             ], 400);
         }
 
-        if ($template->review_score >= 5) {
-            return response()->json([
-                'message' => 'This template is already approved (score >= 5).',
-            ], 400);
-        }
+        // Note: We allow voting on approved templates (score >= 5, is_store_approved = true)
+        // so users can see "22 reviewers approved this template" - builds trust and credibility
+        // Only 'draft' and 'rejected' templates are excluded from voting (handled in getPendingReviews)
 
         // Check if user is the template creator (cannot review own template)
         if ($template->creator_user_id == $user->id) {
@@ -126,6 +128,11 @@ class TemplateReviewController extends Controller
             if ($newScore >= 5) {
                 $template->review_status = 'approved';
 
+                // For store templates, also set is_store_approved
+                if ($template->visibility === 'store') {
+                    $template->is_store_approved = true;
+                }
+
                 // TODO: Send notification to template creator
                 // Notification::send($template->creator, new TemplateApprovedNotification($template));
             }
@@ -133,6 +140,11 @@ class TemplateReviewController extends Controller
             // Auto-reject if score <= -3
             if ($newScore <= -3) {
                 $template->review_status = 'rejected';
+
+                // For store templates, also set is_store_approved to false
+                if ($template->visibility === 'store') {
+                    $template->is_store_approved = false;
+                }
 
                 // TODO: Send notification to template creator
                 // Notification::send($template->creator, new TemplateRejectedNotification($template));
@@ -348,6 +360,13 @@ class TemplateReviewController extends Controller
             ], 400);
         }
 
+        // Check if store template is already approved
+        if ($template->visibility === 'store' && $template->is_store_approved) {
+            return response()->json([
+                'message' => 'This store template is already approved for the store.',
+            ], 400);
+        }
+
         DB::beginTransaction();
         try {
             $currentScore = $template->review_score;
@@ -375,6 +394,12 @@ class TemplateReviewController extends Controller
             // Set score to minimum 5
             $template->review_score = max(5, $currentScore + $scoreIncrease);
             $template->review_status = 'approved';
+
+            // For store templates, also set is_store_approved
+            if ($template->visibility === 'store') {
+                $template->is_store_approved = true;
+            }
+
             $template->save();
 
             DB::commit();
