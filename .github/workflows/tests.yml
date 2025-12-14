@@ -61,8 +61,15 @@ jobs:
 
       - name: Setup Environment
         run: |
+          # Ensure file ends with newline
+          echo "" >> .env
           # Configure MySQL for testing
           sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          sed -i '/^DB_HOST=/d' .env
+          sed -i '/^DB_PORT=/d' .env
+          sed -i '/^DB_DATABASE=/d' .env
+          sed -i '/^DB_USERNAME=/d' .env
+          sed -i '/^DB_PASSWORD=/d' .env
           echo "DB_HOST=127.0.0.1" >> .env
           echo "DB_PORT=3306" >> .env
           echo "DB_DATABASE=scoriet_test" >> .env
