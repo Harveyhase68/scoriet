@@ -78,9 +78,30 @@ class SchemaController extends Controller
                 ]);
             });
 
+        // Calculate subscription info for free users
+        $subscriptionInfo = null;
+        if ($user->user_type === 'free' || !$user->user_type) {
+            $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+                ->where('subscription_type', \App\Models\Subscription::TYPE_SCHEMA)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->count();
+
+            $ownedSchemasCount = FloatingSchema::where('owner_id', $user->id)->count();
+            $maxAllowed = 1 + $activeSubscriptionsCount;
+
+            $subscriptionInfo = [
+                'active_subscriptions' => $activeSubscriptionsCount,
+                'owned_schemas' => $ownedSchemasCount,
+                'max_allowed' => $maxAllowed,
+                'needs_unlock' => $ownedSchemasCount >= $maxAllowed
+            ];
+        }
+
         return response()->json([
             'schemas' => $schemas,
             'total_schemas' => $schemas->count(),
+            'subscription_info' => $subscriptionInfo,
         ]);
     }
 
@@ -117,7 +138,66 @@ class SchemaController extends Controller
             $validated['is_system_schema'] = false;
         }
 
+        // Check schema limit for free users
+        $needsSchemaSubscription = false;
+        if ($user->user_type === 'free') {
+            // Count active subscriptions (not expired)
+            $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+                ->where('subscription_type', \App\Models\Subscription::TYPE_SCHEMA)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->count();
+
+            // Free users can have: 1 (free) + number of active subscriptions
+            $maxAllowedSchemas = 1 + $activeSubscriptionsCount;
+            $activeSchemaCount = FloatingSchema::where('owner_id', $user->id)->count();
+
+            if ($activeSchemaCount >= $maxAllowedSchemas) {
+                // User needs to buy a new subscription slot
+                if (!$user->hasCredits(50)) {
+                    return response()->json([
+                        'message' => 'Nicht genug Credits. Sie benötigen 50 Credits um eine zusätzliche Datenbank freizuschalten.',
+                        'error_code' => 'INSUFFICIENT_CREDITS',
+                        'required_credits' => 50,
+                        'current_credits' => $user->credits,
+                        'active_schemas' => $activeSchemaCount,
+                        'max_allowed' => $maxAllowedSchemas,
+                        'active_subscriptions' => $activeSubscriptionsCount
+                    ], 403);
+                }
+
+                // User has enough credits - will deduct after schema creation
+                $needsSchemaSubscription = true;
+            }
+        }
+
         $schema = FloatingSchema::create($validated);
+
+        // If user needed a schema subscription (Free user creating 2nd schema)
+        if ($needsSchemaSubscription) {
+            // Deduct 50 credits
+            $user->deductCredits(50);
+
+            // Create schema subscription (valid for 1 year)
+            \App\Models\Subscription::create([
+                'user_id' => $user->id,
+                'subscription_type' => \App\Models\Subscription::TYPE_SCHEMA,
+                'entity_id' => $schema->id,
+                'expires_at' => now()->addYear(),
+                'is_active' => true,
+            ]);
+
+            // Log the transaction
+            \App\Models\CreditTransaction::create([
+                'user_id' => $user->id,
+                'amount' => -50,
+                'type' => 'db_renewal',
+                'description' => 'Unlock additional database: ' . $schema->name . ' (1 year)',
+                'reference_type' => 'App\Models\FloatingSchema',
+                'reference_id' => $schema->id,
+                'price_paid' => null,
+            ]);
+        }
 
         // Load the schema with owner relationship
         $schema->load('owner');

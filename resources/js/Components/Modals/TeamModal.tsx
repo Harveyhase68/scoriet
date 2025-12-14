@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -9,6 +9,15 @@ import { MultiSelect } from 'primereact/multiselect';
 import { Message } from 'primereact/message';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import PlanModal from '@/Components/AuthModals/PlanModal';
+
+interface TeamSubscriptionInfo {
+  active_subscriptions: number;
+  owned_teams: number;
+  max_allowed: number;
+  needs_unlock: boolean;
+  free_teams_allowed: number;
+}
 
 interface TeamMember {
   id: number;
@@ -78,6 +87,117 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
 
+  // Subscription/unlock state (only for creating new teams)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<TeamSubscriptionInfo | null>(null);
+  const [needsUnlock, setNeedsUnlock] = useState(false);
+  const [_unlockConfirmed, setUnlockConfirmed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ credits: number; user_type?: string } | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
+
+  // Check subscription status when modal opens for new team
+  const checkSubscription = useCallback(async () => {
+    // Only check for new teams, not edits
+    if (team) {
+      setNeedsUnlock(false);
+      setCheckingSubscription(false);
+      return;
+    }
+
+    setCheckingSubscription(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        setCheckingSubscription(false);
+        return;
+      }
+
+      // Load user data
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
+
+        const isFreeUser = userData.user_type === 'free' || !userData.user_type;
+
+        // If not a free user, they can create unlimited teams
+        if (!isFreeUser) {
+          setNeedsUnlock(false);
+          setCheckingSubscription(false);
+          return;
+        }
+      }
+
+      // Load team subscription info
+      const response = await fetch('/api/teams?all=1', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.subscription_info) {
+          setSubscriptionInfo(data.subscription_info);
+          setNeedsUnlock(data.subscription_info.needs_unlock);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking team subscription:', err);
+    } finally {
+      setCheckingSubscription(false);
+    }
+  }, [team]);
+
+  // Refresh user credits
+  const refreshCredits = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (err) {
+      console.error('Error refreshing credits:', err);
+    }
+  }, []);
+
+  // Handle unlock confirmation
+  const handleUnlockConfirm = () => {
+    setUnlockConfirmed(true);
+    setNeedsUnlock(false);
+  };
+
+  // Handle buy credits
+  const handleBuyCredits = () => {
+    setPlanModalInitialTab(1); // Tab 1 = Buy Credits
+    setShowPlanModal(true);
+  };
+
+  // Handle plan modal close
+  const handlePlanModalClose = () => {
+    setShowPlanModal(false);
+    refreshCredits();
+    checkSubscription();
+  };
+
   const handleNameChange = (value: string) => {
     // Convert to lowercase and remove invalid characters
     const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -94,22 +214,28 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
   useEffect(() => {
     if (visible && team) {
+      // Editing existing team - no unlock needed
       setFormData({
         name: team.name,
         description: team.description || '',
         project_ids: team.projects?.map((p: any) => p.id) || [],
         is_active: team.is_active
       });
+      setNeedsUnlock(false);
+      setUnlockConfirmed(false);
     } else if (visible && !team) {
+      // Creating new team - check if unlock is needed
       setFormData({
         name: '',
         description: '',
         project_ids: [],
         is_active: true
       });
+      setUnlockConfirmed(false);
+      checkSubscription();
     }
     setError('');
-  }, [visible, team]);
+  }, [visible, team, checkSubscription]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,13 +268,27 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
+        // Handle insufficient credits error
+        if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
+          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          // Re-show unlock screen
+          setNeedsUnlock(true);
+          setUnlockConfirmed(false);
+          return;
+        }
+
         // Handle Laravel validation errors
         if (errorData.errors && errorData.errors.name) {
           throw new Error(errorData.errors.name[0]);
         }
-        
+
         throw new Error(errorData.message || t.teammodal132);
+      }
+
+      // Dispatch event to notify other components about credit change (if credits were spent)
+      if (!team && needsUnlock) {
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
       }
 
       onSave();
@@ -161,23 +301,110 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
   if (!visible) return null;
 
-  // const projectOptions = [
-  //   { label: t.teammodal146, value: 0 },
-  //   ...projects.map(project => ({
-  //     label: project.name,
-  //     value: project.id
-  //   }))
-  // ];
+  // Calculate credit info for unlock screen
+  const hasEnoughCredits = (currentUser?.credits || 0) >= 50;
+  const creditsNeeded = 50 - (currentUser?.credits || 0);
+  const ownedTeams = subscriptionInfo?.owned_teams || 0;
+  const activeSubscriptions = subscriptionInfo?.active_subscriptions || 0;
 
   return (
+    <>
     <Dialog
-      header={team ? t.teammanagementpanel394 : t.teammodal155}
+      header={team ? t.teammanagementpanel394 : (needsUnlock ? 'Unlock Team Feature' : t.teammodal155)}
       visible={visible}
       onHide={onHide}
       style={{ width: '500px' }}
       modal
       className="p-fluid"
     >
+      {/* Loading State */}
+      {checkingSubscription && !team && (
+        <div className="py-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Checking subscription...</p>
+        </div>
+      )}
+
+      {/* Unlock Screen - only for new teams */}
+      {!checkingSubscription && needsUnlock && !team && (
+        <div className="space-y-4">
+          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+            <p className="text-yellow-300 text-sm mb-2">
+              <strong>Team Feature - Free Tier</strong>
+            </p>
+            <p className="text-gray-300 text-sm">
+              Teams is an additional feature for free users. Each team costs <strong>50 credits per year</strong>.
+            </p>
+            {ownedTeams > 0 && (
+              <p className="text-gray-300 text-sm mt-2">
+                You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>
+                {activeSubscriptions > 0 && ` (${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''})`}.
+              </p>
+            )}
+          </div>
+
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-300">Your Credits:</span>
+              <span className="text-white font-bold text-lg">{currentUser?.credits || 0}</span>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-300">Required Credits:</span>
+              <span className="text-yellow-400 font-bold text-lg">50</span>
+            </div>
+            <hr className="border-gray-700 my-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">After Unlock:</span>
+              <span className={`font-bold text-lg ${hasEnoughCredits ? 'text-green-400' : 'text-red-400'}`}>
+                {hasEnoughCredits ? (currentUser?.credits || 0) - 50 : `Need ${creditsNeeded} more`}
+              </span>
+            </div>
+          </div>
+
+          {!hasEnoughCredits && (
+            <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
+              <p className="text-red-300 text-sm">
+                You don't have enough credits. You need <strong>{creditsNeeded} more credits</strong> to unlock the team feature.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            {hasEnoughCredits ? (
+              <Button
+                type="button"
+                onClick={handleUnlockConfirm}
+                className="flex-1 p-button-success"
+                icon="pi pi-unlock"
+                label="Unlock Team (50 Credits)"
+              />
+            ) : (
+              <Button
+                type="button"
+                onClick={handleBuyCredits}
+                className="flex-1 p-button-warning"
+                icon="pi pi-shopping-cart"
+                label="Buy Credits"
+              />
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 text-center">
+            Or upgrade to{' '}
+            <button
+              type="button"
+              onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
+              className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
+            >
+              Patron Monthly
+            </button>
+            {' '}for unlimited teams!
+          </p>
+        </div>
+      )}
+
+      {/* Team Form - show when not checking and (editing OR unlocked) */}
+      {(!checkingSubscription && !needsUnlock) || team ? (
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4">
           {error && (
@@ -269,7 +496,14 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           />
         </div>
       </form>
+      ) : null}
 
     </Dialog>
+    <PlanModal
+      visible={showPlanModal}
+      onHide={handlePlanModalClose}
+      initialTab={planModalInitialTab}
+    />
+    </>
   );
 }

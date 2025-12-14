@@ -36,8 +36,9 @@
     32 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     33 => 'Termwind\\Laravel\\TermwindServiceProvider',
     34 => 'Pest\\Laravel\\PestServiceProvider',
-    35 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    36 => 'App\\Providers\\AppServiceProvider',
+    35 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
+    36 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
+    37 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -61,8 +62,9 @@
     17 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     18 => 'Termwind\\Laravel\\TermwindServiceProvider',
     19 => 'Pest\\Laravel\\PestServiceProvider',
-    20 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    21 => 'App\\Providers\\AppServiceProvider',
+    20 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
+    21 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
+    22 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (

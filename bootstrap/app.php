@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::prefix('cli')
                 ->middleware('api')
                 ->group(base_path('routes/cli.php'));
+
+            // Payment & Monetization Routes
+            Route::prefix('api')
+                ->middleware('api')
+                ->group(base_path('routes/payment.php'));
         }
     )
     ->withSchedule(function (Schedule $schedule) {

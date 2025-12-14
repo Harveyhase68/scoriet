@@ -37,9 +37,11 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'global_google_translate_key' => 'nullable|string|max:500',
-            'price_premium' => 'required|numeric|min:0|max:9999999.99',
-            'price_business' => 'required|numeric|min:0|max:9999999.99',
-            'price_patron' => 'required|numeric|min:0|max:9999999.99',
+            'price_patron_annual' => 'required|numeric|min:0|max:9999999.99',
+            'price_patron_monthly' => 'required|numeric|min:0|max:9999999.99',
+            'price_credits_500' => 'required|numeric|min:0|max:9999999.99',
+            'price_credits_1000' => 'required|numeric|min:0|max:9999999.99',
+            'price_credits_2500' => 'required|numeric|min:0|max:9999999.99',
         ]);
 
         $settings = Settings::get();

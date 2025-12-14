@@ -9,15 +9,17 @@ import { Tag } from 'primereact/tag';
 import { InputNumber } from 'primereact/inputnumber';
 import { Password } from 'primereact/password';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { api } from '@/lib/api';
+import { api, pricingUtils } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface Settings {
   id: number;
   global_google_translate_key: string | null;
-  price_premium: number;
-  price_business: number;
-  price_patron: number;
+  price_patron_annual: number;
+  price_patron_monthly: number;
+  price_credits_500: number;
+  price_credits_1000: number;
+  price_credits_2500: number;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +45,7 @@ export default function SystemSettingsPanel() {
   const [, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
 
   // User Management states
   const [users, setUsers] = useState<User[]>([]);
@@ -52,9 +55,11 @@ export default function SystemSettingsPanel() {
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       global_google_translate_key: '',
-      price_premium: 0,
-      price_business: 0,
-      price_patron: 0,
+      price_patron_annual: 0,
+      price_patron_monthly: 0,
+      price_credits_500: 0,
+      price_credits_1000: 0,
+      price_credits_2500: 0,
     }
   });
 
@@ -65,9 +70,11 @@ export default function SystemSettingsPanel() {
       setSettings(response);
       reset({
         global_google_translate_key: response.global_google_translate_key || '',
-        price_premium: parseFloat(response.price_premium),
-        price_business: parseFloat(response.price_business),
-        price_patron: parseFloat(response.price_patron),
+        price_patron_annual: parseFloat(response.price_patron_annual),
+        price_patron_monthly: parseFloat(response.price_patron_monthly),
+        price_credits_500: parseFloat(response.price_credits_500),
+        price_credits_1000: parseFloat(response.price_credits_1000),
+        price_credits_2500: parseFloat(response.price_credits_2500),
       });
     } catch (error: any) {
       toast.showError('Failed to load settings: ' + (error.response?.data?.message || error.message));
@@ -94,6 +101,28 @@ export default function SystemSettingsPanel() {
       toast.showError('Failed to update settings: ' + (error.response?.data?.message || error.message));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Refresh pricing cache
+  const refreshPrices = async () => {
+    setRefreshingPrices(true);
+    try {
+      // Clear the cache first
+      pricingUtils.clearCache();
+
+      // Force refresh from backend
+      const success = await pricingUtils.refreshPricingData();
+
+      if (success) {
+        toast.showSuccess('Pricing cache refreshed successfully! All users will see new prices immediately.');
+      } else {
+        toast.showError('Failed to refresh pricing cache');
+      }
+    } catch (error: any) {
+      toast.showError('Failed to refresh pricing: ' + (error.message || 'Unknown error'));
+    } finally {
+      setRefreshingPrices(false);
     }
   };
 
@@ -202,107 +231,200 @@ export default function SystemSettingsPanel() {
 
             {/* Pricing Section */}
             <div className="bg-gray-700 rounded-lg p-6 mb-6">
-              <h4 className="text-lg font-semibold text-white mb-4">
-                💰 Subscription Pricing
-              </h4>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-white">
+                  💰 Subscription Pricing
+                </h4>
+                <Button
+                  type="button"
+                  label="Refresh Price Cache"
+                  icon={refreshingPrices ? "pi pi-spinner pi-spin" : "pi pi-sync"}
+                  severity="info"
+                  size="small"
+                  outlined
+                  onClick={refreshPrices}
+                  disabled={refreshingPrices}
+                  tooltip="Clear pricing cache and force all users to see updated prices immediately"
+                  tooltipOptions={{ position: 'left' }}
+                />
+              </div>
               <p className="text-sm text-gray-400 mb-4">
-                Set monthly subscription prices for each plan tier
+                Set prices for Patron subscriptions (in €)
+              </p>
+
+              <div className="bg-gray-800 border border-gray-600 rounded p-3 mb-4">
+                <p className="text-xs text-gray-300">
+                  💡 <strong>Note:</strong> Prices are cached for 10 minutes. After saving changes, click <strong>"Refresh Price Cache"</strong> to make them visible to all users immediately.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="field">
+                  <label htmlFor="price_patron_annual" className="block text-sm font-medium text-gray-300 mb-2">
+                    Patron Annual (€/year) *
+                  </label>
+                  <Controller
+                    name="price_patron_annual"
+                    control={control}
+                    rules={{
+                      required: 'Patron Annual price is required',
+                      min: { value: 0, message: t.systemsettingspanel149 }
+                    }}
+                    render={({ field }) => (
+                      <InputNumber
+                        id="price_patron_annual"
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        mode="currency"
+                        currency="EUR"
+                        locale="de-DE"
+                        minFractionDigits={2}
+                        min={0}
+                        max={9999999.99}
+                        className="w-full"
+                        placeholder="34.90"
+                      />
+                    )}
+                  />
+                  {errors.price_patron_annual && (
+                    <small className="text-red-400 mt-1 block">{errors.price_patron_annual.message}</small>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="price_patron_monthly" className="block text-sm font-medium text-gray-300 mb-2">
+                    Patron Monthly (€/month) *
+                  </label>
+                  <Controller
+                    name="price_patron_monthly"
+                    control={control}
+                    rules={{
+                      required: 'Patron Monthly price is required',
+                      min: { value: 0, message: t.systemsettingspanel149 }
+                    }}
+                    render={({ field }) => (
+                      <InputNumber
+                        id="price_patron_monthly"
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        mode="currency"
+                        currency="EUR"
+                        locale="de-DE"
+                        minFractionDigits={2}
+                        min={0}
+                        max={9999999.99}
+                        className="w-full"
+                        placeholder="49.90"
+                      />
+                    )}
+                  />
+                  {errors.price_patron_monthly && (
+                    <small className="text-red-400 mt-1 block">{errors.price_patron_monthly.message}</small>
+                  )}
+                </div>
+              </div>
+
+              <h5 className="text-md font-semibold text-white mb-3 mt-6">
+                Credit Packages
+              </h5>
+              <p className="text-sm text-gray-400 mb-4">
+                Set prices for credit packages (in €)
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="field">
-                  <label htmlFor="price_premium" className="block text-sm font-medium text-gray-300 mb-2">
-                    Premium Plan ($/month) *
+                  <label htmlFor="price_credits_500" className="block text-sm font-medium text-gray-300 mb-2">
+                    500 Credits (€) *
                   </label>
                   <Controller
-                    name="price_premium"
+                    name="price_credits_500"
                     control={control}
                     rules={{
-                      required: t.systemsettingspanel148,
+                      required: '500 credits price is required',
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
                       <InputNumber
-                        id="price_premium"
+                        id="price_credits_500"
                         value={field.value}
                         onValueChange={(e) => field.onChange(e.value)}
                         mode="currency"
-                        currency={t.systemsettingspanel157}
-                        locale="en-US"
+                        currency="EUR"
+                        locale="de-DE"
                         minFractionDigits={2}
                         min={0}
                         max={9999999.99}
                         className="w-full"
-                        placeholder="9.99"
+                        placeholder="9.90"
                       />
                     )}
                   />
-                  {errors.price_premium && (
-                    <small className="text-red-400 mt-1 block">{errors.price_premium.message}</small>
+                  {errors.price_credits_500 && (
+                    <small className="text-red-400 mt-1 block">{errors.price_credits_500.message}</small>
                   )}
                 </div>
 
                 <div className="field">
-                  <label htmlFor="price_business" className="block text-sm font-medium text-gray-300 mb-2">
-                    Business Plan ($/month) *
+                  <label htmlFor="price_credits_1000" className="block text-sm font-medium text-gray-300 mb-2">
+                    1000 Credits (€) *
                   </label>
                   <Controller
-                    name="price_business"
+                    name="price_credits_1000"
                     control={control}
                     rules={{
-                      required: t.systemsettingspanel180,
+                      required: '1000 credits price is required',
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
                       <InputNumber
-                        id="price_business"
+                        id="price_credits_1000"
                         value={field.value}
                         onValueChange={(e) => field.onChange(e.value)}
                         mode="currency"
-                        currency={t.systemsettingspanel157}
-                        locale="en-US"
+                        currency="EUR"
+                        locale="de-DE"
                         minFractionDigits={2}
                         min={0}
                         max={9999999.99}
                         className="w-full"
-                        placeholder="29.99"
+                        placeholder="17.90"
                       />
                     )}
                   />
-                  {errors.price_business && (
-                    <small className="text-red-400 mt-1 block">{errors.price_business.message}</small>
+                  {errors.price_credits_1000 && (
+                    <small className="text-red-400 mt-1 block">{errors.price_credits_1000.message}</small>
                   )}
                 </div>
 
                 <div className="field">
-                  <label htmlFor="price_patron" className="block text-sm font-medium text-gray-300 mb-2">
-                    Patron Plan (minimum $/month) *
+                  <label htmlFor="price_credits_2500" className="block text-sm font-medium text-gray-300 mb-2">
+                    2500 Credits (€) *
                   </label>
                   <Controller
-                    name="price_patron"
+                    name="price_credits_2500"
                     control={control}
                     rules={{
-                      required: t.systemsettingspanel212,
+                      required: '2500 credits price is required',
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
                       <InputNumber
-                        id="price_patron"
+                        id="price_credits_2500"
                         value={field.value}
                         onValueChange={(e) => field.onChange(e.value)}
                         mode="currency"
-                        currency={t.systemsettingspanel157}
-                        locale="en-US"
+                        currency="EUR"
+                        locale="de-DE"
                         minFractionDigits={2}
                         min={0}
                         max={9999999.99}
                         className="w-full"
-                        placeholder="99.99"
+                        placeholder="29.90"
                       />
                     )}
                   />
-                  {errors.price_patron && (
-                    <small className="text-red-400 mt-1 block">{errors.price_patron.message}</small>
+                  {errors.price_credits_2500 && (
+                    <small className="text-red-400 mt-1 block">{errors.price_credits_2500.message}</small>
                   )}
                 </div>
               </div>
@@ -388,7 +510,7 @@ export default function SystemSettingsPanel() {
                       body={(rowData) => (
                         <Tag
                           value={rowData.user_type}
-                          severity={rowData.user_type === 'admin' ? 'danger' : rowData.user_type === 'premium' ? 'warning' : 'info'}
+                          severity={rowData.user_type === 'admin' ? 'danger' : rowData.user_type === 'patron' ? 'warning' : 'info'}
                         />
                       )}
                     />

@@ -4617,6 +4617,7 @@ templatemodal480: string;
   startFreeTrial: string;
   tryDemoNow: string;
   contactSales: string;
+  goToApp: string;
   welcomeBack: string;
 
   // resources/js\pages\LandingPage.tsx
@@ -4626,6 +4627,7 @@ templatemodal480: string;
   currentPlan: string;
   freeLabel: string;
   freeTier: string;
+  registerFirst: string;
 
   // resources/js\pages\LandingPage.tsx
   landingpage589: string;
@@ -4886,4 +4888,32 @@ templatemodal480: string;
 
   // routes\web.php
   web50: string;
+
+  //js/components/AuthModals/CreditPurchaseModal.tsx
+  creditpurchasemodal72: string;
+  creditpurchasemodal87: string;
+  creditpurchasemodal95: string;
+  creditpurchasemodal98: string;
+
+  // resources/js/pages/PublicProjectPage.tsx
+  publicProjectBy: string;
+  publicProjectPoweredBy: string;
+  publicProjectTagline: string;
+  projectSettings: string;
+  languages: string;
+  dateFormat: string;
+  timeFormat: string;
+  currency: string;
+  timezone: string;
+  teams: string;
+  templates: string;
+  databases: string;
+  created: string;
+  lastUpdated: string;
+
+  // resources/js/Components/Panels/ProjectPanel.tsx - Public Link
+  copyPublicLink: string;
+  publicLinkCopied: string;
+  projectNotPublic: string;
+
 }

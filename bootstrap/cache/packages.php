@@ -83,6 +83,17 @@
       0 => 'Pest\\Laravel\\PestServiceProvider',
     ),
   ),
+  'srmklive/paypal' => 
+  array (
+    'aliases' => 
+    array (
+      'PayPal' => 'Srmklive\\PayPal\\Facades\\PayPal',
+    ),
+    'providers' => 
+    array (
+      0 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
+    ),
+  ),
   'tightenco/ziggy' => 
   array (
     'providers' => 

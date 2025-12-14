@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { TabView, TabPanel } from 'primereact/tabview';
-import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
 import { Dropdown } from 'primereact/dropdown';
+import { InputSwitch } from 'primereact/inputswitch';
+import { Divider } from 'primereact/divider';
 import { Message } from 'primereact/message';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface ProfileModalProps {
   visible: boolean;
   onHide: () => void;
-  defaultTab?: number; // Tab index to open by default (0=Profile, 1=Password, 2=Plans, 3=Delete)
+  defaultTab?: number; // Tab index to open by default (0=Profile, 1=Password, 2=Subscriptions, 3=Plans, 4=Verkäufer, 5=Delete)
 }
 
 interface UserData {
@@ -26,6 +29,44 @@ interface UserData {
   email_verified_at?: string;
   created_at?: string;
   updated_at?: string;
+  credits?: number;
+  user_type?: string;
+  // Seller fields
+  is_seller?: boolean;
+  company_name?: string;
+  company_address?: string;
+  company_country?: string;
+  vat_id?: string;
+  business_registration?: string;
+  tax_id?: string;
+  seller_type?: string;
+  payout_method?: 'bank_transfer' | 'paypal';
+  paypal_payout_email?: string;
+  bank_iban?: string;
+  bank_bic?: string;
+  bank_account_holder?: string;
+  seller_verified?: boolean;
+  pending_earnings?: number;
+  total_earnings?: number;
+}
+
+interface CliSubscriptionStatus {
+  cli: {
+    unlocked: boolean;
+    expires_at: string | null;
+    is_patron: boolean;
+  };
+  service: {
+    unlocked: boolean;
+    expires_at: string | null;
+    is_patron: boolean;
+  };
+  credits: number;
+  prices: {
+    cli: number;
+    service: number;
+    bundle: number;
+  };
 }
 
 export default function ProfileModal({ visible, onHide, defaultTab = 0 }: ProfileModalProps) {
@@ -110,6 +151,90 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [deleteSuccess, setDeleteSuccess] = useState<string>('');
   const [activeTabIndex, setActiveTabIndex] = useState<number>(defaultTab);
 
+  // CLI/Service Subscription State
+  const [cliStatus, setCliStatus] = useState<CliSubscriptionStatus | null>(null);
+  const [unlocking, setUnlocking] = useState<string | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalTab, setPlanModalTab] = useState(0);
+
+  // Seller Profile State
+  const [sellerData, setSellerData] = useState({
+    is_seller: false,
+    company_name: '',
+    company_address: '',
+    company_country: '',
+    vat_id: '',
+    business_registration: '',
+    tax_id: '',
+    payout_method: '' as 'bank_transfer' | 'paypal' | '',
+    paypal_payout_email: '',
+    bank_iban: '',
+    bank_bic: '',
+    bank_account_holder: '',
+  });
+  const [savingSeller, setSavingSeller] = useState(false);
+  const [sellerError, setSellerError] = useState<string>('');
+  const [sellerSuccess, setSellerSuccess] = useState<string>('');
+
+  // Country options for dropdown
+  const countries = [
+    { label: 'Österreich', value: 'AT' },
+    { label: 'Deutschland', value: 'DE' },
+    { label: 'Schweiz', value: 'CH' },
+    { label: 'Frankreich', value: 'FR' },
+    { label: 'Italien', value: 'IT' },
+    { label: 'Spanien', value: 'ES' },
+    { label: 'Niederlande', value: 'NL' },
+    { label: 'Belgien', value: 'BE' },
+    { label: 'Polen', value: 'PL' },
+    { label: 'Tschechien', value: 'CZ' },
+    { label: 'Ungarn', value: 'HU' },
+    { label: 'Slowakei', value: 'SK' },
+    { label: 'Slowenien', value: 'SI' },
+    { label: 'Kroatien', value: 'HR' },
+    { label: 'Rumänien', value: 'RO' },
+    { label: 'Bulgarien', value: 'BG' },
+    { label: 'Griechenland', value: 'GR' },
+    { label: 'Portugal', value: 'PT' },
+    { label: 'Schweden', value: 'SE' },
+    { label: 'Dänemark', value: 'DK' },
+    { label: 'Finnland', value: 'FI' },
+    { label: 'Irland', value: 'IE' },
+    { label: 'Luxemburg', value: 'LU' },
+    { label: 'Malta', value: 'MT' },
+    { label: 'Zypern', value: 'CY' },
+    { label: 'Estland', value: 'EE' },
+    { label: 'Lettland', value: 'LV' },
+    { label: 'Litauen', value: 'LT' },
+    { label: '--- Nicht-EU ---', value: '', disabled: true },
+    { label: 'USA', value: 'US' },
+    { label: 'Kanada', value: 'CA' },
+    { label: 'Großbritannien', value: 'GB' },
+    { label: 'Australien', value: 'AU' },
+    { label: 'Japan', value: 'JP' },
+    { label: 'Indien', value: 'IN' },
+    { label: 'Brasilien', value: 'BR' },
+    { label: 'Sonstiges', value: 'XX' },
+  ];
+
+  const payoutMethods = [
+    { label: 'Banküberweisung (SEPA)', value: 'bank_transfer' },
+    { label: 'PayPal', value: 'paypal' },
+  ];
+
+  // EU countries for VAT ID requirement check
+  const euCountries = ['AT', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'PL', 'SE', 'DK', 'FI', 'IE', 'PT', 'GR', 'CZ', 'RO', 'HU', 'SK', 'BG', 'HR', 'SI', 'LT', 'LV', 'EE', 'CY', 'LU', 'MT'];
+  const isEuCountry = euCountries.includes(sellerData.company_country);
+
+  // Pricing from Settings
+  const [_pricing, setPricing] = useState<{
+    patron_annual: number;
+    patron_monthly: number;
+    credits_500: number;
+    credits_1000: number;
+    credits_2500: number;
+  } | null>(null);
+
   const loadUserData = useCallback(async () => {
     try {
       // Check both localStorage and sessionStorage (demo mode uses sessionStorage)
@@ -140,6 +265,22 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         language: userLanguage
       });
 
+      // Load seller data
+      setSellerData({
+        is_seller: user.is_seller || false,
+        company_name: user.company_name || '',
+        company_address: user.company_address || '',
+        company_country: user.company_country || '',
+        vat_id: user.vat_id || '',
+        business_registration: user.business_registration || '',
+        tax_id: user.tax_id || '',
+        payout_method: user.payout_method || '',
+        paypal_payout_email: user.paypal_payout_email || '',
+        bank_iban: user.bank_iban || '',
+        bank_bic: user.bank_bic || '',
+        bank_account_holder: user.bank_account_holder || '',
+      });
+
       // Update stored language to user's preference
       if (user.language) {
         setStoredLanguage(user.language as SupportedLanguage);
@@ -150,13 +291,152 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
   }, []);
 
+  // Load CLI/Service subscription status
+  const loadCliStatus = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/cli-subscriptions/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCliStatus(data);
+      }
+    } catch (err) {
+      console.error('Error loading CLI status:', err);
+    }
+  }, []);
+
+  // Handle unlock CLI/Service/Bundle
+  const handleUnlock = async (type: 'cli' | 'service' | 'bundle') => {
+    setUnlocking(type);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.profilemodal115);
+      }
+
+      const response = await fetch('/api/cli-subscriptions/unlock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ type }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Freischalten');
+      }
+
+      // Reload status
+      loadCliStatus();
+      loadUserData();
+
+    } catch (err) {
+      console.error('Unlock error:', err);
+    } finally {
+      setUnlocking(null);
+    }
+  };
+
+  // Handle buy credits - opens PlanModal on Credits tab
+  const handleBuyCredits = () => {
+    setPlanModalTab(1);
+    setShowPlanModal(true);
+  };
+
+  // Handle view plans - opens PlanModal on Subscriptions tab
+  const handleViewPlans = () => {
+    setPlanModalTab(0);
+    setShowPlanModal(true);
+  };
+
+  // Handle plan modal close
+  const handlePlanModalClose = () => {
+    setShowPlanModal(false);
+    loadCliStatus();
+    loadUserData();
+  };
+
+  // Handle seller profile submit
+  const handleSellerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSeller(true);
+    setSellerError('');
+    setSellerSuccess('');
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.profilemodal115);
+      }
+
+      const response = await fetch('/api/profile/seller', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(sellerData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Fehler beim Speichern der Verkäufer-Daten');
+      }
+
+      setSellerSuccess('Verkäufer-Profil erfolgreich gespeichert');
+      loadUserData();
+
+    } catch (err) {
+      setSellerError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+    } finally {
+      setSavingSeller(false);
+    }
+  };
+
+  // Load pricing from settings
+  const loadPricing = useCallback(async () => {
+    try {
+      const response = await fetch('/api/pricing', {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.prices) {
+          setPricing(data.prices);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading pricing:', err);
+    }
+  }, []);
+
   // Load user data when opening and reset tab index
   useEffect(() => {
     if (visible) {
       loadUserData();
+      loadCliStatus();
+      loadPricing();
       setActiveTabIndex(defaultTab); // Reset to defaultTab when modal opens
     }
-  }, [visible, loadUserData, defaultTab]);
+  }, [visible, loadUserData, loadCliStatus, loadPricing, defaultTab]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,7 +659,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       header={t.profileTitle}
       visible={visible}
       onHide={handleHide}
-      style={{ width: '700px' }}
+      style={{ width: '1000px' }}
       modal
       closable
       draggable={true}
@@ -611,116 +891,528 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
 
+        <TabPanel header="Subscriptions" leftIcon="pi pi-unlock">
+          <div className="space-y-6">
+            {/* Credits Display */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300 text-lg">Ihre Credits:</span>
+                <span className="text-white font-bold text-2xl">{cliStatus?.credits || 0}</span>
+              </div>
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  onClick={handleBuyCredits}
+                  className="p-button-sm p-button-outlined"
+                  icon="pi pi-shopping-cart"
+                  label="Credits kaufen"
+                />
+              </div>
+            </div>
+
+            {/* Patron Notice */}
+            {cliStatus?.cli.is_patron && (
+              <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
+                <p className="text-purple-300 flex items-center gap-2">
+                  <i className="pi pi-star-fill text-yellow-400"></i>
+                  <strong>Patron Status</strong> - Sie haben unbegrenzten Zugang zu allen Features!
+                </p>
+              </div>
+            )}
+
+            {/* CLI Subscription */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <i className="pi pi-desktop text-blue-400"></i>
+                    CLI Tool
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Kommandozeilen-Tool für lokale Code-Generierung
+                  </p>
+                </div>
+                {cliStatus?.cli.unlocked ? (
+                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
+                    <i className="pi pi-check"></i> Aktiv
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
+                    <i className="pi pi-lock"></i> Gesperrt
+                  </span>
+                )}
+              </div>
+              {cliStatus?.cli.expires_at && (
+                <p className="text-gray-400 text-sm mb-3">
+                  Gültig bis: {new Date(cliStatus.cli.expires_at).toLocaleDateString('de-DE')}
+                </p>
+              )}
+              {!cliStatus?.cli.unlocked && !cliStatus?.cli.is_patron && (
+                <Button
+                  type="button"
+                  onClick={() => handleUnlock('cli')}
+                  loading={unlocking === 'cli'}
+                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 50}
+                  className="p-button-primary"
+                  icon="pi pi-unlock"
+                  label={`Freischalten (${cliStatus?.prices.cli || 50} Credits/Jahr)`}
+                />
+              )}
+            </div>
+
+            {/* Service Subscription */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <i className="pi pi-server text-green-400"></i>
+                    Windows Service
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Hintergrund-Service für automatische Synchronisation
+                  </p>
+                </div>
+                {cliStatus?.service.unlocked ? (
+                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
+                    <i className="pi pi-check"></i> Aktiv
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
+                    <i className="pi pi-lock"></i> Gesperrt
+                  </span>
+                )}
+              </div>
+              {cliStatus?.service.expires_at && (
+                <p className="text-gray-400 text-sm mb-3">
+                  Gültig bis: {new Date(cliStatus.service.expires_at).toLocaleDateString('de-DE')}
+                </p>
+              )}
+              {!cliStatus?.service.unlocked && !cliStatus?.service.is_patron && (
+                <Button
+                  type="button"
+                  onClick={() => handleUnlock('service')}
+                  loading={unlocking === 'service'}
+                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 50}
+                  className="p-button-primary"
+                  icon="pi pi-unlock"
+                  label={`Freischalten (${cliStatus?.prices.service || 50} Credits/Jahr)`}
+                />
+              )}
+            </div>
+
+            {/* Bundle Offer */}
+            {!cliStatus?.cli.unlocked && !cliStatus?.service.unlocked && !cliStatus?.cli.is_patron && (
+              <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-lg p-4 border border-blue-600">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <i className="pi pi-gift text-yellow-400"></i>
+                      Bundle: CLI + Service
+                      <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold">
+                        SPARE 10 CREDITS!
+                      </span>
+                    </h3>
+                    <p className="text-gray-300 text-sm mt-1">
+                      Beide Tools zum Vorteilspreis - nur {cliStatus?.prices.bundle || 90} statt 100 Credits
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => handleUnlock('bundle')}
+                  loading={unlocking === 'bundle'}
+                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 90}
+                  className="p-button-success"
+                  icon="pi pi-unlock"
+                  label={`Bundle freischalten (${cliStatus?.prices.bundle || 90} Credits/Jahr)`}
+                />
+              </div>
+            )}
+
+            {/* Not enough credits warning */}
+            {cliStatus && !cliStatus.cli.is_patron && (cliStatus.credits < 50) && (
+              <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
+                <p className="text-red-300 text-sm flex items-center gap-2">
+                  <i className="pi pi-exclamation-triangle"></i>
+                  Sie haben nicht genug Credits. Kaufen Sie Credits um Features freizuschalten.
+                </p>
+              </div>
+            )}
+          </div>
+        </TabPanel>
+
         <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card">
           <div className="space-y-6">
-            {/* {t.profilemodal616} */}
+            {/* Current Plan Info */}
             <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold text-white">{t.profilemodal616}</h3>
-                <Badge value={t.planmodal43} severity="info" />
+                <Badge
+                  value={cliStatus?.cli.is_patron ? (userData.user_type === 'patron' ? 'Patron' : 'Free') : 'Free'}
+                  severity={cliStatus?.cli.is_patron ? 'success' : 'info'}
+                />
               </div>
-              <p className="text-gray-300 mb-4">
-                {t.landingpage762}<strong className="text-blue-400">Free plan</strong>. {t.landingpage762a}
+              <p className="text-gray-300">
+                {cliStatus?.cli.is_patron
+                  ? 'Sie haben als Patron unbegrenzten Zugang zu allen Features!'
+                  : 'Sie nutzen aktuell den kostenlosen Plan. Upgraden Sie für mehr Features!'
+                }
               </p>
             </div>
 
-            {/* Available Plans */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white mb-4">{t.profilemodal626}</h3>
-              
-              {/* Free Plan */}
-              <Card className="border-l-4 border-l-gray-400 bg-gray-700">
-                <div className="flex justify-between items-start">
+            {/* Patron Notice or Upgrade Option */}
+            {cliStatus?.cli.is_patron ? (
+              <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
+                <p className="text-purple-300 flex items-center gap-2">
+                  <i className="pi pi-star-fill text-yellow-400"></i>
+                  <strong>Patron Status</strong> - Vielen Dank für Ihre Unterstützung!
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-600 rounded-lg p-4">
+                <div className="flex justify-between items-center">
                   <div>
-                    <h4 className="font-semibold text-white">Free</h4>
-                    <p className="text-2xl font-bold text-white mb-2">€0 <span className="text-sm font-normal text-gray-300">forever</span></p>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      <li>{t.profilemodal635}</li>
-                      <li>{t.profilemodal636}</li>
-                      <li>{t.profilemodal637}</li>
-                    </ul>
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <i className="pi pi-heart-fill text-red-400"></i>
+                      Werden Sie Patron!
+                    </h3>
+                    <p className="text-gray-300 text-sm mt-1">
+                      Unbegrenzter Zugang zu allen Features, private Projekte, Templates und mehr.
+                    </p>
                   </div>
-                  <Badge value={t.profilemodal640} severity="info" />
-                </div>
-              </Card>
-
-              {/* Premium Plan */}
-              <Card className="border-l-4 border-l-blue-500 bg-gray-700">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold text-white">Premium</h4>
-                    <p className="text-2xl font-bold text-blue-400 mb-2">€29.99 <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      <li>{t.profilemodal651}</li>
-                      <li>{t.profilemodal652}</li>
-                      <li>{t.profilemodal653}</li>
-                      <li>{t.profilemodal654}</li>
-                    </ul>
-                  </div>
-                  <Button 
-                    label={t.profilemodal658} 
-                    size="small" 
-                    className="p-button-primary"
-                    onClick={() => alert(t.profilemodal661)}
-                  />
-                </div>
-              </Card>
-
-              {/* Business Plan */}
-              <Card className="border-l-4 border-l-blue-500 bg-gray-700">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold text-white">Business</h4>
-                    <p className="text-2xl font-bold text-blue-400 mb-2">€49.99 <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      <li>{t.profilemodal684}</li>
-                      <li>{t.profilemodal685}</li>
-                      <li>{t.profilemodal686}</li>
-                      <li>{t.profilemodal687}</li>
-                      <li>{t.profilemodal688}</li>
-                      <li>{t.profilemodal689}</li>
-                    </ul>
-                  </div>
-                  <Button 
-                    label={t.profilemodal658} 
-                    size="small" 
-                    className="p-button-primary"
-                    onClick={() => alert(t.profilemodal661)}
-                  />
-                </div>
-              </Card>
-
-              {/* Patron Plan */}
-              <Card className="border-l-4 border-l-purple-500 bg-gray-700">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold text-white">Patron</h4>
-                    <p className="text-2xl font-bold text-purple-400 mb-2">€69+ <span className="text-sm font-normal text-gray-300">{t.landingpage627}</span></p>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      <li>{t.profilemodal673}</li>
-                      <li>{t.profilemodal674}</li>
-                      <li>{t.profilemodal675}</li>
-                      <li>{t.profilemodal676}</li>
-                    </ul>
-                  </div>
-                  <Button 
-                    label={t.profilemodal680} 
-                    size="small" 
+                  <Button
+                    type="button"
+                    onClick={handleViewPlans}
                     className="p-button-help"
-                    onClick={() => alert(t.profilemodal683)}
+                    icon="pi pi-star"
+                    label="Pläne ansehen"
                   />
                 </div>
-              </Card>
+              </div>
+            )}
+
+            {/* Credits Section */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-gray-300 text-lg">Ihre Credits:</span>
+                <span className="text-white font-bold text-2xl">{cliStatus?.credits || userData.credits || 0}</span>
+              </div>
+              <p className="text-gray-400 text-sm mb-3">
+                Credits werden für Projekte, Datenbanken, Teams und Code-Generierung benötigt.
+              </p>
+              <Button
+                type="button"
+                onClick={handleBuyCredits}
+                className="p-button-outlined p-button-info w-full"
+                icon="pi pi-shopping-cart"
+                label="Credits kaufen"
+              />
+            </div>
+
+            {/* Quick Info */}
+            <div className="bg-blue-900/20 border border-blue-600 rounded-lg p-4">
+              <h4 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
+                <i className="pi pi-info-circle"></i>
+                Preise im Überblick
+              </h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="text-gray-300">
+                  <i className="pi pi-folder text-blue-400 mr-2"></i>
+                  Projekt: 50 Credits/Jahr
+                </div>
+                <div className="text-gray-300">
+                  <i className="pi pi-database text-green-400 mr-2"></i>
+                  Datenbank: 50 Credits/Jahr
+                </div>
+                <div className="text-gray-300">
+                  <i className="pi pi-users text-purple-400 mr-2"></i>
+                  Team: 50 Credits/Jahr
+                </div>
+                <div className="text-gray-300">
+                  <i className="pi pi-code text-yellow-400 mr-2"></i>
+                  Generierung: 5 Credits
+                </div>
+              </div>
             </div>
           </div>
+        </TabPanel>
+
+        {/* Seller Profile Tab */}
+        <TabPanel header="Verkäufer" leftIcon="pi pi-shopping-bag">
+          <form onSubmit={handleSellerSubmit} className="space-y-6">
+            {sellerError && (
+              <Message severity="error" text={sellerError} className="w-full" />
+            )}
+            {sellerSuccess && (
+              <Message severity="success" text={sellerSuccess} className="w-full" />
+            )}
+
+            {/* Enable Seller Mode */}
+            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <i className="pi pi-shopping-bag text-green-400"></i>
+                  Verkäufer-Modus aktivieren
+                </h3>
+                <p className="text-gray-400 text-sm mt-1">
+                  Aktivieren Sie diesen Modus, um Templates im Store zu verkaufen.
+                </p>
+              </div>
+              <InputSwitch
+                checked={sellerData.is_seller}
+                onChange={(e) => setSellerData(prev => ({ ...prev, is_seller: e.value }))}
+              />
+            </div>
+
+            {sellerData.is_seller && (
+              <>
+                {/* Earnings Overview */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg">
+                    <p className="text-gray-400 text-sm">Ausstehende Auszahlung</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {parseFloat(String(userData.pending_earnings || 0)).toFixed(2)} €
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
+                    <p className="text-gray-400 text-sm">Gesamt verdient</p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {parseFloat(String(userData.total_earnings || 0)).toFixed(2)} €
+                    </p>
+                  </div>
+                </div>
+
+                <Divider />
+
+                {/* Company Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i className="pi pi-building text-blue-400"></i>
+                    Unternehmensdaten
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="field">
+                      <label htmlFor="company_name" className="block text-sm font-medium mb-2">
+                        Firmenname / Name *
+                      </label>
+                      <InputText
+                        id="company_name"
+                        value={sellerData.company_name}
+                        onChange={(e) => setSellerData(prev => ({ ...prev, company_name: e.target.value }))}
+                        className="w-full"
+                        placeholder="Musterfirma GmbH"
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="company_country" className="block text-sm font-medium mb-2">
+                        Land *
+                      </label>
+                      <Dropdown
+                        id="company_country"
+                        value={sellerData.company_country}
+                        options={countries}
+                        onChange={(e) => setSellerData(prev => ({ ...prev, company_country: e.value }))}
+                        className="w-full"
+                        placeholder="Land auswählen"
+                        filter
+                      />
+                    </div>
+                  </div>
+
+                  <div className="field mt-4">
+                    <label htmlFor="company_address" className="block text-sm font-medium mb-2">
+                      Adresse
+                    </label>
+                    <InputTextarea
+                      id="company_address"
+                      value={sellerData.company_address}
+                      onChange={(e) => setSellerData(prev => ({ ...prev, company_address: e.target.value }))}
+                      className="w-full"
+                      rows={3}
+                      placeholder="Musterstraße 123&#10;1234 Musterstadt"
+                    />
+                  </div>
+                </div>
+
+                <Divider />
+
+                {/* VAT / Tax Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i className="pi pi-file text-yellow-400"></i>
+                    Steuer-Informationen
+                  </h4>
+
+                  {isEuCountry ? (
+                    <div className="field">
+                      <label htmlFor="vat_id" className="block text-sm font-medium mb-2">
+                        UID-Nummer (VAT ID)
+                        {sellerData.company_country !== 'AT' && (
+                          <span className="text-yellow-400 ml-2">* Für Reverse Charge erforderlich</span>
+                        )}
+                      </label>
+                      <InputText
+                        id="vat_id"
+                        value={sellerData.vat_id}
+                        onChange={(e) => setSellerData(prev => ({ ...prev, vat_id: e.target.value }))}
+                        className="w-full"
+                        placeholder={sellerData.company_country === 'AT' ? 'ATU12345678' : sellerData.company_country === 'DE' ? 'DE123456789' : 'XX123456789'}
+                      />
+                      <small className="text-gray-400">
+                        {sellerData.company_country === 'AT'
+                          ? 'Österreichische Unternehmen erhalten Gutschriften inkl. USt.'
+                          : 'EU-Unternehmen mit UID erhalten Netto-Gutschriften (Reverse Charge).'
+                        }
+                      </small>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="field">
+                        <label htmlFor="business_registration" className="block text-sm font-medium mb-2">
+                          Gewerbeschein / Business Registration
+                        </label>
+                        <InputText
+                          id="business_registration"
+                          value={sellerData.business_registration}
+                          onChange={(e) => setSellerData(prev => ({ ...prev, business_registration: e.target.value }))}
+                          className="w-full"
+                          placeholder="Registrierungsnummer"
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="tax_id" className="block text-sm font-medium mb-2">
+                          Steuer-ID / Tax ID
+                        </label>
+                        <InputText
+                          id="tax_id"
+                          value={sellerData.tax_id}
+                          onChange={(e) => setSellerData(prev => ({ ...prev, tax_id: e.target.value }))}
+                          className="w-full"
+                          placeholder="Tax ID"
+                        />
+                      </div>
+                      <Message
+                        severity="info"
+                        text="Ohne Unternehmensnachweis wird von Ihrer Auszahlung 20% MwSt abgezogen."
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <Divider />
+
+                {/* Payout Method */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i className="pi pi-wallet text-green-400"></i>
+                    Auszahlungsmethode
+                  </h4>
+
+                  <div className="field mb-4">
+                    <label htmlFor="payout_method" className="block text-sm font-medium mb-2">
+                      Auszahlungsart *
+                    </label>
+                    <Dropdown
+                      id="payout_method"
+                      value={sellerData.payout_method}
+                      options={payoutMethods}
+                      onChange={(e) => setSellerData(prev => ({ ...prev, payout_method: e.value }))}
+                      className="w-full"
+                      placeholder="Auszahlungsart wählen"
+                    />
+                  </div>
+
+                  {sellerData.payout_method === 'paypal' && (
+                    <div className="field p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+                      <label htmlFor="paypal_payout_email" className="block text-sm font-medium mb-2">
+                        <i className="pi pi-paypal mr-2"></i>
+                        PayPal E-Mail-Adresse *
+                      </label>
+                      <InputText
+                        id="paypal_payout_email"
+                        type="email"
+                        value={sellerData.paypal_payout_email}
+                        onChange={(e) => setSellerData(prev => ({ ...prev, paypal_payout_email: e.target.value }))}
+                        className="w-full"
+                        placeholder="ihre-email@paypal.com"
+                      />
+                    </div>
+                  )}
+
+                  {sellerData.payout_method === 'bank_transfer' && (
+                    <div className="space-y-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+                      <div className="field">
+                        <label htmlFor="bank_account_holder" className="block text-sm font-medium mb-2">
+                          Kontoinhaber *
+                        </label>
+                        <InputText
+                          id="bank_account_holder"
+                          value={sellerData.bank_account_holder}
+                          onChange={(e) => setSellerData(prev => ({ ...prev, bank_account_holder: e.target.value }))}
+                          className="w-full"
+                          placeholder="Max Mustermann"
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="bank_iban" className="block text-sm font-medium mb-2">
+                          IBAN *
+                        </label>
+                        <InputText
+                          id="bank_iban"
+                          value={sellerData.bank_iban}
+                          onChange={(e) => setSellerData(prev => ({ ...prev, bank_iban: e.target.value.toUpperCase().replace(/\s/g, '') }))}
+                          className="w-full"
+                          placeholder="AT12 3456 7890 1234 5678"
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="bank_bic" className="block text-sm font-medium mb-2">
+                          BIC/SWIFT
+                        </label>
+                        <InputText
+                          id="bank_bic"
+                          value={sellerData.bank_bic}
+                          onChange={(e) => setSellerData(prev => ({ ...prev, bank_bic: e.target.value.toUpperCase() }))}
+                          className="w-full"
+                          placeholder="BKAUATWW"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payout Info */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <h5 className="font-semibold text-white mb-2">Auszahlungs-Info</h5>
+                  <ul className="text-gray-400 text-sm space-y-1">
+                    <li>• Auszahlungen erfolgen monatlich (Anfang des Folgemonats)</li>
+                    <li>• Mindestauszahlung: 10,00 €</li>
+                    <li>• Sie erhalten 80% des Verkaufspreises</li>
+                    <li>• 20% verbleiben bei der Plattform</li>
+                  </ul>
+                </div>
+              </>
+            )}
+
+            <Button
+              type="submit"
+              label={savingSeller ? "Speichern..." : "Verkäufer-Profil speichern"}
+              icon={savingSeller ? "pi pi-spinner pi-spin" : "pi pi-save"}
+              disabled={savingSeller}
+              className="w-full"
+            />
+          </form>
         </TabPanel>
 
         <TabPanel header={t.deleteTab} leftIcon="pi pi-trash">
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
             {deleteError && (
-              <Message 
-                severity="error" 
-                text={deleteError} 
+              <Message
+                severity="error"
+                text={deleteError}
                 className="w-full"
               />
             )}
@@ -795,6 +1487,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
       </TabView>
+
+      {/* Plan Modal for subscriptions and credits */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={handlePlanModalClose}
+        initialTab={planModalTab}
+      />
     </Dialog>
   );
 }

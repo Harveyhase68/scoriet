@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import JSZip from 'jszip';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface Project {
   id: number;
@@ -98,6 +99,17 @@ export default function CodeGenerationPanel() {
     currentTask: string;
   } | null>(null);
 
+  // 💳 Credit info for generation
+  const [currentUser, setCurrentUser] = useState<{
+    credits: number;
+    user_type?: string;
+    patron_type?: string;
+  } | null>(null);
+
+  // 🛒 PlanModal for buying credits
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalInitialTab, setPlanModalInitialTab] = useState(1); // Tab 1 = Buy Credits
+
   // Auto-scroll deployment log to bottom
   useEffect(() => {
     if (deploymentLogEndRef.current) {
@@ -115,10 +127,33 @@ export default function CodeGenerationPanel() {
     };
   }, []);
 
-  // Load user projects on mount
+  // Load user projects and user data on mount
   useEffect(() => {
     loadProjects();
+    loadCurrentUser();
   }, []);
+
+  // Load current user data for credit info
+  const loadCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch {
+      // Error loading current user - silently fail
+    }
+  };
 
   // Load project data when project is selected
   useEffect(() => {
@@ -411,6 +446,51 @@ export default function CodeGenerationPanel() {
 
   const canGenerate = (): boolean => {
     return selectedProjectId !== null && selectedTemplateIds.size > 0;
+  };
+
+  // 💰 Charge credits before generation (skips for Patron Monthly users)
+  const chargeCreditsForGeneration = async (): Promise<{ success: boolean; message?: string; isFree?: boolean }> => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (!token) {
+      return { success: false, message: 'Authentifizierung erforderlich' };
+    }
+
+    try {
+      const response = await fetch('/api/generation/charge', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ project_id: selectedProjectId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.message || `Nicht genug Credits. Benötigt: ${data.credits_required}, Verfügbar: ${data.credits_available}`,
+        };
+      }
+
+      // Reload user data to update credit display
+      if (!data.is_free) {
+        loadCurrentUser();
+        // Dispatch event to notify other components (like navigation) about credit change
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
+      }
+
+      return {
+        success: true,
+        message: data.message,
+        isFree: data.is_free,
+      };
+    } catch (err) {
+      console.error('Credit charge error:', err);
+      return { success: false, message: 'Fehler beim Prüfen der Credits' };
+    }
   };
 
   // 🆕 Check for file conflicts between AND within templates
@@ -1367,6 +1447,14 @@ export default function CodeGenerationPanel() {
       setShowConflictDialog(false);
       setGenerationProgress(null);
 
+      // 💰 Charge credits before generation
+      const chargeResult = await chargeCreditsForGeneration();
+      if (!chargeResult.success) {
+        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setGenerating(false);
+        return;
+      }
+
       // Perform generation with download callback
       await performGeneration(async (zipBlob) => {
         console.log('[DOWNLOAD] Download callback called, zipBlob size:', zipBlob.size);
@@ -1517,6 +1605,14 @@ export default function CodeGenerationPanel() {
       setDeploymentTaskId(null);
       setDeploymentPolling(false);
 
+      // 💰 Charge credits before generation
+      const chargeResult = await chargeCreditsForGeneration();
+      if (!chargeResult.success) {
+        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setGenerating(false);
+        return;
+      }
+
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error('Authentication required');
@@ -1647,7 +1743,20 @@ export default function CodeGenerationPanel() {
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded text-red-200">
-              <strong>Error:</strong> {error}
+              <div className="flex items-start justify-between">
+                <div>
+                  <strong>Error:</strong> {error}
+                </div>
+                {error.toLowerCase().includes('credit') && (
+                  <button
+                    type="button"
+                    onClick={() => { setPlanModalInitialTab(1); setShowPlanModal(true); }}
+                    className="ml-3 px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-sm font-semibold transition-colors"
+                  >
+                    Credits kaufen
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1880,6 +1989,64 @@ export default function CodeGenerationPanel() {
                 </div>
               )}
 
+              {/* 💳 Credit Info Box */}
+              {currentUser && (
+                <div className={`mb-4 p-3 rounded-lg border ${
+                  currentUser.patron_type === 'monthly'
+                    ? 'bg-green-900/20 border-green-700'
+                    : 'bg-yellow-900/20 border-yellow-700'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-lg ${
+                        currentUser.patron_type === 'monthly' ? 'text-green-400' : 'text-yellow-400'
+                      }`}>
+                        {currentUser.patron_type === 'monthly' ? '⭐' : '💳'}
+                      </span>
+                      <div className="text-sm">
+                        {currentUser.patron_type === 'monthly' ? (
+                          <span className="text-green-300">
+                            <strong>Patron Monthly</strong> - Generierung kostenlos
+                          </span>
+                        ) : (
+                          <span className="text-yellow-300">
+                            Generierung kostet <strong>5 Credits</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {currentUser.patron_type !== 'monthly' && (
+                      <div className="text-sm text-gray-300 flex items-center gap-3">
+                        <span>Ihre Credits: <strong className="text-white">{currentUser.credits || 0}</strong></span>
+                        {(currentUser.credits || 0) < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => { setPlanModalInitialTab(1); setShowPlanModal(true); }}
+                            className="text-yellow-400 hover:text-yellow-300 underline text-xs font-semibold"
+                          >
+                            Credits kaufen
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Patron Monthly upgrade hint when low on credits */}
+                  {currentUser.patron_type !== 'monthly' && (currentUser.credits || 0) < 5 && (
+                    <p className="text-xs text-gray-400 text-center mt-2">
+                      Oder upgrade zu{' '}
+                      <button
+                        type="button"
+                        onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
+                        className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
+                      >
+                        Patron Monthly
+                      </button>
+                      {' '}für unbegrenzte Generierung!
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Generate Buttons */}
               <div className="flex justify-end gap-3">
                 <button
@@ -1897,7 +2064,9 @@ export default function CodeGenerationPanel() {
                       Generating...
                     </>
                   ) : (
-                    '🚀 Generate & Download'
+                    currentUser?.patron_type === 'monthly'
+                      ? '🚀 Generate & Download'
+                      : '🚀 Generate & Download (5 Credits)'
                   )}
                 </button>
 
@@ -1916,7 +2085,9 @@ export default function CodeGenerationPanel() {
                       Deploying...
                     </>
                   ) : (
-                    '📦 Generate & Deploy'
+                    currentUser?.patron_type === 'monthly'
+                      ? '📦 Generate & Deploy'
+                      : '📦 Generate & Deploy (5 Credits)'
                   )}
                 </button>
               </div>
@@ -2108,6 +2279,16 @@ export default function CodeGenerationPanel() {
           </div>
         </div>
       )}
+
+      {/* 🛒 PlanModal for buying credits */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={() => {
+          setShowPlanModal(false);
+          loadCurrentUser(); // Refresh credits after modal closes
+        }}
+        initialTab={planModalInitialTab}
+      />
     </div>
   );
 }

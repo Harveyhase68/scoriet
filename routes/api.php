@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\TranslationExportController;
 use App\Http\Controllers\Api\AutoTranslateController;
 use App\Http\Controllers\Api\TemplateVariableController;
 use App\Http\Controllers\Api\ProjectTemplateVariableValueController;
+use App\Http\Controllers\Api\CliSubscriptionController;
+use App\Http\Controllers\Api\StripeController;
+use App\Http\Controllers\Api\PayPalController;
 use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +29,15 @@ use App\Http\Controllers\DiagramLayoutController;
 // Manual OAuth token route for API with email verification check
 use App\Http\Controllers\CustomTokenController;
 Route::post('/oauth/token', [CustomTokenController::class, 'issueToken'])->name('api.oauth.token');
+
+// Stripe Webhook (public - called by Stripe servers)
+Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook'])->name('api.stripe.webhook');
+
+// PayPal Webhook (public - called by PayPal servers)
+Route::post('/paypal/webhook', [PayPalController::class, 'handleWebhook'])->name('api.paypal.webhook');
+
+// Template Media - Serve blob images (public access for display, no auth required)
+Route::get('/media/{media}/serve', [\App\Http\Controllers\Api\TemplateMediaController::class, 'serve'])->name('api.template-media.serve.public');
 
 // Test Observer (outside auth middleware for testing)
 Route::get('/test/observer', function () {
@@ -102,22 +114,26 @@ Route::prefix('project-invitations')->name('api.project-invitations.')->group(fu
 Route::get('/pricing', function () {
     try {
         $settings = \App\Models\Settings::first();
-        
+
         if (!$settings) {
             // Fallback to default prices if no settings exist
             $prices = [
-                'premium' => 9.99,
-                'business' => 29.99,
-                'patron' => 99.99
+                'patron_annual' => 34.90,
+                'patron_monthly' => 49.90,
+                'credits_500' => 9.90,
+                'credits_1000' => 17.90,
+                'credits_2500' => 29.90
             ];
         } else {
             $prices = [
-                'premium' => (float) $settings->price_premium,
-                'business' => (float) $settings->price_business,
-                'patron' => (float) $settings->price_patron
+                'patron_annual' => (float) $settings->price_patron_annual,
+                'patron_monthly' => (float) $settings->price_patron_monthly,
+                'credits_500' => (float) $settings->price_credits_500,
+                'credits_1000' => (float) $settings->price_credits_1000,
+                'credits_2500' => (float) $settings->price_credits_2500
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'prices' => $prices,
@@ -153,6 +169,7 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::put('/profile/password', [AuthController::class, 'updatePassword']);
     Route::put('/profile/language', [AuthController::class, 'updateLanguage']);
+    Route::put('/profile/seller', [AuthController::class, 'updateSellerProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
     
@@ -190,6 +207,30 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/templates/{id}/download-archive', [TemplateController::class, 'downloadTemplateArchive']);
     Route::post('/templates/import', [TemplateController::class, 'import']);
 
+    // Template Subscriptions (for private templates)
+    Route::get('/template-subscriptions/count', [TemplateController::class, 'getSubscriptionCount']);
+
+    // CLI & Service Subscriptions
+    Route::get('/cli-subscriptions/status', [CliSubscriptionController::class, 'status']);
+    Route::post('/cli-subscriptions/unlock', [CliSubscriptionController::class, 'unlock']);
+    Route::get('/cli-subscriptions/check-cli', [CliSubscriptionController::class, 'checkCliAccess']);
+    Route::get('/cli-subscriptions/check-service', [CliSubscriptionController::class, 'checkServiceAccess']);
+
+    // Stripe Payment Routes
+    Route::post('/stripe/checkout/credits', [StripeController::class, 'createCreditCheckout']);
+    Route::post('/stripe/checkout/patron', [StripeController::class, 'createPatronCheckout']);
+    Route::post('/stripe/checkout/template', [StripeController::class, 'createTemplateCheckout']);
+    Route::get('/stripe/payment-status', [StripeController::class, 'getPaymentStatus']);
+
+    // PayPal Payment Routes
+    Route::post('/paypal/order/credits', [PayPalController::class, 'createCreditOrder']);
+    Route::post('/paypal/order/patron', [PayPalController::class, 'createPatronSubscription']);
+    Route::post('/paypal/order/template', [PayPalController::class, 'createTemplateOrder']);
+    Route::post('/paypal/capture', [PayPalController::class, 'capturePayment']);
+
+    // Subscription Management
+    Route::post('/subscription/cancel', [App\Http\Controllers\Api\SubscriptionController::class, 'cancel']);
+
     // Template Variables (Template-Developer defines custom variables)
     Route::prefix('templates/{templateId}/variables')->name('api.template-variables.')->group(function () {
         Route::get('/', [TemplateVariableController::class, 'index'])->name('index');
@@ -216,8 +257,39 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/reviews/{review}', [\App\Http\Controllers\Api\TemplateReviewController::class, 'deleteReview'])->name('delete');
     });
 
+    // Template Store - Marketplace for selling templates
+    Route::prefix('store')->name('api.store.')->group(function () {
+        Route::get('/templates', [\App\Http\Controllers\Api\TemplateStoreController::class, 'index'])->name('templates.index');
+        Route::get('/templates/{template}', [\App\Http\Controllers\Api\TemplateStoreController::class, 'show'])->name('templates.show');
+        Route::post('/templates/{template}/purchase', [\App\Http\Controllers\Api\TemplateStoreController::class, 'purchase'])->name('templates.purchase');
+        Route::get('/my-purchases', [\App\Http\Controllers\Api\TemplateStoreController::class, 'myPurchases'])->name('my-purchases');
+        Route::get('/my-sales', [\App\Http\Controllers\Api\TemplateStoreController::class, 'mySales'])->name('my-sales');
+        Route::get('/categories', [\App\Http\Controllers\Api\TemplateStoreController::class, 'categories'])->name('categories');
+        Route::get('/languages', [\App\Http\Controllers\Api\TemplateStoreController::class, 'languages'])->name('languages');
+        Route::post('/templates/{template}/submit', [\App\Http\Controllers\Api\TemplateStoreController::class, 'submitForApproval'])->name('templates.submit');
+        Route::put('/templates/{template}/price', [\App\Http\Controllers\Api\TemplateStoreController::class, 'updatePrice'])->name('templates.update-price');
+        Route::delete('/templates/{template}', [\App\Http\Controllers\Api\TemplateStoreController::class, 'removeFromStore'])->name('templates.remove');
+    });
+
+    // Template Media - Logo, Images, Videos for templates
+    Route::prefix('templates/{template}/media')->name('api.template-media.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\TemplateMediaController::class, 'index'])->name('index');
+        Route::post('/logo', [\App\Http\Controllers\Api\TemplateMediaController::class, 'uploadLogo'])->name('upload-logo');
+        Route::post('/images', [\App\Http\Controllers\Api\TemplateMediaController::class, 'uploadImages'])->name('upload-images');
+        Route::post('/videos', [\App\Http\Controllers\Api\TemplateMediaController::class, 'addVideo'])->name('add-video');
+        Route::put('/{media}', [\App\Http\Controllers\Api\TemplateMediaController::class, 'update'])->name('update');
+        Route::put('/{media}/order', [\App\Http\Controllers\Api\TemplateMediaController::class, 'updateOrder'])->name('update-order');
+        Route::post('/reorder', [\App\Http\Controllers\Api\TemplateMediaController::class, 'reorder'])->name('reorder');
+        Route::delete('/{media}', [\App\Http\Controllers\Api\TemplateMediaController::class, 'destroy'])->name('destroy');
+    });
+
+
     // Templates API (for Project Assignment)
     Route::get('/project-templates', [App\Http\Controllers\Api\TemplateController::class, 'index']);
+
+    // 💰 CREDIT CHARGE - Call before starting generation
+    Route::post('/generation/charge', [UltimateTemplateController::class, 'chargeForGeneration'])
+        ->name('api.generation.charge');
 
     // 🚀 ULTIMATE TEMPLATE ENGINE - Enhanced template processing with 50+ variables
     Route::get('/ultimate-template/{templateId}', [UltimateTemplateController::class, 'processTemplate'])
@@ -481,6 +553,14 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'index']);
         Route::post('/users/{user}/toggle-inner-core', [\App\Http\Controllers\Admin\UserManagementController::class, 'toggleInnerCore']);
         Route::get('/inner-core/stats', [\App\Http\Controllers\Admin\UserManagementController::class, 'getInnerCoreStats']);
+
+        // Payout Management
+        Route::get('/payouts/pending', [\App\Http\Controllers\Api\PayoutAdminController::class, 'getPendingPayouts']);
+        Route::post('/payouts/process/{userId}', [\App\Http\Controllers\Api\PayoutAdminController::class, 'processSinglePayout']);
+        Route::post('/payouts/process-paypal-batch', [\App\Http\Controllers\Api\PayoutAdminController::class, 'processPaypalBatch']);
+        Route::get('/payouts/history', [\App\Http\Controllers\Api\PayoutAdminController::class, 'getPayoutHistory']);
+        Route::get('/payouts/export-sepa', [\App\Http\Controllers\Api\PayoutAdminController::class, 'exportSepaXml']);
+        Route::get('/payouts/export-csv', [\App\Http\Controllers\Api\PayoutAdminController::class, 'exportCsv']);
     });
 });
 

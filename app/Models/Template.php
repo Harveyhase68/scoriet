@@ -31,6 +31,18 @@ class Template extends Model
         'protected_files',
         'install_script',
         'update_script',
+        // Store fields
+        'price_type',
+        'price_credits',
+        'price_euros',
+        'is_store_approved',
+        'sales_count',
+        'total_revenue',
+        'is_from_store',
+        'resale_allowed',
+        // Clone tracking
+        'cloned_from_template_id',
+        'visibility_locked',
     ];
 
     protected $casts = [
@@ -44,6 +56,15 @@ class Template extends Model
         'update_script' => 'array',
         'history' => 'array',
         'community_rating' => 'array',
+        // Store fields
+        'price_credits' => 'integer',
+        'price_euros' => 'decimal:2',
+        'is_store_approved' => 'boolean',
+        'sales_count' => 'integer',
+        'total_revenue' => 'decimal:2',
+        'is_from_store' => 'boolean',
+        'resale_allowed' => 'boolean',
+        'visibility_locked' => 'boolean',
     ];
 
     /**
@@ -116,6 +137,46 @@ class Template extends Model
     public function reviews()
     {
         return $this->hasMany(TemplateReview::class);
+    }
+
+    /**
+     * Get all media for this template.
+     */
+    public function media()
+    {
+        return $this->hasMany(TemplateMedia::class)->ordered();
+    }
+
+    /**
+     * Get the logo for this template.
+     */
+    public function logo()
+    {
+        return $this->hasOne(TemplateMedia::class)->where('media_type', 'logo');
+    }
+
+    /**
+     * Get all images for this template.
+     */
+    public function images()
+    {
+        return $this->hasMany(TemplateMedia::class)->where('media_type', 'image')->ordered();
+    }
+
+    /**
+     * Get all videos for this template.
+     */
+    public function videos()
+    {
+        return $this->hasMany(TemplateMedia::class)->where('media_type', 'video')->ordered();
+    }
+
+    /**
+     * Get all purchases for this template.
+     */
+    public function purchases()
+    {
+        return $this->hasMany(TemplatePurchase::class);
     }
 
     /**
@@ -232,6 +293,12 @@ class Template extends Model
                         ->where('visibility', 'public')
                         ->whereNull('project_id')
                         ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
+            })
+            // Store templates (any score - frontend filters by reviewer status and is_store_approved)
+            ->orWhere(function($storeQ) use ($userId) {
+                $storeQ->where('is_system_template', false)
+                       ->where('visibility', 'store')
+                       ->where('creator_user_id', '!=', $userId); // Avoid duplicates with own templates
             });
 
             // If specific project context, also include templates from that project
@@ -278,6 +345,11 @@ class Template extends Model
             return true;
         }
 
+        // Store templates can be cloned if purchased
+        if ($this->visibility === 'store') {
+            return \App\Models\TemplatePurchase::hasPurchased($user->id, $this->id);
+        }
+
         // Private templates can only be cloned by users with project access
         if ($this->project_id) {
             return $this->project && $this->project->userCanAccess($user);
@@ -295,6 +367,19 @@ class Template extends Model
         // System templates can always be used (if public)
         if ($this->is_system_template) {
             return $this->visibility === 'public';
+        }
+
+        // Reviewers (system, review user types or inner_core) can use any public/store template for testing
+        // This allows them to test templates before approval
+        $isReviewer = in_array($user->user_type, ['system', 'review']) || $user->is_inner_core;
+        if ($isReviewer && in_array($this->visibility, ['public', 'store'])) {
+            return true;
+        }
+
+        // Store templates can be used if purchased
+        if ($this->visibility === 'store') {
+            // Check if user purchased this template
+            return \App\Models\TemplatePurchase::hasPurchased($user->id, $this->id);
         }
 
         // Same logic as cloning for project templates
@@ -384,9 +469,24 @@ class Template extends Model
             return true;
         }
 
+        // Inner Core members can view public and store templates for review purposes
+        if ($user->is_inner_core && in_array($this->visibility, ['public', 'store'])) {
+            return true;
+        }
+
+        // Admins and system users can view all templates
+        if (in_array($user->user_type, ['admin', 'system'])) {
+            return true;
+        }
+
         // Public templates can be viewed by anyone
         if ($this->visibility === 'public') {
             return true;
+        }
+
+        // Store templates can be viewed if purchased
+        if ($this->visibility === 'store') {
+            return \App\Models\TemplatePurchase::hasPurchased($user->id, $this->id);
         }
 
         // Private templates can only be viewed by creator
@@ -593,5 +693,206 @@ class Template extends Model
                           ->where('creator_user_id', '!=', $userId);
               });
         });
+    }
+
+    /**
+     * Get the subscription for this template
+     */
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'entity_id')
+                    ->where('subscription_type', Subscription::TYPE_TEMPLATE);
+    }
+
+    // =====================================================
+    // STORE METHODS
+    // =====================================================
+
+    /**
+     * Check if this template is a store template.
+     */
+    public function isStoreTemplate(): bool
+    {
+        return $this->visibility === 'store';
+    }
+
+    /**
+     * Check if this template can be sold in the store.
+     * Requires admin approval OR 5+ positive reviews.
+     */
+    public function canBeSoldInStore(): bool
+    {
+        if ($this->is_store_approved) {
+            return true;
+        }
+
+        return $this->review_score >= 5;
+    }
+
+    /**
+     * Scope for store templates.
+     */
+    public function scopeStore($query)
+    {
+        return $query->where('visibility', 'store');
+    }
+
+    /**
+     * Scope for approved store templates.
+     */
+    public function scopeStoreApproved($query)
+    {
+        return $query->where('visibility', 'store')
+                    ->where(function($q) {
+                        $q->where('is_store_approved', true)
+                          ->orWhere('review_score', '>=', 5);
+                    });
+    }
+
+    /**
+     * Check if a user can purchase this template.
+     */
+    public function canBePurchasedBy($user): bool
+    {
+        // Can't buy your own template
+        if ($this->creator_user_id == $user->id) {
+            return false;
+        }
+
+        // Must be a store template
+        if (!$this->isStoreTemplate()) {
+            return false;
+        }
+
+        // Check if already purchased
+        if (TemplatePurchase::hasPurchased($user->id, $this->id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a user owns this template (creator or purchased).
+     */
+    public function isOwnedBy($user): bool
+    {
+        // Creator always owns
+        if ($this->creator_user_id == $user->id) {
+            return true;
+        }
+
+        // Check if purchased
+        return TemplatePurchase::hasPurchased($user->id, $this->id);
+    }
+
+    /**
+     * Check if this template can be cloned for resale.
+     * Store-purchased templates cannot be resold unless explicitly allowed.
+     */
+    public function canBeClonedForResale(): bool
+    {
+        if (!$this->is_from_store) {
+            return true;
+        }
+
+        return $this->resale_allowed;
+    }
+
+    /**
+     * Get the price in the template's price type.
+     */
+    public function getPrice(): ?float
+    {
+        if ($this->price_type === 'credits') {
+            return (float) $this->price_credits;
+        }
+
+        if ($this->price_type === 'euros') {
+            return (float) $this->price_euros;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get formatted price string.
+     */
+    public function getFormattedPriceAttribute(): string
+    {
+        if ($this->price_type === 'credits') {
+            return $this->price_credits . ' Credits';
+        }
+
+        if ($this->price_type === 'euros') {
+            return number_format($this->price_euros, 2) . ' EUR';
+        }
+
+        return 'Free';
+    }
+
+    /**
+     * Check if this template accepts credit payments.
+     */
+    public function acceptsCredits(): bool
+    {
+        return $this->price_type === 'credits';
+    }
+
+    /**
+     * Check if this template accepts euro payments.
+     */
+    public function acceptsEuros(): bool
+    {
+        return $this->price_type === 'euros';
+    }
+
+    /**
+     * Calculate seller revenue (80%).
+     */
+    public function calculateSellerRevenue(): float
+    {
+        return round($this->getPrice() * 0.80, 2);
+    }
+
+    /**
+     * Calculate platform fee (20%).
+     */
+    public function calculatePlatformFee(): float
+    {
+        return round($this->getPrice() * 0.20, 2);
+    }
+
+    /**
+     * Increment sales count and revenue.
+     */
+    public function recordSale(float $revenue): void
+    {
+        $this->increment('sales_count');
+        $this->increment('total_revenue', $revenue);
+    }
+
+    /**
+     * Validate store price.
+     * Credits: minimum 50
+     * Euros: minimum 1.00
+     */
+    public static function validateStorePrice(?string $priceType, ?int $priceCredits, ?float $priceEuros): array
+    {
+        $errors = [];
+
+        if ($priceType === 'credits') {
+            if ($priceCredits === null || $priceCredits < 50) {
+                $errors['price_credits'] = 'Minimum price is 50 credits.';
+            }
+        } elseif ($priceType === 'euros') {
+            if ($priceEuros === null || $priceEuros < 1.00) {
+                $errors['price_euros'] = 'Minimum price is 1.00 EUR.';
+            }
+        } else {
+            $errors['price_type'] = 'Price type must be credits or euros for store templates.';
+        }
+
+        return $errors;
     }
 }

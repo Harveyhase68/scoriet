@@ -221,7 +221,7 @@ class Project extends Model
      */
     public function canCreatePrivate($user): bool
     {
-        return $user && in_array($user->user_type, ['premium', 'admin']);
+        return $user && in_array($user->user_type, ['patron', 'admin', 'system']);
     }
 
     /**
@@ -562,5 +562,30 @@ class Project extends Model
     public function templateVariableValues()
     {
         return $this->hasMany(ProjectTemplateVariableValue::class);
+    }
+
+    /**
+     * Get the subscription for this project
+     */
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'entity_id')
+                    ->where('subscription_type', Subscription::TYPE_PROJECT);
+    }
+
+    /**
+     * Check if project is soft-locked
+     */
+    public function isSoftLocked(): bool
+    {
+        $subscription = $this->subscription;
+        if (!$subscription) {
+            return false;
+        }
+
+        // Auto-apply soft-lock if expired
+        $subscription->checkAndApplySoftLock();
+
+        return $subscription->is_soft_locked;
     }
 }

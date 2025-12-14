@@ -157,6 +157,36 @@ class ApiClient {
     });
   }
 
+  async uploadFile(endpoint: string, formData: FormData): Promise<any> {
+    const token = await this.getAuthToken();
+
+    if (!token) {
+      throw new Error('Authentication required - please login');
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        // Note: Don't set Content-Type for FormData - browser will set it with boundary
+      },
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      await this.handleAuthError();
+      throw new Error('Authentication expired - please log in again');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw { response: { status: response.status, data: errorData }, message: errorData.message || `API Error: ${response.status} ${response.statusText}` };
+    }
+
+    return response.json();
+  }
+
   async getAllSchemaVersions(): Promise<SchemaVersion[]> {
     const response = await this.request('/schema-versions');
     return response.versions || [];
@@ -221,10 +251,8 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify(templateData),
       });
-      return {
-        success: true,
-        template: response
-      };
+      // API already returns { success: true, template: {...} }
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -239,10 +267,8 @@ class ApiClient {
         method: 'PUT',
         body: JSON.stringify(templateData),
       });
-      return {
-        success: true,
-        template: response
-      };
+      // API already returns { success: true, template: {...} }
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -306,10 +332,8 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      return {
-        success: true,
-        template: response
-      };
+      // API already returns { success: true, template: {...} }
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -334,10 +358,8 @@ class ApiClient {
   async getTemplate(id: number): Promise<any> {
     try {
       const response = await this.request(`/templates/${id}`);
-      return {
-        success: true,
-        template: response
-      };
+      // API already returns { success: true, template: {...} }
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -549,8 +571,24 @@ class ApiClient {
         return null;
       }
 
-      const response = await this.request(`/projects/${projectId}/generation-tree/updates?since=${encodeURIComponent(since)}`);
-      return response || null;
+      // Use fetch directly to avoid throwing on 404 (deleted projects)
+      const token = await this.getAuthToken();
+      if (!token) return null;
+
+      const response = await fetch(`${this.baseURL}/projects/${projectId}/generation-tree/updates?since=${encodeURIComponent(since)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      // Silently ignore 404 (project deleted or no tree yet)
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json();
     } catch {
       return null;
     }
@@ -577,9 +615,11 @@ class ApiClient {
       return {
         success: true,
         prices: {
-          premium: 9.99,
-          business: 29.99,
-          patron: 99.99
+          patron_annual: 34.90,
+          patron_monthly: 49.90,
+          credits_500: 9.90,
+          credits_1000: 17.90,
+          credits_2500: 29.90
         },
         currency: 'EUR',
         updated_at: new Date().toISOString()
@@ -664,7 +704,7 @@ export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion };
 // Utility functions to access pricing data from localStorage
 export const pricingUtils = {
   // Get pricing data from localStorage
-  getPricingData(): { premium: number; business: number; patron: number } | null {
+  getPricingData(): { patron_annual: number; patron_monthly: number; credits_500: number; credits_1000: number; credits_2500: number } | null {
     try {
       const pricingData = localStorage.getItem('pricing_data');
       return pricingData ? JSON.parse(pricingData) : null;
@@ -684,7 +724,7 @@ export const pricingUtils = {
   },
 
   // Get individual price
-  getPrice(plan: 'premium' | 'business' | 'patron'): number | null {
+  getPrice(plan: 'patron_annual' | 'patron_monthly' | 'credits_500' | 'credits_1000' | 'credits_2500'): number | null {
     const pricing = this.getPricingData();
     return pricing ? pricing[plan] : null;
   },
@@ -705,7 +745,7 @@ export const pricingUtils = {
   async refreshPricingData(): Promise<boolean> {
     try {
       const pricingData = await apiClient.getPricing();
-      
+
       if (pricingData.success) {
         localStorage.setItem('pricing_data', JSON.stringify(pricingData.prices));
         localStorage.setItem('pricing_currency', pricingData.currency || 'EUR');
@@ -716,5 +756,12 @@ export const pricingUtils = {
     } catch {
       return false;
     }
+  },
+
+  // Clear pricing cache
+  clearCache(): void {
+    localStorage.removeItem('pricing_data');
+    localStorage.removeItem('pricing_timestamp');
+    localStorage.removeItem('pricing_currency');
   }
 };

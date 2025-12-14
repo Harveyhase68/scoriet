@@ -513,10 +513,18 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
       loadProjectData();
     };
 
+    // Listen for project changes (e.g., new project created via wizard)
+    const handleProjectChange = () => {
+      console.log('🔄 Project changed event received, reloading tree...');
+      loadProjectData();
+    };
+
     window.addEventListener('teamChanged', handleTeamChange);
+    window.addEventListener('projectChanged', handleProjectChange);
 
     return () => {
       window.removeEventListener('teamChanged', handleTeamChange);
+      window.removeEventListener('projectChanged', handleProjectChange);
     };
   }, [translationsLoading, t]);
 
@@ -536,11 +544,11 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
      
   }, [treeData]);
 
-  // Auto-polling for File Preview updates (every 5 seconds)
-  // DEACTIVATED: Polling for generation tree updates (was causing ~32s overhead during sync generation)
-  // This polling is only needed for async queue jobs in production
-  // TODO: Re-enable conditionally when queue mode is async
-  /*
+  // Store last known update timestamps for each project (for polling)
+  const lastKnownTimestamps = useRef<Record<number, string>>({});
+
+  // Auto-polling for File Preview updates (every 10 seconds)
+  // Lightweight check for generation tree updates
   useEffect(() => {
     // Extract project IDs from tree data
     const projectIds = treeData
@@ -550,46 +558,33 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
     if (projectIds.length === 0) return;
 
-    // Store last update timestamps for each project
-    const lastUpdateTimestamps: Record<number, string> = {};
-
-    // Initialize timestamps from current tree data
-    projectIds.forEach(projectId => {
-      const generatedFilesNode = treeData
-        .find(node => node.id === `project-${projectId}`)?.children
-        ?.find(child => child.type === 'generated-files-container');
-
-      if (generatedFilesNode) {
-        lastUpdateTimestamps[projectId] = new Date().toISOString();
-      }
-    });
-
     // Set up polling interval
     const interval = setInterval(async () => {
       for (const projectId of projectIds) {
         try {
           const response = await apiClient.checkGenerationTreeUpdates(
             projectId,
-            lastUpdateTimestamps[projectId] || new Date(0).toISOString()
+            lastKnownTimestamps.current[projectId] || '1970-01-01T00:00:00.000Z'
           );
 
-          if (response.data.has_updates && response.data.tree_data) {
+          if (response && response.has_updates) {
             // Update the timestamp
-            lastUpdateTimestamps[projectId] = response.data.last_update;
+            if (response.last_update) {
+              lastKnownTimestamps.current[projectId] = response.last_update;
+            }
 
-            // Refresh only the File Preview
+            // Refresh only the File Preview for this project
+            console.log(`🔄 Generation tree updated for project ${projectId}, refreshing...`);
             refreshFilePreview(projectId);
           }
         } catch {
           // Silently ignore polling errors to avoid console spam
         }
       }
-    }, 5000); // Poll every 5 seconds
+    }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
-
-  }, [treeData]);
-  */
+  }, [treeData, refreshFilePreview]);
 
   const toggleNode = (nodeId: string) => {
     const updateNode = (nodes: TreeNode[]): TreeNode[] => {

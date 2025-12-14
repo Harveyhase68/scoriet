@@ -63,6 +63,8 @@ class ProjectController extends Controller
                         'is_public' => $project->is_public,
                         'created_at' => $project->created_at,
                         'teams_count' => $counts['teams_count'],
+                        'schemas_count' => $counts['schemas_count'],
+                        'templates_count' => $counts['templates_count'],
                         'can_join' => $project->allow_join_requests && !empty($project->join_code),
                     ];
                 });
@@ -90,10 +92,35 @@ class ProjectController extends Controller
             // Get current project (for now, just the latest one)
             $currentProject = $projects->first();
 
+            // Calculate subscription info for free users
+            $subscriptionInfo = null;
+            $isFreeUser = $user->user_type === 'free' || !$user->user_type;
+
+            if ($isFreeUser) {
+                // Count active project subscriptions (not expired)
+                $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+                    ->where('subscription_type', \App\Models\Subscription::TYPE_PROJECT)
+                    ->where('is_active', true)
+                    ->where('expires_at', '>', now())
+                    ->count();
+
+                // Free users can have: 1 (free) + number of active subscriptions
+                $maxAllowedProjects = 1 + $activeSubscriptionsCount;
+                $ownedProjectsCount = $projects->count();
+
+                $subscriptionInfo = [
+                    'active_subscriptions' => $activeSubscriptionsCount,
+                    'owned_projects' => $ownedProjectsCount,
+                    'max_allowed' => $maxAllowedProjects,
+                    'needs_unlock' => $ownedProjectsCount >= $maxAllowedProjects,
+                ];
+            }
+
             return response()->json([
                 'projects' => $projects,
                 'current_project' => $currentProject,
                 'total_projects' => $projects->count(),
+                'subscription_info' => $subscriptionInfo,
             ]);
         }
 
@@ -123,6 +150,10 @@ class ProjectController extends Controller
             'description' => 'nullable|string|max:1000',
             'is_public' => 'boolean',
             'allow_join_requests' => 'boolean',
+            // Clone-specific fields
+            'is_clone' => 'boolean',
+            'original_project_id' => 'nullable|integer|exists:projects,id',
+            'creator_user_id' => 'nullable|integer', // Original creator attribution
             // Database connection fields
             'database_name' => 'nullable|string|max:255',
             'database_type' => 'nullable|string|max:50',
@@ -155,14 +186,55 @@ class ProjectController extends Controller
             'google_translate_api_key' => 'nullable|string|max:500',
         ]);
 
-        // Check if user can create private projects
-        if (isset($validated['is_public']) && !$validated['is_public']) {
-            if (!$user->canCreatePrivateProjects()) {
+        // Handle cloning: Load original project if cloning
+        $originalProject = null;
+        $isClone = $validated['is_clone'] ?? false;
+        if ($isClone && isset($validated['original_project_id'])) {
+            $originalProject = Project::find($validated['original_project_id']);
+
+            // Original project must be public to be cloned
+            if (!$originalProject || !$originalProject->is_public) {
                 return response()->json([
-                    'message' => 'Private Projekte sind nur für Premium-User verfügbar'
-                ], 403);
+                    'message' => 'Original project not found or is not public'
+                ], 404);
             }
         }
+
+        // Check project limit for free users
+        $needsProjectSubscription = false;
+        if ($user->user_type === 'free') {
+            // Count active subscriptions (not expired)
+            $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+                ->where('subscription_type', \App\Models\Subscription::TYPE_PROJECT)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->count();
+
+            // Free users can have: 1 (free) + number of active subscriptions
+            $maxAllowedProjects = 1 + $activeSubscriptionsCount;
+            $activeProjectCount = Project::where('owner_id', $user->id)->where('is_active', true)->count();
+
+            if ($activeProjectCount >= $maxAllowedProjects) {
+                // User needs to buy a new subscription slot
+                if (!$user->hasCredits(50)) {
+                    return response()->json([
+                        'message' => 'Nicht genug Credits. Sie benötigen 50 Credits um ein zusätzliches Projekt freizuschalten.',
+                        'error_code' => 'INSUFFICIENT_CREDITS',
+                        'required_credits' => 50,
+                        'current_credits' => $user->credits,
+                        'active_projects' => $activeProjectCount,
+                        'max_allowed' => $maxAllowedProjects,
+                        'active_subscriptions' => $activeSubscriptionsCount
+                    ], 403);
+                }
+
+                // User has enough credits - will deduct after project creation
+                $needsProjectSubscription = true;
+            }
+        }
+
+        // Note: All users can create private projects now
+        // The only restriction is the number of projects (1 free, then 50 credits each)
 
         // Get user's profile language to add as first project language
         $userLanguage = $user->language ?? 'de'; // Default to 'de' if not set
@@ -222,6 +294,100 @@ class ProjectController extends Controller
         // Note: Projects no longer create automatic schema versions
         // Schema versions are now created when schemas are associated with projects
         // via the project_schemas relationship
+
+        // 🔄 CLONE: Copy schemas and templates from original project
+        if ($isClone && $originalProject) {
+            // Copy schema associations (link them, not clone them)
+            $originalSchemas = $originalProject->floatingSchemas()->get();
+            foreach ($originalSchemas as $schema) {
+                // Link the schema to the new project (same association type)
+                $project->floatingSchemas()->attach($schema->id, [
+                    'association_type' => 'linked', // Always link when cloning (user can edit their own later)
+                    'alias' => $schema->pivot->alias,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Copy template associations (link them, not clone them)
+            $originalTemplateUsages = $originalProject->templateUsages()->where('is_active', true)->get();
+            foreach ($originalTemplateUsages as $usage) {
+                \App\Models\ProjectTemplateUsage::create([
+                    'project_id' => $project->id,
+                    'template_id' => $usage->template_id,
+                    'usage_type' => 'linked', // Always link when cloning
+                    'alias' => $usage->alias,
+                    'config' => $usage->config,
+                    'is_active' => true,
+                    'used_at' => now(),
+                ]);
+            }
+
+            // Copy project settings from original (if not explicitly set)
+            $settingsToCopy = [
+                'diagram_max_tables_per_row',
+                'diagram_table_width',
+                'diagram_table_height',
+                'diagram_horizontal_spacing',
+                'diagram_vertical_spacing',
+                'start_page',
+                'default_language',
+                'archive_format',
+                'filename_short_length',
+                'decimal_separator',
+                'thousands_separator',
+                'date_format',
+                'time_format',
+                'currency_symbol',
+                'timezone',
+                'enabled_languages',
+            ];
+
+            $updateData = [];
+            foreach ($settingsToCopy as $setting) {
+                // Only copy if not explicitly set in the request and original has a value
+                if (!isset($validated[$setting]) && $originalProject->$setting !== null) {
+                    $updateData[$setting] = $originalProject->$setting;
+                }
+            }
+
+            if (!empty($updateData)) {
+                $project->update($updateData);
+            }
+
+            \Log::info('Project cloned successfully', [
+                'original_project_id' => $originalProject->id,
+                'new_project_id' => $project->id,
+                'schemas_copied' => $originalSchemas->count(),
+                'templates_copied' => $originalTemplateUsages->count(),
+            ]);
+        }
+
+        // If user needed a project subscription (Free user creating 2nd project)
+        if ($needsProjectSubscription) {
+            // Deduct 50 credits
+            $user->deductCredits(50);
+
+            // Create project subscription (valid for 1 year)
+            \App\Models\Subscription::create([
+                'user_id' => $user->id,
+                'subscription_type' => \App\Models\Subscription::TYPE_PROJECT,
+                'entity_id' => $project->id,
+                'expires_at' => now()->addYear(),
+                'is_active' => true,
+            ]);
+
+            // Log the transaction
+            \App\Models\CreditTransaction::create([
+                'user_id' => $user->id,
+                'amount' => -50,
+                'type' => 'project_renewal',
+                'description' => 'Unlock additional project: ' . $project->name . ' (1 year)',
+                'reference_type' => 'App\Models\Project',
+                'reference_id' => $project->id,
+                'price_paid' => null,
+            ]);
+        }
 
         // Load the owner relationship
         $project->load('owner');
@@ -534,7 +700,8 @@ class ProjectController extends Controller
                         'username' => $team->owner->username,
                         'user_type' => $team->owner->user_type,
                         'language' => $team->owner->language,
-                        'premium_expires_at' => $team->owner->premium_expires_at,
+                        'credits' => $team->owner->credits,
+                        'patron_type' => $team->owner->patron_type,
                         'pending_project_invitation_id' => $team->owner->pending_project_invitation_id,
                         'created_at' => $team->owner->created_at,
                         'updated_at' => $team->owner->updated_at,

@@ -110,6 +110,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'language' => $request->language ?? 'en',
             'pending_project_invitation_id' => $pendingInvitationId,
+            'last_monthly_credits_at' => now(), // Set to now so user doesn't get double credits on first login
         ]);
 
         // Trigger the email verification
@@ -344,6 +345,95 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Passwort erfolgreich geändert'
+        ]);
+    }
+
+    /**
+     * Seller profile update
+     */
+    public function updateSellerProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'is_seller' => 'required|boolean',
+            'company_name' => 'nullable|string|max:255',
+            'company_address' => 'nullable|string|max:1000',
+            'company_country' => 'nullable|string|size:2',
+            'vat_id' => 'nullable|string|max:50',
+            'business_registration' => 'nullable|string|max:255',
+            'tax_id' => 'nullable|string|max:50',
+            'payout_method' => 'nullable|in:bank_transfer,paypal',
+            'paypal_payout_email' => 'nullable|email|max:255',
+            'bank_iban' => 'nullable|string|max:34',
+            'bank_bic' => 'nullable|string|max:11',
+            'bank_account_holder' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validierungsfehler',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Basic validation when seller mode is enabled
+        if ($request->is_seller) {
+            $errors = [];
+
+            if (empty($request->company_name)) {
+                $errors['company_name'] = ['Firmenname ist erforderlich'];
+            }
+            if (empty($request->company_country)) {
+                $errors['company_country'] = ['Land ist erforderlich'];
+            }
+            if (empty($request->payout_method)) {
+                $errors['payout_method'] = ['Auszahlungsmethode ist erforderlich'];
+            }
+            if ($request->payout_method === 'paypal' && empty($request->paypal_payout_email)) {
+                $errors['paypal_payout_email'] = ['PayPal E-Mail ist erforderlich'];
+            }
+            if ($request->payout_method === 'bank_transfer') {
+                if (empty($request->bank_iban)) {
+                    $errors['bank_iban'] = ['IBAN ist erforderlich'];
+                }
+                if (empty($request->bank_account_holder)) {
+                    $errors['bank_account_holder'] = ['Kontoinhaber ist erforderlich'];
+                }
+            }
+
+            if (!empty($errors)) {
+                return response()->json([
+                    'message' => 'Bitte füllen Sie alle erforderlichen Felder aus',
+                    'errors' => $errors
+                ], 422);
+            }
+        }
+
+        // Update seller data
+        $user->update([
+            'is_seller' => $request->is_seller,
+            'company_name' => $request->company_name,
+            'company_address' => $request->company_address,
+            'company_country' => $request->company_country,
+            'vat_id' => $request->vat_id,
+            'business_registration' => $request->business_registration,
+            'tax_id' => $request->tax_id,
+            'payout_method' => $request->payout_method,
+            'paypal_payout_email' => $request->paypal_payout_email,
+            'bank_iban' => $request->bank_iban,
+            'bank_bic' => $request->bank_bic,
+            'bank_account_holder' => $request->bank_account_holder,
+        ]);
+
+        // Auto-determine and update seller type
+        if ($request->is_seller) {
+            $user->updateSellerType();
+        }
+
+        return response()->json([
+            'message' => 'Verkäufer-Profil erfolgreich aktualisiert',
+            'user' => $user->fresh()
         ]);
     }
 

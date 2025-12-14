@@ -90,6 +90,41 @@ require __DIR__.'/auth.php';
 
 // Admin routes for CMS (protected - only system administrators)
 // Note: These should be accessed from within /app, not directly
+// Payment result routes (Stripe redirects)
+Route::get('/payment/success', function () {
+    return Inertia::render('PaymentResult', [
+        'status' => 'success',
+        'session_id' => request('session_id'),
+        'provider' => request('provider', 'stripe'),
+        'type' => request('type', 'credits'),
+    ]);
+})->name('payment.success');
+
+Route::get('/payment/cancel', function () {
+    return Inertia::render('PaymentResult', [
+        'status' => 'cancelled'
+    ]);
+})->name('payment.cancel');
+
+// PayPal success route (user returns after approval - for one-time payments)
+Route::get('/payment/paypal/success', function () {
+    return Inertia::render('PaymentResult', [
+        'status' => 'pending_capture',
+        'provider' => 'paypal',
+        'token' => request('token'),
+        'payer_id' => request('PayerID')
+    ]);
+})->name('payment.paypal.success');
+
+// PayPal subscription success route (user returns after subscribing)
+Route::get('/payment/paypal/subscription-success', [App\Http\Controllers\Api\PayPalController::class, 'handleSubscriptionSuccess'])
+    ->name('payment.paypal.subscription-success');
+
+// Public Project Overview (no authentication required)
+// URL format: /project/{username}/{projectname}
+Route::get('/project/{username}/{projectname}', [App\Http\Controllers\PublicProjectController::class, 'show'])
+    ->name('public.project');
+
 Route::middleware(['web', 'admin'])->group(function () {
     Route::get('/admin/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('admin.pages.index');
     Route::get('/admin/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('admin.pages.create');

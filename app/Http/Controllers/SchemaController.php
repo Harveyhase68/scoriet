@@ -98,11 +98,27 @@ class SchemaController extends Controller
                 'visibility' => ['required', Rule::in(['private', 'public'])],
             ]);
 
+            // Check database limit for free users
+            if ($user->user_type === 'free') {
+                $schemaCount = Schema::where('owner_id', $user->id)->count();
+
+                if ($schemaCount >= 1) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Free users können nur 1 Datenbank erstellen. Upgrade zu Patron oder kaufe eine zusätzliche Datenbank für 25 Credits/Jahr.',
+                        'error_code' => 'SCHEMA_LIMIT_REACHED',
+                        'limit' => 1,
+                        'current' => $schemaCount,
+                        'upgrade_cost_credits' => 25
+                    ], 403);
+                }
+            }
+
             // Check if user can create private schemas
             if ($validated['visibility'] === 'private' && !$user->canCreatePrivateSchemas()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You need a premium account to create private schemas',
+                    'error' => 'You need a patron account to create private schemas',
                 ], 403);
             }
 
@@ -166,7 +182,7 @@ class SchemaController extends Controller
             if (isset($validated['visibility']) && $validated['visibility'] === 'private' && !$user->canCreatePrivateSchemas()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You need a premium account to make schemas private',
+                    'error' => 'You need a patron account to make schemas private',
                 ], 403);
             }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\Template;
 use App\Http\Controllers\Api\UltimateTemplateController;
+use App\Services\CreditService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -75,6 +76,20 @@ class GenerateController extends Controller
                 'success' => false,
                 'message' => 'Template is not linked to this project',
             ], 400);
+        }
+
+        // 💰 CREDIT CHECK: Charge for generation (skip for Patron Monthly)
+        $user = $request->user();
+        $chargeResult = CreditService::chargeForGeneration($user, $project->id, $template->id, 'cli');
+
+        if (!$chargeResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $chargeResult['message'],
+                'error' => 'insufficient_credits',
+                'credits_required' => CreditService::GENERATION_COST,
+                'credits_available' => $user->credits,
+            ], 402); // 402 Payment Required
         }
 
         try {

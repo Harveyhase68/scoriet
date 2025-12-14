@@ -53,9 +53,13 @@ interface Template {
   tags: string[];
   file_count: number;
   created_at: string;
-  visibility: 'public' | 'private';
+  visibility: 'public' | 'private' | 'store';
   review_status: 'draft' | 'pending_review' | 'approved' | 'rejected';
   review_score: number;
+  is_store_approved?: boolean;
+  price_type?: 'credits' | 'euros';
+  price_credits?: number;
+  price_euros?: number;
   creator: {
     id: number;
     name: string;
@@ -155,7 +159,8 @@ const TemplateReviewPanel: React.FC = () => {
 
     try {
       const response = await api.request(`/templates/${template.id}/files`);
-      setTemplateFiles(response.files || []);
+      // API returns array directly, not wrapped in { files: [...] }
+      setTemplateFiles(Array.isArray(response) ? response : (response.files || []));
     } catch (error: any) {
       toast.showError('Failed to load template files: ' + (error.response?.data?.message || error.message));
     } finally {
@@ -261,19 +266,44 @@ const TemplateReviewPanel: React.FC = () => {
     return <Tag value={rowData.category} severity="info" />;
   };
 
+  const visibilityBodyTemplate = (rowData: Template) => {
+    if (rowData.visibility === 'store') {
+      let priceText = 'Preis nicht gesetzt';
+      if (rowData.price_type === 'euros' && rowData.price_euros != null) {
+        priceText = `${Number(rowData.price_euros).toFixed(2)} EUR`;
+      } else if (rowData.price_type === 'credits' && rowData.price_credits != null) {
+        priceText = `${rowData.price_credits} Credits`;
+      }
+      return (
+        <div className="flex flex-col gap-1">
+          <Tag value="Store" severity="warning" icon="pi pi-shopping-cart" />
+          <span className="text-xs text-gray-400">{priceText}</span>
+        </div>
+      );
+    }
+    return <Tag value="Public" severity="success" icon="pi pi-globe" />;
+  };
+
   const scoreBodyTemplate = (rowData: Template) => {
     const score = rowData.review_score || 0;
-    const severity = score >= 3 ? 'success' : score >= 1 ? 'warning' : 'danger';
+    const isApproved = rowData.review_status === 'approved';
+    const reviewCount = rowData.reviews?.length || 0;
 
     return (
-      <div className="flex items-center gap-2">
-        <Tag
-          value={`${score}/5`}
-          severity={severity}
-          icon="pi pi-star-fill"
-        />
-        {rowData.reviews_needed !== undefined && rowData.reviews_needed > 0 && (
-          <Badge value={`${rowData.reviews_needed} needed`} severity="warning" />
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Tag
+            value={`${score} Punkte`}
+            severity={isApproved ? 'success' : score >= 3 ? 'success' : score >= 1 ? 'warning' : 'danger'}
+            icon="pi pi-star-fill"
+          />
+        </div>
+        {isApproved ? (
+          <Badge value={`✓ Freigegeben (${reviewCount} Reviews)`} severity="success" />
+        ) : (
+          rowData.reviews_needed !== undefined && rowData.reviews_needed > 0 && (
+            <Badge value={`${rowData.reviews_needed} noch benötigt`} severity="warning" />
+          )
         )}
       </div>
     );
@@ -365,7 +395,7 @@ const TemplateReviewPanel: React.FC = () => {
               Template Review Queue
             </h2>
             <p className="text-sm text-gray-400 mt-1">
-              Review public templates awaiting approval
+              Review public and store templates awaiting approval
             </p>
           </div>
           <Button
@@ -411,6 +441,12 @@ const TemplateReviewPanel: React.FC = () => {
                 field="category"
                 header="Category"
                 body={categoryBodyTemplate}
+                sortable
+              />
+              <Column
+                field="visibility"
+                header="Type"
+                body={visibilityBodyTemplate}
                 sortable
               />
               <Column
@@ -488,19 +524,45 @@ const TemplateReviewPanel: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Review Score:</span>
+                <span className="text-gray-400 text-sm">Type:</span>
                 <div className="mt-1">
+                  {selectedTemplate.visibility === 'store' ? (
+                    <div className="flex items-center gap-2">
+                      <Tag value="Store Template" severity="warning" icon="pi pi-shopping-cart" />
+                      <span className="text-white">
+                        {selectedTemplate.price_type === 'euros' && selectedTemplate.price_euros != null
+                          ? `${Number(selectedTemplate.price_euros).toFixed(2)} EUR`
+                          : selectedTemplate.price_type === 'credits' && selectedTemplate.price_credits != null
+                            ? `${selectedTemplate.price_credits} Credits`
+                            : 'Preis nicht gesetzt'}
+                      </span>
+                    </div>
+                  ) : (
+                    <Tag value="Public Template" severity="success" icon="pi pi-globe" />
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-gray-400 text-sm">Review Status:</span>
+                <div className="mt-1 flex flex-wrap gap-2">
                   <Tag
-                    value={`${selectedTemplate.review_score || 0}/5`}
-                    severity={selectedTemplate.review_score >= 3 ? 'success' : 'warning'}
+                    value={`${selectedTemplate.review_score || 0} Punkte`}
+                    severity={selectedTemplate.review_status === 'approved' ? 'success' : (selectedTemplate.review_score || 0) >= 3 ? 'success' : 'warning'}
                     icon="pi pi-star-fill"
                   />
-                  {selectedTemplate.reviews_needed !== undefined && (
+                  {selectedTemplate.review_status === 'approved' ? (
                     <Badge
-                      value={`${selectedTemplate.reviews_needed} more needed`}
-                      severity="warning"
-                      className="ml-2"
+                      value={`✓ Freigegeben (${selectedTemplate.reviews?.length || 0} Reviews)`}
+                      severity="success"
                     />
+                  ) : (
+                    selectedTemplate.reviews_needed !== undefined && selectedTemplate.reviews_needed > 0 && (
+                      <Badge
+                        value={`${selectedTemplate.reviews_needed} noch benötigt`}
+                        severity="warning"
+                      />
+                    )
                   )}
                 </div>
               </div>
@@ -529,13 +591,17 @@ const TemplateReviewPanel: React.FC = () => {
                 <h3 className="text-xl font-bold text-white mb-2">{selectedTemplate.name}</h3>
                 <p className="text-gray-400">{selectedTemplate.description || 'No description'}</p>
 
-                <div className="mt-4 flex gap-4 items-center">
+                <div className="mt-4 flex gap-4 items-center flex-wrap">
                   <Tag value={selectedTemplate.category} severity="info" />
                   <Tag value={selectedTemplate.language} severity="secondary" />
                   <Tag
-                    value={`${selectedTemplate.review_score || 0}/5 ⭐`}
-                    severity={selectedTemplate.review_score >= 3 ? 'success' : 'warning'}
+                    value={`${selectedTemplate.review_score || 0} Punkte`}
+                    severity={selectedTemplate.review_status === 'approved' ? 'success' : (selectedTemplate.review_score || 0) >= 3 ? 'success' : 'warning'}
+                    icon="pi pi-star-fill"
                   />
+                  {selectedTemplate.review_status === 'approved' && (
+                    <Badge value={`✓ Freigegeben`} severity="success" />
+                  )}
                   <Button
                     icon="pi pi-file-export"
                     label="Download ZIP"

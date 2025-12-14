@@ -73,4 +73,13 @@ class Team extends Model
                     ->withTimestamps()
                     ->orderBy('assigned_at', 'desc');
     }
+
+    /**
+     * Get the subscription for this team
+     */
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'entity_id')
+                    ->where('subscription_type', Subscription::TYPE_TEAM);
+    }
 }

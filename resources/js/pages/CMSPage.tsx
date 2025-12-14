@@ -88,9 +88,11 @@ export default function CMSPage({ title, content }: CMSPageProps) {
     } catch {
       // Error loading system settings - use defaults
       setSystemSettings({
-        price_premium: 29.99,
-        price_business: 49.99,
-        price_patron: 69.00,
+        price_patron_annual: 34.90,
+        price_patron_monthly: 49.90,
+        price_credits_500: 9.90,
+        price_credits_1000: 17.90,
+        price_credits_2500: 29.90,
       });
     }
   };
@@ -428,121 +430,129 @@ export default function CMSPage({ title, content }: CMSPageProps) {
           </div>
 
           {/* Plans Grid */}
-          <div className="grid md:grid-cols-4 gap-6">
-            {/* Premium Plan */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free Plan */}
             <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Premium</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">Free</h3>
                 <div className="text-3xl font-bold text-blue-400 mb-2">
-                  {systemSettings ? `€${systemSettings.price_premium}` : "€2.99"}
+                  €0
+                  <span className="text-lg text-gray-400">/forever</span>
+                </div>
+                <p className="text-gray-300 mb-6">Get started with basics</p>
+
+                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    1 project
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    1 database
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    50 free credits
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Public templates
+                  </li>
+                </ul>
+
+                <Button
+                  label="Current Plan"
+                  className="p-button-secondary w-full"
+                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                  disabled
+                />
+              </div>
+            </div>
+
+            {/* Patron Annual Plan */}
+            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg ring-2 ring-blue-400">
+              <div className="p-6">
+                <Badge value="Best Value" severity="info" className="mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Patron Annual</h3>
+                <div className="text-3xl font-bold text-blue-400 mb-2">
+                  {systemSettings ? `€${systemSettings.price_patron_annual}` : "€34.90"}
+                  <span className="text-lg text-gray-400">/year</span>
+                </div>
+                <p className="text-gray-300 mb-6">Teams + credit-based generation</p>
+
+                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Teams unlocked
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Private templates
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    5 credits per generation
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Buy credits as needed
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    5 free support tickets/month
+                  </li>
+                </ul>
+
+                <Button
+                  label="Choose Patron Annual"
+                  className="p-button-info w-full"
+                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
+                  onClick={() => alert(`Upgrading to Patron Annual - Payment integration coming soon!`)}
+                />
+              </div>
+            </div>
+
+            {/* Patron Monthly Plan */}
+            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                  Patron Monthly
+                  <HeartIcon className="w-6 h-6 text-red-500 ml-2" />
+                </h3>
+                <div className="text-3xl font-bold text-blue-400 mb-2">
+                  {systemSettings ? `€${systemSettings.price_patron_monthly}` : "€49.90"}
                   <span className="text-lg text-gray-400">/month</span>
                 </div>
-                <p className="text-gray-300 mb-6">Best for professional developers</p>
-                
+                <p className="text-gray-300 mb-6">Everything unlimited</p>
+
                 <ul className="text-left text-gray-300 mb-8 space-y-2">
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    Unlimited everything
+                  </li>
+                  <li className="flex items-center">
+                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                    No credits needed
+                  </li>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
                     Unlimited projects
                   </li>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Advanced templates
+                    Unlimited databases
                   </li>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Custom template creation
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Priority support
+                    5 free support tickets/month
                   </li>
                 </ul>
-                
-                <Button
-                  label="Choose Premium"
-                  className="p-button-primary w-full"
-                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
-                  onClick={() => alert(`Upgrading to Premium - Payment integration coming soon!`)}
-                />
-              </div>
-            </div>
 
-            {/* Business Plan */}
-            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg ring-2 ring-blue-400">
-              <div className="p-6">
-                <Badge value={t.cmspage473} severity="info" className="mb-4" />
-                <h3 className="text-2xl font-bold text-white mb-2">Business</h3>
-                <div className="text-3xl font-bold text-blue-400 mb-2">
-                  {systemSettings ? `€${systemSettings.price_business}` : "€9.99"}
-                  <span className="text-lg text-gray-400">/month</span>
-                </div>
-                <p className="text-gray-300 mb-6">Best for teams and agencies</p>
-                
-                <ul className="text-left text-gray-300 mb-8 space-y-2">
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    All Premium features
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Team collaboration tools
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Google Translate API
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Advanced analytics
-                  </li>
-                </ul>
-                
                 <Button
-                  label="Choose Business"
-                  className="p-button-info w-full"
-                  style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
-                  onClick={() => alert(`Upgrading to Business - Payment integration coming soon!`)}
-                />
-              </div>
-            </div>
-
-            {/* Patron Plan */}
-            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
-                  Patron
-                  <HeartIcon className="w-6 h-6 text-red-500 ml-2" />
-                </h3>
-                <div className="text-3xl font-bold text-blue-400 mb-2">
-                  {systemSettings ? `€${systemSettings.price_patron}+` : "€5+"}
-                  <span className="text-lg text-gray-400">/month</span>
-                </div>
-                <p className="text-gray-300 mb-6">Support the community</p>
-                
-                <ul className="text-left text-gray-300 mb-8 space-y-2">
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    All Business features
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Early access to features
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Influence development
-                  </li>
-                  <li className="flex items-center">
-                    <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                    Community Discord access
-                  </li>
-                </ul>
-                
-                <Button
-                  label="Become Patron"
+                  label="Choose Patron Monthly"
                   className="p-button-help w-full"
                   style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
-                  onClick={() => alert(`Becoming a Patron - Payment integration coming soon!`)}
+                  onClick={() => alert(`Upgrading to Patron Monthly - Payment integration coming soon!`)}
                 />
               </div>
             </div>

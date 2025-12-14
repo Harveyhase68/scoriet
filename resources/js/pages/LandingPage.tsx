@@ -16,6 +16,7 @@ import {
   HeartIcon
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 import { pricingUtils } from '@/lib/api';
@@ -85,21 +86,25 @@ export default function LandingPage() {
   const getPricingData = () => {
     const prices = pricingUtils.getPricingData();
     const currency = pricingUtils.getCurrency();
-    
+
     // Fallback to defaults if no pricing data available
     if (!prices) {
       return {
-        premium: 29.99,
-        business: 49.99,
-        patron: 69.00,
+        patron_annual: 34.90,
+        patron_monthly: 49.90,
+        credits_500: 9.90,
+        credits_1000: 17.90,
+        credits_2500: 29.90,
         currency: 'EUR'
       };
     }
-    
+
     return {
-      premium: prices.premium,
-      business: prices.business,
-      patron: prices.patron,
+      patron_annual: prices.patron_annual,
+      patron_monthly: prices.patron_monthly,
+      credits_500: prices.credits_500,
+      credits_1000: prices.credits_1000,
+      credits_2500: prices.credits_2500,
       currency: currency
     };
   };
@@ -169,77 +174,57 @@ export default function LandingPage() {
 
   // Get pricing data
   const pricingData = getPricingData();
-  
+
   const pricingTiers = [
     {
       name: t.freeLabel,
       plan: "free",
-      price: "€0",
+      price: `${pricingData.currency} 0.00`,
       period: t.landingpage151,
       description: t.landingpage152,
       features: [
-        t.landingpage154,
-        t.landingpage155,
-        t.landingpage156,
-        t.landingpage157,
-        t.landingpage158,
+        "1 Projekt",
+        "1 Datenbank",
+        "50 kostenlose Credits",
+        "Öffentliche Templates",
+        "Community Support"
       ],
       buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
       popular: false
     },
     {
-      name: t.premiumLabel,
-      plan: "premium",
-      price: `${pricingData.currency}${pricingData.premium}`,
-      period: t.landingpage627,
-      yearlyPrice: `${pricingData.currency}${(pricingData.premium * 10).toFixed(2)}/year`,
-      description: t.landingpage168,
+      name: "Patron Annual",
+      plan: "patron_annual",
+      price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
+      period: "/Jahr",
+      description: "Teams + Credit-basierte Generierung",
       features: [
-        t.landingpage170,
-        t. landingpage171,
-        t.landingpage172,
-        t.landingpage173,
-        t.landingpage174,
-        t.landingpage175
+        "Teams freigeschaltet",
+        "Private Templates",
+        "5 Credits pro Generierung",
+        "Credits nach Bedarf kaufen",
+        "5 kostenlose Support-Tickets/Monat"
       ],
-      buttonText: t.goPremium,
+      buttonText: "Patron Annual wählen",
       buttonClass: "p-button-primary",
       popular: true
     },
     {
-      name: t.landingpage182,
-      plan: "business",
-      price: `${pricingData.currency}${pricingData.business}`,
-      period: t.landingpage627,
-      yearlyPrice: `${pricingData.currency}${(pricingData.business * 10).toFixed(2)}/year`,
-      description: t.landingpage186,
+      name: "Patron Monthly",
+      plan: "patron_monthly",
+      price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
+      //price: `€ ${pricingData.patron_monthly.toFixed(2)}`,
+      period: "/Monat",
+      description: "Alles unbegrenzt",
       features: [
-        t.landingpage188,
-        t.landingpage189,
-        t.landingpage190,
-        t.landingpage191,
-        t.landingpage192,
-        t.landingpage193
+        "Unbegrenzt alles",
+        "Keine Credits benötigt",
+        "Unbegrenzte Projekte",
+        "Unbegrenzte Datenbanken",
+        "5 kostenlose Support-Tickets/Monat"
       ],
-      buttonText: t.landingpage195,
-      buttonClass: "p-button-info",
-      popular: false
-    },
-    {
-      name: t.patronLabel,
-      plan: "patron",
-      price: `${pricingData.currency}${pricingData.patron}+`,
-      period: t.landingpage627,
-      description: t.landingpage203,
-      features: [
-        t.landingpage205,
-        t.landingpage206,
-        t.landingpage207,
-        t.landingpage208,
-        t. landingpage209 + `${pricingData.currency} ${pricingData.patron}`+"+)"
-      ],
-      buttonText: t.becomePatron,
+      buttonText: "Patron Monthly wählen",
       buttonClass: "p-button-help",
       popular: false
     }
@@ -490,77 +475,75 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section className="py-20 bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-4">
-              {t.pricingTitle}
-            </h2>
-            <p className="text-gray-400 text-center mb-12">
-              {t.pricingSubtitle}
-            </p>
-            
-            <div className="grid md:grid-cols-4 gap-6 max-w-7xl mx-auto">
-              {pricingTiers.map((tier, index) => (
-                <Card 
-                  key={index} 
-                  className={`relative ${tier.popular ? 'border-2 border-blue-500 bg-gray-750' : 'bg-gray-800 border-gray-600'}`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <Badge value={t.landingpage479} severity="info" className="px-3 py-1" />
-                    </div>
-                  )}
-                  
-                  <div className="p-6 text-center">
-                    <h3 className="text-2xl font-bold mb-2 text-white flex items-center justify-center">
-                      {tier.name}
-                      {tier.name === 'Patreon' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
-                    </h3>
-                    
-                    <div className="mb-4">
-                      <span className="text-4xl font-bold text-white">{tier.price}</span>
-                      <span className="text-gray-400">{tier.period}</span>
-                      {tier.yearlyPrice && (
-                        <div className="text-sm text-green-400 mt-1">
-                          Save 17%: {tier.yearlyPrice}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <p className="text-gray-400 mb-6">{tier.description}</p>
-                    
-                    <ul className="space-y-3 mb-8">
-                      {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-center text-gray-300">
-                          <CheckIcon className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    
-                    <Button 
-                      label={tier.buttonText}
-                      className={`${tier.buttonClass} w-full`}
-                      onClick={() => {
-                        if (tier.name === 'Free') {
+        {/* Pricing Section - Only for non-authenticated users */}
+        {!isAuthenticated && (
+          <section className="py-20 bg-gray-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <h2 className="text-3xl font-bold text-center mb-4">
+                {t.pricingTitle}
+              </h2>
+              <p className="text-gray-400 text-center mb-12">
+                {t.pricingSubtitle}
+              </p>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                {pricingTiers.map((tier, index) => (
+                  <Card
+                    key={index}
+                    className={`relative ${tier.popular ? 'border-2 border-blue-500 bg-gray-750' : 'bg-gray-800 border-gray-600'}`}
+                  >
+                    {tier.popular && (
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <Badge value={t.landingpage479} severity="info" className="px-3 py-1" />
+                      </div>
+                    )}
+
+                    <div className="p-6 text-center">
+                      <h3 className="text-2xl font-bold mb-2 text-white flex items-center justify-center">
+                        {tier.name}
+                        {(tier.name === "Patron Annual" || tier.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                      </h3>
+
+                      <div className="mb-4">
+                        <span className="text-4xl font-bold text-white">{tier.price}</span>
+                        <span className="text-gray-400">{tier.period}</span>
+                        {tier.yearlyPrice && (
+                          <div className="text-sm text-green-400 mt-1">
+                            Save 17%: {tier.yearlyPrice}
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-gray-400 mb-6">{tier.description}</p>
+
+                      <ul className="space-y-3 mb-8">
+                        {tier.features.map((feature, i) => (
+                          <li key={i} className="flex items-center text-gray-300">
+                            <CheckIcon className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        label={tier.name === 'Free' ? tier.buttonText : t.registerFirst || 'Registrieren & Plan wählen'}
+                        className={`${tier.buttonClass} w-full`}
+                        onClick={() => {
+                          // All buttons open registration for non-authenticated users
                           if (!isDemoMode) {
                             handleOpenModal('register');
                           } else {
                             handleOpenModal('login');
                           }
-                        } else {
-                          // Handle premium/patron signup
-                          // Subscribe to ${tier.name}
-                        }
-                      }}
-                    />
-                  </div>
-                </Card>
-              ))}
+                        }}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Call to Action */}
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
@@ -572,7 +555,14 @@ export default function LandingPage() {
               {t.ctaSubtitle}
             </p>
             <div className="flex justify-center gap-2">
-              {!isDemoMode ? (
+              {isAuthenticated ? (
+                <Button
+                  label={t.goToApp || 'Zur App'}
+                  className="p-button-secondary"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={() => window.location.href = '/app'}
+                />
+              ) : !isDemoMode ? (
                 <Button
                   label={t.startFreeTrial}
                   className="p-button-secondary"
@@ -610,7 +600,7 @@ export default function LandingPage() {
                 <Badge value={t.freeTier} severity="info" className="text-lg px-4 py-2" />
               </div>
               
-              <div className="grid md:grid-cols-4 gap-6 max-w-7xl mx-auto">
+              <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
                 {pricingTiers.map((plan, index) => (
                   <Card 
                     key={index}
@@ -620,11 +610,14 @@ export default function LandingPage() {
                       {plan.popular && (
                         <Badge value={t.landingpage589} severity="info" className="mb-4" />
                       )}
-                      <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                  <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                    {plan.name}
+                    {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                  </h3>
                       <div className="text-3xl font-bold text-blue-400 mb-2">
                         {plan.price}
-                        {plan.plan !== 'free' && plan.plan !== 'patron' && (
-                          <span className="text-lg text-gray-400">{t.landingpage627}</span>
+                        {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && (
+                          <span className="text-lg text-gray-400">{plan.period}</span>
                         )}
                       </div>
                       <p className="text-gray-300 mb-6">{plan.description}</p>
@@ -644,7 +637,7 @@ export default function LandingPage() {
                       className={plan.name === t.freeLabel ? 'p-button-secondary' : plan.buttonClass}
                       style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                       disabled={plan.name === t.freeLabel}
-                      onClick={() => plan.name !== t.freeLabel && alert(t.landingpage802+`${plan.name}`+t.landingpage647)}
+                      onClick={() => plan.name !== t.freeLabel && setShowPlanModal(true)}
                     />
                   </Card>
                 ))}
@@ -740,81 +733,12 @@ export default function LandingPage() {
         </div>
       </Dialog>
 
-      {/* Plan Selection Modal */}
-      <Dialog
+      {/* Plan Selection Modal - uses the unified PlanModal component */}
+      <PlanModal
         visible={showPlanModal}
         onHide={() => setShowPlanModal(false)}
-        modal
-        header={t.cmspage412}
-        style={{ width: '95vw', maxWidth: '1400px' }}
-        contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
-        headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
-        className="plan-modal"
-      >
-        <div className="space-y-6">
-          {/* Current Plan Status */}
-          <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-white">{t.cmspage422}</h3>
-              <Badge value="Free" severity="info" />
-            </div>
-            <p className="text-gray-300">
-              {t.landingpage762}<strong className="text-blue-400">Free plan</strong>. {t.landingpage762a}
-            </p>
-          </div>
-
-          {/* Plans Grid */}
-          <div className="grid md:grid-cols-4 gap-6">
-            {pricingTiers.map((plan, index) => (
-              <Card 
-                key={index}
-                className={`text-center ${plan.popular ? 'ring-2 ring-blue-400 bg-gray-700' : 'bg-gray-700'} border border-gray-600 hover:shadow-xl transition-shadow`}
-              >
-                <div className="p-6">
-                  {plan.popular && (
-                    <Badge value={t.landingpage743} severity="info" className="mb-4" />
-                  )}
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="text-3xl font-bold text-blue-400 mb-2">
-                    {plan.price}
-                    {plan.price !== 'Free' && plan.price !== 'Custom' && (
-                      <span className="text-lg text-gray-400">{t.landingpage627}</span>
-                    )}
-                  </div>
-                  <p className="text-gray-300 mb-6">{plan.description}</p>
-                  
-                  <ul className="text-left text-gray-300 mb-8 space-y-2">
-                    {plan.features.map((feature, fIndex) => (
-                      <li key={fIndex} className="flex items-center">
-                        <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Button 
-                    label={plan.name === 'Free' ? 'Current Plan' : t.landingpage796+`${plan.name}`}
-                    className={plan.name === 'Free' ? 'p-button-secondary w-full' : `${plan.buttonClass} w-full`}
-                    style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
-                    disabled={plan.name === 'Free'}
-                    onClick={() => {
-                      if (plan.name !== 'Free') {
-                        alert(t.landingpage802+`${plan.name}`+t.landingpage802a);
-                        setShowPlanModal(false);
-                      }
-                    }}
-                  />
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {/* Footer Note */}
-          <div className="text-center text-gray-400 text-sm">
-            <p>{t.landingpage814}</p>
-          </div>
-        </div>
-      </Dialog>
+        initialTab={0}
+      />
 
       {/* Auth Modals */}
       <AuthModalManager

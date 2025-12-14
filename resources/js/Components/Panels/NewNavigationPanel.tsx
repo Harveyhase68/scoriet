@@ -23,6 +23,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
+  const [userCredits, setUserCredits] = useState<number>(0);
+  const [patronType, setPatronType] = useState<string | null>(null);
   const [isInnerCore, setIsInnerCore] = useState<boolean>(false);
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -54,6 +56,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setIsLoggedIn(true);
           setUserName(user.name || user.email);
           setUserType(user.user_type || '');
+          setUserCredits(user.credits || 0);
+          setPatronType(user.patron_type || null);
           setIsInnerCore(user.is_inner_core || false);
           return true;
         } else {
@@ -68,6 +72,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setIsLoggedIn(false);
           setUserName('');
           setUserType('');
+          setUserCredits(0);
+          setPatronType(null);
           setIsInnerCore(false);
 
           // Trigger storage event to notify other components (like Index.tsx)
@@ -106,8 +112,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       updateAuthStatus();
     };
 
+    const handleCreditsChanged = () => {
+      // Reload user data when credits change (e.g., after generation, project creation, etc.)
+      updateAuthStatus();
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth-change', handleAuthChange);
+    window.addEventListener('creditsChanged', handleCreditsChanged);
 
     // Periodic token validation (every 5 minutes)
     const tokenCheckInterval = setInterval(() => {
@@ -117,6 +129,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('auth-change', handleAuthChange);
+      window.removeEventListener('creditsChanged', handleCreditsChanged);
       clearInterval(tokenCheckInterval);
     };
   }, []);
@@ -220,6 +233,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               label: t.panelsewnavigationpanel188,
               icon: 'pi pi-list',
               command: () => onOpenPanel('template-management')
+            },
+            {
+              label: 'Template Store',
+              icon: 'pi pi-shopping-cart',
+              command: () => onOpenPanel('template-store')
             },
             // Only show Template Review for Inner Core members
             ...(isInnerCore ? [{
@@ -333,6 +351,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             label: t.panelsewnavigationpanel290,
             icon: 'pi pi-globe',
             command: () => onOpenPanel('language-management')
+          },
+          {
+            label: 'Auszahlungen',
+            icon: 'pi pi-wallet',
+            command: () => onOpenPanel('payout-admin')
           },
           {
             separator: true
@@ -546,6 +569,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           <i className="pi pi-list"></i>
                           <span>{t.newnavigationpanel188}</span>
                         </button>
+                        <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-shopping-cart"></i>
+                          <span>Template Store</span>
+                        </button>
                         {/* Only show Template Review for Inner Core members */}
                         {isInnerCore && (
                           <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
@@ -653,6 +680,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <i className="pi pi-globe"></i>
                       <span>Language Management</span>
                     </button>
+                    <button onClick={() => onOpenPanel('payout-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-wallet"></i>
+                      <span>Auszahlungen</span>
+                    </button>
                     <div className="border-t border-gray-600 my-2"></div>
                     <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                       <i className="pi pi-file-edit"></i>
@@ -671,9 +702,44 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         {!isCollapsed ? (
           <>
             <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Account</div>
+
+            {/* Credits Display */}
+            {isLoggedIn && (
+              <div className="mb-3 p-3 bg-gray-900 rounded-lg border border-gray-600">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <i className="pi pi-wallet text-yellow-400"></i>
+                    <span className="text-sm text-gray-300">Credits</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg font-bold text-yellow-400">{userCredits}</span>
+                    {!isDemoMode && (
+                      <button
+                        onClick={() => onOpenModal?.('plan')}
+                        className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                        title="Buy Credits"
+                      >
+                        <i className="pi pi-plus"></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {patronType && (
+                  <div className="mt-2 pt-2 border-t border-gray-700">
+                    <div className="flex items-center space-x-1">
+                      <i className="pi pi-star-fill text-purple-400 text-xs"></i>
+                      <span className="text-xs text-purple-400 font-semibold">
+                        Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <TieredMenu
               model={profileItems}
-              style={{ 
+              style={{
                 backgroundColor: 'transparent',
                 border: 'none',
                 padding: 0
@@ -682,7 +748,41 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             />
           </>
         ) : (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center space-y-2">
+            {/* Credits Badge in Collapsed Mode */}
+            {isLoggedIn && (
+              <div className="relative group/credits">
+                <div className="w-8 h-8 flex items-center justify-center rounded bg-gray-900 border border-gray-600">
+                  <i className="pi pi-wallet text-yellow-400 text-xs"></i>
+                </div>
+                {/* Popup for credits */}
+                <div className="absolute left-full bottom-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible transition-all duration-200 z-50">
+                  <div className="p-3">
+                    <div className="text-xs text-gray-400 mb-1">Your Credits</div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-2xl font-bold text-yellow-400">{userCredits}</span>
+                      {!isDemoMode && (
+                        <button
+                          onClick={() => onOpenModal?.('plan')}
+                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                        >
+                          Buy
+                        </button>
+                      )}
+                    </div>
+                    {patronType && (
+                      <div className="flex items-center space-x-1 mt-2 pt-2 border-t border-gray-700">
+                        <i className="pi pi-star-fill text-purple-400 text-xs"></i>
+                        <span className="text-xs text-purple-400">
+                          Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Profile icon with popup menu */}
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
