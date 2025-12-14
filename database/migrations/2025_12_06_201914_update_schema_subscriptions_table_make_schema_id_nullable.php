@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('schema_id')->nullable()->change();
 
             // Add foreign key with SET NULL on delete
-            $table->foreign('schema_id')->references('id')->on('floating_schemas')->onDelete('set null');
+            $table->foreign('schema_id')->references('id')->on('schemas')->onDelete('set null');
         });
     }
 
@@ -36,7 +36,7 @@ return new class extends Migration
             $table->unsignedBigInteger('schema_id')->nullable(false)->change();
 
             // Add foreign key with CASCADE on delete (original behavior)
-            $table->foreign('schema_id')->references('id')->on('floating_schemas')->onDelete('cascade');
+            $table->foreign('schema_id')->references('id')->on('schemas')->onDelete('cascade');
         });
     }
 };
