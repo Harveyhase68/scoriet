@@ -10,6 +10,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip ENUM modifications on SQLite (not supported)
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Add 'template_purchase' and 'template_sale' to the enum type for credit_transactions
         DB::statement("ALTER TABLE credit_transactions MODIFY COLUMN type ENUM(
             'purchase',
@@ -33,6 +38,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Skip ENUM modifications on SQLite (not supported)
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Remove 'template_purchase' and 'template_sale' from the enum type
         DB::statement("ALTER TABLE credit_transactions MODIFY COLUMN type ENUM(
             'purchase',

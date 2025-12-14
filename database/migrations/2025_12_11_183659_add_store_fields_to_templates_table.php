@@ -26,8 +26,10 @@ return new class extends Migration
             $table->boolean('resale_allowed')->default(false)->after('is_from_store');
         });
 
-        // Extend visibility ENUM to include 'store'
-        DB::statement("ALTER TABLE templates MODIFY COLUMN visibility ENUM('private', 'public', 'store') DEFAULT 'private'");
+        // Extend visibility ENUM to include 'store' (MySQL only)
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE templates MODIFY COLUMN visibility ENUM('private', 'public', 'store') DEFAULT 'private'");
+        }
     }
 
     /**
@@ -35,8 +37,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // First change visibility back to original enum
-        DB::statement("ALTER TABLE templates MODIFY COLUMN visibility ENUM('private', 'public') DEFAULT 'private'");
+        // First change visibility back to original enum (MySQL only)
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE templates MODIFY COLUMN visibility ENUM('private', 'public') DEFAULT 'private'");
+        }
 
         Schema::table('templates', function (Blueprint $table) {
             $table->dropColumn([

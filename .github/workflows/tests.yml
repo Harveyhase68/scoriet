@@ -14,6 +14,21 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # MySQL Service Container
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: scoriet_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +39,7 @@ jobs:
           php-version: 8.4
           tools: composer:v2
           coverage: xdebug
+          extensions: pdo_mysql
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -45,26 +61,17 @@ jobs:
 
       - name: Setup Environment
         run: |
-          # Ensure SQLite configuration for testing
-          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env || echo "DB_CONNECTION=sqlite" >> .env
-          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=:memory:/' .env || echo "DB_DATABASE=:memory:" >> .env
-          sed -i 's/^SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env || echo "SESSION_DRIVER=array" >> .env
-          sed -i 's/^CACHE_STORE=.*/CACHE_STORE=array/' .env || echo "CACHE_STORE=array" >> .env
-          sed -i 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env || echo "QUEUE_CONNECTION=sync" >> .env
-          # Remove any MySQL configuration that might interfere
-          sed -i '/^DB_HOST=/d' .env || true
-          sed -i '/^DB_PORT=/d' .env || true
-          sed -i '/^DB_USERNAME=/d' .env || true
-          sed -i '/^DB_PASSWORD=/d' .env || true
-          # Ensure proper line endings and remove any invalid characters
-          dos2unix .env || true
-
-      - name: Validate Environment File
-        run: |
-          echo "Validating .env file..."
-          cat .env | head -20
-          echo "Checking for problematic characters..."
-          grep -n "DB_CONNECTION" .env || echo "No DB_CONNECTION found"  
+          # Configure MySQL for testing
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_DATABASE=scoriet_test" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=password" >> .env
+          # Other settings
+          sed -i 's/^SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env
+          sed -i 's/^CACHE_STORE=.*/CACHE_STORE=array/' .env
+          sed -i 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env
 
       - name: Generate Application Key
         run: php artisan key:generate
@@ -73,8 +80,7 @@ jobs:
         run: php artisan passport:keys
 
       - name: Run Database Migrations
-        run: php artisan migrate:fresh --force 2>/dev/null || echo "Migrations skipped (using simplified tests)"
-        continue-on-error: true
+        run: php artisan migrate:fresh --force
 
       - name: Tests
         run: ./vendor/bin/pest
