@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\AutoTranslateController;
 use App\Http\Controllers\Api\TemplateVariableController;
 use App\Http\Controllers\Api\ProjectTemplateVariableValueController;
 use App\Http\Controllers\Api\CliSubscriptionController;
+use App\Http\Controllers\Api\FormDesignerController;
 use App\Http\Controllers\Api\StripeController;
 use App\Http\Controllers\Api\PayPalController;
 use App\Services\SimpleFixedTemplateEngine;
@@ -2123,6 +2124,40 @@ Route::middleware('auth:api')->group(function () {
 
     // User online status (heartbeat)
     Route::post('/user/heartbeat', [App\Http\Controllers\Api\CacheController::class, 'updateOnlineStatus']);
+});
+
+// Form Designer Routes
+Route::middleware('auth:api')->group(function () {
+    // Access Control
+    Route::get('/form-designer/access', [FormDesignerController::class, 'checkAccess']);
+    Route::post('/form-designer/unlock', [FormDesignerController::class, 'unlockFeature']);
+
+    // FormSets CRUD
+    Route::get('/form-sets', [FormDesignerController::class, 'index']);
+    Route::get('/form-sets/{id}', [FormDesignerController::class, 'show']);
+    Route::post('/form-sets', [FormDesignerController::class, 'store']);
+    Route::put('/form-sets/{id}', [FormDesignerController::class, 'update']);
+    Route::delete('/form-sets/{id}', [FormDesignerController::class, 'destroy']);
+    Route::post('/form-sets/{id}/clone', [FormDesignerController::class, 'clone']);
+
+    // FormSet Windows
+    Route::get('/form-sets/{id}/windows', [FormDesignerController::class, 'windows']);
+    Route::get('/form-sets/{id}/linked-projects', [FormDesignerController::class, 'getLinkedProjects']);
+
+    // FormWindows
+    Route::put('/form-windows/{id}', [FormDesignerController::class, 'updateWindow']);
+
+    // FormWindow Elements
+    Route::get('/form-windows/{id}/elements', [FormDesignerController::class, 'elements']);
+    Route::put('/form-windows/{id}/elements', [FormDesignerController::class, 'saveElements']);
+    Route::post('/form-windows/{id}/elements', [FormDesignerController::class, 'addElement']);
+
+    // FormElements
+    Route::delete('/form-elements/{id}', [FormDesignerController::class, 'deleteElement']);
+
+    // Project Integration
+    Route::post('/projects/{projectId}/form-set', [FormDesignerController::class, 'activateForProject']);
+    Route::get('/projects/{projectId}/form-set', [FormDesignerController::class, 'getProjectFormSet']);
 });
 
 // Service (scoriet-svc) Routes

@@ -242,9 +242,20 @@ const FileModal: React.FC<FileModalProps> = ({
             output_path: '/',
             file_content: '',
             file_type: 'project_file',
-            file_order: 0
+            file_order: 0,
+            form_window_type: 0
         }
     });
+
+    // Form Window Type Options
+    const formWindowTypeOptions = [
+        { label: 'Kein Formular', value: 0 },
+        { label: 'Hauptmenü', value: 1 },
+        { label: 'Formular (Erstellen/Bearbeiten)', value: 2 },
+        { label: 'Datentabelle', value: 3 },
+        { label: 'Report (Einzeldatensatz)', value: 4 },
+        { label: 'Report (Liste)', value: 5 },
+    ];
     const [uploadedFile, setUploadedFile] = useState<any>(null);
     const [zipFileList, setZipFileList] = useState<Array<{ name: string; size: number }>>([]);
     const [isLoadingZipList, setIsLoadingZipList] = useState(false);
@@ -282,6 +293,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_content: editingFile.file_content,
                         file_type: editingFile.file_type,
                         file_order: editingFile.file_order,
+                        form_window_type: editingFile.form_window_type || 0,
                     });
                     setUploadedFile(null);
 
@@ -301,7 +313,8 @@ const FileModal: React.FC<FileModalProps> = ({
                         output_path: '/',
                         file_content: '',
                         file_type: 'project_file',
-                        file_order: templateFiles.length
+                        file_order: templateFiles.length,
+                        form_window_type: 0
                     });
                     setUploadedFile(null);
                     setManagedFiles([]); // Clear managed files
@@ -579,6 +592,34 @@ const FileModal: React.FC<FileModalProps> = ({
                         {errors.file_type && (
                             <small className="text-red-400 mt-1 block">{errors.file_type.message}</small>
                         )}
+                    </div>
+                </div>
+
+                {/* Form Window Type */}
+                <div>
+                    <label htmlFor="form_window_type" className="block text-sm font-medium mb-2">
+                        Formular-Fenstertyp
+                        <span className="text-xs text-gray-400 ml-2">
+                            (für FormSet-Integration)
+                        </span>
+                    </label>
+                    <Controller
+                        name="form_window_type"
+                        control={control}
+                        render={({ field }) => (
+                            <Dropdown
+                                id="form_window_type"
+                                value={field.value}
+                                onChange={(e) => field.onChange(e.value)}
+                                options={formWindowTypeOptions}
+                                placeholder="Fenstertyp auswählen"
+                                className="w-full"
+                            />
+                        )}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                        Wählen Sie den Fenstertyp, wenn diese Template-Datei für ein bestimmtes Formular generiert werden soll.
+                        Bei "Kein Formular" wird die Datei ohne Formular-Kontext generiert.
                     </div>
                 </div>
 

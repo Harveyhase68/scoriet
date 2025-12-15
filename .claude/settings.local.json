@@ -75,7 +75,9 @@
       "Bash(php check_purchases.php:*)",
       "Bash(npm run lint:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(dir /s /b \"C:\\wamp\\www\\scoriet\\storage\\framework\\cache\")"
     ],
     "deny": [],
     "ask": []

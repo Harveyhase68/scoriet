@@ -21,10 +21,12 @@
 /database/dumps/large_test.sql
 /database/dumps/small.sql
 /database/dumps/test_import.sql
+/del_nul.bat
 /node_modules
 /public/build
 /public/hot
 /public/storage
+/scripts/del_nul.bat
 /scripts/fix.bat
 /scripts/reset.bat
 /scripts/run.bat

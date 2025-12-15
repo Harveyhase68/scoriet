@@ -35,8 +35,8 @@ class QueueTestController extends Controller
             'connections' => DB::table('project_schemas')->count(),
             'connections_details' => DB::table('project_schemas')
                 ->join('projects', 'project_schemas.project_id', '=', 'projects.id')
-                ->join('floating_schemas', 'project_schemas.schema_id', '=', 'floating_schemas.id')
-                ->select('projects.name as project_name', 'floating_schemas.name as schema_name')
+                ->join('schemas', 'project_schemas.schema_id', '=', 'schemas.id')
+                ->select('projects.name as project_name', 'schemas.name as schema_name')
                 ->get(),
         ];
         

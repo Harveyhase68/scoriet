@@ -27,6 +27,9 @@ interface Project {
   diagram_table_height?: number;
   diagram_horizontal_spacing?: number;
   diagram_vertical_spacing?: number;
+  // Form Designer Settings
+  form_designer_snap_to_grid?: boolean;
+  form_designer_grid_size?: number;
   // Database Connection Settings
   database_type?: string;
   database_server?: string;

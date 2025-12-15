@@ -423,6 +423,7 @@ class TemplateController extends Controller
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
+            'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
             'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
             'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
             'files.*.managed_files.*.relativePath' => 'nullable|string',
@@ -535,6 +536,7 @@ class TemplateController extends Controller
                     'output_path' => $fileData['output_path'] ?? '/',
                     'content_type' => $processedContent['content_type'],
                     'zip_filename' => $processedContent['zip_filename'],
+                    'form_window_type' => $fileData['form_window_type'] ?? 0,
                 ]);
             }
         }
@@ -625,6 +627,7 @@ class TemplateController extends Controller
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
+            'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
             'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
             'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
             'files.*.managed_files.*.relativePath' => 'nullable|string',
@@ -817,6 +820,7 @@ class TemplateController extends Controller
                     'output_path' => $fileData['output_path'] ?? '/',
                     'content_type' => $processedContent['content_type'], // Auto-detected
                     'zip_filename' => $processedContent['zip_filename'], // Original filename preserved
+                    'form_window_type' => $fileData['form_window_type'] ?? 0,
                 ]);
             }
 
@@ -1035,6 +1039,10 @@ class TemplateController extends Controller
                 'file_content' => $file->file_content,
                 'file_type' => $file->file_type,
                 'file_order' => $file->file_order,
+                'output_path' => $file->output_path,
+                'content_type' => $file->content_type,
+                'zip_filename' => $file->zip_filename,
+                'form_window_type' => $file->form_window_type ?? 0,
             ]);
         }
 
@@ -1257,6 +1265,7 @@ class TemplateController extends Controller
             'file_type' => 'required|string',
             'file_order' => 'integer',
             'output_path' => 'nullable|string',
+            'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
 
         $file = $template->files()->create([
@@ -1266,6 +1275,7 @@ class TemplateController extends Controller
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? 0,
             'output_path' => $validated['output_path'] ?? '/',
+            'form_window_type' => $validated['form_window_type'] ?? 0,
         ]);
 
         // Update file_count
@@ -1295,6 +1305,7 @@ class TemplateController extends Controller
             'file_type' => 'required|string',
             'file_order' => 'integer',
             'output_path' => 'nullable|string',
+            'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
 
         $file->update([
@@ -1304,6 +1315,7 @@ class TemplateController extends Controller
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? $file->file_order,
             'output_path' => $validated['output_path'] ?? $file->output_path,
+            'form_window_type' => $validated['form_window_type'] ?? $file->form_window_type ?? 0,
         ]);
 
         return response()->json($file);

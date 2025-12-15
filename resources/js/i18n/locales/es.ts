@@ -4872,4 +4872,8 @@ export const es: Translations = {
 
   // routes\web.php
   web50: '¡Modo demo activado! Los datos se reinician cada 20 minutos.',
+
+  //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: 'Error en la comprobación de acceso',
+
 };

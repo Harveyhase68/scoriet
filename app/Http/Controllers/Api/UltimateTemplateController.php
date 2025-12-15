@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\UltimateTemplateEngine;
 use App\Services\TemplateCacheService;
+use App\Services\SchemaDiffService;
+use App\Services\MigrationSqlGenerator;
 use App\Models\Template;
 use App\Models\Project;
 use App\Models\FloatingSchema;
@@ -12,6 +14,7 @@ use App\Models\SchemaVersion;
 use App\Models\SchemaTable;
 use App\Models\Language;
 use App\Models\SchemaTranslation;
+use App\Models\ProjectFormSet;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -103,16 +106,25 @@ class UltimateTemplateController extends Controller
             $format = $request->query('format', 'json'); // json, js, php
             $compile = $request->query('compile', true); // Compile templates to JS functions
             $includeSource = $request->query('include_source', false); // Include template source as comments
+            $migrationFromVersion = $request->query('migration_from_version'); // For schema migration SQL
+            // 🎯 NEU: schema_version für Project-Dateien - erlaubt Auswahl einer spezifischen Schema-Version
+            $schemaVersion = $request->query('schema_version'); // For project_file types - specific schema version
 
             \Log::info("🚀 Main processTemplate", [
                 'templateId' => $templateId,
                 'projectId' => $projectId,
                 'tableName' => $tableName,
-                'languageCode' => $languageCode
+                'languageCode' => $languageCode,
+                'schemaVersion' => $schemaVersion,
+                'migrationFromVersion' => $migrationFromVersion
             ]);
 
-            // Load project and schema data
-            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template);
+            // Load project and schema data (with optional migration)
+            // 🎯 WICHTIG: $tableName wird übergeben, um zu bestimmen, ob Migrations eingebunden werden sollen
+            // Wenn $tableName gesetzt ist (db_table_file) → KEINE Migrations im GTree
+            // Wenn $tableName NULL ist (project_file) → Migrations im GTree einbinden
+            // 🎯 NEU: $schemaVersion erlaubt die Auswahl einer spezifischen Schema-Version (nicht automatisch die neueste)
+            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersion, $tableName, $schemaVersion);
 
             // Initialize Ultimate Template Engine
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
@@ -290,14 +302,28 @@ class UltimateTemplateController extends Controller
      * 🌳 BUILD ULTIMATE GTREE
      *
      * Creates the most comprehensive gtree structure possible
+     *
+     * @param int|null $projectId Project ID
+     * @param int $templateId Template ID
+     * @param Template $template Template model
+     * @param int|null $migrationFromVersion Version to migrate from (null = no migration)
+     * @param string|null $tableName Table name for db_table_file types (null = project file)
+     * @param int|null $schemaVersion Specific schema version to use (null = use latest)
      */
-    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template): array
+    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersion = null, ?string $tableName = null, $schemaVersion = null): array
     {
         // Load project and schema data
         $actualProject = $projectId ? Project::find($projectId) : null;
         $schemaTables = collect();
         $schemaDescription = ''; // Store schema description
         $schemaName = ''; // Store schema name
+        $migrationData = null; // Will be populated if migration is requested
+        $targetVersionId = null; // Track target version for migration comparison (can be specific or latest)
+
+        // 🎯 WICHTIG: Migration-Daten nur für Project-Dateien einbinden, NICHT für DB-Tabellen-Dateien
+        // Wenn $tableName gesetzt ist, handelt es sich um eine db_table_file → KEINE Migrations
+        // Wenn $tableName NULL ist, handelt es sich um eine project_file → Migrations einbinden
+        $isProjectFile = ($tableName === null);
 
         if ($actualProject) {
             // Get floating schemas linked to this project
@@ -314,14 +340,48 @@ class UltimateTemplateController extends Controller
                     $schemaDescription = $schema->description;
                 }
 
-                $latestVersion = SchemaVersion::where('schema_id', $schema->id)
-                    ->orderBy('id', 'desc')
-                    ->first();
+                // 🎯 NEU: Lade entweder die spezifische Version oder die neueste
+                $targetVersion = null;
+                if ($schemaVersion !== null) {
+                    // Spezifische Version wurde angefordert
+                    $targetVersion = SchemaVersion::where('schema_id', $schema->id)
+                        ->where('version_number', (int)$schemaVersion)
+                        ->first();
 
-                if ($latestVersion) {
+                    if (!$targetVersion) {
+                        // Fallback: Neueste Version, wenn spezifische nicht gefunden
+                        \Log::warning("Schema version {$schemaVersion} not found, using latest");
+                        $targetVersion = SchemaVersion::where('schema_id', $schema->id)
+                            ->orderBy('id', 'desc')
+                            ->first();
+                    }
+                } else {
+                    // Keine spezifische Version → neueste verwenden
+                    $targetVersion = SchemaVersion::where('schema_id', $schema->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                if ($targetVersion) {
+                    // Track target version for migration comparison
+                    $targetVersionId = $targetVersion->id;
+
                     // 🚀 CACHE: Load schema tables from cache if available
-                    $versionTables = $this->getCachedSchemaTables($latestVersion->id);
+                    $versionTables = $this->getCachedSchemaTables($targetVersion->id);
                     $schemaTables = $schemaTables->merge($versionTables);
+
+                    // 📊 Build migration data if migration_from_version is set
+                    // 🎯 WICHTIG: NUR für Project-Dateien, NICHT für DB-Tabellen-Dateien!
+                    // Migration = eine Datei pro Version, nicht pro Tabelle
+                    if ($isProjectFile && $migrationFromVersion !== null && $targetVersionId !== null) {
+                        $fromVersion = SchemaVersion::where('schema_id', $schema->id)
+                            ->where('version_number', (int)$migrationFromVersion)
+                            ->first();
+
+                        if ($fromVersion && $fromVersion->id !== $targetVersionId) {
+                            $migrationData = $this->buildMigrationData($fromVersion, $targetVersion, $actualProject);
+                        }
+                    }
                 }
             }
         }
@@ -393,6 +453,69 @@ class UltimateTemplateController extends Controller
         $projectData['nmaxtables'] = count($projectData['tables']);
         $projectData['nmaxfiles'] = count($projectData['tables']);
 
+        // 📊 Add migration data if available
+        if ($migrationData !== null) {
+            $projectData['migration'] = $migrationData;
+            // Also add convenience count variables at project level
+            $projectData['nmaxmigration_tables'] = count($migrationData['tables']);
+            $projectData['nmaxmigration_fields'] = count($migrationData['fields']);
+            $projectData['nmaxmigration_indexes'] = count($migrationData['indexes']);
+            $projectData['nmaxmigration_foreignkeys'] = count($migrationData['foreignKeys']);
+            $projectData['nmaxmigration_total'] = $migrationData['nmaxmigration_total'];
+        } else {
+            // Default empty migration data
+            $projectData['migration'] = [
+                'enabled' => false,
+                'from_version' => 0,
+                'to_version' => 0,
+                'dialect' => '',
+                'tables' => [],
+                'fields' => [],
+                'indexes' => [],
+                'foreignKeys' => [],
+                'nmaxmigration_tables' => 0,
+                'nmaxmigration_fields' => 0,
+                'nmaxmigration_indexes' => 0,
+                'nmaxmigration_foreignkeys' => 0,
+                'nmaxmigration_total' => 0,
+                'sql_complete' => '',
+            ];
+            $projectData['nmaxmigration_tables'] = 0;
+            $projectData['nmaxmigration_fields'] = 0;
+            $projectData['nmaxmigration_indexes'] = 0;
+            $projectData['nmaxmigration_foreignkeys'] = 0;
+            $projectData['nmaxmigration_total'] = 0;
+        }
+
+        // 🎨 Add FormSet data if available
+        if ($actualProject) {
+            $formSet = ProjectFormSet::getActiveForProject($actualProject->id);
+            if ($formSet) {
+                $projectData['formset'] = $formSet->toGTreeArray();
+                $projectData['nmaxformsets'] = 1;
+                $projectData['nmaxwindows'] = $formSet->windows->count();
+
+                // Add individual window types as direct references for easier access
+                foreach ($formSet->windows as $window) {
+                    $windowKey = 'window_' . $window->window_type;
+                    $projectData[$windowKey] = $window->toGTreeArray();
+                }
+
+                error_log("🎨 FormSet Debug: Loaded FormSet '{$formSet->name}' with {$formSet->windows->count()} windows");
+            } else {
+                // Default empty FormSet data
+                $projectData['formset'] = null;
+                $projectData['nmaxformsets'] = 0;
+                $projectData['nmaxwindows'] = 0;
+                error_log("🎨 FormSet Debug: No FormSet linked to project");
+            }
+        } else {
+            // No project - no FormSet
+            $projectData['formset'] = null;
+            $projectData['nmaxformsets'] = 0;
+            $projectData['nmaxwindows'] = 0;
+        }
+
         // Create gtree structure
         $gtree = [
             [
@@ -408,12 +531,15 @@ class UltimateTemplateController extends Controller
                 'project_variables' => count($projectData) - 1, // Minus tables
                 'tables_count' => count($projectData['tables']),
                 'total_fields' => array_sum(array_column($projectData['tables'], 'nmaxitems')),
+                'formset_linked' => isset($projectData['formset']) && $projectData['formset'] !== null,
+                'formset_windows' => $projectData['nmaxwindows'] ?? 0,
                 'features' => [
                     'enhanced_naming_conventions' => true,
                     'extended_metadata' => true,
                     'multiple_data_types' => true,
                     'generation_context' => true,
                     'template_helpers' => true,
+                    'form_designer' => true,
                 ],
                 'generated_at' => now()->toISOString(),
             ]
@@ -1201,6 +1327,14 @@ class UltimateTemplateController extends Controller
         $gtreeData['gtree'][0]['project'][0]['templatefilepath'] = $file->file_path ?? '';
         $gtreeData['gtree'][0]['project'][0]['templateoutputpath'] = $outputPath;
 
+        // 🎨 Set current form window index based on template file's form_window_type
+        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table, 4=report_single, 5=report_list
+        // Maps to window indexes: form_window_type - 1 (or 0 if none)
+        $formWindowType = $file->form_window_type ?? 0;
+        $currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
+        $gtreeData['gtree'][0]['project'][0]['currentFormWindowIdx'] = $currentFormWindowIdx;
+        $gtreeData['gtree'][0]['project'][0]['currentFormWindowType'] = $formWindowType;
+
         // ✅ VALIDATE TEMPLATE VARIABLES WITH CONTEXT (informational only, does not block)
         $templateId = $file->template_id ?? null;
         $projectId = $gtreeData['gtree'][0]['project'][0]['projectid'] ?? null;
@@ -1234,7 +1368,7 @@ class UltimateTemplateController extends Controller
         if ($compile) {
             // Use the Ultimate Template Engine to compile template to JavaScript
             $functionName = 'generate_' . preg_replace('/[^a-zA-Z0-9]/', '_', $processedFileName);
-            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource);
+            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource, $formWindowType);
         } else {
             // Simple variable replacement for backward compatibility
             $compiledContent = $content;
@@ -2272,6 +2406,113 @@ JS;
             return [
                 'success' => false,
                 'errors' => [$e->getMessage()],
+            ];
+        }
+    }
+
+    /**
+     * 📊 BUILD MIGRATION DATA
+     *
+     * Generates migration SQL and structured data for template usage
+     *
+     * @param SchemaVersion $fromVersion Source version
+     * @param SchemaVersion $toVersion Target version
+     * @param Project|null $project Project for database dialect
+     * @return array Migration data structure for GTree
+     */
+    private function buildMigrationData(SchemaVersion $fromVersion, SchemaVersion $toVersion, ?Project $project): array
+    {
+        try {
+            // Get database dialect from project settings
+            $dialect = 'mysql'; // Default
+            if ($project && !empty($project->database_type)) {
+                $dialect = strtolower($project->database_type);
+            }
+
+            // Normalize dialect names
+            $dialect = match($dialect) {
+                'postgresql', 'postgres' => 'pgsql',
+                'sql server', 'mssql', 'sqlserver' => 'sqlsrv',
+                default => $dialect,
+            };
+
+            // Use SchemaDiffService to compare versions
+            $diffService = app(SchemaDiffService::class);
+            $diffResult = $diffService->compareVersions($fromVersion->id, $toVersion->id);
+
+            if (!$diffResult || empty($diffResult['changes'])) {
+                // No changes between versions
+                return [
+                    'enabled' => true,
+                    'from_version' => $fromVersion->version_number,
+                    'to_version' => $toVersion->version_number,
+                    'dialect' => $dialect,
+                    'tables' => [],
+                    'fields' => [],
+                    'indexes' => [],
+                    'foreignKeys' => [],
+                    'nmaxmigration_tables' => 0,
+                    'nmaxmigration_fields' => 0,
+                    'nmaxmigration_indexes' => 0,
+                    'nmaxmigration_foreignkeys' => 0,
+                    'nmaxmigration_total' => 0,
+                    'sql_complete' => "-- No changes between v{$fromVersion->version_number} and v{$toVersion->version_number}",
+                ];
+            }
+
+            // Use MigrationSqlGenerator to generate dialect-specific SQL
+            $sqlGenerator = new MigrationSqlGenerator();
+            $groupedChanges = $sqlGenerator->getGroupedChanges($diffResult['changes'], $dialect);
+            $completeScript = $sqlGenerator->generateScript(
+                $diffResult['changes'],
+                $dialect,
+                $fromVersion->version_number,
+                $toVersion->version_number
+            );
+
+            // Calculate totals
+            $totalTables = count($groupedChanges['tables']);
+            $totalFields = count($groupedChanges['fields']);
+            $totalIndexes = count($groupedChanges['indexes']);
+            $totalForeignKeys = count($groupedChanges['foreignKeys']);
+            $total = $totalTables + $totalFields + $totalIndexes + $totalForeignKeys;
+
+            return [
+                'enabled' => true,
+                'from_version' => $fromVersion->version_number,
+                'to_version' => $toVersion->version_number,
+                'dialect' => $dialect,
+                'tables' => $groupedChanges['tables'],
+                'fields' => $groupedChanges['fields'],
+                'indexes' => $groupedChanges['indexes'],
+                'foreignKeys' => $groupedChanges['foreignKeys'],
+                'nmaxmigration_tables' => $totalTables,
+                'nmaxmigration_fields' => $totalFields,
+                'nmaxmigration_indexes' => $totalIndexes,
+                'nmaxmigration_foreignkeys' => $totalForeignKeys,
+                'nmaxmigration_total' => $total,
+                'sql_complete' => $completeScript,
+            ];
+
+        } catch (\Exception $e) {
+            \Log::error("Error building migration data: " . $e->getMessage());
+
+            return [
+                'enabled' => false,
+                'error' => $e->getMessage(),
+                'from_version' => $fromVersion->version_number,
+                'to_version' => $toVersion->version_number,
+                'dialect' => $dialect ?? 'mysql',
+                'tables' => [],
+                'fields' => [],
+                'indexes' => [],
+                'foreignKeys' => [],
+                'nmaxmigration_tables' => 0,
+                'nmaxmigration_fields' => 0,
+                'nmaxmigration_indexes' => 0,
+                'nmaxmigration_foreignkeys' => 0,
+                'nmaxmigration_total' => 0,
+                'sql_complete' => "-- Error: {$e->getMessage()}",
             ];
         }
     }

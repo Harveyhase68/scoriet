@@ -70,6 +70,8 @@ const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSetti
 const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
 const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPanel'));
 const CacheDebugPanel = lazy(() => import('@/Components/Panels/CacheDebugPanel'));
+const FormDesignerPanel = lazy(() => import('@/Components/Panels/FormDesignerPanel'));
+const FormSetManagementPanel = lazy(() => import('@/Components/Panels/FormSetManagementPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -884,6 +886,37 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <QueryBuilderPanel isActive={true} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'form-designer':
+      return {
+        id,
+        title: data.title || 'Form Designer',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <FormDesignerPanel
+              formSetId={data.formSetId as number | undefined}
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'formset-management':
+      return {
+        id,
+        title: data.title || 'Formular Management',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <FormSetManagementPanel
+              onOpenPanel={openPanelFn}
+            />
           </Suspense>
         ),
         closable: true,

@@ -4916,4 +4916,7 @@ templatemodal480: string;
   publicLinkCopied: string;
   projectNotPublic: string;
 
+  //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: string;
+
 }

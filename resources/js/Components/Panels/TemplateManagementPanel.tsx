@@ -53,6 +53,9 @@ interface TemplateFile {
     file_content: string;
     file_type: string;
     file_order: number;
+    form_window_type?: number;
+    content_type?: string;
+    zip_filename?: string;
 }
 
 interface TemplateVariable {
@@ -858,7 +861,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     file_content: file.file_content,
                     file_type: file.file_type,
                     file_order: index,
-                    output_path: file.output_path || '/'
+                    output_path: file.output_path || '/',
+                    form_window_type: file.form_window_type || 0
                 }))
             };
 
@@ -1197,7 +1201,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     file_content: f.file_content,
                     file_type: f.file_type,
                     file_order: f.file_order,
-                    output_path: f.output_path || '/'
+                    output_path: f.output_path || '/',
+                    form_window_type: f.form_window_type || 0
                 }))
             };
 
@@ -1276,6 +1281,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             content_type: contentType,
             zip_filename: zipFilename,
             managed_files: managedFilesList, // 🆕 List of individual files
+            form_window_type: values.form_window_type || 0,
         };
 
         try{
@@ -1298,7 +1304,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 file_order: f.file_order,
                                 output_path: f.output_path || '/',
                                 content_type: f.content_type || 'text',
-                                zip_filename: f.zip_filename || null
+                                zip_filename: f.zip_filename || null,
+                                form_window_type: f.form_window_type || 0
                             }
                       )
                     : [...templateFiles.map(f => ({
@@ -1308,7 +1315,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         file_order: f.file_order,
                         output_path: f.output_path || '/',
                         content_type: f.content_type || 'text',
-                        zip_filename: f.zip_filename || null
+                        zip_filename: f.zip_filename || null,
+                        form_window_type: f.form_window_type || 0
                       })), fileData]
             };
 

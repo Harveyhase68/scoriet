@@ -271,8 +271,8 @@ class UltimateTemplateEngine
             return true;
         }
 
-        // Check if it has a known prefix (project., file., item., field.)
-        if (preg_match('/^(project|file|item|field)\./', $variable)) {
+        // Check if it has a known prefix (project., file., item., field., form., formset.)
+        if (preg_match('/^(project|file|item|field|form|formset)\./', $variable)) {
             return true;
         }
 
@@ -336,10 +336,13 @@ class UltimateTemplateEngine
         return false;
     }
 
+    // 🎨 Current form window index for template processing
+    private int $currentFormWindowIdx = 0;
+
     /**
      * 🎯 MAIN TEMPLATE PROCESSING - Convert template to JavaScript function
      */
-    public function processTemplate(string $templateContent, string $functionName = 'generate', int $tableIndex = null, bool $includeSource = false): string
+    public function processTemplate(string $templateContent, string $functionName = 'generate', int $tableIndex = null, bool $includeSource = false, int $formWindowType = 0): string
     {
         // 🆕 STEP 1: Extract {code}...{codeend} blocks FIRST before any processing
         $templateContent = $this->extractCodeBlocks($templateContent);
@@ -354,8 +357,16 @@ class UltimateTemplateEngine
         // Store original lines for source comments
         $originalLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $this->restoreTextLiterals($templateContent)));
 
+        // 🎨 Calculate form window index from form_window_type
+        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table, 4=report_single, 5=report_list
+        $this->currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
+
         $jsFunction = "function {$functionName}() {\n";
         $jsFunction .= "  let sContentResult = '';\n";
+        // 🎨 Add form window index as local constant for form.* variables
+        if ($formWindowType > 0) {
+            $jsFunction .= "  const currentFormWindowIdx = {$this->currentFormWindowIdx}; // form_window_type: {$formWindowType}\n";
+        }
         $jsFunction .= "  \n";
 
         foreach ($lines as $lineIndex => $line) {
@@ -735,6 +746,24 @@ class UltimateTemplateEngine
             return "  for (let tableIdx = 0; tableIdx < gtree[0].project[0].nmaxtables; tableIdx++) {\n";
         }
 
+        // 🎯 MIGRATION LOOPS - Loop through migration change arrays
+        if (strpos($line, '{for {nmaxmigration_tables}}') !== false) {
+            $this->pushLoopContext('migration_tables');
+            return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_tables; migIdx++) {\n";
+        }
+        if (strpos($line, '{for {nmaxmigration_fields}}') !== false) {
+            $this->pushLoopContext('migration_fields');
+            return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_fields; migIdx++) {\n";
+        }
+        if (strpos($line, '{for {nmaxmigration_indexes}}') !== false) {
+            $this->pushLoopContext('migration_indexes');
+            return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_indexes; migIdx++) {\n";
+        }
+        if (strpos($line, '{for {nmaxmigration_foreignkeys}}') !== false) {
+            $this->pushLoopContext('migration_foreignkeys');
+            return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_foreignkeys; migIdx++) {\n";
+        }
+
         // Custom count loops
         if (preg_match('/\{for\s+\{(.+?)\}\}/', $line, $matches)) {
             $countVar = $matches[1];
@@ -780,6 +809,11 @@ class UltimateTemplateEngine
         } else {
             $this->currentLoopContext = 'fields'; // Reset to default
         }
+    }
+
+    private function getCurrentLoopContext(): string
+    {
+        return $this->currentLoopContext;
     }
 
     // 🎯 Get array name based on current loop context
@@ -1350,6 +1384,28 @@ class UltimateTemplateEngine
             return "' + gtree[0].project[0].{$projectVar} + '";
         }
 
+        // 🎯 FORM ELEMENT VARIABLES (direkter Zugriff auf aktuelles Fenster - basierend auf form_window_type)
+        // z.B. {form.button_nav_first.x}, {form.container.width}, {form.button_save.label}
+        // Nutzt currentFormWindowIdx (0-4 basierend auf Template-Datei form_window_type)
+        if (strpos($variable, 'form.') === 0) {
+            $formPath = substr($variable, 5); // Remove 'form.'
+            // Convert all dots to optional chaining: button_nav_first.x → button_nav_first?.x
+            $safeFormPath = str_replace('.', '?.', $formPath);
+            // form.button_save.label → formset.windows[INDEX].button_save?.label
+            // Use the literal index value for reliable access (not dependent on gtree variable)
+            $windowIdx = $this->currentFormWindowIdx;
+            return "' + (gtree[0].project[0].formset?.windows[{$windowIdx}]?.{$safeFormPath} || '') + '";
+        }
+
+        // 🎯 FORMSET VARIABLES (direkter Zugriff auf FormSet und Fenster)
+        // z.B. {formset.name}, {formset.create_edit.button_save.label}, {formset.default_button_color}
+        if (strpos($variable, 'formset.') === 0) {
+            $formsetPath = substr($variable, 8); // Remove 'formset.'
+            // Convert all dots to optional chaining for safe access
+            $safeFormsetPath = str_replace('.', '?.', $formsetPath);
+            return "' + (gtree[0].project[0].formset?.{$safeFormsetPath} || '') + '";
+        }
+
         // 🎯 FILE-LEVEL VARIABLES (innerhalb {for {nmaxfiles}} Loop)
         if (strpos($variable, 'file.') === 0) {
             $fileVar = substr($variable, 5); // Remove 'file.'
@@ -1546,6 +1602,74 @@ class UltimateTemplateEngine
 
         if (isset($languageMappings[$variable])) {
             return "' + " . $languageMappings[$variable] . " + '";
+        }
+
+        // 🎯 MIGRATION TABLE VARIABLES (for {for {nmaxmigration_tables}} loops)
+        $migrationTableMappings = [
+            'migration.action' => "gtree[0].project[0].migration.tables[migIdx].action",
+            'migration.name' => "gtree[0].project[0].migration.tables[migIdx].name",
+            'migration.sql' => "gtree[0].project[0].migration.tables[migIdx].sql",
+            'migration.type' => "gtree[0].project[0].migration.tables[migIdx].type",
+            'migration.priority' => "gtree[0].project[0].migration.tables[migIdx].priority",
+        ];
+
+        if (isset($migrationTableMappings[$variable]) && $this->getCurrentLoopContext() === 'migration_tables') {
+            return "' + " . $migrationTableMappings[$variable] . " + '";
+        }
+
+        // 🎯 MIGRATION FIELD VARIABLES (for {for {nmaxmigration_fields}} loops)
+        $migrationFieldMappings = [
+            'migration.action' => "gtree[0].project[0].migration.fields[migIdx].action",
+            'migration.table' => "gtree[0].project[0].migration.fields[migIdx].table",
+            'migration.name' => "gtree[0].project[0].migration.fields[migIdx].name",
+            'migration.sql' => "gtree[0].project[0].migration.fields[migIdx].sql",
+            'migration.type' => "gtree[0].project[0].migration.fields[migIdx].type",
+            'migration.priority' => "gtree[0].project[0].migration.fields[migIdx].priority",
+        ];
+
+        if (isset($migrationFieldMappings[$variable]) && $this->getCurrentLoopContext() === 'migration_fields') {
+            return "' + " . $migrationFieldMappings[$variable] . " + '";
+        }
+
+        // 🎯 MIGRATION INDEX VARIABLES (for {for {nmaxmigration_indexes}} loops)
+        $migrationIndexMappings = [
+            'migration.action' => "gtree[0].project[0].migration.indexes[migIdx].action",
+            'migration.table' => "gtree[0].project[0].migration.indexes[migIdx].table",
+            'migration.name' => "gtree[0].project[0].migration.indexes[migIdx].name",
+            'migration.sql' => "gtree[0].project[0].migration.indexes[migIdx].sql",
+            'migration.type' => "gtree[0].project[0].migration.indexes[migIdx].type",
+            'migration.priority' => "gtree[0].project[0].migration.indexes[migIdx].priority",
+        ];
+
+        if (isset($migrationIndexMappings[$variable]) && $this->getCurrentLoopContext() === 'migration_indexes') {
+            return "' + " . $migrationIndexMappings[$variable] . " + '";
+        }
+
+        // 🎯 MIGRATION FOREIGN KEY VARIABLES (for {for {nmaxmigration_foreignkeys}} loops)
+        $migrationForeignKeyMappings = [
+            'migration.action' => "gtree[0].project[0].migration.foreignKeys[migIdx].action",
+            'migration.table' => "gtree[0].project[0].migration.foreignKeys[migIdx].table",
+            'migration.name' => "gtree[0].project[0].migration.foreignKeys[migIdx].name",
+            'migration.sql' => "gtree[0].project[0].migration.foreignKeys[migIdx].sql",
+            'migration.type' => "gtree[0].project[0].migration.foreignKeys[migIdx].type",
+            'migration.priority' => "gtree[0].project[0].migration.foreignKeys[migIdx].priority",
+        ];
+
+        if (isset($migrationForeignKeyMappings[$variable]) && $this->getCurrentLoopContext() === 'migration_foreignkeys') {
+            return "' + " . $migrationForeignKeyMappings[$variable] . " + '";
+        }
+
+        // 🎯 MIGRATION STATIC VARIABLES (available everywhere)
+        $migrationStaticMappings = [
+            'migration.enabled' => "gtree[0].project[0].migration.enabled",
+            'migration.from_version' => "gtree[0].project[0].migration.from_version",
+            'migration.to_version' => "gtree[0].project[0].migration.to_version",
+            'migration.dialect' => "gtree[0].project[0].migration.dialect",
+            'migration.sql_complete' => "gtree[0].project[0].migration.sql_complete",
+        ];
+
+        if (isset($migrationStaticMappings[$variable])) {
+            return "' + " . $migrationStaticMappings[$variable] . " + '";
         }
 
         // 🎯 FALLBACK - Try direct project access

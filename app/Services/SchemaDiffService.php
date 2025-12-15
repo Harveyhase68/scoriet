@@ -342,16 +342,113 @@ class SchemaDiffService
 
     private function compareUniqueKeys($fromTable, $toTable, string $tableName): array
     {
-        // Similar logic for UNIQUE keys
-        // TODO: Implement
-        return [];
+        $changes = [];
+
+        $fromUniqueKeys = $fromTable->constraints->where('constraint_type', 'UNIQUE');
+        $toUniqueKeys = $toTable->constraints->where('constraint_type', 'UNIQUE');
+
+        // Build UK signatures for comparison (column list)
+        $fromUKMap = [];
+        foreach ($fromUniqueKeys as $uk) {
+            $signature = $this->getIndexSignature($uk);
+            $fromUKMap[$signature] = $uk;
+        }
+
+        $toUKMap = [];
+        foreach ($toUniqueKeys as $uk) {
+            $signature = $this->getIndexSignature($uk);
+            $toUKMap[$signature] = $uk;
+        }
+
+        // Find dropped UNIQUE keys
+        foreach ($fromUKMap as $signature => $uk) {
+            if (!isset($toUKMap[$signature])) {
+                $changes[] = [
+                    'type' => 'DROP_UNIQUE_KEY',
+                    'table' => $tableName,
+                    'constraint_name' => $uk->constraint_name,
+                    'columns' => $uk->constraintColumns->pluck('field_name')->toArray(),
+                    'priority' => 2, // DROP UNIQUE: early priority
+                ];
+            }
+        }
+
+        // Find new UNIQUE keys
+        foreach ($toUKMap as $signature => $uk) {
+            if (!isset($fromUKMap[$signature])) {
+                $changes[] = [
+                    'type' => 'ADD_UNIQUE_KEY',
+                    'table' => $tableName,
+                    'constraint_name' => $uk->constraint_name,
+                    'columns' => $uk->constraintColumns->pluck('field_name')->toArray(),
+                    'priority' => 9, // ADD UNIQUE: after ADD INDEX
+                ];
+            }
+        }
+
+        return $changes;
     }
 
     private function compareIndexes($fromTable, $toTable, string $tableName): array
     {
-        // Similar logic for INDEX
-        // TODO: Implement
-        return [];
+        $changes = [];
+
+        // Indexes can be 'INDEX' or 'KEY' type
+        $fromIndexes = $fromTable->constraints->filter(function ($c) {
+            return in_array($c->constraint_type, ['INDEX', 'KEY']);
+        });
+        $toIndexes = $toTable->constraints->filter(function ($c) {
+            return in_array($c->constraint_type, ['INDEX', 'KEY']);
+        });
+
+        // Build INDEX signatures for comparison (column list)
+        $fromIndexMap = [];
+        foreach ($fromIndexes as $index) {
+            $signature = $this->getIndexSignature($index);
+            $fromIndexMap[$signature] = $index;
+        }
+
+        $toIndexMap = [];
+        foreach ($toIndexes as $index) {
+            $signature = $this->getIndexSignature($index);
+            $toIndexMap[$signature] = $index;
+        }
+
+        // Find dropped indexes
+        foreach ($fromIndexMap as $signature => $index) {
+            if (!isset($toIndexMap[$signature])) {
+                $changes[] = [
+                    'type' => 'DROP_INDEX',
+                    'table' => $tableName,
+                    'index_name' => $index->constraint_name,
+                    'columns' => $index->constraintColumns->pluck('field_name')->toArray(),
+                    'priority' => 2, // DROP INDEX: early priority (before column drops)
+                ];
+            }
+        }
+
+        // Find new indexes
+        foreach ($toIndexMap as $signature => $index) {
+            if (!isset($fromIndexMap[$signature])) {
+                $changes[] = [
+                    'type' => 'ADD_INDEX',
+                    'table' => $tableName,
+                    'index_name' => $index->constraint_name,
+                    'columns' => $index->constraintColumns->pluck('field_name')->toArray(),
+                    'priority' => 9, // ADD INDEX: before ADD FK
+                ];
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Get signature for an index or unique key (sorted column list)
+     */
+    private function getIndexSignature($constraint): string
+    {
+        return $constraint->constraintColumns->pluck('field_name')->sort()->join(',');
     }
 
     private function compareForeignKeys($fromTable, $toTable, string $tableName): array
@@ -477,6 +574,26 @@ class SchemaDiffService
 
             case 'ADD_FOREIGN_KEY':
                 $sql .= $this->generateAddForeignKey($change);
+                break;
+
+            case 'DROP_INDEX':
+                $sql .= "ALTER TABLE `{$table}` DROP INDEX `{$change['index_name']}`;\n";
+                break;
+
+            case 'ADD_INDEX':
+                $columns = implode('`, `', $change['columns']);
+                $indexName = $change['index_name'];
+                $sql .= "ALTER TABLE `{$table}` ADD INDEX `{$indexName}` (`{$columns}`);\n";
+                break;
+
+            case 'DROP_UNIQUE_KEY':
+                $sql .= "ALTER TABLE `{$table}` DROP INDEX `{$change['constraint_name']}`;\n";
+                break;
+
+            case 'ADD_UNIQUE_KEY':
+                $columns = implode('`, `', $change['columns']);
+                $constraintName = $change['constraint_name'];
+                $sql .= "ALTER TABLE `{$table}` ADD UNIQUE KEY `{$constraintName}` (`{$columns}`);\n";
                 break;
         }
 
@@ -621,6 +738,10 @@ class SchemaDiffService
             'primary_keys_changed' => 0,
             'foreign_keys_added' => 0,
             'foreign_keys_dropped' => 0,
+            'indexes_added' => 0,
+            'indexes_dropped' => 0,
+            'unique_keys_added' => 0,
+            'unique_keys_dropped' => 0,
         ];
 
         foreach ($changes as $change) {
@@ -649,6 +770,18 @@ class SchemaDiffService
                     break;
                 case 'DROP_FOREIGN_KEY':
                     $summary['foreign_keys_dropped']++;
+                    break;
+                case 'ADD_INDEX':
+                    $summary['indexes_added']++;
+                    break;
+                case 'DROP_INDEX':
+                    $summary['indexes_dropped']++;
+                    break;
+                case 'ADD_UNIQUE_KEY':
+                    $summary['unique_keys_added']++;
+                    break;
+                case 'DROP_UNIQUE_KEY':
+                    $summary['unique_keys_dropped']++;
                     break;
             }
         }
