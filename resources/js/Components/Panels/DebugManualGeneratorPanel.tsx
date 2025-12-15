@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -285,6 +285,11 @@ export default function DebugManualGeneratorPanel({
   const [selectedProjectForGenerator, setSelectedProjectForGenerator] = useState<number | null>(selectedProject?.id || null);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [migrationFromVersion, setMigrationFromVersion] = useState<number | null>(null);
+  const [schemaVersions, setSchemaVersions] = useState<Array<{id: number, version_number: number}>>([]);
+  // 🎯 NEU: Ausgewählte Schema-Version (für Project-Dateien)
+  // Wenn null → automatisch die höchste Version verwenden
+  const [selectedSchemaVersion, setSelectedSchemaVersion] = useState<number | null>(null);
 
   // Data States
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -755,6 +760,99 @@ export default function DebugManualGeneratorPanel({
     loadSchemaTables();
   }, [loadSchemaTables]);
 
+  // Load schema versions when table is selected
+  const loadSchemaVersions = useCallback(async (schemaId: number) => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/floating-schemas/${schemaId}/versions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const versions = Array.isArray(data) ? data : (data.versions || data.data || []);
+        setSchemaVersions(versions.map((v: any) => ({
+          id: v.id,
+          version_number: v.version_number
+        })).sort((a: {version_number: number}, b: {version_number: number}) => b.version_number - a.version_number));
+      } else {
+        setSchemaVersions([]);
+      }
+    } catch {
+      setSchemaVersions([]);
+    }
+  }, []);
+
+  // Update schema versions when table selection changes OR when schemaTables are loaded
+  // 🎯 WICHTIG: Auch für Project-Dateien (keine Tabelle ausgewählt) Schema-Versionen laden!
+  useEffect(() => {
+    if (selectedTable !== null && schemaTables[selectedTable]?.schema_id) {
+      // Tabelle ausgewählt → Schema-ID von der Tabelle
+      loadSchemaVersions(schemaTables[selectedTable].schema_id);
+      setMigrationFromVersion(null); // Reset migration version on table change
+    } else if (selectedTable === null && schemaTables.length > 0 && schemaTables[0]?.schema_id) {
+      // 🎯 NEU: Keine Tabelle ausgewählt (Project-Datei), aber schemaTables vorhanden
+      // → Schema-ID von der ERSTEN Tabelle nehmen (alle Tabellen gehören zum gleichen Schema)
+      loadSchemaVersions(schemaTables[0].schema_id);
+      // Migration-Version NICHT zurücksetzen bei Project-Dateien, da keine Tabelle gewählt wird
+    } else {
+      setSchemaVersions([]);
+      setMigrationFromVersion(null);
+    }
+  }, [selectedTable, schemaTables, loadSchemaVersions]);
+
+  // 🎯 NEU: Schema-Version Optionen für das Dropdown (alle verfügbaren Versionen)
+  const schemaVersionOptions = useMemo(() => {
+    if (schemaVersions.length === 0) return [];
+
+    // Alle Versionen als Optionen (höchste zuerst)
+    return schemaVersions
+      .map(v => ({ label: `Version ${v.version_number}`, value: v.version_number }))
+      .sort((a, b) => b.value - a.value);
+  }, [schemaVersions]);
+
+  // 🎯 NEU: Automatisch die höchste Version auswählen, wenn Schema-Versionen geladen werden
+  useEffect(() => {
+    if (schemaVersions.length > 0 && selectedSchemaVersion === null) {
+      const maxVersion = Math.max(...schemaVersions.map(v => v.version_number));
+      setSelectedSchemaVersion(maxVersion);
+    }
+  }, [schemaVersions, selectedSchemaVersion]);
+
+  // 🎯 ANGEPASST: Migration-Optionen basierend auf selectedSchemaVersion filtern
+  // Nur Versionen < selectedSchemaVersion anzeigen
+  const migrationVersionOptions = useMemo(() => {
+    if (schemaVersions.length === 0) return [];
+
+    // Wenn keine Schema-Version ausgewählt, höchste verwenden
+    const targetVersion = selectedSchemaVersion ?? Math.max(...schemaVersions.map(v => v.version_number));
+
+    // Wenn nur Version 1 oder keine niedrigere Version existiert, keine Migration möglich
+    if (targetVersion <= 1) return [];
+
+    // Generate options from (targetVersion - 1) down to 1
+    const options = [];
+    for (let v = targetVersion - 1; v >= 1; v--) {
+      options.push({ label: `Version ${v}`, value: v });
+    }
+    return options;
+  }, [schemaVersions, selectedSchemaVersion]);
+
+  // 🎯 NEU: Wenn selectedSchemaVersion geändert wird und migrationFromVersion >= selectedSchemaVersion,
+  // dann migrationFromVersion zurücksetzen
+  useEffect(() => {
+    if (selectedSchemaVersion !== null && migrationFromVersion !== null) {
+      if (migrationFromVersion >= selectedSchemaVersion) {
+        setMigrationFromVersion(null);
+      }
+    }
+  }, [selectedSchemaVersion, migrationFromVersion]);
+
   // Pre-select table when opened from TreeView
   useEffect(() => {
     // Only auto-select if:
@@ -880,6 +978,17 @@ export default function DebugManualGeneratorPanel({
       // Add include_source parameter if checkbox is enabled
       if (includeTemplateSource) {
         url.searchParams.set('include_source', '1');
+      }
+
+      // Add migration_from_version parameter if set
+      if (migrationFromVersion !== null) {
+        url.searchParams.set('migration_from_version', migrationFromVersion.toString());
+      }
+
+      // 🎯 NEU: Add schema_version parameter for Project-Dateien
+      // Damit das Backend die richtige Schema-Version lädt (nicht automatisch die neueste)
+      if (selectedSchemaVersion !== null && shouldShowProjectDropdown()) {
+        url.searchParams.set('schema_version', selectedSchemaVersion.toString());
       }
 
       const response = await fetch(url.toString(), {
@@ -1487,21 +1596,65 @@ function ${functionName}() {
               />
             </div>
 
-            {/* 3. Table Dropdown - IMMER THIRD (disabled wenn nicht db_table_file) */}
+            {/* 3. Table Dropdown ODER Schema-Version Dropdown (je nach Dateityp) */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                {t.templatemanagementpanel118} {shouldShowTableDropdown() ? <span className="text-xs text-green-400">{t.debugmanualgeneratorpanel1319}</span> : <span className="text-xs text-gray-500">{t.debugmanualgeneratorpanel1302}</span>}
-              </label>
-              <Dropdown
-                value={selectedTable}
-                options={tableOptions}
-                onChange={(e) => {
-                  setSelectedTable(e.value);
-                }}
-                placeholder={shouldShowTableDropdown() ? "Tabelle wählen" : t.debugmanualgeneratorpanel1310}
-                className="w-full"
-                disabled={!shouldShowTableDropdown()}
-              />
+              {shouldShowTableDropdown() ? (
+                <>
+                  {/* DB-Tabellen-Datei: Table-Dropdown anzeigen */}
+                  <label className="block text-sm font-medium text-white mb-2">
+                    {t.templatemanagementpanel118} <span className="text-xs text-green-400">{t.debugmanualgeneratorpanel1319}</span>
+                  </label>
+                  <Dropdown
+                    value={selectedTable}
+                    options={tableOptions}
+                    onChange={(e) => {
+                      setSelectedTable(e.value);
+                    }}
+                    placeholder="Tabelle wählen"
+                    className="w-full"
+                  />
+                </>
+              ) : shouldShowProjectDropdown() ? (
+                <>
+                  {/* 🎯 NEU: Project-Datei: Schema-Version Dropdown anzeigen */}
+                  <label className="block text-sm font-medium text-white mb-2">
+                    📐 Schema Version {schemaVersionOptions.length > 0 ? <span className="text-xs text-green-400">(Ziel-Version)</span> : <span className="text-xs text-gray-500">(keine Versionen)</span>}
+                  </label>
+                  <Dropdown
+                    value={selectedSchemaVersion}
+                    options={schemaVersionOptions}
+                    onChange={(e) => {
+                      setSelectedSchemaVersion(e.value);
+                      // Migration zurücksetzen, wenn neue Version ausgewählt
+                      if (migrationFromVersion !== null && e.value !== null && migrationFromVersion >= e.value) {
+                        setMigrationFromVersion(null);
+                      }
+                    }}
+                    placeholder={schemaVersionOptions.length > 0 ? "Version wählen" : "Keine Versionen verfügbar"}
+                    className="w-full"
+                    disabled={schemaVersionOptions.length === 0}
+                  />
+                  {selectedSchemaVersion && (
+                    <div className="mt-1 text-xs text-blue-400">
+                      GTree wird mit Schema-Version {selectedSchemaVersion} generiert
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Weder Table noch Project: Deaktiviertes Dropdown */}
+                  <label className="block text-sm font-medium text-white mb-2">
+                    {t.templatemanagementpanel118} <span className="text-xs text-gray-500">{t.debugmanualgeneratorpanel1302}</span>
+                  </label>
+                  <Dropdown
+                    value={null}
+                    options={[]}
+                    placeholder={t.debugmanualgeneratorpanel1310}
+                    className="w-full"
+                    disabled={true}
+                  />
+                </>
+              )}
             </div>
 
             {/* 4. Project Dropdown - IMMER FOURTH (disabled wenn nicht project_file) */}
@@ -1534,6 +1687,29 @@ function ${functionName}() {
                 className="w-full"
                 disabled={!shouldShowLanguageDropdown()}
               />
+            </div>
+
+            {/* 6. Migration Version Dropdown - Optional: Migration von Version X */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                📊 Migration von Version {migrationVersionOptions.length > 0 ? <span className="text-xs text-blue-400">(Optional)</span> : <span className="text-xs text-gray-500">(nicht verfügbar)</span>}
+              </label>
+              <Dropdown
+                value={migrationFromVersion}
+                options={[
+                  { label: 'Keine Migration', value: null },
+                  ...migrationVersionOptions
+                ]}
+                onChange={(e) => setMigrationFromVersion(e.value)}
+                placeholder="Keine Migration"
+                className="w-full"
+                disabled={migrationVersionOptions.length === 0}
+              />
+              {migrationFromVersion && (
+                <div className="mt-1 text-xs text-blue-400">
+                  Migration v{migrationFromVersion} → aktuell wird im GTree verfügbar sein
+                </div>
+              )}
             </div>
 
           </div>

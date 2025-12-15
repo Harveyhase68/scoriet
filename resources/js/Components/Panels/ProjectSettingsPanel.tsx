@@ -104,6 +104,9 @@ export default function ProjectSettingsPanel() {
         diagram_table_height: 450,
         diagram_horizontal_spacing: 600,
         diagram_vertical_spacing: 700,
+        // Form Designer Settings
+        form_designer_snap_to_grid: true,
+        form_designer_grid_size: 20,
         // Project Properties
         project_directory: '',
         project_url: '',
@@ -196,6 +199,8 @@ export default function ProjectSettingsPanel() {
                     diagram_table_height: project.diagram_table_height || 450,
                     diagram_horizontal_spacing: project.diagram_horizontal_spacing || 600,
                     diagram_vertical_spacing: project.diagram_vertical_spacing || 700,
+                    form_designer_snap_to_grid: project.form_designer_snap_to_grid ?? true,
+                    form_designer_grid_size: project.form_designer_grid_size || 20,
                     project_directory: project.project_directory || '',
                     project_url: project.project_url || '',
                     start_page: project.start_page || 'index.php',
@@ -864,6 +869,41 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                         />
                                         <small className="text-gray-400">{t.projectsettingspanel809}</small>
+                                    </div>
+                                </div>
+
+                                {/* Form Designer Settings */}
+                                <div className="mt-6 pt-6 border-t border-gray-600">
+                                    <h4 className="text-md font-semibold text-gray-200 mb-4">
+                                        <i className="pi pi-window-maximize mr-2"></i>
+                                        Form Designer Einstellungen
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox
+                                                inputId="form_designer_snap"
+                                                checked={formData.form_designer_snap_to_grid}
+                                                onChange={(e) => setFormData({ ...formData, form_designer_snap_to_grid: e.checked ?? true })}
+                                            />
+                                            <label htmlFor="form_designer_snap" className="text-sm text-gray-300 cursor-pointer">
+                                                Snap to Grid (Raster)
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                Rastergröße (px)
+                                            </label>
+                                            <InputText
+                                                type="number"
+                                                value={formData.form_designer_grid_size.toString()}
+                                                onChange={(e) => setFormData({ ...formData, form_designer_grid_size: parseInt(e.target.value) || 20 })}
+                                                placeholder="20"
+                                                className="w-full"
+                                                min={5}
+                                                max={100}
+                                            />
+                                            <small className="text-gray-400">Empfohlen: 10-30px</small>
+                                        </div>
                                     </div>
                                 </div>
 

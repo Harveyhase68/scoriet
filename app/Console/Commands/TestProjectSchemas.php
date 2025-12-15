@@ -33,7 +33,7 @@ class TestProjectSchemas extends Command
         $this->info("===========================================");
 
         // Get all available schemas
-        $allSchemas = DB::table('floating_schemas')->get();
+        $allSchemas = DB::table('schemas')->get();
         $this->info("All available schemas: " . $allSchemas->count());
         foreach ($allSchemas as $schema) {
             $this->info("  - Schema ID: {$schema->id}, Name: {$schema->name}");
@@ -46,7 +46,7 @@ class TestProjectSchemas extends Command
         
         $this->info("\nProject schemas for project {$projectId}: " . $projectSchemas->count());
         foreach ($projectSchemas as $schema) {
-            $schemaInfo = DB::table('floating_schemas')->where('id', $schema->schema_id)->first();
+            $schemaInfo = DB::table('schemas')->where('id', $schema->schema_id)->first();
             $this->info("  - Schema ID: {$schema->schema_id}, Name: " . ($schemaInfo->name ?? 'Unknown'));
         }
 
@@ -55,7 +55,7 @@ class TestProjectSchemas extends Command
         $totalTables = 0;
         
         foreach ($projectSchemas as $projectSchema) {
-            $schemaInfo = DB::table('floating_schemas')->where('id', $projectSchema->schema_id)->first();
+            $schemaInfo = DB::table('schemas')->where('id', $projectSchema->schema_id)->first();
             $schemaName = $schemaInfo->name ?? 'Unknown';
             
             // Get the latest version for this schema

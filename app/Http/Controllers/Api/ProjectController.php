@@ -167,6 +167,9 @@ class ProjectController extends Controller
             'diagram_table_height' => 'nullable|integer|min:100|max:2000',
             'diagram_horizontal_spacing' => 'nullable|integer|min:100|max:2000',
             'diagram_vertical_spacing' => 'nullable|integer|min:100|max:2000',
+            // Form Designer settings
+            'form_designer_snap_to_grid' => 'nullable|boolean',
+            'form_designer_grid_size' => 'nullable|integer|min:5|max:100',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',
@@ -259,6 +262,9 @@ class ProjectController extends Controller
             'diagram_table_height' => $validated['diagram_table_height'] ?? 450,
             'diagram_horizontal_spacing' => $validated['diagram_horizontal_spacing'] ?? 600,
             'diagram_vertical_spacing' => $validated['diagram_vertical_spacing'] ?? 700,
+            // Form Designer settings
+            'form_designer_snap_to_grid' => $validated['form_designer_snap_to_grid'] ?? true,
+            'form_designer_grid_size' => $validated['form_designer_grid_size'] ?? 20,
             // Project paths
             'project_directory' => $validated['project_directory'] ?? null,
             'project_url' => $validated['project_url'] ?? null,
@@ -330,6 +336,8 @@ class ProjectController extends Controller
                 'diagram_table_height',
                 'diagram_horizontal_spacing',
                 'diagram_vertical_spacing',
+                'form_designer_snap_to_grid',
+                'form_designer_grid_size',
                 'start_page',
                 'default_language',
                 'archive_format',
@@ -453,6 +461,9 @@ class ProjectController extends Controller
             'diagram_table_height' => 'nullable|integer|min:100|max:2000',
             'diagram_horizontal_spacing' => 'nullable|integer|min:100|max:2000',
             'diagram_vertical_spacing' => 'nullable|integer|min:100|max:2000',
+            // Form Designer settings
+            'form_designer_snap_to_grid' => 'nullable|boolean',
+            'form_designer_grid_size' => 'nullable|integer|min:5|max:100',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',

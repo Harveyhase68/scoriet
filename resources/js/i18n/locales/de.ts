@@ -4222,7 +4222,7 @@ export const de: Translations = {
   templatemodal521: 'Benutzerdefinierte Variablen',
   templatemodal535: 'Variable hinzufügen',
   templatemodal541: 'Bitte speichern Sie das Template, erst dann können Sie Custom Variables zum Template hinzufügen',
-  templatemodal547: 'Hinweis: Custom Variables erlauben Ihnen, Platzhalter wie {\'{copyright}\'} oder {\'{company_name}\'}} zu definieren, die nicht in der Datenbank existieren. Diese können dann pro Projekt und Sprache vom Benutzer ausgefüllt werden.',
+  templatemodal547: 'Hinweis: Custom Variables erlauben Ihnen, Platzhalter wie {copyright} oder {company_name} zu definieren, die nicht in der Datenbank existieren. Diese können dann pro Projekt und Sprache vom Benutzer ausgefüllt werden.',
   templatemodal580: 'Erforderlich',
   templatemodal584: 'Optional',
   templatemodal625: 'Keine Custom Variables definiert. Klicken Sie auf "Variable hinzufügen" um zu beginnen.',
@@ -4898,5 +4898,8 @@ export const de: Translations = {
   copyPublicLink: 'Öffentlichen Link kopieren',
   publicLinkCopied: 'Öffentlicher Link in die Zwischenablage kopiert!',
   projectNotPublic: 'Projekt ist privat - auf öffentlich setzen um zu teilen',
+
+  //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: 'Zugriffsprüfung fehlgeschlagen',
 
 };

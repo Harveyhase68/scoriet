@@ -226,36 +226,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           ]
         },
         {
-          label: t.panelsewnavigationpanel184,
-          icon: 'pi pi-cog',
-          items: [
-            {
-              label: t.panelsewnavigationpanel188,
-              icon: 'pi pi-list',
-              command: () => onOpenPanel('template-management')
-            },
-            {
-              label: 'Template Store',
-              icon: 'pi pi-shopping-cart',
-              command: () => onOpenPanel('template-store')
-            },
-            // Only show Template Review for Inner Core members
-            ...(isInnerCore ? [{
-              label: 'Template Review',
-              icon: 'pi pi-star-fill',
-              command: () => onOpenPanel('template-review')
-            }] : []),
-            {
-              separator: true
-            },
-            {
-              label: t.panelsewnavigationpanel201,
-              icon: 'pi pi-link',
-              command: () => onOpenPanel('template-db-schema-dependencies')
-            }
-          ]
-        },
-        {
           separator: true
         },
         {
@@ -267,6 +237,52 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: t.panelsewnavigationpanel216,
           icon: 'pi pi-globe',
           command: () => onOpenPanel('public-projects')
+        }
+      ]
+    },
+    {
+      label: t.panelsewnavigationpanel184,
+      icon: 'pi pi-cog',
+      items: [
+        {
+          label: t.panelsewnavigationpanel188,
+          icon: 'pi pi-list',
+          command: () => onOpenPanel('template-management')
+        },
+        {
+          label: 'Template Store',
+          icon: 'pi pi-shopping-cart',
+          command: () => onOpenPanel('template-store')
+        },
+        // Only show Template Review for Inner Core members
+        ...(isInnerCore ? [{
+          label: 'Template Review',
+          icon: 'pi pi-star-fill',
+          command: () => onOpenPanel('template-review')
+        }] : []),
+        {
+          separator: true
+        },
+        {
+          label: t.panelsewnavigationpanel201,
+          icon: 'pi pi-link',
+          command: () => onOpenPanel('template-db-schema-dependencies')
+        }
+      ]
+    },
+    {
+      label: 'Formulare',
+      icon: 'pi pi-window-maximize',
+      items: [
+        {
+          label: 'Formular Management',
+          icon: 'pi pi-list',
+          command: () => onOpenPanel('formset-management')
+        },
+        {
+          label: 'Formular Editor',
+          icon: 'pi pi-pencil',
+          command: () => onOpenPanel('form-designer')
         }
       ]
     },
@@ -556,37 +572,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       </div>
                     </div>
                   </div>
-                  <div className="relative group/sub">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                      <i className="pi pi-cog"></i>
-                      <span>{t.newnavigationpanel184}</span>
-                      <i className="pi pi-angle-right ml-auto text-xs"></i>
-                    </button>
-                    {/* Sub-submenu for Templates */}
-                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
-                      <div className="p-2">
-                        <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-list"></i>
-                          <span>{t.newnavigationpanel188}</span>
-                        </button>
-                        <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-shopping-cart"></i>
-                          <span>Template Store</span>
-                        </button>
-                        {/* Only show Template Review for Inner Core members */}
-                        {isInnerCore && (
-                          <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                            <i className="pi pi-star-fill text-yellow-400"></i>
-                            <span>{t.panelsewnavigationpanel496}</span>
-                          </button>
-                        )}
-                        <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-link"></i>
-                          <span>{t.panelsewnavigationpanel201}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenPanel('my-applications')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-send"></i>
@@ -595,6 +580,58 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={() => onOpenPanel('public-projects')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-globe"></i>
                     <span>{t.panelsewnavigationpanel216}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Templates - Top Level */}
+            <div className="relative group">
+              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
+                <i className="pi pi-cog text-gray-300" title={t.panelsewnavigationpanel184}></i>
+              </button>
+              {/* Popup submenu for Templates */}
+              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="p-2">
+                  <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-list"></i>
+                    <span>{t.panelsewnavigationpanel188}</span>
+                  </button>
+                  <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-shopping-cart"></i>
+                    <span>Template Store</span>
+                  </button>
+                  {/* Only show Template Review for Inner Core members */}
+                  {isInnerCore && (
+                    <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <i className="pi pi-star-fill text-yellow-400"></i>
+                      <span>Template Review</span>
+                    </button>
+                  )}
+                  <div className="border-t border-gray-600 my-2"></div>
+                  <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-link"></i>
+                    <span>{t.panelsewnavigationpanel201}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Formulare - Top Level */}
+            <div className="relative group">
+              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
+                <i className="pi pi-window-maximize text-gray-300" title="Formulare"></i>
+              </button>
+              {/* Popup submenu for Formulare */}
+              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="p-2">
+                  <button onClick={() => onOpenPanel('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-list"></i>
+                    <span>Formular Management</span>
+                  </button>
+                  <button onClick={() => onOpenPanel('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-pencil"></i>
+                    <span>Formular Editor</span>
                   </button>
                 </div>
               </div>

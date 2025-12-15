@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import JSZip from 'jszip';
 import PlanModal from '@/Components/AuthModals/PlanModal';
@@ -73,6 +73,7 @@ export default function CodeGenerationPanel() {
   const [selectedSchemaIds, setSelectedSchemaIds] = useState<Set<number>>(new Set());
   const [languages, setLanguages] = useState<Language[]>([]);
   const [selectedLanguageCodes, setSelectedLanguageCodes] = useState<Set<string>>(new Set());
+  const [migrationFromVersion, setMigrationFromVersion] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<Warning[]>([]);
@@ -109,6 +110,35 @@ export default function CodeGenerationPanel() {
   // 🛒 PlanModal for buying credits
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(1); // Tab 1 = Buy Credits
+
+  // 📊 Migration version options based on selected schemas
+  const migrationVersionOptions = useMemo(() => {
+    if (selectedSchemaIds.size === 0) return [];
+
+    // Find the minimum last_version among selected schemas
+    // Migration can only go from version X to current, so we need the lowest common denominator
+    const selectedSchemas = schemas.filter(s => selectedSchemaIds.has(s.id));
+    const minVersion = Math.min(...selectedSchemas.map(s => s.last_version || 1));
+
+    // If minVersion is 1, we can't migrate (no previous version)
+    if (minVersion <= 1) return [];
+
+    // Generate options from (minVersion - 1) down to 1
+    const options = [];
+    for (let v = minVersion - 1; v >= 1; v--) {
+      options.push({ label: `Version ${v}`, value: v });
+    }
+    return options;
+  }, [schemas, selectedSchemaIds]);
+
+  // Reset migration version when schemas change
+  useEffect(() => {
+    if (migrationVersionOptions.length === 0) {
+      setMigrationFromVersion(null);
+    } else if (migrationFromVersion !== null && !migrationVersionOptions.find(o => o.value === migrationFromVersion)) {
+      setMigrationFromVersion(null);
+    }
+  }, [migrationVersionOptions, migrationFromVersion]);
 
   // Auto-scroll deployment log to bottom
   useEffect(() => {
@@ -883,6 +913,11 @@ export default function CodeGenerationPanel() {
               url.searchParams.set('language_code', langCode);
             }
 
+            // 📊 Add migration_from_version parameter if set
+            if (migrationFromVersion !== null) {
+              url.searchParams.set('migration_from_version', migrationFromVersion.toString());
+            }
+
             const response = await fetch(url.toString(), {
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -953,6 +988,7 @@ export default function CodeGenerationPanel() {
                 compile: true,
                 include_source: false,
                 include_gtree: includeGtree, // 🚀 OPTIMIZATION: Only fetch gtree once!
+                migration_from_version: migrationFromVersion, // 📊 Migration version if set
               })
             });
 
@@ -1884,6 +1920,40 @@ export default function CodeGenerationPanel() {
                   {selectedSchemaIds.size} of {schemas.length} selected
                 </div>
               </div>
+
+              {/* Migration Version Section - Only visible when schemas are selected */}
+              {selectedSchemaIds.size > 0 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-white mb-2">
+                    📊 Optional: Migration von Version
+                  </label>
+                  {migrationVersionOptions.length > 0 ? (
+                    <>
+                      <select
+                        value={migrationFromVersion ?? ''}
+                        onChange={(e) => setMigrationFromVersion(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Keine Migration (nur aktuelle Version)</option>
+                        {migrationVersionOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label} → Aktuell
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-1 text-xs text-gray-400">
+                        {migrationFromVersion
+                          ? `Migration von v${migrationFromVersion} zur aktuellen Version`
+                          : 'Wähle eine vorherige Version für Schema-Migrations-SQL'}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-500 text-sm bg-gray-800 border border-gray-700 rounded-lg p-3">
+                      Keine Migration verfügbar - Schema hat nur Version 1
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Languages Section */}
               <div className="mb-6">

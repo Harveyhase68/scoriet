@@ -4873,4 +4873,8 @@ export const fr: Translations = {
 
   // routes\web.php
   web50: 'Mode démo activé ! Les données sont réinitialisées toutes les 20 minutes.',
+
+  //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: 'Échec du contrôle d\'accès',
+
 };

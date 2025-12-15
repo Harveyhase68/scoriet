@@ -4899,4 +4899,7 @@ export const en: Translations = {
   publicLinkCopied: 'Public link copied to clipboard!',
   projectNotPublic: 'Project is private - make it public to share',
 
+  //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: 'Access check failed',
+
 };

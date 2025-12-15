@@ -4872,4 +4872,8 @@ export const it: Translations = {
 
   // routes\web.php
   web50: 'Modalità demo attivata! I dati vengono azzerati ogni 20 minuti.',
+
+    //resources/js/Components/Panels/FormDesignerPanel.tsx
+  formdesignerpanel555: 'Controllo di accesso fallito',
+
 };
