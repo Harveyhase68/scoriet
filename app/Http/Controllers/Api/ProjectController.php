@@ -481,6 +481,16 @@ class ProjectController extends Controller
             'timezone' => 'nullable|string|max:50',
             // API Keys
             'google_translate_api_key' => 'nullable|string|max:500',
+            // Git integration fields
+            'git_provider_id' => 'nullable|integer|exists:user_git_providers,id',
+            'git_repository' => 'nullable|string|max:255',
+            'git_default_branch' => 'nullable|string|max:100',
+            'git_main_branch' => 'nullable|string|max:100',
+            'git_target_directory' => 'nullable|string|max:500',
+            'git_workflow' => 'nullable|in:push_only,push_and_pr,push_pr_merge',
+            'git_pr_title_template' => 'nullable|string|max:255',
+            'git_pr_description_template' => 'nullable|string|max:2000',
+            'git_auto_delete_branch' => 'nullable|boolean',
         ]);
 
         // Handle owner transfer first if requested
@@ -1374,6 +1384,111 @@ class ProjectController extends Controller
 
         return response()->json([
             'templates' => $templates
+        ]);
+    }
+
+    /**
+     * Get Git integration settings for a project
+     */
+    public function getGitSettings(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Load the git provider relationship
+        $project->load('gitProvider');
+
+        // Get available git providers for this user
+        $availableProviders = $user->gitProviders()->get()->map(fn($p) => [
+            'id' => $p->id,
+            'provider' => $p->provider,
+            'provider_name' => $p->getProviderDisplayName(),
+            'username' => $p->username,
+            'avatar_url' => $p->avatar_url,
+            'is_expired' => $p->isTokenExpired(),
+        ]);
+
+        return response()->json([
+            'git_settings' => $project->getGitSettings(),
+            'available_providers' => $availableProviders,
+        ]);
+    }
+
+    /**
+     * Update Git integration settings for a project
+     */
+    public function updateGitSettings(Request $request, Project $project): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'git_provider_id' => 'nullable|integer|exists:user_git_providers,id',
+            'git_repository' => 'nullable|string|max:255',
+            'git_default_branch' => 'nullable|string|max:100',
+            'git_main_branch' => 'nullable|string|max:100',
+            'git_target_directory' => 'nullable|string|max:500',
+            'git_workflow' => 'nullable|in:push_only,push_and_pr,push_pr_merge',
+            'git_pr_title_template' => 'nullable|string|max:255',
+            'git_pr_description_template' => 'nullable|string|max:2000',
+            'git_auto_delete_branch' => 'nullable|boolean',
+        ]);
+
+        // If git_provider_id is set, verify it belongs to the user
+        if (isset($validated['git_provider_id']) && $validated['git_provider_id']) {
+            $gitProvider = $user->gitProviders()->find($validated['git_provider_id']);
+            if (!$gitProvider) {
+                return response()->json(['error' => 'Git provider not found or does not belong to you'], 400);
+            }
+        }
+
+        // Update the project with git settings
+        $project->update($validated);
+
+        // Reload git provider relationship
+        $project->load('gitProvider');
+
+        return response()->json([
+            'message' => 'Git settings updated successfully',
+            'git_settings' => $project->getGitSettings(),
+        ]);
+    }
+
+    /**
+     * Remove Git integration from a project
+     */
+    public function removeGitIntegration(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user has access to this project
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Clear all git settings
+        $project->update([
+            'git_provider_id' => null,
+            'git_repository' => null,
+            'git_default_branch' => null,
+            'git_main_branch' => null,
+            'git_target_directory' => null,
+            'git_workflow' => 'push_only',
+            'git_pr_title_template' => null,
+            'git_pr_description_template' => null,
+            'git_auto_delete_branch' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Git integration removed successfully',
         ]);
     }
 }

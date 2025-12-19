@@ -14,9 +14,17 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Notifications\NewUserRegistered;
 use Illuminate\Support\Facades\Notification;
+use App\Services\RegistrationValidationService;
 
 class AuthController extends Controller
 {
+    protected RegistrationValidationService $registrationValidator;
+
+    public function __construct(RegistrationValidationService $registrationValidator)
+    {
+        $this->registrationValidator = $registrationValidator;
+    }
+
     /**
      * Benutzer registrieren
      */
@@ -65,6 +73,48 @@ class AuthController extends Controller
                 'message' => $friendlyMessage,
                 'errors' => $errors,
                 'field_errors' => $errors->toArray()
+            ], 422);
+        }
+
+        // Honeypot check - if math_check field is filled, it's a bot
+        // Silently pretend success but don't actually register
+        if ($request->filled('math_check')) {
+            \Log::warning('Bot registration blocked by honeypot', [
+                'email' => $request->email,
+                'ip' => $request->ip(),
+                'honeypot_value' => $request->math_check,
+            ]);
+
+            // Return fake success response
+            return response()->json([
+                'message' => 'Benutzer erfolgreich registriert. Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.',
+                'user' => [
+                    'id' => 0,
+                    'name' => $request->name,
+                    'email' => $request->email,
+                ],
+                'email_verification_required' => true,
+                'has_pending_invitation' => false,
+            ], 201);
+        }
+
+        // Security validation: check for Tor, disposable emails, scoriet in email, MX records
+        $securityValidation = $this->registrationValidator->validate($request);
+        if (!$securityValidation['valid']) {
+            $securityErrors = $securityValidation['errors'];
+            $friendlyMessage = reset($securityErrors); // Get first error message
+
+            \Log::warning('Registration blocked by security validation', [
+                'email' => $request->email,
+                'ip' => $request->ip(),
+                'errors' => $securityErrors,
+            ]);
+
+            return response()->json([
+                'message' => $friendlyMessage,
+                'errors' => $securityErrors,
+                'field_errors' => $securityErrors,
+                'security_blocked' => true,
             ], 422);
         }
 

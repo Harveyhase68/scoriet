@@ -15,6 +15,7 @@ use App\Models\SchemaTable;
 use App\Models\Language;
 use App\Models\SchemaTranslation;
 use App\Models\ProjectFormSet;
+use App\Models\ProjectGeneration;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -1661,6 +1662,7 @@ class UltimateTemplateController extends Controller
             $generatedFiles = [];
             $completedOperations = 0;
             $syntaxErrors = []; // Collect all syntax errors
+            $adjustmentWarnings = []; // Collect code adjustment warnings
 
             // Process each template
             foreach ($templates as $template) {
@@ -1745,6 +1747,16 @@ class UltimateTemplateController extends Controller
                                     // 🎯 Execute JavaScript to get actual output with language context
                                     $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
 
+                                    // 🔧 Apply code adjustments
+                                    $output = $this->applyCodeAdjustments(
+                                        $output,
+                                        $result['filename'],
+                                        $projectId,
+                                        $tableName,
+                                        $languageCode,
+                                        $adjustmentWarnings
+                                    );
+
                                     $generatedFiles[] = [
                                         'path' => $result['output_path'],
                                         'filename' => $result['filename'],
@@ -1790,6 +1802,16 @@ class UltimateTemplateController extends Controller
                                 // 🎯 Execute JavaScript to get actual output with language context
                                 $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
 
+                                // 🔧 Apply code adjustments
+                                $output = $this->applyCodeAdjustments(
+                                    $output,
+                                    $result['filename'],
+                                    $projectId,
+                                    null,
+                                    $languageCode,
+                                    $adjustmentWarnings
+                                );
+
                                 $generatedFiles[] = [
                                     'path' => $result['output_path'],
                                     'filename' => $result['filename'],
@@ -1831,6 +1853,16 @@ class UltimateTemplateController extends Controller
                             // 🎯 Execute JavaScript to get actual output (no specific language)
                             $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, null);
 
+                            // 🔧 Apply code adjustments
+                            $output = $this->applyCodeAdjustments(
+                                $output,
+                                $result['filename'],
+                                $projectId,
+                                null,
+                                null,
+                                $adjustmentWarnings
+                            );
+
                             $generatedFiles[] = [
                                 'path' => $result['output_path'],
                                 'filename' => $result['filename'],
@@ -1861,6 +1893,7 @@ class UltimateTemplateController extends Controller
                 'files' => count($generatedFiles),
                 'operations' => $completedOperations,
                 'syntax_errors' => count($syntaxErrors),
+                'adjustment_warnings' => count($adjustmentWarnings),
             ]);
 
             // ⚠️ Log all syntax errors (if any)
@@ -1926,8 +1959,25 @@ class UltimateTemplateController extends Controller
                 file_put_contents($tempDir . '/ERRORS.txt', $errorsContent);
             }
 
-            // Create ZIP file
-            $zipPath = storage_path('app/temp/' . $project->name . '_' . time() . '.zip');
+            // Create permanent storage directory for generated projects
+            $generatedProjectsDir = storage_path('app/generated-projects');
+            if (!file_exists($generatedProjectsDir)) {
+                mkdir($generatedProjectsDir, 0755, true);
+            }
+
+            // Get next generation number for this project
+            $generationNumber = ProjectGeneration::getNextGenerationNumber($projectId);
+
+            // Create filename with project_id and generation_number
+            $zipFilename = sprintf(
+                'project_%d_%s_gen%d_%s.zip',
+                $projectId,
+                preg_replace('/[^a-zA-Z0-9_-]/', '_', $project->name),
+                $generationNumber,
+                date('Y-m-d_His')
+            );
+            $zipPath = $generatedProjectsDir . '/' . $zipFilename;
+
             $zip = new \ZipArchive();
 
             if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
@@ -1940,11 +1990,13 @@ class UltimateTemplateController extends Controller
                 \RecursiveIteratorIterator::LEAVES_ONLY
             );
 
+            $filesCount = 0;
             foreach ($files as $file) {
                 if (!$file->isDir()) {
                     $filePath = $file->getRealPath();
                     $relativePath = substr($filePath, strlen($tempDir) + 1);
                     $zip->addFile($filePath, $relativePath);
+                    $filesCount++;
                 }
             }
 
@@ -1953,20 +2005,73 @@ class UltimateTemplateController extends Controller
             // Clean up temp directory
             $this->deleteDirectory($tempDir);
 
+            // Get file size after ZIP is closed
+            $zipFileSize = filesize($zipPath);
+
+            // Extract table names for metadata
+            $tableNames = array_map(function($table) {
+                return $table['databasename'] ?? $table['name'] ?? 'unknown';
+            }, $tablesFromGtree);
+
+            // Get template names
+            $templateNames = $templates->pluck('name')->toArray();
+            $primaryTemplateName = $templateNames[0] ?? null;
+            $primaryTemplateId = $templateIds[0] ?? null;
+
+            // Get the current schema version for the project (via project_schemas join)
+            $currentSchemaVersion = null;
+            $projectSchema = \DB::table('project_schemas')
+                ->where('project_id', $projectId)
+                ->first();
+
+            if ($projectSchema) {
+                $currentSchemaVersion = SchemaVersion::where('schema_id', $projectSchema->schema_id)
+                    ->orderBy('version_number', 'desc')
+                    ->first();
+            }
+
+            // Determine generation status
+            $generationStatus = empty($syntaxErrors) ? 'completed' : (count($syntaxErrors) > count($generatedFiles) ? 'failed' : 'partial');
+
+            // Create ProjectGeneration record
+            $generation = ProjectGeneration::create([
+                'project_id' => $projectId,
+                'schema_version_id' => $currentSchemaVersion?->id,
+                'user_id' => $user?->id,
+                'generation_number' => $generationNumber,
+                'filename' => $zipFilename,
+                'file_path' => $zipPath,
+                'archive_type' => 'zip',
+                'file_size' => $zipFileSize,
+                'languages' => $languageCodes,
+                'tables' => $tableNames,
+                'tables_count' => count($tableNames),
+                'files_count' => $filesCount,
+                'template_id' => $primaryTemplateId,
+                'template_name' => $primaryTemplateName,
+                'status' => $generationStatus,
+                'notes' => !empty($syntaxErrors) ? count($syntaxErrors) . ' syntax error(s) during generation' : null,
+            ]);
+
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
-            \Log::info("🎉 ZIP created successfully", [
+            \Log::info("🎉 ZIP created and recorded successfully", [
                 'path' => $zipPath,
-                'size' => filesize($zipPath),
+                'size' => $zipFileSize,
+                'generation_id' => $generation->id,
+                'generation_number' => $generationNumber,
                 'execution_time' => $executionTime . 'ms',
                 'syntax_errors' => count($syntaxErrors),
             ]);
 
             // Return download response with error information in headers
+            // NOTE: File is NOT deleted after send - kept for future comparisons
             $headers = [
                 'Content-Type' => 'application/zip',
-                'X-Generation-Errors' => count($syntaxErrors), // Number of errors
-                'X-Generation-Files' => count($generatedFiles), // Number of successful files
+                'X-Generation-Errors' => count($syntaxErrors),
+                'X-Generation-Files' => count($generatedFiles),
+                'X-Generation-Id' => $generation->id,
+                'X-Generation-Number' => $generationNumber,
             ];
 
             // If there are errors, encode them in base64 for header (limited to first 10 errors to avoid header size limits)
@@ -1978,7 +2083,8 @@ class UltimateTemplateController extends Controller
                 }
             }
 
-            return response()->download($zipPath, basename($zipPath), $headers)->deleteFileAfterSend(true);
+            // Return download - file is kept for Code Adjustments comparison feature
+            return response()->download($zipPath, $zipFilename, $headers);
 
         } catch (\Exception $e) {
             \Log::error("❌ Full project generation failed", [
@@ -2514,6 +2620,72 @@ JS;
                 'nmaxmigration_total' => 0,
                 'sql_complete' => "-- Error: {$e->getMessage()}",
             ];
+        }
+    }
+
+    /**
+     * Apply code adjustments to generated output
+     *
+     * @param string $output The generated code output
+     * @param string $filename The output filename
+     * @param int $projectId The project ID
+     * @param string|null $tableName Current table name (for db_table_file types)
+     * @param string|null $languageCode Current language code
+     * @param array &$adjustmentWarnings Reference to collect warnings
+     * @return string The modified output
+     */
+    private function applyCodeAdjustments(
+        string $output,
+        string $filename,
+        int $projectId,
+        ?string $tableName = null,
+        ?string $languageCode = null,
+        array &$adjustmentWarnings = []
+    ): string {
+        try {
+            $service = app(\App\Services\CodeAdjustmentService::class);
+
+            $context = [
+                'tablename' => $tableName ?? '',
+                'filename' => $filename,
+                'languagecode' => $languageCode ?? 'en',
+            ];
+
+            // Get project name for context
+            $project = \App\Models\Project::find($projectId);
+            if ($project) {
+                $context['projectname'] = $project->name;
+            }
+
+            $result = $service->apply($output, $filename, $projectId, $context);
+
+            // Collect warnings
+            if (!empty($result['warnings'])) {
+                foreach ($result['warnings'] as $warning) {
+                    $adjustmentWarnings[] = [
+                        'file' => $filename,
+                        'adjustment' => $warning['name'],
+                        'reason' => $warning['reason'],
+                    ];
+                }
+            }
+
+            // Log applied adjustments
+            if (!empty($result['applied'])) {
+                \Log::info("✅ Code adjustments applied", [
+                    'file' => $filename,
+                    'applied' => count($result['applied']),
+                ]);
+            }
+
+            return $result['content'];
+        } catch (\Exception $e) {
+            \Log::error("❌ Code adjustment error", [
+                'file' => $filename,
+                'error' => $e->getMessage(),
+            ]);
+            // Return original output on error (warn + continue)
+            return $output;
         }
     }
 }

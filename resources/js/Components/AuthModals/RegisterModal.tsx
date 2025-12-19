@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
@@ -40,7 +40,14 @@ export default function RegisterModal({
   // Language state
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(selectedLanguage);
-  
+
+  // Honeypot CAPTCHA - hidden field that bots will fill out
+  const honeypotNumbers = useMemo(() => ({
+    a: Math.floor(Math.random() * 4) + 2, // 2-5
+    b: Math.floor(Math.random() * 4) + 2, // 2-5
+  }), []);
+  const [honeypotValue, setHoneypotValue] = useState('');
+
   // Update language when currentLanguage prop changes
   React.useEffect(() => {
     if (currentLanguage && visible) {
@@ -57,6 +64,17 @@ export default function RegisterModal({
     setLoading(true);
     setError('');
     setSuccess('');
+
+    // Honeypot check - if filled, it's a bot
+    // Show fake success and do nothing
+    if (honeypotValue !== '') {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (onRegistrationSuccess) {
+        onRegistrationSuccess(t.registermodal94);
+      }
+      handleHide();
+      return; // Don't actually register
+    }
 
     // Check password confirmation
     if (formData.password !== formData.password_confirmation) {
@@ -79,6 +97,7 @@ export default function RegisterModal({
           password: formData.password,
           password_confirmation: formData.password_confirmation,
           language: formData.language,
+          math_check: honeypotValue, // Send to backend for double-check
         }),
       });
 
@@ -133,6 +152,7 @@ export default function RegisterModal({
       password_confirmation: '',
       language: selectedLanguage || getStoredLanguage() // Keep the current lobby language or detected/stored language
     });
+    setHoneypotValue(''); // Reset honeypot
     setError('');
     setSuccess('');
     setLoading(false);
@@ -322,6 +342,33 @@ export default function RegisterModal({
             toggleMask
             required
             autoComplete="new-password"
+          />
+        </div>
+
+        {/* Honeypot field - hidden from humans, visible to bots */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            opacity: 0,
+            height: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+          }}
+          aria-hidden="true"
+        >
+          <label htmlFor="register-math-check">
+            Sicherheitsfrage: Wieviel ist {honeypotNumbers.a} + {honeypotNumbers.b}?
+          </label>
+          <InputText
+            id="register-math-check"
+            name="math_verification"
+            type="text"
+            value={honeypotValue}
+            onChange={(e) => setHoneypotValue(e.target.value)}
+            placeholder="Ihre Antwort"
+            autoComplete="off"
+            tabIndex={-1}
           />
         </div>
 

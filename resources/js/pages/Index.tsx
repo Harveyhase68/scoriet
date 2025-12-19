@@ -48,7 +48,6 @@ const PanelT1 = lazy(() => import('@/Components/Panels/PanelT1'));
 const PanelT2 = lazy(() => import('@/Components/Panels/PanelT2'));
 const PanelT3 = lazy(() => import('@/Components/Panels/PanelT3'));
 const PanelT5 = lazy(() => import('@/Components/Panels/PanelT5'));
-const AuthPanel = lazy(() => import('@/Components/Panels/AuthPanel'));
 const TeamsPanel = lazy(() => import('@/Components/Panels/TeamsPanel'));
 const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
 const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
@@ -72,6 +71,7 @@ const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPan
 const CacheDebugPanel = lazy(() => import('@/Components/Panels/CacheDebugPanel'));
 const FormDesignerPanel = lazy(() => import('@/Components/Panels/FormDesignerPanel'));
 const FormSetManagementPanel = lazy(() => import('@/Components/Panels/FormSetManagementPanel'));
+const CodeAdjustmentsPanel = lazy(() => import('@/Components/Panels/CodeAdjustmentsPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 // Auth Modal System
@@ -594,19 +594,6 @@ const loadTab = (
         group: 'card custom'
       };
 
-    case 'login':
-      return {
-        id,
-        title: data.title || 'Login',
-        content: (
-          <Suspense fallback={<PanelLoader />}>
-            <AuthPanel initialPanel="login" />
-          </Suspense>
-        ),
-        closable: true,
-        group: 'card custom'
-      };
-
     case 'template-management':
     case 'template-management-filtered': {
       // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
@@ -902,6 +889,19 @@ const loadTab = (
               formSetId={data.formSetId as number | undefined}
               onOpenPanel={openPanelFn}
             />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'code-adjustments':
+      return {
+        id,
+        title: data.title || 'Code Anpassungen',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <CodeAdjustmentsPanel onOpenPanel={openPanelFn} />
           </Suspense>
         ),
         closable: true,

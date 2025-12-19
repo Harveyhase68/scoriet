@@ -58,6 +58,24 @@ interface GenerationError {
   error: string;
 }
 
+// Code Adjustment interfaces for applying during generation
+interface CodeAdjustmentInsertion {
+  id: number;
+  insertion_type: 'beginning' | 'middle' | 'end';
+  anchor_text: string;
+  insertion_content: string;
+  line_offset: number;
+  insertion_order: number;
+}
+
+interface CodeAdjustment {
+  id: number;
+  name: string;
+  file_pattern: string;
+  is_active: boolean;
+  insertions: CodeAdjustmentInsertion[];
+}
+
 export default function CodeGenerationPanel() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -90,6 +108,21 @@ export default function CodeGenerationPanel() {
   const [deploymentPolling, setDeploymentPolling] = useState(false);
   const deploymentLogEndRef = useRef<HTMLDivElement>(null);
   const deploymentPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 📦 Generation metadata ref (populated during generation, used for upload)
+  const generationMetadataRef = useRef<{
+    tables: string[];
+    languages: string[];
+    templateIds: number[];
+    templateNames: string[];
+    filesCount: number;
+  }>({
+    tables: [],
+    languages: [],
+    templateIds: [],
+    templateNames: [],
+    filesCount: 0,
+  });
 
   // 🎯 Progress tracking
   const [generationProgress, setGenerationProgress] = useState<{
@@ -627,6 +660,125 @@ export default function CodeGenerationPanel() {
     await executeGeneration();
   };
 
+  // ========== CODE ADJUSTMENTS ==========
+
+  /**
+   * Fetch code adjustments for the current project
+   */
+  const fetchCodeAdjustments = async (projectId: number, token: string): Promise<CodeAdjustment[]> => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/code-adjustments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn('[CODE-ADJUSTMENTS] Failed to fetch adjustments:', response.status);
+        return [];
+      }
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        // Only return active adjustments
+        return data.data.filter((adj: CodeAdjustment) => adj.is_active);
+      }
+      return [];
+    } catch (error) {
+      console.warn('[CODE-ADJUSTMENTS] Error fetching adjustments:', error);
+      return [];
+    }
+  };
+
+  /**
+   * Check if a file path matches an adjustment's file pattern
+   * Supports patterns with %1 (table name) placeholders
+   */
+  const fileMatchesPattern = (filePath: string, pattern: string): boolean => {
+    // Normalize paths (remove leading slashes)
+    const normalizedPath = filePath.replace(/^\/+/, '');
+    const normalizedPattern = pattern.replace(/^\/+/, '');
+
+    // If pattern has no wildcards, do exact match
+    if (!normalizedPattern.includes('%')) {
+      return normalizedPath === normalizedPattern || normalizedPath.endsWith('/' + normalizedPattern) || normalizedPath.endsWith(normalizedPattern);
+    }
+
+    // Convert pattern to regex: %1, %2 become wildcards
+    const regexPattern = normalizedPattern
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+      .replace(/%1/g, '[^/]+')  // %1 = any folder/file name segment
+      .replace(/%2/g, '[^/]+'); // %2 = any folder/file name segment
+
+    const regex = new RegExp(`(^|/)${regexPattern}$`);
+    return regex.test(normalizedPath);
+  };
+
+  /**
+   * Apply code adjustments to generated code
+   */
+  const applyCodeAdjustments = (
+    code: string,
+    filePath: string,
+    adjustments: CodeAdjustment[]
+  ): { code: string; appliedCount: number; appliedAdjustments: string[] } => {
+    let modifiedCode = code;
+    let appliedCount = 0;
+    const appliedAdjustments: string[] = [];
+
+    // Find matching adjustments for this file
+    const matchingAdjustments = adjustments.filter(adj => fileMatchesPattern(filePath, adj.file_pattern));
+
+    if (matchingAdjustments.length === 0) {
+      return { code, appliedCount: 0, appliedAdjustments: [] };
+    }
+
+    console.log(`[CODE-ADJUSTMENTS] Found ${matchingAdjustments.length} matching adjustment(s) for ${filePath}`);
+
+    for (const adjustment of matchingAdjustments) {
+      // Sort insertions by order
+      const sortedInsertions = [...adjustment.insertions].sort((a, b) => a.insertion_order - b.insertion_order);
+
+      for (const insertion of sortedInsertions) {
+        const beforeLength = modifiedCode.length;
+
+        if (insertion.insertion_type === 'beginning') {
+          // Insert at the very beginning
+          modifiedCode = insertion.insertion_content + '\n' + modifiedCode;
+          appliedCount++;
+        } else if (insertion.insertion_type === 'end') {
+          // Insert at the very end
+          modifiedCode = modifiedCode + '\n' + insertion.insertion_content;
+          appliedCount++;
+        } else if (insertion.insertion_type === 'middle') {
+          // Find anchor text and insert after it
+          const anchorIndex = modifiedCode.indexOf(insertion.anchor_text);
+          if (anchorIndex !== -1) {
+            const insertPosition = anchorIndex + insertion.anchor_text.length;
+            modifiedCode =
+              modifiedCode.slice(0, insertPosition) +
+              '\n' + insertion.insertion_content +
+              modifiedCode.slice(insertPosition);
+            appliedCount++;
+          } else {
+            console.warn(`[CODE-ADJUSTMENTS] Anchor text not found for insertion in ${adjustment.name}: "${insertion.anchor_text.substring(0, 50)}..."`);
+          }
+        }
+
+        if (modifiedCode.length !== beforeLength) {
+          console.log(`[CODE-ADJUSTMENTS] Applied ${insertion.insertion_type} insertion from "${adjustment.name}"`);
+        }
+      }
+
+      if (sortedInsertions.length > 0) {
+        appliedAdjustments.push(adjustment.name);
+      }
+    }
+
+    return { code: modifiedCode, appliedCount, appliedAdjustments };
+  };
+
   /**
    * Core generation logic that creates the ZIP blob
    * This is shared between "Generate & Download" and "Generate & Deploy"
@@ -644,6 +796,24 @@ export default function CodeGenerationPanel() {
     }
 
       // Starting hybrid browser-based project generation
+
+      // ==========================================================================
+      // STEP 0: Fetch Code Adjustments for this project
+      // ==========================================================================
+      let codeAdjustments: CodeAdjustment[] = [];
+      if (selectedProjectId) {
+        setGenerationProgress({
+          current: 0,
+          total: 100,
+          percentage: 2,
+          eta: 'Berechne...',
+          currentTask: 'Lade Code Anpassungen...'
+        });
+        codeAdjustments = await fetchCodeAdjustments(selectedProjectId, token);
+        if (codeAdjustments.length > 0) {
+          console.log(`[CODE-ADJUSTMENTS] Loaded ${codeAdjustments.length} active adjustment(s) for project ${selectedProjectId}`);
+        }
+      }
 
       // ==========================================================================
       // STEP 1: Fetch schema data (gtree) ONCE to get tables list
@@ -1156,8 +1326,18 @@ export default function CodeGenerationPanel() {
               return;
             }
 
+            // 🔧 APPLY CODE ADJUSTMENTS before adding to ZIP
+            let finalCode = generatedCode;
+            if (codeAdjustments.length > 0) {
+              const adjustmentResult = applyCodeAdjustments(generatedCode, fullPath, codeAdjustments);
+              if (adjustmentResult.appliedCount > 0) {
+                finalCode = adjustmentResult.code;
+                console.log(`[CODE-ADJUSTMENTS] Applied ${adjustmentResult.appliedCount} insertion(s) to ${fullPath} from: ${adjustmentResult.appliedAdjustments.join(', ')}`);
+              }
+            }
+
             // Add to ZIP
-            zip.file(fullPath, generatedCode);
+            zip.file(fullPath, finalCode);
             addedFiles.add(fullPath);
             fileCount++;
 
@@ -1411,6 +1591,16 @@ export default function CodeGenerationPanel() {
 
         setArchiveWarning(null);
 
+        // 📦 Populate generation metadata for upload
+        const selectedTemplatesList = templates.filter(t => selectedTemplateIds.has(t.id));
+        generationMetadataRef.current = {
+          tables: allTables.map(t => t.databasename || t.name || 'unknown'),
+          languages: Array.from(selectedLanguageCodes),
+          templateIds: Array.from(selectedTemplateIds),
+          templateNames: selectedTemplatesList.map(t => t.name),
+          filesCount: fileCount,
+        };
+
         // Call the callback with the generated ZIP (callback handles download/upload)
         await onZipReady(zipBlob, zip);
 
@@ -1463,6 +1653,16 @@ export default function CodeGenerationPanel() {
         // Get the archive blob
         const archiveBlob = await archiveResponse.blob();
 
+        // 📦 Populate generation metadata for upload (same as ZIP case)
+        const selectedTemplatesListTar = templates.filter(t => selectedTemplateIds.has(t.id));
+        generationMetadataRef.current = {
+          tables: allTables.map(t => t.databasename || t.name || 'unknown'),
+          languages: Array.from(selectedLanguageCodes),
+          templateIds: Array.from(selectedTemplateIds),
+          templateNames: selectedTemplatesListTar.map(t => t.name),
+          filesCount: fileCount,
+        };
+
         // Call the callback with the archive blob (callback handles download/upload)
         await onZipReady(archiveBlob, zip);
 
@@ -1494,16 +1694,63 @@ export default function CodeGenerationPanel() {
       // Perform generation with download callback
       await performGeneration(async (zipBlob) => {
         console.log('[DOWNLOAD] Download callback called, zipBlob size:', zipBlob.size);
-        // Download the ZIP
+
+        // Download the ZIP to user
         const url = window.URL.createObjectURL(zipBlob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `generated_project_${Date.now()}.zip`;
+        const projectName = selectedProject?.name || 'project';
+        link.download = `${projectName}_${Date.now()}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         console.log('[DOWNLOAD] Download triggered');
+
+        // 📦 Also upload a copy to server for tracking (background, non-blocking)
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (token && selectedProjectId) {
+          const uploadFormData = new FormData();
+          uploadFormData.append('project_id', selectedProjectId.toString());
+          uploadFormData.append('archive', zipBlob, `${projectName}.zip`);
+          uploadFormData.append('is_download_only', 'true');
+
+          // Add generation metadata
+          const metadata = generationMetadataRef.current;
+          if (metadata.tables.length > 0) {
+            metadata.tables.forEach(t => uploadFormData.append('tables[]', t));
+          }
+          if (metadata.languages.length > 0) {
+            metadata.languages.forEach(l => uploadFormData.append('languages[]', l));
+          }
+          if (metadata.templateIds.length > 0) {
+            metadata.templateIds.forEach(id => uploadFormData.append('template_ids[]', id.toString()));
+          }
+          if (metadata.templateNames.length > 0) {
+            metadata.templateNames.forEach(n => uploadFormData.append('template_names[]', n));
+          }
+          if (metadata.filesCount > 0) {
+            uploadFormData.append('files_count', metadata.filesCount.toString());
+          }
+
+          // Fire and forget - don't wait for response
+          fetch('/api/generated-projects/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            },
+            body: uploadFormData
+          }).then(response => {
+            if (response.ok) {
+              console.log('[DOWNLOAD] Generation recorded to server');
+            } else {
+              console.warn('[DOWNLOAD] Failed to record generation:', response.statusText);
+            }
+          }).catch(err => {
+            console.warn('[DOWNLOAD] Error recording generation:', err);
+          });
+        }
       });
 
     } catch (err: any) {
@@ -1681,6 +1928,24 @@ export default function CodeGenerationPanel() {
         const formData = new FormData();
         formData.append('project_id', selectedProjectId!.toString());
         formData.append('archive', zipBlob, `${projectName}.zip`);
+
+        // Add generation metadata
+        const metadata = generationMetadataRef.current;
+        if (metadata.tables.length > 0) {
+          metadata.tables.forEach(t => formData.append('tables[]', t));
+        }
+        if (metadata.languages.length > 0) {
+          metadata.languages.forEach(l => formData.append('languages[]', l));
+        }
+        if (metadata.templateIds.length > 0) {
+          metadata.templateIds.forEach(id => formData.append('template_ids[]', id.toString()));
+        }
+        if (metadata.templateNames.length > 0) {
+          metadata.templateNames.forEach(n => formData.append('template_names[]', n));
+        }
+        if (metadata.filesCount > 0) {
+          formData.append('files_count', metadata.filesCount.toString());
+        }
 
         const uploadResponse = await fetch('/api/generated-projects/upload', {
           method: 'POST',

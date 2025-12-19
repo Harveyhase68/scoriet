@@ -59,7 +59,7 @@
       "Bash(composer config:*)",
       "Bash(cmd.exe /c \"powershell -Command \"\"Get-Content ''C:\\wamp\\www\\scoriet\\storage\\logs\\laravel.log'' | Select-Object -Last 50\"\"\")",
       "Bash(cmd.exe /c \"type C:\\wamp\\www\\scoriet\\storage\\logs\\laravel.log | findstr /i paypal\")",
-      "Bash(cmd.exe /c \"dir C:\\wamp\\www\\scoriet\\storage\\logs\"\")",
+      "Bash(cmd.exe /c \"dir C:\\wamp\\www\\scoriet\\storage\\logs\")",
       "Bash(php artisan migrate:*)",
       "Bash(php artisan migrate:status:*)",
       "Bash(php artisan tinker:*)",
@@ -77,7 +77,8 @@
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(php artisan make:migration:*)",
-      "Bash(dir /s /b \"C:\\wamp\\www\\scoriet\\storage\\framework\\cache\")"
+      "Bash(dir /s /b \"C:\\wamp\\www\\scoriet\\storage\\framework\\cache\")",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

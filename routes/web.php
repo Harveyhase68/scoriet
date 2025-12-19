@@ -120,6 +120,23 @@ Route::get('/payment/paypal/success', function () {
 Route::get('/payment/paypal/subscription-success', [App\Http\Controllers\Api\PayPalController::class, 'handleSubscriptionSuccess'])
     ->name('payment.paypal.subscription-success');
 
+// Git OAuth Callback (for popup windows)
+Route::get('/auth/git/{provider}/callback', function ($provider) {
+    $code = request('code');
+    $state = request('state');
+    $error = request('error');
+    $errorDescription = request('error_description');
+
+    // Return a simple HTML page that communicates with the parent window
+    return response()->view('auth.git-callback', [
+        'provider' => $provider,
+        'code' => $code,
+        'state' => $state,
+        'error' => $error,
+        'errorDescription' => $errorDescription,
+    ]);
+})->name('git.callback');
+
 // Public Project Overview (no authentication required)
 // URL format: /project/{username}/{projectname}
 Route::get('/project/{username}/{projectname}', [App\Http\Controllers\PublicProjectController::class, 'show'])
