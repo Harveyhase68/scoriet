@@ -52,6 +52,45 @@ interface TemplateWithVariables extends Template {
     variables: TemplateVariable[];
 }
 
+interface GitProvider {
+    id: number;
+    provider: string;
+    provider_name: string;
+    username: string;
+    avatar_url: string | null;
+    is_expired: boolean;
+}
+
+interface GitRepository {
+    id: number;
+    name: string;
+    full_name: string;
+    private: boolean;
+    url: string;
+    default_branch: string;
+    description: string | null;
+}
+
+interface GitBranch {
+    name: string;
+    protected: boolean;
+}
+
+interface GitSettings {
+    provider_id: number | null;
+    provider: string | null;
+    provider_username: string | null;
+    repository: string | null;
+    default_branch: string | null;
+    main_branch: string | null;
+    target_directory: string | null;
+    workflow: 'push_only' | 'push_and_pr' | 'push_pr_merge';
+    pr_title_template: string | null;
+    pr_description_template: string | null;
+    auto_delete_branch: boolean;
+    is_configured: boolean;
+}
+
 // Future use: Template variable values
 interface _VariableValue {
     variable_name: string;
@@ -83,6 +122,27 @@ export default function ProjectSettingsPanel() {
     const [projectInstallScript, setProjectInstallScript] = useState<ScriptStep[]>([]);
     const [projectUpdateScript, setProjectUpdateScript] = useState<ScriptStep[]>([]);
     const [linkedTemplates, setLinkedTemplates] = useState<Template[]>([]); // For showing template protected files
+
+    // Git Integration State
+    const [gitSettings, setGitSettings] = useState<GitSettings>({
+        provider_id: null,
+        provider: null,
+        provider_username: null,
+        repository: null,
+        default_branch: null,
+        main_branch: null,
+        target_directory: null,
+        workflow: 'push_only',
+        pr_title_template: null,
+        pr_description_template: null,
+        auto_delete_branch: true,
+        is_configured: false,
+    });
+    const [availableGitProviders, setAvailableGitProviders] = useState<GitProvider[]>([]);
+    const [gitRepositories, setGitRepositories] = useState<GitRepository[]>([]);
+    const [gitBranches, setGitBranches] = useState<GitBranch[]>([]);
+    const [loadingGitRepos, setLoadingGitRepos] = useState(false);
+    const [loadingGitBranches, setLoadingGitBranches] = useState(false);
 
     const [formData, setFormData] = useState({
         // Project Settings
@@ -262,6 +322,221 @@ export default function ProjectSettingsPanel() {
         }
     }, [selectedProject]);
 
+    const loadGitSettings = useCallback(async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setGitSettings(data.git_settings || {
+                    provider_id: null,
+                    provider: null,
+                    provider_username: null,
+                    repository: null,
+                    default_branch: null,
+                    main_branch: null,
+                    target_directory: null,
+                    workflow: 'push_only',
+                    pr_title_template: null,
+                    pr_description_template: null,
+                    auto_delete_branch: true,
+                    is_configured: false,
+                });
+                setAvailableGitProviders(data.available_providers || []);
+
+                // If we have a provider selected, load repositories
+                if (data.git_settings?.provider_id && data.git_settings?.provider) {
+                    loadGitRepositories(data.git_settings.provider);
+                    // If we have a repository selected, load branches
+                    if (data.git_settings?.repository) {
+                        loadGitBranches(data.git_settings.provider, data.git_settings.repository);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading git settings:', error);
+        }
+    }, [selectedProject]);
+
+    const loadGitRepositories = async (provider: string) => {
+        setLoadingGitRepos(true);
+        setGitRepositories([]);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/git/${provider}/repositories`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setGitRepositories(data.repositories || []);
+            }
+        } catch (error) {
+            console.error('Error loading git repositories:', error);
+        } finally {
+            setLoadingGitRepos(false);
+        }
+    };
+
+    const loadGitBranches = async (provider: string, repoFullName: string) => {
+        setLoadingGitBranches(true);
+        setGitBranches([]);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setGitBranches(data.branches || []);
+            }
+        } catch (error) {
+            console.error('Error loading git branches:', error);
+        } finally {
+            setLoadingGitBranches(false);
+        }
+    };
+
+    const handleGitProviderChange = (providerId: number | null) => {
+        const provider = availableGitProviders.find(p => p.id === providerId);
+        setGitSettings(prev => ({
+            ...prev,
+            provider_id: providerId,
+            provider: provider?.provider || null,
+            provider_username: provider?.username || null,
+            repository: null,
+            default_branch: null,
+            main_branch: null,
+        }));
+        setGitRepositories([]);
+        setGitBranches([]);
+
+        if (provider) {
+            loadGitRepositories(provider.provider);
+        }
+    };
+
+    const handleGitRepositoryChange = (repoFullName: string | null) => {
+        const repo = gitRepositories.find(r => r.full_name === repoFullName);
+        setGitSettings(prev => ({
+            ...prev,
+            repository: repoFullName,
+            default_branch: repo?.default_branch || null,
+            main_branch: repo?.default_branch || null,
+        }));
+        setGitBranches([]);
+
+        if (repoFullName && gitSettings.provider) {
+            loadGitBranches(gitSettings.provider, repoFullName);
+        }
+    };
+
+    const saveGitSettings = async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    git_provider_id: gitSettings.provider_id,
+                    git_repository: gitSettings.repository,
+                    git_default_branch: gitSettings.default_branch,
+                    git_main_branch: gitSettings.main_branch,
+                    git_target_directory: gitSettings.target_directory,
+                    git_workflow: gitSettings.workflow,
+                    git_pr_title_template: gitSettings.pr_title_template,
+                    git_pr_description_template: gitSettings.pr_description_template,
+                    git_auto_delete_branch: gitSettings.auto_delete_branch,
+                }),
+            });
+
+            if (response.ok) {
+                toast.showSuccess('Git-Einstellungen erfolgreich gespeichert');
+            } else {
+                const data = await response.json();
+                toast.showError(data.error || 'Fehler beim Speichern der Git-Einstellungen');
+            }
+        } catch (error) {
+            console.error('Error saving git settings:', error);
+            toast.showError('Fehler beim Speichern der Git-Einstellungen');
+        }
+    };
+
+    const removeGitIntegration = async () => {
+        if (!selectedProject) return;
+
+        if (!window.confirm('Möchten Sie die Git-Integration wirklich entfernen?')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                setGitSettings({
+                    provider_id: null,
+                    provider: null,
+                    provider_username: null,
+                    repository: null,
+                    default_branch: null,
+                    main_branch: null,
+                    target_directory: null,
+                    workflow: 'push_only',
+                    pr_title_template: null,
+                    pr_description_template: null,
+                    auto_delete_branch: true,
+                    is_configured: false,
+                });
+                setGitRepositories([]);
+                setGitBranches([]);
+                toast.showSuccess('Git-Integration erfolgreich entfernt');
+            } else {
+                toast.showError('Fehler beim Entfernen der Git-Integration');
+            }
+        } catch (error) {
+            console.error('Error removing git integration:', error);
+            toast.showError('Fehler beim Entfernen der Git-Integration');
+        }
+    };
+
     const loadProjectMembers = useCallback(async () => {
         if (!selectedProject) return;
 
@@ -384,8 +659,9 @@ export default function ProjectSettingsPanel() {
             loadProjectMembers();
             loadTemplateVariables();
             loadLinkedTemplates();
+            loadGitSettings();
         }
-    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates]);
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates, loadGitSettings]);
 
     const handleSave = async () => {
         if (!selectedProject) {
@@ -1447,6 +1723,243 @@ export default function ProjectSettingsPanel() {
                             <i className="pi pi-info-circle mr-2"></i>
                             Deployment scripts will be saved automatically with the "Save All" button above.
                         </div>
+                    </div>
+                </TabPanel>
+
+                {/* Git Integration Tab */}
+                <TabPanel header={<span><i className="pi pi-github mr-2"></i>Git Integration</span>}>
+                    <div className="space-y-6 max-w-3xl p-4">
+                        <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                            <i className="pi pi-info-circle mr-2"></i>
+                            Verbinden Sie ein Git-Repository, um generierten Code direkt zu pushen.
+                        </div>
+
+                        {availableGitProviders.length === 0 ? (
+                            <div className="p-4 bg-yellow-900 border border-yellow-700 rounded text-yellow-100">
+                                <i className="pi pi-exclamation-triangle mr-2"></i>
+                                <strong>Keine Git-Provider verbunden.</strong>
+                                <p className="mt-2 text-sm">
+                                    Bitte verbinden Sie zuerst GitHub oder GitLab in Ihrem Profil,
+                                    bevor Sie Git-Integration für dieses Projekt einrichten können.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Git Provider Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <i className="pi pi-cloud mr-2"></i>Git Provider
+                                    </label>
+                                    <Dropdown
+                                        value={gitSettings.provider_id}
+                                        onChange={(e) => handleGitProviderChange(e.value)}
+                                        options={availableGitProviders.map(p => ({
+                                            label: `${p.provider_name} - @${p.username}${p.is_expired ? ' (Token abgelaufen)' : ''}`,
+                                            value: p.id,
+                                            disabled: p.is_expired,
+                                        }))}
+                                        placeholder="Git Provider auswählen..."
+                                        className="w-full"
+                                        showClear
+                                    />
+                                </div>
+
+                                {/* Repository Selection */}
+                                {gitSettings.provider_id && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <i className="pi pi-folder mr-2"></i>Repository
+                                        </label>
+                                        <Dropdown
+                                            value={gitSettings.repository}
+                                            onChange={(e) => handleGitRepositoryChange(e.value)}
+                                            options={gitRepositories.map(r => ({
+                                                label: `${r.full_name}${r.private ? ' (privat)' : ''}`,
+                                                value: r.full_name,
+                                            }))}
+                                            placeholder={loadingGitRepos ? 'Laden...' : 'Repository auswählen...'}
+                                            className="w-full"
+                                            filter
+                                            filterPlaceholder="Repository suchen..."
+                                            disabled={loadingGitRepos}
+                                            showClear
+                                        />
+                                        {loadingGitRepos && (
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                <i className="pi pi-spin pi-spinner mr-1"></i>Repositories werden geladen...
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Branch Selection */}
+                                {gitSettings.repository && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                <i className="pi pi-code-branch mr-2"></i>Push-Branch
+                                            </label>
+                                            <Dropdown
+                                                value={gitSettings.default_branch}
+                                                onChange={(e) => setGitSettings(prev => ({ ...prev, default_branch: e.value }))}
+                                                options={gitBranches.map(b => ({
+                                                    label: `${b.name}${b.protected ? ' (geschützt)' : ''}`,
+                                                    value: b.name,
+                                                }))}
+                                                placeholder={loadingGitBranches ? 'Laden...' : 'Branch auswählen...'}
+                                                className="w-full"
+                                                disabled={loadingGitBranches}
+                                                editable
+                                            />
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                Branch für Code-Pushes (z.B. feature/scoriet-generated)
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                <i className="pi pi-code-branch mr-2"></i>Main-Branch
+                                            </label>
+                                            <Dropdown
+                                                value={gitSettings.main_branch}
+                                                onChange={(e) => setGitSettings(prev => ({ ...prev, main_branch: e.value }))}
+                                                options={gitBranches.map(b => ({
+                                                    label: b.name,
+                                                    value: b.name,
+                                                }))}
+                                                placeholder={loadingGitBranches ? 'Laden...' : 'Branch auswählen...'}
+                                                className="w-full"
+                                                disabled={loadingGitBranches}
+                                            />
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                Ziel-Branch für Pull Requests (z.B. main, master)
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Target Directory */}
+                                {gitSettings.repository && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <i className="pi pi-folder-open mr-2"></i>Zielverzeichnis (optional)
+                                        </label>
+                                        <InputText
+                                            value={gitSettings.target_directory || ''}
+                                            onChange={(e) => setGitSettings(prev => ({ ...prev, target_directory: e.target.value || null }))}
+                                            placeholder="z.B. src/generated oder leer für Root"
+                                            className="w-full"
+                                        />
+                                        <div className="text-xs text-gray-400 mt-1">
+                                            Unterverzeichnis im Repository für generierten Code
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Workflow Selection */}
+                                {gitSettings.repository && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <i className="pi pi-sitemap mr-2"></i>Workflow
+                                        </label>
+                                        <Dropdown
+                                            value={gitSettings.workflow}
+                                            onChange={(e) => setGitSettings(prev => ({ ...prev, workflow: e.value }))}
+                                            options={[
+                                                { label: 'Nur Push (Branch, Commit, Push)', value: 'push_only' },
+                                                { label: 'Push + Pull Request erstellen', value: 'push_and_pr' },
+                                                { label: 'Push + PR + Auto-Merge (Vorsicht!)', value: 'push_pr_merge' },
+                                            ]}
+                                            className="w-full"
+                                        />
+                                        {gitSettings.workflow === 'push_pr_merge' && (
+                                            <div className="mt-2 p-2 bg-red-900 border border-red-700 rounded text-red-100 text-sm">
+                                                <i className="pi pi-exclamation-triangle mr-2"></i>
+                                                <strong>Warnung:</strong> Auto-Merge merged den PR automatisch in den Main-Branch!
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* PR Templates (for push_and_pr or push_pr_merge) */}
+                                {gitSettings.repository && gitSettings.workflow !== 'push_only' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                <i className="pi pi-file-edit mr-2"></i>PR Titel-Template
+                                            </label>
+                                            <InputText
+                                                value={gitSettings.pr_title_template || ''}
+                                                onChange={(e) => setGitSettings(prev => ({ ...prev, pr_title_template: e.target.value || null }))}
+                                                placeholder="[Scoriet] Code-Generierung {timestamp}"
+                                                className="w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                <i className="pi pi-align-left mr-2"></i>PR Beschreibung-Template
+                                            </label>
+                                            <InputTextarea
+                                                value={gitSettings.pr_description_template || ''}
+                                                onChange={(e) => setGitSettings(prev => ({ ...prev, pr_description_template: e.target.value || null }))}
+                                                placeholder="Automatisch generierter Code von Scoriet.&#10;&#10;Generiert am: {timestamp}&#10;Projekt: {project_name}"
+                                                rows={4}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox
+                                                inputId="git_auto_delete_branch"
+                                                checked={gitSettings.auto_delete_branch}
+                                                onChange={(e) => setGitSettings(prev => ({ ...prev, auto_delete_branch: e.checked ?? true }))}
+                                            />
+                                            <label htmlFor="git_auto_delete_branch" className="text-sm text-gray-300 cursor-pointer">
+                                                Branch nach Merge automatisch löschen
+                                            </label>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Save/Remove Buttons */}
+                                <div className="flex gap-3 pt-4 border-t border-gray-600">
+                                    <Button
+                                        icon="pi pi-save"
+                                        label="Git-Einstellungen speichern"
+                                        onClick={saveGitSettings}
+                                        severity="success"
+                                        disabled={!gitSettings.provider_id}
+                                    />
+                                    {gitSettings.is_configured && (
+                                        <Button
+                                            icon="pi pi-trash"
+                                            label="Git-Integration entfernen"
+                                            onClick={removeGitIntegration}
+                                            severity="danger"
+                                            outlined
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Current Configuration Summary */}
+                                {gitSettings.is_configured && (
+                                    <div className="mt-4 p-4 bg-green-900 border border-green-700 rounded">
+                                        <h4 className="font-semibold text-green-200 mb-2">
+                                            <i className="pi pi-check-circle mr-2"></i>Aktive Git-Konfiguration
+                                        </h4>
+                                        <div className="text-sm text-green-100 space-y-1">
+                                            <div>• Provider: <span className="text-white">{gitSettings.provider}</span></div>
+                                            <div>• Repository: <span className="text-white">{gitSettings.repository}</span></div>
+                                            <div>• Push-Branch: <span className="text-white">{gitSettings.default_branch}</span></div>
+                                            <div>• Main-Branch: <span className="text-white">{gitSettings.main_branch}</span></div>
+                                            <div>• Workflow: <span className="text-white">{
+                                                gitSettings.workflow === 'push_only' ? 'Nur Push' :
+                                                gitSettings.workflow === 'push_and_pr' ? 'Push + PR' :
+                                                'Push + PR + Auto-Merge'
+                                            }</span></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </TabPanel>
             </TabView>

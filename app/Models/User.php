@@ -352,6 +352,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get all Git provider connections for this user
+     */
+    public function gitProviders(): HasMany
+    {
+        return $this->hasMany(UserGitProvider::class);
+    }
+
+    /**
+     * Get a specific Git provider connection
+     */
+    public function getGitProvider(string $provider): ?UserGitProvider
+    {
+        return $this->gitProviders()->where('provider', $provider)->first();
+    }
+
+    /**
      * Get the pending project invitation for this user
      */
     public function pendingProjectInvitation()

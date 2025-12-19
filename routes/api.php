@@ -149,6 +149,9 @@ Route::get('/pricing', function () {
     }
 });
 
+// Code Adjustments - Public utility endpoints (no auth needed, just static variable list)
+Route::get('/code-adjustments/variables', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getVariables'])->name('api.code-adjustments.variables.public');
+
 // Protected Routes (require authentication)
 Route::middleware('auth:api')->group(function () {
     // Generated Project Upload/Download (for deployment)
@@ -173,7 +176,19 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile/seller', [AuthController::class, 'updateSellerProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    
+
+    // Git Provider Integration
+    Route::prefix('git')->group(function () {
+        Route::get('/providers', [\App\Http\Controllers\Api\GitProviderController::class, 'index']);
+        Route::get('/authorize/{provider}', [\App\Http\Controllers\Api\GitProviderController::class, 'authorize']);
+        Route::get('/callback/{provider}', [\App\Http\Controllers\Api\GitProviderController::class, 'callback']);
+        Route::delete('/disconnect/{provider}', [\App\Http\Controllers\Api\GitProviderController::class, 'disconnect']);
+        Route::get('/{provider}/repositories', [\App\Http\Controllers\Api\GitProviderController::class, 'repositories']);
+        Route::get('/{provider}/branches', [\App\Http\Controllers\Api\GitProviderController::class, 'branches']);
+        Route::post('/{provider}/repositories', [\App\Http\Controllers\Api\GitProviderController::class, 'createRepository']);
+        Route::post('/{provider}/push', [\App\Http\Controllers\Api\GitProviderController::class, 'push']);
+    });
+
     // User Activity
     Route::get('/user-update', [SqlParserController::class, 'parse']);
     
@@ -247,6 +262,33 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/bulk', [ProjectTemplateVariableValueController::class, 'bulkUpdate'])->name('bulk');
         Route::delete('/{id}', [ProjectTemplateVariableValueController::class, 'destroy'])->name('destroy');
     });
+
+    // Code Adjustments (Custom code insertions per project)
+    Route::prefix('projects/{projectId}/code-adjustments')->name('api.code-adjustments.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'show'])->name('show');
+        Route::put('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'update'])->name('update');
+        Route::delete('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/toggle', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'toggleActive'])->name('toggle');
+        Route::post('/{id}/duplicate', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'duplicate'])->name('duplicate');
+        // Insertions (nested)
+        Route::post('/{adjustmentId}/insertions', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'storeInsertion'])->name('insertions.store');
+        Route::put('/{adjustmentId}/insertions/{insertionId}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'updateInsertion'])->name('insertions.update');
+        Route::delete('/{adjustmentId}/insertions/{insertionId}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'destroyInsertion'])->name('insertions.destroy');
+        // Reverse Engineering
+        Route::post('/from-analysis', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'createFromAnalysis'])->name('from-analysis');
+    });
+
+    // Code Adjustments - Utility endpoints (analyze/preview require auth, variables is public above)
+    Route::post('/code-adjustments/analyze', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'analyze'])->name('api.code-adjustments.analyze');
+    Route::post('/code-adjustments/preview', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'preview'])->name('api.code-adjustments.preview');
+    Route::post('/code-adjustments/compare-directory', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'compareDirectory'])->name('api.code-adjustments.compare-directory');
+
+    // Project Generations (for code comparison)
+    Route::get('/projects/{projectId}/generations', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getGenerations'])->name('api.generations.index');
+    Route::get('/projects/{projectId}/generations/{generationId}/files', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getGenerationFiles'])->name('api.generations.files');
+    Route::post('/projects/{projectId}/generations/{generationId}/fetch-file', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'fetchFileFromGeneration'])->name('api.generations.fetch-file');
 
     // Template Review System (Inner Core only)
     Route::prefix('template-reviews')->name('api.template-reviews.')->group(function () {
@@ -427,6 +469,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{project}/settings', [ProjectController::class, 'getSettings']);
     Route::put('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
     Route::get('/projects/{project}/templates-with-protected-files', [ProjectController::class, 'getTemplatesWithProtectedFiles']);
+
+    // Project Git Integration Settings
+    Route::get('/projects/{project}/git-settings', [ProjectController::class, 'getGitSettings']);
+    Route::put('/projects/{project}/git-settings', [ProjectController::class, 'updateGitSettings']);
+    Route::delete('/projects/{project}/git-settings', [ProjectController::class, 'removeGitIntegration']);
 
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {

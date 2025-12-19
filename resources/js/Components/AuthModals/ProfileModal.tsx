@@ -69,6 +69,17 @@ interface CliSubscriptionStatus {
   };
 }
 
+interface GitProvider {
+  id: number;
+  provider: 'github' | 'gitlab' | 'bitbucket';
+  provider_name: string;
+  username: string;
+  email: string;
+  avatar_url: string;
+  connected_at: string | null;
+  is_expired: boolean;
+}
+
 export default function ProfileModal({ visible, onHide, defaultTab = 0 }: ProfileModalProps) {
   // Get current language for translations
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
@@ -175,6 +186,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [savingSeller, setSavingSeller] = useState(false);
   const [sellerError, setSellerError] = useState<string>('');
   const [sellerSuccess, setSellerSuccess] = useState<string>('');
+
+  // Git Provider State
+  const [gitProviders, setGitProviders] = useState<GitProvider[]>([]);
+  const [loadingGitProviders, setLoadingGitProviders] = useState(false);
+  const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+  const [disconnectingProvider, setDisconnectingProvider] = useState<string | null>(null);
 
   // Country options for dropdown
   const countries = [
@@ -428,15 +445,168 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
   }, []);
 
+  // Load Git Providers
+  const loadGitProviders = useCallback(async () => {
+    setLoadingGitProviders(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/git/providers', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGitProviders(data.providers || []);
+      }
+    } catch (err) {
+      console.error('Error loading git providers:', err);
+    } finally {
+      setLoadingGitProviders(false);
+    }
+  }, []);
+
+  // Connect a Git Provider (opens popup window)
+  const connectGitProvider = async (provider: string) => {
+    setConnectingProvider(provider);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/git/authorize/${provider}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get authorization URL');
+      }
+
+      // Open popup window for OAuth
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      window.open(
+        data.url,
+        `${provider}-oauth`,
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes`
+      );
+    } catch (err) {
+      console.error('Connect error:', err);
+      setConnectingProvider(null);
+    }
+  };
+
+  // Complete OAuth flow after receiving callback
+  const completeGitOAuth = async (provider: string, code: string, state: string) => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/git/callback/${provider}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to complete connection');
+      }
+
+      loadGitProviders();
+    } catch (err) {
+      console.error('OAuth completion error:', err);
+    } finally {
+      setConnectingProvider(null);
+    }
+  };
+
+  // Disconnect a Git Provider
+  const disconnectGitProvider = async (provider: string) => {
+    if (!confirm(`Möchten Sie die Verbindung zu ${provider === 'github' ? 'GitHub' : provider === 'gitlab' ? 'GitLab' : provider} wirklich trennen?`)) {
+      return;
+    }
+
+    setDisconnectingProvider(provider);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/git/disconnect/${provider}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to disconnect');
+      }
+
+      loadGitProviders();
+    } catch (err) {
+      console.error('Disconnect error:', err);
+    } finally {
+      setDisconnectingProvider(null);
+    }
+  };
+
+  // Listen for OAuth callback messages from popup windows
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'git-oauth-callback') return;
+
+      const { provider, code, state, error } = event.data;
+
+      if (error) {
+        console.error(`${provider} connection failed:`, event.data.errorDescription || error);
+        setConnectingProvider(null);
+        return;
+      }
+
+      if (code && state) {
+        await completeGitOAuth(provider, code, state);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Load user data when opening and reset tab index
   useEffect(() => {
     if (visible) {
       loadUserData();
       loadCliStatus();
       loadPricing();
+      loadGitProviders();
       setActiveTabIndex(defaultTab); // Reset to defaultTab when modal opens
     }
-  }, [visible, loadUserData, loadCliStatus, loadPricing, defaultTab]);
+  }, [visible, loadUserData, loadCliStatus, loadPricing, loadGitProviders, defaultTab]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1405,6 +1575,130 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               className="w-full"
             />
           </form>
+        </TabPanel>
+
+        {/* Git Integration Tab */}
+        <TabPanel header="Git" leftIcon="pi pi-github">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                <i className="pi pi-link text-blue-400"></i>
+                Git Provider verbinden
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Verbinden Sie Ihren GitHub oder GitLab Account, um generierten Code direkt in Ihre Repositories zu pushen.
+              </p>
+            </div>
+
+            {loadingGitProviders ? (
+              <div className="flex justify-center py-8">
+                <i className="pi pi-spinner pi-spin text-2xl text-blue-400"></i>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* GitHub */}
+                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
+                        <i className="pi pi-github text-xl text-white"></i>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">GitHub</h4>
+                        {gitProviders.find(p => p.provider === 'github') ? (
+                          <p className="text-sm text-green-400 flex items-center gap-1">
+                            <i className="pi pi-check-circle"></i>
+                            Verbunden als @{gitProviders.find(p => p.provider === 'github')?.username}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Nicht verbunden</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      {gitProviders.find(p => p.provider === 'github') ? (
+                        <Button
+                          type="button"
+                          label="Trennen"
+                          icon={disconnectingProvider === 'github' ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
+                          className="p-button-danger p-button-sm"
+                          onClick={() => disconnectGitProvider('github')}
+                          disabled={disconnectingProvider !== null}
+                        />
+                      ) : (
+                        <Button
+                          type="button"
+                          label="Verbinden"
+                          icon={connectingProvider === 'github' ? 'pi pi-spinner pi-spin' : 'pi pi-link'}
+                          className="p-button-primary p-button-sm"
+                          onClick={() => connectGitProvider('github')}
+                          disabled={connectingProvider !== null}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* GitLab */}
+                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-900 rounded-full flex items-center justify-center">
+                        <i className="pi pi-gitlab text-xl text-orange-400"></i>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">GitLab</h4>
+                        {gitProviders.find(p => p.provider === 'gitlab') ? (
+                          <p className="text-sm text-green-400 flex items-center gap-1">
+                            <i className="pi pi-check-circle"></i>
+                            Verbunden als @{gitProviders.find(p => p.provider === 'gitlab')?.username}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Nicht verbunden</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      {gitProviders.find(p => p.provider === 'gitlab') ? (
+                        <Button
+                          type="button"
+                          label="Trennen"
+                          icon={disconnectingProvider === 'gitlab' ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
+                          className="p-button-danger p-button-sm"
+                          onClick={() => disconnectGitProvider('gitlab')}
+                          disabled={disconnectingProvider !== null}
+                        />
+                      ) : (
+                        <Button
+                          type="button"
+                          label="Verbinden"
+                          icon={connectingProvider === 'gitlab' ? 'pi pi-spinner pi-spin' : 'pi pi-link'}
+                          className="p-button-primary p-button-sm"
+                          onClick={() => connectGitProvider('gitlab')}
+                          disabled={connectingProvider !== null}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mt-4">
+                  <h5 className="font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                    <i className="pi pi-info-circle"></i>
+                    Wie funktioniert es?
+                  </h5>
+                  <ul className="text-gray-400 text-sm space-y-1">
+                    <li>1. Verbinden Sie Ihren GitHub oder GitLab Account</li>
+                    <li>2. Wählen Sie im Projekt ein Repository aus</li>
+                    <li>3. Nach der Code-Generierung können Sie direkt pushen</li>
+                    <li>• Sie haben volle Kontrolle über Branch und Commit-Message</li>
+                    <li>• Kein automatisches Merge - nur Push und optional PR erstellen</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
         </TabPanel>
 
         <TabPanel header={t.deleteTab} leftIcon="pi pi-trash">

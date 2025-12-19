@@ -341,6 +341,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-search',
           command: () => onOpenPanel('query-builder')
         },
+        {
+          separator: true
+        },
+        {
+          label: 'Code Anpassungen',
+          icon: 'pi pi-sliders-h',
+          command: () => onOpenPanel('code-adjustments')
+        },
         ...(userType === 'system' ? [
           {
             separator: true
@@ -687,6 +695,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-search"></i>
                     <span>{t.panelsewnavigationpanel580}</span>
+                  </button>
+                  <div className="border-t border-gray-600 my-2"></div>
+                  <button onClick={() => onOpenPanel('code-adjustments')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-sliders-h"></i>
+                    <span>Code Anpassungen</span>
                   </button>
                   {userType === 'system' && (
                     <>

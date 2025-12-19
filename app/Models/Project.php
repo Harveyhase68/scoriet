@@ -51,6 +51,16 @@ class Project extends Model
         'protected_files',
         'install_script',
         'update_script',
+        // Git integration fields
+        'git_provider_id',
+        'git_repository',
+        'git_default_branch',
+        'git_main_branch',
+        'git_target_directory',
+        'git_workflow',
+        'git_pr_title_template',
+        'git_pr_description_template',
+        'git_auto_delete_branch',
     ];
 
     protected $casts = [
@@ -65,6 +75,7 @@ class Project extends Model
         'protected_files' => 'array',
         'install_script' => 'array',
         'update_script' => 'array',
+        'git_auto_delete_branch' => 'boolean',
     ];
 
     protected $with = ['owner'];
@@ -75,6 +86,43 @@ class Project extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Get the Git provider connection for this project
+     */
+    public function gitProvider(): BelongsTo
+    {
+        return $this->belongsTo(UserGitProvider::class, 'git_provider_id');
+    }
+
+    /**
+     * Check if project has Git integration configured
+     */
+    public function hasGitIntegration(): bool
+    {
+        return $this->git_provider_id !== null && $this->git_repository !== null;
+    }
+
+    /**
+     * Get Git settings as array for frontend
+     */
+    public function getGitSettings(): array
+    {
+        return [
+            'provider_id' => $this->git_provider_id,
+            'provider' => $this->gitProvider?->provider,
+            'provider_username' => $this->gitProvider?->username,
+            'repository' => $this->git_repository,
+            'default_branch' => $this->git_default_branch,
+            'main_branch' => $this->git_main_branch,
+            'target_directory' => $this->git_target_directory,
+            'workflow' => $this->git_workflow ?? 'push_only',
+            'pr_title_template' => $this->git_pr_title_template,
+            'pr_description_template' => $this->git_pr_description_template,
+            'auto_delete_branch' => $this->git_auto_delete_branch ?? true,
+            'is_configured' => $this->hasGitIntegration(),
+        ];
     }
 
     /**
@@ -172,6 +220,24 @@ class Project extends Model
     public function pendingApplications(): HasMany
     {
         return $this->hasMany(ProjectApplication::class)->where('status', 'pending');
+    }
+
+    /**
+     * Get code adjustments for this project
+     */
+    public function codeAdjustments(): HasMany
+    {
+        return $this->hasMany(CodeAdjustment::class)->orderBy('execution_order');
+    }
+
+    /**
+     * Get active code adjustments
+     */
+    public function activeCodeAdjustments(): HasMany
+    {
+        return $this->hasMany(CodeAdjustment::class)
+                    ->where('is_active', true)
+                    ->orderBy('execution_order');
     }
 
     /**
