@@ -1256,6 +1256,13 @@ export const en: Translations = {
   preferredLanguage: 'Preferred Language',
   languageDescription: 'Choose your preferred language for the application interface',
 
+  // Email Notification Settings
+  emailNotifications: 'Email Notifications',
+  emailSystemNotifications: 'System Notifications',
+  emailSystemNotificationsDesc: 'Important system messages, announcements and admin messages',
+  emailUserNotifications: 'User Messages',
+  emailUserNotificationsDesc: 'Messages from other users, teams and project notifications',
+
   // resources/js\Components\AuthModals\ProfileModal.tsx
   profilemodal498: 'Select Language',
   profilemodal510: 'The username cannot be changed after registration.',
@@ -1921,6 +1928,8 @@ export const en: Translations = {
   joincodemodal95: 'Not authenticated',
   joincodemodal113: 'Failed to submit application',
   joincodemodal117: 'Application submitted successfully! The project owner will review your request.',
+  joincodemodal_toast_detail: 'Please wait until',
+  joincodemodal_toast_detail2: 'has reviewed your application.',
   joincodemodal129: 'Error submitting application',
 
   // resources/js/Components/Modals/JoinCodeModal.tsx
@@ -2606,7 +2615,7 @@ export const en: Translations = {
   panelsewnavigationpanel258: 'Generator',
   panelsewnavigationpanel263: 'Debug Manual Generator',
   panelsewnavigationpanel268: 'Code Generation',
-  panelsewnavigationpanel273: 'Query Builder',
+  panelsewnavigationpanel273: 'Schema Migration',
   panelsewnavigationpanel281: 'Administration',
   panelsewnavigationpanel285: 'System Settings',
   panelsewnavigationpanel290: 'Language Management',
@@ -2644,7 +2653,7 @@ export const en: Translations = {
   panelsewnavigationpanel565: 'Generator',
   panelsewnavigationpanel572: 'Debug Manual Generator',
   panelsewnavigationpanel576: 'Code Generation',
-  panelsewnavigationpanel580: 'Query Builder',
+  panelsewnavigationpanel580: 'Schema Migration',
   panelsewnavigationpanel589: 'Administration',
   panelsewnavigationpanel596: 'System Settings',
   panelsewnavigationpanel600: 'Language Management',
@@ -2937,7 +2946,7 @@ export const en: Translations = {
   newnavigationpanel258: 'Generator',
   newnavigationpanel263: 'Debug Manual Generator',
   newnavigationpanel268: 'Code Generation',
-  newnavigationpanel273: 'Query Builder',
+  newnavigationpanel273: 'Schema Migration',
   newnavigationpanel281: 'Administration',
   newnavigationpanel285: 'System Settings',
   newnavigationpanel290: 'Language Management',
@@ -2975,7 +2984,7 @@ export const en: Translations = {
   newnavigationpanel565: 'Generator',
   newnavigationpanel572: 'Debug Manual Generator',
   newnavigationpanel576: 'Code Generation',
-  newnavigationpanel580: 'Query Builder',
+  newnavigationpanel580: 'Schema Migration',
   newnavigationpanel589: 'Administration',
   newnavigationpanel596: 'System Settings',
   newnavigationpanel600: 'Language Management',
@@ -3013,6 +3022,12 @@ export const en: Translations = {
   panelt1813: 'No projects found',
   panelt1833: 'Selected:',
   panelt1835: 'Name:',
+  panelt1StandaloneTeams: 'Teams (unlinked)',
+  panelt1StandaloneTemplates: 'Templates (unlinked)',
+  panelt1StandaloneDatabases: 'Databases (unlinked)',
+  panelt1MyTeams: 'My Teams',
+  panelt1MyTemplates: 'My Templates',
+  panelt1MyDatabases: 'My Databases',
   panelt1836: 'Type:',
   panelt1837: 'ID:',
   panelt1839: 'Path:',
@@ -4633,7 +4648,7 @@ export const en: Translations = {
   documentationLink: 'Documentation',
   apiReferenceLink: 'API Reference',
   tutorialsLink: 'Tutorials',
-  blogLink: 'Blog',
+  downloadsLink: 'Downloads',
   supportLabel: 'Support',
   helpCenterLink: 'Help Center',
 
@@ -4643,7 +4658,7 @@ export const en: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Contact Us',
   communityLink: 'Community',
-  allRightsReserved: '© 2025 Scoriet, all rights reserved',
+  allRightsReserved: '© 2026 Scoriet, all rights reserved',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Privacy Policy',

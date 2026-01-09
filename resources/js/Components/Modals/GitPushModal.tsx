@@ -3,7 +3,6 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
 import { ProgressBar } from 'primereact/progressbar';
 import { Message } from 'primereact/message';
 import { Checkbox } from 'primereact/checkbox';

@@ -750,7 +750,14 @@ class DatabaseController extends Controller
         $hasAccess = (string)$schema->owner_id === (string)$request->user()->id;
 
         if (!$hasAccess) {
-            // Check if user has access via project
+            // Check if user has access via project as direct member
+            $hasAccess = $schema->projects()->whereHas('members', function($query) use ($request) {
+                $query->where('user_id', $request->user()->id);
+            })->exists();
+        }
+
+        if (!$hasAccess) {
+            // Check if user has access via project as team member
             $hasAccess = $schema->projects()->whereHas('teams.members', function($query) use ($request) {
                 $query->where('user_id', $request->user()->id);
             })->exists();
@@ -875,7 +882,14 @@ class DatabaseController extends Controller
         $hasAccess = (string)$schema->owner_id === (string)$request->user()->id;
 
         if (!$hasAccess) {
-            // Check if user has access via project
+            // Check if user has access via project as direct member
+            $hasAccess = $schema->projects()->whereHas('members', function($query) use ($request) {
+                $query->where('user_id', $request->user()->id);
+            })->exists();
+        }
+
+        if (!$hasAccess) {
+            // Check if user has access via project as team member
             $hasAccess = $schema->projects()->whereHas('teams.members', function($query) use ($request) {
                 $query->where('user_id', $request->user()->id);
             })->exists();

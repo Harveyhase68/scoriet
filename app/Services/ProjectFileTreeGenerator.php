@@ -84,17 +84,32 @@ class ProjectFileTreeGenerator
     /**
      * Load all tables from the latest schema version for this project
      * Returns array with tables and their version numbers
+     * Only loads schemas that are linked to the project via project_schemas
      */
     protected function loadProjectTables(Project $project): array
     {
         $tables = [];
 
-        // Get all schema versions (not just project-connected ones)
-        $allSchemaVersions = SchemaVersion::orderBy('schema_id')->orderBy('version_number', 'desc')->get();
-        
+        // Get only the schema IDs that are linked to this project
+        $linkedSchemaIds = DB::table('project_schemas')
+            ->where('project_id', $project->id)
+            ->pluck('schema_id')
+            ->toArray();
+
+        if (empty($linkedSchemaIds)) {
+            Log::info("🧪 [TREE-GEN] No schemas linked to project {$project->id}");
+            return $tables;
+        }
+
+        // Get schema versions only for linked schemas
+        $schemaVersions = SchemaVersion::whereIn('schema_id', $linkedSchemaIds)
+            ->orderBy('schema_id')
+            ->orderBy('version_number', 'desc')
+            ->get();
+
         // Group by schema_id to get only the latest version per schema
         $latestVersionsBySchema = [];
-        foreach ($allSchemaVersions as $version) {
+        foreach ($schemaVersions as $version) {
             if (!isset($latestVersionsBySchema[$version->schema_id]) ||
                 $version->version_number > $latestVersionsBySchema[$version->schema_id]->version_number) {
                 $latestVersionsBySchema[$version->schema_id] = $version;
@@ -117,8 +132,8 @@ class ProjectFileTreeGenerator
             $tables = array_merge($tables, $schemaTables);
         }
 
-        Log::info("🧪 [TREE-GEN] Loaded tables from ALL schemas: " . count($tables) . " tables from " . count($latestVersionsBySchema) . " schemas");
-        
+        Log::info("🧪 [TREE-GEN] Loaded tables from linked schemas: " . count($tables) . " tables from " . count($latestVersionsBySchema) . " schemas (linked schema IDs: " . implode(', ', $linkedSchemaIds) . ")");
+
         return $tables;
     }
 

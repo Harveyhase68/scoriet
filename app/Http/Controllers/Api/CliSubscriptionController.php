@@ -73,10 +73,12 @@ class CliSubscriptionController extends Controller
     {
         $validated = $request->validate([
             'type' => 'required|in:cli,service,bundle',
+            'bundle_option' => 'nullable|in:keep_both,keep_cli,keep_service,apply_discount,apply_all_discount',
         ]);
 
         $user = $request->user();
         $type = $validated['type'];
+        $bundleOption = $validated['bundle_option'] ?? null;
 
         // Check if patron (already has unlimited access)
         if ($user->user_type === 'patron') {
@@ -86,7 +88,7 @@ class CliSubscriptionController extends Controller
             ], 400);
         }
 
-        // Get cost
+        // Get base cost
         $cost = $this->getCreditCost($type);
 
         // Map type to subscription_type
@@ -96,47 +98,91 @@ class CliSubscriptionController extends Controller
             'bundle' => Subscription::TYPE_BUNDLE,
         };
 
-        // Check if already has active subscription
-        if ($type === 'cli' || $type === 'bundle') {
-            $existingCli = Subscription::where('user_id', $user->id)
-                ->whereIn('subscription_type', [Subscription::TYPE_CLI, Subscription::TYPE_BUNDLE])
-                ->active()
-                ->notExpired()
-                ->exists();
-            if ($existingCli && $type === 'cli') {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sie haben bereits eine aktive CLI-Subscription.',
-                ], 400);
-            }
+        // Get existing subscriptions
+        $existingCliSub = Subscription::where('user_id', $user->id)
+            ->where('subscription_type', Subscription::TYPE_CLI)
+            ->active()
+            ->notExpired()
+            ->first();
+
+        $existingServiceSub = Subscription::where('user_id', $user->id)
+            ->where('subscription_type', Subscription::TYPE_SERVICE)
+            ->active()
+            ->notExpired()
+            ->first();
+
+        $existingBundleSub = Subscription::where('user_id', $user->id)
+            ->where('subscription_type', Subscription::TYPE_BUNDLE)
+            ->active()
+            ->notExpired()
+            ->first();
+
+        // Check if already has active subscription - extend instead of creating new
+        if ($type === 'cli' && $existingCliSub) {
+            return $this->extendSubscription($user, $existingCliSub, $cost, 'CLI Tool');
         }
 
-        if ($type === 'service' || $type === 'bundle') {
-            $existingService = Subscription::where('user_id', $user->id)
-                ->whereIn('subscription_type', [Subscription::TYPE_SERVICE, Subscription::TYPE_BUNDLE])
-                ->active()
-                ->notExpired()
-                ->exists();
-            if ($existingService && $type === 'service') {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sie haben bereits eine aktive Service-Subscription.',
-                ], 400);
-            }
+        if ($type === 'service' && $existingServiceSub) {
+            return $this->extendSubscription($user, $existingServiceSub, $cost, 'Service');
         }
 
-        // Check credits
-        if ($user->credits < $cost) {
+        if ($type === 'bundle' && $existingBundleSub) {
+            return $this->extendSubscription($user, $existingBundleSub, $cost, 'CLI + Service Bundle');
+        }
+
+        // Bundle with existing subscriptions - calculate actual cost
+        $actualCost = $cost;
+        $refundAmount = 0;
+        $deactivateSubscriptions = [];
+
+        if ($type === 'bundle' && ($existingCliSub || $existingServiceSub)) {
+            // Check if user wants to apply discount
+            if (in_array($bundleOption, ['apply_discount', 'apply_all_discount'])) {
+                $totalValue = 0;
+
+                if ($existingCliSub) {
+                    $cliDays = $existingCliSub->getDaysUntilExpiry();
+                    $cliValue = round($cliDays * (50 / 365));
+                    $totalValue += $cliValue;
+                    $deactivateSubscriptions[] = $existingCliSub;
+                }
+
+                if ($existingServiceSub) {
+                    $serviceDays = $existingServiceSub->getDaysUntilExpiry();
+                    $serviceValue = round($serviceDays * (50 / 365));
+                    $totalValue += $serviceValue;
+                    $deactivateSubscriptions[] = $existingServiceSub;
+                }
+
+                // Calculate actual cost (can be negative = refund)
+                $actualCost = $cost - $totalValue;
+
+                if ($actualCost < 0) {
+                    $refundAmount = abs($actualCost);
+                    $actualCost = 0;
+                }
+            }
+            // else: keep_both - user pays full price, existing subs continue after bundle
+        }
+
+        // Check credits (only if cost is positive)
+        if ($actualCost > 0 && $user->credits < $actualCost) {
             return response()->json([
                 'success' => false,
-                'error' => "Nicht genug Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
-                'required' => $cost,
+                'error' => "Nicht genug Credits. Benötigt: {$actualCost}, Vorhanden: {$user->credits}",
+                'required' => $actualCost,
                 'available' => $user->credits,
             ], 400);
         }
 
         // Use transaction for safety
-        $result = DB::transaction(function () use ($user, $type, $subscriptionType, $cost) {
+        $result = DB::transaction(function () use ($user, $type, $subscriptionType, $actualCost, $refundAmount, $deactivateSubscriptions) {
+            // Deactivate old subscriptions if applying discount
+            foreach ($deactivateSubscriptions as $oldSub) {
+                $oldSub->is_active = false;
+                $oldSub->save();
+            }
+
             // Create subscription
             $subscription = Subscription::create([
                 'user_id' => $user->id,
@@ -146,35 +192,96 @@ class CliSubscriptionController extends Controller
                 'expires_at' => now()->addYear(),
             ]);
 
-            // Deduct credits
-            $user->credits -= $cost;
-            $user->save();
+            // Handle credits
+            if ($actualCost > 0) {
+                // Deduct credits
+                $user->credits -= $actualCost;
+                $user->save();
 
-            // Create credit transaction
-            CreditTransaction::create([
-                'user_id' => $user->id,
-                'amount' => -$cost,
-                'type' => 'cli_unlock',
-                'description' => match ($type) {
-                    'cli' => 'CLI Tool freigeschaltet (1 Jahr)',
-                    'service' => 'Service freigeschaltet (1 Jahr)',
-                    'bundle' => 'CLI + Service Bundle freigeschaltet (1 Jahr)',
-                },
-                'reference_type' => 'Subscription',
-                'reference_id' => $subscription->id,
-            ]);
+                CreditTransaction::create([
+                    'user_id' => $user->id,
+                    'amount' => -$actualCost,
+                    'type' => 'cli_unlock',
+                    'description' => match ($type) {
+                        'cli' => 'CLI Tool freigeschaltet (1 Jahr)',
+                        'service' => 'Service freigeschaltet (1 Jahr)',
+                        'bundle' => 'CLI + Service Bundle freigeschaltet (1 Jahr)',
+                    },
+                    'reference_type' => 'Subscription',
+                    'reference_id' => $subscription->id,
+                ]);
+            }
+
+            // Refund credits if applicable
+            if ($refundAmount > 0) {
+                $user->credits += $refundAmount;
+                $user->save();
+
+                CreditTransaction::create([
+                    'user_id' => $user->id,
+                    'amount' => $refundAmount,
+                    'type' => 'bundle_refund',
+                    'description' => "Bundle-Upgrade Gutschrift: {$refundAmount} Credits",
+                    'reference_type' => 'Subscription',
+                    'reference_id' => $subscription->id,
+                ]);
+            }
 
             return $subscription;
         });
 
+        $message = match ($type) {
+            'cli' => 'CLI Tool erfolgreich freigeschaltet!',
+            'service' => 'Service erfolgreich freigeschaltet!',
+            'bundle' => $refundAmount > 0
+                ? "CLI + Service Bundle freigeschaltet! {$refundAmount} Credits wurden gutgeschrieben."
+                : 'CLI + Service Bundle erfolgreich freigeschaltet!',
+        };
+
         return response()->json([
             'success' => true,
-            'message' => match ($type) {
-                'cli' => 'CLI Tool erfolgreich freigeschaltet!',
-                'service' => 'Service erfolgreich freigeschaltet!',
-                'bundle' => 'CLI + Service Bundle erfolgreich freigeschaltet!',
-            },
+            'message' => $message,
             'subscription' => $result,
+            'new_credits' => $user->fresh()->credits,
+            'refund_amount' => $refundAmount,
+        ]);
+    }
+
+    /**
+     * Extend an existing subscription by 1 year
+     */
+    private function extendSubscription($user, $subscription, $cost, $name)
+    {
+        if ($user->credits < $cost) {
+            return response()->json([
+                'success' => false,
+                'error' => "Nicht genug Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'required' => $cost,
+                'available' => $user->credits,
+            ], 400);
+        }
+
+        DB::transaction(function () use ($user, $subscription, $cost, $name) {
+            $subscription->expires_at = $subscription->expires_at->addYear();
+            $subscription->save();
+
+            $user->credits -= $cost;
+            $user->save();
+
+            CreditTransaction::create([
+                'user_id' => $user->id,
+                'amount' => -$cost,
+                'type' => 'cli_extend',
+                'description' => "{$name} um 1 Jahr verlängert",
+                'reference_type' => 'Subscription',
+                'reference_id' => $subscription->id,
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$name} um 1 Jahr verlängert!",
+            'subscription' => $subscription->fresh(),
             'new_credits' => $user->fresh()->credits,
         ]);
     }

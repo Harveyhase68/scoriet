@@ -1256,6 +1256,13 @@ export const de: Translations = {
   preferredLanguage: 'Bevorzugte Sprache',
   languageDescription: 'Wählen Sie Ihre bevorzugte Sprache für die Anwendungsoberfläche',
 
+  // Email Notification Settings
+  emailNotifications: 'E-Mail Benachrichtigungen',
+  emailSystemNotifications: 'System-Benachrichtigungen',
+  emailSystemNotificationsDesc: 'Wichtige Systemmeldungen, Ankündigungen und Admin-Nachrichten',
+  emailUserNotifications: 'Benutzer-Nachrichten',
+  emailUserNotificationsDesc: 'Nachrichten von anderen Benutzern, Teams und Projekt-Benachrichtigungen',
+
   // resources/js\Components\AuthModals\ProfileModal.tsx
   profilemodal498: 'Sprache auswählen',
   profilemodal510: 'Der Benutzername kann nach der Registrierung nicht mehr geändert werden.',
@@ -1921,6 +1928,8 @@ export const de: Translations = {
   joincodemodal95: 'Nicht authentifiziert',
   joincodemodal113: 'Antrag konnte nicht übermittelt werden',
   joincodemodal117: 'Antrag erfolgreich übermittelt! Der Projektinhaber wird Ihre Anfrage prüfen.',
+  joincodemodal_toast_detail: 'Bitte warten Sie, bis',
+  joincodemodal_toast_detail2: 'die Bewerbung bearbeitet hat.',
   joincodemodal129: 'Fehler beim Senden der Bewerbung',
 
   // resources/js/Components/Modals/JoinCodeModal.tsx
@@ -2589,7 +2598,7 @@ export const de: Translations = {
   panelsewnavigationpanel138: 'Einstellungen',
   panelsewnavigationpanel142: 'Projekt-Einstellungen',
   panelsewnavigationpanel161: 'Teams',
-  panelsewnavigationpanel165: 'Teammanagement',
+  panelsewnavigationpanel165: 'Team Management 💰',
   panelsewnavigationpanel170: 'Teamzuweisung',
   panelsewnavigationpanel184: 'Templates',
   panelsewnavigationpanel188: 'Template Verwaltung',
@@ -2599,7 +2608,7 @@ export const de: Translations = {
   panelsewnavigationpanel216: 'Öffentliche Projekte',
   panelsewnavigationpanel223: 'Datenbank',
   panelsewnavigationpanel228: 'Datenbanken verwalten',
-  panelsewnavigationpanel233: 'Datenbankdesigner',
+  panelsewnavigationpanel233: 'Datenbankdesigner 💰',
   panelsewnavigationpanel238: 'Schemaübersetzung',
   panelsewnavigationpanel246: 'Schema importieren',
   panelsewnavigationpanel251: 'SQL exportieren',
@@ -2627,7 +2636,7 @@ export const de: Translations = {
   panelsewnavigationpanel443: 'Einstellungen',
   panelsewnavigationpanel459: 'Projekt-Einstellungen',
   panelsewnavigationpanel469: 'Teams',
-  panelsewnavigationpanel477: 'Teammanagement',
+  panelsewnavigationpanel477: 'Team Management',
   panelsewnavigationpanel488: 'Teamzuweisung',
   panelsewnavigationpanel496: 'Template Überprüfung',
   panelsewnavigationpanel504: 'Template Verwaltung',
@@ -2637,7 +2646,7 @@ export const de: Translations = {
   panelsewnavigationpanel525: 'Öffentliche Projekte',
   panelsewnavigationpanel533: 'Datenbank',
   panelsewnavigationpanel540: 'Datenbanken verwalten',
-  panelsewnavigationpanel544: 'Datenbankdesigner',
+  panelsewnavigationpanel544: 'Datenbankdesigner 💰',
   panelsewnavigationpanel548: 'Schemaübersetzung',
   panelsewnavigationpanel553: 'SQL importieren',
   panelsewnavigationpanel557: 'SQL exportieren',
@@ -2920,7 +2929,7 @@ export const de: Translations = {
   newnavigationpanel138: 'Einstellungen',
   newnavigationpanel142: 'Projekt-Einstellungen',
   newnavigationpanel161: 'Teams',
-  newnavigationpanel165: 'Teammanagement',
+  newnavigationpanel165: 'Team Management',
   newnavigationpanel170: 'Teamzuweisung',
   newnavigationpanel184: 'Templates',
   newnavigationpanel188: 'Template Verwaltung',
@@ -2958,7 +2967,7 @@ export const de: Translations = {
   newnavigationpanel443: 'Einstellungen',
   newnavigationpanel459: 'Projekt-Einstellungen',
   newnavigationpanel469: 'Teams',
-  newnavigationpanel477: 'Teammanagement',
+  newnavigationpanel477: 'Team Management',
   newnavigationpanel488: 'Teamzuweisung',
   newnavigationpanel496: 'Template',
   newnavigationpanel504: 'Template Verwaltung',
@@ -3013,6 +3022,12 @@ export const de: Translations = {
   panelt1813: 'Keine Projekte gefunden',
   panelt1833: 'Ausgewählt:',
   panelt1835: 'Name:',
+  panelt1StandaloneTeams: 'Teams (nicht verknüpft)',
+  panelt1StandaloneTemplates: 'Templates (nicht verknüpft)',
+  panelt1StandaloneDatabases: 'Datenbanken (nicht verknüpft)',
+  panelt1MyTeams: 'Meine Teams',
+  panelt1MyTemplates: 'Meine Templates',
+  panelt1MyDatabases: 'Meine Datenbanken',
   panelt1836: 'Typ:',
   panelt1837: 'AUSWEIS:',
   panelt1839: 'Weg:',
@@ -3890,7 +3905,7 @@ export const de: Translations = {
   teammanagementpanel386: 'Mitglieder verwalten',
   teammanagementpanel394: 'Team bearbeiten',
   teammanagementpanel400: 'Team löschen',
-  teammanagementpanel416: 'Teammanagement',
+  teammanagementpanel416: 'Team Management',
 
   // resources/js/Components/Panels/TeamManagementPanel.tsx
   teammanagementpanel417: 'Erstellen, verwalten und organisieren Sie Ihre Teams. Weisen Sie Teammitglieder zu und steuern Sie die Zugriffsberechtigungen.',
@@ -4633,7 +4648,7 @@ export const de: Translations = {
   documentationLink: 'Dokumentation',
   apiReferenceLink: 'API-Referenz',
   tutorialsLink: 'Tutorials',
-  blogLink: 'Blog',
+  downloadsLink: 'Downloads',
   supportLabel: 'Support',
   helpCenterLink: 'Hilfe-Center',
 
@@ -4643,7 +4658,7 @@ export const de: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Kontakt',
   communityLink: 'Community',
-  allRightsReserved: '© 2025 Scoriet, alle Rechte vorbehalten',
+  allRightsReserved: '© 2026 Scoriet, alle Rechte vorbehalten',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Datenschutz',

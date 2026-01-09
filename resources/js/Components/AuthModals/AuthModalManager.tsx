@@ -18,6 +18,7 @@ interface AuthModalManagerProps {
   resetPasswordEmail?: string;
   isLoginClosable?: boolean;
   currentLanguage?: SupportedLanguage;
+  profileDefaultTab?: number; // Tab index to open in ProfileModal (0=Profile, 1=Password, 2=Subscriptions, etc.)
 }
 
 export default function AuthModalManager({
@@ -28,7 +29,8 @@ export default function AuthModalManager({
   resetPasswordToken,
   resetPasswordEmail,
   isLoginClosable = true,
-  currentLanguage: propLanguage
+  currentLanguage: propLanguage,
+  profileDefaultTab = 0
 }: AuthModalManagerProps) {
   // Use prop language or fallback to stored language
   const currentLanguage = propLanguage || getStoredLanguage();
@@ -98,7 +100,7 @@ export default function AuthModalManager({
       <ProfileModal
         visible={currentModal === 'profile'}
         onHide={handleCloseModal}
-        defaultTab={0}
+        defaultTab={profileDefaultTab}
       />
 
       <PlanModal

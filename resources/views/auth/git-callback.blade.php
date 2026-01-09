@@ -65,11 +65,29 @@
             };
 
             // Send message to parent window (opener)
-            if (window.opener) {
-                window.opener.postMessage({
-                    type: 'git-oauth-callback',
-                    ...data
-                }, window.location.origin);
+            let messageSent = false;
+            if (window.opener && !window.opener.closed) {
+                try {
+                    window.opener.postMessage({
+                        type: 'git-oauth-callback',
+                        ...data
+                    }, window.location.origin);
+                    messageSent = true;
+                } catch (e) {
+                    console.error('Failed to send message to opener:', e);
+                }
+            }
+
+            // If we couldn't send the message, show an error
+            if (!messageSent && !data.error) {
+                document.querySelector('.container').innerHTML = `
+                    <div class="error">
+                        <h2>Verbindung fehlgeschlagen</h2>
+                        <p>Das Hauptfenster konnte nicht erreicht werden.</p>
+                        <p>Bitte schließen Sie dieses Fenster und versuchen Sie es erneut.</p>
+                    </div>
+                `;
+                return; // Don't auto-close
             }
 
             // Close this window after a short delay

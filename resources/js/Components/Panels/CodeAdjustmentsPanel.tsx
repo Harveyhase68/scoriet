@@ -86,7 +86,19 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   const modifiedFileInputRef = useRef<HTMLInputElement>(null);
   const { selectedProject } = useProject();
-  const t = useTranslation(getStoredLanguage());
+  const _t = useTranslation(getStoredLanguage());
+
+  // Code Adjustments Access State (Premium Feature)
+  const [codeAdjustmentsAccess, setCodeAdjustmentsAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    unlock_cost?: number;
+    days_remaining?: number;
+    expires_at?: string;
+    is_patron?: boolean;
+  } | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
 
   // State
   const [loading, setLoading] = useState(false);
@@ -143,10 +155,22 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   const [fetchingFile, setFetchingFile] = useState(false);
 
   // Directory comparison states
-  const [directorySource, setDirectorySource] = useState<'upload' | 'service'>('upload');
+  const [directorySource, setDirectorySource] = useState<'upload' | 'service' | 'git'>('upload');
   const [uploadedArchive, setUploadedArchive] = useState<File | null>(null);
   const [selectedGenerationForCompare, setSelectedGenerationForCompare] = useState<number | null>(null);
   const [comparingDirectory, setComparingDirectory] = useState(false);
+
+  // Git comparison states
+  const [gitProviders, setGitProviders] = useState<Array<{ provider: string; username: string }>>([]);
+  const [selectedGitProvider, setSelectedGitProvider] = useState<string | null>(null);
+  const [gitRepositories, setGitRepositories] = useState<Array<{ full_name: string; name: string }>>([]);
+  const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
+  const [gitBranches, setGitBranches] = useState<Array<{ name: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [gitDirectory, setGitDirectory] = useState<string>('');
+  const [loadingGitProviders, setLoadingGitProviders] = useState(false);
+  const [loadingRepositories, setLoadingRepositories] = useState(false);
+  const [loadingBranches, setLoadingBranches] = useState(false);
   const [directoryCompareResult, setDirectoryCompareResult] = useState<{
     files: Array<{
       path: string;
@@ -168,6 +192,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   const [creatingBatchAdjustments, setCreatingBatchAdjustments] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentFile: string } | null>(null);
 
+  // Export/Import states
+  const [exporting, setExporting] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+
   // ========== API CALLS ==========
 
   const getAuthHeaders = useCallback(() => {
@@ -178,6 +210,61 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       'Authorization': `Bearer ${token}`,
     };
   }, []);
+
+  // Load Code Adjustments access status
+  const loadCodeAdjustmentsAccess = useCallback(async () => {
+    setLoadingAccess(true);
+    try {
+      const response = await fetch('/api/subscriptions/code-adjustments/status', {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCodeAdjustmentsAccess(data);
+      }
+    } catch (error) {
+      console.error('Failed to load code adjustments access:', error);
+    } finally {
+      setLoadingAccess(false);
+    }
+  }, [getAuthHeaders]);
+
+  // Unlock Code Adjustments with credits
+  const unlockCodeAdjustments = async () => {
+    setUnlocking(true);
+    try {
+      const response = await fetch('/api/subscriptions/unlock-code-adjustments', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCodeAdjustmentsAccess(data.access_status);
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Erfolg',
+          detail: data.message || 'Code Anpassungen freigeschaltet!',
+        });
+      } else {
+        const error = await response.json();
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: error.message || 'Freischaltung fehlgeschlagen',
+        });
+      }
+    } catch (err) {
+      console.error('Error unlocking code adjustments:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Freischaltung fehlgeschlagen',
+      });
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const loadAdjustments = useCallback(async () => {
     if (!selectedProject?.id) return;
@@ -273,6 +360,78 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     }
   }, [selectedProject?.id, getAuthHeaders]);
 
+  // ========== GIT FUNCTIONS ==========
+
+  const loadGitProviders = useCallback(async () => {
+    setLoadingGitProviders(true);
+    try {
+      const response = await fetch('/api/git/providers', {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      // API returns { providers: [...], git_integration_access: {...} }
+      if (data.providers && data.providers.length > 0) {
+        setGitProviders(data.providers.map((p: any) => ({
+          provider: p.provider,
+          username: p.username,
+        })));
+      }
+    } catch (error) {
+      console.error('Load git providers error:', error);
+    } finally {
+      setLoadingGitProviders(false);
+    }
+  }, [getAuthHeaders]);
+
+  const loadGitRepositories = useCallback(async (provider: string) => {
+    setLoadingRepositories(true);
+    setGitRepositories([]);
+    setSelectedRepository(null);
+    setGitBranches([]);
+    setSelectedBranch(null);
+    try {
+      const response = await fetch(`/api/git/${provider}/repositories`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.repositories) {
+        setGitRepositories(data.repositories.map((r: any) => ({
+          full_name: r.full_name,
+          name: r.name,
+        })));
+      }
+    } catch (error) {
+      console.error('Load repositories error:', error);
+    } finally {
+      setLoadingRepositories(false);
+    }
+  }, [getAuthHeaders]);
+
+  const loadGitBranches = useCallback(async (provider: string, repository: string) => {
+    setLoadingBranches(true);
+    setGitBranches([]);
+    setSelectedBranch(null);
+    try {
+      // API expects 'repo' parameter, not 'repository'
+      const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repository)}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.branches) {
+        setGitBranches(data.branches);
+        // Auto-select main/master branch
+        const mainBranch = data.branches.find((b: any) => b.name === 'main' || b.name === 'master');
+        if (mainBranch) {
+          setSelectedBranch(mainBranch.name);
+        }
+      }
+    } catch (error) {
+      console.error('Load branches error:', error);
+    } finally {
+      setLoadingBranches(false);
+    }
+  }, [getAuthHeaders]);
+
   const fetchFileFromGeneration = useCallback(async () => {
     if (!selectedProject?.id || !selectedGenerationId || !selectedFilePath) return;
 
@@ -314,11 +473,19 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     }
   }, [selectedProject?.id, selectedGenerationId, selectedFilePath, getAuthHeaders]);
 
+  // Load access status on mount
   useEffect(() => {
-    loadAdjustments();
-    loadVariables();
-    loadGenerations();
-  }, [loadAdjustments, loadVariables, loadGenerations]);
+    loadCodeAdjustmentsAccess();
+  }, [loadCodeAdjustmentsAccess]);
+
+  // Load data only if user has access
+  useEffect(() => {
+    if (codeAdjustmentsAccess?.has_access) {
+      loadAdjustments();
+      loadVariables();
+      loadGenerations();
+    }
+  }, [codeAdjustmentsAccess?.has_access, loadAdjustments, loadVariables, loadGenerations]);
 
   // Load files when generation is selected
   useEffect(() => {
@@ -645,6 +812,17 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       return;
     }
 
+    if (directorySource === 'git') {
+      if (!selectedGitProvider || !selectedRepository || !selectedBranch) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Git nicht konfiguriert',
+          detail: 'Bitte wählen Sie Provider, Repository und Branch aus',
+        });
+        return;
+      }
+    }
+
     if (!selectedGenerationForCompare) {
       toast.current?.show({
         severity: 'warn',
@@ -658,33 +836,67 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     setDirectoryCompareResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('project_id', selectedProject.id.toString());
-      formData.append('generation_id', selectedGenerationForCompare.toString());
-      formData.append('source', directorySource);
-
-      if (directorySource === 'upload' && uploadedArchive) {
-        formData.append('archive', uploadedArchive);
-      }
-
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch('/api/code-adjustments/compare-directory', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: formData,
-      });
+      let response;
+
+      if (directorySource === 'git') {
+        // Use the new Git comparison endpoint
+        response = await fetch('/api/code-adjustments/compare-git', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: selectedProject.id,
+            generation_id: selectedGenerationForCompare,
+            provider: selectedGitProvider,
+            repository: selectedRepository,
+            branch: selectedBranch,
+            directory: gitDirectory || '',
+          }),
+        });
+      } else {
+        // Use FormData for upload/service
+        const formData = new FormData();
+        formData.append('project_id', selectedProject.id.toString());
+        formData.append('generation_id', selectedGenerationForCompare.toString());
+        formData.append('source', directorySource);
+
+        if (directorySource === 'upload' && uploadedArchive) {
+          formData.append('archive', uploadedArchive);
+        }
+
+        response = await fetch('/api/code-adjustments/compare-directory', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          body: formData,
+        });
+      }
 
       const data = await response.json();
 
       if (data.success) {
         setDirectoryCompareResult(data.data);
+        // Build info message for Git comparisons
+        let infoMessage = '';
+        if (data.data.git_info) {
+          const gi = data.data.git_info;
+          const parts = [];
+          if (gi.skipped_large > 0) {
+            parts.push(`${gi.skipped_large} große Dateien übersprungen`);
+          }
+          parts.push(`${gi.fetched} Dateien aus ${gi.repository}:${gi.branch}`);
+          infoMessage = ` (${parts.join(', ')})`;
+        }
         toast.current?.show({
           severity: 'success',
           summary: 'Vergleich abgeschlossen',
-          detail: `${data.data.summary.modified} geänderte Dateien gefunden`,
+          detail: `${data.data.summary.modified} geänderte Dateien gefunden${infoMessage}`,
         });
       } else {
         toast.current?.show({
@@ -986,6 +1198,142 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     }
   };
 
+  // ========== EXPORT / IMPORT ==========
+
+  const exportAdjustments = async () => {
+    if (!selectedProject?.id) return;
+
+    setExporting(true);
+    try {
+      const response = await fetch(`/api/projects/${selectedProject.id}/code-adjustments/export`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // Create and download JSON file
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `code-adjustments-${selectedProject.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Export erfolgreich',
+          detail: `${data.data.adjustments.length} Anpassung(en) exportiert`,
+        });
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: data.message || 'Export fehlgeschlagen',
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Export fehlgeschlagen',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Ungültiges Format',
+        detail: 'Bitte wählen Sie eine JSON-Datei',
+      });
+      return;
+    }
+
+    setImportFile(file);
+    event.target.value = '';
+  };
+
+  const importAdjustments = async () => {
+    if (!selectedProject?.id || !importFile) return;
+
+    setImporting(true);
+    try {
+      // Read file content
+      const fileContent = await importFile.text();
+      let importData;
+
+      try {
+        importData = JSON.parse(fileContent);
+      } catch {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Ungültige Datei',
+          detail: 'Die JSON-Datei ist ungültig oder beschädigt',
+        });
+        setImporting(false);
+        return;
+      }
+
+      // Validate basic structure
+      if (!importData.version || !importData.adjustments || !Array.isArray(importData.adjustments)) {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Ungültiges Format',
+          detail: 'Die Datei hat nicht das erwartete Format',
+        });
+        setImporting(false);
+        return;
+      }
+
+      const response = await fetch(`/api/projects/${selectedProject.id}/code-adjustments/import`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          data: importData,
+          mode: importMode,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Import erfolgreich',
+          detail: data.message,
+          life: 5000,
+        });
+        setShowImportDialog(false);
+        setImportFile(null);
+        loadAdjustments();
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: data.message || 'Import fehlgeschlagen',
+        });
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Import fehlgeschlagen',
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // ========== RENDER HELPERS ==========
 
   const insertionTypeOptions = [
@@ -1012,7 +1360,91 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     );
   }
 
-  // ========== MAIN RENDER ==========
+  // ========== LOADING ACCESS ==========
+
+  if (loadingAccess) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <ProgressSpinner />
+      </div>
+    );
+  }
+
+  // ========== NO ACCESS - SHOW PREMIUM BANNER ==========
+
+  if (!codeAdjustmentsAccess?.has_access) {
+    return (
+      <div className="h-full flex flex-col bg-gray-900 text-white">
+        <Toast ref={toast} />
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-3 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <i className="pi pi-sliders-h text-xl text-blue-400" />
+            <h2 className="text-lg font-semibold">Code Anpassungen</h2>
+            <Tag value={selectedProject.name} severity="info" />
+          </div>
+        </div>
+
+        {/* Premium Banner */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-md w-full">
+            <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-4">🔒</div>
+              <h3 className="text-xl font-semibold text-purple-200 mb-2">
+                Code Anpassungen ist ein Premium-Feature
+              </h3>
+              <p className="text-gray-400 mb-4">
+                Mit Code Anpassungen können Sie automatisch eigene Modifikationen in den generierten Code einfügen.
+              </p>
+
+              <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                <div className="text-2xl font-bold text-purple-300 mb-1">
+                  {codeAdjustmentsAccess?.unlock_cost || 50} Credits / Jahr
+                </div>
+                <div className="text-sm text-gray-500">
+                  Einmalige Freischaltung für 12 Monate
+                </div>
+              </div>
+
+              <Button
+                label={unlocking ? 'Wird freigeschaltet...' : 'Freischalten'}
+                icon="pi pi-unlock"
+                className="p-button-lg"
+                style={{
+                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  border: 'none',
+                }}
+                onClick={unlockCodeAdjustments}
+                disabled={unlocking}
+                loading={unlocking}
+              />
+
+              <div className="mt-4 text-sm text-gray-500">
+                <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+                <ul className="text-left space-y-1">
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>📝</span> Einzelcode Vergleich
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>📁</span> Verzeichnis Vergleich
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>⚙️</span> Verwaltung von Anpassungen
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>🔄</span> Automatische Anwendung bei Generierung
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== MAIN RENDER (WITH ACCESS) ==========
 
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white">
@@ -1025,22 +1457,47 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           <i className="pi pi-sliders-h text-xl text-blue-400" />
           <h2 className="text-lg font-semibold">Code Anpassungen</h2>
           <Tag value={selectedProject.name} severity="info" />
+          {/* Access Status Badge */}
+          {codeAdjustmentsAccess?.is_patron ? (
+            <Tag value="Patron" severity="warning" className="ml-2" />
+          ) : codeAdjustmentsAccess?.days_remaining !== undefined ? (
+            <Tag value={`${codeAdjustmentsAccess.days_remaining} Tage`} severity="info" className="ml-2" />
+          ) : null}
         </div>
-        <Button
-          label="Neue Anpassung"
-          icon="pi pi-plus"
-          size="small"
-          onClick={() => {
-            setEditingAdjustment({
-              name: '',
-              file_pattern: '',
-              min_confidence: 0.8,
-              execution_order: 0,
-              is_active: true,
-            });
-            setShowAdjustmentDialog(true);
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            icon={exporting ? 'pi pi-spin pi-spinner' : 'pi pi-download'}
+            size="small"
+            text
+            tooltip="Exportieren"
+            tooltipOptions={{ position: 'bottom' }}
+            onClick={exportAdjustments}
+            disabled={exporting || adjustments.length === 0}
+          />
+          <Button
+            icon="pi pi-upload"
+            size="small"
+            text
+            tooltip="Importieren"
+            tooltipOptions={{ position: 'bottom' }}
+            onClick={() => setShowImportDialog(true)}
+          />
+          <Button
+            label="Neue Anpassung"
+            icon="pi pi-plus"
+            size="small"
+            onClick={() => {
+              setEditingAdjustment({
+                name: '',
+                file_pattern: '',
+                min_confidence: 0.8,
+                execution_order: 0,
+                is_active: true,
+              });
+              setShowAdjustmentDialog(true);
+            }}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1463,7 +1920,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
         {/* Tab 3: Verzeichnis Vergleich */}
         <TabPanel header="Verzeichnis Vergleich" leftIcon="pi pi-folder mr-2">
-          <div className="p-4">
+          <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             {/* Hidden file input for archive */}
             <input
               type="file"
@@ -1506,7 +1963,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             {/* Source Selection */}
             <div className="border border-gray-700 rounded p-4 mb-4">
               <h5 className="font-semibold mb-3">Quelle für modifizierte Dateien</h5>
-              <div className="flex gap-6">
+              <div className="flex gap-4">
                 <div
                   className={`flex-1 p-4 rounded border-2 cursor-pointer transition-all ${
                     directorySource === 'upload'
@@ -1520,7 +1977,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     <span className="font-medium">Archiv hochladen</span>
                   </div>
                   <p className="text-sm text-gray-400">
-                    Laden Sie Ihr modifiziertes Projekt als ZIP, tar.gz oder tar.xz hoch
+                    ZIP, tar.gz oder tar.xz
                   </p>
                   {directorySource === 'upload' && (
                     <div className="mt-3">
@@ -1530,6 +1987,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                         onClick={() => directoryFileInputRef.current?.click()}
                         className="w-full"
                         outlined={!uploadedArchive}
+                        size="small"
                       />
                     </div>
                   )}
@@ -1545,15 +2003,109 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <i className="pi pi-server text-xl text-green-400" />
-                    <span className="font-medium">Vom Service abrufen</span>
+                    <span className="font-medium">Vom Service</span>
                   </div>
                   <p className="text-sm text-gray-400">
-                    Der Scoriet-Service holt die Dateien direkt aus Ihrem Deploy-Verzeichnis
+                    Scoriet-Service
                   </p>
                   {directorySource === 'service' && (
                     <div className="mt-3 text-xs text-yellow-400">
                       <i className="pi pi-info-circle mr-1" />
-                      Erfordert den laufenden Scoriet-Service auf dem Zielserver
+                      Erfordert laufenden Service
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className={`flex-1 p-4 rounded border-2 cursor-pointer transition-all ${
+                    directorySource === 'git'
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                  onClick={() => {
+                    setDirectorySource('git');
+                    if (gitProviders.length === 0) {
+                      loadGitProviders();
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="pi pi-github text-xl text-purple-400" />
+                    <span className="font-medium">GitHub/GitLab</span>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Aus Git-Repository
+                  </p>
+                  {directorySource === 'git' && (
+                    <div className="mt-3 space-y-2">
+                      {loadingGitProviders ? (
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <ProgressSpinner style={{ width: '16px', height: '16px' }} />
+                          Lade Provider...
+                        </div>
+                      ) : gitProviders.length === 0 ? (
+                        <div className="text-xs text-yellow-400">
+                          <i className="pi pi-info-circle mr-1" />
+                          Kein Git-Provider verbunden
+                        </div>
+                      ) : (
+                        <>
+                          <Dropdown
+                            value={selectedGitProvider}
+                            options={gitProviders.map(p => ({
+                              label: `${p.provider === 'github' ? 'GitHub' : 'GitLab'} (${p.username})`,
+                              value: p.provider
+                            }))}
+                            onChange={(e) => {
+                              setSelectedGitProvider(e.value);
+                              loadGitRepositories(e.value);
+                            }}
+                            placeholder="Provider..."
+                            className="w-full text-xs p-inputtext-sm"
+                          />
+                          {selectedGitProvider && (
+                            <Dropdown
+                              value={selectedRepository}
+                              options={gitRepositories.map(r => ({
+                                label: r.name,
+                                value: r.full_name
+                              }))}
+                              onChange={(e) => {
+                                setSelectedRepository(e.value);
+                                loadGitBranches(selectedGitProvider, e.value);
+                              }}
+                              placeholder="Repository..."
+                              className="w-full text-xs p-inputtext-sm"
+                              loading={loadingRepositories}
+                              disabled={loadingRepositories}
+                              filter
+                            />
+                          )}
+                          {selectedRepository && (
+                            <Dropdown
+                              value={selectedBranch}
+                              options={gitBranches.map(b => ({
+                                label: b.name,
+                                value: b.name
+                              }))}
+                              onChange={(e) => setSelectedBranch(e.value)}
+                              placeholder="Branch..."
+                              className="w-full text-xs p-inputtext-sm"
+                              loading={loadingBranches}
+                              disabled={loadingBranches}
+                              filter
+                            />
+                          )}
+                          {selectedBranch && (
+                            <InputText
+                              value={gitDirectory}
+                              onChange={(e) => setGitDirectory(e.target.value)}
+                              placeholder="Verzeichnis (optional)"
+                              className="w-full text-xs"
+                            />
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1567,7 +2119,8 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   disabled={
                     comparingDirectory ||
                     !selectedGenerationForCompare ||
-                    (directorySource === 'upload' && !uploadedArchive)
+                    (directorySource === 'upload' && !uploadedArchive) ||
+                    (directorySource === 'git' && (!selectedGitProvider || !selectedRepository || !selectedBranch))
                   }
                 />
               </div>
@@ -2046,6 +2599,119 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             </div>
           </div>
         )}
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog
+        header="Code Anpassungen importieren"
+        visible={showImportDialog}
+        onHide={() => {
+          setShowImportDialog(false);
+          setImportFile(null);
+        }}
+        style={{ width: '500px' }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              label="Abbrechen"
+              text
+              onClick={() => {
+                setShowImportDialog(false);
+                setImportFile(null);
+              }}
+            />
+            <Button
+              label={importing ? 'Importiere...' : 'Importieren'}
+              icon={importing ? 'pi pi-spin pi-spinner' : 'pi pi-upload'}
+              onClick={importAdjustments}
+              disabled={!importFile || importing}
+            />
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={importFileInputRef}
+            onChange={handleImportFileSelect}
+            accept=".json"
+            style={{ display: 'none' }}
+          />
+
+          {/* File selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2">JSON-Datei auswählen</label>
+            <div className="flex items-center gap-2">
+              <Button
+                label={importFile ? importFile.name : 'Datei wählen...'}
+                icon="pi pi-file"
+                onClick={() => importFileInputRef.current?.click()}
+                className="flex-1"
+                outlined={!importFile}
+              />
+              {importFile && (
+                <Button
+                  icon="pi pi-times"
+                  severity="danger"
+                  text
+                  onClick={() => setImportFile(null)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Import mode selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Import-Modus</label>
+            <div className="flex flex-col gap-2">
+              <div
+                className={`p-3 rounded border-2 cursor-pointer transition-all ${
+                  importMode === 'merge'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500'
+                }`}
+                onClick={() => setImportMode('merge')}
+              >
+                <div className="flex items-center gap-2">
+                  <i className={`pi ${importMode === 'merge' ? 'pi-check-circle text-blue-400' : 'pi-circle text-gray-500'}`} />
+                  <span className="font-medium">Zusammenführen (Merge)</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1 ml-6">
+                  Fügt nur neue Anpassungen hinzu. Bestehende werden übersprungen.
+                </p>
+              </div>
+
+              <div
+                className={`p-3 rounded border-2 cursor-pointer transition-all ${
+                  importMode === 'replace'
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-gray-600 hover:border-gray-500'
+                }`}
+                onClick={() => setImportMode('replace')}
+              >
+                <div className="flex items-center gap-2">
+                  <i className={`pi ${importMode === 'replace' ? 'pi-check-circle text-orange-400' : 'pi-circle text-gray-500'}`} />
+                  <span className="font-medium">Ersetzen (Replace)</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1 ml-6">
+                  <span className="text-orange-400">Achtung:</span> Löscht alle bestehenden Anpassungen und ersetzt sie durch die importierten.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="bg-gray-800/50 rounded p-3 text-sm text-gray-400">
+            <div className="flex items-start gap-2">
+              <i className="pi pi-info-circle text-blue-400 mt-0.5" />
+              <div>
+                <p>Importierte Anpassungen werden dem aktuellen Projekt zugeordnet.</p>
+                <p className="mt-1">Sie können Anpassungen zwischen Projekten teilen, indem Sie sie exportieren und in einem anderen Projekt importieren.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

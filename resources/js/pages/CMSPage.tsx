@@ -18,14 +18,18 @@ interface UserData {
   name: string;
   email: string;
   email_verified_at?: string;
+  user_type?: string;
 }
 
 interface CMSPageProps {
   title: string;
   content: string;
+  pageId?: number;
+  slug?: string;
+  locale?: string;
 }
 
-export default function CMSPage({ title, content }: CMSPageProps) {
+export default function CMSPage({ title, content, pageId, slug: _slug, locale: _locale }: CMSPageProps) {
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -72,11 +76,26 @@ export default function CMSPage({ title, content }: CMSPageProps) {
   const isDemoMode = import.meta.env.VITE_SCORIET_DEMO === 'true';
 
   const loadSystemSettings = async () => {
+    const defaultSettings = {
+      price_patron_annual: 34.90,
+      price_patron_monthly: 49.90,
+      price_credits_500: 9.90,
+      price_credits_1000: 17.90,
+      price_credits_2500: 29.90,
+    };
+
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+
+    // Only fetch settings if user is authenticated
+    if (!token) {
+      setSystemSettings(defaultSettings);
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch('/settings', {
+      const response = await fetch('/api/settings', {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
       });
@@ -84,16 +103,13 @@ export default function CMSPage({ title, content }: CMSPageProps) {
       if (response.ok) {
         const settings = await response.json();
         setSystemSettings(settings);
+      } else {
+        // Not authorized or error - use defaults silently
+        setSystemSettings(defaultSettings);
       }
     } catch {
-      // Error loading system settings - use defaults
-      setSystemSettings({
-        price_patron_annual: 34.90,
-        price_patron_monthly: 49.90,
-        price_credits_500: 9.90,
-        price_credits_1000: 17.90,
-        price_credits_2500: 29.90,
-      });
+      // Network error - use defaults
+      setSystemSettings(defaultSettings);
     }
   };
 
@@ -271,6 +287,22 @@ export default function CMSPage({ title, content }: CMSPageProps) {
         {/* Content Section */}
         <section className="py-20 bg-gray-900">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Edit Button for System User */}
+            {userData?.user_type === 'system' && pageId && (
+              <div className="flex justify-end mb-4">
+                <Button
+                  label="Bearbeiten"
+                  icon="pi pi-pencil"
+                  className="p-button-warning p-button-sm"
+                  style={{ borderRadius: '8px' }}
+                  onClick={() => {
+                    // Navigate to app with CMS panel open and page selected
+                    window.location.href = `/app?panel=cms&pageId=${pageId}`;
+                  }}
+                />
+              </div>
+            )}
+
             <h1 className="text-4xl font-bold text-center mb-8 text-blue-400">
               {title}
             </h1>
@@ -378,7 +410,7 @@ export default function CMSPage({ title, content }: CMSPageProps) {
                   <li><a href="#" className="hover:text-white">{t.documentationLink}</a></li>
                   <li><a href="#" className="hover:text-white">{t.apiReferenceLink}</a></li>
                   <li><a href="#" className="hover:text-white">{t.tutorialsLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.blogLink}</a></li>
+                  <li><a href={`/${currentLanguage}/downloads`} className="hover:text-white">{t.downloadsLink}</a></li>
                 </ul>
               </div>
 

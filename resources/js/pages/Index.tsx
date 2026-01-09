@@ -56,6 +56,7 @@ const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateM
 const TemplateStorePanel = lazy(() => import('@/Components/Panels/TemplateStorePanel'));
 const TemplateReviewPanel = lazy(() => import('@/Components/Panels/TemplateReviewPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
+const MessagingPanel = lazy(() => import('@/Components/Panels/MessagingPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
 const DebugManualGeneratorPanel = lazy(() => import('@/Components/Panels/DebugManualGeneratorPanel'));
@@ -257,6 +258,21 @@ const loadTab = (
 ) => {
   const { id } = data;
 
+  // Handle "My Teams" navigation panel IDs (e.g., team-management-team-3)
+  if (id.startsWith('team-management-team-')) {
+    return {
+      id,
+      title: data.title || 'Team Management',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <TeamManagementPanel filterByProject={false} />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
   // Handle dynamic team-management panel IDs (e.g., team-management-project-5, team-management-project-5-filtered)
   if (id.startsWith('team-management-project-')) {
     const teamTabKey = id;
@@ -283,6 +299,21 @@ const loadTab = (
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
+  // Handle "My Templates" navigation panel IDs (e.g., template-management-template-6)
+  if (id.startsWith('template-management-template-')) {
+    return {
+      id,
+      title: data.title || 'Template Management',
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <TemplateManagementPanel filterByProject={false} />
         </Suspense>
       ),
       closable: true,
@@ -372,6 +403,48 @@ const loadTab = (
             forceProjectId={databaseForceProjectId}
             forceProjectName={databaseForceProjectName}
             updateTabTitle={databaseActualUpdateTitleCallback}
+          />
+        </Suspense>
+      ),
+      closable: true,
+      group: 'card custom'
+    };
+  }
+
+  // Handle dynamic database-management-schema panel IDs (e.g., database-management-schema-5)
+  if (id.startsWith('database-management-schema-')) {
+    const schemaTabKey = id;
+
+    if (!window._tabData) window._tabData = {};
+
+    if (data.preSelectedSchemaId !== undefined || data.filterByProject !== undefined || updateTitleCallback) {
+      window._tabData[schemaTabKey] = {
+        filterByProject: data.filterByProject,
+        preSelectedSchemaId: data.preSelectedSchemaId,
+        title: data.title,
+        updateTitleCallback: updateTitleCallback
+      } as any;
+    }
+
+    const schemaStoredData = window._tabData[schemaTabKey] || {};
+    const schemaShouldShowProjectFilter = schemaStoredData.filterByProject === true;
+    const schemaPreSelectedSchemaId = schemaStoredData.preSelectedSchemaId as number | undefined;
+    const schemaActualUpdateTitleCallback = schemaStoredData.updateTitleCallback || updateTitleCallback;
+
+    const dbTitle = t?.index625 || tFallback?.index625 || 'Database Management';
+    const schemaTitle = data.title || schemaStoredData.title || dbTitle;
+
+    return {
+      id,
+      title: schemaTitle,
+      content: (
+        <Suspense fallback={<PanelLoader />}>
+          <DatabaseManagementPanel
+            isActive={true}
+            onOpenDesigner={handleOpenDesigner}
+            filterByProject={schemaShouldShowProjectFilter}
+            preSelectedSchemaId={schemaPreSelectedSchemaId}
+            updateTabTitle={schemaActualUpdateTitleCallback}
           />
         </Suspense>
       ),
@@ -727,6 +800,19 @@ const loadTab = (
       };
     }
 
+    case 'messaging':
+      return {
+        id,
+        title: data.title || 'Nachrichten',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <MessagingPanel initialThreadId={data.threadId} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'template-db-schema-dependencies':
       return {
         id,
@@ -859,7 +945,7 @@ const loadTab = (
         title: data.title || 'CMS Admin',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <CMSAdminPanel />
+            <CMSAdminPanel editPageId={data.editPageId} />
           </Suspense>
         ),
         closable: true,
@@ -869,7 +955,7 @@ const loadTab = (
     case 'query-builder':
       return {
         id,
-        title: data.title || 'Query Builder',
+        title: data.title || 'Schema Migration',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <QueryBuilderPanel isActive={true} />
@@ -1121,6 +1207,9 @@ export default function Index(props: IndexProps = {}) {
   });
   const [isResizing, setIsResizing] = useState(false);
 
+  // Forced logout message state (for single-session enforcement)
+  const [forcedLogoutMessage, setForcedLogoutMessage] = useState<string | null>(null);
+
   // Helper function to update layout and save to localStorage
   const updateLayout = useCallback((newLayout: any) => {
     setLayout(newLayout);
@@ -1257,7 +1346,15 @@ export default function Index(props: IndexProps = {}) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const sessionToken = sessionStorage.getItem('access_token');
-    return !!(localToken || sessionToken);
+    const hasToken = !!(localToken || sessionToken);
+
+    // Clear session_revoke_notified flag if there's no token (fresh session after logout)
+    // This allows the notification to show again if the user logs in and gets kicked out again
+    if (!hasToken) {
+      sessionStorage.removeItem('session_revoke_notified');
+    }
+
+    return hasToken;
   });
   const [hasAutoOpenedHome, setHasAutoOpenedHome] = useState<boolean>(false);
 
@@ -1267,6 +1364,9 @@ export default function Index(props: IndexProps = {}) {
   // Database Export Modal state
   const [showDatabaseExportModal, setShowDatabaseExportModal] = useState<boolean>(false);
   const [showPendingInvitation, setShowPendingInvitation] = useState(false);
+
+  // Profile Modal default tab (for URL actions like renew-subscription)
+  const [profileDefaultTab, setProfileDefaultTab] = useState<number>(0);
 
 
   // Modal management functions - defined early to ensure they're available
@@ -1306,6 +1406,22 @@ export default function Index(props: IndexProps = {}) {
     };
    
   }, []); // Empty dependency array - only run once
+
+  // Handle URL actions (e.g., renew-subscription from email links)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+
+    if (action === 'renew-subscription' && isAuthenticated) {
+      // Open Profile modal with Subscriptions tab (index 2)
+      setProfileDefaultTab(2);
+      setActiveModal('profile');
+
+      // Clean up URL parameters after handling
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [isAuthenticated]);
 
   // Check for pending invitations
   const checkPendingInvitation = useCallback(async () => {
@@ -1363,9 +1479,21 @@ export default function Index(props: IndexProps = {}) {
       // If no token at all, immediately set as not authenticated and show login
       if (!token) {
         setIsAuthenticated(false);
-        if (window.location.pathname === '/app') {
-          // User is on /app but has no token - redirect to home
-          window.location.href = '/';
+        // DON'T redirect if we're showing a forced logout message - user needs to see it
+        // Check both the flag AND give time for the message to be set
+        const hasForcedLogoutPending = localStorage.getItem('forced_logout_reason') ||
+                                       sessionStorage.getItem('session_revoke_notified');
+        if (window.location.pathname === '/app' && !hasForcedLogoutPending) {
+          // Small delay to allow forced logout handling to complete first
+          setTimeout(() => {
+            // Re-check - maybe forced logout was set in the meantime
+            const stillNoPendingLogout = !localStorage.getItem('forced_logout_reason') &&
+                                         !sessionStorage.getItem('session_revoke_notified');
+            if (stillNoPendingLogout && !localStorage.getItem('access_token') && !sessionStorage.getItem('access_token')) {
+              // User is on /app but has no token and no forced logout - redirect to home
+              window.location.href = '/';
+            }
+          }, 500);
         }
         return;
       }
@@ -1400,6 +1528,11 @@ export default function Index(props: IndexProps = {}) {
             }
           } else {
             // Token is invalid (401, 404, etc.) - clean up and set as not authenticated
+            // Note: We had a token (checked at start of this function), so user WAS authenticated
+            const hadToken = true; // We only reach here if token existed
+            const isLoggingOut = localStorage.getItem('logout_in_progress');
+            const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
+
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('remember_me');
@@ -1409,8 +1542,20 @@ export default function Index(props: IndexProps = {}) {
             document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             setIsAuthenticated(false);
 
+            // If user had a token and got 401 (not during explicit logout),
+            // show a notification that they were logged out from another device
+            // Only notify once per session to avoid multiple notifications
+            if (hadToken && !isLoggingOut && !alreadyNotified && response.status === 401) {
+              sessionStorage.setItem('session_revoke_notified', 'true');
+              // Dispatch event for session forcibly ended - will be handled by event listener
+              window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+                detail: {
+                  reason: 'other_device_login'
+                }
+              }));
+            }
+
             // Show login modal for invalid tokens (but not during explicit logout)
-            const isLoggingOut = localStorage.getItem('logout_in_progress');
             if (!isLoggingOut && !activeModal) {
               setActiveModal('login');
             }
@@ -1481,10 +1626,62 @@ export default function Index(props: IndexProps = {}) {
 
     window.addEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
 
-    // Periodic token validation (every 10 minutes)
+    // Listen for session revoked events (single-session enforcement - on login)
+    const handleSessionRevoked = (event: CustomEvent) => {
+      if (toast.current) {
+        toast.current.show({
+          severity: 'info',
+          summary: 'Session',
+          detail: event.detail.message,
+          life: 5000
+        });
+      }
+    };
+    window.addEventListener('sessionRevoked', handleSessionRevoked as EventListener);
+
+    // Listen for session forcibly ended events (when token is revoked by another login)
+    const handleSessionForciblyEnded = () => {
+      // Set the message directly in state (for immediate display)
+      const storedLang = localStorage.getItem('language') || 'en';
+      const message = storedLang === 'de'
+        ? 'Sie wurden abgemeldet, da Sie sich auf einem anderen Gerät angemeldet haben.'
+        : 'You have been logged out because you logged in on another device.';
+      setForcedLogoutMessage(message);
+
+      // Also store in localStorage in case of page reload
+      localStorage.setItem('forced_logout_reason', 'other_device');
+      localStorage.setItem('forced_logout_time', Date.now().toString());
+
+      // Close all panels and go back to lobby
+      closeAllPanels();
+    };
+    window.addEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
+
+    // Check for forced logout message on mount (after page reload)
+    const forcedLogoutReason = localStorage.getItem('forced_logout_reason');
+    const forcedLogoutTime = localStorage.getItem('forced_logout_time');
+    if (forcedLogoutReason && forcedLogoutTime) {
+      // Only show if logout happened within the last 60 seconds (to avoid stale messages)
+      const timeSinceLogout = Date.now() - parseInt(forcedLogoutTime, 10);
+      if (timeSinceLogout < 60000) {
+        // Set the message to show in the static panel
+        const storedLang = localStorage.getItem('language') || 'en';
+        setForcedLogoutMessage(
+          storedLang === 'de'
+            ? 'Sie wurden abgemeldet, da Sie sich auf einem anderen Gerät angemeldet haben.'
+            : 'You have been logged out because you logged in on another device.'
+        );
+      }
+      // Clear the stored reason
+      localStorage.removeItem('forced_logout_reason');
+      localStorage.removeItem('forced_logout_time');
+    }
+
+    // Periodic token validation (every 30 seconds for single-session enforcement)
+    // This ensures users are quickly notified when logged out from another device
     const tokenCheckInterval = setInterval(() => {
       checkAuthStatus();
-    }, 10 * 60 * 1000);
+    }, 30 * 1000);
 
     // Also listen for manual localStorage changes
     const originalSetItem = localStorage.setItem;
@@ -1508,6 +1705,8 @@ export default function Index(props: IndexProps = {}) {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('auth-change', handleStorageChange);
       window.removeEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
+      window.removeEventListener('sessionRevoked', handleSessionRevoked as EventListener);
+      window.removeEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
       clearInterval(tokenCheckInterval);
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
@@ -1837,6 +2036,33 @@ export default function Index(props: IndexProps = {}) {
     }
   }, [isAuthenticated, activeModal, openPanel, hasAutoOpenedHome]);
 
+  // Handle panel=cms URL parameter (from CMS page edit button)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const panel = urlParams.get('panel');
+    const pageId = urlParams.get('pageId');
+
+    if (panel === 'cms' && pageId && isAuthenticated) {
+      const parsedPageId = parseInt(pageId, 10);
+
+      // Open CMS Admin panel
+      setTimeout(() => {
+        openPanel('cms-admin', { editPageId: parsedPageId });
+
+        // Also dispatch event in case panel already exists
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('cms-edit-page', {
+            detail: { pageId: parsedPageId }
+          }));
+        }, 300);
+      }, 600);
+
+      // Clean up URL parameters after handling
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [isAuthenticated, openPanel]);
+
   // Listen for notification bell click to open Applications Modal via ProjectPanel
   useEffect(() => {
     const handleOpenApplicationsModal = () => {
@@ -1864,6 +2090,20 @@ export default function Index(props: IndexProps = {}) {
 
     return () => {
       window.removeEventListener('openApplicationsModal', handleOpenApplicationsModal as EventListener);
+    };
+  }, [openPanel]);
+
+  // Listen for message notification click to open Messaging Panel
+  useEffect(() => {
+    const handleOpenMessaging = (event: CustomEvent) => {
+      const threadId = event.detail?.threadId;
+      openPanel('messaging', { threadId });
+    };
+
+    window.addEventListener('openMessaging', handleOpenMessaging as EventListener);
+
+    return () => {
+      window.removeEventListener('openMessaging', handleOpenMessaging as EventListener);
     };
   }, [openPanel]);
 
@@ -2136,8 +2376,8 @@ useHotkeys('alt+n', () => {
   };
 
   const handleSqlImportSuccess = () => {
-    setShowSqlImportModal(false);
-    // Optional: Show success message or refresh relevant panels
+    // Don't close modal - let user see the success message and close manually
+    // The modal will show its own success message
   };
 
   // Database Export Modal handlers
@@ -2254,6 +2494,74 @@ useHotkeys('alt+n', () => {
         </ProjectProvider>
       </ErrorBoundary>
 
+      {/* FORCED LOGOUT MODAL - blocks all interaction until user acknowledges */}
+      {forcedLogoutMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff3cd',
+              border: '2px solid #ffc107',
+              borderRadius: '12px',
+              padding: '24px 32px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              maxWidth: '450px',
+              width: '90%',
+              textAlign: 'center',
+            }}
+          >
+            <i
+              className="pi pi-exclamation-triangle"
+              style={{ color: '#856404', fontSize: '3rem', marginBottom: '16px', display: 'block' }}
+            />
+            <div style={{ fontWeight: 700, color: '#856404', fontSize: '1.25rem', marginBottom: '12px' }}>
+              {localStorage.getItem('language') === 'de' ? 'Session beendet' : 'Session ended'}
+            </div>
+            <div style={{ color: '#856404', fontSize: '1rem', marginBottom: '24px', lineHeight: '1.5' }}>
+              {forcedLogoutMessage}
+            </div>
+            <button
+              onClick={() => {
+                // Clear the message and all related flags
+                setForcedLogoutMessage(null);
+                localStorage.removeItem('forced_logout_reason');
+                localStorage.removeItem('forced_logout_time');
+                sessionStorage.removeItem('session_revoke_notified');
+                // Redirect to lobby
+                window.location.href = '/';
+              }}
+              style={{
+                backgroundColor: '#856404',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '12px 32px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#6d5303')}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#856404')}
+            >
+              {localStorage.getItem('language') === 'de' ? 'Zur Startseite' : 'Go to Homepage'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* AUTH MODAL SYSTEM */}
       <AuthModalManager
         activeModal={activeModal}
@@ -2261,6 +2569,7 @@ useHotkeys('alt+n', () => {
         resetPasswordToken={resetToken}
         resetPasswordEmail={resetEmail}
         isLoginClosable={isAuthenticated} // Login modal only closable when authenticated
+        profileDefaultTab={profileDefaultTab} // For URL actions like renew-subscription
         onLoginSuccess={() => {
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
@@ -2268,6 +2577,9 @@ useHotkeys('alt+n', () => {
           window.dispatchEvent(new Event('auth-change'));
           // Clear modal interaction flag after successful login
           localStorage.removeItem('auth_modal_interaction');
+          // Clear forced logout message and notification flag
+          setForcedLogoutMessage(null);
+          sessionStorage.removeItem('session_revoke_notified');
           handleCloseModal();
           // Check for pending invitations after login
           setTimeout(() => {

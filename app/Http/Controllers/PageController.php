@@ -22,7 +22,13 @@ class PageController extends Controller
             abort(404);
         }
 
-        return view('pages.show', compact('page'));
+        return Inertia::render('CMSPage', [
+            'title' => $page->title,
+            'content' => $page->content,
+            'pageId' => $page->id,
+            'slug' => $page->slug,
+            'locale' => $locale,
+        ]);
     }
 
     /**
@@ -46,6 +52,9 @@ class PageController extends Controller
         return Inertia::render('CMSPage', [
             'title' => $page->title,
             'content' => $page->content,
+            'pageId' => $page->id,
+            'slug' => $page->slug,
+            'locale' => $locale,
         ]);
     }
 
@@ -70,6 +79,9 @@ class PageController extends Controller
         return Inertia::render('CMSPage', [
             'title' => $page->title,
             'content' => $page->content,
+            'pageId' => $page->id,
+            'slug' => $page->slug,
+            'locale' => $locale,
         ]);
     }
 }

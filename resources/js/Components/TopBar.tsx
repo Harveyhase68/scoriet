@@ -12,6 +12,8 @@ export default function TopBar() {
   const { t } = useTranslation(currentLanguage);
   const { projects, selectedProject, setSelectedProject, loading } = useProject();
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [latestUnreadThreadId, setLatestUnreadThreadId] = useState<number | null>(null);
 
   // 🎯 DEMO MODE DETECTION
   const [isDemoMode, setIsDemoMode] = useState(sessionStorage.getItem('demo_mode') === 'true');
@@ -54,6 +56,24 @@ export default function TopBar() {
         const applications = data.applications || [];
         const pendingCount = applications.filter((app: any) => app.status === 'pending').length;
         setPendingApplicationsCount(pendingCount);
+      } else if (response.status === 401) {
+        // Token was revoked (likely logged in on another device)
+        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
+        const isLoggingOut = localStorage.getItem('logout_in_progress');
+
+        if (!alreadyNotified && !isLoggingOut) {
+          sessionStorage.setItem('session_revoke_notified', 'true');
+
+          // Clear tokens
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+
+          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+            detail: { reason: 'token_revoked' }
+          }));
+        }
       }
     } catch {
       // Error loading pending applications
@@ -61,9 +81,85 @@ export default function TopBar() {
     }
   }, [selectedProject]);
 
-  // Load applications when project changes
+  // Load unread messages count
+  const loadUnreadMessages = useCallback(async () => {
+    if (isDemoMode) {
+      setUnreadMessagesCount(0);
+      setLatestUnreadThreadId(null);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        setUnreadMessagesCount(0);
+        setLatestUnreadThreadId(null);
+        return;
+      }
+
+      const response = await fetch('/api/messages/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadMessagesCount(data.count || 0);
+        setLatestUnreadThreadId(data.latest_unread_thread_id || null);
+      } else if (response.status === 401) {
+        // Token was revoked (likely logged in on another device)
+        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
+        const isLoggingOut = localStorage.getItem('logout_in_progress');
+
+        if (!alreadyNotified && !isLoggingOut) {
+          sessionStorage.setItem('session_revoke_notified', 'true');
+
+          // Clear tokens
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+
+          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+            detail: { reason: 'token_revoked' }
+          }));
+        }
+      }
+    } catch {
+      setUnreadMessagesCount(0);
+      setLatestUnreadThreadId(null);
+    }
+  }, [isDemoMode]);
+
+  // Load unread messages on mount and periodically
+  useEffect(() => {
+    loadUnreadMessages();
+    // Poll every 5 seconds for new messages
+    const interval = setInterval(loadUnreadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [loadUnreadMessages]);
+
+  // Listen for message updates
+  useEffect(() => {
+    const handleMessagesUpdated = () => {
+      loadUnreadMessages();
+    };
+
+    window.addEventListener('messagesUpdated', handleMessagesUpdated);
+
+    return () => {
+      window.removeEventListener('messagesUpdated', handleMessagesUpdated);
+    };
+  }, [loadUnreadMessages]);
+
+  // Load applications when project changes and poll periodically
   useEffect(() => {
     loadPendingApplications();
+    // Poll every 10 seconds for new applications
+    const interval = setInterval(loadPendingApplications, 10000);
+    return () => clearInterval(interval);
   }, [loadPendingApplications]);
 
   // Listen for application updates from ApplicationsModal
@@ -125,6 +221,18 @@ export default function TopBar() {
             })}
             onChange={(e) => {
               const selectedProjectObject = projects?.find(p => p.id === e.value);
+
+              // If user tries to select a locked project, find first active project instead
+              if (selectedProjectObject?.is_soft_locked) {
+                // Find first active (non-locked) project
+                const firstActiveProject = projects?.find(p => !p.is_soft_locked);
+                if (firstActiveProject) {
+                  setSelectedProject(firstActiveProject);
+                }
+                // If no active projects, don't change selection (keep current)
+                return;
+              }
+
               setSelectedProject(selectedProjectObject || null);
             }}
             optionLabel="name"
@@ -135,10 +243,35 @@ export default function TopBar() {
             filter
             emptyMessage={t.panelt1813}
             showClear={false}
+            itemTemplate={(option) => (
+              <div className="flex items-center justify-between w-full">
+                <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                {option.is_soft_locked && (
+                  <i className="pi pi-lock text-red-500 ml-2" title="Abo abgelaufen" />
+                )}
+                {option.subscription?.days_remaining !== null && option.subscription?.days_remaining <= 14 && !option.is_soft_locked && (
+                  <i className="pi pi-exclamation-triangle text-yellow-500 ml-2" title={`Läuft in ${option.subscription.days_remaining} Tagen ab`} />
+                )}
+              </div>
+            )}
+            valueTemplate={(option) => option ? (
+              <div className="flex items-center">
+                <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                {option.is_soft_locked && (
+                  <i className="pi pi-lock text-red-500 ml-2" />
+                )}
+              </div>
+            ) : t.teammodal146}
           />
-          {selectedProject && (
+          {selectedProject && !selectedProject.is_soft_locked && (
             <span className="text-xs text-gray-400">
               by {selectedProject.owner.name}
+            </span>
+          )}
+          {selectedProject?.is_soft_locked && (
+            <span className="text-xs text-red-400 flex items-center gap-1">
+              <i className="pi pi-lock" />
+              Abo abgelaufen!
             </span>
           )}
         </div>
@@ -165,6 +298,31 @@ export default function TopBar() {
               className="absolute -top-1 -right-1 text-xs flex items-center justify-center"
               style={{ minWidth: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             />
+          </div>
+        )}
+
+        {/* Message Notification */}
+        {!isDemoMode && (
+          <div className="relative">
+            <Button
+              icon="pi pi-envelope"
+              className={`p-button-text p-button-sm ${unreadMessagesCount > 0 ? 'text-yellow-400 animate-pulse' : 'text-gray-400 hover:text-blue-400'}`}
+              style={{ padding: '4px' }}
+              tooltip={unreadMessagesCount > 0 ? `${unreadMessagesCount} neue Nachricht(en)` : 'Nachrichten'}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openMessaging', {
+                  detail: { threadId: latestUnreadThreadId }
+                }));
+              }}
+            />
+            {unreadMessagesCount > 0 && (
+              <Badge
+                value={unreadMessagesCount}
+                severity="danger"
+                className="absolute -top-1 -right-1 text-xs flex items-center justify-center"
+                style={{ minWidth: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              />
+            )}
           </div>
         )}
 

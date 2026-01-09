@@ -37,7 +37,11 @@ interface PageFormData {
   is_active: boolean;
 }
 
-export default function CMSAdminPanel() {
+interface CMSAdminPanelProps {
+  editPageId?: number;
+}
+
+export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -63,6 +67,13 @@ export default function CMSAdminPanel() {
   });
   const [saving, setSaving] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [pendingEditPageId, setPendingEditPageId] = useState<number | null>(
+    editPageId || null
+  );
+
+  // Use ref to store pages for event handler (avoids stale closure)
+  const pagesRef = React.useRef<Page[]>([]);
+  pagesRef.current = pages;
 
   const fetchPages = useCallback(async () => {
     setLoading(true);
@@ -79,6 +90,64 @@ export default function CMSAdminPanel() {
   useEffect(() => {
     fetchPages();
   }, [fetchPages]);
+
+  // Helper function to open edit dialog for a page
+  const openEditDialogForPage = useCallback((pageId: number, pagesList: Page[]) => {
+    const pageToEdit = pagesList.find(p => p.id === pageId);
+    if (pageToEdit) {
+      setEditingPage(pageToEdit);
+      setFormData({
+        slug: pageToEdit.slug,
+        locale: pageToEdit.locale,
+        title: pageToEdit.title,
+        content: pageToEdit.content,
+        is_active: pageToEdit.is_active,
+      });
+      setShowDialog(true);
+      return true;
+    }
+    return false;
+  }, []);
+
+  // Process pending edit when pages are loaded
+  useEffect(() => {
+    if (pendingEditPageId && pages.length > 0) {
+      if (openEditDialogForPage(pendingEditPageId, pages)) {
+        setPendingEditPageId(null);
+      }
+    }
+  }, [pendingEditPageId, pages, openEditDialogForPage]);
+
+  // Listen for cms-edit-page event (stable handler using ref)
+  useEffect(() => {
+    const handleEditPageEvent = (event: CustomEvent<{ pageId: number }>) => {
+      const pageId = event.detail.pageId;
+      const currentPages = pagesRef.current;
+
+      if (currentPages.length > 0) {
+        const pageToEdit = currentPages.find(p => p.id === pageId);
+        if (pageToEdit) {
+          setEditingPage(pageToEdit);
+          setFormData({
+            slug: pageToEdit.slug,
+            locale: pageToEdit.locale,
+            title: pageToEdit.title,
+            content: pageToEdit.content,
+            is_active: pageToEdit.is_active,
+          });
+          setShowDialog(true);
+        }
+      } else {
+        // Pages not loaded yet, set as pending
+        setPendingEditPageId(pageId);
+      }
+    };
+
+    window.addEventListener('cms-edit-page', handleEditPageEvent as EventListener);
+    return () => {
+      window.removeEventListener('cms-edit-page', handleEditPageEvent as EventListener);
+    };
+  }, []); // Empty deps - handler uses ref for current pages
 
   const handleCreateNew = () => {
     setEditingPage(null);
@@ -269,6 +338,9 @@ export default function CMSAdminPanel() {
         header={editingPage ? 'Edit Page' : t.cmsadminpanel224}
         visible={showDialog}
         style={{ width: '90vw', maxWidth: '900px' }}
+        breakpoints={{ '960px': '95vw', '640px': '100vw' }}
+        maximizable
+        blockScroll
         onHide={() => setShowDialog(false)}
         footer={
           <div className="flex justify-end gap-2">
@@ -421,8 +493,6 @@ export default function CMSAdminPanel() {
                 inputId="is_active"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: !!e.checked })}
-                binary
-                readOnly
               />
               <div className="text-sm font-medium text-gray-100 select-none">
                 {formData.is_active ? '✅' : '⬜'} Active (visible to visitors)

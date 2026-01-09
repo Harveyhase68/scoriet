@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\CodeAdjustment;
 use App\Models\CodeAdjustmentInsertion;
+use App\Models\UserGitProvider;
+use App\Services\GitProviderService;
 use Illuminate\Support\Collection;
 
 class CodeAdjustmentService
@@ -462,11 +464,19 @@ class CodeAdjustmentService
     }
 
     /**
-     * Normalize line endings to LF
+     * Normalize line endings to LF and trim trailing whitespace
+     * GitHub removes trailing newlines, so we normalize that too
      */
     private function normalizeLineEndings(string $content): string
     {
-        return str_replace(["\r\n", "\r"], "\n", $content);
+        // Convert all line endings to LF
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+
+        // Remove trailing whitespace from each line and trailing newlines at EOF
+        // This prevents false-positives from GitHub's newline normalization
+        $content = rtrim($content, "\n");
+
+        return $content;
     }
 
     /**
@@ -899,6 +909,154 @@ class CodeAdjustmentService
             }
         } else {
             throw new \Exception('Unbekanntes Archiv-Format: ' . $extension);
+        }
+    }
+
+    // ========== GIT COMPARISON ==========
+
+    /**
+     * Compare files from a Git repository against a reference generation
+     *
+     * @param UserGitProvider $gitProvider The connected Git provider
+     * @param string $repoFullName Repository full name (e.g. "user/repo")
+     * @param string $branch Branch name
+     * @param string $directory Optional subdirectory to compare
+     * @param string $referenceArchivePath Path to the reference generation archive
+     * @return array
+     */
+    public function compareFromGit(
+        UserGitProvider $gitProvider,
+        string $repoFullName,
+        string $branch,
+        string $directory,
+        string $referenceArchivePath
+    ): array {
+        if (!file_exists($referenceArchivePath)) {
+            throw new \Exception('Referenz-Archiv existiert nicht mehr: ' . basename($referenceArchivePath));
+        }
+
+        $gitService = new GitProviderService();
+
+        // Ensure token is valid (refresh if needed for GitLab)
+        $gitProvider = $gitService->ensureValidToken($gitProvider);
+
+        // Fetch files from Git repository (no artificial limit - let GitHub/GitLab API handle rate limits)
+        $gitResult = $gitService->getDirectoryContents(
+            $gitProvider,
+            $repoFullName,
+            $branch,
+            $directory,
+            0 // No limit - user sees actual API errors if rate limited
+        );
+
+        $modifiedFiles = $gitResult['files'];
+
+        if (empty($modifiedFiles)) {
+            throw new \Exception('Keine Dateien im Git-Verzeichnis gefunden: ' . ($directory ?: '/'));
+        }
+
+        // Extract reference archive to temp directory
+        $tempDir = sys_get_temp_dir() . '/scoriet_git_compare_' . uniqid();
+        $generatedDir = $tempDir . '/generated';
+
+        try {
+            mkdir($tempDir, 0777, true);
+            mkdir($generatedDir, 0777, true);
+
+            // Extract reference archive
+            $this->extractArchive($referenceArchivePath, $generatedDir);
+
+            // Get files from generated directory
+            $generatedFiles = $this->getFilesRecursive($generatedDir);
+
+            // Build map of generated files
+            $generatedMap = [];
+            foreach ($generatedFiles as $file) {
+                $relativePath = str_replace($generatedDir . DIRECTORY_SEPARATOR, '', $file);
+                $relativePath = str_replace('\\', '/', $relativePath);
+                $generatedMap[$relativePath] = file_get_contents($file);
+            }
+
+            // Compare files
+            $files = [];
+            $summary = [
+                'added' => 0,
+                'modified' => 0,
+                'deleted' => 0,
+                'unchanged' => 0,
+            ];
+
+            // Check files from Git against generated
+            foreach ($modifiedFiles as $relativePath => $modifiedContent) {
+                if (isset($generatedMap[$relativePath])) {
+                    // File exists in both - check if modified
+                    $generatedNorm = $this->normalizeLineEndings($generatedMap[$relativePath]);
+                    $modifiedNorm = $this->normalizeLineEndings($modifiedContent);
+
+                    if ($generatedNorm === $modifiedNorm) {
+                        $files[] = [
+                            'path' => $relativePath,
+                            'status' => 'unchanged',
+                        ];
+                        $summary['unchanged']++;
+                    } else {
+                        $files[] = [
+                            'path' => $relativePath,
+                            'status' => 'modified',
+                            'template_content' => $generatedMap[$relativePath],
+                            'modified_content' => $modifiedContent,
+                        ];
+                        $summary['modified']++;
+                    }
+                    // Remove from map to track deleted files later
+                    unset($generatedMap[$relativePath]);
+                } else {
+                    // File only in Git - added by user
+                    $files[] = [
+                        'path' => $relativePath,
+                        'status' => 'added',
+                        'modified_content' => $modifiedContent,
+                    ];
+                    $summary['added']++;
+                }
+            }
+
+            // Remaining files in generatedMap are deleted
+            foreach ($generatedMap as $relativePath => $generatedContent) {
+                $files[] = [
+                    'path' => $relativePath,
+                    'status' => 'deleted',
+                    'template_content' => $generatedContent,
+                ];
+                $summary['deleted']++;
+            }
+
+            // Sort files by status (modified first) then by path
+            usort($files, function ($a, $b) {
+                $statusOrder = ['modified' => 0, 'added' => 1, 'deleted' => 2, 'unchanged' => 3];
+                $statusDiff = $statusOrder[$a['status']] - $statusOrder[$b['status']];
+                if ($statusDiff !== 0) {
+                    return $statusDiff;
+                }
+                return strcmp($a['path'], $b['path']);
+            });
+
+            return [
+                'files' => $files,
+                'summary' => $summary,
+                'git_info' => [
+                    'provider' => $gitProvider->provider,
+                    'repository' => $repoFullName,
+                    'branch' => $branch,
+                    'directory' => $directory,
+                    'files_fetched' => $gitResult['fetched'],
+                    'files_total' => $gitResult['total_in_tree'],
+                    'truncated' => $gitResult['truncated'],
+                ],
+            ];
+        } finally {
+            // Clean up temp directory
+            $this->recursiveDelete($tempDir);
         }
     }
 }

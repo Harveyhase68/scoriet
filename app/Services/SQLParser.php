@@ -504,70 +504,91 @@ class SQLParser
             return;
         }
 
-        $this->consumeToken('KEYWORD', 'ADD');
+        // Loop to handle multiple ADD CONSTRAINT in one ALTER TABLE statement
+        // e.g., ALTER TABLE `t` ADD CONSTRAINT `fk1` ..., ADD CONSTRAINT `fk2` ...;
+        \Log::info("[MySQL-Parser] Starting ALTER TABLE loop for table: {$table_name}");
 
-        // Check if it's ADD CONSTRAINT - if not, skip (could be ADD INDEX, ADD KEY, etc.)
-        if (!$this->currentTokenMatches('KEYWORD', 'CONSTRAINT')) {
-            // Skip this ALTER TABLE (ADD INDEX, ADD FULLTEXT KEY, etc.)
-            $this->skipToSemicolonOrEnd();
-            return;
-        }
+        while ($this->currentTokenMatches('KEYWORD', 'ADD')) {
+            \Log::info("[MySQL-Parser] Found ADD keyword, consuming...");
+            $this->consumeToken('KEYWORD', 'ADD');
 
-        $this->consumeToken('KEYWORD', 'CONSTRAINT');
-
-        // Constraint name
-        $constraint_name_token = $this->consumeToken();
-        $constraint_name = $constraint_name_token->value;
-
-        $this->consumeToken('KEYWORD', 'FOREIGN');
-        $this->consumeToken('KEYWORD', 'KEY');
-
-        // Source columns
-        $this->consumeToken('LPAREN');
-        $source_cols = [];
-        while (! $this->currentTokenMatches('RPAREN')) {
-            $col_token = $this->consumeToken();
-            if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
-                $source_cols[] = $col_token->value;
-            }
-
-            if ($this->currentTokenMatches('COMMA')) {
-                $this->consumeToken('COMMA');
-            } else {
+            // Check if it's ADD CONSTRAINT - if not, skip to next comma or end
+            if (!$this->currentTokenMatches('KEYWORD', 'CONSTRAINT')) {
+                // Skip this ADD clause (ADD INDEX, ADD FULLTEXT KEY, etc.)
+                $this->skipToCommaOrSemicolon();
+                // If there's a comma, continue to next ADD
+                if ($this->currentTokenMatches('COMMA')) {
+                    $this->consumeToken('COMMA');
+                    continue;
+                }
                 break;
             }
-        }
-        $this->consumeToken('RPAREN');
 
-        $this->consumeToken('KEYWORD', 'REFERENCES');
+            $this->consumeToken('KEYWORD', 'CONSTRAINT');
 
-        // Reference table
-        $ref_table_token = $this->consumeToken();
-        $ref_table = $ref_table_token->value;
+            // Constraint name
+            $constraint_name_token = $this->consumeToken();
+            $constraint_name = $constraint_name_token->value;
 
-        // Reference columns
-        $this->consumeToken('LPAREN');
-        $ref_cols = [];
-        while (! $this->currentTokenMatches('RPAREN')) {
-            $col_token = $this->consumeToken();
-            if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
-                $ref_cols[] = $col_token->value;
-            }
-
-            if ($this->currentTokenMatches('COMMA')) {
-                $this->consumeToken('COMMA');
-            } else {
+            // Check if it's a FOREIGN KEY constraint
+            if (!$this->currentTokenMatches('KEYWORD', 'FOREIGN')) {
+                // Skip non-FK constraints (PRIMARY KEY, UNIQUE, CHECK, etc.)
+                $this->skipToCommaOrSemicolon();
+                if ($this->currentTokenMatches('COMMA')) {
+                    $this->consumeToken('COMMA');
+                    continue;
+                }
                 break;
             }
-        }
-        $this->consumeToken('RPAREN');
 
-        // Parse ON DELETE and ON UPDATE actions
-        $on_delete = 'NO ACTION';
-        $on_update = 'NO ACTION';
+            $this->consumeToken('KEYWORD', 'FOREIGN');
+            $this->consumeToken('KEYWORD', 'KEY');
 
-        // Check for ON DELETE
-        if ($this->currentTokenMatches('KEYWORD', 'ON')) {
+            // Source columns
+            $this->consumeToken('LPAREN');
+            $source_cols = [];
+            while (! $this->currentTokenMatches('RPAREN')) {
+                $col_token = $this->consumeToken();
+                if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                    $source_cols[] = $col_token->value;
+                }
+
+                if ($this->currentTokenMatches('COMMA')) {
+                    $this->consumeToken('COMMA');
+                } else {
+                    break;
+                }
+            }
+            $this->consumeToken('RPAREN');
+
+            $this->consumeToken('KEYWORD', 'REFERENCES');
+
+            // Reference table
+            $ref_table_token = $this->consumeToken();
+            $ref_table = $ref_table_token->value;
+
+            // Reference columns
+            $this->consumeToken('LPAREN');
+            $ref_cols = [];
+            while (! $this->currentTokenMatches('RPAREN')) {
+                $col_token = $this->consumeToken();
+                if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                    $ref_cols[] = $col_token->value;
+                }
+
+                if ($this->currentTokenMatches('COMMA')) {
+                    $this->consumeToken('COMMA');
+                } else {
+                    break;
+                }
+            }
+            $this->consumeToken('RPAREN');
+
+            // Parse ON DELETE and ON UPDATE actions
+            $on_delete = 'NO ACTION';
+            $on_update = 'NO ACTION';
+
+            // Check for ON DELETE/UPDATE
             while ($this->currentTokenMatches('KEYWORD', 'ON')) {
                 $this->consumeToken('KEYWORD', 'ON');
 
@@ -579,23 +600,42 @@ class SQLParser
                     $on_update = $this->parseReferentialAction();
                 }
             }
+
+            $fk = [
+                'type' => 'FOREIGN KEY',
+                'name' => $constraint_name,
+                'columns' => $source_cols,
+                'references' => [
+                    'table' => $ref_table,
+                    'columns' => $ref_cols,
+                ],
+                'on_delete' => $on_delete,
+                'on_update' => $on_update,
+            ];
+
+            if (isset($this->table_map[$table_name])) {
+                $this->table_map[$table_name]['constraints'][] = $fk;
+                \Log::info("[MySQL-Parser] FK added: {$constraint_name} -> {$ref_table}");
+            }
+
+            // Check for comma (more ADD clauses follow) or semicolon (end)
+            $currentToken = $this->currentToken();
+            \Log::info("[MySQL-Parser] After FK, current token: " . ($currentToken ? "{$currentToken->type}:{$currentToken->value}" : "null"));
+
+            if ($this->currentTokenMatches('COMMA')) {
+                $this->consumeToken('COMMA');
+                $nextToken = $this->currentToken();
+                \Log::info("[MySQL-Parser] Found comma, next token: " . ($nextToken ? "{$nextToken->type}:{$nextToken->value}" : "null"));
+                // Continue loop to parse next ADD CONSTRAINT
+            } else {
+                \Log::info("[MySQL-Parser] No comma found, breaking loop");
+                // End of ALTER TABLE statement
+                break;
+            }
         }
 
-        $fk = [
-            'type' => 'FOREIGN KEY',
-            'name' => $constraint_name,
-            'columns' => $source_cols,
-            'references' => [
-                'table' => $ref_table,
-                'columns' => $ref_cols,
-            ],
-            'on_delete' => $on_delete,
-            'on_update' => $on_update,
-        ];
-
-        if (isset($this->table_map[$table_name])) {
-            $this->table_map[$table_name]['constraints'][] = $fk;
-        }
+        // Skip any remaining tokens until semicolon
+        $this->skipToSemicolonOrEnd();
     }
 
     private function parseReferentialAction(): string
@@ -663,6 +703,29 @@ class SQLParser
 
         if ($this->currentTokenMatches('SEMICOLON')) {
             $this->consumeToken('SEMICOLON');
+        }
+    }
+
+    /**
+     * Skip tokens until we hit a comma or semicolon (for multi-clause ALTER TABLE)
+     * Handles nested parentheses correctly
+     */
+    private function skipToCommaOrSemicolon()
+    {
+        $depth = 0;
+        while ($this->position < count($this->tokens)) {
+            if ($this->currentTokenMatches('LPAREN')) {
+                $depth++;
+                $this->position++;
+            } elseif ($this->currentTokenMatches('RPAREN')) {
+                $depth--;
+                $this->position++;
+            } elseif ($depth === 0 && ($this->currentTokenMatches('COMMA') || $this->currentTokenMatches('SEMICOLON'))) {
+                // Found comma or semicolon at top level - stop here
+                break;
+            } else {
+                $this->position++;
+            }
         }
     }
 }

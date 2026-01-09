@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -10,6 +10,7 @@ import { Dialog } from 'primereact/dialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
+import { Toast } from 'primereact/toast';
 import ClassicTreeView from '@/Components/ClassicTreeView';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import ApplicationsModal from '@/Components/Modals/ApplicationsModal';
@@ -27,6 +28,14 @@ interface TabPanelProps {
   projectId?: number;
 }
 
+interface ProjectSubscription {
+  id: number;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  days_remaining: number | null;
+}
+
 interface Project {
   id: number;
   name: string;
@@ -40,6 +49,9 @@ interface Project {
   can_join?: boolean;
   default_language?: string;
   enabled_languages?: string[];
+  // Subscription / Lock status
+  is_soft_locked?: boolean;
+  subscription?: ProjectSubscription | null;
   // Diagram Settings
   diagram_max_tables_per_row?: number;
   diagram_table_width?: number;
@@ -82,6 +94,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Toast ref for notifications
+  const toast = useRef<Toast>(null);
 
   // Use global project context
   const {
@@ -164,6 +179,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Unlock expired project subscription
+  const [projectToUnlock, setProjectToUnlock] = useState<Project | null>(null);
+  const [unlockingProject, setUnlockingProject] = useState(false);
 
   // Load user data when panel becomes active
   useEffect(() => {
@@ -268,8 +287,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
   /**
    * Pre-check before showing "Create Project" modal
-   * - Check if user is Free and already has 1 project
-   * - If yes, show ProjectUnlockModal first (50 credits required)
+   * - Check subscription_info from backend to see if user needs to unlock
+   * - If needs_unlock is true, show ProjectUnlockModal first (50 credits required)
    * - If not enough credits, offer to buy credits
    * - Only after confirmation, show the Create Project modal
    */
@@ -282,19 +301,41 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
     const isFreeUser = currentUser.user_type === 'free' || !currentUser.user_type;
 
-    // If user is Free, check project count
+    // If user is Free, check subscription_info from backend
     if (isFreeUser) {
-      const userProjectCount = projects.filter(p => p.owner_id === currentUser.id && p.is_active).length;
+      try {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (!token) {
+          setError('Nicht authentifiziert');
+          return;
+        }
 
-      // If user already has 1 project (the limit for free users)
-      if (userProjectCount >= 1) {
-        // Show ProjectUnlockModal - user needs to pay 50 credits
-        setShowProjectUnlockModal(true);
-        return;
+        // Fetch current subscription info from backend (slot-based system)
+        const response = await fetch('/api/projects', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const subscriptionInfo = data.subscription_info;
+
+          // Use backend's needs_unlock flag (accounts for subscription slots)
+          if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+            // Show ProjectUnlockModal - user needs to pay 50 credits for a new slot
+            setShowProjectUnlockModal(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking subscription info:', err);
+        // Continue anyway - backend will validate
       }
     }
 
-    // User is not Free, or has no projects yet -> show create modal directly
+    // User is not Free, or has available slots -> show create modal directly
     setShowCreateModal(true);
   };
 
@@ -310,6 +351,72 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     // Open Plan Modal on "Buy Credits" tab (tab index 1)
     setPlanModalInitialTab(1);
     setShowPlanModal(true);
+  };
+
+  // Unlock an expired project subscription (renew for 50 credits)
+  const handleUnlockExpiredProject = async (project: Project) => {
+    if (!project.subscription?.id) {
+      setError('Keine Subscription gefunden für dieses Projekt');
+      return;
+    }
+
+    setUnlockingProject(true);
+    setProjectToUnlock(project);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
+      }
+
+      const response = await fetch(`/api/subscriptions/${project.subscription.id}/renew`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If not enough credits, show the plan modal
+        if (data.required_credits) {
+          setError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
+          setPlanModalInitialTab(1);
+          setShowPlanModal(true);
+        } else {
+          throw new Error(data.error || data.message || 'Fehler beim Entsperren des Projekts');
+        }
+        return;
+      }
+
+      // Reload user data to get updated credits
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
+      }
+
+      // Reload projects to get updated status
+      await loadProjectsFromContext();
+
+      setSuccess(`Projekt "${project.name}" wurde erfolgreich entsperrt! (${data.bonus_days || 0} Bonus-Tage erhalten)`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Fehler beim Entsperren');
+    } finally {
+      setUnlockingProject(false);
+      setProjectToUnlock(null);
+    }
   };
 
   const handleCreateProject = async () => {
@@ -697,12 +804,37 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
   };
 
-  const statusTemplate = () => {
+  const statusTemplate = (project: Project) => {
+    if (project.is_soft_locked) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-lock text-red-500" />
+          <Tag value="Gesperrt" severity="danger" />
+        </div>
+      );
+    }
+    if (project.subscription?.days_remaining !== null && project.subscription?.days_remaining !== undefined && project.subscription.days_remaining <= 14) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-exclamation-triangle text-yellow-500" />
+          <Tag value={`${project.subscription.days_remaining} Tage`} severity="warning" />
+        </div>
+      );
+    }
     return <Tag value={t.templatesStatusActive} severity="success" />;
   };
 
   const dateTemplate = (project: Project) => {
     return formatDate(project.created_at);
+  };
+
+  const nameTemplate = (project: Project) => {
+    return (
+      <div className="flex items-center gap-2">
+        {project.is_soft_locked && <i className="pi pi-lock text-red-500" />}
+        <span className={project.is_soft_locked ? 'text-red-400' : ''}>{project.name}</span>
+      </div>
+    );
   };
 
   const ownerTemplate = (project: Project) => {
@@ -715,6 +847,38 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   };
 
   const actionTemplate = (project: Project) => {
+    // If project is soft-locked, show only View and Unlock button
+    if (project.is_soft_locked) {
+      return (
+        <div className="flex space-x-1 items-center">
+          <Button
+            icon="pi pi-eye"
+            className="p-button-rounded p-button-sm"
+            style={{ backgroundColor: '#1976d2', borderColor: '#1976d2', color: 'white' }}
+            tooltip={t.projectpanel562}
+            onClick={() => {
+              setSelectedProjectForOverview(project);
+              setShowProjectOverviewModal(true);
+              loadProjectMembers(project.id);
+              loadTeamsForProject(project.id);
+              loadSchemasForProject(project.id);
+              loadTemplatesForProject(project.id);
+            }}
+          />
+          <Button
+            icon={unlockingProject && projectToUnlock?.id === project.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
+            label="50 Credits"
+            className="p-button-rounded p-button-sm"
+            style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
+            tooltip="Projekt entsperren (50 Credits)"
+            onClick={() => handleUnlockExpiredProject(project)}
+            disabled={unlockingProject}
+          />
+        </div>
+      );
+    }
+
+    // Normal actions for active projects
     return (
       <div className="flex space-x-1">
         <Button
@@ -758,6 +922,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   if (contextLoading) {
     return (
       <div className="flex items-center justify-center h-full">
+        <Toast ref={toast} position="top-right" />
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
           <p className="text-gray-600">Loading projects...</p>
@@ -768,6 +933,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
+      <Toast ref={toast} position="top-right" />
       {/* Header - Fixed at top */}
       <div className="flex-shrink-0 p-6 pb-4">
         <div className="flex items-center justify-between mb-6">
@@ -968,7 +1134,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 onClick={() => {
                   if (currentProject) {
                     setGlobalSelectedProject(currentProject as any);
-                    onOpenPanel?.('teams-filtered', { title: `Teams Management - ${currentProject.name}`, filterByProject: true, source: 'project-management' });
+                    onOpenPanel?.('team-management', { title: `Team Verwaltung - ${currentProject.name}`, filterByProject: true, source: 'project-management' });
                   }
                 }}
                 disabled={!currentProject || !onOpenPanel}
@@ -1018,7 +1184,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               rows={10}
               rowsPerPageOptions={[5, 10, 20]}
             >
-              <Column field="name" header={t.manageteammodal316} sortable />
+              <Column field="name" header={t.manageteammodal316} body={nameTemplate} sortable />
               <Column 
                 field="owner" 
                 header={t.manageteammodal320} 
@@ -1569,6 +1735,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         visible={showJoinCodeModal}
         onHide={() => setShowJoinCodeModal(false)}
         onSuccess={loadProjectsFromContext}
+        onApplicationSent={(projectName, ownerName) => {
+          toast.current?.show({
+            severity: 'success',
+            summary: t.joincodemodal117 || 'Bewerbung gesendet',
+            detail: `${t.joincodemodal_toast_detail || 'Bitte warten Sie, bis'} ${ownerName} ${t.joincodemodal_toast_detail2 || 'die Bewerbung bearbeitet hat.'}`,
+            life: 6000,
+          });
+        }}
       />
 
       {/* Applications Modal */}

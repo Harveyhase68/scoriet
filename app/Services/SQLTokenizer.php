@@ -25,7 +25,7 @@ class SQLTokenizer
             'INNODB', 'MYISAM', 'MEMORY', 'CHARSET', 'COLLATE', 'ROW_FORMAT',
             'COMPRESSED', 'DYNAMIC', 'FIXED', 'REDUNDANT', 'COMPACT',
             // Common MySQL keywords
-            'COMMENT', 'ON', 'UPDATE', 'CASCADE', 'RESTRICT', 'SET', 
+            'COMMENT', 'ON', 'UPDATE', 'DELETE', 'CASCADE', 'RESTRICT', 'SET', 'NO', 'ACTION', 
             'CURRENT_TIMESTAMP', 'TIMESTAMP', 'DATETIME', 'DATE', 'TIME',
             // Character sets and collations (common ones)
             'UTF8', 'UTF8MB4', 'LATIN1', 'ASCII',

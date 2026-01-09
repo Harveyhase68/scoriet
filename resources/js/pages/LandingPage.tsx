@@ -678,7 +678,7 @@ export default function LandingPage() {
                   <li><a href="#" className="hover:text-white">{t.documentationLink}</a></li>
                   <li><a href="#" className="hover:text-white">{t.apiReferenceLink}</a></li>
                   <li><a href="#" className="hover:text-white">{t.tutorialsLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.blogLink}</a></li>
+                  <li><a href={`/${currentLanguage}/downloads`} className="hover:text-white">{t.downloadsLink}</a></li>
                 </ul>
               </div>
 

@@ -60,9 +60,26 @@ class CustomTokenController extends AccessTokenController
                         ], 403);
                     }
 
-                    // Try to claim monthly credits for this user (if eligible)
+                    // Check if user account is deactivated due to inactivity
+                    // If so, reactivate it on login (user is proving they're active)
+                    if ($user && $user->isDeactivated()) {
+                        $user->reactivate();
+                        \Log::info("User reactivated on login", ['user_id' => $user->id, 'email' => $user->email]);
+                    }
+
+                    // Record login and reset inactivity warnings
                     if ($user) {
+                        $user->recordLogin();
+                        // Also try to claim monthly credits (if eligible)
                         $user->claimMonthlyCredits();
+
+                        // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
+                        // This prevents account sharing and ensures only one active session per user
+                        $existingTokenCount = $user->tokens()->where('revoked', false)->count();
+                        $user->tokens()->update(['revoked' => true]);
+
+                        // Store the count for the response (will be used later)
+                        $requestData['_revoked_sessions'] = $existingTokenCount;
                     }
                 }
             }
@@ -88,12 +105,16 @@ class CustomTokenController extends AccessTokenController
                 $token->expires_at = now()->addDays(30);
                 $token->save();
 
+                $revokedSessions = $requestData['_revoked_sessions'] ?? 0;
+
                 return response()->json([
                     'access_token' => $tokenResult->accessToken,
                     'refresh_token' => null, // Not implemented for custom tokens yet
                     'token_type' => 'Bearer',
                     'expires_in' => 30 * 24 * 60 * 60, // 30 days in seconds
                     'monthly_credits_awarded' => $creditsAwarded,
+                    'other_sessions_revoked' => $revokedSessions > 0,
+                    'revoked_session_count' => $revokedSessions,
                 ]);
             }
 

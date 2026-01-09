@@ -209,7 +209,7 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
-        
+
         // Check if email is verified
         if (!$user->hasVerifiedEmail()) {
             return response()->json([
@@ -229,7 +229,12 @@ class AuthController extends Controller
                 $user->update(['pending_project_invitation_id' => $invitation->id]);
             }
         }
-        
+
+        // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
+        // This prevents account sharing and ensures only one active session per user
+        $existingTokenCount = $user->tokens()->where('revoked', false)->count();
+        $user->tokens()->update(['revoked' => true]);
+
         // Create a personal access token instead of OAuth token
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->accessToken;
@@ -242,7 +247,9 @@ class AuthController extends Controller
             'user' => $user,
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'has_pending_invitation' => $user->hasPendingInvitation()
+            'has_pending_invitation' => $user->hasPendingInvitation(),
+            'other_sessions_revoked' => $existingTokenCount > 0,
+            'revoked_session_count' => $existingTokenCount,
         ]);
     }
 
@@ -336,6 +343,8 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'language' => 'nullable|string|in:en,de,fr,es,it',
+            'email_system_notifications' => 'nullable|boolean',
+            'email_user_notifications' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -353,6 +362,14 @@ class AuthController extends Controller
         // Add language if provided
         if ($request->has('language')) {
             $updateData['language'] = $request->language;
+        }
+
+        // Add email notification settings if provided
+        if ($request->has('email_system_notifications')) {
+            $updateData['email_system_notifications'] = $request->boolean('email_system_notifications');
+        }
+        if ($request->has('email_user_notifications')) {
+            $updateData['email_user_notifications'] = $request->boolean('email_user_notifications');
         }
 
         $user->update($updateData);

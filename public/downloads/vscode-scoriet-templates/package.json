@@ -1,0 +1,78 @@
+{
+  "name": "scoriet-templates",
+  "displayName": "Scoriet Template Language",
+  "description": "Syntax highlighting for Scoriet template placeholders ({variable}, {for}, {if}, etc.) - injects into PHP, TypeScript, JavaScript, C++, Python, and more",
+  "version": "1.0.0",
+  "publisher": "scoriet",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "scoriet",
+    "template",
+    "code generator",
+    "placeholder",
+    "injection"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scoriet/vscode-scoriet-templates"
+  },
+  "contributes": {
+    "grammars": [
+      {
+        "scopeName": "scoriet.template.injection",
+        "path": "./syntaxes/scoriet.injection.tmLanguage.json",
+        "injectTo": [
+          "source.php",
+          "source.ts",
+          "source.tsx",
+          "source.js",
+          "source.jsx",
+          "source.cpp",
+          "source.c",
+          "source.cs",
+          "source.java",
+          "source.python",
+          "source.go",
+          "source.rust",
+          "source.ruby",
+          "source.swift",
+          "source.kotlin",
+          "source.sql",
+          "source.css",
+          "source.scss",
+          "source.less",
+          "text.html.basic",
+          "text.html.php",
+          "source.json",
+          "source.yaml",
+          "source.xml",
+          "text.xml",
+          "source.vue",
+          "source.svelte",
+          "source.blade",
+          "source.twig",
+          "source.dart",
+          "source.lua",
+          "source.perl",
+          "source.shell",
+          "source.powershell",
+          "source.makefile",
+          "source.dockerfile",
+          "source.groovy",
+          "source.scala",
+          "source.r",
+          "source.matlab",
+          "source.objc",
+          "source.objcpp",
+          "text.html.derivative",
+          "text.html.markdown"
+        ]
+      }
+    ]
+  }
+}

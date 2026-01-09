@@ -24,9 +24,10 @@ interface JoinCodeModalProps {
   visible: boolean;
   onHide: () => void;
   onSuccess?: () => void;
+  onApplicationSent?: (projectName: string, ownerName: string) => void;
 }
 
-export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeModalProps) {
+export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicationSent }: JoinCodeModalProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -121,14 +122,19 @@ export default function JoinCodeModal({ visible, onHide, onSuccess }: JoinCodeMo
       setStep('applied');
       setSuccess(t.joincodemodal117);
 
-      // Auto-close modal after 2 seconds
+      // Notify parent to show toast (toast in modal disappears when modal closes)
+      if (onApplicationSent) {
+        onApplicationSent(project.name, project.owner.name);
+      }
+
+      // Auto-close modal after 2 seconds, then call onSuccess
+      // (onSuccess triggers re-render which could interfere with toast if called immediately)
       setTimeout(() => {
         handleClose();
+        if (onSuccess) {
+          onSuccess();
+        }
       }, 2000);
-
-      if (onSuccess) {
-        onSuccess();
-      }
 
     } catch (error) {
       setError(error instanceof Error ? error.message : t.joincodemodal129);

@@ -43,6 +43,9 @@ class CliTask extends Model
     // Task types constants
     const TYPE_DATABASE_IMPORT = 'database_import';
     const TYPE_PROJECT_DOWNLOAD = 'project_download';
+    const TYPE_TEMPLATE_UPLOAD = 'template_upload';
+    const TYPE_FILE_EDIT = 'file_edit';
+    const TYPE_CONNECTION_TEST = 'connection_test';
 
     // Status constants
     const STATUS_PENDING = 'pending';
