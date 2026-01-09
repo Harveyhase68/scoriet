@@ -77,23 +77,35 @@ class ApiClient {
   }
 
   private async handleAuthError(): Promise<void> {
+    // Check if we should notify about forced logout (only once per session)
+    const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
+    const isLoggingOut = localStorage.getItem('logout_in_progress');
+
     // Clear invalid tokens from both storages
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     localStorage.removeItem('remember_me');
-    
+
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('refresh_token');
     sessionStorage.removeItem('user');
-    
+
     // Clear remember me cookie
     document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
+
     // Trigger storage event to update UI
     window.dispatchEvent(new Event('storage'));
-    
-    // Could show login modal here or redirect
+
+    // Dispatch session forcibly ended event (for single-session enforcement)
+    // Only notify once to avoid multiple notifications from concurrent API calls
+    if (!alreadyNotified && !isLoggingOut) {
+      console.log('🔴 API handleAuthError - dispatching sessionForciblyEnded');
+      sessionStorage.setItem('session_revoke_notified', 'true');
+      window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+        detail: { reason: 'token_revoked' }
+      }));
+    }
   }
 
   async request(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -526,14 +538,33 @@ class ApiClient {
     }
   }
 
-  async getSchemaVersions(schemaId: number): Promise<any[]> {
+  async getSchemaVersions(schemaId: number, _silent: boolean = false): Promise<any[]> {
     try {
       if (!schemaId) {
         return [];
       }
 
-      const response = await this.request(`/floating-schemas/${schemaId}/versions`);
-      return response || [];
+      const token = await this.getAuthToken();
+      if (!token) {
+        return [];
+      }
+
+      // Use fetch directly to avoid request() throwing/logging on 404
+      const response = await fetch(`${this.baseURL}/floating-schemas/${schemaId}/versions`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // Silently return empty array for 404 (schema doesn't exist or no versions)
+        return [];
+      }
+
+      return await response.json() || [];
     } catch {
       return [];
     }
@@ -692,6 +723,47 @@ class ApiClient {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
+    }
+  }
+
+  // ========== Unlinked/Standalone Items for Navigation ==========
+
+  /**
+   * Get all teams OWNED by the current user (not teams where user is just a member)
+   */
+  async getAllUserTeams(): Promise<any[]> {
+    try {
+      const response = await this.request('/teams?all=true');
+      // Only return owned_teams (teams the user created), not member_teams
+      return response.owned_teams || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get user's own templates (not linked to any project)
+   */
+  async getMyTemplates(): Promise<any[]> {
+    try {
+      const response = await this.request('/templates/my-templates');
+      return response.templates || response || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get all schemas OWNED by the user (not system schemas or shared ones)
+   */
+  async getAllUserSchemas(): Promise<any[]> {
+    try {
+      const response = await this.request('/schemas');
+      const allSchemas = response.schemas || response || [];
+      // Filter to only include schemas where user is the owner
+      return allSchemas.filter((schema: any) => schema.is_owner === true);
+    } catch {
+      return [];
     }
   }
 

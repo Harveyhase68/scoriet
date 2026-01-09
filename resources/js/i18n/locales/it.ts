@@ -1256,6 +1256,13 @@ export const it: Translations = {
   preferredLanguage: 'Lingua preferita',
   languageDescription: 'Scegli la tua lingua preferita per l\'interfaccia dell\'applicazione',
 
+  // Email Notification Settings
+  emailNotifications: 'Notifiche e-mail',
+  emailSystemNotifications: 'Notifiche di sistema',
+  emailSystemNotificationsDesc: 'Messaggi di sistema importanti, annunci e messaggi amministrativi',
+  emailUserNotifications: 'Messaggi utenti',
+  emailUserNotificationsDesc: 'Messaggi da altri utenti, team e notifiche di progetto',
+
   // resources/js\Components\AuthModals\ProfileModal.tsx
   profilemodal498: 'Seleziona la lingua',
   profilemodal510: 'Il nome utente non può essere modificato dopo la registrazione.',
@@ -1921,6 +1928,8 @@ export const it: Translations = {
   joincodemodal95: 'Non autenticato',
   joincodemodal113: 'Impossibile inviare la domanda',
   joincodemodal117: 'Domanda inviata con successo! Il proprietario del progetto esaminerà la tua richiesta.',
+  joincodemodal_toast_detail: 'Attendi che',
+  joincodemodal_toast_detail2: 'abbia esaminato la tua candidatura.',
   joincodemodal129: 'Errore durante l\'invio della domanda',
 
   // resources/js/Components/Modals/JoinCodeModal.tsx
@@ -3013,6 +3022,12 @@ export const it: Translations = {
   panelt1813: 'Nessun progetto trovato',
   panelt1833: 'Selezionato:',
   panelt1835: 'Nome:',
+  panelt1StandaloneTeams: 'Team (non collegati)',
+  panelt1StandaloneTemplates: 'Template (non collegati)',
+  panelt1StandaloneDatabases: 'Database (non collegati)',
+  panelt1MyTeams: 'I miei Team',
+  panelt1MyTemplates: 'I miei Template',
+  panelt1MyDatabases: 'I miei Database',
   panelt1836: 'Tipo:',
   panelt1837: 'ID:',
   panelt1839: 'Sentiero:',
@@ -4631,7 +4646,7 @@ export const it: Translations = {
   documentationLink: 'Documentazione',
   apiReferenceLink: 'Riferimento API',
   tutorialsLink: 'Tutorial',
-  blogLink: 'Blog',
+  downloadsLink: 'Download',
   supportLabel: 'Supporto',
   helpCenterLink: 'Centro assistenza',
 
@@ -4641,7 +4656,7 @@ export const it: Translations = {
   // resources/js/pages/LandingPage.tsx
   contactUsLink: 'Contattaci',
   communityLink: 'Comunità',
-  allRightsReserved: '© 2025 Scoriet, tutti i diritti riservati',
+  allRightsReserved: '© 2026 Scoriet, tutti i diritti riservati',
 
   // resources/js/pages/LandingPage.tsx
   privacyPolicy: 'Privacy Policy',

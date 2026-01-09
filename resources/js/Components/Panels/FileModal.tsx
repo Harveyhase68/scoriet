@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useToast } from '@/contexts/ToastContext';
 import { Dialog } from 'primereact/dialog';
@@ -8,7 +8,13 @@ import { Dropdown } from 'primereact/dropdown';
 import { FileUpload } from 'primereact/fileupload';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import { ProgressBar } from 'primereact/progressbar';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+
+// Helper function to get auth token
+const getAuthToken = (): string | null => {
+    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+};
 import { EditorState, Extension } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap } from '@codemirror/commands';
@@ -109,11 +115,12 @@ const getLanguageDisplayName = (fileName: string): string => {
 };
 
 // CodeMirror 6 Editor Component - Multi-Language Support
-const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder }: {
+const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMaximized }: {
     value: string;
     onChange: (value: string) => void;
     fileName: string;
     _placeholder?: string;
+    isMaximized?: boolean;
 }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -141,8 +148,8 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder }: {
                     "&": {
                         fontSize: "14px",
                         fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
-                        height: "500px",
-                        maxHeight: "60vh"
+                        height: isMaximized ? "calc(95vh - 350px)" : "500px",
+                        maxHeight: isMaximized ? "none" : "60vh"
                     },
                     ".cm-scroller": {
                         overflow: "auto"
@@ -161,7 +168,7 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder }: {
         return () => {
             view.destroy();
         };
-    }, [fileName]); // Recreate editor when language changes
+    }, [fileName, isMaximized]); // Recreate editor when language or size changes
 
     // Update editor when value changes externally
     useEffect(() => {
@@ -222,6 +229,7 @@ interface FileModalProps {
     editingFile: any;
     templateFiles: any[];
     fileTypes: any[];
+    templateId?: number; // For external editing features
 }
 
 const FileModal: React.FC<FileModalProps> = ({
@@ -230,7 +238,8 @@ const FileModal: React.FC<FileModalProps> = ({
     onSubmit,
     editingFile,
     templateFiles,
-    fileTypes
+    fileTypes,
+    templateId
 }) => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -268,6 +277,14 @@ const FileModal: React.FC<FileModalProps> = ({
 
     // 🆕 Upload mode for static_directory: 'archive' (ZIP/TAR.GZ/TAR.XZ) or 'file_manager' (individual files)
     const [uploadMode, setUploadMode] = useState<'archive' | 'file_manager'>('archive');
+
+    // External editing states
+    const [isMaximized, setIsMaximized] = useState(false);
+    const [serviceEditActive, setServiceEditActive] = useState(false);
+    const [serviceEditSessionId, setServiceEditSessionId] = useState<string | null>(null);
+    const [serviceEditStatus, setServiceEditStatus] = useState<string>('');
+    const [serviceEditLogs, setServiceEditLogs] = useState<string>('');
+    const servicePollingRef = useRef<NodeJS.Timeout | null>(null);
 
     // 🆕 File manager state: List of individual files with relative paths
     const [managedFiles, setManagedFiles] = useState<Array<{
@@ -377,6 +394,174 @@ const FileModal: React.FC<FileModalProps> = ({
             extractZipFileList();
         }
     }, [visible, editingFile, toast]);
+
+    // Stop service polling callback
+    const stopServicePolling = useCallback(() => {
+        if (servicePollingRef.current) {
+            clearInterval(servicePollingRef.current);
+            servicePollingRef.current = null;
+        }
+    }, []);
+
+    // Cleanup on unmount or close
+    useEffect(() => {
+        return () => {
+            stopServicePolling();
+        };
+    }, [stopServicePolling]);
+
+    // Download file for VS Code callback
+    const handleDownloadForVSCode = useCallback(() => {
+        if (!editingFile || !editingFile.file_content) {
+            toast.showError('Keine Datei zum Herunterladen vorhanden');
+            return;
+        }
+
+        try {
+            const blob = new Blob([editingFile.file_content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = editingFile.file_name || 'template_file.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.showSuccess(`Datei "${editingFile.file_name}" heruntergeladen. Öffnen Sie sie in VS Code, bearbeiten Sie sie und laden Sie sie dann hier wieder hoch.`);
+        } catch (error: any) {
+            toast.showError(`Download fehlgeschlagen: ${error.message}`);
+        }
+    }, [editingFile, toast]);
+
+    // Re-upload file from local callback
+    const handleReuploadFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target?.result as string;
+            reset({
+                ...control._formValues,
+                file_content: content
+            });
+            toast.showSuccess(`Datei "${file.name}" geladen. Klicken Sie auf Speichern um die Änderungen zu übernehmen.`);
+        };
+        reader.onerror = () => {
+            toast.showError('Fehler beim Lesen der Datei');
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }, [reset, control, toast]);
+
+    // Poll for service edit updates callback
+    const startServicePolling = useCallback((sessionId: string) => {
+        stopServicePolling();
+
+        servicePollingRef.current = setInterval(async () => {
+            try {
+                const response = await fetch(`/cli/svc/file-edit/${sessionId}/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    return;
+                }
+
+                if (data.logs) {
+                    setServiceEditLogs(data.logs);
+                }
+
+                if (data.updated_content) {
+                    reset({
+                        ...control._formValues,
+                        file_content: data.updated_content
+                    });
+                    setServiceEditStatus('Änderungen empfangen!');
+                    toast.showSuccess('Datei wurde aktualisiert');
+                }
+
+                if (data.status === 'watching') {
+                    setServiceEditStatus('Überwache Datei auf Änderungen...');
+                } else if (data.status === 'closed') {
+                    stopServicePolling();
+                    setServiceEditActive(false);
+                    setServiceEditStatus('');
+                    toast.showInfo('Service-Bearbeitung beendet');
+                }
+            } catch (err) {
+                console.error('Service polling error:', err);
+            }
+        }, 1500);
+    }, [stopServicePolling, reset, control, toast]);
+
+    // Start editing via service callback
+    const handleStartServiceEdit = useCallback(async () => {
+        if (!editingFile || !templateId) {
+            toast.showError('Template-ID oder Datei nicht verfügbar');
+            return;
+        }
+
+        setServiceEditActive(true);
+        setServiceEditStatus('Erstelle Service-Task...');
+        setServiceEditLogs('');
+
+        try {
+            const response = await fetch('/cli/svc/tasks/file-edit', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    template_id: templateId,
+                    file_id: editingFile.id,
+                    file_name: editingFile.file_name,
+                    file_content: editingFile.file_content,
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Task-Erstellung fehlgeschlagen');
+            }
+
+            setServiceEditSessionId(data.session_id);
+            setServiceEditStatus('Service öffnet Datei im Editor...');
+            startServicePolling(data.session_id);
+            toast.showSuccess('Datei wird im externen Editor geöffnet. Speichern Sie dort mit STRG+S um die Änderungen zu übernehmen.');
+        } catch (error: any) {
+            setServiceEditActive(false);
+            setServiceEditStatus('');
+            toast.showError(error.message || 'Fehler beim Starten der Service-Bearbeitung');
+        }
+    }, [editingFile, templateId, toast, startServicePolling]);
+
+    // Stop service edit callback
+    const handleStopServiceEdit = useCallback(async () => {
+        if (serviceEditSessionId) {
+            try {
+                await fetch(`/cli/svc/file-edit/${serviceEditSessionId}/stop`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                    }
+                });
+            } catch {
+                // Ignore errors
+            }
+        }
+        stopServicePolling();
+        setServiceEditActive(false);
+        setServiceEditSessionId(null);
+        setServiceEditStatus('');
+        setServiceEditLogs('');
+    }, [serviceEditSessionId, stopServicePolling]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
@@ -535,16 +720,119 @@ const FileModal: React.FC<FileModalProps> = ({
 
     return (
         <Dialog
-            header={editingFile ? 'Datei bearbeiten' : t.filemodal111}
+            header={
+                <div className="flex items-center justify-between w-full pr-8">
+                    <span>{editingFile ? 'Datei bearbeiten' : t.filemodal111}</span>
+                    {editingFile && contentMode === 'text' && (
+                        <div className="flex items-center gap-2 ml-4">
+                            {/* VS Code / External Edit Buttons */}
+                            <Button
+                                icon="pi pi-download"
+                                label="Download"
+                                size="small"
+                                severity="secondary"
+                                text
+                                onClick={handleDownloadForVSCode}
+                                tooltip="Datei herunterladen für manuelle Bearbeitung"
+                                tooltipOptions={{ position: 'bottom' }}
+                            />
+                            <input
+                                type="file"
+                                id="reupload-file-input"
+                                accept=".php,.js,.jsx,.ts,.tsx,.html,.css,.scss,.json,.sql,.xml,.yaml,.yml,.md,.txt,.vue,.py,.java,.rs,.c,.cpp,.h,.hpp"
+                                style={{ display: 'none' }}
+                                onChange={handleReuploadFile}
+                            />
+                            <Button
+                                icon="pi pi-upload"
+                                label="Re-Upload"
+                                size="small"
+                                severity="secondary"
+                                text
+                                onClick={() => document.getElementById('reupload-file-input')?.click()}
+                                tooltip="Bearbeitete Datei wieder hochladen"
+                                tooltipOptions={{ position: 'bottom' }}
+                            />
+                            {templateId && !serviceEditActive && (
+                                <Button
+                                    icon="pi pi-desktop"
+                                    label="Via Service"
+                                    size="small"
+                                    severity="info"
+                                    text
+                                    onClick={handleStartServiceEdit}
+                                    tooltip="Im externen Editor bearbeiten (mit automatischer Synchronisation)"
+                                    tooltipOptions={{ position: 'bottom' }}
+                                />
+                            )}
+                            {/* VS Code Direct Link - opens temp file if service is active */}
+                            {serviceEditActive && editingFile?.file_name && (
+                                <a
+                                    href={`vscode://file/C:/WINDOWS/SystemTemp/scoriet-edit/${editingFile.file_name}`}
+                                    className="p-button p-button-text p-button-sm p-button-help"
+                                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                                    title="Datei direkt in VS Code öffnen (vscode:// Link)"
+                                >
+                                    <i className="pi pi-external-link" />
+                                    <span>VS Code Link</span>
+                                </a>
+                            )}
+                            {serviceEditActive && (
+                                <Button
+                                    icon="pi pi-stop"
+                                    label="Service beenden"
+                                    size="small"
+                                    severity="danger"
+                                    text
+                                    onClick={handleStopServiceEdit}
+                                    tooltip="Service-Bearbeitung beenden"
+                                    tooltipOptions={{ position: 'bottom' }}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
+            }
             visible={visible}
-            onHide={onCancel}
-            style={{ width: '700px' }}
+            onHide={() => {
+                handleStopServiceEdit();
+                onCancel();
+            }}
+            style={{ width: isMaximized ? '95vw' : '800px', height: isMaximized ? '95vh' : 'auto' }}
             modal
             closable
             draggable
             resizable
+            maximizable
+            maximized={isMaximized}
+            onMaximize={(e) => setIsMaximized(e.maximized)}
         >
-            <form className="space-y-4">
+            {/* Service Edit Status Banner */}
+            {serviceEditActive && (
+                <div className="mb-4 bg-blue-900 border border-blue-600 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <i className="pi pi-sync pi-spin text-blue-400 mr-3" />
+                            <div>
+                                <div className="text-blue-100 font-medium">{serviceEditStatus}</div>
+                                {serviceEditLogs && (
+                                    <div className="text-blue-300 text-xs mt-1 font-mono">{serviceEditLogs}</div>
+                                )}
+                            </div>
+                        </div>
+                        <Button
+                            icon="pi pi-times"
+                            size="small"
+                            severity="danger"
+                            text
+                            onClick={handleStopServiceEdit}
+                        />
+                    </div>
+                    <ProgressBar mode="indeterminate" style={{ height: '4px', marginTop: '8px' }} />
+                </div>
+            )}
+
+            <form className="space-y-4" style={{ maxHeight: isMaximized ? 'calc(95vh - 200px)' : 'auto', overflowY: isMaximized ? 'auto' : 'visible' }}>
                 <div className="flex gap-4">
                     {/* File Name */}
                     <div className="flex-1">
@@ -762,6 +1050,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                             value={field.value || ''}
                                             onChange={field.onChange}
                                             fileName={fileName}
+                                            isMaximized={isMaximized}
                                             placeholder={`Template-Code hier eingeben...
 
 Platzhalter-Beispiele:

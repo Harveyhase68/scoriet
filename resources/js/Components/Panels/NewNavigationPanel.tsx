@@ -1,12 +1,15 @@
 // resources/js/Components/Panels/NewNavigationPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { TieredMenu } from 'primereact/tieredmenu';
 import { MenuItem } from 'primereact/menuitem';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
 import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ProjectWizardModal from '@/Components/ProjectWizardModal';
+import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -32,6 +35,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     const saved = localStorage.getItem('navigation_collapsed');
     return saved === null ? true : JSON.parse(saved);
   });
+
+  // Form Designer Paywall States
+  const [showFormPaywall, setShowFormPaywall] = useState(false);
+  const [formPaywallTarget, setFormPaywallTarget] = useState<'formset-management' | 'form-designer' | null>(null);
+  const [formPaywallLoading, setFormPaywallLoading] = useState(false);
+  const [formAccessInfo, setFormAccessInfo] = useState<{
+    hasAccess: boolean;
+    needsUnlock: boolean;
+    credits: number;
+    requiredCredits: number;
+  } | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
 
   // 🎯 DEMO MODE DETECTION
   const isDemoMode = sessionStorage.getItem('demo_mode') === 'true';
@@ -99,6 +114,112 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   React.useEffect(() => {
     localStorage.setItem('navigation_collapsed', JSON.stringify(isCollapsed));
   }, [isCollapsed]);
+
+  // Check form designer access and show paywall if needed
+  const checkFormDesignerAccess = useCallback(async (target: 'formset-management' | 'form-designer') => {
+    setFormPaywallLoading(true);
+    setFormPaywallTarget(target);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        // Not logged in - show login modal instead
+        onOpenModal?.('login');
+        setFormPaywallLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/form-designer/access', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.has_access) {
+          // User has access - open the panel directly
+          onOpenPanel(target);
+          setFormPaywallLoading(false);
+        } else {
+          // User needs to unlock - show paywall
+          // Backend returns: user_credits, unlock_cost
+          setFormAccessInfo({
+            hasAccess: false,
+            needsUnlock: true,
+            credits: data.user_credits || 0,
+            requiredCredits: data.unlock_cost || 50
+          });
+          setShowFormPaywall(true);
+          setFormPaywallLoading(false);
+        }
+      } else {
+        // Error - try to open panel anyway (let the panel handle errors)
+        onOpenPanel(target);
+        setFormPaywallLoading(false);
+      }
+    } catch (error) {
+      console.error('Error checking form designer access:', error);
+      // On error, try to open panel anyway
+      onOpenPanel(target);
+      setFormPaywallLoading(false);
+    }
+  }, [onOpenPanel, onOpenModal]);
+
+  // Handle form designer unlock
+  const handleFormUnlock = useCallback(async () => {
+    setFormPaywallLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/form-designer/unlock', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Unlock successful - update credits and open panel
+        setShowFormPaywall(false);
+        if (formPaywallTarget) {
+          onOpenPanel(formPaywallTarget);
+        }
+        // Trigger credits update
+        window.dispatchEvent(new Event('creditsChanged'));
+        updateAuthStatus();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Freischaltung fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Error unlocking form designer:', error);
+      alert('Fehler beim Freischalten');
+    } finally {
+      setFormPaywallLoading(false);
+    }
+  }, [formPaywallTarget, onOpenPanel]);
+
+  // Handle buy credits
+  const handleBuyCredits = useCallback(() => {
+    setShowFormPaywall(false);
+    setShowPlanModal(true);
+  }, []);
+
+  // Handle plan modal close
+  const handlePlanModalClose = useCallback(() => {
+    setShowPlanModal(false);
+    updateAuthStatus();
+    // Re-check access after buying credits
+    if (formPaywallTarget) {
+      checkFormDesignerAccess(formPaywallTarget);
+    }
+  }, [formPaywallTarget, checkFormDesignerAccess]);
 
   // Check login status on component mount and when storage changes
   React.useEffect(() => {
@@ -275,14 +396,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       icon: 'pi pi-window-maximize',
       items: [
         {
-          label: 'Formular Management',
+          label: 'Formular Management 💰',
           icon: 'pi pi-list',
-          command: () => onOpenPanel('formset-management')
+          command: () => checkFormDesignerAccess('formset-management')
         },
         {
-          label: 'Formular Editor',
+          label: 'Formular Editor 💰',
           icon: 'pi pi-pencil',
-          command: () => onOpenPanel('form-designer')
+          command: () => checkFormDesignerAccess('form-designer')
         }
       ]
     },
@@ -305,6 +426,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: t.panelsewnavigationpanel238,
           icon: 'pi pi-language',
           command: () => onOpenPanel('schema-translation')
+        },
+        {
+          label: 'Schema Migration 💰',
+          icon: 'pi pi-sync',
+          command: () => onOpenPanel('query-builder')
         },
         {
           separator: true
@@ -337,15 +463,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('code-generation')
         },
         {
-          label: t.panelsewnavigationpanel273,
-          icon: 'pi pi-search',
-          command: () => onOpenPanel('query-builder')
-        },
-        {
           separator: true
         },
         {
-          label: 'Code Anpassungen',
+          label: 'Code Anpassungen 💰',
           icon: 'pi pi-sliders-h',
           command: () => onOpenPanel('code-adjustments')
         },
@@ -406,6 +527,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-user-edit',
           command: () => onOpenModal?.('profile')
         },
+        // Messaging button
+        ...(!isDemoMode ? [{
+          label: 'Nachrichten',
+          icon: 'pi pi-envelope',
+          command: () => window.dispatchEvent(new CustomEvent('openMessaging'))
+        }] : []),
         // 🎯 Hide "Change Plan" in DEMO mode
         ...(!isDemoMode ? [{
           label: t.panelsewnavigationpanel320,
@@ -575,7 +702,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                           <i className="pi pi-cog"></i>
-                          <span>Team Management</span>
+                          <span>Team Management 💰</span>
                         </button>
                       </div>
                     </div>
@@ -633,13 +760,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               {/* Popup submenu for Formulare */}
               <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => checkFormDesignerAccess('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-list"></i>
-                    <span>Formular Management</span>
+                    <span>Formular Management 💰</span>
                   </button>
-                  <button onClick={() => onOpenPanel('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => checkFormDesignerAccess('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-pencil"></i>
-                    <span>Formular Editor</span>
+                    <span>Formular Editor 💰</span>
                   </button>
                 </div>
               </div>
@@ -663,6 +790,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={() => onOpenPanel('schema-translation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-language"></i>
                     <span>{t.panelsewnavigationpanel548}</span>
+                  </button>
+                  <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <i className="pi pi-sync"></i>
+                    <span>Schema Migration 💰</span>
                   </button>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
@@ -692,14 +823,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <i className="pi pi-play"></i>
                     <span>{t.panelsewnavigationpanel576}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                    <i className="pi pi-search"></i>
-                    <span>{t.panelsewnavigationpanel580}</span>
-                  </button>
                   <div className="border-t border-gray-600 my-2"></div>
                   <button onClick={() => onOpenPanel('code-adjustments')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                     <i className="pi pi-sliders-h"></i>
-                    <span>Code Anpassungen</span>
+                    <span>Code Anpassungen 💰</span>
                   </button>
                   {userType === 'system' && (
                     <>
@@ -847,6 +974,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         <i className="pi pi-user-edit"></i>
                         <span>{t.newnavigationpanel315}</span>
                       </button>
+                      {/* Messaging Button */}
+                      {!isDemoMode && (
+                        <button onClick={() => window.dispatchEvent(new CustomEvent('openMessaging'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                          <i className="pi pi-envelope"></i>
+                          <span>Nachrichten</span>
+                        </button>
+                      )}
                       {/* 🎯 Hide "Change Plan" in DEMO mode */}
                       {!isDemoMode && (
                         <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
@@ -941,6 +1075,102 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             }
           }
         }}
+      />
+
+      {/* Form Designer Paywall Dialog */}
+      <Dialog
+        visible={showFormPaywall}
+        onHide={() => {
+          setShowFormPaywall(false);
+          setFormPaywallTarget(null);
+        }}
+        header={
+          <div className="flex items-center gap-2">
+            <i className="pi pi-lock text-yellow-500"></i>
+            <span>Formular Designer - Premium Feature 💰</span>
+          </div>
+        }
+        style={{ width: '450px' }}
+        modal
+        closable
+      >
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4">
+            <p className="text-yellow-800 text-sm mb-2">
+              <strong>Der Formular Designer ist ein Premium Feature.</strong>
+            </p>
+            <p className="text-gray-600 text-sm">
+              Schalte den Formular Designer für <strong>50 Credits einmalig</strong> frei und nutze ihn unbegrenzt!
+            </p>
+          </div>
+
+          {formAccessInfo && (
+            <div className="bg-gray-100 rounded-lg p-4 border border-gray-300">
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="text-gray-600">Ihre Credits:</span>
+                <span className="text-gray-900 font-bold">{formAccessInfo.credits}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="text-gray-600">Benötigt:</span>
+                <span className="text-yellow-600 font-bold">{formAccessInfo.requiredCredits}</span>
+              </div>
+              <hr className="border-gray-300 my-2" />
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600">Danach:</span>
+                <span className={`font-bold ${formAccessInfo.credits >= formAccessInfo.requiredCredits ? 'text-green-600' : 'text-red-600'}`}>
+                  {formAccessInfo.credits >= formAccessInfo.requiredCredits
+                    ? formAccessInfo.credits - formAccessInfo.requiredCredits
+                    : `${formAccessInfo.requiredCredits - formAccessInfo.credits} fehlen`}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {formAccessInfo && formAccessInfo.credits < formAccessInfo.requiredCredits && (
+            <div className="bg-red-50 border border-red-400 rounded-lg p-3">
+              <p className="text-red-600 text-sm">
+                Sie benötigen noch <strong>{formAccessInfo.requiredCredits - formAccessInfo.credits} weitere Credits</strong>.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            {formAccessInfo && formAccessInfo.credits >= formAccessInfo.requiredCredits ? (
+              <Button
+                onClick={handleFormUnlock}
+                loading={formPaywallLoading}
+                className="flex-1"
+                severity="success"
+                icon="pi pi-unlock"
+                label="Freischalten (50 Credits)"
+              />
+            ) : (
+              <Button
+                onClick={handleBuyCredits}
+                className="flex-1"
+                severity="warning"
+                icon="pi pi-shopping-cart"
+                label="Credits kaufen"
+              />
+            )}
+            <Button
+              onClick={() => {
+                setShowFormPaywall(false);
+                setFormPaywallTarget(null);
+              }}
+              severity="secondary"
+              icon="pi pi-times"
+              label="Abbrechen"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Plan Modal for buying credits */}
+      <PlanModal
+        visible={showPlanModal}
+        onHide={handlePlanModalClose}
+        initialTab={1}
       />
     </div>
   );

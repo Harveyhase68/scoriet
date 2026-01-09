@@ -1273,6 +1273,13 @@ export interface Translations {
   preferredLanguage: string;
   languageDescription: string;
 
+  // Email Notification Settings
+  emailNotifications: string;
+  emailSystemNotifications: string;
+  emailSystemNotificationsDesc: string;
+  emailUserNotifications: string;
+  emailUserNotificationsDesc: string;
+
   // resources/js\Components\AuthModals\ProfileModal.tsx
   profilemodal498: string;
   profilemodal510: string;
@@ -1938,6 +1945,8 @@ export interface Translations {
   joincodemodal95: string;
   joincodemodal113: string;
   joincodemodal117: string;
+  joincodemodal_toast_detail: string;
+  joincodemodal_toast_detail2: string;
   joincodemodal129: string;
 
   // resources/js/Components/Modals/JoinCodeModal.tsx
@@ -3028,6 +3037,12 @@ export interface Translations {
   panelt1813: string;
   panelt1833: string;
   panelt1835: string;
+  panelt1StandaloneTeams: string;
+  panelt1StandaloneTemplates: string;
+  panelt1StandaloneDatabases: string;
+  panelt1MyTeams: string;
+  panelt1MyTemplates: string;
+  panelt1MyDatabases: string;
   panelt1836: string;
   panelt1837: string;
   panelt1839: string;
@@ -4647,7 +4662,7 @@ templatemodal480: string;
   documentationLink: string;
   apiReferenceLink: string;
   tutorialsLink: string;
-  blogLink: string;
+  downloadsLink: string;
   supportLabel: string;
   helpCenterLink: string;
 

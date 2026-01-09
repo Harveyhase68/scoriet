@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -7,6 +7,7 @@ import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
 import { Message } from 'primereact/message';
+import { Toast } from 'primereact/toast';
 import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useProject } from '@/contexts/ProjectContext';
@@ -37,6 +38,9 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Toast ref for notifications
+  const toast = useRef<Toast>(null);
 
   const { loadProjects: loadGlobalProjects } = useProject();
   const [projects, setProjects] = useState<PublicProject[]>([]);
@@ -270,6 +274,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
+        <Toast ref={toast} position="top-right" />
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
           <p className="text-gray-600">Loading public projects...</p>
@@ -280,6 +285,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
   return (
     <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
+      <Toast ref={toast} position="top-right" />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -457,7 +463,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         onHide={() => setShowJoinCodeModal(false)}
         onSuccess={() => {
           loadPublicProjects();
-          setShowJoinCodeModal(false);
+        }}
+        onApplicationSent={(projectName, ownerName) => {
+          toast.current?.show({
+            severity: 'success',
+            summary: t.joincodemodal117 || 'Bewerbung gesendet',
+            detail: `${t.joincodemodal_toast_detail || 'Bitte warten Sie, bis'} ${ownerName} ${t.joincodemodal_toast_detail2 || 'die Bewerbung bearbeitet hat.'}`,
+            life: 6000,
+          });
         }}
       />
 

@@ -382,6 +382,17 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
+  // Database Designer Access State (Premium Feature)
+  const [databaseDesignerAccess, setDatabaseDesignerAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    unlock_cost?: number;
+    days_remaining?: number;
+    is_patron?: boolean;
+  } | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
+
   const { selectedProject } = useProject();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -687,10 +698,75 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, []); // Dependencies would cause infinite re-renders
 
 
+  // Load Database Designer access status on mount
+  useEffect(() => {
+    const loadDatabaseDesignerAccess = async () => {
+      setLoadingAccess(true);
+      try {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (!token) {
+          setLoadingAccess(false);
+          return;
+        }
+
+        const response = await fetch('/api/subscriptions/database-designer/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setDatabaseDesignerAccess(data);
+        }
+      } catch (error) {
+        console.error('Failed to load database designer access:', error);
+      } finally {
+        setLoadingAccess(false);
+      }
+    };
+
+    loadDatabaseDesignerAccess();
+  }, []);
+
+  // Unlock Database Designer with credits
+  const unlockDatabaseDesigner = async () => {
+    setUnlocking(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/unlock-database-designer', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDatabaseDesignerAccess(data.access_status);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Freischaltung fehlgeschlagen');
+      }
+    } catch (err) {
+      console.error('Error unlocking database designer:', err);
+      alert('Freischaltung fehlgeschlagen');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   // Load floating schemas when project changes
   useEffect(() => {
-    loadFloatingSchemas();
-  }, [loadFloatingSchemas]);
+    if (databaseDesignerAccess?.has_access) {
+      loadFloatingSchemas();
+    }
+  }, [loadFloatingSchemas, databaseDesignerAccess?.has_access]);
 
   // Auto-select schema when preSelectedSchemaId is provided
   useEffect(() => {
@@ -2016,6 +2092,100 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     }
   }, [selectedSchema, selectedVersion, selectedProject, nodes, edges, saveLayout, loadSchemaVersionWithSchema]);
 
+  // ========== LOADING ACCESS ==========
+  if (loadingAccess) {
+    return (
+      <TabContent style={{}}>
+        <div className="flex items-center justify-center h-full bg-gray-800">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Lade...</p>
+          </div>
+        </div>
+      </TabContent>
+    );
+  }
+
+  // ========== NO ACCESS - SHOW PREMIUM BANNER ==========
+  if (!databaseDesignerAccess?.has_access) {
+    return (
+      <TabContent style={{}}>
+        <div className="h-full flex flex-col bg-gray-800 text-white">
+          {/* Header */}
+          <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
+                <p className="text-sm text-gray-400">Premium Feature</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Premium Banner */}
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="max-w-md w-full">
+              <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+                <div className="text-4xl mb-4">🔒</div>
+                <h3 className="text-xl font-semibold text-purple-200 mb-2">
+                  Datenbank Designer ist ein Premium-Feature
+                </h3>
+                <p className="text-gray-400 mb-4">
+                  Mit dem Datenbank Designer können Sie Ihre Datenbank visuell bearbeiten, neue Tabellen erstellen und Beziehungen verwalten.
+                </p>
+
+                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                  <div className="text-2xl font-bold text-purple-300 mb-1">
+                    {databaseDesignerAccess?.unlock_cost || 50} Credits / Jahr
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Einmalige Freischaltung für 12 Monate
+                  </div>
+                </div>
+
+                <button
+                  onClick={unlockDatabaseDesigner}
+                  disabled={unlocking}
+                  className="px-6 py-3 text-lg font-semibold text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-wait"
+                  style={{
+                    background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  }}
+                >
+                  {unlocking ? 'Wird freigeschaltet...' : '🔓 Freischalten'}
+                </button>
+
+                <div className="mt-4 text-sm text-gray-500">
+                  <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+                  <ul className="text-left space-y-1">
+                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                      <span>📊</span> Visuelle Datenbank-Ansicht
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                      <span>➕</span> Neue Tabellen erstellen
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                      <span>✏️</span> Tabellen bearbeiten
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                      <span>🔗</span> Fremdschlüssel verwalten
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                      <span>📥</span> SQL Import
+                    </li>
+                  </ul>
+                </div>
+
+                <p className="mt-4 text-xs text-gray-600">
+                  Hinweis: Import/Export über das Menü ist weiterhin kostenlos verfügbar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </TabContent>
+    );
+  }
+
+  // ========== MAIN RENDER (WITH ACCESS) ==========
   return (
     <TabContent style={{}}>
       <div className="h-full flex flex-col" style={{ height: '100%' }}>

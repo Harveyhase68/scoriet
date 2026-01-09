@@ -26,11 +26,16 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'username', // GitHub-style unique username
         'user_type',
+        'is_active', // Account active status (false = deactivated due to inactivity)
         'language', // User's preferred language
         'credits',
         'patron_type',
         'pending_project_invitation_id',
         'last_monthly_credits_at',
+        'last_login_at', // Last successful login timestamp
+        'inactivity_warning_1_sent_at', // First inactivity warning (90 days)
+        'inactivity_warning_2_sent_at', // Second inactivity warning (105 days)
+        'inactivity_warning_final_sent_at', // Final inactivity warning (117 days)
         'stripe_customer_id',
         'stripe_subscription_id',
         'paypal_subscription_id',
@@ -52,6 +57,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'seller_verified_at',
         'pending_earnings',
         'total_earnings',
+        // Email notification preferences
+        'email_system_notifications',
+        'email_user_notifications',
     ];
 
     /**
@@ -75,11 +83,18 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'credits' => 'integer',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
+            'inactivity_warning_1_sent_at' => 'datetime',
+            'inactivity_warning_2_sent_at' => 'datetime',
+            'inactivity_warning_final_sent_at' => 'datetime',
             'is_seller' => 'boolean',
             'seller_verified' => 'boolean',
             'seller_verified_at' => 'datetime',
             'pending_earnings' => 'decimal:2',
             'total_earnings' => 'decimal:2',
+            'email_system_notifications' => 'boolean',
+            'email_user_notifications' => 'boolean',
         ];
     }
 
@@ -209,7 +224,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdmin(): bool
     {
-        return $this->user_type === 'admin';
+        return $this->user_type === 'admin' || $this->user_type === 'system';
     }
 
     /**
@@ -230,6 +245,195 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasCredits(int $amount): bool
     {
         return $this->credits >= $amount;
+    }
+
+    /**
+     * Check if user has Git Integration access (subscription or patron)
+     */
+    public function hasGitIntegrationAccess(): bool
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return true;
+        }
+
+        // Check for active subscription
+        return Subscription::hasGitIntegrationAccess($this->id);
+    }
+
+    /**
+     * Get Git Integration access status
+     */
+    public function getGitIntegrationAccessStatus(): array
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
+        return Subscription::getGitIntegrationAccessStatus($this->id);
+    }
+
+    /**
+     * Check if user has Code Adjustments access (subscription or patron)
+     */
+    public function hasCodeAdjustmentsAccess(): bool
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return true;
+        }
+
+        // Check for active subscription
+        return Subscription::hasCodeAdjustmentsAccess($this->id);
+    }
+
+    /**
+     * Get Code Adjustments access status
+     */
+    public function getCodeAdjustmentsAccessStatus(): array
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
+        return Subscription::getCodeAdjustmentsAccessStatus($this->id);
+    }
+
+    /**
+     * Check if user has Database Designer access (subscription or patron)
+     */
+    public function hasDatabaseDesignerAccess(): bool
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return true;
+        }
+
+        // Check for active subscription
+        return Subscription::hasDatabaseDesignerAccess($this->id);
+    }
+
+    /**
+     * Get Database Designer access status
+     */
+    public function getDatabaseDesignerAccessStatus(): array
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
+        return Subscription::getDatabaseDesignerAccessStatus($this->id);
+    }
+
+    /**
+     * Check if user has Schema Migration access (subscription or patron)
+     */
+    public function hasSchemaMigrationAccess(): bool
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return true;
+        }
+
+        // Check for active subscription
+        return Subscription::hasSchemaMigrationAccess($this->id);
+    }
+
+    /**
+     * Get Schema Migration access status
+     */
+    public function getSchemaMigrationAccessStatus(): array
+    {
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
+        return Subscription::getSchemaMigrationAccessStatus($this->id);
+    }
+
+    /**
+     * Check if user has Message Attachments access (subscription or patron or system/admin)
+     */
+    public function hasMessageAttachmentsAccess(): bool
+    {
+        // System/Admin users always have access
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return true;
+        }
+
+        // Check for active subscription
+        return Subscription::hasMessageAttachmentsAccess($this->id);
+    }
+
+    /**
+     * Get Message Attachments access status
+     */
+    public function getMessageAttachmentsAccessStatus(): array
+    {
+        // System/Admin users always have access
+        if ($this->isAdmin()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'system',
+                'is_system' => true,
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $this->credits,
+            ];
+        }
+
+        // Patrons always have access
+        if ($this->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $this->credits,
+            ];
+        }
+
+        return Subscription::getMessageAttachmentsAccessStatus($this->id);
     }
 
     public function deductCredits(int $amount): bool
@@ -544,5 +748,195 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $euCountries = ['AT', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'PL', 'SE', 'DK', 'FI', 'IE', 'PT', 'GR', 'CZ', 'RO', 'HU', 'SK', 'BG', 'HR', 'SI', 'LT', 'LV', 'EE', 'CY', 'LU', 'MT'];
         return in_array(strtoupper($this->company_country ?? ''), $euCountries);
+    }
+
+    // ==================== INACTIVITY TRACKING ====================
+
+    /**
+     * Record successful login and reset inactivity warnings
+     * Call this on every successful login
+     */
+    public function recordLogin(): void
+    {
+        $this->update([
+            'last_login_at' => now(),
+            'inactivity_warning_1_sent_at' => null,
+            'inactivity_warning_2_sent_at' => null,
+            'inactivity_warning_final_sent_at' => null,
+        ]);
+    }
+
+    /**
+     * Get days since last login
+     * Returns null if never logged in
+     */
+    public function getDaysSinceLastLogin(): ?int
+    {
+        if (!$this->last_login_at) {
+            return null;
+        }
+        return (int) $this->last_login_at->diffInDays(now());
+    }
+
+    /**
+     * Check if user is subject to inactivity deactivation
+     * Only free users can be deactivated - patrons are exempt
+     */
+    public function isSubjectToInactivityDeactivation(): bool
+    {
+        return !$this->isPatron() && $this->user_type !== 'admin' && $this->user_type !== 'system';
+    }
+
+    /**
+     * Check if user account is deactivated due to inactivity
+     */
+    public function isDeactivated(): bool
+    {
+        return !$this->is_active;
+    }
+
+    /**
+     * Reactivate a deactivated user account
+     * Also records login and clears warnings
+     */
+    public function reactivate(): void
+    {
+        $this->update([
+            'is_active' => true,
+            'last_login_at' => now(),
+            'inactivity_warning_1_sent_at' => null,
+            'inactivity_warning_2_sent_at' => null,
+            'inactivity_warning_final_sent_at' => null,
+        ]);
+    }
+
+    /**
+     * Deactivate user due to inactivity
+     */
+    public function deactivateDueToInactivity(): void
+    {
+        $this->update(['is_active' => false]);
+    }
+
+    // ==================== ATTACHMENT STORAGE ====================
+
+    /**
+     * Storage limits in bytes
+     */
+    const STORAGE_LIMIT_FREE = 209715200;      // 200 MB
+    const STORAGE_LIMIT_PREMIUM = 2147483648;  // 2 GB
+    const STORAGE_LIMIT_UNLIMITED = PHP_INT_MAX;
+
+    /**
+     * Get the user's attachment storage limit in bytes
+     */
+    public function getAttachmentStorageLimit(): int
+    {
+        // Admin/System users have unlimited storage
+        if ($this->isAdmin()) {
+            return self::STORAGE_LIMIT_UNLIMITED;
+        }
+
+        // Check for premium monthly subscription (message_attachments with active subscription)
+        $hasMonthlyPremium = Subscription::where('user_id', $this->id)
+            ->where('subscription_type', Subscription::TYPE_MESSAGE_ATTACHMENTS)
+            ->where(function ($query) {
+                $query->whereNull('expires_at')  // Permanent (e.g., Patron)
+                      ->orWhere('expires_at', '>', now());  // Or not expired
+            })
+            ->exists();
+
+        if ($hasMonthlyPremium) {
+            return self::STORAGE_LIMIT_PREMIUM; // 2 GB
+        }
+
+        // Patron yearly and free users with unlocked attachments: 200 MB
+        return self::STORAGE_LIMIT_FREE;
+    }
+
+    /**
+     * Get the user's current attachment storage usage in bytes
+     */
+    public function getAttachmentStorageUsed(): int
+    {
+        return (int) MessageAttachment::whereHas('message', function ($query) {
+            $query->where('sender_id', $this->id);
+        })->sum('size');
+    }
+
+    /**
+     * Get storage usage as percentage (0-100)
+     */
+    public function getAttachmentStoragePercentage(): float
+    {
+        $limit = $this->getAttachmentStorageLimit();
+        if ($limit === self::STORAGE_LIMIT_UNLIMITED) {
+            return 0;
+        }
+
+        $used = $this->getAttachmentStorageUsed();
+        return min(100, round(($used / $limit) * 100, 1));
+    }
+
+    /**
+     * Get remaining storage space in bytes
+     */
+    public function getAttachmentStorageRemaining(): int
+    {
+        $limit = $this->getAttachmentStorageLimit();
+        if ($limit === self::STORAGE_LIMIT_UNLIMITED) {
+            return self::STORAGE_LIMIT_UNLIMITED;
+        }
+
+        $used = $this->getAttachmentStorageUsed();
+        return max(0, $limit - $used);
+    }
+
+    /**
+     * Check if user has enough storage space for a file
+     */
+    public function hasEnoughStorageFor(int $fileSize): bool
+    {
+        return $this->getAttachmentStorageRemaining() >= $fileSize;
+    }
+
+    /**
+     * Format bytes to human readable string
+     */
+    public static function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, 2) . ' GB';
+        }
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        }
+        if ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        }
+        return $bytes . ' Bytes';
+    }
+
+    /**
+     * Get complete storage status for API/UI
+     */
+    public function getAttachmentStorageStatus(): array
+    {
+        $limit = $this->getAttachmentStorageLimit();
+        $used = $this->getAttachmentStorageUsed();
+        $isUnlimited = $limit === self::STORAGE_LIMIT_UNLIMITED;
+
+        return [
+            'used' => $used,
+            'used_formatted' => self::formatBytes($used),
+            'limit' => $limit,
+            'limit_formatted' => $isUnlimited ? 'Unbegrenzt' : self::formatBytes($limit),
+            'remaining' => $isUnlimited ? self::STORAGE_LIMIT_UNLIMITED : max(0, $limit - $used),
+            'remaining_formatted' => $isUnlimited ? 'Unbegrenzt' : self::formatBytes(max(0, $limit - $used)),
+            'percentage' => $isUnlimited ? 0 : min(100, round(($used / $limit) * 100, 1)),
+            'is_unlimited' => $isUnlimited,
+            'is_full' => !$isUnlimited && $used >= $limit,
+            'is_warning' => !$isUnlimited && ($used / $limit) >= 0.8, // 80% warning threshold
+        ];
     }
 }

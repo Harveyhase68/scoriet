@@ -78,6 +78,26 @@ class ProjectController extends Controller
                 ->map(function ($project) use ($user) {
                     // Get actual counts using the Project model's getCounts() method
                     $counts = $project->getCounts();
+
+                    // Get subscription info for this project
+                    $subscription = $project->subscription;
+                    $subscriptionData = null;
+                    $isSoftLocked = false;
+
+                    if ($subscription) {
+                        // Auto-apply soft-lock if expired
+                        $subscription->checkAndApplySoftLock();
+                        $isSoftLocked = $subscription->is_soft_locked;
+
+                        $subscriptionData = [
+                            'id' => $subscription->id,
+                            'expires_at' => $subscription->expires_at?->toISOString(),
+                            'is_expired' => $subscription->isExpired(),
+                            'is_soft_locked' => $subscription->is_soft_locked,
+                            'days_remaining' => $subscription->getDaysUntilExpiry(),
+                        ];
+                    }
+
                     return array_merge($project->toArray(), [
                         'teams_count' => $counts['teams_count'],
                         'members_count' => $counts['members_count'],
@@ -86,6 +106,8 @@ class ProjectController extends Controller
                         'schemas_count' => $counts['schemas_count'],
                         'databases_count' => $counts['databases_count'],
                         'is_owner' => true, // Since we only get owned projects
+                        'is_soft_locked' => $isSoftLocked,
+                        'subscription' => $subscriptionData,
                     ]);
                 });
 
@@ -97,22 +119,37 @@ class ProjectController extends Controller
             $isFreeUser = $user->user_type === 'free' || !$user->user_type;
 
             if ($isFreeUser) {
-                // Count active project subscriptions (not expired)
-                $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+                // Count active project subscription SLOTS (not expired)
+                // NOTE: Subscriptions are slot-based (entity_id = null), not tied to specific projects
+                $activeSlots = \App\Models\Subscription::where('user_id', $user->id)
                     ->where('subscription_type', \App\Models\Subscription::TYPE_PROJECT)
                     ->where('is_active', true)
                     ->where('expires_at', '>', now())
-                    ->count();
+                    ->get();
 
-                // Free users can have: 1 (free) + number of active subscriptions
+                $activeSubscriptionsCount = $activeSlots->count();
+
+                // Get the earliest expiring slot for warning purposes
+                $earliestExpiry = $activeSlots->min('expires_at');
+                $daysUntilExpiry = $earliestExpiry ? now()->diffInDays($earliestExpiry, false) : null;
+
+                // Free users can have: 1 (free) + number of active subscription slots
                 $maxAllowedProjects = 1 + $activeSubscriptionsCount;
                 $ownedProjectsCount = $projects->count();
 
+                // Calculate available slots (can be negative if subscriptions expired)
+                $availableSlots = $maxAllowedProjects - $ownedProjectsCount;
+
                 $subscriptionInfo = [
-                    'active_subscriptions' => $activeSubscriptionsCount,
+                    'active_slots' => $activeSubscriptionsCount,
                     'owned_projects' => $ownedProjectsCount,
                     'max_allowed' => $maxAllowedProjects,
+                    'available_slots' => max(0, $availableSlots),
                     'needs_unlock' => $ownedProjectsCount >= $maxAllowedProjects,
+                    'earliest_expiry' => $earliestExpiry?->toISOString(),
+                    'days_until_expiry' => $daysUntilExpiry,
+                    // Legacy field for backwards compatibility
+                    'active_subscriptions' => $activeSubscriptionsCount,
                 ];
             }
 
@@ -371,16 +408,18 @@ class ProjectController extends Controller
             ]);
         }
 
-        // If user needed a project subscription (Free user creating 2nd project)
+        // If user needed a project subscription (Free user creating 2nd+ project)
         if ($needsProjectSubscription) {
             // Deduct 50 credits
             $user->deductCredits(50);
 
-            // Create project subscription (valid for 1 year)
+            // Create project subscription SLOT (valid for 1 year)
+            // NOTE: entity_id is NULL - this is a "slot" subscription, not bound to a specific project
+            // This allows users to delete and recreate projects without losing their subscription benefit
             \App\Models\Subscription::create([
                 'user_id' => $user->id,
                 'subscription_type' => \App\Models\Subscription::TYPE_PROJECT,
-                'entity_id' => $project->id,
+                'entity_id' => null, // SLOT-BASED: Not tied to specific project
                 'expires_at' => now()->addYear(),
                 'is_active' => true,
             ]);
@@ -390,9 +429,9 @@ class ProjectController extends Controller
                 'user_id' => $user->id,
                 'amount' => -50,
                 'type' => 'project_renewal',
-                'description' => 'Unlock additional project: ' . $project->name . ' (1 year)',
-                'reference_type' => 'App\Models\Project',
-                'reference_id' => $project->id,
+                'description' => 'Project slot (1 year) - created project: ' . $project->name,
+                'reference_type' => 'App\Models\Subscription',
+                'reference_id' => null, // Slot-based, no specific entity
                 'price_paid' => null,
             ]);
         }
@@ -416,6 +455,9 @@ class ProjectController extends Controller
         if (!$this->userHasProjectAccess($project)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        // Load gitProvider relationship for Git integration
+        $project->load('gitProvider');
 
         $counts = $project->getCounts();
         $projectData = array_merge($project->toArray(), $counts);
@@ -587,6 +629,10 @@ class ProjectController extends Controller
             // - project_generation_trees (has onDelete cascade)
             // - project_template_variable_values (has onDelete cascade)
 
+            // NOTE: Project subscriptions are NOT deleted!
+            // Subscriptions are slot-based (entity_id = null) and remain valid for future projects.
+            // This allows users to delete and recreate projects without losing their paid subscription benefit.
+
             // 4. Finally, delete the project itself
             $project->delete();
 
@@ -693,14 +739,30 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        // Get projects owned by the user with their teams in a single query
-        $projects = Project::where('owner_id', $user->id)
+        // Get team IDs where user is a member (existence in table = active membership)
+        $teamIds = \App\Models\TeamMember::where('user_id', $user->id)
+            ->pluck('team_id');
+
+        // Get projects owned by the user OR accessible via team membership
+        $projects = Project::where(function($query) use ($user, $teamIds) {
+                // Projects owned by user
+                $query->where('owner_id', $user->id);
+
+                // OR projects accessible via team membership
+                if ($teamIds->isNotEmpty()) {
+                    $query->orWhereHas('teams', function($q) use ($teamIds) {
+                        $q->whereIn('teams.id', $teamIds)
+                          ->where('teams.is_active', true);
+                    });
+                }
+            })
             ->active()
             ->with(['owner', 'teams' => function($query) {
                 // Only load teams that are actually assigned to this project
                 $query->where('is_active', true);
             }, 'teams.owner'])
-            ->get();
+            ->get()
+            ->unique('id'); // Remove duplicates if user owns project AND is team member
 
         // Format projects with teams data
         $formattedProjects = $projects->map(function ($project) {
@@ -751,7 +813,7 @@ class ProjectController extends Controller
         });
 
         return response()->json([
-            'projects' => $formattedProjects,
+            'projects' => $formattedProjects->values(), // Reset array keys after unique()
             'total_projects' => $formattedProjects->count(),
         ]);
     }
@@ -894,9 +956,31 @@ class ProjectController extends Controller
 
         // Get all schemas linked to the project
         $linkedSchemas = $project->floatingSchemas()
-            ->with(['owner'])
+            ->with(['owner', 'subscription'])
             ->get()
-            ->map(function ($schema) {
+            ->map(function ($schema) use ($user) {
+                // Get subscription info for this schema (if user owns it)
+                $subscriptionData = null;
+                $isSoftLocked = false;
+
+                // Use integer comparison for owner check
+                if ((int)$schema->owner_id === (int)$user->id) {
+                    $subscription = $schema->subscription;
+                    if ($subscription) {
+                        // Auto-apply soft-lock if expired
+                        $subscription->checkAndApplySoftLock();
+                        $isSoftLocked = $subscription->is_soft_locked;
+
+                        $subscriptionData = [
+                            'id' => $subscription->id,
+                            'expires_at' => $subscription->expires_at?->toISOString(),
+                            'is_expired' => $subscription->isExpired(),
+                            'is_soft_locked' => $subscription->is_soft_locked,
+                            'days_remaining' => $subscription->getDaysUntilExpiry(),
+                        ];
+                    }
+                }
+
                 return [
                     'id' => $schema->id,
                     'name' => $schema->name,
@@ -915,18 +999,39 @@ class ProjectController extends Controller
                         'name' => $schema->owner->name,
                         'username' => $schema->owner->username,
                     ] : null,
+                    'is_soft_locked' => $isSoftLocked,
+                    'subscription' => $subscriptionData,
                 ];
             });
 
         // Get all schemas owned by the current user (regardless of link status)
         $ownedSchemas = FloatingSchema::where('owner_id', $user->id)
-            ->with(['owner'])
+            ->with(['owner', 'subscription'])
             ->get()
-            ->map(function ($schema) use ($linkedSchemas) {
+            ->map(function ($schema) use ($linkedSchemas, $user) {
                 // Check if already linked
                 $existingLink = $linkedSchemas->firstWhere('id', $schema->id);
                 if ($existingLink) {
                     return null; // Already in linked schemas
+                }
+
+                // Get subscription info for this schema
+                $subscriptionData = null;
+                $isSoftLocked = false;
+
+                $subscription = $schema->subscription;
+                if ($subscription) {
+                    // Auto-apply soft-lock if expired
+                    $subscription->checkAndApplySoftLock();
+                    $isSoftLocked = $subscription->is_soft_locked;
+
+                    $subscriptionData = [
+                        'id' => $subscription->id,
+                        'expires_at' => $subscription->expires_at?->toISOString(),
+                        'is_expired' => $subscription->isExpired(),
+                        'is_soft_locked' => $subscription->is_soft_locked,
+                        'days_remaining' => $subscription->getDaysUntilExpiry(),
+                    ];
                 }
 
                 // Add as unlinked schema
@@ -948,6 +1053,8 @@ class ProjectController extends Controller
                         'name' => $schema->owner->name,
                         'username' => $schema->owner->username,
                     ] : null,
+                    'is_soft_locked' => $isSoftLocked,
+                    'subscription' => $subscriptionData,
                 ];
             })
             ->filter(); // Remove nulls
@@ -1099,6 +1206,13 @@ class ProjectController extends Controller
         // Remove the project membership
         $memberToRemove->delete();
 
+        // Also delete any application for this user/project combination
+        // This allows the user to re-apply if they want to rejoin later
+        DB::table('project_applications')
+            ->where('project_id', $project->id)
+            ->where('user_id', $userIdToRemove)
+            ->delete();
+
         // Also remove the user from all teams associated with this project
         $projectTeams = $project->teams;
         foreach ($projectTeams as $team) {
@@ -1233,21 +1347,40 @@ class ProjectController extends Controller
             ->active()
             ->get();
 
-        // Get projects where user is a team member
-        $teamProjects = Project::whereHas('teams.members', function($query) use ($user) {
-            $query->where('user_id', $user->id);
+        // Get projects where user is a team member - BUT only if team is NOT soft-locked
+        $teamProjects = Project::whereHas('teams', function($teamQuery) use ($user) {
+            $teamQuery->whereHas('members', function($memberQuery) use ($user) {
+                $memberQuery->where('user_id', $user->id);
+            })
+            // Exclude teams that have a soft-locked subscription
+            ->where(function ($subQuery) {
+                $subQuery->whereDoesntHave('subscription')
+                         ->orWhereHas('subscription', function ($subscriptionQuery) {
+                             $subscriptionQuery->where('is_soft_locked', false);
+                         });
+            });
         })
         ->with(['owner', 'teams.members.user']) // Load all related data for debugging
         ->active()
         ->get();
 
         // Also try a more explicit query to make sure we're getting team projects
+        // This query also excludes soft-locked teams
         $explicitTeamProjects = DB::table('projects')
             ->join('project_teams', 'projects.id', '=', 'project_teams.project_id')
             ->join('teams', 'project_teams.team_id', '=', 'teams.id')
             ->join('team_members', 'teams.id', '=', 'team_members.team_id')
+            ->leftJoin('subscriptions', function($join) {
+                $join->on('teams.id', '=', 'subscriptions.entity_id')
+                     ->where('subscriptions.subscription_type', '=', 'team');
+            })
             ->where('team_members.user_id', $user->id)
             ->where('projects.is_active', true)
+            // Exclude soft-locked teams: either no subscription OR subscription is not soft-locked
+            ->where(function($query) {
+                $query->whereNull('subscriptions.id')
+                      ->orWhere('subscriptions.is_soft_locked', false);
+            })
             ->select('projects.*')
             ->distinct()
             ->get()
@@ -1269,6 +1402,7 @@ class ProjectController extends Controller
         $allTeamProjects = $teamProjects->merge($explicitTeamProjectsModels)->unique('id');
 
         // DEBUG: Log what we're finding
+        /*
         \Log::info('getUserProjects DEBUG', [
             'user_id' => $user->id,
             'user_name' => $user->name,
@@ -1281,7 +1415,8 @@ class ProjectController extends Controller
             'all_team_projects_count' => $allTeamProjects->count(),
             'all_team_projects' => $allTeamProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
         ]);
-
+        */
+        
         // Merge and remove duplicates (in case user is both owner and team member)
         $allProjects = $ownedProjects->merge($allTeamProjects)
             ->filter(function($project) {
@@ -1300,6 +1435,25 @@ class ProjectController extends Controller
                 $query->where('user_id', $user->id);
             })->exists();
 
+            // Get subscription info for this project
+            $subscription = $project->subscription;
+            $subscriptionData = null;
+            $isSoftLocked = false;
+
+            if ($subscription) {
+                // Auto-apply soft-lock if expired
+                $subscription->checkAndApplySoftLock();
+                $isSoftLocked = $subscription->is_soft_locked;
+
+                $subscriptionData = [
+                    'id' => $subscription->id,
+                    'expires_at' => $subscription->expires_at?->toISOString(),
+                    'is_expired' => $subscription->isExpired(),
+                    'is_soft_locked' => $subscription->is_soft_locked,
+                    'days_remaining' => $subscription->getDaysUntilExpiry(),
+                ];
+            }
+
             return array_merge($project->toArray(), [
                 'teams_count' => $counts['teams_count'],
                 'members_count' => $counts['members_count'],
@@ -1310,6 +1464,8 @@ class ProjectController extends Controller
                 'is_owner' => $isOwner,
                 'is_team_member' => $isTeamMember,
                 'access_type' => $isOwner ? 'owner' : 'team_member',
+                'is_soft_locked' => $isSoftLocked,
+                'subscription' => $subscriptionData,
             ]);
         });
 

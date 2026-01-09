@@ -47,6 +47,15 @@ interface TeamMember {
   };
 }
 
+interface TeamSubscription {
+  id: number;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  days_remaining: number | null;
+  can_unlock: boolean;
+}
+
 interface Team {
   id: number;
   name: string;
@@ -72,6 +81,9 @@ interface Team {
   };
   members: TeamMember[];
   members_count?: number;
+  // Subscription / Lock status
+  is_soft_locked?: boolean;
+  subscription_data?: TeamSubscription | null;
 }
 
 interface TeamManagementPanelProps {
@@ -105,7 +117,21 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
-  
+
+  // Team unlock states
+  const [unlockingTeam, setUnlockingTeam] = useState(false);
+  const [teamToUnlock, setTeamToUnlock] = useState<Team | null>(null);
+
+  // Team transfer states
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [teamToTransfer, setTeamToTransfer] = useState<Team | null>(null);
+  const [transferRecipientId, setTransferRecipientId] = useState<number | null>(null);
+  const [transferEligibility, setTransferEligibility] = useState<any>(null);
+  const [checkingTransfer, setCheckingTransfer] = useState(false);
+  const [executingTransfer, setExecutingTransfer] = useState(false);
+  const [transferWithSlot, setTransferWithSlot] = useState(false);
+  const [teamMembersForTransfer, setTeamMembersForTransfer] = useState<TeamMember[]>([]);
+
   const toast = useRef<Toast>(null);
 
   // Load forced project data if forceProjectId is provided
@@ -282,6 +308,78 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     loadTeams();
   };
 
+  // Unlock a team (either renew existing subscription or create new slot)
+  const handleUnlockExpiredTeam = async (team: Team) => {
+    if (!team.subscription_data?.can_unlock) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Keine Berechtigung',
+        detail: 'Nur Team-Owner oder Admins können das Team entsperren',
+        life: 3000
+      });
+      return;
+    }
+
+    setUnlockingTeam(true);
+    setTeamToUnlock(team);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
+      }
+
+      // Use the new unified unlock endpoint
+      const response = await fetch(`/api/teams/${team.id}/unlock`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.required_credits) {
+          toast.current?.show({
+            severity: 'error',
+            summary: 'Nicht genug Credits',
+            detail: `Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`,
+            life: 5000
+          });
+        } else {
+          throw new Error(data.error || data.message || 'Fehler beim Entsperren des Teams');
+        }
+        return;
+      }
+
+      // Notify about credit change
+      window.dispatchEvent(new CustomEvent('creditsChanged'));
+
+      // Reload teams
+      await loadTeams();
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Erfolg',
+        detail: `Team "${team.name}" wurde erfolgreich entsperrt!`,
+        life: 5000
+      });
+    } catch (error) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: error instanceof Error ? error.message : 'Fehler beim Entsperren',
+        life: 3000
+      });
+    } finally {
+      setUnlockingTeam(false);
+      setTeamToUnlock(null);
+    }
+  };
+
   // Handle opening link modal
   const handleOpenLinkModal = async (team: Team) => {
     setTeamToLink(team);
@@ -317,6 +415,141 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       setLinkedProjectIds(linkedProjectIds.filter(id => id !== projectId));
     } else {
       setLinkedProjectIds([...linkedProjectIds, projectId]);
+    }
+  };
+
+  // Open transfer modal and load team members
+  const handleOpenTransferModal = async (team: Team) => {
+    setTeamToTransfer(team);
+    setTransferRecipientId(null);
+    setTransferEligibility(null);
+    setTransferWithSlot(false);
+    setTransferModalVisible(true);
+
+    // Load team members (excluding owner) as potential recipients
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch(`/api/teams/${team.id}/members`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const members = await response.json();
+        // Filter out the current owner
+        const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+        const eligibleMembers = members.filter((m: TeamMember) => m.user_id !== currentUserId);
+        setTeamMembersForTransfer(eligibleMembers);
+      }
+    } catch (error) {
+      console.error('Error loading team members:', error);
+      setTeamMembersForTransfer([]);
+    }
+  };
+
+  // Check transfer eligibility when recipient is selected
+  const handleCheckTransferEligibility = async (recipientId: number) => {
+    if (!teamToTransfer) return;
+
+    setTransferRecipientId(recipientId);
+    setCheckingTransfer(true);
+    setTransferEligibility(null);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch(`/api/teams/${teamToTransfer.id}/check-transfer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ new_owner_id: recipientId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTransferEligibility(data);
+        // Pre-select slot transfer if recommended
+        if (data.recommendation === 'with_slot') {
+          setTransferWithSlot(true);
+        }
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: data.message || 'Fehler beim Prüfen der Übertragung',
+          life: 3000,
+        });
+      }
+    } catch (_error) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Netzwerkfehler beim Prüfen der Übertragung',
+        life: 3000,
+      });
+    } finally {
+      setCheckingTransfer(false);
+    }
+  };
+
+  // Execute the transfer
+  const handleExecuteTransfer = async () => {
+    if (!teamToTransfer || !transferRecipientId) return;
+
+    setExecutingTransfer(true);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch(`/api/teams/${teamToTransfer.id}/transfer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          new_owner_id: transferRecipientId,
+          transfer_slot: transferWithSlot,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Erfolg',
+          detail: data.message || 'Team erfolgreich übertragen',
+          life: 5000,
+        });
+
+        setTransferModalVisible(false);
+        loadTeams();
+
+        // Notify NavigationPanel to refresh teams
+        window.dispatchEvent(new CustomEvent('teams-updated'));
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: data.message || 'Fehler beim Übertragen des Teams',
+          life: 5000,
+        });
+      }
+    } catch (_error) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Netzwerkfehler beim Übertragen',
+        life: 3000,
+      });
+    } finally {
+      setExecutingTransfer(false);
     }
   };
 
@@ -385,7 +618,10 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const nameBodyTemplate = (team: Team) => {
     return (
       <div className="flex flex-col">
-        <span className="font-medium">{team.name}</span>
+        <div className="flex items-center gap-2">
+          {team.is_soft_locked && <i className="pi pi-lock text-red-500" />}
+          <span className={`font-medium ${team.is_soft_locked ? 'text-red-400' : ''}`}>{team.name}</span>
+        </div>
         {team.description && (
           <span className="text-sm text-gray-500">{team.description}</span>
         )}
@@ -413,6 +649,28 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   };
 
   const statusBodyTemplate = (team: Team) => {
+    // Show locked status if team is soft-locked
+    if (team.is_soft_locked) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-lock text-red-500" />
+          <Badge value="Gesperrt" severity="danger" />
+        </div>
+      );
+    }
+
+    // Show expiry warning if within 14 days
+    if (team.subscription_data?.days_remaining !== null &&
+        team.subscription_data?.days_remaining !== undefined &&
+        team.subscription_data.days_remaining <= 14) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-exclamation-triangle text-yellow-500" />
+          <Badge value={`${team.subscription_data.days_remaining} Tage`} severity="warning" />
+        </div>
+      );
+    }
+
     return (
       <Badge
         value={team.is_active ? t.templatesStatusActive : t.manageteammodal328}
@@ -461,36 +719,96 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const actionsBodyTemplate = (team: Team) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
     const isOwner = team.project_owner_id === currentUserId;
-    
+
+    // Check if user is admin in this team
+    const currentUserMember = team.members?.find(m => m.user_id === currentUserId);
+    const isAdmin = currentUserMember?.role === 'admin';
+    const canManageTeam = isOwner || isAdmin;
+
+    // If team is soft-locked, show view, transfer (for owner), and unlock button
+    if (team.is_soft_locked) {
+      const canUnlock = team.subscription_data?.can_unlock;
+      return (
+        <div className="flex gap-1 items-center">
+          <Button
+            icon="pi pi-users"
+            className="p-button-rounded p-button-text p-button-sm"
+            tooltip="Mitglieder anzeigen"
+            onClick={() => handleManageMembers(team)}
+          />
+          {/* Transfer button - Owner can pass the locked team to someone else */}
+          {isOwner && (
+            <Button
+              icon="pi pi-arrow-right-arrow-left"
+              className="p-button-rounded p-button-text p-button-warning p-button-sm"
+              tooltip="Gesperrtes Team übertragen"
+              onClick={() => handleOpenTransferModal(team)}
+            />
+          )}
+          {canUnlock && (
+            <Button
+              icon={unlockingTeam && teamToUnlock?.id === team.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
+              label="50 Credits"
+              className="p-button-rounded p-button-sm"
+              style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
+              tooltip="Team entsperren (50 Credits)"
+              onClick={() => handleUnlockExpiredTeam(team)}
+              disabled={unlockingTeam}
+            />
+          )}
+          {!canUnlock && !isOwner && (
+            <span className="text-xs text-gray-400 ml-2">
+              Nur Owner kann entsperren/übertragen
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // Normal actions for active teams
     return (
       <div className="flex gap-1">
-        <Button
-          icon="pi pi-link"
-          className="p-button-rounded p-button-text p-button-success p-button-sm"
-          tooltip="Mit Projekten verknüpfen"
-          onClick={() => handleOpenLinkModal(team)}
-        />
+        {/* Link button - only for Owner and Admin */}
+        {canManageTeam && (
+          <Button
+            icon="pi pi-link"
+            className="p-button-rounded p-button-text p-button-success p-button-sm"
+            tooltip="Mit Projekten verknüpfen"
+            onClick={() => handleOpenLinkModal(team)}
+          />
+        )}
         <Button
           icon="pi pi-users"
           className="p-button-rounded p-button-text p-button-sm"
           tooltip={t.teammanagementpanel386}
           onClick={() => handleManageMembers(team)}
         />
+        {/* Transfer button - only Owner */}
         {isOwner && (
-          <>
-            <Button
-              icon="pi pi-pencil"
-              className="p-button-rounded p-button-text p-button-sm"
-              tooltip={t.teammanagementpanel394}
-              onClick={() => handleEditTeam(team)}
-            />
-            <Button
-              icon="pi pi-trash"
-              className="p-button-rounded p-button-text p-button-sm p-button-danger"
-              tooltip={t.teammanagementpanel200}
-              onClick={() => handleDeleteTeam(team)}
-            />
-          </>
+          <Button
+            icon="pi pi-arrow-right-arrow-left"
+            className="p-button-rounded p-button-text p-button-warning p-button-sm"
+            tooltip="Team übertragen"
+            onClick={() => handleOpenTransferModal(team)}
+          />
+        )}
+        {/* Edit button - Owner and Admin */}
+        {canManageTeam && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-rounded p-button-text p-button-sm"
+            tooltip={t.teammanagementpanel394}
+            onClick={() => handleEditTeam(team)}
+          />
+        )}
+        {/* Delete button - only Owner */}
+        {isOwner && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-text p-button-sm p-button-danger"
+            tooltip={t.teammanagementpanel200}
+            onClick={() => handleDeleteTeam(team)}
+          />
         )}
       </div>
     );
@@ -503,7 +821,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       
       <div className="h-full flex flex-col">
         {/* Header Card */}
-        <Card title={t.panelsewnavigationpanel165} className="m-4 mb-2">
+        <Card title={t.panelsewnavigationpanel477} className="m-4 mb-2">
           <div className="text-sm text-gray-400">
             {t.teammanagementpanel417}
           </div>
@@ -669,6 +987,252 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             )}
           </div>
         )}
+      </Dialog>
+
+      {/* Team Transfer Modal */}
+      <Dialog
+        header={`Team übertragen: ${teamToTransfer?.name}`}
+        visible={transferModalVisible}
+        onHide={() => setTransferModalVisible(false)}
+        footer={
+          <>
+            <Button
+              label="Abbrechen"
+              onClick={() => setTransferModalVisible(false)}
+              className="p-button-secondary"
+              disabled={executingTransfer}
+            />
+            <Button
+              label={executingTransfer ? "Wird übertragen..." :
+                     (transferEligibility?.transfer_outcomes?.without_slot?.team_locked && !transferWithSlot)
+                       ? "Gesperrt übertragen"
+                       : "Team übertragen"}
+              icon={executingTransfer ? "pi pi-spinner pi-spin" :
+                    (transferEligibility?.transfer_outcomes?.without_slot?.team_locked && !transferWithSlot)
+                      ? "pi pi-lock"
+                      : "pi pi-arrow-right-arrow-left"}
+              onClick={handleExecuteTransfer}
+              className={transferEligibility?.transfer_outcomes?.without_slot?.team_locked && !transferWithSlot
+                ? "p-button-secondary"
+                : "p-button-warning"}
+              disabled={!transferRecipientId || !transferEligibility || executingTransfer}
+            />
+          </>
+        }
+        style={{ width: '650px' }}
+        modal
+        closable={!executingTransfer}
+        draggable={true}
+        resizable={true}
+      >
+        <div className="space-y-4">
+          {/* Info Box */}
+          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
+            <p className="text-yellow-300 text-sm flex items-center gap-2">
+              <i className="pi pi-exclamation-triangle"></i>
+              <strong>Achtung:</strong> Nach der Übertragung werden Sie zum Admin und können das Team nicht mehr löschen.
+            </p>
+          </div>
+
+          {/* Step 1: Select Recipient */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              1. Wählen Sie den neuen Owner:
+            </label>
+            {teamMembersForTransfer.length === 0 ? (
+              <div className="text-gray-400 text-sm p-3 border border-gray-600 rounded">
+                <i className="pi pi-info-circle mr-2"></i>
+                Keine Team-Mitglieder vorhanden. Fügen Sie zuerst Mitglieder zum Team hinzu.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {teamMembersForTransfer.map((member) => (
+                  <div
+                    key={member.user_id}
+                    className={`flex items-center justify-between p-3 border rounded cursor-pointer transition-colors ${
+                      transferRecipientId === member.user_id
+                        ? 'border-blue-500 bg-blue-900/20'
+                        : 'border-gray-600 hover:bg-gray-700'
+                    }`}
+                    onClick={() => handleCheckTransferEligibility(member.user_id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <i className="pi pi-user text-gray-400"></i>
+                      <div>
+                        <div className="font-medium text-white">
+                          {member.user.username || member.user.name}
+                        </div>
+                        <div className="text-sm text-gray-400">{member.user.email}</div>
+                      </div>
+                    </div>
+                    <Badge value={member.role} severity={member.role === 'admin' ? 'info' : 'secondary'} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Step 2: Show transfer options */}
+          {checkingTransfer && (
+            <div className="flex justify-center items-center py-4">
+              <i className="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
+              <span className="ml-2 text-gray-400">Prüfe Übertragungsmöglichkeiten...</span>
+            </div>
+          )}
+
+          {transferEligibility && !checkingTransfer && (
+            <div className="border border-gray-600 rounded-lg p-4 space-y-3">
+              <label className="block text-sm font-medium text-gray-300">
+                2. Übertragung an {transferEligibility.recipient.username || transferEligibility.recipient.name}:
+              </label>
+
+              {/* Recipient is Patron - always OK */}
+              {transferEligibility.recipient.is_patron && (
+                <div className="bg-green-900/20 border border-green-700 rounded p-3">
+                  <p className="text-green-300 text-sm flex items-center gap-2">
+                    <i className="pi pi-check-circle"></i>
+                    <strong>Patron-User:</strong> Kann unbegrenzt Teams besitzen. Team bleibt aktiv!
+                  </p>
+                </div>
+              )}
+
+              {/* Recipient has available slot - also OK */}
+              {!transferEligibility.recipient.is_patron && transferEligibility.transfer_outcomes?.without_slot?.team_active && (
+                <div className="bg-green-900/20 border border-green-700 rounded p-3">
+                  <p className="text-green-300 text-sm flex items-center gap-2">
+                    <i className="pi pi-check-circle"></i>
+                    <strong>Slot verfügbar:</strong> Der Empfänger hat freie Team-Slots. Team bleibt aktiv!
+                  </p>
+                </div>
+              )}
+
+              {/* Recipient needs slot - Show options */}
+              {!transferEligibility.recipient.is_patron &&
+               transferEligibility.transfer_outcomes?.without_slot?.team_locked && (
+                <div className="space-y-3">
+                  <div className="bg-orange-900/20 border border-orange-700 rounded p-3">
+                    <p className="text-orange-300 text-sm">
+                      <i className="pi pi-exclamation-circle mr-2"></i>
+                      Der Empfänger hat keine freien Team-Slots ({transferEligibility.recipient.owned_teams}/{transferEligibility.recipient.max_teams} Teams).
+                    </p>
+                  </div>
+
+                  {/* Option A: Transfer with slot (if owner has one) */}
+                  {transferEligibility.owner.has_slot && (
+                    <div
+                      className={`p-3 border rounded cursor-pointer transition-colors ${
+                        transferWithSlot
+                          ? 'border-green-500 bg-green-900/20'
+                          : 'border-gray-600 hover:bg-gray-700'
+                      }`}
+                      onClick={() => setTransferWithSlot(true)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={transferWithSlot}
+                          onChange={() => setTransferWithSlot(true)}
+                          className="w-4 h-4"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-white flex items-center gap-2">
+                            <i className="pi pi-check-circle text-green-400"></i>
+                            Slot mitübertragen
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            Sie geben Ihren Team-Slot an den Empfänger ab (läuft ab am{' '}
+                            {new Date(transferEligibility.owner.slot_expiry).toLocaleDateString('de-DE')}).
+                            <span className="text-green-400 ml-1">→ Team bleibt aktiv!</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option B: Transfer without slot (team will be locked) */}
+                  <div
+                    className={`p-3 border rounded cursor-pointer transition-colors ${
+                      !transferWithSlot
+                        ? 'border-orange-500 bg-orange-900/20'
+                        : 'border-gray-600 hover:bg-gray-700'
+                    }`}
+                    onClick={() => setTransferWithSlot(false)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={!transferWithSlot}
+                        onChange={() => setTransferWithSlot(false)}
+                        className="w-4 h-4"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-white flex items-center gap-2">
+                          <i className="pi pi-lock text-orange-400"></i>
+                          Ohne Slot übertragen
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          Das Team wird <span className="text-orange-400">gesperrt</span> übertragen.
+                          Der Empfänger kann es später freischalten (50 Credits) oder weitergeben.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info box about locked teams */}
+                  {!transferWithSlot && (
+                    <div className="bg-blue-900/20 border border-blue-700 rounded p-3">
+                      <p className="text-blue-300 text-sm">
+                        <i className="pi pi-info-circle mr-2"></i>
+                        <strong>Info:</strong> Ein gesperrtes Team kann eingesehen aber nicht bearbeitet werden.
+                        Der neue Owner kann jederzeit freischalten oder das Team weitergeben.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Warning about project links that will be removed */}
+              {transferEligibility.project_links?.unlink_count > 0 && (
+                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mt-3">
+                  <p className="text-red-300 text-sm font-medium flex items-center gap-2 mb-2">
+                    <i className="pi pi-exclamation-triangle"></i>
+                    {transferEligibility.project_links.unlink_count} Projekt-Verknüpfung(en) werden entfernt:
+                  </p>
+                  <ul className="text-red-200 text-sm space-y-1 ml-6">
+                    {transferEligibility.project_links.to_unlink.map((project: any) => (
+                      <li key={project.id} className="flex items-center gap-2">
+                        <i className="pi pi-times-circle text-red-400"></i>
+                        <span className="font-medium">{project.name}</span>
+                        <span className="text-red-400 text-xs">(privat, gehört Ihnen)</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-red-300 text-xs mt-2 border-t border-red-700 pt-2">
+                    <i className="pi pi-lightbulb mr-1"></i>
+                    <strong>Tipp:</strong> Sie können diese Projekte zuerst an den neuen Owner übertragen, um die Verknüpfung zu behalten.
+                  </p>
+                </div>
+              )}
+
+              {/* Info about projects that will remain linked */}
+              {transferEligibility.project_links?.to_keep?.length > 0 && (
+                <div className="bg-green-900/20 border border-green-700 rounded p-3 mt-3">
+                  <p className="text-green-300 text-sm flex items-center gap-2">
+                    <i className="pi pi-check-circle"></i>
+                    {transferEligibility.project_links.to_keep.length} Projekt-Verknüpfung(en) bleiben erhalten:
+                  </p>
+                  <ul className="text-green-200 text-xs mt-1 ml-6">
+                    {transferEligibility.project_links.to_keep.map((project: any) => (
+                      <li key={project.id}>
+                        {project.name} ({project.reason === 'public' ? 'öffentlich' : 'gehört dem Empfänger'})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </Dialog>
     </TabContent>
   );

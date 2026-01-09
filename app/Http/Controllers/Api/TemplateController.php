@@ -39,14 +39,14 @@ class TemplateController extends Controller
                 ->pluck('template_id');
 
             $templates = Template::whereIn('id', $templateIds)
-                ->with(['creator', 'project'])
+                ->with(['creator', 'project', 'subscription'])
                 ->orderBy('is_system_template', 'desc')
                 ->orderBy('name')
                 ->get();
         } else {
             // No project filter - show all accessible templates (including inactive)
             $templates = Template::accessibleByUser($user->id, $projectId)
-                ->with(['creator', 'project'])
+                ->with(['creator', 'project', 'subscription'])
                 ->orderBy('is_system_template', 'desc') // System templates first
                 ->orderBy('is_active', 'desc') // Active templates first
                 ->orderBy('name')
@@ -67,6 +67,7 @@ class TemplateController extends Controller
         }
 
         // Add linked project IDs to all templates (only projects user has access to)
+        // Also add subscription lock status for private templates
         $templates->map(function ($template) use ($user) {
             // Get all linked project IDs from project_template_usage (including inactive)
             $linkedProjectsData = \DB::table('project_template_usage')
@@ -77,10 +78,15 @@ class TemplateController extends Controller
             $allLinkedProjectIds = $linkedProjectsData->pluck('project_id')->toArray();
 
             // Filter to only include projects the user has access to
+            // Uses the same logic as Project::userCanAccess() for consistency
             $accessibleProjects = Project::whereIn('id', $allLinkedProjectIds)
                 ->where(function($query) use ($user) {
                     // User's own projects
                     $query->where('owner_id', $user->id)
+                        // OR projects where user is a direct project member
+                        ->orWhereHas('members', function($memberQuery) use ($user) {
+                            $memberQuery->where('user_id', $user->id);
+                        })
                         // OR projects where user is a team member
                         ->orWhereHas('teams.members', function($teamQuery) use ($user) {
                             $teamQuery->where('user_id', $user->id);
@@ -101,13 +107,77 @@ class TemplateController extends Controller
 
             $template->linked_project_ids = $accessibleProjects->pluck('id')->toArray();
             $template->linked_projects = $accessibleProjectsWithStatus->toArray();
+
+            // Add subscription lock status for private templates owned by this user
+            $template->is_soft_locked = false;
+            $template->subscription_data = null;
+
+            if ($template->visibility === 'private' && (int)$template->creator_user_id === (int)$user->id) {
+                $subscription = $template->subscription;
+                if ($subscription) {
+                    // Auto-apply soft-lock if expired
+                    $subscription->checkAndApplySoftLock();
+                    $template->is_soft_locked = $subscription->is_soft_locked;
+
+                    $template->subscription_data = [
+                        'id' => $subscription->id,
+                        'expires_at' => $subscription->expires_at?->toISOString(),
+                        'is_expired' => $subscription->isExpired(),
+                        'is_soft_locked' => $subscription->is_soft_locked,
+                        'days_remaining' => $subscription->getDaysUntilExpiry(),
+                    ];
+                }
+            }
+
             return $template;
         });
+
+        // Calculate subscription info for free users (slot-based system)
+        $subscriptionInfo = null;
+        if ($user->user_type === 'free' || !$user->user_type) {
+            // Count active template subscription SLOTS (not expired)
+            // NOTE: Subscriptions are slot-based (entity_id = null), not tied to specific templates
+            $activeSlots = Subscription::where('user_id', $user->id)
+                ->where('subscription_type', Subscription::TYPE_TEMPLATE)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->get();
+
+            $activeSubscriptionsCount = $activeSlots->count();
+
+            // Get the earliest expiring slot for warning purposes
+            $earliestExpiry = $activeSlots->min('expires_at');
+            $daysUntilExpiry = $earliestExpiry ? now()->diffInDays($earliestExpiry, false) : null;
+
+            // Count private templates owned by user
+            $ownedPrivateTemplatesCount = Template::where('creator_user_id', $user->id)
+                ->where('visibility', 'private')
+                ->count();
+
+            // NOTE: Templates have NO free tier - every private template requires a slot!
+            // This follows the open-source philosophy: if you want it private, pay for it.
+            $maxAllowed = 0 + $activeSubscriptionsCount; // 0 free + slots
+            $availableSlots = $maxAllowed - $ownedPrivateTemplatesCount;
+
+            $subscriptionInfo = [
+                'active_slots' => $activeSubscriptionsCount,
+                'owned_private_templates' => $ownedPrivateTemplatesCount,
+                'max_allowed' => $maxAllowed,
+                'available_slots' => max(0, $availableSlots),
+                'needs_unlock' => $ownedPrivateTemplatesCount >= $maxAllowed,
+                'earliest_expiry' => $earliestExpiry?->toISOString(),
+                'days_until_expiry' => $daysUntilExpiry,
+                'free_private_templates_allowed' => 0, // Explicit: no free private templates
+                // Legacy field for backwards compatibility
+                'active_subscriptions' => $activeSubscriptionsCount,
+            ];
+        }
 
         return response()->json([
             'templates' => $templates,
             'system_templates' => $templates->where('is_system_template', true)->values(),
             'project_templates' => $templates->where('is_system_template', false)->values(),
+            'subscription_info' => $subscriptionInfo,
         ]);
     }
 
@@ -441,16 +511,37 @@ class TemplateController extends Controller
         $requiredCredits = 50;
 
         if ($wantsPrivate && $isFreeUser) {
-            // Check if user has enough credits
-            if ($user->credits < $requiredCredits) {
-                return response()->json([
-                    'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
-                    'error_code' => 'INSUFFICIENT_CREDITS',
-                    'required_credits' => $requiredCredits,
-                    'current_credits' => $user->credits,
-                ], 402);
+            // Count active template subscription SLOTS (not expired)
+            $activeSubscriptionsCount = Subscription::where('user_id', $user->id)
+                ->where('subscription_type', Subscription::TYPE_TEMPLATE)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->count();
+
+            // Count current private templates
+            $ownedPrivateTemplatesCount = Template::where('creator_user_id', $user->id)
+                ->where('visibility', 'private')
+                ->count();
+
+            // Templates have NO free tier - every private template requires a slot
+            $maxAllowed = 0 + $activeSubscriptionsCount;
+
+            // Only need to pay if user has no available slots
+            if ($ownedPrivateTemplatesCount >= $maxAllowed) {
+                // Check if user has enough credits for a new slot
+                if ($user->credits < $requiredCredits) {
+                    return response()->json([
+                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
+                        'error_code' => 'INSUFFICIENT_CREDITS',
+                        'required_credits' => $requiredCredits,
+                        'current_credits' => $user->credits,
+                        'active_slots' => $activeSubscriptionsCount,
+                        'owned_private_templates' => $ownedPrivateTemplatesCount,
+                    ], 402);
+                }
+                $needsPayment = true;
             }
-            $needsPayment = true;
+            // else: User has available slots, no payment needed
         }
 
         // Use transaction for credit operations
@@ -470,13 +561,15 @@ class TemplateController extends Controller
                 'update_script' => $validated['update_script'] ?? [],
             ]);
 
-            // If payment needed, deduct credits and create subscription
+            // If payment needed, deduct credits and create subscription SLOT
             if ($needsPayment) {
-                // Create subscription
+                // Create subscription SLOT (not bound to specific template)
+                // NOTE: entity_id is NULL - this is a "slot" subscription
+                // This allows users to delete and recreate templates without losing their subscription benefit
                 Subscription::create([
                     'user_id' => $user->id,
                     'subscription_type' => Subscription::TYPE_TEMPLATE,
-                    'entity_id' => $template->id,
+                    'entity_id' => null, // SLOT-BASED: Not tied to specific template
                     'is_free_tier' => false,
                     'expires_at' => now()->addYear(),
                     'is_active' => true,
@@ -491,7 +584,7 @@ class TemplateController extends Controller
                     'user_id' => $user->id,
                     'amount' => -$requiredCredits,
                     'type' => 'templates_unlock',
-                    'description' => "Privates Template: {$validated['name']}",
+                    'description' => "Private template slot (1 year) - created template: {$validated['name']}",
                 ]);
             }
 
@@ -657,25 +750,38 @@ class TemplateController extends Controller
         $requiredCredits = 50;
 
         if ($changingToPrivate && $isFreeUser) {
-            // Check if user already has an active subscription for this template
-            $hasActiveSubscription = Subscription::hasActiveSubscription(
-                $user->id,
-                Subscription::TYPE_TEMPLATE,
-                $template->id
-            );
+            // Count active template subscription SLOTS (not expired)
+            $activeSubscriptionsCount = Subscription::where('user_id', $user->id)
+                ->where('subscription_type', Subscription::TYPE_TEMPLATE)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->count();
 
-            if (!$hasActiveSubscription) {
-                // Check if user has enough credits
+            // Count current private templates (excluding this one since it's being changed TO private)
+            $ownedPrivateTemplatesCount = Template::where('creator_user_id', $user->id)
+                ->where('visibility', 'private')
+                ->where('id', '!=', $template->id) // Exclude current template
+                ->count();
+
+            // Templates have NO free tier - every private template requires a slot
+            $maxAllowed = 0 + $activeSubscriptionsCount;
+
+            // Only need to pay if user has no available slots
+            if ($ownedPrivateTemplatesCount >= $maxAllowed) {
+                // Check if user has enough credits for a new slot
                 if ($user->credits < $requiredCredits) {
                     return response()->json([
                         'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => $requiredCredits,
                         'current_credits' => $user->credits,
+                        'active_slots' => $activeSubscriptionsCount,
+                        'owned_private_templates' => $ownedPrivateTemplatesCount,
                     ], 402);
                 }
                 $needsPaymentForPrivate = true;
             }
+            // else: User has available slots, no payment needed
         }
 
         // Check visibility lock - cloned store templates cannot change visibility
@@ -757,11 +863,12 @@ class TemplateController extends Controller
 
         // Process payment for private template if needed
         if ($needsPaymentForPrivate) {
-            // Create subscription
+            // Create subscription SLOT (not bound to specific template)
+            // NOTE: entity_id is NULL - this is a "slot" subscription
             Subscription::create([
                 'user_id' => $user->id,
                 'subscription_type' => Subscription::TYPE_TEMPLATE,
-                'entity_id' => $template->id,
+                'entity_id' => null, // SLOT-BASED: Not tied to specific template
                 'is_free_tier' => false,
                 'expires_at' => now()->addYear(),
                 'is_active' => true,
@@ -776,7 +883,7 @@ class TemplateController extends Controller
                 'user_id' => $user->id,
                 'amount' => -$requiredCredits,
                 'type' => 'templates_unlock',
-                'description' => "Privates Template: {$template->name}",
+                'description' => "Private template slot (1 year) - updated template: {$template->name}",
             ]);
         }
 
@@ -950,6 +1057,42 @@ class TemplateController extends Controller
         return response()->json([
             'message' => $message,
             'is_active' => $newStatus
+        ]);
+    }
+
+    /**
+     * Update only the visibility of a template
+     * Used for unlocking expired private templates by making them public
+     */
+    public function updateVisibility(Request $request, Template $template): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Check if user owns this template
+        if ((int)$template->creator_user_id !== (int)$user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'visibility' => 'required|in:public,private',
+        ]);
+
+        $oldVisibility = $template->visibility;
+        $newVisibility = $validated['visibility'];
+
+        // NOTE: With the slot-based subscription system, subscriptions are not tied to specific templates
+        // (entity_id = null). When a template is made public, the slot remains active for other templates.
+        // No cleanup needed - the user keeps their slot for future private templates.
+
+        // Update the template visibility
+        $template->update(['visibility' => $newVisibility]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $newVisibility === 'public'
+                ? 'Template ist jetzt öffentlich'
+                : 'Template ist jetzt privat',
+            'visibility' => $newVisibility,
         ]);
     }
 
@@ -2738,9 +2881,12 @@ class TemplateController extends Controller
         $newProjectIds = $validated['project_ids'];
         \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
 
-        // Get current linked projects (only for user's accessible projects)
+        // Get current linked projects (only for user's accessible projects - own + direct members + team members)
         $userAccessibleProjectIds = Project::where(function($query) use ($user) {
             $query->where('owner_id', $user->id)
+                ->orWhereHas('members', function($memberQuery) use ($user) {
+                    $memberQuery->where('user_id', $user->id);
+                })
                 ->orWhereHas('teams.members', function($teamQuery) use ($user) {
                     $teamQuery->where('user_id', $user->id);
                 });

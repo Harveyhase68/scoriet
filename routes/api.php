@@ -40,6 +40,11 @@ Route::post('/paypal/webhook', [PayPalController::class, 'handleWebhook'])->name
 // Template Media - Serve blob images (public access for display, no auth required)
 Route::get('/media/{media}/serve', [\App\Http\Controllers\Api\TemplateMediaController::class, 'serve'])->name('api.template-media.serve.public');
 
+// Message Attachment Download via Signed URL (public - no auth, but signature validated)
+Route::get('/messages/attachments/{attachment}/download-signed', [\App\Http\Controllers\Api\MessageController::class, 'downloadSigned'])
+    ->name('api.messages.attachments.download-signed')
+    ->middleware('signed');
+
 // Test Observer (outside auth middleware for testing)
 Route::get('/test/observer', function () {
     try {
@@ -187,6 +192,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/{provider}/branches', [\App\Http\Controllers\Api\GitProviderController::class, 'branches']);
         Route::post('/{provider}/repositories', [\App\Http\Controllers\Api\GitProviderController::class, 'createRepository']);
         Route::post('/{provider}/push', [\App\Http\Controllers\Api\GitProviderController::class, 'push']);
+        Route::post('/{provider}/push-direct', [\App\Http\Controllers\Api\GitProviderController::class, 'pushDirect']);
     });
 
     // User Activity
@@ -195,6 +201,7 @@ Route::middleware('auth:api')->group(function () {
     // SQL Parser API
     Route::post('/sql-parse', [SqlParserController::class, 'parse']);
     Route::post('/sql-parse-and-store', [SqlParserController::class, 'parseAndStore']);
+    Route::post('/sql-validate-import', [SqlParserController::class, 'validateImport']);
     Route::post('/sql-debug', [SqlParserController::class, 'debugParse']);
     Route::get('/schema-debug/{versionId}', [SchemaController::class, 'debugSchemaVersion']);
     Route::get('/schema-versions', [SqlParserController::class, 'getAllSchemaVersions']);
@@ -208,6 +215,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('templates', TemplateController::class);
     Route::delete('/templates/{template}/force', [TemplateController::class, 'forceDestroy']); // Hard delete
     Route::patch('/templates/{template}/toggle', [TemplateController::class, 'toggleActive']); // Toggle active status
+    Route::patch('/templates/{template}/visibility', [TemplateController::class, 'updateVisibility']); // Update visibility only (for unlocking)
     Route::post('/templates/{id}/clone', [TemplateController::class, 'cloneTemplate']); // Clone template with history
     Route::post('/templates/{id}/link', [TemplateController::class, 'linkTemplate']); // Link template to projects
     Route::post('/templates/{id}/unlink', [TemplateController::class, 'unlinkTemplate']); // Unlink template from projects
@@ -223,6 +231,15 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/templates/{id}/download-archive', [TemplateController::class, 'downloadTemplateArchive']);
     Route::post('/templates/import', [TemplateController::class, 'import']);
 
+    // Template Import Wizard - Upload archive and create template step-by-step
+    Route::prefix('template-import')->name('api.template-import.')->group(function () {
+        Route::post('/upload', [\App\Http\Controllers\Api\TemplateImportController::class, 'upload'])->name('upload');
+        Route::get('/{sessionId}/files', [\App\Http\Controllers\Api\TemplateImportController::class, 'getFiles'])->name('files');
+        Route::post('/{sessionId}/preview', [\App\Http\Controllers\Api\TemplateImportController::class, 'previewFile'])->name('preview');
+        Route::post('/{sessionId}/create', [\App\Http\Controllers\Api\TemplateImportController::class, 'createTemplate'])->name('create');
+        Route::delete('/{sessionId}', [\App\Http\Controllers\Api\TemplateImportController::class, 'cancel'])->name('cancel');
+    });
+
     // Template Subscriptions (for private templates)
     Route::get('/template-subscriptions/count', [TemplateController::class, 'getSubscriptionCount']);
 
@@ -231,6 +248,32 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/cli-subscriptions/unlock', [CliSubscriptionController::class, 'unlock']);
     Route::get('/cli-subscriptions/check-cli', [CliSubscriptionController::class, 'checkCliAccess']);
     Route::get('/cli-subscriptions/check-service', [CliSubscriptionController::class, 'checkServiceAccess']);
+
+    // Git Integration Subscription
+    Route::post('/subscriptions/unlock-git-integration', [\App\Http\Controllers\Api\GitProviderController::class, 'unlockGitIntegration']);
+
+    // General Subscriptions Management
+    Route::get('/subscriptions', [\App\Http\Controllers\Api\SubscriptionController::class, 'index']);
+    Route::post('/subscriptions/{id}/renew', [\App\Http\Controllers\Api\SubscriptionController::class, 'renew']);
+
+    // Code Adjustments Subscription
+    Route::get('/subscriptions/code-adjustments/status', [\App\Http\Controllers\Api\SubscriptionController::class, 'getCodeAdjustmentsStatus']);
+    Route::post('/subscriptions/unlock-code-adjustments', [\App\Http\Controllers\Api\SubscriptionController::class, 'unlockCodeAdjustments']);
+
+    // Database Designer Subscription
+    Route::get('/subscriptions/database-designer/status', [\App\Http\Controllers\Api\SubscriptionController::class, 'getDatabaseDesignerStatus']);
+    Route::post('/subscriptions/unlock-database-designer', [\App\Http\Controllers\Api\SubscriptionController::class, 'unlockDatabaseDesigner']);
+
+    // Schema Migration Subscription
+    Route::get('/subscriptions/schema-migration/status', [\App\Http\Controllers\Api\SubscriptionController::class, 'getSchemaMigrationStatus']);
+    Route::post('/subscriptions/unlock-schema-migration', [\App\Http\Controllers\Api\SubscriptionController::class, 'unlockSchemaMigration']);
+
+    // All Features Overview (for Subscription page)
+    Route::get('/subscriptions/all-features', [\App\Http\Controllers\Api\SubscriptionController::class, 'getAllFeatures']);
+    Route::get('/subscriptions/bundle-discount', [\App\Http\Controllers\Api\SubscriptionController::class, 'getBundleDiscount']);
+
+    // Teams Feature Unlock
+    Route::post('/subscriptions/unlock-teams', [\App\Http\Controllers\Api\SubscriptionController::class, 'unlockTeams']);
 
     // Stripe Payment Routes
     Route::post('/stripe/checkout/credits', [StripeController::class, 'createCreditCheckout']);
@@ -267,6 +310,12 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('projects/{projectId}/code-adjustments')->name('api.code-adjustments.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'index'])->name('index');
         Route::post('/', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'store'])->name('store');
+        // Export / Import (must be before /{id} routes to avoid conflicts!)
+        Route::get('/export', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'export'])->name('export');
+        Route::post('/import', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'import'])->name('import');
+        // Reverse Engineering (must be before /{id} routes!)
+        Route::post('/from-analysis', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'createFromAnalysis'])->name('from-analysis');
+        // Single adjustment routes (with {id} parameter)
         Route::get('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'show'])->name('show');
         Route::put('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'update'])->name('update');
         Route::delete('/{id}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'destroy'])->name('destroy');
@@ -276,14 +325,13 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/{adjustmentId}/insertions', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'storeInsertion'])->name('insertions.store');
         Route::put('/{adjustmentId}/insertions/{insertionId}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'updateInsertion'])->name('insertions.update');
         Route::delete('/{adjustmentId}/insertions/{insertionId}', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'destroyInsertion'])->name('insertions.destroy');
-        // Reverse Engineering
-        Route::post('/from-analysis', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'createFromAnalysis'])->name('from-analysis');
     });
 
     // Code Adjustments - Utility endpoints (analyze/preview require auth, variables is public above)
     Route::post('/code-adjustments/analyze', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'analyze'])->name('api.code-adjustments.analyze');
     Route::post('/code-adjustments/preview', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'preview'])->name('api.code-adjustments.preview');
     Route::post('/code-adjustments/compare-directory', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'compareDirectory'])->name('api.code-adjustments.compare-directory');
+    Route::post('/code-adjustments/compare-git', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'compareGit'])->name('api.code-adjustments.compare-git');
 
     // Project Generations (for code comparison)
     Route::get('/projects/{projectId}/generations', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getGenerations'])->name('api.generations.index');
@@ -493,6 +541,13 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{userId}/role', [TeamController::class, 'updateMemberRole']);
     Route::put('/teams/{team}/projects', [TeamController::class, 'updateProjectLinks']); // Update team-project links
+
+    // Team ownership transfer
+    Route::post('/teams/{team}/check-transfer', [TeamController::class, 'checkTransferEligibility']);
+    Route::post('/teams/{team}/transfer', [TeamController::class, 'transferOwnership']);
+
+    // Team unlock (for slot-based system)
+    Route::post('/teams/{team}/unlock', [TeamController::class, 'unlockTeam']);
     
     // Project Schema Management
     Route::post('/projects/{project}/schemas', [ProjectController::class, 'associateSchema']);
@@ -2220,5 +2275,37 @@ Route::middleware('auth:api')->prefix('svc')->group(function () {
     // Task creation (called from GUI)
     Route::post('/tasks/database-import', [App\Http\Controllers\Api\SvcController::class, 'createDatabaseImportTask']);
     Route::post('/tasks/project-download', [App\Http\Controllers\Api\SvcController::class, 'createProjectDownloadTask']);
+});
+
+// Messaging Routes
+Route::middleware('auth:api')->prefix('messages')->group(function () {
+    // Threads
+    Route::get('/threads', [App\Http\Controllers\Api\MessageController::class, 'threads']);
+    Route::get('/threads/{id}', [App\Http\Controllers\Api\MessageController::class, 'showThread']);
+    Route::post('/threads', [App\Http\Controllers\Api\MessageController::class, 'createThread']);
+    Route::post('/threads/{id}/reply', [App\Http\Controllers\Api\MessageController::class, 'reply']);
+    Route::delete('/threads/{id}', [App\Http\Controllers\Api\MessageController::class, 'deleteThread']);
+    Route::post('/threads/{id}/read', [App\Http\Controllers\Api\MessageController::class, 'markAsRead']);
+
+    // Counts
+    Route::get('/unread-count', [App\Http\Controllers\Api\MessageController::class, 'unreadCount']);
+
+    // Users list for recipient selection
+    Route::get('/users', [App\Http\Controllers\Api\MessageController::class, 'users']);
+
+    // Recipient options (projects and teams)
+    Route::get('/recipient-options', [App\Http\Controllers\Api\MessageController::class, 'recipientOptions']);
+
+    // Send to project/team
+    Route::post('/send-to-project', [App\Http\Controllers\Api\MessageController::class, 'sendToProject']);
+    Route::post('/send-to-team', [App\Http\Controllers\Api\MessageController::class, 'sendToTeam']);
+
+    // Attachments access
+    Route::get('/attachments/access', [App\Http\Controllers\Api\MessageController::class, 'attachmentAccess']);
+    Route::post('/attachments/unlock', [App\Http\Controllers\Api\MessageController::class, 'unlockAttachments']);
+    Route::get('/attachments/{attachmentId}/download', [App\Http\Controllers\Api\MessageController::class, 'downloadAttachment']);
+
+    // Admin broadcast
+    Route::post('/broadcast', [App\Http\Controllers\Api\MessageController::class, 'broadcast']);
 });
 

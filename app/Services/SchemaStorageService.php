@@ -193,9 +193,25 @@ class SchemaStorageService
         }
     }
 
-    private function storeConstraints(SchemaTable $table, array $constraints, array $tableMap): void
+    private function storeConstraints(SchemaTable $table, array $constraints, array $tableMap, bool $tolerateMissingReferences = false): void
     {
         foreach ($constraints as $constraintData) {
+            // For FOREIGN KEY constraints, check if referenced table exists
+            if ($constraintData['type'] === 'FOREIGN KEY' && isset($constraintData['references'])) {
+                $referencedTableName = $constraintData['references']['table'] ?? null;
+                if ($referencedTableName && !isset($tableMap[$referencedTableName])) {
+                    if ($tolerateMissingReferences) {
+                        // Skip this FK constraint - referenced table doesn't exist yet
+                        \Log::info("⚠️ Skipping FK constraint - referenced table '{$referencedTableName}' not found in schema", [
+                            'table' => $table->table_name,
+                            'constraint' => $constraintData['name'] ?? 'unnamed',
+                        ]);
+                        continue;
+                    }
+                    // If not tolerating, the storeForeignKeyReference will throw an exception
+                }
+            }
+
             // Generate a name if none provided
             $constraintName = $constraintData['name'] ?? null;
             if (empty($constraintName)) {
@@ -337,10 +353,14 @@ class SchemaStorageService
 
     /**
      * Store parsed tables in an existing schema version (REPLACES all tables)
+     *
+     * @param SchemaVersion $schemaVersion The version to store tables in
+     * @param array $parsedTables The parsed table data
+     * @param bool $tolerateMissingReferences If true, skip FK constraints that reference non-existent tables
      */
-    public function storeParsedTablesInVersion(SchemaVersion $schemaVersion, array $parsedTables)
+    public function storeParsedTablesInVersion(SchemaVersion $schemaVersion, array $parsedTables, bool $tolerateMissingReferences = false)
     {
-        return DB::transaction(function () use ($schemaVersion, $parsedTables) {
+        return DB::transaction(function () use ($schemaVersion, $parsedTables, $tolerateMissingReferences) {
             // Clear existing tables for this version
             $schemaVersion->tables()->delete();
 
@@ -360,7 +380,7 @@ class SchemaStorageService
             // Second phase: Store constraints (after all tables exist)
             foreach ($parsedTables as $tableData) {
                 $table = $tableMap[$tableData['table_name']];
-                $this->storeConstraints($table, $tableData['constraints'], $tableMap);
+                $this->storeConstraints($table, $tableData['constraints'], $tableMap, $tolerateMissingReferences);
             }
 
             return $schemaVersion;
@@ -369,10 +389,14 @@ class SchemaStorageService
 
     /**
      * Add parsed tables to an existing schema version (WITHOUT deleting existing tables)
+     *
+     * @param SchemaVersion $schemaVersion The version to add tables to
+     * @param array $parsedTables The parsed table data
+     * @param bool $tolerateMissingReferences If true, skip FK constraints that reference non-existent tables
      */
-    public function addTablesToVersion(SchemaVersion $schemaVersion, array $parsedTables)
+    public function addTablesToVersion(SchemaVersion $schemaVersion, array $parsedTables, bool $tolerateMissingReferences = false)
     {
-        return DB::transaction(function () use ($schemaVersion, $parsedTables) {
+        return DB::transaction(function () use ($schemaVersion, $parsedTables, $tolerateMissingReferences) {
             // DON'T clear existing tables - we're ADDING to the version
 
             // 🔧 PRIMARY KEY MIGRATION - Preserve {filekeyname} across versions
@@ -396,7 +420,7 @@ class SchemaStorageService
             // Second phase: Store constraints (after all tables exist)
             foreach ($parsedTables as $tableData) {
                 $table = $tableMap[$tableData['table_name']];
-                $this->storeConstraints($table, $tableData['constraints'], $tableMap);
+                $this->storeConstraints($table, $tableData['constraints'], $tableMap, $tolerateMissingReferences);
             }
 
             return $schemaVersion;

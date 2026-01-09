@@ -279,8 +279,18 @@ class Project extends Model
               ->orWhereHas('members', function ($memberQuery) use ($user) {
                   $memberQuery->where('user_id', $user->id); // Direct project members
               })
-              ->orWhereHas('teams.members', function ($teamQuery) use ($user) {
-                  $teamQuery->where('user_id', $user->id); // Team members of project teams
+              ->orWhereHas('teams', function ($teamQuery) use ($user) {
+                  // Team members of project teams - but only if team is NOT soft-locked
+                  $teamQuery->whereHas('members', function ($memberQuery) use ($user) {
+                      $memberQuery->where('user_id', $user->id);
+                  })
+                  // Exclude teams that have a soft-locked subscription
+                  ->where(function ($subQuery) {
+                      $subQuery->whereDoesntHave('subscription')
+                               ->orWhereHas('subscription', function ($subscriptionQuery) {
+                                   $subscriptionQuery->where('is_soft_locked', false);
+                               });
+                  });
               });
         });
     }

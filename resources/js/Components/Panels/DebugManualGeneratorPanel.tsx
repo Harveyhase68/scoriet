@@ -256,6 +256,7 @@ interface SchemaTable {
   nmaxitems: number;
   database_name?: string;
   schema_id?: number;
+  is_schema_locked?: boolean;
   items?: Array<{
     name: string;
     type: string;
@@ -605,6 +606,7 @@ export default function DebugManualGeneratorPanel({
                             nmaxitems: fieldCount,
                             database_name: schemaName,
                             schema_id: schema.id,
+                            is_schema_locked: schema.is_soft_locked === true,
                             items: tableFields
                           });
                         });
@@ -1185,9 +1187,33 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
     }
   };
 
+  // Check if selected project is locked
+  const isProjectLocked = (): boolean => {
+    return selectedProject?.is_soft_locked === true;
+  };
+
+  // Check if selected table's schema is locked
+  const isSchemaLocked = (): boolean => {
+    if (selectedTable === null || selectedTable === undefined) return false;
+    const table = schemaTables[selectedTable];
+    return table?.is_schema_locked === true;
+  };
+
   const executeCode = () => {
     if (!preparedCode) {
       setError(t.debugmanualgeneratorpanel970);
+      return;
+    }
+
+    // Block execution if project is locked
+    if (isProjectLocked()) {
+      setError('Das Projekt ist gesperrt. Bitte erneuern Sie das Abo in der Projektverwaltung.');
+      return;
+    }
+
+    // Block execution if schema is locked
+    if (isSchemaLocked()) {
+      setError('Die Datenbank ist gesperrt. Bitte entsperren Sie sie im Database Manager.');
       return;
     }
 
@@ -1526,7 +1552,8 @@ function ${functionName}() {
         ? `${table.database_name} - ${table.tablename} (${table.nmaxitems} fields)`
         : `${table.tablename} (${table.nmaxitems} fields)`,
       value: index,
-      database: table.database_name || t.testprojectschemas50
+      database: table.database_name || t.testprojectschemas50,
+      is_schema_locked: table.is_schema_locked === true
     }))
     .sort((a, b) => a.label.localeCompare(b.label)) // Alphabetisch sortiert
     : [];
@@ -1608,10 +1635,36 @@ function ${functionName}() {
                     value={selectedTable}
                     options={tableOptions}
                     onChange={(e) => {
+                      // Prevent selecting locked tables
+                      const selectedOption = tableOptions.find(opt => opt.value === e.value);
+                      if (selectedOption?.is_schema_locked) {
+                        return; // Don't allow selection
+                      }
                       setSelectedTable(e.value);
                     }}
                     placeholder="Tabelle wählen"
                     className="w-full"
+                    itemTemplate={(option) => (
+                      <div className={`flex items-center justify-between w-full ${option.is_schema_locked ? 'opacity-60' : ''}`}>
+                        <span className={option.is_schema_locked ? 'text-red-400' : ''}>
+                          {option.label}
+                        </span>
+                        {option.is_schema_locked && (
+                          <div className="flex items-center gap-2">
+                            <i className="pi pi-lock text-red-500" title="Datenbank gesperrt" />
+                            <span className="text-xs text-red-400">Gesperrt</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    valueTemplate={(option) => option ? (
+                      <div className="flex items-center">
+                        {option.is_schema_locked && <i className="pi pi-lock text-red-500 mr-2" />}
+                        <span className={option.is_schema_locked ? 'text-red-400' : ''}>
+                          {option.label}
+                        </span>
+                      </div>
+                    ) : 'Tabelle wählen'}
                   />
                 </>
               ) : shouldShowProjectDropdown() ? (
@@ -1970,22 +2023,54 @@ function ${functionName}() {
             </div>
           )}
 
+          {/* Project Locked Warning */}
+          {isProjectLocked() && (
+            <div className="bg-red-900/30 border border-red-600 rounded-lg p-3 mb-3">
+              <div className="flex items-center gap-2 text-red-400">
+                <i className="pi pi-lock text-lg"></i>
+                <div>
+                  <span className="font-semibold">Projekt gesperrt</span>
+                  <span className="text-sm text-red-300 ml-2">
+                    - Abo in der Projektverwaltung erneuern
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Schema Locked Warning */}
+          {isSchemaLocked() && !isProjectLocked() && (
+            <div className="bg-red-900/30 border border-red-600 rounded-lg p-3 mb-3">
+              <div className="flex items-center gap-2 text-red-400">
+                <i className="pi pi-lock text-lg"></i>
+                <div>
+                  <span className="font-semibold">Datenbank gesperrt</span>
+                  <span className="text-sm text-red-300 ml-2">
+                    - Im Database Manager entsperren
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Button */}
           <div className="flex space-x-2">
             <Button
               label={loading ? "Retrieving code..." : t.debugmanualgeneratorpanel1369}
-              icon={loading ? "pi pi-spinner pi-spin" : "pi pi-code"}
+              icon={loading ? "pi pi-spinner pi-spin" : ((isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-code")}
               onClick={fetchCode}
-              disabled={!isButtonEnabled}
-              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!isButtonEnabled || isProjectLocked() || isSchemaLocked()}
+              className={(isProjectLocked() || isSchemaLocked()) ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}
+              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
             />
 
             <Button
               label={t.debugmanualgeneratorpanel1377}
-              icon="pi pi-play"
+              icon={(isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-play"}
               onClick={executeCode}
-              disabled={!preparedCode}
-              className="bg-green-600 hover:bg-green-700"
+              disabled={!preparedCode || isProjectLocked() || isSchemaLocked()}
+              className={(isProjectLocked() || isSchemaLocked()) ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
             />
 
             <Button

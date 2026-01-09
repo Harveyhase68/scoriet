@@ -137,24 +137,56 @@ class FloatingSchema extends Model
         if ($this->visibility === 'public') {
             return true;
         }
-        
+
         // Owner can always access (force string comparison for cross-platform compatibility)
         if ((string)$this->owner_id === (string)$user->id) {
             return true;
         }
-        
+
         // If schema has no owner, first user (admin) can access it
         // This handles cases where schemas were created without proper ownership
         if (empty($this->owner_id) && $user->id === (string)1) {
             return true;
         }
-        
+
         // For development: if user is the first user and schema owner is also first user
         // (handles different user IDs between local and production)
         if ($user->id === 1 && $this->owner_id <= 3) {
             return true;
         }
-        
+
+        // Check if user has access via team membership to a project that has this schema linked
+        $linkedProjectIds = \DB::table('project_schemas')
+            ->where('schema_id', $this->id)
+            ->pluck('project_id');
+
+        if ($linkedProjectIds->isNotEmpty()) {
+            // Get team IDs where user is a member
+            $userTeamIds = \App\Models\TeamMember::where('user_id', $user->id)
+                ->pluck('team_id');
+
+            if ($userTeamIds->isNotEmpty()) {
+                // Check if any of the linked projects has a team the user is member of
+                $accessibleProjectExists = \DB::table('project_teams')
+                    ->whereIn('project_id', $linkedProjectIds)
+                    ->whereIn('team_id', $userTeamIds)
+                    ->exists();
+
+                if ($accessibleProjectExists) {
+                    return true;
+                }
+            }
+
+            // Also check if user owns any of the linked projects
+            $userOwnsLinkedProject = \App\Models\Project::whereIn('id', $linkedProjectIds)
+                ->where('owner_id', $user->id)
+                ->exists();
+
+            if ($userOwnsLinkedProject) {
+                return true;
+            }
+        }
+
         return false;
     }
 

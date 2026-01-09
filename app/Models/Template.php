@@ -469,6 +469,27 @@ class Template extends Model
             return true;
         }
 
+        // Project templates can be viewed by users with project access (team members)
+        if ($this->project_id) {
+            if ($this->project && $this->project->userCanAccess($user)) {
+                return true;
+            }
+        }
+
+        // Templates linked to projects via project_template_usage can be viewed by project members
+        $linkedProjects = ProjectTemplateUsage::where('template_id', $this->id)
+            ->where('is_active', true)
+            ->pluck('project_id');
+
+        if ($linkedProjects->isNotEmpty()) {
+            foreach ($linkedProjects as $projectId) {
+                $project = Project::find($projectId);
+                if ($project && $project->userCanAccess($user)) {
+                    return true;
+                }
+            }
+        }
+
         // Inner Core members can view public and store templates for review purposes
         if ($user->is_inner_core && in_array($this->visibility, ['public', 'store'])) {
             return true;

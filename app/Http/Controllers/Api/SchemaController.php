@@ -47,9 +47,12 @@ class SchemaController extends Controller
 
         $schemas = $query->latest()->get()
             ->map(function ($schema) use ($user) {
-                // Get user's accessible projects (own projects + team projects)
+                // Get user's accessible projects (own projects + direct members + team members)
                 $userAccessibleProjectIds = Project::where(function($query) use ($user) {
                     $query->where('owner_id', $user->id)
+                        ->orWhereHas('members', function($memberQuery) use ($user) {
+                            $memberQuery->where('user_id', $user->id);
+                        })
                         ->orWhereHas('teams.members', function($teamQuery) use ($user) {
                             $teamQuery->where('user_id', $user->id);
                         });
@@ -70,31 +73,69 @@ class SchemaController extends Controller
                     })
                     ->values(); // Reset array keys
 
+                // Get subscription info for this schema (if user owns it)
+                $subscriptionData = null;
+                $isSoftLocked = false;
+
+                // Use integer comparison for owner check
+                if ((int)$schema->owner_id === (int)$user->id) {
+                    $subscription = $schema->subscription;
+                    if ($subscription) {
+                        // Auto-apply soft-lock if expired
+                        $subscription->checkAndApplySoftLock();
+                        $isSoftLocked = $subscription->is_soft_locked;
+
+                        $subscriptionData = [
+                            'id' => $subscription->id,
+                            'expires_at' => $subscription->expires_at?->toISOString(),
+                            'is_expired' => $subscription->isExpired(),
+                            'is_soft_locked' => $subscription->is_soft_locked,
+                            'days_remaining' => $subscription->getDaysUntilExpiry(),
+                        ];
+                    }
+                }
+
                 return array_merge($schema->toArray(), [
-                    'is_owner' => $schema->owner_id === (string)$user->id,
+                    'is_owner' => (int)$schema->owner_id === (int)$user->id,
                     'tables_count' => 0, // TODO: Implement proper tables count
                     'projects_count' => $projects->count(), // Count only accessible projects
                     'projects' => $projects,
+                    'is_soft_locked' => $isSoftLocked,
+                    'subscription' => $subscriptionData,
                 ]);
             });
 
         // Calculate subscription info for free users
         $subscriptionInfo = null;
         if ($user->user_type === 'free' || !$user->user_type) {
-            $activeSubscriptionsCount = \App\Models\Subscription::where('user_id', $user->id)
+            // Count active schema subscription SLOTS (not expired)
+            // NOTE: Subscriptions are slot-based (entity_id = null), not tied to specific schemas
+            $activeSlots = \App\Models\Subscription::where('user_id', $user->id)
                 ->where('subscription_type', \App\Models\Subscription::TYPE_SCHEMA)
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
-                ->count();
+                ->get();
+
+            $activeSubscriptionsCount = $activeSlots->count();
+
+            // Get the earliest expiring slot for warning purposes
+            $earliestExpiry = $activeSlots->min('expires_at');
+            $daysUntilExpiry = $earliestExpiry ? now()->diffInDays($earliestExpiry, false) : null;
 
             $ownedSchemasCount = FloatingSchema::where('owner_id', $user->id)->count();
             $maxAllowed = 1 + $activeSubscriptionsCount;
+            $availableSlots = $maxAllowed - $ownedSchemasCount;
 
             $subscriptionInfo = [
-                'active_subscriptions' => $activeSubscriptionsCount,
+                'active_slots' => $activeSubscriptionsCount,
                 'owned_schemas' => $ownedSchemasCount,
                 'max_allowed' => $maxAllowed,
-                'needs_unlock' => $ownedSchemasCount >= $maxAllowed
+                'available_slots' => max(0, $availableSlots),
+                'needs_unlock' => $ownedSchemasCount >= $maxAllowed,
+                'earliest_expiry' => $earliestExpiry?->toISOString(),
+                'days_until_expiry' => $daysUntilExpiry,
+                // Legacy field for backwards compatibility
+                'active_subscriptions' => $activeSubscriptionsCount,
             ];
         }
 
@@ -124,7 +165,13 @@ class SchemaController extends Controller
             'description' => 'nullable|string|max:1000',
             'visibility' => 'required|in:public,private',
             'is_system_schema' => 'sometimes|boolean',
+            'project_ids' => 'nullable|array',
+            'project_ids.*' => 'integer|exists:projects,id',
         ]);
+
+        // Extract project_ids before creating schema (it's not a schema field)
+        $projectIds = $validated['project_ids'] ?? [];
+        unset($validated['project_ids']);
 
         // Add owner_id to the validated data
         $validated['owner_id'] = $user->id;
@@ -173,16 +220,18 @@ class SchemaController extends Controller
 
         $schema = FloatingSchema::create($validated);
 
-        // If user needed a schema subscription (Free user creating 2nd schema)
+        // If user needed a schema subscription (Free user creating 2nd+ schema)
         if ($needsSchemaSubscription) {
             // Deduct 50 credits
             $user->deductCredits(50);
 
-            // Create schema subscription (valid for 1 year)
+            // Create schema subscription SLOT (valid for 1 year)
+            // NOTE: entity_id is NULL - this is a "slot" subscription, not bound to a specific schema
+            // This allows users to delete and recreate schemas without losing their subscription benefit
             \App\Models\Subscription::create([
                 'user_id' => $user->id,
                 'subscription_type' => \App\Models\Subscription::TYPE_SCHEMA,
-                'entity_id' => $schema->id,
+                'entity_id' => null, // SLOT-BASED: Not tied to specific schema
                 'expires_at' => now()->addYear(),
                 'is_active' => true,
             ]);
@@ -192,11 +241,27 @@ class SchemaController extends Controller
                 'user_id' => $user->id,
                 'amount' => -50,
                 'type' => 'db_renewal',
-                'description' => 'Unlock additional database: ' . $schema->name . ' (1 year)',
-                'reference_type' => 'App\Models\FloatingSchema',
-                'reference_id' => $schema->id,
+                'description' => 'Schema slot (1 year) - created schema: ' . $schema->name,
+                'reference_type' => 'App\Models\Subscription',
+                'reference_id' => null, // Slot-based, no specific entity
                 'price_paid' => null,
             ]);
+        }
+
+        // Link schema to projects if project_ids were provided
+        $linkedProjectIds = [];
+        if (!empty($projectIds)) {
+            foreach ($projectIds as $projectId) {
+                // Verify user owns this project
+                $project = \App\Models\Project::find($projectId);
+                if ($project && $project->owner_id == $user->id) {
+                    $schema->projects()->attach($projectId, [
+                        'association_type' => 'linked',
+                        'alias' => null,
+                    ]);
+                    $linkedProjectIds[] = $projectId;
+                }
+            }
         }
 
         // Load the schema with owner relationship
@@ -205,7 +270,8 @@ class SchemaController extends Controller
         return response()->json(array_merge($schema->toArray(), [
             'is_owner' => true,
             'tables_count' => 0,
-            'projects_count' => 0,
+            'projects_count' => count($linkedProjectIds),
+            'linked_project_ids' => $linkedProjectIds,
         ]), 201);
     }
 
@@ -313,13 +379,16 @@ class SchemaController extends Controller
         $forceDelete = $request->input('force_delete', false);
 
         if (!$forceDelete && $projectsCount > 0) {
+            // Return 200 with requires_force flag to avoid browser console error
+            // The frontend will handle this and make a second request with force_delete=true
             return response()->json([
+                'success' => false,
                 'message' => "Schema is being used by {$projectsCount} project(s). Use force delete to proceed.",
                 'projects_count' => $projectsCount,
                 'versions_count' => $versionsCount,
                 'tables_count' => $totalTablesCount,
                 'requires_force' => true
-            ], 422);
+            ], 200);
         }
 
         try {
@@ -2039,9 +2108,12 @@ class SchemaController extends Controller
         $newProjectIds = $validated['project_ids'] ?? [];
         \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
 
-        // Get current user's accessible projects
+        // Get current user's accessible projects (own projects + direct members + team members)
         $userAccessibleProjectIds = Project::where(function($query) use ($user) {
             $query->where('owner_id', $user->id)
+                ->orWhereHas('members', function($memberQuery) use ($user) {
+                    $memberQuery->where('user_id', $user->id);
+                })
                 ->orWhereHas('teams.members', function($teamQuery) use ($user) {
                     $teamQuery->where('user_id', $user->id);
                 });

@@ -46,7 +46,7 @@ class GitProviderService
             'client_id' => config('services.gitlab.client_id'),
             'redirect_uri' => config('services.gitlab.redirect'),
             'response_type' => 'code',
-            'scope' => 'api read_user read_repository write_repository',
+            'scope' => 'api read_user',
             'state' => $state,
         ]);
 
@@ -107,13 +107,16 @@ class GitProviderService
     {
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
 
-        $response = Http::post("{$baseUrl}/oauth/token", [
-            'client_id' => config('services.gitlab.client_id'),
-            'client_secret' => config('services.gitlab.client_secret'),
-            'code' => $code,
-            'grant_type' => 'authorization_code',
-            'redirect_uri' => config('services.gitlab.redirect'),
-        ]);
+        // Note: withoutVerifying() is for local development only!
+        // In production, proper SSL certificates should be configured
+        $response = Http::withoutVerifying()
+            ->post("{$baseUrl}/oauth/token", [
+                'client_id' => config('services.gitlab.client_id'),
+                'client_secret' => config('services.gitlab.client_secret'),
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => config('services.gitlab.redirect'),
+            ]);
 
         if ($response->failed()) {
             throw new \Exception('Failed to exchange GitLab code for token');
@@ -134,6 +137,83 @@ class GitProviderService
                 ? now()->addSeconds($data['expires_in'])
                 : null,
         ];
+    }
+
+    /**
+     * Refresh GitLab access token using refresh token.
+     */
+    public function refreshGitLabToken(UserGitProvider $gitProvider): bool
+    {
+        if ($gitProvider->provider !== 'gitlab' || !$gitProvider->refresh_token) {
+            return false;
+        }
+
+        $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
+
+        $response = Http::withoutVerifying()
+            ->asForm()
+            ->post("{$baseUrl}/oauth/token", [
+                'client_id' => config('services.gitlab.client_id'),
+                'client_secret' => config('services.gitlab.client_secret'),
+                'refresh_token' => $gitProvider->refresh_token,
+                'grant_type' => 'refresh_token',
+                'redirect_uri' => config('services.gitlab.redirect'),
+            ]);
+
+        if ($response->failed()) {
+            \Log::error('GitLab token refresh failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return false;
+        }
+
+        $data = $response->json();
+
+        if (isset($data['error'])) {
+            \Log::error('GitLab token refresh error', ['error' => $data]);
+            return false;
+        }
+
+        // Update the token in database
+        $gitProvider->access_token = $data['access_token'];
+        if (isset($data['refresh_token'])) {
+            $gitProvider->refresh_token = $data['refresh_token'];
+        }
+        $gitProvider->token_expires_at = isset($data['expires_in'])
+            ? now()->addSeconds($data['expires_in'])
+            : null;
+        $gitProvider->save();
+
+        \Log::info('GitLab token refreshed successfully', [
+            'user_id' => $gitProvider->user_id,
+            'expires_at' => $gitProvider->token_expires_at,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Ensure token is valid, refresh if needed.
+     * Returns the git provider with a valid token, or throws an exception.
+     */
+    public function ensureValidToken(UserGitProvider $gitProvider): UserGitProvider
+    {
+        // GitHub tokens don't expire (unless revoked)
+        if ($gitProvider->provider === 'github') {
+            return $gitProvider;
+        }
+
+        // Check if GitLab token is expired or about to expire (within 5 minutes)
+        if ($gitProvider->token_expires_at && $gitProvider->token_expires_at->subMinutes(5)->isPast()) {
+            if (!$this->refreshGitLabToken($gitProvider)) {
+                throw new \Exception('Failed to refresh GitLab token. Please reconnect your GitLab account.');
+            }
+            // Reload to get the new token
+            $gitProvider->refresh();
+        }
+
+        return $gitProvider;
     }
 
     /**
@@ -186,7 +266,7 @@ class GitProviderService
     private function getGitLabUserInfo(string $accessToken): array
     {
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
-        $response = Http::withToken($accessToken)->get("{$baseUrl}/api/v4/user");
+        $response = Http::withToken($accessToken)->withoutVerifying()->get("{$baseUrl}/api/v4/user");
 
         if ($response->failed()) {
             throw new \Exception('Failed to get GitLab user info');
@@ -293,6 +373,7 @@ class GitProviderService
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
 
         $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
             ->get("{$baseUrl}/api/v4/projects", [
                 'membership' => true,
                 'order_by' => 'updated_at',
@@ -368,6 +449,7 @@ class GitProviderService
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
 
         $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
             ->post("{$baseUrl}/api/v4/projects", [
                 'name' => $name,
                 'description' => $description,
@@ -432,6 +514,7 @@ class GitProviderService
         $encodedPath = urlencode($repoFullName);
 
         $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
             ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/branches");
 
         if ($response->failed()) {
@@ -600,30 +683,58 @@ class GitProviderService
     ): array {
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
         $encodedPath = urlencode($repoFullName);
+        // Branch names with slashes (e.g. feature/new-feature) must be URL encoded
+        $encodedBranch = urlencode($branch);
 
-        // GitLab uses a different approach - commits API with actions
+        // Check if branch exists
+        $branchCheck = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
+            ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/branches/{$encodedBranch}");
+
+        $branchExists = $branchCheck->successful();
+
+        \Log::info('GitLab push debug', [
+            'branch' => $branch,
+            'encodedBranch' => $encodedBranch,
+            'branchExists' => $branchExists,
+            'branchCheckStatus' => $branchCheck->status(),
+            'baseBranch' => $baseBranch,
+        ]);
+
+        // GitLab uses commits API with actions
+        // We need to check if each file exists to determine create vs update action
         $actions = [];
         foreach ($files as $path => $content) {
+            // Check if file exists in the target branch (or base branch if new branch)
+            $checkBranch = $branchExists ? $branch : $baseBranch;
+            $fileCheck = Http::withToken($gitProvider->access_token)
+                ->withoutVerifying()
+                ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/files/" . urlencode($path), [
+                    'ref' => $checkBranch,
+                ]);
+
             $actions[] = [
-                'action' => 'create',
+                'action' => $fileCheck->successful() ? 'update' : 'create',
                 'file_path' => $path,
                 'content' => $content,
             ];
         }
 
-        // Check if branch exists
-        $branchCheck = Http::withToken($gitProvider->access_token)
-            ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/branches/{$branch}");
+        // Build commit payload
+        $commitPayload = [
+            'branch' => $branch,
+            'commit_message' => $commitMessage,
+            'actions' => $actions,
+        ];
 
-        $startBranch = $branchCheck->successful() ? $branch : $baseBranch;
+        // Only set start_branch if creating a new branch
+        if (!$branchExists) {
+            $commitPayload['start_branch'] = $baseBranch;
+        }
 
         $response = Http::withToken($gitProvider->access_token)
-            ->post("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/commits", [
-                'branch' => $branch,
-                'commit_message' => $commitMessage,
-                'actions' => $actions,
-                'start_branch' => $startBranch,
-            ]);
+            ->withoutVerifying()
+            ->post("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/commits", $commitPayload);
 
         if ($response->failed()) {
             $error = $response->json();
@@ -706,6 +817,7 @@ class GitProviderService
         $encodedPath = urlencode($repoFullName);
 
         $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
             ->post("{$baseUrl}/api/v4/projects/{$encodedPath}/merge_requests", [
                 'title' => $title,
                 'description' => $description,
@@ -796,19 +908,368 @@ class GitProviderService
         $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
         $encodedPath = urlencode($repoFullName);
 
-        $response = Http::withToken($gitProvider->access_token)
-            ->put("{$baseUrl}/api/v4/projects/{$encodedPath}/merge_requests/{$mrIid}/merge", [
-                'should_remove_source_branch' => $deleteBranch,
+        // Wait for MR to be ready to merge (GitLab needs time to check mergeability)
+        $maxAttempts = 10;
+        $waitSeconds = 2;
+        $mr = null;
+        $mergeStatus = 'unknown';
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $mrResponse = Http::withToken($gitProvider->access_token)
+                ->withoutVerifying()
+                ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/merge_requests/{$mrIid}");
+
+            if ($mrResponse->failed()) {
+                throw new \Exception('Failed to get merge request status');
+            }
+
+            $mr = $mrResponse->json();
+            $mergeStatus = $mr['merge_status'] ?? 'unknown';
+            $detailedStatus = $mr['detailed_merge_status'] ?? null;
+            $state = $mr['state'] ?? 'unknown';
+
+            \Log::info('GitLab MR status check', [
+                'attempt' => $attempt,
+                'mr_iid' => $mrIid,
+                'state' => $state,
+                'merge_status' => $mergeStatus,
+                'detailed_merge_status' => $detailedStatus,
             ]);
+
+            // Check if already merged
+            if ($state === 'merged') {
+                return [
+                    'merged' => true,
+                    'sha' => $mr['merge_commit_sha'] ?? null,
+                ];
+            }
+
+            // Check if MR is closed or in error state
+            if ($state !== 'opened') {
+                throw new \Exception("Merge request is not open (state: {$state})");
+            }
+
+            // Check if ready to merge
+            if ($mergeStatus === 'can_be_merged' || $detailedStatus === 'mergeable') {
+                \Log::info('GitLab MR is ready to merge', ['attempt' => $attempt]);
+                break;
+            }
+
+            // If there are conflicts or it cannot be merged, fail immediately
+            if ($mergeStatus === 'cannot_be_merged' || $detailedStatus === 'not_open' ||
+                $detailedStatus === 'conflict' || $detailedStatus === 'broken_status') {
+                throw new \Exception("Cannot merge: {$detailedStatus} ({$mergeStatus})");
+            }
+
+            // If still checking/preparing, wait and retry
+            if ($attempt < $maxAttempts && ($mergeStatus === 'checking' || $detailedStatus === 'preparing')) {
+                \Log::info('GitLab MR still preparing, waiting...', ['wait_seconds' => $waitSeconds]);
+                sleep($waitSeconds);
+            }
+        }
+
+        // Build query parameters for the merge
+        $queryParams = [];
+        if ($deleteBranch) {
+            $queryParams['should_remove_source_branch'] = 'true';
+        }
+
+        $mergeUrl = "{$baseUrl}/api/v4/projects/{$encodedPath}/merge_requests/{$mrIid}/merge";
+        if (!empty($queryParams)) {
+            $mergeUrl .= '?' . http_build_query($queryParams);
+        }
+
+        // GitLab merge endpoint expects PUT without body (params in URL)
+        $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
+            ->put($mergeUrl);
 
         if ($response->failed()) {
             $error = $response->json();
-            throw new \Exception($error['message'] ?? 'Failed to merge merge request');
+            $statusCode = $response->status();
+            $message = $error['message'] ?? "Failed to merge (HTTP {$statusCode})";
+
+            \Log::error('GitLab merge failed', [
+                'status' => $statusCode,
+                'error' => $error,
+                'merge_status' => $mergeStatus,
+            ]);
+
+            // Provide helpful error messages
+            if ($statusCode === 405 || $statusCode === 406 || $statusCode === 422) {
+                $message = "Cannot merge: {$mergeStatus}. The merge request may have conflicts or require pipeline to pass.";
+            }
+
+            throw new \Exception($message);
         }
+
+        \Log::info('GitLab MR merged successfully', ['mr_iid' => $mrIid]);
 
         return [
             'merged' => true,
             'sha' => $response->json()['merge_commit_sha'] ?? null,
+        ];
+    }
+
+    /**
+     * Get repository file tree (list all files recursively).
+     *
+     * @param UserGitProvider $gitProvider
+     * @param string $repoFullName e.g. "user/repo"
+     * @param string $branch e.g. "main"
+     * @param string $path Optional subdirectory path to filter
+     * @return array List of file paths
+     */
+    public function getRepositoryTree(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $path = ''): array
+    {
+        return match ($gitProvider->provider) {
+            'github' => $this->getGitHubRepositoryTree($gitProvider, $repoFullName, $branch, $path),
+            'gitlab' => $this->getGitLabRepositoryTree($gitProvider, $repoFullName, $branch, $path),
+            default => [],
+        };
+    }
+
+    /**
+     * Get GitHub repository tree.
+     */
+    private function getGitHubRepositoryTree(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $path = ''): array
+    {
+        $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
+            ->get("https://api.github.com/repos/{$repoFullName}/git/trees/{$branch}", [
+                'recursive' => '1',
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Failed to get GitHub repository tree');
+        }
+
+        $tree = $response->json()['tree'] ?? [];
+
+        // Filter to only files (not directories) and optionally by path prefix
+        $files = [];
+        foreach ($tree as $item) {
+            if ($item['type'] !== 'blob') {
+                continue;
+            }
+
+            $filePath = $item['path'];
+
+            // Filter by path prefix if specified
+            if ($path !== '' && !str_starts_with($filePath, $path)) {
+                continue;
+            }
+
+            $files[] = [
+                'path' => $filePath,
+                'sha' => $item['sha'],
+                'size' => $item['size'] ?? 0,
+            ];
+        }
+
+        return $files;
+    }
+
+    /**
+     * Get GitLab repository tree.
+     */
+    private function getGitLabRepositoryTree(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $path = ''): array
+    {
+        $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
+        $encodedPath = urlencode($repoFullName);
+
+        $params = [
+            'ref' => $branch,
+            'recursive' => 'true',
+            'per_page' => 100,
+        ];
+
+        if ($path !== '') {
+            $params['path'] = $path;
+        }
+
+        $files = [];
+        $page = 1;
+
+        // GitLab paginates results, so we need to fetch all pages
+        do {
+            $params['page'] = $page;
+
+            $response = Http::withToken($gitProvider->access_token)
+                ->withoutVerifying()
+                ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/tree", $params);
+
+            if ($response->failed()) {
+                throw new \Exception('Failed to get GitLab repository tree');
+            }
+
+            $items = $response->json();
+
+            foreach ($items as $item) {
+                if ($item['type'] !== 'blob') {
+                    continue;
+                }
+
+                $files[] = [
+                    'path' => $item['path'],
+                    'sha' => $item['id'],
+                    'size' => 0, // GitLab tree API doesn't return size
+                ];
+            }
+
+            $page++;
+        } while (count($items) === $params['per_page']);
+
+        return $files;
+    }
+
+    /**
+     * Get content of a single file from repository.
+     *
+     * @param UserGitProvider $gitProvider
+     * @param string $repoFullName e.g. "user/repo"
+     * @param string $branch e.g. "main"
+     * @param string $filePath Path to file in repository
+     * @return string File content
+     */
+    public function getFileContent(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $filePath): string
+    {
+        return match ($gitProvider->provider) {
+            'github' => $this->getGitHubFileContent($gitProvider, $repoFullName, $branch, $filePath),
+            'gitlab' => $this->getGitLabFileContent($gitProvider, $repoFullName, $branch, $filePath),
+            default => '',
+        };
+    }
+
+    /**
+     * Get GitHub file content.
+     */
+    private function getGitHubFileContent(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $filePath): string
+    {
+        $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
+            ->get("https://api.github.com/repos/{$repoFullName}/contents/{$filePath}", [
+                'ref' => $branch,
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception("Failed to get file content: {$filePath}");
+        }
+
+        $data = $response->json();
+
+        // GitHub returns base64 encoded content
+        if (isset($data['content']) && $data['encoding'] === 'base64') {
+            return base64_decode($data['content']);
+        }
+
+        // For large files, we need to fetch via blob API
+        if (isset($data['sha'])) {
+            $blobResponse = Http::withToken($gitProvider->access_token)
+                ->withoutVerifying()
+                ->get("https://api.github.com/repos/{$repoFullName}/git/blobs/{$data['sha']}");
+
+            if ($blobResponse->successful()) {
+                $blobData = $blobResponse->json();
+                if ($blobData['encoding'] === 'base64') {
+                    return base64_decode($blobData['content']);
+                }
+            }
+        }
+
+        throw new \Exception("Could not decode file content: {$filePath}");
+    }
+
+    /**
+     * Get GitLab file content.
+     */
+    private function getGitLabFileContent(UserGitProvider $gitProvider, string $repoFullName, string $branch, string $filePath): string
+    {
+        $baseUrl = config('services.gitlab.base_url', 'https://gitlab.com');
+        $encodedPath = urlencode($repoFullName);
+        $encodedFilePath = urlencode($filePath);
+
+        // GitLab raw file endpoint
+        $response = Http::withToken($gitProvider->access_token)
+            ->withoutVerifying()
+            ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/files/{$encodedFilePath}/raw", [
+                'ref' => $branch,
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception("Failed to get file content: {$filePath}");
+        }
+
+        return $response->body();
+    }
+
+    /**
+     * Get contents of multiple files from repository directory.
+     * Returns an associative array of path => content.
+     *
+     * @param UserGitProvider $gitProvider
+     * @param string $repoFullName e.g. "user/repo"
+     * @param string $branch e.g. "main"
+     * @param string $directory Optional directory prefix to filter
+     * @param int $maxFiles Maximum number of files to fetch (for rate limiting)
+     * @return array ['files' => ['path' => 'content', ...], 'truncated' => bool]
+     */
+    public function getDirectoryContents(
+        UserGitProvider $gitProvider,
+        string $repoFullName,
+        string $branch,
+        string $directory = '',
+        int $maxFiles = 0 // 0 = no limit
+    ): array {
+        // First get the file tree
+        $tree = $this->getRepositoryTree($gitProvider, $repoFullName, $branch, $directory);
+
+        $files = [];
+        $skippedLarge = 0;
+        $count = 0;
+
+        foreach ($tree as $file) {
+            // Only apply limit if maxFiles > 0
+            if ($maxFiles > 0 && $count >= $maxFiles) {
+                break;
+            }
+
+            // Skip very large files (> 1MB) - these would timeout anyway
+            if (isset($file['size']) && $file['size'] > 1024 * 1024) {
+                \Log::info("Skipping large file: {$file['path']} ({$file['size']} bytes)");
+                $skippedLarge++;
+                continue;
+            }
+
+            try {
+                $content = $this->getFileContent($gitProvider, $repoFullName, $branch, $file['path']);
+
+                // Remove directory prefix if specified (to match generation output structure)
+                $relativePath = $file['path'];
+                if ($directory !== '' && str_starts_with($relativePath, $directory)) {
+                    $relativePath = ltrim(substr($relativePath, strlen($directory)), '/');
+                }
+
+                $files[$relativePath] = $content;
+                $count++;
+            } catch (\Exception $e) {
+                // Re-throw rate limit errors so user sees them
+                $message = $e->getMessage();
+                if (str_contains($message, 'rate limit') || str_contains($message, '403') || str_contains($message, '429')) {
+                    throw new \Exception("GitHub/GitLab API Rate Limit erreicht. Bitte warten Sie einige Minuten oder verwenden Sie ein kleineres Repository. (Fehler: {$message})");
+                }
+                \Log::warning("Failed to fetch file content: {$file['path']}", [
+                    'error' => $message,
+                ]);
+            }
+        }
+
+        return [
+            'files' => $files,
+            'truncated' => $maxFiles > 0 && $count >= $maxFiles,
+            'total_in_tree' => count($tree),
+            'fetched' => $count,
+            'skipped_large' => $skippedLarge,
         ];
     }
 }

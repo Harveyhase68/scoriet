@@ -150,6 +150,19 @@ export default function LoginModal({
         localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
       }
 
+      // Show notification if other sessions were revoked (single-session enforcement)
+      if (tokenData.other_sessions_revoked && tokenData.revoked_session_count > 0) {
+        // Dispatch a custom event that can be caught by the main app to show a toast
+        window.dispatchEvent(new CustomEvent('sessionRevoked', {
+          detail: {
+            count: tokenData.revoked_session_count,
+            message: currentLanguage === 'de'
+              ? 'Sie wurden auf anderen Geräten abgemeldet.'
+              : 'You have been logged out from other devices.'
+          }
+        }));
+      }
+
       // Success - close modal
       onLoginSuccess?.();
       onHide();

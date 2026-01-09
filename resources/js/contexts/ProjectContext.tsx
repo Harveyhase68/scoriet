@@ -1,6 +1,14 @@
 // resources/js/contexts/ProjectContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
+interface ProjectSubscription {
+  id: number;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  days_remaining: number | null;
+}
+
 interface Project {
   id: number;
   name: string;
@@ -21,6 +29,9 @@ interface Project {
   can_join?: boolean;
   default_language?: string;
   enabled_languages?: string[];
+  // Subscription / Lock status
+  is_soft_locked?: boolean;
+  subscription?: ProjectSubscription | null;
   // Diagram Settings
   diagram_max_tables_per_row?: number;
   diagram_table_width?: number;
@@ -113,7 +124,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         // Filter out projects without an ID
         const validProjects = projectsArray.filter((p: Project) => p.id);
         setProjects(validProjects);
-        
+
         // Try to restore saved project, use preferred project, or auto-select first
         const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
         let projectToSelect = null;
@@ -141,12 +152,33 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         if (!projectToSelect && projectsArray.length > 0) {
           projectToSelect = projectsArray[0];
         }
-        
+
         // Always set the project if we have one to select (either restored or first)
         if (projectToSelect) {
           setSelectedProject(projectToSelect);
           localStorage.setItem('scoriet_selected_project_id', projectToSelect.id.toString());
         }
+      } else if (response.status === 401) {
+        // Token was revoked (likely logged in on another device)
+        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
+        const isLoggingOut = localStorage.getItem('logout_in_progress');
+
+        if (!alreadyNotified && !isLoggingOut) {
+          sessionStorage.setItem('session_revoke_notified', 'true');
+
+          // Clear tokens
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+
+          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+            detail: { reason: 'token_revoked' }
+          }));
+        }
+
+        setProjects([]);
+        setSelectedProject(null);
       }
     } catch {
       // Error loading projects

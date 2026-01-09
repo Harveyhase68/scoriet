@@ -1,0 +1,282 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Scoriet Template Injection",
+  "scopeName": "scoriet.template.injection",
+  "injectionSelector": "L:source, L:text",
+  "patterns": [
+    { "include": "#code-block" },
+    { "include": "#control-keywords" },
+    { "include": "#functions" },
+    { "include": "#counters" },
+    { "include": "#dotted-variables" },
+    { "include": "#simple-variables" }
+  ],
+  "repository": {
+    "code-block": {
+      "name": "meta.embedded.block.scoriet",
+      "begin": "(\\{)(code)(\\})",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.block.begin.scoriet" },
+        "2": { "name": "keyword.control.code.scoriet" },
+        "3": { "name": "punctuation.definition.block.begin.scoriet" }
+      },
+      "end": "(\\{)(codeend)(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.block.end.scoriet" },
+        "2": { "name": "keyword.control.codeend.scoriet" },
+        "3": { "name": "punctuation.definition.block.end.scoriet" }
+      },
+      "contentName": "source.js.embedded.scoriet",
+      "patterns": [
+        { "include": "source.js" }
+      ]
+    },
+    "control-keywords": {
+      "patterns": [
+        {
+          "name": "meta.control.for.scoriet",
+          "match": "(\\{)(for)(\\s+[^}]*)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.for.scoriet" },
+            "3": { "name": "variable.parameter.loop.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.for.simple.scoriet",
+          "match": "(\\{)(for)(\\s+%)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.for.scoriet" },
+            "3": { "name": "variable.parameter.loop.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.endfor.scoriet",
+          "match": "(\\{)(endfor)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.endfor.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.if.scoriet",
+          "match": "(\\{)(if)(\\s+[^}]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.if.scoriet" },
+            "3": { "name": "variable.parameter.condition.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.elseif.scoriet",
+          "match": "(\\{)(elseif)(\\s+[^}]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.elseif.scoriet" },
+            "3": { "name": "variable.parameter.condition.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.else.scoriet",
+          "match": "(\\{)(else)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.else.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.endif.scoriet",
+          "match": "(\\{)(endif)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.endif.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.switch.scoriet",
+          "match": "(\\{)(switch)(\\s+[^}]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.switch.scoriet" },
+            "3": { "name": "variable.parameter.switch.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.case.scoriet",
+          "match": "(\\{)(case)(\\s+[^}]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.case.scoriet" },
+            "3": { "name": "constant.other.case-value.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.default.scoriet",
+          "match": "(\\{)(default)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.default.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.endswitch.scoriet",
+          "match": "(\\{)(endswitch)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.endswitch.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.break.scoriet",
+          "match": "(\\{)(break)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.break.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.wenn.scoriet",
+          "match": "(\\{)(wenn)(\\s+[^}]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.wenn.scoriet" },
+            "3": { "name": "variable.parameter.condition.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.endwenn.scoriet",
+          "match": "(\\{)(endwenn)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.endwenn.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.control.sonst.scoriet",
+          "match": "(\\{)(sonst)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "keyword.control.sonst.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "meta.function-call.scoriet",
+          "match": "(\\{)(upper|lower|capitalize|plural|singular|camelcase|snakecase|pascalcase|length|substr|replace|trim|ltrim|rtrim|pad|repeat|reverse|split|join|first|last|count|sum|min|max|avg|sort|unique|filter|map|find|index|contains|startswith|endswith|format|date|time|now|round|floor|ceil|abs|random)(\\([^)]*\\))(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "support.function.scoriet" },
+            "3": { "name": "variable.parameter.function.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.function-call.nested.scoriet",
+          "match": "(\\{)(upper|lower|capitalize|plural|singular|camelcase|snakecase|pascalcase|length|substr|replace)(\\([^{}]+\\))(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "support.function.scoriet" },
+            "3": { "name": "variable.parameter.function.scoriet" },
+            "4": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        }
+      ]
+    },
+    "counters": {
+      "patterns": [
+        {
+          "name": "meta.counter.scoriet",
+          "match": "(\\{)(nmax(?:items|itemsnokey|keys|foreignkeys|files|tables|languages|searchkeys|constraints|migration_tables|migration_fields|migration_indexes|migration_foreignkeys|[a-zA-Z_]+))(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "constant.numeric.counter.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        }
+      ]
+    },
+    "dotted-variables": {
+      "patterns": [
+        {
+          "name": "meta.variable.dotted.scoriet",
+          "match": "(\\{)(item|field|file|table|project|form|formset|constraint|language|migration_table|migration_field|migration_index|migration_foreignkey)(\\.)(\\w+(?:\\.\\w+)*)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.object.scoriet" },
+            "3": { "name": "punctuation.accessor.scoriet" },
+            "4": { "name": "variable.other.property.scoriet" },
+            "5": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        }
+      ]
+    },
+    "simple-variables": {
+      "patterns": [
+        {
+          "name": "meta.variable.project.scoriet",
+          "match": "(\\{)(projectname|projectcaption|projectid|projectdatabase|projecturl|projectdirectory|projectdbtype|projectdbserver|projectdbname|startpage|defaultlanguage)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.project.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.variable.table.scoriet",
+          "match": "(\\{)(tablename|tablenamepascal|Tablename|filename|filenameshort|fileid|filekeyname|filecaption|filedescription)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.table.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.variable.language.scoriet",
+          "match": "(\\{)(languageid|languagename|languagetoken|selectedlanguage|selectedlanguageindex|decimalsep|thousandsep|dateformat|timeformat|currencysym|timezone)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.language.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.variable.template.scoriet",
+          "match": "(\\{)(templateid|templatename|templatecategory|templatedescription)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.template.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        },
+        {
+          "name": "meta.variable.generic.scoriet",
+          "match": "(\\{)([a-zA-Z_][a-zA-Z0-9_]*)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.tag.begin.scoriet" },
+            "2": { "name": "variable.other.scoriet" },
+            "3": { "name": "punctuation.definition.tag.end.scoriet" }
+          }
+        }
+      ]
+    }
+  }
+}

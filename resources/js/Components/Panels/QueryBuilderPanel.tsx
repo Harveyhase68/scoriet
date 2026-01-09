@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -9,6 +9,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { Toast } from 'primereact/toast';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { api } from '@/lib/api';
 
@@ -71,6 +72,19 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage); // Future use for i18n
+  const toast = useRef<Toast>(null);
+
+  // Schema Migration Access State (Premium Feature)
+  const [schemaMigrationAccess, setSchemaMigrationAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    unlock_cost?: number;
+    days_remaining?: number;
+    expires_at?: string;
+    is_patron?: boolean;
+  } | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
 
   // State
   const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
@@ -83,12 +97,84 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   const [error, setError] = useState<string>('');
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
 
-  // Load available schemas on mount
+  // API helpers
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+  }, []);
+
+  // Load Schema Migration access status
+  const loadSchemaMigrationAccess = useCallback(async () => {
+    setLoadingAccess(true);
+    try {
+      const response = await fetch('/api/subscriptions/schema-migration/status', {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSchemaMigrationAccess(data);
+      }
+    } catch (error) {
+      console.error('Failed to load schema migration access:', error);
+    } finally {
+      setLoadingAccess(false);
+    }
+  }, [getAuthHeaders]);
+
+  // Unlock Schema Migration with credits
+  const unlockSchemaMigration = async () => {
+    setUnlocking(true);
+    try {
+      const response = await fetch('/api/subscriptions/unlock-schema-migration', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSchemaMigrationAccess(data.access_status);
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Erfolg',
+          detail: data.message || 'Schema Migration freigeschaltet!',
+        });
+        // Trigger credits update event
+        window.dispatchEvent(new Event('creditsChanged'));
+      } else {
+        const error = await response.json();
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Fehler',
+          detail: error.message || 'Freischaltung fehlgeschlagen',
+        });
+      }
+    } catch (err) {
+      console.error('Error unlocking schema migration:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Freischaltung fehlgeschlagen',
+      });
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  // Load access status on mount
   useEffect(() => {
-    if (isActive) {
+    loadSchemaMigrationAccess();
+  }, [loadSchemaMigrationAccess]);
+
+  // Load available schemas on mount - only if user has access
+  useEffect(() => {
+    if (isActive && schemaMigrationAccess?.has_access) {
       loadSchemas();
     }
-  }, [isActive]);
+  }, [isActive, schemaMigrationAccess?.has_access]);
 
   // Load versions when schema selected
   useEffect(() => {
@@ -246,13 +332,104 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
     return <span className="text-sm">{details}</span>;
   };
 
+  // ========== LOADING STATE ==========
+  if (loadingAccess) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-900">
+        <ProgressSpinner />
+      </div>
+    );
+  }
+
+  // ========== NO ACCESS - SHOW PREMIUM BANNER ==========
+  if (!schemaMigrationAccess?.has_access) {
+    return (
+      <div className="h-full flex flex-col bg-gray-900 text-white">
+        <Toast ref={toast} />
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-3 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <i className="pi pi-database text-xl text-blue-400" />
+            <h2 className="text-lg font-semibold">Schema Migration</h2>
+          </div>
+        </div>
+
+        {/* Premium Banner */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-md w-full">
+            <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-4">🔒</div>
+              <h3 className="text-xl font-semibold text-purple-200 mb-2">
+                Schema Migration ist ein Premium-Feature
+              </h3>
+              <p className="text-gray-400 mb-4">
+                Mit Schema Migration können Sie Datenbankversionen vergleichen und automatisch SQL-Migrationsskripte generieren.
+              </p>
+
+              <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+                <div className="text-2xl font-bold text-purple-300 mb-1">
+                  {schemaMigrationAccess?.unlock_cost || 50} Credits / Jahr
+                </div>
+                <div className="text-sm text-gray-500">
+                  Einmalige Freischaltung für 12 Monate
+                </div>
+              </div>
+
+              <Button
+                label={unlocking ? 'Wird freigeschaltet...' : 'Freischalten'}
+                icon="pi pi-unlock"
+                className="p-button-lg"
+                style={{
+                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  border: 'none',
+                }}
+                onClick={unlockSchemaMigration}
+                disabled={unlocking}
+                loading={unlocking}
+              />
+
+              <div className="mt-4 text-sm text-gray-500">
+                <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+                <ul className="text-left space-y-1">
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>🔄</span> Versionsvergleich
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>📝</span> SQL-Migration Generierung
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>📊</span> Detaillierte Änderungsübersicht
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <span>⬇️</span> SQL-Export & Download
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== MAIN RENDER (WITH ACCESS) ==========
   return (
     <div className="p-4 h-full overflow-auto bg-gray-900">
+      <Toast ref={toast} />
       <div className="mb-4">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          <i className="pi pi-code mr-2"></i>
-          Query Builder - Schema Diff & Migration Generator
-        </h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold text-white">
+            <i className="pi pi-database mr-2"></i>
+            Schema Migration
+          </h2>
+          {/* Access Status Badge */}
+          {schemaMigrationAccess?.is_patron ? (
+            <Tag value="Patron" severity="warning" />
+          ) : schemaMigrationAccess?.days_remaining !== undefined ? (
+            <Tag value={`${schemaMigrationAccess.days_remaining} Tage`} severity="info" />
+          ) : null}
+        </div>
         <p className="text-gray-400">
           Compare two schema versions and generate SQL migration scripts
         </p>

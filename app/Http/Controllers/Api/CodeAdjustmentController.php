@@ -7,6 +7,7 @@ use App\Models\CodeAdjustment;
 use App\Models\CodeAdjustmentInsertion;
 use App\Models\Project;
 use App\Models\ProjectGeneration;
+use App\Models\UserGitProvider;
 use App\Services\CodeAdjustmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -553,6 +554,209 @@ class CodeAdjustmentController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Compare files from a Git repository against the generated project
+     */
+    public function compareGit(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'project_id' => 'required|integer|exists:projects,id',
+            'generation_id' => 'required|integer|exists:project_generations,id',
+            'provider' => 'required|in:github,gitlab',
+            'repository' => 'required|string|max:255',
+            'branch' => 'required|string|max:255',
+            'directory' => 'nullable|string|max:500',
+        ]);
+
+        $project = Project::findOrFail($validated['project_id']);
+        $this->authorizeProject($project);
+
+        // Get the user's Git provider connection
+        $user = Auth::user();
+        $gitProvider = UserGitProvider::where('user_id', $user->id)
+            ->where('provider', $validated['provider'])
+            ->first();
+
+        if (!$gitProvider) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sie haben keine Verbindung zu ' . ucfirst($validated['provider']) . '. Bitte verbinden Sie Ihren Account in den Projekteinstellungen.',
+            ], 400);
+        }
+
+        // Get the reference generation
+        $generation = ProjectGeneration::where('project_id', $validated['project_id'])
+            ->findOrFail($validated['generation_id']);
+
+        if (!$generation->fileExists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Die Referenz-Generierung existiert nicht mehr auf dem Server',
+            ], 404);
+        }
+
+        try {
+            $result = $this->service->compareFromGit(
+                $gitProvider,
+                $validated['repository'],
+                $validated['branch'],
+                $validated['directory'] ?? '',
+                $generation->file_path
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ========== EXPORT / IMPORT ==========
+
+    /**
+     * Export all code adjustments for a project as JSON
+     */
+    public function export(int $projectId): JsonResponse
+    {
+        $project = Project::findOrFail($projectId);
+        $this->authorizeProject($project);
+
+        $adjustments = CodeAdjustment::forProject($projectId)
+            ->with('insertions')
+            ->ordered()
+            ->get();
+
+        $exportData = [
+            'version' => '1.0',
+            'exported_at' => now()->toISOString(),
+            'project_name' => $project->name,
+            'adjustments' => $adjustments->map(function ($adjustment) {
+                return [
+                    'name' => $adjustment->name,
+                    'description' => $adjustment->description,
+                    'file_pattern' => $adjustment->file_pattern,
+                    'min_confidence' => (float) $adjustment->min_confidence,
+                    'execution_order' => $adjustment->execution_order,
+                    'is_active' => $adjustment->is_active,
+                    'insertions' => $adjustment->insertions->map(function ($insertion) {
+                        return [
+                            'insertion_type' => $insertion->insertion_type,
+                            'anchor_text' => $insertion->anchor_text,
+                            'insertion_content' => $insertion->insertion_content,
+                            'line_offset' => $insertion->line_offset,
+                            'insertion_order' => $insertion->insertion_order,
+                            'description' => $insertion->description,
+                        ];
+                    })->toArray(),
+                ];
+            })->toArray(),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $exportData,
+        ]);
+    }
+
+    /**
+     * Import code adjustments from JSON
+     */
+    public function import(Request $request, int $projectId): JsonResponse
+    {
+        $project = Project::findOrFail($projectId);
+        $this->authorizeProject($project);
+
+        $validated = $request->validate([
+            'data' => 'required|array',
+            'data.version' => 'required|string',
+            'data.adjustments' => 'required|array',
+            'data.adjustments.*.name' => 'required|string|max:255',
+            'data.adjustments.*.description' => 'nullable|string',
+            'data.adjustments.*.file_pattern' => 'required|string|max:500',
+            'data.adjustments.*.min_confidence' => 'nullable|numeric|min:0|max:1',
+            'data.adjustments.*.execution_order' => 'nullable|integer|min:0',
+            'data.adjustments.*.is_active' => 'nullable|boolean',
+            'data.adjustments.*.insertions' => 'required|array',
+            'data.adjustments.*.insertions.*.insertion_type' => 'required|in:beginning,end,middle',
+            'data.adjustments.*.insertions.*.anchor_text' => 'required|string',
+            'data.adjustments.*.insertions.*.insertion_content' => 'required|string',
+            'data.adjustments.*.insertions.*.line_offset' => 'nullable|integer',
+            'data.adjustments.*.insertions.*.insertion_order' => 'nullable|integer|min:0',
+            'data.adjustments.*.insertions.*.description' => 'nullable|string|max:500',
+            'mode' => 'nullable|in:merge,replace',
+        ]);
+
+        $importData = $validated['data'];
+        $mode = $validated['mode'] ?? 'merge';
+
+        // If replace mode, delete all existing adjustments first
+        if ($mode === 'replace') {
+            CodeAdjustment::where('project_id', $projectId)->delete();
+        }
+
+        $importedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($importData['adjustments'] as $adjustmentData) {
+            // Check if adjustment with same name and file_pattern already exists (merge mode)
+            if ($mode === 'merge') {
+                $existing = CodeAdjustment::where('project_id', $projectId)
+                    ->where('name', $adjustmentData['name'])
+                    ->where('file_pattern', $adjustmentData['file_pattern'])
+                    ->first();
+
+                if ($existing) {
+                    $skippedCount++;
+                    continue;
+                }
+            }
+
+            // Create adjustment
+            $adjustment = CodeAdjustment::create([
+                'project_id' => $projectId,
+                'name' => $adjustmentData['name'],
+                'description' => $adjustmentData['description'] ?? null,
+                'file_pattern' => $adjustmentData['file_pattern'],
+                'min_confidence' => $adjustmentData['min_confidence'] ?? 0.80,
+                'execution_order' => $adjustmentData['execution_order'] ?? 0,
+                'is_active' => $adjustmentData['is_active'] ?? true,
+                'created_by_user_id' => Auth::id(),
+            ]);
+
+            // Create insertions
+            foreach ($adjustmentData['insertions'] as $index => $insertionData) {
+                CodeAdjustmentInsertion::create([
+                    'code_adjustment_id' => $adjustment->id,
+                    'insertion_type' => $insertionData['insertion_type'],
+                    'anchor_text' => $insertionData['anchor_text'],
+                    'insertion_content' => $insertionData['insertion_content'],
+                    'line_offset' => $insertionData['line_offset'] ?? 0,
+                    'insertion_order' => $insertionData['insertion_order'] ?? $index,
+                    'description' => $insertionData['description'] ?? null,
+                ]);
+            }
+
+            $importedCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $mode === 'replace'
+                ? "Import abgeschlossen: {$importedCount} Anpassung(en) importiert"
+                : "Import abgeschlossen: {$importedCount} Anpassung(en) importiert, {$skippedCount} übersprungen (bereits vorhanden)",
+            'data' => [
+                'imported' => $importedCount,
+                'skipped' => $skippedCount,
+                'mode' => $mode,
+            ],
+        ]);
     }
 
     /**

@@ -235,7 +235,21 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/schema-import', [SvcController::class, 'importSchema']);
 
         // Task creation routes (called from GUI)
+        Route::post('/tasks/connection-test', [SvcController::class, 'createConnectionTestTask']);
         Route::post('/tasks/database-import', [SvcController::class, 'createDatabaseImportTask']);
         Route::post('/tasks/project-download', [SvcController::class, 'createProjectDownloadTask']);
+        Route::post('/tasks/template-upload', [SvcController::class, 'createTemplateUploadTask']);
+        Route::post('/tasks/file-edit', [SvcController::class, 'createFileEditTask']);
+
+        // Template upload from service
+        Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
+        Route::get('/template-upload/{sessionId}/status', [SvcController::class, 'getTemplateUploadStatus']);
+
+        // File edit via service
+        Route::post('/file-edit/{sessionId}/status', [SvcController::class, 'updateFileEditStatus']);
+        Route::post('/file-edit/{sessionId}/content', [SvcController::class, 'uploadFileContent']);
+        Route::get('/file-edit/{sessionId}/should-stop', [SvcController::class, 'checkFileEditShouldStop']);
+        Route::get('/file-edit/{sessionId}/status', [SvcController::class, 'getFileEditStatus']);
+        Route::post('/file-edit/{sessionId}/stop', [SvcController::class, 'stopFileEdit']);
     });
 });

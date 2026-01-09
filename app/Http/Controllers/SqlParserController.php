@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\MySQLParser;
+use App\Services\PostgreSQLParser;
 use App\Services\SchemaStorageService;
 use App\Models\FloatingSchema;
 use App\Models\SchemaVersion;
@@ -17,10 +18,30 @@ class SqlParserController extends Controller
         $this->schemaStorageService = $schemaStorageService;
     }
 
+    /**
+     * Get the appropriate SQL parser based on database type
+     */
+    private function getParser(string $databaseType = 'mysql')
+    {
+        $databaseType = strtolower($databaseType);
+
+        switch ($databaseType) {
+            case 'postgresql':
+            case 'postgres':
+            case 'pgsql':
+                return new PostgreSQLParser();
+            case 'mysql':
+            case 'mariadb':
+            default:
+                return new MySQLParser();
+        }
+    }
+
     public function parse(Request $request)
     {
         // Read raw body instead of JSON
         $sqlScript = $request->getContent();
+        $databaseType = $request->header('X-Database-Type', 'mysql');
 
         // Validation for raw data
         if (empty(trim($sqlScript))) {
@@ -31,7 +52,7 @@ class SqlParserController extends Controller
         }
 
         try {
-            $parser = new MySQLParser;
+            $parser = $this->getParser($databaseType);
             $version = $parser->parseSQL($sqlScript);
 
             return response()->json([
@@ -51,18 +72,24 @@ class SqlParserController extends Controller
         // Increase PHP limits for large SQL import operations
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 300); // 5 minutes
-        
+
         // Optional: JSON with additional parameters
         if ($request->isJson()) {
             $data = $request->json()->all();
             $sqlScript = $data['sql_script'] ?? '';
             $schemaId = $data['schema_id'] ?? null;
             $description = $data['description'] ?? null;
+            $databaseType = $data['database_type'] ?? null;
+            $appendToCurrentVersion = $data['append_to_current_version'] ?? false;
+            $skipBreakingChangeCheck = $data['skip_breaking_change_check'] ?? false;
         } else {
             // Raw body for SQL script
             $sqlScript = $request->getContent();
             $schemaId = $request->header('X-Schema-Id');
             $description = $request->header('X-Description');
+            $databaseType = $request->header('X-Database-Type');
+            $appendToCurrentVersion = filter_var($request->header('X-Append-To-Current-Version', 'false'), FILTER_VALIDATE_BOOLEAN);
+            $skipBreakingChangeCheck = filter_var($request->header('X-Skip-Breaking-Change-Check', 'false'), FILTER_VALIDATE_BOOLEAN);
         }
 
         // Validation
@@ -99,24 +126,70 @@ class SqlParserController extends Controller
                 ], 403);
             }
 
-            // SQL parsen
-            $parser = new MySQLParser;
+            // Get database type from project settings if not provided in request
+            if (!$databaseType) {
+                $project = $schema->projects()->first();
+                $databaseType = $project ? ($project->database_type ?? 'mysql') : 'mysql';
+            }
+
+            // SQL parsen with appropriate parser
+            $parser = $this->getParser($databaseType);
             $parsedTables = $parser->parseSQL($sqlScript);
 
-            // 🛡️ BREAKING CHANGE DETECTION - Critical Security Check
-            $this->validateNonBreakingChange($schema, $parsedTables);
+            // 🛡️ VALIDATION: Check if any tables were parsed before creating a version
+            if (empty($parsedTables)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tables found in SQL script. Please ensure the script contains valid CREATE TABLE statements.',
+                    'error_type' => 'No Tables Found',
+                    'suggestion' => 'The SQL file must contain at least one CREATE TABLE statement.',
+                ], 400);
+            }
 
-            // Create new schema version for the floating schema
-            $schemaVersion = SchemaVersion::createNewVersion(
-                $schema,
-                $description
-            );
+            // 🛡️ BREAKING CHANGE DETECTION - Critical Security Check (can be skipped)
+            if (!$skipBreakingChangeCheck) {
+                $this->validateNonBreakingChange($schema, $parsedTables);
+            } else {
+                \Log::info("⚠️ Breaking change check SKIPPED by user for schema {$schema->id}");
+            }
 
-            // Refresh to ensure schema_id is loaded
-            $schemaVersion->refresh();
+            // 🔄 TRANSACTION: Wrap entire import in transaction to prevent orphan versions
+            // tolerateMissingReferences=true allows importing tables with FK to non-existent tables
+            $schemaVersion = \DB::transaction(function () use ($schema, $parsedTables, $appendToCurrentVersion, $description) {
+                // Either append to current version or create new version
+                if ($appendToCurrentVersion) {
+                    // Get the latest existing version
+                    $schemaVersion = SchemaVersion::where('schema_id', $schema->id)
+                        ->orderBy('version_number', 'desc')
+                        ->first();
 
-            // Store parsed tables in the new version using the existing service
-            $this->schemaStorageService->storeParsedTablesInVersion($schemaVersion, $parsedTables);
+                    if (!$schemaVersion) {
+                        // No version exists yet, create first one
+                        $schemaVersion = SchemaVersion::createNewVersion($schema, $description);
+                        $schemaVersion->refresh();
+                    }
+
+                    \Log::info("📎 Appending tables to existing version {$schemaVersion->version_number} for schema {$schema->id}");
+
+                    // Append parsed tables to existing version (merge with existing tables)
+                    $this->schemaStorageService->addTablesToVersion($schemaVersion, $parsedTables, true);
+                } else {
+                    // Create new schema version for the floating schema
+                    $schemaVersion = SchemaVersion::createNewVersion(
+                        $schema,
+                        $description
+                    );
+
+                    // Refresh to ensure schema_id is loaded
+                    $schemaVersion->refresh();
+
+                    // Store parsed tables in the new version using the existing service
+                    // tolerateMissingReferences=true - user was already warned about missing FKs
+                    $this->schemaStorageService->storeParsedTablesInVersion($schemaVersion, $parsedTables, true);
+                }
+
+                return $schemaVersion;
+            });
 
             // 🎯 AUTOMATISCHES LAYOUT: Nur bei erster Version (wenn DB leer ist)
             if ($schema->last_version == 1) {
@@ -461,19 +534,184 @@ class SqlParserController extends Controller
         }
     }
 
-    public function debugParse(Request $request)
+    /**
+     * Validate SQL before import - check for missing FK references
+     * Returns list of missing tables that are referenced by foreign keys
+     */
+    public function validateImport(Request $request)
     {
+        \Log::info("[FK-Validate] ========== VALIDATE IMPORT CALLED ==========");
+
         // Increase PHP limits for large SQL operations
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 300); // 5 minutes
-        
+
         try {
             // Get SQL script from request
             if ($request->isJson()) {
                 $data = $request->json()->all();
                 $sqlScript = $data['sql_script'] ?? '';
+                $databaseType = $data['database_type'] ?? 'mysql';
+                $schemaId = $data['schema_id'] ?? null;
+                $appendToCurrentVersion = $data['append_to_current_version'] ?? false;
             } else {
                 $sqlScript = $request->getContent();
+                $databaseType = $request->header('X-Database-Type', 'mysql');
+                $schemaId = $request->header('X-Schema-Id');
+                $appendToCurrentVersion = filter_var($request->header('X-Append-To-Current-Version', 'false'), FILTER_VALIDATE_BOOLEAN);
+            }
+
+            if (empty(trim($sqlScript))) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'SQL script is required',
+                ], 400);
+            }
+
+            // Parse the SQL
+            $parser = $this->getParser($databaseType);
+            $parsedTables = $parser->parseSQL($sqlScript);
+
+            if (empty($parsedTables)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tables found in SQL script',
+                ], 400);
+            }
+
+            // Get table names from parsed SQL
+            $newTableNames = [];
+            foreach ($parsedTables as $tableData) {
+                if (isset($tableData['table_name'])) {
+                    $newTableNames[] = strtolower($tableData['table_name']);
+                }
+            }
+
+            // Get existing table names from schema (always check, not just for append)
+            // This ensures we warn about missing FKs even on first import
+            $existingTableNames = [];
+            if ($schemaId) {
+                $schema = FloatingSchema::find($schemaId);
+                if ($schema) {
+                    $latestVersion = SchemaVersion::where('schema_id', $schema->id)
+                        ->orderBy('version_number', 'desc')
+                        ->first();
+
+                    if ($latestVersion) {
+                        $existingTableNames = \App\Models\SchemaTable::where('schema_version_id', $latestVersion->id)
+                            ->pluck('table_name')
+                            ->map(fn($name) => strtolower($name))
+                            ->toArray();
+                    }
+                }
+            }
+
+            // Combine all available tables (new tables from SQL + existing tables in schema)
+            $allAvailableTables = array_unique(array_merge($newTableNames, $existingTableNames));
+
+            // Find all FK references
+            $missingTables = [];
+            $fkDetails = [];
+
+            \Log::info("[FK-Validate] Starting FK validation", [
+                'newTableNames' => $newTableNames,
+                'existingTableNames' => $existingTableNames,
+                'allAvailableTables' => $allAvailableTables,
+                'tables_count' => count($parsedTables),
+            ]);
+
+            foreach ($parsedTables as $tableData) {
+                $tableName = $tableData['table_name'] ?? 'unknown';
+
+                \Log::info("[FK-Validate] Checking table: {$tableName}", [
+                    'has_constraints' => isset($tableData['constraints']),
+                    'constraints_count' => isset($tableData['constraints']) ? count($tableData['constraints']) : 0,
+                ]);
+
+                if (isset($tableData['constraints'])) {
+                    foreach ($tableData['constraints'] as $constraint) {
+                        if (isset($constraint['type']) && $constraint['type'] === 'FOREIGN KEY') {
+                            // Support both formats:
+                            // MySQL format: $constraint['references_table']
+                            // PostgreSQL format: $constraint['references']['table']
+                            $referencedTable = $constraint['references_table']
+                                ?? $constraint['references']['table']
+                                ?? null;
+
+                            $referencedColumns = $constraint['references_columns']
+                                ?? $constraint['references']['columns']
+                                ?? [];
+
+                            \Log::info("[FK-Validate] FK constraint found", [
+                                'from_table' => $tableName,
+                                'references_table' => $referencedTable,
+                                'columns' => $constraint['columns'] ?? [],
+                            ]);
+
+                            if ($referencedTable) {
+                                $referencedTableLower = strtolower($referencedTable);
+
+                                // Check if referenced table is NOT in available tables
+                                $isInAvailable = in_array($referencedTableLower, $allAvailableTables);
+                                \Log::info("[FK-Validate] Checking if '{$referencedTable}' (lower: '{$referencedTableLower}') is in available tables: " . ($isInAvailable ? 'YES' : 'NO'));
+
+                                if (!$isInAvailable) {
+                                    if (!in_array($referencedTable, $missingTables)) {
+                                        $missingTables[] = $referencedTable;
+                                    }
+
+                                    // Store FK detail for user info
+                                    $fkDetails[] = [
+                                        'from_table' => $tableName,
+                                        'to_table' => $referencedTable,
+                                        'columns' => $constraint['columns'] ?? [],
+                                        'references_columns' => $referencedColumns,
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            \Log::info("[FK-Validate] Validation complete", [
+                'missing_tables' => $missingTables,
+                'fk_details_count' => count($fkDetails),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'tables_count' => count($parsedTables),
+                'table_names' => array_values(array_unique($newTableNames)),
+                'missing_fk_tables' => $missingTables,
+                'fk_details' => $fkDetails,
+                'has_missing_references' => count($missingTables) > 0,
+                'existing_tables_count' => count($existingTableNames),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function debugParse(Request $request)
+    {
+        // Increase PHP limits for large SQL operations
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300); // 5 minutes
+
+        try {
+            // Get SQL script from request
+            if ($request->isJson()) {
+                $data = $request->json()->all();
+                $sqlScript = $data['sql_script'] ?? '';
+                $databaseType = $data['database_type'] ?? 'mysql';
+            } else {
+                $sqlScript = $request->getContent();
+                $databaseType = $request->header('X-Database-Type', 'mysql');
             }
 
             if (empty(trim($sqlScript))) {
@@ -484,12 +722,13 @@ class SqlParserController extends Controller
             }
 
             // Try to parse and return detailed debug info
-            $parser = new MySQLParser;
+            $parser = $this->getParser($databaseType);
             $parsedTables = $parser->parseSQL($sqlScript);
 
             return response()->json([
                 'success' => true,
                 'message' => 'SQL parsed successfully',
+                'database_type' => $databaseType,
                 'tables_count' => count($parsedTables),
                 'parsed_data' => $parsedTables,
             ]);

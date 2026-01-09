@@ -199,30 +199,37 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       const teamData = await teamResponse.json();
       setTeamMembers(teamData.team.members || []);
 
-      // Load project members using team's project info
-      // We need to find the project that this team belongs to
-      // Since team has project_owner_id, we can find the project by owner
+      // Load project members from all projects linked to this team
+      // The team has a 'projects' array with all linked projects
       try {
+        const allProjectMembers: ProjectMember[] = [];
+        const seenUserIds = new Set<number>();
 
-        const projectsResponse = await fetch('/api/projects', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
+        // Get project IDs from the team's linked projects
+        const linkedProjectIds = team.projects?.map(p => p.id) || [];
 
-        if (projectsResponse.ok) {
-          const projectsData = await projectsResponse.json();
+        // If no linked projects, try to get from projects API
+        if (linkedProjectIds.length === 0) {
+          const projectsResponse = await fetch('/api/projects', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
 
-          // Extract projects array from response
-          const projects = projectsData.projects || [];
+          if (projectsResponse.ok) {
+            const projectsData = await projectsResponse.json();
+            const projects = projectsData.projects || [];
+            // Find projects owned by the team owner
+            const matchingProjects = projects.filter((p: any) => p.owner_id === team.project_owner_id);
+            linkedProjectIds.push(...matchingProjects.map((p: any) => p.id));
+          }
+        }
 
-          // Find project where this team belongs (same project_owner_id)
-          const matchingProject = projects.find((p: any) => p.owner_id === team.project_owner_id);
-
-          if (matchingProject) {
-
-            const projectMembersResponse = await fetch(`/api/projects/${matchingProject.id}/members`, {
+        // Load members from each linked project
+        for (const projectId of linkedProjectIds) {
+          try {
+            const projectMembersResponse = await fetch(`/api/projects/${projectId}/members`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json',
@@ -231,16 +238,22 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
             if (projectMembersResponse.ok) {
               const projectMembersData = await projectMembersResponse.json();
-              setProjectMembers(projectMembersData || []);
-            } else {
-              // Failed to load project members
+              const members = projectMembersData || [];
+
+              // Add unique members only
+              for (const member of members) {
+                if (!seenUserIds.has(member.user_id)) {
+                  seenUserIds.add(member.user_id);
+                  allProjectMembers.push(member);
+                }
+              }
             }
-          } else {
-            // No matching project found for team owner
+          } catch {
+            // Continue with other projects if one fails
           }
-        } else {
-          // Failed to load projects
         }
+
+        setProjectMembers(allProjectMembers);
       } catch {
         setProjectMembers([]);
       }

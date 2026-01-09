@@ -81,6 +81,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   const [privateUnlockConfirmed, setPrivateUnlockConfirmed] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<number>(0);
+  const [hasCheckedSubscription, setHasCheckedSubscription] = useState(false);
       const { control, handleSubmit: handleFormSubmit, reset, getValues, watch, formState: { errors } } = useForm({
         defaultValues: {
             name: '',
@@ -140,21 +142,33 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     return;
                 }
 
-                // Load existing private template subscriptions count
-                const subsResponse = await fetch('/api/template-subscriptions/count', {
+                // Check subscription_info from templates endpoint (slot-based system)
+                const templatesResponse = await fetch('/api/templates', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json'
                     }
                 });
 
-                if (subsResponse.ok) {
-                    const subsData = await subsResponse.json();
-                    setExistingPrivateSubscriptions(subsData.count || 0);
-                }
+                if (templatesResponse.ok) {
+                    const templatesData = await templatesResponse.json();
+                    const subscriptionInfo = templatesData.subscription_info;
 
-                // Free users need to unlock private templates
-                setNeedsPrivateUnlock(true);
+                    // Store available slots for display
+                    setAvailableSlots(subscriptionInfo?.available_slots || 0);
+                    setHasCheckedSubscription(true);
+
+                    // Use backend's needs_unlock flag (accounts for subscription slots)
+                    if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+                        setNeedsPrivateUnlock(true);
+                    } else {
+                        setNeedsPrivateUnlock(false);
+                    }
+                } else {
+                    // Fallback: assume needs unlock for safety
+                    setNeedsPrivateUnlock(true);
+                    setHasCheckedSubscription(true);
+                }
             }
         } catch (err) {
             console.error('Error checking private template subscription:', err);
@@ -243,6 +257,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             // Reset unlock states for editing
             setNeedsPrivateUnlock(false);
             setPrivateUnlockConfirmed(false);
+            setHasCheckedSubscription(false);
+            setAvailableSlots(0);
         } else if (visible && !editingTemplate) {
             // Reset form for new template
             const initialValues = {
@@ -273,6 +289,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             // Reset unlock states for new template
             setNeedsPrivateUnlock(false);
             setPrivateUnlockConfirmed(false);
+            setHasCheckedSubscription(false);
+            setAvailableSlots(0);
         }
 
     }, [visible, editingTemplate, reset, userType]);
@@ -524,6 +542,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 placeholder={t.templatemodal290}
                                 className="w-full"
                                 separator=","
+                                pt={{
+                                    container: { className: 'w-full' },
+                                    input: { className: 'flex-1 w-full' }
+                                }}
                             />
                         )}
                     />
@@ -567,6 +589,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 checkPrivateTemplateSubscription();
                                             } else if (e.value === 'public' || e.value === 'store') {
                                                 setNeedsPrivateUnlock(false);
+                                                setHasCheckedSubscription(false);
+                                                setAvailableSlots(0);
                                             }
                                         }}
                                         options={[
@@ -683,6 +707,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         onClick={() => {
                                             reset({ ...getValues(), visibility: 'public' });
                                             setNeedsPrivateUnlock(false);
+                                            setHasCheckedSubscription(false);
                                         }}
                                         className="p-button-secondary p-button-sm"
                                         icon="pi pi-globe"
@@ -695,6 +720,16 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 <p className="text-green-300 text-sm flex items-center gap-2">
                                     <i className="pi pi-check-circle"></i>
                                     <strong>Freigeschaltet!</strong> 50 Credits werden beim Speichern abgezogen.
+                                </p>
+                            </div>
+                        ) : hasCheckedSubscription && availableSlots > 0 ? (
+                            <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
+                                <p className="text-green-300 text-sm flex items-center gap-2">
+                                    <i className="pi pi-check-circle"></i>
+                                    <strong>Slot verfügbar!</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
+                                </p>
+                                <p className="text-gray-400 text-xs mt-1">
+                                    Keine zusätzlichen Credits erforderlich.
                                 </p>
                             </div>
                         ) : null}

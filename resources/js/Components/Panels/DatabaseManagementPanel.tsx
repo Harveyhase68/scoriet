@@ -22,7 +22,16 @@ interface TabPanelProps {
   filterByProject?: boolean;
   forceProjectId?: number;
   forceProjectName?: string;
+  preSelectedSchemaId?: number;
   updateTabTitle?: (newTitle: string) => void;
+}
+
+interface SchemaSubscription {
+  id: number;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  days_remaining: number | null;
 }
 
 interface FloatingSchema {
@@ -48,6 +57,9 @@ interface FloatingSchema {
     association_type: 'linked' | 'cloned' | 'imported';
     alias?: string;
   }>;
+  // Subscription / Lock status
+  is_soft_locked?: boolean;
+  subscription?: SchemaSubscription | null;
 }
 
 interface Project {
@@ -60,13 +72,13 @@ interface Project {
   };
 }
 
-export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, forceProjectId, forceProjectName, updateTabTitle }: TabPanelProps) {
+export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filterByProject = false, forceProjectId, forceProjectName, preSelectedSchemaId: _preSelectedSchemaId, updateTabTitle }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
-  // Use Project Context to get current project
-  const { selectedProject: contextSelectedProject } = useProject();
+  // Use Project Context to get current project and projects list
+  const { selectedProject: contextSelectedProject, projects: contextProjects } = useProject();
   // Use forceProjectId if provided (from TreeView), otherwise use context
   const projectId = forceProjectId || (filterByProject ? contextSelectedProject?.id : undefined);
 
@@ -105,7 +117,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     name: '',
     description: '',
     visibility: 'private' as 'public' | 'private',
-    is_system_schema: false
+    is_system_schema: false,
+    project_ids: [] as number[]
   });
   const [creating, setCreating] = useState(false);
 
@@ -114,6 +127,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Schema unlock state
+  const [unlockingSchema, setUnlockingSchema] = useState(false);
+  const [schemaToUnlock, setSchemaToUnlock] = useState<FloatingSchema | null>(null);
 
   // Edit schema modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -505,20 +522,41 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
     const isFreeUser = currentUser.user_type === 'free' || !currentUser.user_type;
 
-    // If user is Free, check schema count
+    // If user is Free, check subscription_info from backend (slot-based system)
     if (isFreeUser) {
-      // Count user's schemas (filter from mySchemas)
-      const userSchemaCount = mySchemas.filter(s => s.owner_id === currentUser.id).length;
+      try {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (!token) {
+          setError('Nicht authentifiziert');
+          return;
+        }
 
-      // If user already has 1 schema (the limit for free users)
-      if (userSchemaCount >= 1) {
-        // Show SchemaUnlockModal
-        setShowSchemaUnlockModal(true);
-        return;
+        // Fetch current subscription info from backend
+        const response = await fetch('/api/schemas', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const subscriptionInfo = data.subscription_info;
+
+          // Use backend's needs_unlock flag (accounts for subscription slots)
+          if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+            // Show SchemaUnlockModal - user needs to pay 50 credits for a new slot
+            setShowSchemaUnlockModal(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking subscription info:', err);
+        // Continue anyway - backend will validate
       }
     }
 
-    // User is not Free, or has no schemas yet -> show create modal directly
+    // User is not Free, or has available slots -> show create modal directly
     setShowCreateModal(true);
   };
 
@@ -533,6 +571,73 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     // Open Plan Modal on "Buy Credits" tab (tab index 1)
     setPlanModalInitialTab(1);
     setShowPlanModal(true);
+  };
+
+  // Unlock an expired schema subscription (renew for 50 credits)
+  const handleUnlockExpiredSchema = async (schema: FloatingSchema) => {
+    if (!schema.subscription?.id) {
+      setError('Keine Subscription gefunden für diese Datenbank');
+      return;
+    }
+
+    setUnlockingSchema(true);
+    setSchemaToUnlock(schema);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Nicht authentifiziert');
+      }
+
+      const response = await fetch(`/api/subscriptions/${schema.subscription.id}/renew`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If not enough credits, show the plan modal
+        if (data.required_credits) {
+          setError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
+          setPlanModalInitialTab(1);
+          setShowPlanModal(true);
+        } else {
+          throw new Error(data.error || data.message || 'Fehler beim Entsperren der Datenbank');
+        }
+        return;
+      }
+
+      // Reload user data to get updated credits
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
+      }
+
+      // Reload schemas to get updated status
+      await loadMySchemas();
+      await loadCommunitySchemas();
+
+      setSuccess(`Datenbank "${schema.name}" wurde erfolgreich entsperrt! (${data.bonus_days || 0} Bonus-Tage erhalten)`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Fehler beim Entsperren');
+    } finally {
+      setUnlockingSchema(false);
+      setSchemaToUnlock(null);
+    }
   };
 
   const handleCreateSchema = async () => {
@@ -591,7 +696,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadMySchemas();
       await loadCommunitySchemas();
       setShowCreateModal(false);
-      setCreateForm({ name: '', description: '', visibility: 'private', is_system_schema: false });
+      setCreateForm({ name: '', description: '', visibility: 'private', is_system_schema: false, project_ids: [] });
       setSuccess(t.databasemanagementpanel336);
 
     } catch (error) {
@@ -720,6 +825,42 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Schema name template with lock icon for locked schemas
+  const nameTemplate = (schema: FloatingSchema) => {
+    const isLocked = schema.is_soft_locked === true;
+    return (
+      <div className="flex items-center gap-2">
+        {isLocked && <i className="pi pi-lock text-red-500" />}
+        <span className={isLocked ? 'text-red-400' : ''}>{schema.name}</span>
+      </div>
+    );
+  };
+
+  // Status template showing lock/expiry status
+  const statusTemplate = (schema: FloatingSchema) => {
+    if (schema.is_soft_locked) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-lock text-red-500" />
+          <Tag value="Gesperrt" severity="danger" />
+        </div>
+      );
+    }
+    if (schema.subscription?.days_remaining !== null && schema.subscription?.days_remaining !== undefined && schema.subscription.days_remaining <= 14) {
+      return (
+        <div className="flex items-center gap-1">
+          <i className="pi pi-exclamation-triangle text-yellow-500" />
+          <Tag value={`${schema.subscription.days_remaining} Tage`} severity="warning" />
+        </div>
+      );
+    }
+    // Only show "Aktiv" if schema has a subscription (not for first free schema)
+    if (schema.subscription) {
+      return <Tag value="Aktiv" severity="success" />;
+    }
+    return null;
   };
 
   const visibilityTemplate = (schema: FloatingSchema) => {
@@ -905,7 +1046,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       }
 
       // If requires force confirmation, show the details and ask for force delete
-      if (!response.ok && result.requires_force) {
+      // Note: Backend returns 200 with requires_force flag to avoid browser console errors
+      if (result.requires_force) {
         setDeleteInfo({
           projects_count: result.projects_count,
           versions_count: result.versions_count,
@@ -1047,6 +1189,24 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     const isSystemSchema = schema.is_system_schema;
     const canEdit = isOwner || (isSystemUser && isSystemSchema); // Owner can edit, or System-User can edit System-Schemas
     const canDelete = isOwner; // Only owner can delete
+
+    // If schema is locked, show only lock icon and unlock button
+    if (schema.is_soft_locked) {
+      return (
+        <div className="flex items-center space-x-2">
+          <i className="pi pi-lock text-red-500" title="Datenbank gesperrt" />
+          <Button
+            icon={unlockingSchema && schemaToUnlock?.id === schema.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
+            label="50 Credits"
+            className="p-button-rounded p-button-sm"
+            style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+            tooltip="Datenbank entsperren (50 Credits)"
+            onClick={() => handleUnlockExpiredSchema(schema)}
+            disabled={unlockingSchema}
+          />
+        </div>
+      );
+    }
 
     return (
       <div className="flex space-x-1">
@@ -1203,8 +1363,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           rows={10}
           rowsPerPageOptions={[5, 10, 20, 50]}
         >
-          <Column field="name" header={t.databasemanagementpanel840} sortable />
+          <Column field="name" header={t.databasemanagementpanel840} body={nameTemplate} sortable />
           <Column field="description" header={t.createteammodal103} />
+          <Column
+            header="Status"
+            body={statusTemplate}
+            className="w-28"
+          />
           <Column
             header={t.databasemanagementpanel843}
             body={projectsTemplate}
@@ -1232,7 +1397,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <Column
             header={t.applicationsmodal354}
             body={actionTemplate}
-            className="w-40"
+            className="w-60"
           />
         </DataTable>
       </Card>
@@ -1269,8 +1434,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           rows={10}
           rowsPerPageOptions={[5, 10, 20, 50]}
         >
-          <Column field="name" header={t.databasemanagementpanel840} sortable />
+          <Column field="name" header={t.databasemanagementpanel840} body={nameTemplate} sortable />
           <Column field="description" header={t.createteammodal103} />
+          <Column
+            header="Status"
+            body={statusTemplate}
+            className="w-28"
+          />
           <Column
             header={t.databasemanagementpanel843}
             body={projectsTemplate}
@@ -1298,7 +1468,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <Column
             header={t.applicationsmodal354}
             body={actionTemplate}
-            className="w-40"
+            className="w-60"
           />
         </DataTable>
       </Card>
@@ -1409,6 +1579,31 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               </small>
             </div>
           )}
+
+          {/* Project Assignment - Only show user's OWN projects (not team projects) */}
+          <div className="field">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
+              {t.createteammodal117 || 'Projects'} <span className="text-gray-500 text-xs">(optional)</span>
+            </label>
+            <MultiSelect
+              value={createForm.project_ids}
+              onChange={(e) => setCreateForm(prev => ({ ...prev, project_ids: e.value }))}
+              options={contextProjects
+                .filter(p => p.owner_id === currentUserId) // Only own projects
+                .map(p => ({ label: p.name, value: p.id }))}
+              placeholder="Select projects to link..."
+              className="w-full"
+              disabled={creating}
+              display="chip"
+              filter
+              showClear
+              maxSelectedLabels={3}
+              selectedItemsLabel="{0} projects selected"
+            />
+            <small className="text-gray-500">
+              Link this database to one or more of your projects. Hold Ctrl/Cmd to select multiple.
+            </small>
+          </div>
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
             <Button

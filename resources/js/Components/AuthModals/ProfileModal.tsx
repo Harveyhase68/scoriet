@@ -31,6 +31,9 @@ interface UserData {
   updated_at?: string;
   credits?: number;
   user_type?: string;
+  // Email notification settings
+  email_system_notifications?: boolean;
+  email_user_notifications?: boolean;
   // Seller fields
   is_seller?: boolean;
   company_name?: string;
@@ -54,11 +57,13 @@ interface CliSubscriptionStatus {
   cli: {
     unlocked: boolean;
     expires_at: string | null;
+    days_remaining: number | null;
     is_patron: boolean;
   };
   service: {
     unlocked: boolean;
     expires_at: string | null;
+    days_remaining: number | null;
     is_patron: boolean;
   };
   credits: number;
@@ -67,6 +72,26 @@ interface CliSubscriptionStatus {
     service: number;
     bundle: number;
   };
+}
+
+// All available feature subscriptions
+interface FeatureSubscription {
+  type: string;
+  name: string;
+  description: string;
+  icon: string;
+  iconColor: string;
+  cost: number;
+  unlocked: boolean;
+  expires_at: string | null;
+  days_remaining: number | null;
+  is_patron: boolean;
+  isBundle?: boolean;
+  bundleChildren?: string[]; // For bundle: list of child types
+  parentBundle?: string; // For CLI/Service: reference to bundle
+  requiresEntity?: boolean; // Feature requires creating entity first (e.g., Team)
+  entityInfo?: string; // Info text for entity-based features
+  covered_by_bundle?: boolean; // CLI/Service covered by active bundle
 }
 
 interface GitProvider {
@@ -78,6 +103,24 @@ interface GitProvider {
   avatar_url: string;
   connected_at: string | null;
   is_expired: boolean;
+}
+
+interface SubscriptionItem {
+  id: number;
+  type: string;
+  type_display: string;
+  entity_id: number | null;
+  entity_name: string | null;
+  is_free_tier: boolean;
+  is_patron: boolean;
+  expires_at: string | null;
+  expires_at_formatted: string | null;
+  days_until_expiry: number | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  is_eligible_for_bonus: boolean;
+  bonus_days: number;
+  renewal_cost: number;
 }
 
 export default function ProfileModal({ visible, onHide, defaultTab = 0 }: ProfileModalProps) {
@@ -134,7 +177,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [userData, setUserData] = useState<UserData>({
     name: '',
     email: '',
-    language: getStoredLanguage()
+    language: getStoredLanguage(),
+    email_system_notifications: true,
+    email_user_notifications: true,
   });
 
   // Create language options with our 5 languages
@@ -192,6 +237,50 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [loadingGitProviders, setLoadingGitProviders] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [disconnectingProvider, setDisconnectingProvider] = useState<string | null>(null);
+  const [gitIntegrationAccess, setGitIntegrationAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    unlock_cost?: number;
+    days_remaining?: number;
+    expires_at?: string;
+    is_patron?: boolean;
+    is_expired?: boolean;
+  } | null>(null);
+  const [unlockingGit, setUnlockingGit] = useState(false);
+
+  // All Subscriptions State
+  const [allSubscriptions, setAllSubscriptions] = useState<SubscriptionItem[]>([]);
+
+  // Attachment Storage State
+  const [storageStatus, setStorageStatus] = useState<{
+    used: number;
+    used_formatted: string;
+    limit: number;
+    limit_formatted: string;
+    remaining: number;
+    remaining_formatted: string;
+    percentage: number;
+    is_unlimited: boolean;
+    is_full: boolean;
+    is_warning: boolean;
+  } | null>(null);
+
+  // All available feature subscriptions
+  const [allFeatures, setAllFeatures] = useState<FeatureSubscription[]>([]);
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
+  const [bundleDiscountInfo, setBundleDiscountInfo] = useState<{
+    has_existing_subscriptions: boolean;
+    options: Array<{
+      type: string;
+      label: string;
+      price: number;
+      discount?: number;
+      description: string;
+    }>;
+  } | null>(null);
+  const [showBundleOptions, setShowBundleOptions] = useState(false);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+  const [renewingSubscription, setRenewingSubscription] = useState<number | null>(null);
 
   // Country options for dropdown
   const countries = [
@@ -330,14 +419,147 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
   }, []);
 
+  // Load all subscriptions for the user
+  const loadAllSubscriptions = useCallback(async () => {
+    try {
+      setLoadingSubscriptions(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAllSubscriptions(data.subscriptions || []);
+      }
+    } catch (err) {
+      console.error('Error loading subscriptions:', err);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  }, []);
+
+  // Load all available features with status
+  const loadAllFeatures = useCallback(async () => {
+    try {
+      setLoadingFeatures(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/all-features', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAllFeatures(data.features || []);
+      }
+    } catch (err) {
+      console.error('Error loading features:', err);
+    } finally {
+      setLoadingFeatures(false);
+    }
+  }, []);
+
+  // Load attachment storage status
+  const loadStorageStatus = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/messages/attachment-access', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStorageStatus(data.storage || null);
+      }
+    } catch (err) {
+      console.error('Error loading storage status:', err);
+    }
+  }, []);
+
+  // Load bundle discount info
+  const loadBundleDiscount = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/bundle-discount', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBundleDiscountInfo(data);
+      }
+    } catch (err) {
+      console.error('Error loading bundle discount:', err);
+    }
+  }, []);
+
+  // Renew a subscription
+  const renewSubscription = async (subscriptionId: number) => {
+    setRenewingSubscription(subscriptionId);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/subscriptions/${subscriptionId}/renew`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message);
+        // Reload all data
+        loadAllSubscriptions();
+        loadCliStatus();
+      } else {
+        alert(data.error || 'Verlängerung fehlgeschlagen');
+      }
+    } catch (err) {
+      console.error('Error renewing subscription:', err);
+      alert('Verlängerung fehlgeschlagen');
+    } finally {
+      setRenewingSubscription(null);
+    }
+  };
+
   // Handle unlock CLI/Service/Bundle
-  const handleUnlock = async (type: 'cli' | 'service' | 'bundle') => {
+  const handleUnlock = async (type: 'cli' | 'service' | 'bundle', bundleOption?: string) => {
     setUnlocking(type);
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.profilemodal115);
+      }
+
+      const body: { type: string; bundle_option?: string } = { type };
+      if (bundleOption) {
+        body.bundle_option = bundleOption;
       }
 
       const response = await fetch('/api/cli-subscriptions/unlock', {
@@ -347,7 +569,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -359,9 +581,66 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       // Reload status
       loadCliStatus();
       loadUserData();
+      loadAllFeatures();
+      loadBundleDiscount();
 
     } catch (err) {
       console.error('Unlock error:', err);
+      alert(err instanceof Error ? err.message : 'Fehler beim Freischalten');
+    } finally {
+      setUnlocking(null);
+    }
+  };
+
+  // Handle unlock for other features (database_designer, form_designer, code_adjustments, schema_migration, git_integration)
+  const handleFeatureUnlock = async (featureType: string) => {
+    setUnlocking(featureType);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.profilemodal115);
+      }
+
+      // Map feature types to API endpoints
+      const endpointMap: Record<string, string> = {
+        'database_designer': '/api/subscriptions/unlock-database-designer',
+        'form_designer': '/api/form-designer/unlock',
+        'code_adjustments': '/api/subscriptions/unlock-code-adjustments',
+        'schema_migration': '/api/subscriptions/unlock-schema-migration',
+        'git_integration': '/api/subscriptions/unlock-git-integration',
+        'team': '/api/subscriptions/unlock-teams',
+      };
+
+      const endpoint = endpointMap[featureType];
+      if (!endpoint) {
+        throw new Error('Unbekannter Feature-Typ');
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Fehler beim Freischalten');
+      }
+
+      // Reload all data
+      loadCliStatus();
+      loadUserData();
+      loadAllFeatures();
+      loadGitProviders();
+
+    } catch (err) {
+      console.error('Feature unlock error:', err);
+      alert(err instanceof Error ? err.message : 'Fehler beim Freischalten');
     } finally {
       setUnlocking(null);
     }
@@ -445,7 +724,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
   }, []);
 
-  // Load Git Providers
+  // Load Git Providers and Access Status
   const loadGitProviders = useCallback(async () => {
     setLoadingGitProviders(true);
     try {
@@ -462,6 +741,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       if (response.ok) {
         const data = await response.json();
         setGitProviders(data.providers || []);
+        // Store Git Integration access status
+        if (data.git_integration_access) {
+          setGitIntegrationAccess(data.git_integration_access);
+        }
       }
     } catch (err) {
       console.error('Error loading git providers:', err);
@@ -469,6 +752,41 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       setLoadingGitProviders(false);
     }
   }, []);
+
+  // Unlock Git Integration with credits
+  const unlockGitIntegration = async () => {
+    setUnlockingGit(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/unlock-git-integration', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGitIntegrationAccess(data.access_status);
+        // Reload user data to update credits
+        loadUserData();
+        // Reload CLI status to update credits display
+        loadCliStatus();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Freischaltung fehlgeschlagen');
+      }
+    } catch (err) {
+      console.error('Error unlocking git integration:', err);
+      alert('Freischaltung fehlgeschlagen');
+    } finally {
+      setUnlockingGit(false);
+    }
+  };
 
   // Connect a Git Provider (opens popup window)
   const connectGitProvider = async (provider: string) => {
@@ -528,6 +846,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const data = await response.json();
 
       if (!response.ok) {
+        // Check for expired state error - prompt user to try again
+        if (data.error && data.error.includes('expired state')) {
+          alert('Die Verbindungsanfrage ist abgelaufen. Bitte klicken Sie erneut auf "Verbinden".');
+        } else {
+          alert(data.error || 'Verbindung fehlgeschlagen');
+        }
         throw new Error(data.error || 'Failed to complete connection');
       }
 
@@ -604,9 +928,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       loadCliStatus();
       loadPricing();
       loadGitProviders();
+      loadAllSubscriptions();
+      loadAllFeatures();
+      loadBundleDiscount();
+      loadStorageStatus();
       setActiveTabIndex(defaultTab); // Reset to defaultTab when modal opens
     }
-  }, [visible, loadUserData, loadCliStatus, loadPricing, loadGitProviders, defaultTab]);
+  }, [visible, loadUserData, loadCliStatus, loadPricing, loadGitProviders, loadAllSubscriptions, loadAllFeatures, loadBundleDiscount, loadStorageStatus, defaultTab]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -631,6 +959,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           name: userData.name,
           email: userData.email,
           language: userData.language,
+          email_system_notifications: userData.email_system_notifications,
+          email_user_notifications: userData.email_user_notifications,
         }),
       });
 
@@ -829,7 +1159,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       header={t.profileTitle}
       visible={visible}
       onHide={handleHide}
-      style={{ width: '1000px' }}
+      style={{ width: '1100px' }}
       modal
       closable
       draggable={true}
@@ -969,6 +1299,49 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               </small>
             </div>
 
+            {/* Email Notification Settings */}
+            <div className="field mt-4">
+              <label className="block text-sm font-medium mb-3">
+                <i className="pi pi-envelope mr-2 text-blue-400"></i>
+                {t.emailNotifications || 'E-Mail Benachrichtigungen'}
+              </label>
+              <div className="space-y-3 bg-gray-800 rounded-lg p-4 border border-gray-700">
+                {/* System Notifications */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-200">
+                      {t.emailSystemNotifications || 'System-Benachrichtigungen'}
+                    </span>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t.emailSystemNotificationsDesc || 'Wichtige Systemmeldungen, Ankündigungen und Admin-Nachrichten'}
+                    </p>
+                  </div>
+                  <InputSwitch
+                    checked={userData.email_system_notifications ?? true}
+                    onChange={(e) => setUserData(prev => ({ ...prev, email_system_notifications: e.value }))}
+                    disabled={loadingProfile}
+                  />
+                </div>
+                <Divider className="my-2" />
+                {/* User/Team Notifications */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-200">
+                      {t.emailUserNotifications || 'Benutzer-Nachrichten'}
+                    </span>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t.emailUserNotificationsDesc || 'Nachrichten von anderen Benutzern, Teams und Projekt-Benachrichtigungen'}
+                    </p>
+                  </div>
+                  <InputSwitch
+                    checked={userData.email_user_notifications ?? true}
+                    onChange={(e) => setUserData(prev => ({ ...prev, email_user_notifications: e.value }))}
+                    disabled={loadingProfile}
+                  />
+                </div>
+              </div>
+            </div>
+
             <Button
               type="submit"
               label={loadingProfile ? t.updating : t.updateProfile}
@@ -1080,6 +1453,64 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               </div>
             </div>
 
+            {/* Attachment Storage Display */}
+            {storageStatus && (
+              <div className={`rounded-lg p-4 border ${
+                storageStatus.is_full
+                  ? 'bg-red-900/30 border-red-600'
+                  : storageStatus.is_warning
+                    ? 'bg-yellow-900/30 border-yellow-600'
+                    : 'bg-gray-800 border-gray-700'
+              }`}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <i className="pi pi-cloud text-blue-400"></i>
+                    Anhang-Speicher:
+                  </span>
+                  <span className={`font-bold ${
+                    storageStatus.is_full ? 'text-red-400' : storageStatus.is_warning ? 'text-yellow-400' : 'text-white'
+                  }`}>
+                    {storageStatus.is_unlimited
+                      ? 'Unbegrenzt'
+                      : `${storageStatus.used_formatted} / ${storageStatus.limit_formatted}`
+                    }
+                  </span>
+                </div>
+                {!storageStatus.is_unlimited && (
+                  <>
+                    <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                      <div
+                        className={`h-2.5 rounded-full transition-all ${
+                          storageStatus.is_full
+                            ? 'bg-red-500'
+                            : storageStatus.is_warning
+                              ? 'bg-yellow-500'
+                              : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${Math.min(100, storageStatus.percentage)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{storageStatus.percentage}% verwendet</span>
+                      <span>{storageStatus.remaining_formatted} frei</span>
+                    </div>
+                    {storageStatus.is_full && (
+                      <div className="mt-2 text-sm text-red-400 flex items-center gap-1">
+                        <i className="pi pi-exclamation-triangle"></i>
+                        Speicher voll! Löschen Sie alte Nachrichten um Platz zu schaffen.
+                      </div>
+                    )}
+                    {storageStatus.is_warning && !storageStatus.is_full && (
+                      <div className="mt-2 text-sm text-yellow-400 flex items-center gap-1">
+                        <i className="pi pi-exclamation-circle"></i>
+                        Speicher fast voll!
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Patron Notice */}
             {cliStatus?.cli.is_patron && (
               <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
@@ -1090,114 +1521,226 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               </div>
             )}
 
-            {/* CLI Subscription */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <i className="pi pi-desktop text-blue-400"></i>
-                    CLI Tool
-                  </h3>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Kommandozeilen-Tool für lokale Code-Generierung
-                  </p>
+            {/* All Available Features */}
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i className="pi pi-th-large text-blue-400"></i>
+                Verfügbare Features
+              </h3>
+
+              {loadingFeatures ? (
+                <div className="flex items-center justify-center py-8">
+                  <i className="pi pi-spin pi-spinner text-2xl text-blue-400"></i>
                 </div>
-                {cliStatus?.cli.unlocked ? (
-                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
-                    <i className="pi pi-check"></i> Aktiv
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
-                    <i className="pi pi-lock"></i> Gesperrt
-                  </span>
-                )}
-              </div>
-              {cliStatus?.cli.expires_at && (
-                <p className="text-gray-400 text-sm mb-3">
-                  Gültig bis: {new Date(cliStatus.cli.expires_at).toLocaleDateString('de-DE')}
-                </p>
-              )}
-              {!cliStatus?.cli.unlocked && !cliStatus?.cli.is_patron && (
-                <Button
-                  type="button"
-                  onClick={() => handleUnlock('cli')}
-                  loading={unlocking === 'cli'}
-                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 50}
-                  className="p-button-primary"
-                  icon="pi pi-unlock"
-                  label={`Freischalten (${cliStatus?.prices.cli || 50} Credits/Jahr)`}
-                />
+              ) : (
+                <div className="space-y-3">
+                  {/* Render features with special handling for bundle/cli/service */}
+                  {allFeatures.map((feature) => {
+                    // Skip cli and service as they are rendered inside bundle
+                    if (feature.parentBundle) return null;
+
+                    const isBundle = feature.isBundle;
+                    const bundleChildren = isBundle ? allFeatures.filter(f => f.parentBundle === feature.type) : [];
+
+                    return (
+                      <div key={feature.type}>
+                        {/* Feature Card */}
+                        <div
+                          className={`rounded-lg p-4 border ${
+                            isBundle
+                              ? 'bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-blue-600'
+                              : feature.unlocked
+                              ? 'bg-gray-800 border-green-600'
+                              : 'bg-gray-800 border-gray-700'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <i className={`pi ${feature.icon} ${feature.iconColor}`}></i>
+                                <span className="font-semibold text-white">{feature.name}</span>
+                                {isBundle && (
+                                  <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold">
+                                    SPARE 10 CREDITS!
+                                  </span>
+                                )}
+                                {feature.is_patron && (
+                                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                                    Patron
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-400 text-sm">{feature.description}</p>
+
+                              {/* Expiry Info */}
+                              {feature.unlocked && !feature.is_patron && feature.expires_at && (
+                                <p className="text-gray-400 text-sm mt-1">
+                                  Gültig bis: {new Date(feature.expires_at).toLocaleDateString('de-DE')}
+                                  {feature.days_remaining !== null && ` (${feature.days_remaining} Tage)`}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Status Badge and Action */}
+                            <div className="flex flex-col items-end gap-2">
+                              {feature.unlocked ? (
+                                <>
+                                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
+                                    <i className="pi pi-check"></i> Aktiv
+                                  </span>
+                                  {/* Extend button for already unlocked features (not for patron) */}
+                                  {!feature.is_patron && !feature.requiresEntity && (
+                                    <Button
+                                      type="button"
+                                      onClick={() => {
+                                        if (isBundle) {
+                                          handleUnlock('bundle');
+                                        } else if (feature.type === 'cli') {
+                                          handleUnlock('cli');
+                                        } else if (feature.type === 'service') {
+                                          handleUnlock('service');
+                                        } else {
+                                          handleFeatureUnlock(feature.type);
+                                        }
+                                      }}
+                                      loading={unlocking === feature.type}
+                                      disabled={unlocking !== null || (cliStatus?.credits || 0) < feature.cost}
+                                      className="p-button-sm p-button-outlined mt-1"
+                                      icon="pi pi-plus"
+                                      label={`+1 Jahr (${feature.cost} Cr)`}
+                                    />
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
+                                    <i className="pi pi-lock"></i> Gesperrt
+                                  </span>
+                                  {!feature.is_patron && (
+                                    <>
+                                      {/* Entity-based features (like Team) - show info + button */}
+                                      {feature.requiresEntity ? (
+                                        <div className="mt-2 text-right">
+                                          <span className="text-gray-500 text-xs block mb-1">{feature.entityInfo}</span>
+                                          <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs">
+                                            {feature.cost} Credits/Jahr pro {feature.name}
+                                          </span>
+                                        </div>
+                                      ) : isBundle && bundleDiscountInfo?.has_existing_subscriptions ? (
+                                        /* Bundle with existing subscriptions - show options */
+                                        <Button
+                                          type="button"
+                                          onClick={() => setShowBundleOptions(true)}
+                                          className="p-button-success p-button-sm mt-2"
+                                          icon="pi pi-unlock"
+                                          label={`Bundle Optionen`}
+                                        />
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          onClick={() => {
+                                            if (isBundle) {
+                                              handleUnlock('bundle');
+                                            } else if (feature.type === 'cli') {
+                                              handleUnlock('cli');
+                                            } else if (feature.type === 'service') {
+                                              handleUnlock('service');
+                                            } else {
+                                              // Other features (database_designer, form_designer, etc.)
+                                              handleFeatureUnlock(feature.type);
+                                            }
+                                          }}
+                                          loading={unlocking === feature.type}
+                                          disabled={unlocking !== null || (cliStatus?.credits || 0) < feature.cost}
+                                          className={`p-button-sm mt-2 ${isBundle ? 'p-button-success' : 'p-button-primary'}`}
+                                          icon="pi pi-unlock"
+                                          label={`${feature.cost} Credits/Jahr`}
+                                        />
+                                      )}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bundle Children (CLI and Service) - indented with tree line */}
+                        {isBundle && bundleChildren.length > 0 && (
+                          <div className="ml-4 mt-2 space-y-2">
+                            {bundleChildren.map((child, index) => (
+                              <div key={child.type} className="flex">
+                                {/* Tree line indicator */}
+                                <div className="flex flex-col items-center mr-3" style={{ width: '20px' }}>
+                                  <div className={`w-px bg-gray-600 ${index === 0 ? 'h-4' : 'h-full'}`}></div>
+                                  <span className="text-gray-500 text-lg leading-none">└</span>
+                                </div>
+
+                                {/* Child Feature Card */}
+                                <div
+                                  className={`flex-1 rounded-lg p-3 border ${
+                                    child.unlocked ? 'bg-gray-800/70 border-green-600/50' : 'bg-gray-800/50 border-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                      <i className={`pi ${child.icon} ${child.iconColor} text-sm`}></i>
+                                      <span className="font-medium text-white text-sm">{child.name}</span>
+                                      {child.unlocked && (
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                          child.covered_by_bundle
+                                            ? 'bg-blue-600/70 text-white'
+                                            : 'bg-green-600/70 text-white'
+                                        }`}>
+                                          {child.covered_by_bundle ? 'Im Bundle' : 'Aktiv'}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {/* Only show extend button if NOT covered by bundle */}
+                                      {child.unlocked && !child.is_patron && !child.covered_by_bundle && (
+                                        <Button
+                                          type="button"
+                                          onClick={() => handleUnlock(child.type as 'cli' | 'service')}
+                                          loading={unlocking === child.type}
+                                          disabled={unlocking !== null || (cliStatus?.credits || 0) < child.cost}
+                                          className="p-button-sm p-button-outlined"
+                                          icon="pi pi-plus"
+                                          label={`+1 Jahr`}
+                                        />
+                                      )}
+                                      {!child.unlocked && !child.is_patron && (
+                                        <Button
+                                          type="button"
+                                          onClick={() => handleUnlock(child.type as 'cli' | 'service')}
+                                          loading={unlocking === child.type}
+                                          disabled={unlocking !== null || (cliStatus?.credits || 0) < child.cost}
+                                          className="p-button-sm p-button-outlined"
+                                          icon="pi pi-unlock"
+                                          label={`${child.cost} Cr`}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-gray-500 text-xs mt-1">{child.description}</p>
+                                  {child.unlocked && !child.is_patron && child.expires_at && (
+                                    <p className="text-gray-500 text-xs mt-1">
+                                      {child.covered_by_bundle ? 'Bundle gültig bis: ' : 'Gültig bis: '}
+                                      {new Date(child.expires_at).toLocaleDateString('de-DE')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
-
-            {/* Service Subscription */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <i className="pi pi-server text-green-400"></i>
-                    Windows Service
-                  </h3>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Hintergrund-Service für automatische Synchronisation
-                  </p>
-                </div>
-                {cliStatus?.service.unlocked ? (
-                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
-                    <i className="pi pi-check"></i> Aktiv
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
-                    <i className="pi pi-lock"></i> Gesperrt
-                  </span>
-                )}
-              </div>
-              {cliStatus?.service.expires_at && (
-                <p className="text-gray-400 text-sm mb-3">
-                  Gültig bis: {new Date(cliStatus.service.expires_at).toLocaleDateString('de-DE')}
-                </p>
-              )}
-              {!cliStatus?.service.unlocked && !cliStatus?.service.is_patron && (
-                <Button
-                  type="button"
-                  onClick={() => handleUnlock('service')}
-                  loading={unlocking === 'service'}
-                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 50}
-                  className="p-button-primary"
-                  icon="pi pi-unlock"
-                  label={`Freischalten (${cliStatus?.prices.service || 50} Credits/Jahr)`}
-                />
-              )}
-            </div>
-
-            {/* Bundle Offer */}
-            {!cliStatus?.cli.unlocked && !cliStatus?.service.unlocked && !cliStatus?.cli.is_patron && (
-              <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-lg p-4 border border-blue-600">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <i className="pi pi-gift text-yellow-400"></i>
-                      Bundle: CLI + Service
-                      <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold">
-                        SPARE 10 CREDITS!
-                      </span>
-                    </h3>
-                    <p className="text-gray-300 text-sm mt-1">
-                      Beide Tools zum Vorteilspreis - nur {cliStatus?.prices.bundle || 90} statt 100 Credits
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => handleUnlock('bundle')}
-                  loading={unlocking === 'bundle'}
-                  disabled={unlocking !== null || (cliStatus?.credits || 0) < 90}
-                  className="p-button-success"
-                  icon="pi pi-unlock"
-                  label={`Bundle freischalten (${cliStatus?.prices.bundle || 90} Credits/Jahr)`}
-                />
-              </div>
-            )}
 
             {/* Not enough credits warning */}
             {cliStatus && !cliStatus.cli.is_patron && (cliStatus.credits < 50) && (
@@ -1208,6 +1751,187 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 </p>
               </div>
             )}
+
+            {/* All Active Subscriptions Overview - Only entity-based (projects, databases, teams, templates) */}
+            <Divider />
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i className="pi pi-list text-blue-400"></i>
+                Einzelne Abonnements
+              </h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Weitere Projekte, private Templates oder weitere Datenbanken - diese können beliebig oft verlängert werden.
+              </p>
+
+              {(() => {
+                // Filter out global features that are shown above
+                const globalFeatureTypes = ['bundle', 'cli', 'service', 'database_designer', 'form_designer', 'git_integration', 'code_adjustments', 'schema_migration', 'team'];
+                const entitySubscriptions = allSubscriptions.filter(sub => !globalFeatureTypes.includes(sub.type));
+
+                if (loadingSubscriptions) {
+                  return (
+                    <div className="flex items-center justify-center py-8">
+                      <i className="pi pi-spin pi-spinner text-2xl text-blue-400"></i>
+                    </div>
+                  );
+                }
+
+                if (entitySubscriptions.length === 0) {
+                  return (
+                    <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+                      <p className="text-gray-400">Sie haben noch keine weiteren Projekte, private Templates oder weitere Datenbanken freigeschaltet.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {entitySubscriptions.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className={`bg-gray-800 rounded-lg p-4 border ${
+                        sub.is_expired || sub.is_soft_locked
+                          ? 'border-red-600'
+                          : sub.is_eligible_for_bonus
+                          ? 'border-yellow-600'
+                          : sub.days_until_expiry !== null && sub.days_until_expiry <= 14
+                          ? 'border-orange-600'
+                          : 'border-gray-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-white">{sub.type_display}</span>
+                            {sub.entity_name && (
+                              <span className="text-gray-400">- {sub.entity_name}</span>
+                            )}
+                            {sub.is_patron && (
+                              <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                                Patron
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Expiry Info */}
+                          {sub.expires_at_formatted ? (
+                            <div className="text-sm">
+                              {sub.is_expired || sub.is_soft_locked ? (
+                                <span className="text-red-400 flex items-center gap-1">
+                                  <i className="pi pi-exclamation-circle"></i>
+                                  Abgelaufen am {sub.expires_at_formatted}
+                                </span>
+                              ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 3 ? (
+                                <span className="text-red-400 flex items-center gap-1">
+                                  <i className="pi pi-clock"></i>
+                                  Läuft ab in {sub.days_until_expiry} {sub.days_until_expiry === 1 ? 'Tag' : 'Tagen'} ({sub.expires_at_formatted})
+                                </span>
+                              ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 14 ? (
+                                <span className="text-yellow-400 flex items-center gap-1">
+                                  <i className="pi pi-clock"></i>
+                                  Läuft ab in {sub.days_until_expiry} Tagen ({sub.expires_at_formatted})
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">
+                                  Gültig bis {sub.expires_at_formatted}
+                                  {sub.days_until_expiry !== null && ` (${sub.days_until_expiry} Tage)`}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-green-400 text-sm">Unbegrenzt gültig</span>
+                          )}
+
+                          {/* Early Renewal Bonus */}
+                          {sub.is_eligible_for_bonus && (
+                            <div className="mt-2 px-2 py-1 bg-green-900/30 border border-green-700 rounded text-green-300 text-xs inline-flex items-center gap-1">
+                              <i className="pi pi-gift"></i>
+                              Jetzt verlängern und +{sub.bonus_days} Bonus-Tage erhalten!
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Renew Button */}
+                        {!sub.is_patron && sub.expires_at && (
+                          <Button
+                            type="button"
+                            onClick={() => renewSubscription(sub.id)}
+                            loading={renewingSubscription === sub.id}
+                            disabled={renewingSubscription !== null || (cliStatus?.credits || 0) < sub.renewal_cost}
+                            className={`p-button-sm ${
+                              sub.is_expired || sub.is_soft_locked
+                                ? 'p-button-danger'
+                                : sub.is_eligible_for_bonus
+                                ? 'p-button-success'
+                                : 'p-button-outlined'
+                            }`}
+                            icon={sub.is_expired ? 'pi pi-refresh' : 'pi pi-sync'}
+                            label={`${sub.is_expired ? 'Reaktivieren' : 'Verlängern'} (${sub.renewal_cost} Cr)`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Bundle Options Dialog */}
+            <Dialog
+              header="Bundle Optionen"
+              visible={showBundleOptions}
+              onHide={() => setShowBundleOptions(false)}
+              style={{ width: '500px' }}
+              modal
+            >
+              <div className="space-y-4">
+                <p className="text-gray-300">
+                  Sie haben bereits ein CLI oder Service Abonnement. Wählen Sie eine Option:
+                </p>
+                {bundleDiscountInfo?.options.map((option: any, index: number) => (
+                  <div
+                    key={index}
+                    className={`bg-gray-800 rounded-lg p-4 border cursor-pointer transition-colors ${
+                      option.price < 0
+                        ? 'border-green-600 hover:border-green-400'
+                        : 'border-gray-700 hover:border-blue-500'
+                    }`}
+                    onClick={() => {
+                      setShowBundleOptions(false);
+                      handleUnlock('bundle', option.type);
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-semibold text-white">{option.label}</span>
+                      {option.price < 0 ? (
+                        <span className="text-lg font-bold text-green-400 flex items-center gap-1">
+                          <i className="pi pi-plus-circle"></i>
+                          +{Math.abs(option.price)} Credits
+                        </span>
+                      ) : option.price === 0 ? (
+                        <span className="text-lg font-bold text-yellow-400">Kostenlos!</span>
+                      ) : (
+                        <span className="text-lg font-bold text-blue-400">{option.price} Credits</span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">{option.description}</p>
+                    {option.price < 0 && (
+                      <div className="mt-2 px-3 py-2 bg-green-900/30 border border-green-700 rounded text-green-300 text-sm flex items-center gap-2">
+                        <i className="pi pi-gift"></i>
+                        <span>Sie erhalten <strong>{Math.abs(option.price)} Credits</strong> gutgeschrieben!</span>
+                      </div>
+                    )}
+                    {option.discount && option.discount > 0 && option.price >= 0 && (
+                      <div className="mt-2 text-yellow-400 text-sm flex items-center gap-1">
+                        <i className="pi pi-tag"></i>
+                        Sie sparen {option.discount} Credits!
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Dialog>
           </div>
         </TabPanel>
 
@@ -1584,15 +2308,63 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <i className="pi pi-link text-blue-400"></i>
                 Git Provider verbinden
+                {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
+                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Patron</span>
+                )}
+                {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
+                  <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                    {gitIntegrationAccess.days_remaining} Tage verbleibend
+                  </span>
+                )}
               </h3>
               <p className="text-gray-400 text-sm mb-4">
                 Verbinden Sie Ihren GitHub oder GitLab Account, um generierten Code direkt in Ihre Repositories zu pushen.
               </p>
             </div>
 
+            {/* Subscription Required Banner */}
+            {gitIntegrationAccess && !gitIntegrationAccess.has_access && (
+              <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-purple-300 mb-1">
+                      <i className="pi pi-lock"></i>
+                      <span className="font-semibold">Git Integration ist ein Premium-Feature</span>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-purple-200 mb-1">
+                      {gitIntegrationAccess.unlock_cost} Credits
+                    </div>
+                    <div className="text-xs text-gray-400 mb-2">für 1 Jahr</div>
+                    <Button
+                      type="button"
+                      label={unlockingGit ? "Freischalten..." : "Jetzt freischalten"}
+                      icon={unlockingGit ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
+                      className="p-button-sm"
+                      style={{ backgroundColor: '#9333ea', borderColor: '#9333ea' }}
+                      onClick={unlockGitIntegration}
+                      disabled={unlockingGit || (cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50)}
+                    />
+                    {(cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50) && (
+                      <p className="text-xs text-red-400 mt-1">Nicht genug Credits</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {loadingGitProviders ? (
               <div className="flex justify-center py-8">
                 <i className="pi pi-spinner pi-spin text-2xl text-blue-400"></i>
+              </div>
+            ) : gitIntegrationAccess?.has_access === false ? (
+              <div className="text-center py-8 text-gray-500">
+                <i className="pi pi-lock text-4xl mb-2"></i>
+                <p>Schalten Sie Git Integration frei, um Provider zu verbinden.</p>
               </div>
             ) : (
               <div className="space-y-4">

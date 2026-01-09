@@ -1,13 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import JSZip from 'jszip';
+import { Dropdown } from 'primereact/dropdown';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import ProfileModal from '@/Components/AuthModals/ProfileModal';
 
 interface Project {
   id: number;
   name: string;
   description?: string;
   archive_format?: 'zip' | 'tar.gz' | 'tar.xz';
+  // Subscription / Lock status
+  is_soft_locked?: boolean;
+  // Git integration fields
+  git_provider_id?: number;
+  git_repository?: string;
+  git_default_branch?: string;
+  git_main_branch?: string;
+  git_provider?: {
+    id: number;
+    provider: 'github' | 'gitlab';
+    username: string;
+  };
 }
 
 interface Template {
@@ -15,6 +29,7 @@ interface Template {
   name: string;
   description?: string;
   files?: TemplateFile[];
+  is_soft_locked?: boolean;
 }
 
 interface TemplateFile {
@@ -24,10 +39,20 @@ interface TemplateFile {
   file_path: string;
 }
 
+interface SchemaSubscription {
+  id: number;
+  expires_at: string | null;
+  is_expired: boolean;
+  is_soft_locked: boolean;
+  days_remaining: number | null;
+}
+
 interface Schema {
   id: number;
   name: string;
   last_version?: number;
+  is_soft_locked?: boolean;
+  subscription?: SchemaSubscription | null;
 }
 
 interface Language {
@@ -76,6 +101,28 @@ interface CodeAdjustment {
   insertions: CodeAdjustmentInsertion[];
 }
 
+// Git Provider interfaces
+interface GitProvider {
+  id: number;
+  provider: 'github' | 'gitlab';
+  username: string;
+  connected_at: string;
+}
+
+interface GitRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  url: string;
+  default_branch: string;
+}
+
+interface GitBranch {
+  name: string;
+  protected: boolean;
+}
+
 export default function CodeGenerationPanel() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -101,6 +148,48 @@ export default function CodeGenerationPanel() {
   const [archiveWarning, setArchiveWarning] = useState<string | null>(null);
   const [fileConflicts, setFileConflicts] = useState<FileConflict[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+
+  // 🔗 Git Push States
+  const [pushToGit, setPushToGit] = useState(false);
+  const [gitProviders, setGitProviders] = useState<GitProvider[]>([]);
+  const [selectedGitProvider, setSelectedGitProvider] = useState<GitProvider | null>(null);
+  const [gitRepositories, setGitRepositories] = useState<GitRepository[]>([]);
+  const [selectedRepository, setSelectedRepository] = useState<GitRepository | null>(null);
+  const [gitBranches, setGitBranches] = useState<GitBranch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [newBranchName, setNewBranchName] = useState<string>('');
+  const [useNewBranch, setUseNewBranch] = useState(false);
+  const [commitMessage, setCommitMessage] = useState<string>('');
+  const [loadingGitData, setLoadingGitData] = useState(false);
+  const [gitProvidersLoaded, setGitProvidersLoaded] = useState(false);
+  const [gitPushStatus, setGitPushStatus] = useState<'idle' | 'pushing' | 'success' | 'error'>('idle');
+  const [rememberGitSettings, setRememberGitSettings] = useState(false);
+  const [rememberPushToGit, setRememberPushToGit] = useState(false);
+  // PR and Merge options
+  const [createPullRequest, setCreatePullRequest] = useState(false);
+  const [prTitle, setPrTitle] = useState<string>('');
+  const [autoMerge, setAutoMerge] = useState(false);
+  const [deleteBranchAfterMerge, setDeleteBranchAfterMerge] = useState(false);
+  // Git Integration Access
+  const [gitIntegrationAccess, setGitIntegrationAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    unlock_cost?: number;
+    days_remaining?: number;
+    expires_at?: string;
+    is_patron?: boolean;
+  } | null>(null);
+  const [unlockingGitIntegration, setUnlockingGitIntegration] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileModalDefaultTab, setProfileModalDefaultTab] = useState(0);
+
+  // 🔧 Code Adjustments Access
+  const [codeAdjustmentsAccess, setCodeAdjustmentsAccess] = useState<{
+    has_access: boolean;
+    access_type?: string;
+    days_remaining?: number;
+    is_patron?: boolean;
+  } | null>(null);
 
   // 📋 Deployment Log States
   const [deploymentLogs, setDeploymentLogs] = useState<string[]>([]);
@@ -194,7 +283,30 @@ export default function CodeGenerationPanel() {
   useEffect(() => {
     loadProjects();
     loadCurrentUser();
+    loadCodeAdjustmentsAccess();
   }, []);
+
+  // Load Code Adjustments access status
+  const loadCodeAdjustmentsAccess = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/code-adjustments/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCodeAdjustmentsAccess(data);
+      }
+    } catch (error) {
+      console.error('Failed to load code adjustments access:', error);
+    }
+  };
 
   // Load current user data for credit info
   const loadCurrentUser = async () => {
@@ -215,6 +327,409 @@ export default function CodeGenerationPanel() {
       }
     } catch {
       // Error loading current user - silently fail
+    }
+  };
+
+  // 🔗 Reset "Merken" checkbox when project changes
+  // The actual "Push to Git" state is set in loadProjectData after we know if project has git
+  useEffect(() => {
+    if (selectedProjectId) {
+      // Always reset "Merken" checkbox to OFF on project load/restart
+      setRememberPushToGit(false);
+    }
+  }, [selectedProjectId]);
+
+  // 🔗 Handle "Merken" checkbox change
+  const handleRememberChange = (checked: boolean) => {
+    setRememberPushToGit(checked);
+    if (checked && selectedProjectId) {
+      // When "Merken" is checked, immediately save current Push to Git state
+      localStorage.setItem(`pushToGit_${selectedProjectId}`, pushToGit.toString());
+    }
+    // When unchecked, we keep the saved value - it remains for next session
+  };
+
+  // 🔗 Handle "Push to Git" checkbox change
+  const handlePushToGitChange = (checked: boolean) => {
+    setPushToGit(checked);
+    if (!checked) {
+      setSelectedGitProvider(null);
+      setSelectedRepository(null);
+      setGitPushStatus('idle');
+      setGitProvidersLoaded(false);
+    }
+    // If "Merken" is currently ON, save immediately
+    if (rememberPushToGit && selectedProjectId) {
+      localStorage.setItem(`pushToGit_${selectedProjectId}`, checked.toString());
+    }
+  };
+
+  // 🔗 Load connected Git providers when pushToGit is enabled
+  useEffect(() => {
+    if (pushToGit) {
+      loadGitProviders();
+    }
+  }, [pushToGit]);
+
+  // 🔗 Load repositories when provider is selected (wait for providers to be fully loaded)
+  useEffect(() => {
+    if (selectedGitProvider && gitProvidersLoaded) {
+      console.log('[GIT DEBUG] Loading repositories for provider:', selectedGitProvider.provider);
+      loadGitRepositories(selectedGitProvider.provider);
+    } else if (!selectedGitProvider) {
+      setGitRepositories([]);
+      setSelectedRepository(null);
+    }
+  }, [selectedGitProvider, gitProvidersLoaded]);
+
+  // 🔗 Load branches when repository is selected
+  useEffect(() => {
+    if (selectedGitProvider && selectedRepository) {
+      loadGitBranches(selectedGitProvider.provider, selectedRepository.full_name);
+      // Don't set default branch here - let the project settings take priority
+      // The branch will be set in the pre-select effect below
+    } else {
+      setGitBranches([]);
+      setSelectedBranch('');
+    }
+  }, [selectedRepository]);
+
+  // 🔗 Generate default commit message when project/templates change
+  useEffect(() => {
+    if (selectedProject && selectedTemplateIds.size > 0) {
+      const templateNames = templates
+        .filter(t => selectedTemplateIds.has(t.id))
+        .map(t => t.name)
+        .slice(0, 3)
+        .join(', ');
+      const suffix = selectedTemplateIds.size > 3 ? ` (+${selectedTemplateIds.size - 3} more)` : '';
+      setCommitMessage(`Generated code for ${selectedProject.name}: ${templateNames}${suffix}`);
+    }
+  }, [selectedProject, selectedTemplateIds, templates]);
+
+  // 🔗 Pre-select Git provider from project settings or auto-select single provider
+  useEffect(() => {
+    // Only run when providers are fully loaded
+    if (gitProvidersLoaded && gitProviders.length > 0 && !selectedGitProvider) {
+      // First priority: Use project's configured provider
+      if (selectedProject?.git_provider_id) {
+        const matchingProvider = gitProviders.find(p => p.id === selectedProject.git_provider_id);
+        if (matchingProvider) {
+          console.log('[GIT DEBUG] Auto-selecting project provider:', matchingProvider.provider);
+          setSelectedGitProvider(matchingProvider);
+          return;
+        }
+      }
+      // Second priority: Auto-select if only one provider exists
+      if (gitProviders.length === 1) {
+        console.log('[GIT DEBUG] Auto-selecting single provider:', gitProviders[0].provider);
+        setSelectedGitProvider(gitProviders[0]);
+      }
+    }
+  }, [gitProviders, selectedProject, selectedGitProvider, gitProvidersLoaded]);
+
+  // 🔗 Pre-select repository from project settings when repositories are loaded
+  useEffect(() => {
+    if (gitRepositories.length > 0 && selectedProject?.git_repository && !selectedRepository) {
+      const matchingRepo = gitRepositories.find(r => r.full_name === selectedProject.git_repository);
+      if (matchingRepo) {
+        setSelectedRepository(matchingRepo);
+      }
+    }
+  }, [gitRepositories, selectedProject, selectedRepository]);
+
+  // 🔗 Pre-select branch from project settings when branches are loaded
+  useEffect(() => {
+    if (gitBranches.length > 0 && selectedRepository) {
+      // Priority: 1. Project's git_default_branch, 2. Repository's default_branch
+      const projectBranch = selectedProject?.git_default_branch;
+      const repoBranch = selectedRepository.default_branch;
+
+      console.log('[GIT DEBUG] Branches loaded:', gitBranches.length, 'Project branch:', projectBranch, 'Repo branch:', repoBranch);
+
+      // Use project branch if available and exists
+      if (projectBranch) {
+        const matchingBranch = gitBranches.find(b => b.name === projectBranch);
+        console.log('[GIT DEBUG] Looking for project branch:', projectBranch, 'Found:', !!matchingBranch);
+        if (matchingBranch) {
+          // Branch exists - select it and use existing branch mode
+          setSelectedBranch(projectBranch);
+          setUseNewBranch(false);
+          console.log('[GIT DEBUG] Set branch to project branch:', projectBranch);
+          return;
+        } else {
+          // Branch doesn't exist - switch to "new branch" mode and pre-fill the name
+          console.log('[GIT DEBUG] Project branch not found, switching to new branch mode:', projectBranch);
+          setUseNewBranch(true);
+          setNewBranchName(projectBranch);
+          // Also select main/default branch as base
+          if (repoBranch) {
+            setSelectedBranch(repoBranch);
+          }
+          return;
+        }
+      }
+
+      // Fallback to repository default branch
+      if (repoBranch) {
+        console.log('[GIT DEBUG] Fallback to repo default branch:', repoBranch);
+        setSelectedBranch(repoBranch);
+        setUseNewBranch(false);
+      }
+    }
+  }, [gitBranches, selectedProject, selectedRepository]);
+
+  // Load connected Git providers
+  const loadGitProviders = async () => {
+    try {
+      setLoadingGitData(true);
+      setGitProvidersLoaded(false);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        console.warn('[GIT DEBUG] No token found when loading providers');
+        return;
+      }
+
+      const response = await fetch('/api/git/providers', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const providers = data.providers || [];
+        setGitProviders(providers);
+        // Store Git Integration access status
+        if (data.git_integration_access) {
+          setGitIntegrationAccess(data.git_integration_access);
+        }
+        console.log('[GIT DEBUG] Loaded providers:', providers.length, 'Access:', data.git_integration_access?.has_access);
+        // Note: Auto-selection is handled separately in useEffect to avoid timing issues
+      }
+    } catch (err) {
+      console.error('Failed to load Git providers:', err);
+    } finally {
+      setLoadingGitData(false);
+      setGitProvidersLoaded(true);
+    }
+  };
+
+  // Unlock Git Integration with credits
+  const unlockGitIntegration = async () => {
+    setUnlockingGitIntegration(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch('/api/subscriptions/unlock-git-integration', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGitIntegrationAccess(data.access_status);
+        // Reload git providers to refresh state
+        await loadGitProviders();
+        // Open ProfileModal on Git tab (index 5) so user can connect provider
+        setProfileModalDefaultTab(5);
+        setShowProfileModal(true);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Freischaltung fehlgeschlagen');
+      }
+    } catch (err) {
+      console.error('Error unlocking git integration:', err);
+      alert('Freischaltung fehlgeschlagen');
+    } finally {
+      setUnlockingGitIntegration(false);
+    }
+  };
+
+  // Load repositories for selected provider
+  const loadGitRepositories = async (provider: string) => {
+    try {
+      setLoadingGitData(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/git/${provider}/repositories`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGitRepositories(data.repositories || []);
+      }
+    } catch (err) {
+      console.error('Failed to load repositories:', err);
+    } finally {
+      setLoadingGitData(false);
+    }
+  };
+
+  // Load branches for selected repository
+  const loadGitBranches = async (provider: string, repoFullName: string) => {
+    try {
+      setLoadingGitData(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      // Use query parameter instead of path parameter to avoid URL encoding issues with slashes
+      const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGitBranches(data.branches || []);
+      }
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+    } finally {
+      setLoadingGitData(false);
+    }
+  };
+
+  // Push generated files to Git
+  const pushToGitRepository = async (files: Record<string, string>): Promise<boolean> => {
+    if (!selectedGitProvider || !selectedRepository) {
+      console.error('No Git provider or repository selected');
+      return false;
+    }
+
+    const branch = useNewBranch ? newBranchName : selectedBranch;
+    if (!branch) {
+      console.error('No branch selected');
+      return false;
+    }
+
+    try {
+      setGitPushStatus('pushing');
+      setDeploymentLogs(prev => [...prev, `🔗 Pushing to ${selectedGitProvider.provider}/${selectedRepository.full_name}...`]);
+
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) throw new Error('Not authenticated');
+
+      const baseBranch = selectedRepository.default_branch || 'main';
+
+      const response = await fetch(`/api/git/${selectedGitProvider.provider}/push-direct`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          repository: selectedRepository.full_name,
+          branch: branch,
+          commit_message: commitMessage || 'Generated code from Scoriet',
+          files: files,
+          base_branch: baseBranch,
+          // PR options
+          create_pr: createPullRequest,
+          pr_title: prTitle || `Generated code: ${commitMessage || 'Code generation'}`,
+          pr_description: `Automatically generated code from Scoriet.\n\n**Branch:** ${branch}\n**Files:** ${Object.keys(files).length}`,
+          auto_merge: autoMerge,
+          delete_branch_after_merge: deleteBranchAfterMerge,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to push to Git');
+      }
+
+      const result = await response.json();
+      setDeploymentLogs(prev => [
+        ...prev,
+        `✅ Successfully pushed ${result.files_count} files to ${branch}`,
+        `📝 Commit: ${result.commit_sha?.substring(0, 7) || 'created'}`,
+      ]);
+
+      // Log PR creation if applicable
+      if (result.pr_number) {
+        const prType = selectedGitProvider.provider === 'gitlab' ? 'Merge Request' : 'Pull Request';
+        setDeploymentLogs(prev => [
+          ...prev,
+          `🔀 ${prType} #${result.pr_number} created`,
+          `🔗 ${result.pr_url}`,
+        ]);
+
+        // Log merge status if auto-merge was requested
+        if (result.merged) {
+          setDeploymentLogs(prev => [...prev, `✅ ${prType} automatically merged`]);
+        } else if (result.merge_error) {
+          setDeploymentLogs(prev => [...prev, `⚠️ Auto-merge failed: ${result.merge_error}`]);
+        }
+      }
+
+      setGitPushStatus('success');
+
+      // Save Git settings to project if "Remember" is checked
+      if (rememberGitSettings && selectedProjectId) {
+        await saveGitSettingsToProject();
+      }
+
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setDeploymentLogs(prev => [...prev, `❌ Git push failed: ${message}`]);
+      setGitPushStatus('error');
+      return false;
+    }
+  };
+
+  // Save Git settings to project
+  const saveGitSettingsToProject = async () => {
+    if (!selectedProjectId || !selectedGitProvider || !selectedRepository) return;
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const branch = useNewBranch ? newBranchName : selectedBranch;
+
+      const response = await fetch(`/api/projects/${selectedProjectId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          git_provider_id: selectedGitProvider.id,
+          git_repository: selectedRepository.full_name,
+          git_default_branch: branch,
+          git_main_branch: selectedRepository.default_branch,
+        }),
+      });
+
+      if (response.ok) {
+        setDeploymentLogs(prev => [...prev, '💾 Git-Einstellungen im Projekt gespeichert']);
+        // Update local project state
+        setSelectedProject(prev => prev ? {
+          ...prev,
+          git_provider_id: selectedGitProvider.id,
+          git_repository: selectedRepository.full_name,
+          git_default_branch: branch,
+          git_main_branch: selectedRepository.default_branch,
+        } : null);
+      }
+    } catch (err) {
+      console.error('Failed to save Git settings:', err);
     }
   };
 
@@ -323,6 +838,17 @@ export default function CodeGenerationPanel() {
       const projectData = await projectRes.json();
       const project = projectData.data || projectData;
 
+      // Debug: Log Git settings from project
+      console.log('[GIT DEBUG] Project loaded:', {
+        id: project.id,
+        name: project.name,
+        git_provider_id: project.git_provider_id,
+        git_repository: project.git_repository,
+        git_default_branch: project.git_default_branch,
+        git_main_branch: project.git_main_branch,
+        git_provider: project.git_provider,
+      });
+
       // Load templates via template-usages, schemas, and languages in parallel
       const [templatesRes, schemasRes, allLanguagesRes] = await Promise.all([
         fetch(`/api/projects/${selectedProjectId}/template-usages`, {
@@ -388,10 +914,51 @@ export default function CodeGenerationPanel() {
       setSchemas(Array.isArray(schemasArray) ? schemasArray : []);
       setLanguages(projectLanguages);
 
-      // Select all by default
-      setSelectedTemplateIds(new Set(templatesWithFiles.map((t: Template) => t.id)));
-      setSelectedSchemaIds(new Set((Array.isArray(schemasArray) ? schemasArray : []).map((s: Schema) => s.id)));
+      // Select all by default (exclude locked templates and schemas)
+      const unlockedTemplates = templatesWithFiles.filter((t: Template) => !t.is_soft_locked);
+      setSelectedTemplateIds(new Set(unlockedTemplates.map((t: Template) => t.id)));
+      const unlockedSchemas = (Array.isArray(schemasArray) ? schemasArray : []).filter((s: Schema) => !s.is_soft_locked);
+      setSelectedSchemaIds(new Set(unlockedSchemas.map((s: Schema) => s.id)));
       setSelectedLanguageCodes(new Set(projectLanguages.map((l: Language) => l.code)));
+
+      // 🔗 Set "Push to Git" based on localStorage or project settings
+      const savedPushToGit = localStorage.getItem(`pushToGit_${project.id}`);
+      if (savedPushToGit !== null) {
+        // User has a saved preference - use it
+        setPushToGit(savedPushToGit === 'true');
+      } else if (project.git_provider_id && project.git_repository) {
+        // No saved preference but project has git configured - default to enabled
+        setPushToGit(true);
+      } else {
+        // No saved preference and no git configured - default to disabled
+        setPushToGit(false);
+      }
+
+      // 🔗 Load PR/Merge settings from project
+      const workflow = project.git_workflow || 'push_only';
+      if (workflow === 'push_and_pr' || workflow === 'push_pr_merge') {
+        setCreatePullRequest(true);
+        if (project.git_pr_title_template) {
+          setPrTitle(project.git_pr_title_template);
+        }
+        if (workflow === 'push_pr_merge') {
+          setAutoMerge(true);
+          setDeleteBranchAfterMerge(project.git_auto_delete_branch ?? true);
+        } else {
+          setAutoMerge(false);
+          setDeleteBranchAfterMerge(false);
+        }
+      } else {
+        setCreatePullRequest(false);
+        setAutoMerge(false);
+        setDeleteBranchAfterMerge(false);
+      }
+
+      console.log('[GIT DEBUG] Project workflow settings:', {
+        workflow,
+        pr_title_template: project.git_pr_title_template,
+        auto_delete_branch: project.git_auto_delete_branch,
+      });
 
     } catch (err: any) {
       setError(err.message || 'Failed to load project data');
@@ -460,10 +1027,12 @@ export default function CodeGenerationPanel() {
   };
 
   const toggleAllTemplates = () => {
-    if (selectedTemplateIds.size === templates.length) {
+    // Only consider non-locked templates for selection
+    const unlockedTemplates = templates.filter(t => !t.is_soft_locked);
+    if (selectedTemplateIds.size === unlockedTemplates.length) {
       setSelectedTemplateIds(new Set());
     } else {
-      setSelectedTemplateIds(new Set(templates.map(t => t.id)));
+      setSelectedTemplateIds(new Set(unlockedTemplates.map(t => t.id)));
     }
   };
 
@@ -480,10 +1049,12 @@ export default function CodeGenerationPanel() {
   };
 
   const toggleAllSchemas = () => {
-    if (selectedSchemaIds.size === schemas.length) {
+    // Only consider non-locked schemas for selection
+    const unlockedSchemas = schemas.filter(s => !s.is_soft_locked);
+    if (selectedSchemaIds.size === unlockedSchemas.length) {
       setSelectedSchemaIds(new Set());
     } else {
-      setSelectedSchemaIds(new Set(schemas.map(s => s.id)));
+      setSelectedSchemaIds(new Set(unlockedSchemas.map(s => s.id)));
     }
   };
 
@@ -508,7 +1079,16 @@ export default function CodeGenerationPanel() {
   };
 
   const canGenerate = (): boolean => {
+    // Check if project is soft-locked (subscription expired)
+    if (selectedProject?.is_soft_locked) {
+      return false;
+    }
     return selectedProjectId !== null && selectedTemplateIds.size > 0;
+  };
+
+  // Check if selected project is locked
+  const isProjectLocked = (): boolean => {
+    return selectedProject?.is_soft_locked === true;
   };
 
   // 💰 Charge credits before generation (skips for Patron Monthly users)
@@ -801,7 +1381,8 @@ export default function CodeGenerationPanel() {
       // STEP 0: Fetch Code Adjustments for this project
       // ==========================================================================
       let codeAdjustments: CodeAdjustment[] = [];
-      if (selectedProjectId) {
+      // Only load code adjustments if user has access (subscription or patron)
+      if (selectedProjectId && codeAdjustmentsAccess?.has_access) {
         setGenerationProgress({
           current: 0,
           total: 100,
@@ -813,6 +1394,8 @@ export default function CodeGenerationPanel() {
         if (codeAdjustments.length > 0) {
           console.log(`[CODE-ADJUSTMENTS] Loaded ${codeAdjustments.length} active adjustment(s) for project ${selectedProjectId}`);
         }
+      } else if (selectedProjectId && !codeAdjustmentsAccess?.has_access) {
+        console.log('[CODE-ADJUSTMENTS] Skipping - user does not have code adjustments subscription');
       }
 
       // ==========================================================================
@@ -1273,10 +1856,12 @@ export default function CodeGenerationPanel() {
               generatedCode = generatedFunction() || '';
 
               // ✅ FIX DOUBLE-ESCAPED UNICODE SEQUENCES
+              // Tabs: Convert to REAL tabs (for code indentation)
+              // \r\n: Convert to TEXT escape sequences (for string content like echo "\r\n")
               generatedCode = generatedCode
-                .replace(/\\\\u0009/g, '\t')   // \\u0009 → Tab
-                .replace(/\\\\u000A/g, '\n')   // \\u000A → Line Feed
-                .replace(/\\\\u000D/g, '\r');  // \\u000D → Carriage Return
+                .replace(/\\\\u0009/g, '\t')    // \\u0009 → real Tab (for indentation)
+                .replace(/\\\\u000A/g, '\\n')   // \\u000A → \n (LF as text in strings)
+                .replace(/\\\\u000D/g, '\\r');  // \\u000D → \r (CR as text in strings)
 
               // Clean up global scope
               delete (window as any)[functionName];
@@ -1692,7 +2277,7 @@ export default function CodeGenerationPanel() {
       }
 
       // Perform generation with download callback
-      await performGeneration(async (zipBlob) => {
+      await performGeneration(async (zipBlob, zip) => {
         console.log('[DOWNLOAD] Download callback called, zipBlob size:', zipBlob.size);
 
         // Download the ZIP to user
@@ -1706,6 +2291,28 @@ export default function CodeGenerationPanel() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         console.log('[DOWNLOAD] Download triggered');
+
+        // 🔗 Git Push if enabled
+        if (pushToGit && selectedGitProvider && selectedRepository) {
+          console.log('[GIT] Starting Git push...');
+          setDeploymentLogs(['🔗 Git Push gestartet...']);
+
+          // Extract files from ZIP for Git push
+          const filesForGit: Record<string, string> = {};
+          for (const [path, zipEntry] of Object.entries(zip.files)) {
+            if (!zipEntry.dir) {
+              try {
+                const content = await zipEntry.async('string');
+                filesForGit[path] = content;
+              } catch {
+                // If file is binary, skip it for now (or handle differently)
+                console.warn(`[GIT] Skipping binary file: ${path}`);
+              }
+            }
+          }
+
+          await pushToGitRepository(filesForGit);
+        }
 
         // 📦 Also upload a copy to server for tracking (background, non-blocking)
         const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -1908,11 +2515,32 @@ export default function CodeGenerationPanel() {
 
       console.log('[DEPLOY] Calling performGeneration with upload callback');
       // Perform generation with upload callback (force ZIP format for deployment)
-      await performGeneration(async (zipBlob) => {
+      await performGeneration(async (zipBlob, zip) => {
         console.log('[DEPLOY] Upload callback called, zipBlob size:', zipBlob.size);
 
         // Add log: Generation complete
         setDeploymentLogs(prev => [...prev, '✅ Code generation completed', `📊 Archive size: ${(zipBlob.size / 1024).toFixed(2)} KB`, '']);
+
+        // 🔗 Git Push if enabled
+        if (pushToGit && selectedGitProvider && selectedRepository) {
+          console.log('[GIT] Starting Git push from deploy...');
+          setDeploymentLogs(prev => [...prev, '🔗 Git Push gestartet...']);
+
+          // Extract files from ZIP for Git push
+          const filesForGit: Record<string, string> = {};
+          for (const [path, zipEntry] of Object.entries(zip.files)) {
+            if (!zipEntry.dir) {
+              try {
+                const content = await zipEntry.async('string');
+                filesForGit[path] = content;
+              } catch {
+                console.warn(`[GIT] Skipping binary file: ${path}`);
+              }
+            }
+          }
+
+          await pushToGitRepository(filesForGit);
+        }
 
         // Upload ZIP to server
         setGenerationProgress({
@@ -2079,19 +2707,45 @@ export default function CodeGenerationPanel() {
             <label className="block text-sm font-medium text-white mb-2">
               Select Project *
             </label>
-            <select
-              value={selectedProjectId || ''}
-              onChange={(e) => setSelectedProjectId(e.target.value ? parseInt(e.target.value) : null)}
+            <Dropdown
+              value={selectedProjectId}
+              options={projects}
+              onChange={(e) => {
+                const selectedProject = projects.find(p => p.id === e.value);
+                // If user tries to select a locked project, find first active project instead
+                if (selectedProject?.is_soft_locked) {
+                  const firstActiveProject = projects.find(p => !p.is_soft_locked);
+                  if (firstActiveProject) {
+                    setSelectedProjectId(firstActiveProject.id);
+                  }
+                  // If no active projects, don't change selection
+                  return;
+                }
+                setSelectedProjectId(e.value);
+              }}
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select a project..."
               disabled={loading}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a project...</option>
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+              className="w-full"
+              filter
+              itemTemplate={(option) => (
+                <div className="flex items-center justify-between w-full">
+                  <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                  {option.is_soft_locked && (
+                    <i className="pi pi-lock text-red-500 ml-2" title="Abo abgelaufen" />
+                  )}
+                </div>
+              )}
+              valueTemplate={(option) => option ? (
+                <div className="flex items-center">
+                  <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                  {option.is_soft_locked && (
+                    <i className="pi pi-lock text-red-500 ml-2" />
+                  )}
+                </div>
+              ) : 'Select a project...'}
+            />
           </div>
 
           {loading && (
@@ -2112,7 +2766,7 @@ export default function CodeGenerationPanel() {
                     onClick={toggleAllTemplates}
                     className="text-xs text-blue-400 hover:text-blue-300"
                   >
-                    {selectedTemplateIds.size === templates.length ? 'Deselect All' : 'Select All'}
+                    {selectedTemplateIds.size === templates.filter(t => !t.is_soft_locked).length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
                 <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
@@ -2120,25 +2774,38 @@ export default function CodeGenerationPanel() {
                     <div className="text-gray-400 text-sm">No templates available</div>
                   ) : (
                     <div className="space-y-2">
-                      {templates.map(template => (
-                        <label
-                          key={template.id}
-                          className="flex items-start space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedTemplateIds.has(template.id)}
-                            onChange={() => toggleTemplate(template.id)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="text-white">{template.name}</div>
-                            {template.description && (
-                              <div className="text-xs text-gray-400">{template.description}</div>
-                            )}
-                          </div>
-                        </label>
-                      ))}
+                      {templates.map(template => {
+                        const isLocked = template.is_soft_locked === true;
+                        return (
+                          <label
+                            key={template.id}
+                            className={`flex items-start space-x-2 p-2 rounded ${
+                              isLocked
+                                ? 'cursor-not-allowed opacity-60'
+                                : 'cursor-pointer hover:bg-gray-700'
+                            }`}
+                            title={isLocked ? 'Template-Abo abgelaufen - bitte im Template Manager entsperren' : undefined}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedTemplateIds.has(template.id)}
+                              onChange={() => !isLocked && toggleTemplate(template.id)}
+                              disabled={isLocked}
+                              className={`mt-1 ${isLocked ? 'cursor-not-allowed' : ''}`}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {isLocked && <i className="pi pi-lock text-red-500" />}
+                                <span className={isLocked ? 'text-red-400' : 'text-white'}>{template.name}</span>
+                                {isLocked && <span className="text-xs text-red-400">Gesperrt</span>}
+                              </div>
+                              {template.description && (
+                                <div className="text-xs text-gray-400">{template.description}</div>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2157,7 +2824,7 @@ export default function CodeGenerationPanel() {
                     onClick={toggleAllSchemas}
                     className="text-xs text-blue-400 hover:text-blue-300"
                   >
-                    {selectedSchemaIds.size === schemas.length ? 'Deselect All' : 'Select All'}
+                    {selectedSchemaIds.size === schemas.filter(s => !s.is_soft_locked).length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
                 <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
@@ -2165,19 +2832,37 @@ export default function CodeGenerationPanel() {
                     <div className="text-gray-400 text-sm">No databases available</div>
                   ) : (
                     <div className="space-y-2">
-                      {schemas.map(schema => (
-                        <label
-                          key={schema.id}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSchemaIds.has(schema.id)}
-                            onChange={() => toggleSchema(schema.id)}
-                          />
-                          <span className="text-white">{schema.name}</span>
-                        </label>
-                      ))}
+                      {schemas.map(schema => {
+                        const isLocked = schema.is_soft_locked === true;
+                        return (
+                          <label
+                            key={schema.id}
+                            className={`flex items-center space-x-2 p-2 rounded ${
+                              isLocked
+                                ? 'cursor-not-allowed opacity-60'
+                                : 'cursor-pointer hover:bg-gray-700'
+                            }`}
+                            title={isLocked ? 'Datenbank-Abo abgelaufen - bitte im Database Manager entsperren' : undefined}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSchemaIds.has(schema.id)}
+                              onChange={() => !isLocked && toggleSchema(schema.id)}
+                              disabled={isLocked}
+                              className={isLocked ? 'cursor-not-allowed' : ''}
+                            />
+                            {isLocked && (
+                              <i className="pi pi-lock text-red-500" />
+                            )}
+                            <span className={isLocked ? 'text-red-400' : 'text-white'}>
+                              {schema.name}
+                            </span>
+                            {isLocked && (
+                              <span className="text-xs text-red-400 ml-auto">Gesperrt</span>
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2379,6 +3064,328 @@ export default function CodeGenerationPanel() {
                       {' '}für unbegrenzte Generierung!
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* 🔗 Git Push Option */}
+              <div className="mb-4 p-4 bg-gray-800 border border-gray-600 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <label className={`flex items-center gap-3 ${gitIntegrationAccess?.has_access !== false ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                    <input
+                      type="checkbox"
+                      checked={pushToGit}
+                      onChange={(e) => handlePushToGitChange(e.target.checked)}
+                      disabled={gitIntegrationAccess?.has_access === false}
+                      className="w-5 h-5 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔗</span>
+                      <span className="font-medium text-white">Push to Git</span>
+                      <span className="text-xs text-gray-400">(automatisch nach Generierung)</span>
+                      {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
+                        <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Patron</span>
+                      )}
+                      {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
+                        <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                          {gitIntegrationAccess.days_remaining} Tage
+                        </span>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Merken Checkbox */}
+                  {gitIntegrationAccess?.has_access !== false && (
+                    <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={rememberPushToGit}
+                        onChange={(e) => handleRememberChange(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-green-600 focus:ring-green-500"
+                      />
+                      <span>Merken</span>
+                      {rememberPushToGit && <span className="text-green-400">✓</span>}
+                    </label>
+                  )}
+                </div>
+
+                {/* Subscription Required Message */}
+                {gitIntegrationAccess?.has_access === false && (
+                  <div className="mt-3 p-3 bg-purple-900/30 border border-purple-700 rounded">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-300">
+                        <span>🔒</span>
+                        <span className="text-sm">Git Integration ist ein Premium-Feature</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-purple-200">
+                          {gitIntegrationAccess.unlock_cost} Credits / Jahr
+                        </span>
+                        <button
+                          type="button"
+                          onClick={unlockGitIntegration}
+                          disabled={unlockingGitIntegration}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-wait text-white text-sm font-medium rounded transition-colors"
+                        >
+                          {unlockingGitIntegration ? '...' : 'Freischalten'}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
+                    </p>
+                  </div>
+                )}
+
+                {/* Git Configuration - appears when checkbox is checked */}
+                {pushToGit && gitIntegrationAccess?.has_access !== false && (
+                  <div className="mt-4 space-y-4 pl-8 border-l-2 border-gray-600">
+                    {/* No providers connected message */}
+                    {gitProviders.length === 0 && !loadingGitData && (
+                      <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>⚠️</span>
+                          <span>Kein Git-Provider verbunden. Bitte verbinden Sie GitHub oder GitLab in den Profileinstellungen.</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Provider Selection */}
+                    {gitProviders.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Provider Dropdown */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Provider
+                          </label>
+                          <select
+                            value={selectedGitProvider?.id || ''}
+                            onChange={(e) => {
+                              const provider = gitProviders.find(p => p.id === Number(e.target.value));
+                              setSelectedGitProvider(provider || null);
+                              setSelectedRepository(null);
+                            }}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Provider wählen...</option>
+                            {gitProviders.map(provider => (
+                              <option key={provider.id} value={provider.id}>
+                                {provider.provider === 'github' ? '🐙 GitHub' : '🦊 GitLab'} - @{provider.username}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Repository Dropdown */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Repository
+                          </label>
+                          <select
+                            value={selectedRepository?.id || ''}
+                            onChange={(e) => {
+                              const repo = gitRepositories.find(r => r.id === Number(e.target.value));
+                              setSelectedRepository(repo || null);
+                            }}
+                            disabled={!selectedGitProvider || loadingGitData}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {loadingGitData ? 'Lade Repositories...' : 'Repository wählen...'}
+                            </option>
+                            {gitRepositories.map(repo => (
+                              <option key={repo.id} value={repo.id}>
+                                {repo.private ? '🔒' : '🌐'} {repo.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Branch Selection */}
+                    {selectedRepository && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Branch
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 text-sm text-gray-400">
+                              <input
+                                type="radio"
+                                checked={!useNewBranch}
+                                onChange={() => setUseNewBranch(false)}
+                                className="text-blue-600"
+                              />
+                              Existierend
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-400">
+                              <input
+                                type="radio"
+                                checked={useNewBranch}
+                                onChange={() => setUseNewBranch(true)}
+                                className="text-blue-600"
+                              />
+                              Neu erstellen
+                            </label>
+                          </div>
+                          {!useNewBranch ? (
+                            <select
+                              value={selectedBranch}
+                              onChange={(e) => setSelectedBranch(e.target.value)}
+                              disabled={loadingGitData}
+                              className="mt-2 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                              <option value="">
+                                {loadingGitData ? 'Lade Branches...' : 'Branch wählen...'}
+                              </option>
+                              {gitBranches.map(branch => (
+                                <option key={branch.name} value={branch.name}>
+                                  {branch.name} {branch.protected && '🔒'}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={newBranchName}
+                              onChange={(e) => setNewBranchName(e.target.value)}
+                              placeholder="z.B. feature/generated-code"
+                              className="mt-2 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                            />
+                          )}
+                        </div>
+
+                        {/* Commit Message */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Commit Message
+                          </label>
+                          <input
+                            type="text"
+                            value={commitMessage}
+                            onChange={(e) => setCommitMessage(e.target.value)}
+                            placeholder="Commit message..."
+                            className="mt-6 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        {/* PR and Merge Options */}
+                        <div className="pt-3 border-t border-gray-600 space-y-3">
+                          {/* Create PR Checkbox */}
+                          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+                            <input
+                              type="checkbox"
+                              checked={createPullRequest}
+                              onChange={(e) => {
+                                setCreatePullRequest(e.target.checked);
+                                if (!e.target.checked) {
+                                  setAutoMerge(false);
+                                  setDeleteBranchAfterMerge(false);
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>🔀 {selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} erstellen</span>
+                          </label>
+
+                          {/* PR Title (shown when PR is enabled) */}
+                          {createPullRequest && (
+                            <>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                  {selectedGitProvider?.provider === 'gitlab' ? 'MR' : 'PR'} Titel
+                                </label>
+                                <input
+                                  type="text"
+                                  value={prTitle}
+                                  onChange={(e) => setPrTitle(e.target.value)}
+                                  placeholder={`${selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} Titel...`}
+                                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              {/* Auto-Merge Checkbox */}
+                              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 ml-6">
+                                <input
+                                  type="checkbox"
+                                  checked={autoMerge}
+                                  onChange={(e) => setAutoMerge(e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                                />
+                                <span>⚡ Auto-Merge nach Erstellung</span>
+                              </label>
+
+                              {/* Delete Branch After Merge (shown when auto-merge is enabled) */}
+                              {autoMerge && (
+                                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 ml-12">
+                                  <input
+                                    type="checkbox"
+                                    checked={deleteBranchAfterMerge}
+                                    onChange={(e) => setDeleteBranchAfterMerge(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
+                                  />
+                                  <span>🗑️ Branch nach Merge löschen</span>
+                                </label>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Remember Settings Checkbox */}
+                    {selectedRepository && (
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-600">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={rememberGitSettings}
+                            onChange={(e) => setRememberGitSettings(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>💾 Einstellungen im Projekt speichern</span>
+                        </label>
+                        {rememberGitSettings && (
+                          <span className="text-xs text-green-400">
+                            Wird beim Generieren gespeichert
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Git Push Status */}
+                    {gitPushStatus !== 'idle' && (
+                      <div className={`p-2 rounded text-sm ${
+                        gitPushStatus === 'pushing' ? 'bg-blue-900/30 text-blue-300' :
+                        gitPushStatus === 'success' ? 'bg-green-900/30 text-green-300' :
+                        'bg-red-900/30 text-red-300'
+                      }`}>
+                        {gitPushStatus === 'pushing' && (
+                          <span className="flex items-center gap-2">
+                            <span className="animate-spin">⚙️</span> Pushing to Git...
+                          </span>
+                        )}
+                        {gitPushStatus === 'success' && '✅ Erfolgreich gepusht!'}
+                        {gitPushStatus === 'error' && '❌ Push fehlgeschlagen - siehe Log'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Project Locked Warning */}
+              {isProjectLocked() && (
+                <div className="bg-red-900/30 border border-red-600 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 text-red-400">
+                    <i className="pi pi-lock text-xl"></i>
+                    <div>
+                      <div className="font-semibold">Projekt gesperrt</div>
+                      <div className="text-sm text-red-300">
+                        Das Abo für dieses Projekt ist abgelaufen. Bitte erneuern Sie das Abo in der Projektverwaltung, um Code zu generieren.
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2623,6 +3630,16 @@ export default function CodeGenerationPanel() {
           loadCurrentUser(); // Refresh credits after modal closes
         }}
         initialTab={planModalInitialTab}
+      />
+
+      {/* 👤 ProfileModal for Git provider connection */}
+      <ProfileModal
+        visible={showProfileModal}
+        onHide={() => {
+          setShowProfileModal(false);
+          loadGitProviders(); // Refresh providers after modal closes
+        }}
+        defaultTab={profileModalDefaultTab}
       />
     </div>
   );

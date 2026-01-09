@@ -16,7 +16,16 @@ import { useProject } from '@/contexts/ProjectContext';
 import FileModal from './FileModal';
 import TemplateModal from './TemplateModal';
 import VariableModal from './VariableModal';
+import TemplateImportWizardPanel from './TemplateImportWizardPanel';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+
+interface TemplateSubscription {
+    id: number;
+    expires_at: string | null;
+    is_expired: boolean;
+    is_soft_locked: boolean;
+    days_remaining: number | null;
+}
 
 interface Template {
     id: number;
@@ -36,6 +45,9 @@ interface Template {
     review_score: number;
     linked_project_ids?: number[];
     linked_projects?: Array<{ id: number; name: string; is_active: boolean }>;
+    // Subscription / Lock status for private templates
+    is_soft_locked?: boolean;
+    subscription_data?: TemplateSubscription | null;
     // Store fields
     price_type?: 'credits' | 'euros' | null;
     price_credits?: number | null;
@@ -148,6 +160,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [savingStoreSettings, setSavingStoreSettings] = useState(false);
     const [storeSettingsTab, setStoreSettingsTab] = useState(0);
 
+    // Template Unlock State
+    const [unlockingTemplate, setUnlockingTemplate] = useState(false);
+    const [templateToUnlock, setTemplateToUnlock] = useState<Template | null>(null);
+
     // Media State
     const [templateMedia, setTemplateMedia] = useState<{
         logo: any | null;
@@ -161,6 +177,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [newVideoTitle, setNewVideoTitle] = useState('');
     const logoInputRef = useRef<HTMLInputElement>(null);
     const imagesInputRef = useRef<HTMLInputElement>(null);
+
+    // Import Wizard State
+    const [importWizardVisible, setImportWizardVisible] = useState(false);
 
     // Track if we should use forceProjectName (don't change title on selectedProject changes)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -516,6 +535,78 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         } catch (error: any) {
             console.error('Error updating activations:', error);
             toast.showError('Fehler beim Aktualisieren der Verknüpfungen');
+        }
+    };
+
+    // Unlock an expired template subscription (renew for 50 credits or make public)
+    const handleUnlockExpiredTemplate = async (template: Template, makePublic: boolean = false) => {
+        if (!template.subscription_data?.id && !makePublic) {
+            toast.showError('Keine Subscription gefunden für dieses Template');
+            return;
+        }
+
+        setUnlockingTemplate(true);
+        setTemplateToUnlock(template);
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht authentifiziert');
+            }
+
+            if (makePublic) {
+                // Change visibility to public (free unlock) - use dedicated endpoint
+                const response = await fetch(`/api/templates/${template.id}/visibility`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ visibility: 'public' }),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || data.message || 'Fehler beim Ändern der Sichtbarkeit');
+                }
+
+                toast.showSuccess(`Template "${template.name}" ist jetzt öffentlich!`);
+            } else {
+                // Renew subscription for 50 credits
+                const response = await fetch(`/api/subscriptions/${template.subscription_data!.id}/renew`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (data.required_credits) {
+                        toast.showError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
+                    } else {
+                        throw new Error(data.error || data.message || 'Fehler beim Entsperren des Templates');
+                    }
+                    return;
+                }
+
+                toast.showSuccess(`Template "${template.name}" wurde entsperrt! (${data.bonus_days || 0} Bonus-Tage erhalten)`);
+            }
+
+            // Dispatch credits changed event
+            window.dispatchEvent(new CustomEvent('creditsChanged'));
+
+            // Reload templates
+            loadMyTemplates();
+        } catch (error) {
+            toast.showError(error instanceof Error ? error.message : 'Fehler beim Entsperren');
+        } finally {
+            setUnlockingTemplate(false);
+            setTemplateToUnlock(null);
         }
     };
 
@@ -1466,6 +1557,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             className="p-button-primary"
                         />
                         <Button
+                            icon="pi pi-box"
+                            label="Archiv importieren"
+                            onClick={() => setImportWizardVisible(true)}
+                            className="p-button-success"
+                            tooltip="Import aus .zip, .tar.gz, .tar.xz Archiv"
+                            tooltipOptions={{ position: 'bottom' }}
+                        />
+                        <Button
                             icon="pi pi-upload"
                             label={t.schematranslationpanel762}
                             onClick={() => document.getElementById('template-upload')?.click()}
@@ -1553,9 +1652,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         paginatorTemplate={t.languagemanagementpanel317}
                         currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
                     >
-                        <Column field="name" header={t.registermodal236} sortable />
                         <Column
-                            field="category" 
+                            field="name"
+                            header={t.registermodal236}
+                            sortable
+                            body={(template) => (
+                                <div className="flex items-center gap-2">
+                                    {template.is_soft_locked && <i className="pi pi-lock text-red-500" />}
+                                    <span className={template.is_soft_locked ? 'text-red-400' : ''}>{template.name}</span>
+                                </div>
+                            )}
+                        />
+                        <Column
+                            field="category"
                             header={t.templatesColumnCategory}
                             body={(template) => (
                                 <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
@@ -1646,13 +1755,35 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             field="is_active"
                             header={t.applicationsmodal335}
-                            body={(template) => (
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                    template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
-                                }`}>
-                                    {template.is_active ? t.templatesStatusActive : t.manageteammodal328}
-                                </span>
-                            )}
+                            body={(template) => {
+                                // Show locked status for soft-locked private templates
+                                if (template.is_soft_locked) {
+                                    return (
+                                        <div className="flex items-center gap-1">
+                                            <i className="pi pi-lock text-red-500" />
+                                            <Tag value="Gesperrt" severity="danger" />
+                                        </div>
+                                    );
+                                }
+                                // Show warning if expiring soon
+                                if (template.subscription_data?.days_remaining !== null &&
+                                    template.subscription_data?.days_remaining !== undefined &&
+                                    template.subscription_data.days_remaining <= 14) {
+                                    return (
+                                        <div className="flex items-center gap-1">
+                                            <i className="pi pi-exclamation-triangle text-yellow-500" />
+                                            <Tag value={`${template.subscription_data.days_remaining} Tage`} severity="warning" />
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                        template.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                                    }`}>
+                                        {template.is_active ? t.templatesStatusActive : t.manageteammodal328}
+                                    </span>
+                                );
+                            }}
                         />
                         <Column
                             field="created_at"
@@ -1664,6 +1795,37 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             body={(template) => {
                                 const isOwner = parseInt(template.creator_user_id) === currentUserId;
                                 const hasLinkedProjects = (template.linked_project_ids?.length || 0) > 0;
+
+                                // If template is soft-locked, show only View and Unlock buttons
+                                if (template.is_soft_locked) {
+                                    return (
+                                        <div className="flex gap-1 items-center">
+                                            <Button
+                                                icon="pi pi-eye"
+                                                className="p-button-text p-button-sm"
+                                                onClick={() => handleView(template)}
+                                                tooltip={t.publicprojectspanel378}
+                                            />
+                                            <Button
+                                                icon={unlockingTemplate && templateToUnlock?.id === template.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
+                                                label="50 Credits"
+                                                className="p-button-rounded p-button-sm"
+                                                style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
+                                                tooltip="Template entsperren (50 Credits)"
+                                                onClick={() => handleUnlockExpiredTemplate(template, false)}
+                                                disabled={unlockingTemplate}
+                                            />
+                                            <Button
+                                                icon="pi pi-globe"
+                                                className="p-button-rounded p-button-sm"
+                                                style={{ backgroundColor: '#059669', borderColor: '#059669', color: 'white' }}
+                                                tooltip="Öffentlich machen (kostenlos)"
+                                                onClick={() => handleUnlockExpiredTemplate(template, true)}
+                                                disabled={unlockingTemplate}
+                                            />
+                                        </div>
+                                    );
+                                }
 
                                 return (
                                     <div className="flex gap-1">
@@ -2137,6 +2299,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 editingFile={editingFile}
                 templateFiles={templateFiles}
                 fileTypes={fileTypes}
+                templateId={editingTemplate?.id}
             />
 
             {/* View Modal */}
@@ -2824,6 +2987,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             {/* ConfirmDialog for import overwrite confirmation */}
             <ConfirmDialog />
+
+            {/* Template Import Wizard */}
+            <TemplateImportWizardPanel
+                visible={importWizardVisible}
+                onClose={() => setImportWizardVisible(false)}
+                onSuccess={(template) => {
+                    toast.showSuccess('Template erfolgreich erstellt', `Template "${template.name}" wurde importiert.`);
+                    loadMyTemplates();
+                }}
+            />
         </div>
     );
 };

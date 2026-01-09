@@ -38,7 +38,9 @@ interface TreeNode {
   id: string;
   name: string;
   type: 'project' | 'team' | 'member' | 'template' | 'databases-container' | 'schema' | 'table' |
-        'generated-files-container' | 'template-group' | 'generated-file' | 'directory';
+        'generated-files-container' | 'template-group' | 'generated-file' | 'directory' |
+        'standalone-teams-container' | 'standalone-templates-container' | 'standalone-databases-container' |
+        'standalone-team' | 'standalone-template' | 'standalone-database';
   projectId?: number;
   projectName?: string;
   teamId?: number;
@@ -200,9 +202,8 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
                   }
                 }
               }
-            } catch (error) {
-              // Error loading tables for schema - continue with other schemas
-              console.error(`Error loading tables for schema ${schema.id}:`, error);
+            } catch {
+              // Schema might not exist or have no versions - silently continue
             }
 
             databasesContainerNode.children!.push(schemaNode);
@@ -273,8 +274,76 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
       treeNodes.push(projectNode);
     }
 
+    // ========== Add User's Own Items (regardless of project links) ==========
+    // Show all items owned by the user for easy access
+
+    // 1. User's Teams (all teams the user owns)
+    const allTeams = await apiClient.getAllUserTeams();
+
+    if (allTeams.length > 0) {
+      const teamsContainer: TreeNode = {
+        id: 'my-teams',
+        name: t.panelt1MyTeams || 'Meine Teams',
+        type: 'standalone-teams-container',
+        expanded: false,
+        children: allTeams.map((team: any) => ({
+          id: `my-team-${team.id}`,
+          name: team.name,
+          type: 'standalone-team' as const,
+          teamId: team.id,
+          expanded: false,
+          children: []
+        }))
+      };
+      treeNodes.push(teamsContainer);
+    }
+
+    // 2. User's Templates (all templates the user created)
+    const allTemplates = await apiClient.getMyTemplates();
+
+    if (allTemplates.length > 0) {
+      const templatesContainer: TreeNode = {
+        id: 'my-templates',
+        name: t.panelt1MyTemplates || 'Meine Templates',
+        type: 'standalone-templates-container',
+        expanded: false,
+        children: allTemplates.map((template: any) => ({
+          id: `my-template-${template.id}`,
+          name: template.name,
+          type: 'standalone-template' as const,
+          templateId: template.id,
+          expanded: false,
+          children: []
+        }))
+      };
+      treeNodes.push(templatesContainer);
+    }
+
+    // 3. User's Databases (all schemas the user owns)
+    const allSchemas = await apiClient.getAllUserSchemas();
+
+    if (allSchemas.length > 0) {
+      const databasesContainer: TreeNode = {
+        id: 'my-databases',
+        name: t.panelt1MyDatabases || 'Meine Datenbanken',
+        type: 'standalone-databases-container',
+        expanded: false,
+        children: allSchemas.map((schema: any) => ({
+          id: `my-database-${schema.id}`,
+          name: schema.name || `Schema ${schema.id}`,
+          type: 'standalone-database' as const,
+          schemaId: schema.id,
+          expanded: false,
+          children: []
+        }))
+      };
+      treeNodes.push(databasesContainer);
+    }
+
     return treeNodes;
-  } catch {
+  } catch (error) {
+    // Log the error for debugging
+    console.error('Error in generateProjectTreeData:', error);
     // Return a fallback structure for debugging
     return [
       {
@@ -321,14 +390,17 @@ const TreeNodeComponent: React.FC<{
       case 'project':
         return '🏗️';
       case 'team':
+      case 'standalone-team':
         return '👥';
       case 'member':
         return '👤';
       case 'template':
+      case 'standalone-template':
         return '📄';
       case 'databases-container':
         return '📁';
       case 'schema':
+      case 'standalone-database':
         return '💾';
       case 'table':
         return '📊';
@@ -340,6 +412,12 @@ const TreeNodeComponent: React.FC<{
         return '📂';
       case 'generated-file':
         return '📝';
+      case 'standalone-teams-container':
+        return '👥';
+      case 'standalone-templates-container':
+        return '📋';
+      case 'standalone-databases-container':
+        return '💾';
       default:
         return '📁';
     }
@@ -759,6 +837,72 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             languageId: node.languageId,
             languageCode: node.languageCode,
             preFilePath: node.path // The full generated path
+          });
+        }
+        break;
+
+      // ========== Standalone Item Handlers ==========
+      case 'standalone-teams-container':
+        // Open Team Management without project filter
+        if (onOpenPanel) {
+          onOpenPanel('team-management', {
+            type: 'team-management',
+            title: 'Team Management',
+            filterByProject: false
+          });
+        }
+        break;
+      case 'standalone-team':
+        // Open Team Management with this team selected
+        if (onOpenPanel && node.teamId) {
+          onOpenPanel(`team-management-team-${node.teamId}`, {
+            type: 'team-management',
+            title: `Team: ${node.name}`,
+            teamId: node.teamId,
+            teamName: node.name,
+            filterByProject: false
+          });
+        }
+        break;
+      case 'standalone-templates-container':
+        // Open Template Management without project filter
+        if (onOpenPanel) {
+          onOpenPanel('template-management', {
+            type: 'template-management',
+            title: 'Template Management',
+            filterByProject: false
+          });
+        }
+        break;
+      case 'standalone-template':
+        // Open Template Management with this template selected
+        if (onOpenPanel && node.templateId) {
+          onOpenPanel(`template-management-template-${node.templateId}`, {
+            type: 'template-management',
+            title: `Template: ${node.name}`,
+            templateId: node.templateId,
+            filterByProject: false
+          });
+        }
+        break;
+      case 'standalone-databases-container':
+        // Open Database Management without project filter
+        if (onOpenPanel) {
+          onOpenPanel('database-management', {
+            type: 'database-management',
+            title: 'Database Management',
+            filterByProject: false
+          });
+        }
+        break;
+      case 'standalone-database':
+        // Open Database Management with this schema pre-selected
+        if (onOpenPanel && node.schemaId) {
+          onOpenPanel(`database-management-schema-${node.schemaId}`, {
+            type: 'database-management',
+            title: `Database: ${node.name}`,
+            filterByProject: false,
+            preSelectedSchemaId: node.schemaId
           });
         }
         break;
