@@ -9,24 +9,22 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
   const setFocus = () => ref.current?.focus();
 
   return (
-    <div 
-      {...rest} 
+    <div
+      {...rest}
       ref={ref}
-      tabIndex={-1} 
-      style={{ 
-        flex: 1, 
-        padding: '5px 10px', 
-        // Various options for height - choose the appropriate one:
-        height: '100%',        // Adapts to parent
-        // height: '100vh',    // Full viewport height
-        // height: 'calc(100vh - 100px)', // Viewport minus fixed pixels
-        // maxHeight: '100vh', // Maximum viewport height
+      tabIndex={-1}
+      style={{
+        flex: 1,
+        padding: '5px 10px',
+        height: '100%',
         overflow: 'hidden',
-        ...style 
-      }} 
-      onMouseDownCapture={setFocus} 
+        backgroundColor: 'var(--theme-bg-secondary)',
+        color: 'var(--theme-text-primary)',
+        ...style
+      }}
+      onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100 h-screen" // Alternative: Tailwind class
+      className="h-screen"
     >
       {children}
     </div>
@@ -426,8 +424,8 @@ const TreeNodeComponent: React.FC<{
   return (
     <div>
       <div
-        className={`flex items-center py-1 px-2 cursor-pointer hover:bg-gray-700 rounded text-sm ${
-          isSelected ? 'bg-blue-600 text-white' : 'text-gray-300'
+        className={`flex items-center py-1 px-2 cursor-pointer nav-hover-btn rounded text-sm ${
+          isSelected ? 'tree-node-selected' : 'tree-node-default'
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px`, userSelect: 'none' }}
         onClick={() => onSelect(node)}
@@ -593,7 +591,6 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
     // Listen for project changes (e.g., new project created via wizard)
     const handleProjectChange = () => {
-      console.log('🔄 Project changed event received, reloading tree...');
       loadProjectData();
     };
 
@@ -652,7 +649,6 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
             }
 
             // Refresh only the File Preview for this project
-            console.log(`🔄 Generation tree updated for project ${projectId}, refreshing...`);
             refreshFilePreview(projectId);
           }
         } catch {
@@ -747,14 +743,17 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         }
         break;
       case 'member':
-        if (onOpenPanel) {
-          onOpenPanel('teams-filtered', {
-            type: 'teams-filtered',
-            title: `Team Members: ${node.name}`,
+        if (onOpenPanel && node.teamId) {
+          // Open TeamManagementPanel with team context
+          const uniqueMemberPanelId = `team-management-team-${node.teamId}`;
+          onOpenPanel(uniqueMemberPanelId, {
+            type: 'team-management',
+            title: `Team Management`,
             projectId: node.projectId,
             teamId: node.teamId,
-            memberName: node.name,
-            filterByProject: true
+            filterByProject: node.projectId ? true : false,
+            source: 'treeview',
+            forceProjectId: node.projectId
           });
         }
         break;
@@ -937,18 +936,18 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
       <div className="h-full flex flex-col p-4">
         {/* Header - fixed height */}
         <div className="flex-shrink-0 flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-blue-400">📁 Navigation</h3>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--theme-accent)' }}>📁 Navigation</h3>
           <div className="flex space-x-2">
             <button
               onClick={expandAll}
-              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+              className="text-xs panel-btn px-2 py-1 rounded"
               title={t.panelt1791}
             >
               ⬇️
             </button>
             <button
               onClick={collapseAll}
-              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+              className="text-xs panel-btn px-2 py-1 rounded"
               title={t.panelt1798}
             >
               ⬆️
@@ -957,14 +956,14 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         </div>
 
         {/* Tree View - scrollable area */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-gray-900 rounded border border-gray-600 p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto panel-tree-container rounded p-2">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-400">{t.projectpanel601}</div>
+              <div style={{ color: 'var(--theme-text-muted)' }}>{t.projectpanel601}</div>
             </div>
           ) : treeData.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-400">{t.projectpanel854}</div>
+              <div style={{ color: 'var(--theme-text-muted)' }}>{t.projectpanel854}</div>
             </div>
           ) : (
             treeData.map((node) => (
@@ -983,9 +982,9 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
         {/* Selected Item Info - fixed height */}
         {selectedNode && (
-          <div className="flex-shrink-0 mt-4 p-3 bg-gray-700 rounded">
-            <h5 className="font-medium text-green-400 mb-1">{t.panelt1833}</h5>
-            <div className="text-sm text-gray-300">
+          <div className="flex-shrink-0 mt-4 p-3 panel-info-box rounded">
+            <h5 className="font-medium mb-1" style={{ color: 'var(--theme-success-text)' }}>{t.panelt1833}</h5>
+            <div className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
               <div><strong>Name:</strong> {selectedNode.name}</div>
               <div><strong>Type:</strong> {selectedNode.type}</div>
               <div><strong>ID:</strong> {selectedNode.id}</div>
@@ -1020,17 +1019,17 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
         {/* Quick Stats - fixed height */}
         <div className="flex-shrink-0 mt-4 grid grid-cols-2 gap-3">
-          <div className="bg-gray-700 p-2 rounded text-center">
-            <div className="text-lg font-bold text-green-400">
+          <div className="panel-stats-box p-2 rounded text-center">
+            <div className="text-lg font-bold" style={{ color: 'var(--theme-success-text)' }}>
               {treeData.reduce((acc, node) => acc + (node.children?.length || 0), treeData.length)}
             </div>
-            <div className="text-xs text-gray-400">{t.panelt1873}</div>
+            <div className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>{t.panelt1873}</div>
           </div>
-          <div className="bg-gray-700 p-2 rounded text-center">
-            <div className="text-lg font-bold text-yellow-400">
+          <div className="panel-stats-box p-2 rounded text-center">
+            <div className="text-lg font-bold" style={{ color: 'var(--theme-warning-text)' }}>
               {selectedNode ? '1' : '0'}
             </div>
-            <div className="text-xs text-gray-400">{t.panelt1879}</div>
+            <div className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>{t.panelt1879}</div>
           </div>
         </div>
       </div>

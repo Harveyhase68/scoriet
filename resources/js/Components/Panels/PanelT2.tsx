@@ -33,6 +33,7 @@ import CreateTableModal from '@/Components/Modals/CreateTableModal';
 import EditTableModal from '@/Components/Modals/EditTableModal';
 import DeleteVersionDialog from '@/Components/Panels/DeleteVersionDialog';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface FloatingSchema {
@@ -56,6 +57,7 @@ interface SchemaVersionExtended {
   imported_at?: string;
   display_name?: string;
   has_unsaved_changes?: boolean;
+  tables_count?: number;
 }
 
 interface DatabaseNodeData {
@@ -86,6 +88,7 @@ interface DatabaseNodeProps {
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const { colors } = useTheme();
   const setFocus = () => ref.current?.focus();
 
   return (
@@ -93,10 +96,24 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
       {...rest}
       ref={ref}
       tabIndex={-1}
-      style={{ flex: 1, padding: '0', height: '100%', ...style }}
+      style={{
+        flex: 1,
+        padding: '0',
+        height: '100%',
+        backgroundColor: colors.bgPrimary,
+        color: colors.textPrimary,
+        '--theme-bg-primary': colors.bgPrimary,
+        '--theme-bg-secondary': colors.bgSecondary,
+        '--theme-bg-tertiary': colors.bgTertiary,
+        '--theme-text-primary': colors.textPrimary,
+        '--theme-text-muted': colors.textMuted,
+        '--theme-border-primary': colors.borderPrimary,
+        '--theme-accent': colors.accent,
+        ...style
+      } as React.CSSProperties}
       onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
+      className="panelt2-container"
     >
       {children}
     </div>
@@ -108,16 +125,22 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   return (
-    <div className={`shadow-lg rounded-lg border-2 w-full h-full flex flex-col ${selected
-      ? 'border-blue-400 bg-gray-700'
-      : 'border-gray-600 bg-gray-800'
-      }`} style={{ minWidth: 250, minHeight: 150 }}>
+    <div
+      className="shadow-lg rounded-lg border-2 w-full h-full flex flex-col"
+      style={{
+        minWidth: 250,
+        minHeight: 150,
+        backgroundColor: selected ? colors.bgTertiary : colors.bgSecondary,
+        borderColor: selected ? colors.accent : colors.borderPrimary
+      }}
+    >
       {/* Node Resizer - only show when selected AND not read-only */}
       {selected && !data.isReadOnly && (
         <NodeResizer
-          color="#3b82f6"
+          color={colors.accent}
           isVisible={selected}
           minWidth={250}
           minHeight={150}
@@ -132,7 +155,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
         />
       )}
       {/* Table Header */}
-      <div className="bg-blue-600 px-3 py-2 rounded-t-lg flex-shrink-0">
+      <div className="px-3 py-2 rounded-t-lg flex-shrink-0" style={{ backgroundColor: colors.accent }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="text-lg mr-2">🗃️</div>
@@ -145,7 +168,8 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   e.stopPropagation();
                   data.onEdit!(data.table!);
                 }}
-                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                className="px-2 py-1 text-white text-xs rounded transition-colors hover:opacity-80"
+                style={{ backgroundColor: colors.accent }}
                 title={t.panelt2139}
               >
                 ✏️
@@ -157,7 +181,8 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   e.stopPropagation();
                   data.onCopy!(data.table!);
                 }}
-                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                className="px-2 py-1 text-white text-xs rounded transition-colors hover:opacity-80"
+                style={{ backgroundColor: colors.accent }}
                 title="Copy Table"
               >
                 📋
@@ -169,7 +194,8 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                   e.stopPropagation();
                   data.onDelete!(data.table!);
                 }}
-                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                className="px-2 py-1 text-white text-xs rounded transition-colors hover:opacity-80"
+                style={{ backgroundColor: colors.accent }}
                 title={t.panelt2151}
               >
                 🗑️
@@ -188,17 +214,17 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                 <div className="flex items-center flex-shrink-0">
                   {field.isPrimary && <span className="text-yellow-400 mr-1">🔑</span>}
                   {field.isForeign && <span className="text-orange-400 mr-1">🔗</span>}
-                  <span className="text-white font-mono truncate">{field.name}</span>
+                  <span className="font-mono truncate" style={{ color: colors.textPrimary }}>{field.name}</span>
                 </div>
-                <div className="text-gray-400 text-right flex-shrink-0 ml-2">
+                <div className="text-right flex-shrink-0 ml-2" style={{ color: colors.textMuted }}>
                   <span className="truncate">{field.type}</span>
-                  {!field.nullable && <span className="text-red-400"> NOT NULL</span>}
+                  {!field.nullable && <span style={{ color: colors.errorText }}> NOT NULL</span>}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-gray-400 text-xs text-center">No fields</div>
+          <div className="text-xs text-center" style={{ color: colors.textMuted }}>No fields</div>
         )}
       </div>
 
@@ -206,12 +232,12 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#3b82f6', width: 8, height: 8 }}
+        style={{ background: colors.accent, width: 8, height: 8 }}
       />
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#3b82f6', width: 8, height: 8 }}
+        style={{ background: colors.accent, width: 8, height: 8 }}
       />
     </div>
   );
@@ -381,6 +407,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Database Designer Access State (Premium Feature)
   const [databaseDesignerAccess, setDatabaseDesignerAccess] = useState<{
@@ -1247,8 +1274,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // Copy to clipboard as JSON
       await navigator.clipboard.writeText(JSON.stringify(tableData, null, 2));
 
-      console.log('✅ Table copied to clipboard:', table.table_name);
-      // Optional: Show toast notification here
+      // Table copied successfully
     } catch (err) {
       console.error('Failed to copy table to clipboard:', err);
       setError('Failed to copy table to clipboard. Please check browser permissions.');
@@ -1668,6 +1694,11 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         throw new Error(errorData.message || errorData.error || 'Failed to delete version');
       }
 
+      const result = await response.json();
+
+      // Reload floating schemas to update last_version in the schema
+      await loadFloatingSchemas(selectedSchema.id);
+
       // Reload schema versions
       await loadSchemaVersions(selectedSchema);
 
@@ -1675,12 +1706,18 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       if (selectedVersion?.id === versionId) {
         const remainingVersions = schemaVersions.filter(v => v.id !== versionId);
         if (remainingVersions.length > 0) {
-          const latestVersion = remainingVersions.reduce((latest, current) =>
-            (current.version_number || 0) > (latest.version_number || 0) ? current : latest
-          );
-          setTimeout(() => {
-            loadSchemaVersionWithSchema(selectedSchema, latestVersion);
-          }, 200);
+          // Use the new_last_version from backend response if available
+          const newLastVersionNumber = result.new_last_version;
+          const latestVersion = newLastVersionNumber
+            ? remainingVersions.find(v => v.version_number === newLastVersionNumber)
+            : remainingVersions.reduce((latest, current) =>
+                (current.version_number || 0) > (latest.version_number || 0) ? current : latest
+              );
+          if (latestVersion) {
+            setTimeout(() => {
+              loadSchemaVersionWithSchema(selectedSchema, latestVersion);
+            }, 200);
+          }
         } else {
           // No versions left, clear diagram
           setNodes([]);
@@ -1695,7 +1732,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     } finally {
       setLoading(false);
     }
-  }, [selectedSchema, selectedVersion, schemaVersions, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
+  }, [selectedSchema, selectedVersion, schemaVersions, loadFloatingSchemas, loadSchemaVersions, loadSchemaVersionWithSchema, setNodes, setEdges]);
 
   const handleDeleteFK = useCallback(async () => {
     if (!selectedFK) return;
@@ -2010,22 +2047,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         }
       });
 
-      // DEBUG: Logge die Daten vor dem API-Aufruf
-      console.log('🐛 [FRONTEND-DEBUG] Sending to layout API:', {
-        tables: tables,
-        foreignKeys: foreignKeys,
-        projectId: selectedProject.id,
-        tablesCount: tables.length,
-        foreignKeysCount: foreignKeys.length,
-        diagramSettings: {
-          tableWidth,
-          tableHeight,
-          maxTablesPerRow: selectedProject.diagram_max_tables_per_row,
-          horizontalSpacing: selectedProject.diagram_horizontal_spacing,
-          verticalSpacing: selectedProject.diagram_vertical_spacing
-        }
-      });
-
       const response = await fetch('/api/diagram/layout', {
         method: 'POST',
         headers: {
@@ -2043,11 +2064,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       if (!response.ok) {
         throw new Error(`Failed to sort diagram: ${response.statusText}`);
-      } else {
-        console.log('🐛 [FRONTEND-DEBUG] received API answer:', {
-          tables: layoutData
-        });
-      };
+      }
 
       if (layoutData && layoutData.nodes) {
         // Neue Positionen auf die aktuellen Nodes anwenden
@@ -2096,10 +2113,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   if (loadingAccess) {
     return (
       <TabContent style={{}}>
-        <div className="flex items-center justify-center h-full bg-gray-800">
+        <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Lade...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: colors.accent }}></div>
+            <p style={{ color: colors.textMuted }}>Lade...</p>
           </div>
         </div>
       </TabContent>
@@ -2110,13 +2127,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   if (!databaseDesignerAccess?.has_access) {
     return (
       <TabContent style={{}}>
-        <div className="h-full flex flex-col bg-gray-800 text-white">
+        <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
           {/* Header */}
-          <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
+          <div className="flex justify-between items-center p-4 flex-shrink-0" style={{ backgroundColor: colors.bgPrimary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
             <div className="flex items-center gap-3">
               <div>
-                <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
-                <p className="text-sm text-gray-400">Premium Feature</p>
+                <h3 className="text-lg font-bold" style={{ color: colors.accent }}>{t.panelt21282}</h3>
+                <p className="text-sm" style={{ color: colors.textMuted }}>Premium Feature</p>
               </div>
             </div>
           </div>
@@ -2124,20 +2141,20 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           {/* Premium Banner */}
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="max-w-md w-full">
-              <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+              <div className="rounded-lg p-6 text-center" style={{ backgroundColor: 'rgba(147, 51, 234, 0.15)', border: '2px solid rgb(147, 51, 234)' }}>
                 <div className="text-4xl mb-4">🔒</div>
-                <h3 className="text-xl font-semibold text-purple-200 mb-2">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: 'rgb(216, 180, 254)' }}>
                   Datenbank Designer ist ein Premium-Feature
                 </h3>
-                <p className="text-gray-400 mb-4">
+                <p className="mb-4" style={{ color: colors.textMuted }}>
                   Mit dem Datenbank Designer können Sie Ihre Datenbank visuell bearbeiten, neue Tabellen erstellen und Beziehungen verwalten.
                 </p>
 
-                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
-                  <div className="text-2xl font-bold text-purple-300 mb-1">
+                <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgSecondary }}>
+                  <div className="text-2xl font-bold mb-1" style={{ color: 'rgb(196, 181, 253)' }}>
                     {databaseDesignerAccess?.unlock_cost || 50} Credits / Jahr
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm" style={{ color: colors.textMuted }}>
                     Einmalige Freischaltung für 12 Monate
                   </div>
                 </div>
@@ -2153,28 +2170,28 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   {unlocking ? 'Wird freigeschaltet...' : '🔓 Freischalten'}
                 </button>
 
-                <div className="mt-4 text-sm text-gray-500">
-                  <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+                <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
+                  <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                   <ul className="text-left space-y-1">
-                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
                       <span>📊</span> Visuelle Datenbank-Ansicht
                     </li>
-                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
                       <span>➕</span> Neue Tabellen erstellen
                     </li>
-                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
                       <span>✏️</span> Tabellen bearbeiten
                     </li>
-                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
                       <span>🔗</span> Fremdschlüssel verwalten
                     </li>
-                    <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                    <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
                       <span>📥</span> SQL Import
                     </li>
                   </ul>
                 </div>
 
-                <p className="mt-4 text-xs text-gray-600">
+                <p className="mt-4 text-xs" style={{ color: colors.textMuted, opacity: 0.7 }}>
                   Hinweis: Import/Export über das Menü ist weiterhin kostenlos verfügbar.
                 </p>
               </div>
@@ -2190,11 +2207,11 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     <TabContent style={{}}>
       <div className="h-full flex flex-col" style={{ height: '100%' }}>
         {/* Header */}
-        <div className="flex justify-between items-center p-4 bg-gray-800 border-b border-gray-600 flex-shrink-0">
+        <div className="flex justify-between items-center p-4 flex-shrink-0" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="flex items-center gap-3">
             <div>
-              <h3 className="text-lg font-bold text-blue-400">{t.panelt21282}</h3>
-              <p className="text-sm text-gray-400">
+              <h3 className="text-lg font-bold" style={{ color: colors.accent }}>{t.panelt21282}</h3>
+              <p className="text-sm" style={{ color: colors.textMuted }}>
                 {selectedSchema && selectedVersion
                   ? `${selectedSchema.name} (v${selectedVersion.version_number}) - ${nodes.length} tables`
                   : selectedSchema && schemaVersions.length === 0
@@ -2208,7 +2225,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               </p>
             </div>
             {effectiveReadOnly && (
-              <span className="px-3 py-1 text-xs font-semibold text-yellow-200 bg-yellow-900 border border-yellow-700 rounded">
+              <span className="px-3 py-1 text-xs font-semibold rounded" style={{ color: colors.warningText, backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
                 READ-ONLY
               </span>
             )}
@@ -2222,7 +2239,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 const schema = floatingSchemas.find(s => s.id === schemaId);
                 setSelectedSchema(schema || null);
               }}
-              className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
+              className="px-3 py-1 rounded text-sm focus:outline-none"
+              style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
               disabled={!selectedProject}
             >
               <option value="">{selectedProject ? 'Select Schema' : t.panelt21308}</option>
@@ -2248,7 +2266,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     loadSchemaVersionWithSchema(selectedSchema, version);
                   }
                 }}
-                className="bg-gray-700 text-white px-3 py-1 rounded text-sm border border-gray-600 focus:border-blue-500"
+                className="px-3 py-1 rounded text-sm focus:outline-none"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
               >
                 {schemaVersions.map(version => {
                   const displayText = version.version_number && version.imported_at
@@ -2266,12 +2285,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         </div>
 
         {/* Compact Toolbar with Icons Only */}
-        <div className="bg-gray-900 border-b border-gray-600 px-3 py-2 flex items-center justify-end">
+        <div className="px-3 py-2 flex items-center justify-end" style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="flex gap-2">
             <button
               onClick={handleRefresh}
               disabled={loading || !selectedProject}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title="Refresh"
             >
               <i className="pi pi-refresh"></i>
@@ -2280,7 +2300,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleCreateNewVersion}
               disabled={loading || !selectedSchema || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : (t.panelt21358 || "Create New Version")}
             >
               <i className="pi pi-plus"></i>
@@ -2289,7 +2310,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={() => setShowDeleteVersionDialog(true)}
               disabled={loading || !selectedSchema || schemaVersions.length <= 1 || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:text-red-300"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.errorText }}
               title={effectiveReadOnly ? "Read-only mode" : "Delete Version"}
             >
               <i className="pi pi-times"></i>
@@ -2298,7 +2320,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleShowImportModal}
               disabled={loading || !selectedProject || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : "Import SQL"}
             >
               <i className="pi pi-upload"></i>
@@ -2307,7 +2330,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleCreateFKClick}
               disabled={loading || !selectedSchema || !selectedVersion || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : "Add Foreign Key (Select 2 tables with Ctrl)"}
             >
               <i className="pi pi-link"></i>
@@ -2316,7 +2340,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleClipboardPaste}
               disabled={loading || !selectedSchema || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : "Paste Table from Clipboard"}
             >
               <i className="pi pi-clipboard"></i>
@@ -2325,7 +2350,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleCreateNewTable}
               disabled={loading || !selectedProject || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : "Create New Table"}
             >
               <i className="pi pi-table"></i>
@@ -2334,7 +2360,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <button
               onClick={handleSortDiagram}
               disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0 || effectiveReadOnly}
-              className="text-xs hover:bg-gray-700 px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
               title={effectiveReadOnly ? "Read-only mode" : "Sort the diagram"}
             >
               <i className="pi pi-sync"></i>
@@ -2345,13 +2372,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
         {/* Error Display */}
         {error && (
-          <div className="p-4 bg-red-900 border-b border-red-600 text-red-200 flex-shrink-0">
+          <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.errorBg, borderBottom: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
             <div className="flex items-center">
               <span className="mr-2">⚠️</span>
               <span>{error}</span>
               <button
                 onClick={() => setError(null)}
-                className="ml-auto text-red-400 hover:text-red-200"
+                className="ml-auto hover:opacity-70"
+                style={{ color: colors.errorText }}
               >
                 ✕
               </button>
@@ -2361,7 +2389,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
         {/* Loading State */}
         {loading && (
-          <div className="p-4 bg-gray-800 border-b border-gray-600 text-gray-300 flex-shrink-0">
+          <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}`, color: colors.textMuted }}>
             <div className="flex items-center">
               <div className="animate-spin mr-2">⚪</div>
               <span>Loading schema...</span>
@@ -2492,45 +2520,45 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               minZoom={0.05}
               maxZoom={4}
               defaultViewport={{ zoom: 0.8, x: 0, y: 0 }}
-              className="bg-gray-800"
+              className="panelt2-reactflow"
               proOptions={{ hideAttribution: true }}
               style={{
                 width: '100%',
                 height: '100%',
-                backgroundColor: '#1f2937'
+                backgroundColor: colors.bgPrimary
               }}
             >
               <Controls
-                className="react-flow-controls-dark"
-                style={{ background: '#374151', border: '1px solid #4b5563' }}
+                className="panelt2-controls"
+                style={{ background: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
               />
               <MiniMap
-                className="react-flow-minimap-dark"
+                className="panelt2-minimap"
                 style={{
-                  background: '#374151',
-                  border: '1px solid #4b5563'
+                  background: colors.bgSecondary,
+                  border: `1px solid ${colors.borderPrimary}`
                 }}
-                nodeColor="#6b7280"
+                nodeColor={colors.textMuted}
                 maskColor="rgba(0, 0, 0, 0.6)"
               />
               <Background
                 variant={BackgroundVariant.Dots}
                 gap={20}
                 size={1}
-                color="#4b5563"
-                style={{ backgroundColor: '#1f2937' }}
+                color={colors.borderPrimary}
+                style={{ backgroundColor: colors.bgPrimary }}
               />
             </ReactFlow>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
+            <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
               <div className="text-center">
                 {error && error.includes('Authentication') ? (
                   // Authentication Error State
                   <>
                     <div className="text-6xl mb-4">🔐</div>
-                    <h3 className="text-xl font-bold mb-2 text-yellow-400">Authentication Required</h3>
-                    <p className="text-sm mb-4">Your session has expired. Please login to access schema data.</p>
-                    <p className="text-xs text-gray-500">
+                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.warningText }}>Authentication Required</h3>
+                    <p className="text-sm mb-4" style={{ color: colors.textPrimary }}>Your session has expired. Please login to access schema data.</p>
+                    <p className="text-xs" style={{ color: colors.textMuted }}>
                       Use the navigation menu to log in again
                     </p>
                   </>
@@ -2538,8 +2566,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   // No Data State
                   <>
                     <div className="text-6xl mb-4">📊</div>
-                    <h3 className="text-xl font-bold mb-2">No Schema Data</h3>
-                    <p className="text-sm">
+                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>No Schema Data</h3>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>
                       {!selectedProject
                         ? t.panelt21528
                         : floatingSchemas.length === 0
@@ -2548,7 +2576,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       }
                     </p>
                     {selectedProject && floatingSchemas.length === 0 && !loading && !error && (
-                      <p className="text-xs mt-2 text-gray-500">
+                      <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
                         Import a SQL script or associate an existing schema
                       </p>
                     )}
@@ -2561,24 +2589,24 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
         {/* Table Info Panel */}
         {selectedNode && selectedNode.data.tableName && (
-          <div className="p-4 bg-gray-900 border-t border-gray-600 flex-shrink-0">
-            <h5 className="font-medium text-blue-400 mb-2">🔍 Table Details</h5>
+          <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.bgTertiary, borderTop: `1px solid ${colors.borderPrimary}` }}>
+            <h5 className="font-medium mb-2" style={{ color: colors.accent }}>🔍 Table Details</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Table:</span>
-                <span className="ml-2 text-white font-mono">{selectedNode.data.tableName}</span>
+                <span style={{ color: colors.textMuted }}>Table:</span>
+                <span className="ml-2 font-mono" style={{ color: colors.textPrimary }}>{selectedNode.data.tableName}</span>
               </div>
               <div>
-                <span className="text-gray-400">Fields:</span>
-                <span className="ml-2 text-white">{selectedNode.data.fields?.length || 0}</span>
+                <span style={{ color: colors.textMuted }}>Fields:</span>
+                <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedNode.data.fields?.length || 0}</span>
               </div>
               <div>
-                <span className="text-gray-400">Constraints:</span>
-                <span className="ml-2 text-white">{selectedNode.data.constraints?.length || 0}</span>
+                <span style={{ color: colors.textMuted }}>Constraints:</span>
+                <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedNode.data.constraints?.length || 0}</span>
               </div>
               <div>
-                <span className="text-gray-400">Primary Keys:</span>
-                <span className="ml-2 text-yellow-400">
+                <span style={{ color: colors.textMuted }}>Primary Keys:</span>
+                <span className="ml-2" style={{ color: colors.warningText }}>
                   {selectedNode.data.fields?.filter((f: { isPrimary: boolean }) => f.isPrimary).length || 0}
                 </span>
               </div>
@@ -2641,21 +2669,21 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {/* FK Action Menu */}
       {showFKActionMenu && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 border border-gray-600">
-            <h3 className="text-lg font-bold text-white mb-4">Foreign Key Actions</h3>
+          <div className="rounded-lg p-6 max-w-sm w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-lg font-bold mb-4" style={{ color: colors.textPrimary }}>Foreign Key Actions</h3>
 
             <div className="mb-6">
-              <div className="bg-gray-700 p-3 rounded border border-gray-600">
+              <div className="p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="text-sm space-y-1">
                   <div>
-                    <span className="text-gray-400">From:</span>{' '}
-                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                    <span style={{ color: colors.textMuted }}>From:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">To:</span>{' '}
-                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                    <span style={{ color: colors.textMuted }}>To:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className="text-xs mt-2" style={{ color: colors.textMuted }}>
                     {selectedFK.constraintName}
                   </div>
                 </div>
@@ -2669,7 +2697,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setEditFKName(selectedFK.constraintName);
                   setShowEditFKModal(true);
                 }}
-                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 text-white rounded transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                style={{ backgroundColor: colors.accent }}
               >
                 ✏️ Edit Foreign Key
               </button>
@@ -2679,7 +2708,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setShowFKActionMenu(false);
                   setShowDeleteFKModal(true);
                 }}
-                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 text-white rounded transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                style={{ backgroundColor: colors.errorText }}
               >
                 🗑️ Delete Foreign Key
               </button>
@@ -2689,7 +2719,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setShowFKActionMenu(false);
                   setSelectedFK(null);
                 }}
-                className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                className="w-full px-4 py-2 rounded transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
               >
                 Cancel
               </button>
@@ -2701,33 +2732,33 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {/* Delete FK Modal */}
       {showDeleteFKModal && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
-            <h3 className="text-xl font-bold text-white mb-4">Delete Foreign Key</h3>
+          <div className="rounded-lg p-6 max-w-md w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Delete Foreign Key</h3>
 
             <div className="mb-6">
-              <p className="text-gray-300 mb-4">
+              <p className="mb-4" style={{ color: colors.textSecondary }}>
                 Are you sure you want to delete this foreign key constraint?
               </p>
 
-              <div className="bg-gray-700 p-4 rounded border border-gray-600">
+              <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-400">Constraint:</span>{' '}
-                    <span className="text-white font-mono">{selectedFK.constraintName}</span>
+                    <span style={{ color: colors.textMuted }}>Constraint:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.textPrimary }}>{selectedFK.constraintName}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">From:</span>{' '}
-                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                    <span style={{ color: colors.textMuted }}>From:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">To:</span>{' '}
-                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                    <span style={{ color: colors.textMuted }}>To:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
                 </div>
               </div>
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
-                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   ⚠️ A new version will be created for this change.
                 </div>
               ) : null}
@@ -2739,14 +2770,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setShowDeleteFKModal(false);
                   setSelectedFK(null);
                 }}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                className="px-4 py-2 rounded transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteFK}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-white rounded transition-colors disabled:opacity-50 hover:opacity-90"
+                style={{ backgroundColor: colors.errorText }}
                 disabled={loading}
               >
                 {loading ? t.deleting : t.panelt21689}
@@ -2759,27 +2792,27 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {/* Edit FK Modal */}
       {showEditFKModal && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 border border-gray-600">
-            <h3 className="text-xl font-bold text-white mb-4">Edit Foreign Key</h3>
+          <div className="rounded-lg p-6 max-w-lg w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Edit Foreign Key</h3>
 
             <div className="mb-6">
               {/* FK Info Display */}
-              <div className="bg-gray-700 p-4 rounded border border-gray-600 mb-4">
+              <div className="p-4 rounded mb-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-400">From Table:</span>{' '}
-                    <span className="text-blue-400 font-mono">{selectedFK.sourceTable}</span>
+                    <span style={{ color: colors.textMuted }}>From Table:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">To Table:</span>{' '}
-                    <span className="text-green-400 font-mono">{selectedFK.targetTable}</span>
+                    <span style={{ color: colors.textMuted }}>To Table:</span>{' '}
+                    <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
                 </div>
               </div>
 
               {/* FK Name Input */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   Constraint Name *
                 </label>
                 <input
@@ -2787,7 +2820,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   value={editFKName}
                   onChange={(e) => setEditFKName(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   placeholder="fk_table1_table2"
                 />
               </div>
@@ -2795,14 +2829,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               {/* Referential Actions */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     ON DELETE
                   </label>
                   <select
                     value={editFKOnDelete}
                     onChange={(e) => setEditFKOnDelete(e.target.value)}
                     disabled={loading}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   >
                     <option value="NO ACTION">NO ACTION</option>
                     <option value="CASCADE">CASCADE</option>
@@ -2813,14 +2848,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     ON UPDATE
                   </label>
                   <select
                     value={editFKOnUpdate}
                     onChange={(e) => setEditFKOnUpdate(e.target.value)}
                     disabled={loading}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   >
                     <option value="NO ACTION">NO ACTION</option>
                     <option value="CASCADE">CASCADE</option>
@@ -2832,7 +2868,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               </div>
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
-                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   ⚠️ A new version will be created for this change.
                 </div>
               ) : null}
@@ -2845,14 +2881,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setSelectedFK(null);
                   setEditFKName('');
                 }}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                className="px-4 py-2 rounded transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleEditFK}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-white rounded transition-colors disabled:opacity-50 hover:opacity-90"
+                style={{ backgroundColor: colors.accent }}
                 disabled={loading || !editFKName.trim()}
               >
                 {loading ? t.saving : 'Save Changes'}
@@ -2881,14 +2919,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
         return (
           <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
-              <h3 className="text-xl font-bold text-white mb-4">Create Foreign Key</h3>
+            <div className="rounded-lg p-6 max-w-2xl w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+              <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Create Foreign Key</h3>
 
               <div className="space-y-4">
                 {/* Source Table and Field */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Source Table
                     </label>
                     <select
@@ -2898,7 +2936,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                         setCreateFKSourceFieldId(null); // Reset field when table changes
                       }}
                       disabled={loading}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="">Select table...</option>
                       {availableTables.map(table => (
@@ -2908,14 +2947,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Source Field
                     </label>
                     <select
                       value={createFKSourceFieldId || ''}
                       onChange={(e) => setCreateFKSourceFieldId(e.target.value ? parseInt(e.target.value) : null)}
                       disabled={loading || !createFKSourceTableId}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="">Select field...</option>
                       {sourceTableFields.map(field => (
@@ -2930,7 +2970,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 {/* Target Table and Field */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Target Table (Referenced)
                     </label>
                     <select
@@ -2940,7 +2980,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                         setCreateFKTargetFieldId(null); // Reset field when table changes
                       }}
                       disabled={loading}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="">Select table...</option>
                       {availableTables.map(table => (
@@ -2950,14 +2991,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Target Field (Referenced)
                     </label>
                     <select
                       value={createFKTargetFieldId || ''}
                       onChange={(e) => setCreateFKTargetFieldId(e.target.value ? parseInt(e.target.value) : null)}
                       disabled={loading || !createFKTargetTableId}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="">Select field...</option>
                       {targetTableFields.map(field => (
@@ -2971,7 +3013,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
                 {/* Constraint Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     Constraint Name (optional)
                   </label>
                   <input
@@ -2980,21 +3022,23 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     onChange={(e) => setCreateFKName(e.target.value)}
                     disabled={loading}
                     placeholder="Auto-generated if empty"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   />
                 </div>
 
                 {/* Referential Actions */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       ON DELETE
                     </label>
                     <select
                       value={createFKOnDelete}
                       onChange={(e) => setCreateFKOnDelete(e.target.value)}
                       disabled={loading}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="NO ACTION">NO ACTION</option>
                       <option value="CASCADE">CASCADE</option>
@@ -3005,14 +3049,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       ON UPDATE
                     </label>
                     <select
                       value={createFKOnUpdate}
                       onChange={(e) => setCreateFKOnUpdate(e.target.value)}
                       disabled={loading}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
                       <option value="NO ACTION">NO ACTION</option>
                       <option value="CASCADE">CASCADE</option>
@@ -3024,7 +3069,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </div>
 
                 {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
-                  <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                  <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                     ⚠️ A new version will be created for this change.
                   </div>
                 ) : null}
@@ -3042,14 +3087,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     setCreateFKOnDelete('NO ACTION');
                     setCreateFKOnUpdate('NO ACTION');
                   }}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                  className="px-4 py-2 rounded transition-colors hover:opacity-90"
+                  style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                   disabled={loading}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateFK}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-white rounded transition-colors disabled:opacity-50 hover:opacity-90"
+                  style={{ backgroundColor: colors.accent }}
                   disabled={loading || !createFKSourceFieldId || !createFKTargetFieldId}
                 >
                   {loading ? t.saving : 'Create Foreign Key'}
@@ -3063,13 +3110,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {/* Paste Table Modal */}
       {showPasteModal && pasteTableData && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
-            <h3 className="text-xl font-bold text-white mb-4">Paste Table: {pasteTableData.table_name}</h3>
+          <div className="rounded-lg p-6 max-w-2xl w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Paste Table: {pasteTableData.table_name}</h3>
 
             <div className="space-y-4">
               {/* New Table Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   New Table Name
                 </label>
                 <input
@@ -3078,14 +3125,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   onChange={(e) => setPasteTableName(e.target.value)}
                   disabled={loading}
                   placeholder="Enter new table name"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
               </div>
 
               {/* Preview of what will be copied */}
-              <div className="p-4 bg-gray-700 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-300 mb-2">What will be pasted:</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
+              <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
+                <h4 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>What will be pasted:</h4>
+                <ul className="text-sm space-y-1" style={{ color: colors.textMuted }}>
                   <li>✅ {pasteTableData.fields?.length || 0} Fields</li>
                   <li>✅ Primary Key</li>
                   <li>✅ Unique Constraints</li>
@@ -3095,7 +3143,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               </div>
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
-                <div className="mt-4 p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded text-yellow-200 text-sm">
+                <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   ⚠️ A new version will be created for this change.
                 </div>
               ) : null}
@@ -3108,14 +3156,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   setPasteTableName('');
                   setPasteTableData(null);
                 }}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                className="px-4 py-2 rounded transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
                 Cancel
               </button>
               <button
                 onClick={handlePasteTable}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-white rounded transition-colors disabled:opacity-50 hover:opacity-90"
+                style={{ backgroundColor: colors.successBg }}
                 disabled={loading || !pasteTableName.trim()}
               >
                 {loading ? t.saving : 'Paste Table'}
@@ -3135,7 +3185,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           id: v.id,
           version_number: v.version_number || 0,
           description: v.description,
-          tables_count: v.tables?.length || 0,
+          tables_count: v.tables_count ?? v.tables?.length ?? 0,
           imported_at: v.imported_at,
           created_at: v.created_at
         }))}
@@ -3144,6 +3194,80 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       {/* PrimeReact ConfirmDialog for version creation confirmation */}
       <ConfirmDialog />
+
+      {/* Theme-aware CSS styles */}
+      <style>{`
+        .panelt2-container {
+          --theme-bg-primary: ${colors.bgPrimary};
+          --theme-bg-secondary: ${colors.bgSecondary};
+          --theme-bg-tertiary: ${colors.bgTertiary};
+          --theme-text-primary: ${colors.textPrimary};
+          --theme-text-muted: ${colors.textMuted};
+          --theme-border-primary: ${colors.borderPrimary};
+          --theme-accent: ${colors.accent};
+        }
+
+        .panelt2-toolbar-btn {
+          transition: all 0.2s ease;
+        }
+
+        .panelt2-toolbar-btn:hover:not(:disabled) {
+          opacity: 0.85;
+          transform: translateY(-1px);
+        }
+
+        .panelt2-toolbar-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .panelt2-controls {
+          background: var(--theme-bg-secondary) !important;
+          border: 1px solid var(--theme-border-primary) !important;
+          border-radius: 8px !important;
+        }
+
+        .panelt2-controls button {
+          background: var(--theme-bg-tertiary) !important;
+          border: 1px solid var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+
+        .panelt2-controls button:hover {
+          background: var(--theme-accent) !important;
+        }
+
+        .panelt2-controls button svg {
+          fill: var(--theme-text-primary) !important;
+        }
+
+        .panelt2-minimap {
+          background: var(--theme-bg-secondary) !important;
+          border: 1px solid var(--theme-border-primary) !important;
+          border-radius: 8px !important;
+        }
+
+        /* ReactFlow node hover effects */
+        .react-flow__node:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Edge selection and hover */
+        .react-flow__edge:hover .react-flow__edge-path {
+          stroke-width: 3px;
+        }
+
+        /* Select dropdown styling */
+        .panelt2-container select option {
+          background-color: var(--theme-bg-tertiary);
+          color: var(--theme-text-primary);
+        }
+
+        /* Input placeholder styling */
+        .panelt2-container input::placeholder {
+          color: var(--theme-text-muted);
+        }
+      `}</style>
     </TabContent>
   );
 }

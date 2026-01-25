@@ -102,10 +102,10 @@ class SimpleFixedTemplateEngine
             if ($this->isLoopStart($trimmedLine)) {
                 $insideLoop = true;
                 // Use the correct loop variable based on the type
-                if (strpos($trimmedLine, '{for {nmaxsearchkeys}}') !== false) {
+                if (strpos($trimmedLine, '{:for nmaxsearchkeys:}') !== false) {
                     $jsFunction .= "  for (let i = 0; i < gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys; i++) {\n";
                 } else {
-                    // Default to nmaxitems for {for {nmaxitems}}
+                    // Default to nmaxitems for {:for nmaxitems:}
                     $jsFunction .= "  for (let i = 0; i < gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxitems; i++) {\n";
                 }
                 continue;
@@ -189,10 +189,10 @@ class SimpleFixedTemplateEngine
      */
     private function isComplexLine(string $line): bool
     {
-        $hasTemplateConstruct = strpos($line, '{for {') !== false
-                             || strpos($line, '{if ') !== false
-                             || strpos($line, '{endif}') !== false
-                             || strpos($line, '{endfor}') !== false;
+        $hasTemplateConstruct = strpos($line, '{:for {:') !== false
+                             || strpos($line, '{:if ') !== false
+                             || strpos($line, '{:endif:}') !== false
+                             || strpos($line, '{:endfor:}') !== false;
 
         if (!$hasTemplateConstruct) {
             return false;
@@ -200,11 +200,11 @@ class SimpleFixedTemplateEngine
 
         // Prüfe ob außer dem Template-Konstrukt noch anderer Code vorhanden ist
         $tempLine = $line;
-        $tempLine = str_replace('{for {nmaxsearchkeys}}', '', $tempLine);
-        $tempLine = str_replace('{for {nmaxitems}}', '', $tempLine);
-        $tempLine = str_replace('{if ', '', $tempLine);
-        $tempLine = str_replace('{endif}', '', $tempLine);
-        $tempLine = str_replace('{endfor}', '', $tempLine);
+        $tempLine = str_replace('{:for nmaxsearchkeys:}', '', $tempLine);
+        $tempLine = str_replace('{:for nmaxitems:}', '', $tempLine);
+        $tempLine = str_replace('{:if ', '', $tempLine);
+        $tempLine = str_replace('{:endif:}', '', $tempLine);
+        $tempLine = str_replace('{:endfor:}', '', $tempLine);
 
         return trim($tempLine) !== '';
     }
@@ -216,19 +216,19 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        // Finde {for} Position
-        $forPos = strpos($line, '{for {nmaxsearchkeys}}');
+        // Finde {:for:} Position
+        $forPos = strpos($line, '{:for nmaxsearchkeys:}');
         if ($forPos !== false) {
             $beforeFor = substr($line, 0, $forPos);
 
-            // Prüfe ob vor {for} nur Whitespace steht oder echter Text
+            // Prüfe ob vor {:for:} nur Whitespace steht oder echter Text
             if (trim($beforeFor) !== '') {
-                // Text vor {for} → inline-Modus aktivieren
+                // Text vor {:for:} → inline-Modus aktivieren
                 $result[] = '§INLINE_START§' . $beforeFor; // Marker für inline-Start
-                $result[] = '{for {nmaxsearchkeys}}';
+                $result[] = '{:for nmaxsearchkeys:}';
 
                 // Rest verarbeiten im inline-Modus
-                $afterFor = substr($line, $forPos + strlen('{for {nmaxsearchkeys}}'));
+                $afterFor = substr($line, $forPos + strlen('{:for nmaxsearchkeys:}'));
                 if (trim($afterFor) !== '') {
                     $remainingSplit = $this->splitRemainingInInlineMode($afterFor);
                     $result = array_merge($result, $remainingSplit);
@@ -236,13 +236,13 @@ class SimpleFixedTemplateEngine
 
                 $result[] = '§INLINE_END§'; // Marker für inline-Ende
             } else {
-                // Nur Whitespace vor {for} → normale Aufteilung
+                // Nur Whitespace vor {:for:} → normale Aufteilung
                 if (trim($beforeFor) !== '') {
                     $result[] = $beforeFor;
                 }
-                $result[] = '{for {nmaxsearchkeys}}';
+                $result[] = '{:for nmaxsearchkeys:}';
 
-                $afterFor = substr($line, $forPos + strlen('{for {nmaxsearchkeys}}'));
+                $afterFor = substr($line, $forPos + strlen('{:for nmaxsearchkeys:}'));
                 if (trim($afterFor) !== '') {
                     $remainingSplit = $this->splitRemainingAfterFor($afterFor);
                     $result = array_merge($result, $remainingSplit);
@@ -264,17 +264,17 @@ class SimpleFixedTemplateEngine
         $result = [];
 
         // Gleiche Logik wie splitRemainingAfterFor, aber alle Teile als inline markieren
-        $ifPos = strpos($remaining, '{if ');
+        $ifPos = strpos($remaining, '{:if ');
         if ($ifPos !== false && $ifPos > 0) {
             $beforeIf = substr($remaining, 0, $ifPos);
             $result[] = '§INLINE§' . trim($beforeIf);
 
-            $ifEndPos = strpos($remaining, '}', $ifPos);
+            $ifEndPos = strpos($remaining, ':}', $ifPos);
             if ($ifEndPos !== false) {
-                $ifConstruct = substr($remaining, $ifPos, $ifEndPos - $ifPos + 1);
+                $ifConstruct = substr($remaining, $ifPos, $ifEndPos - $ifPos + 2);
                 $result[] = $ifConstruct;
 
-                $afterIf = substr($remaining, $ifEndPos + 1);
+                $afterIf = substr($remaining, $ifEndPos + 2);
                 if (trim($afterIf) !== '') {
                     $furtherSplit = $this->splitIfRemainderInInlineMode($afterIf);
                     $result = array_merge($result, $furtherSplit);
@@ -294,18 +294,18 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        $endifPos = strpos($remaining, '{endif}');
+        $endifPos = strpos($remaining, '{:endif:}');
         if ($endifPos !== false && $endifPos > 0) {
             $beforeEndif = substr($remaining, 0, $endifPos);
             if (trim($beforeEndif) !== '') {
                 $result[] = '§INLINE§' . $beforeEndif; // Don't trim - preserve spaces
             }
 
-            $result[] = '{endif}';
+            $result[] = '{:endif:}';
 
-            $afterEndif = substr($remaining, $endifPos + strlen('{endif}'));
+            $afterEndif = substr($remaining, $endifPos + strlen('{:endif:}'));
             if (trim($afterEndif) !== '') {
-                $endforPos = strpos($afterEndif, '{endfor}');
+                $endforPos = strpos($afterEndif, '{:endfor:}');
                 if ($endforPos !== false) {
                     if ($endforPos > 0) {
                         $beforeEndfor = substr($afterEndif, 0, $endforPos);
@@ -314,9 +314,9 @@ class SimpleFixedTemplateEngine
                         }
                     }
 
-                    $result[] = '{endfor}';
+                    $result[] = '{:endfor:}';
 
-                    $afterEndfor = substr($afterEndif, $endforPos + strlen('{endfor}'));
+                    $afterEndfor = substr($afterEndif, $endforPos + strlen('{:endfor:}'));
                     if (trim($afterEndfor) !== '') {
                         $result[] = '§INLINE§' . trim($afterEndfor);
                     }
@@ -336,20 +336,20 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        // Beispiel-Line: $sql = 'SELECT count(*) AS count FROM {filename} WHERE ({for {nmaxsearchkeys}}{item.name} LIKE \'%' . $search . '%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {endif}{endfor})' . $order_by;
+        // Beispiel-Line: $sql = 'SELECT count(*) AS count FROM {:filename:} WHERE ({:for nmaxsearchkeys:}{:item.name:} LIKE \'%' . $search . '%\'{:if nCountSearchkeys<nmaxsearchkeys:} OR {:endif:}{:endfor:})' . $order_by;
 
-        // SCHRITT 1: Schaue ob {for ist am Anfang der Zeile oder nicht
-        $forPos = strpos($line, '{for {nmaxsearchkeys}}');
+        // SCHRITT 1: Schaue ob {:for ist am Anfang der Zeile oder nicht
+        $forPos = strpos($line, '{:for nmaxsearchkeys:}');
         if ($forPos !== false && $forPos > 0) {
-            // Es gibt Text VOR dem {for} - den auf eine eigene Zeile
+            // Es gibt Text VOR dem {:for:} - den auf eine eigene Zeile
             $beforeFor = substr($line, 0, $forPos);
-            $result[] = rtrim($beforeFor); // Text vor {for}
+            $result[] = rtrim($beforeFor); // Text vor {:for:}
 
-            // {for} auf eigene Zeile
-            $result[] = '{for {nmaxsearchkeys}}';
+            // {:for:} auf eigene Zeile
+            $result[] = '{:for nmaxsearchkeys:}';
 
             // Rest der Zeile verarbeiten
-            $afterFor = substr($line, $forPos + strlen('{for {nmaxsearchkeys}}'));
+            $afterFor = substr($line, $forPos + strlen('{:for nmaxsearchkeys:}'));
             if (trim($afterFor) !== '') {
                 $furtherSplit = $this->splitRemainingAfterFor($afterFor);
                 $result = array_merge($result, $furtherSplit);
@@ -369,30 +369,30 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        // remaining ist: {item.name} LIKE \'%' . $search . '%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {endif}{endfor})' . $order_by;
+        // remaining ist: {:item.name:} LIKE \'%' . $search . '%\'{:if nCountSearchkeys<nmaxsearchkeys:} OR {:endif:}{:endfor:})' . $order_by;
 
-        // Suche nach {if
-        $ifPos = strpos($remaining, '{if ');
+        // Suche nach {:if
+        $ifPos = strpos($remaining, '{:if ');
         if ($ifPos !== false && $ifPos > 0) {
-            // Text vor {if}
+            // Text vor {:if:}
             $beforeIf = substr($remaining, 0, $ifPos);
             $result[] = trim($beforeIf);
 
-            // Extrahiere {if condition}
-            $ifEndPos = strpos($remaining, '}', $ifPos);
+            // Extrahiere {:if condition:}
+            $ifEndPos = strpos($remaining, ':}', $ifPos);
             if ($ifEndPos !== false) {
-                $ifConstruct = substr($remaining, $ifPos, $ifEndPos - $ifPos + 1);
+                $ifConstruct = substr($remaining, $ifPos, $ifEndPos - $ifPos + 2);
                 $result[] = $ifConstruct;
 
-                // Rest nach {if condition}
-                $afterIf = substr($remaining, $ifEndPos + 1);
+                // Rest nach {:if condition:}
+                $afterIf = substr($remaining, $ifEndPos + 2);
                 if (trim($afterIf) !== '') {
                     $furtherSplit = $this->splitRemainingAfterIf($afterIf);
                     $result = array_merge($result, $furtherSplit);
                 }
             }
         } else {
-            // Kein {if gefunden
+            // Kein {:if gefunden
             $result[] = $remaining;
         }
 
@@ -406,22 +406,22 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        // remaining ist:  OR {endif}{endfor})' . $order_by;
+        // remaining ist:  OR {:endif:}{:endfor:})' . $order_by;
 
-        // Suche nach {endif}
-        $endifPos = strpos($remaining, '{endif}');
+        // Suche nach {:endif:}
+        $endifPos = strpos($remaining, '{:endif:}');
         if ($endifPos !== false && $endifPos > 0) {
-            // Text vor {endif}
+            // Text vor {:endif:}
             $beforeEndif = substr($remaining, 0, $endifPos);
             if (trim($beforeEndif) !== '') {
                 $result[] = $beforeEndif; // Don't trim - preserve spaces for inline content
             }
 
-            // {endif}
-            $result[] = '{endif}';
+            // {:endif:}
+            $result[] = '{:endif:}';
 
-            // Rest nach {endif}
-            $afterEndif = substr($remaining, $endifPos + strlen('{endif}'));
+            // Rest nach {:endif:}
+            $afterEndif = substr($remaining, $endifPos + strlen('{:endif:}'));
             if (trim($afterEndif) !== '') {
                 $furtherSplit = $this->splitRemainingAfterEndif($afterEndif);
                 $result = array_merge($result, $furtherSplit);
@@ -440,12 +440,12 @@ class SimpleFixedTemplateEngine
     {
         $result = [];
 
-        // remaining ist: {endfor})' . $order_by;
+        // remaining ist: {:endfor:})' . $order_by;
 
-        // Suche nach {endfor}
-        $endforPos = strpos($remaining, '{endfor}');
+        // Suche nach {:endfor:}
+        $endforPos = strpos($remaining, '{:endfor:}');
         if ($endforPos !== false) {
-            // Text vor {endfor} (sollte leer sein)
+            // Text vor {:endfor:} (sollte leer sein)
             if ($endforPos > 0) {
                 $beforeEndfor = substr($remaining, 0, $endforPos);
                 if (trim($beforeEndfor) !== '') {
@@ -453,11 +453,11 @@ class SimpleFixedTemplateEngine
                 }
             }
 
-            // {endfor}
-            $result[] = '{endfor}';
+            // {:endfor:}
+            $result[] = '{:endfor:}';
 
-            // Rest nach {endfor}
-            $afterEndfor = substr($remaining, $endforPos + strlen('{endfor}'));
+            // Rest nach {:endfor:}
+            $afterEndfor = substr($remaining, $endforPos + strlen('{:endfor:}'));
             if (trim($afterEndfor) !== '') {
                 $result[] = trim($afterEndfor);
             }
@@ -497,40 +497,49 @@ class SimpleFixedTemplateEngine
      */
     private function isLoopStart(string $line): bool
     {
-        return $line === '{for {nmaxsearchkeys}}' || $line === '{for {nmaxitems}}';
+        return $line === '{:for nmaxsearchkeys:}' || $line === '{:for nmaxitems:}';
     }
 
     private function isLoopEnd(string $line): bool
     {
-        return $line === '{endfor}';
+        return $line === '{:endfor:}';
     }
 
     private function isConditionalStart(string $line): bool
     {
-        return strpos($line, '{if ') === 0 && strpos($line, '}') === strlen($line) - 1;
+        return strpos($line, '{:if ') === 0 && substr($line, -2) === ':}';
     }
 
     private function isConditionalEnd(string $line): bool
     {
-        return $line === '{endif}';
+        return $line === '{:endif:}';
     }
 
     private function extractCondition(string $line): string
     {
-        // {if nCountSearchkeys<{nmaxsearchkeys}} -> nCountSearchkeys<{nmaxsearchkeys}
-        $start = strpos($line, '{if ') + 4;
-        $end = strrpos($line, '}');
+        // {:if nCountSearchkeys<nmaxsearchkeys:} -> nCountSearchkeys<nmaxsearchkeys
+        $start = strpos($line, '{:if ') + 5;
+        $end = strrpos($line, ':}');
         return substr($line, $start, $end - $start);
     }
 
     private function processCondition(string $condition): string
     {
-        // nCountSearchkeys<{nmaxsearchkeys} -> i < gtree[0].project[0].tables[X].nmaxsearchkeys
+        // nCountSearchkeys<nmaxsearchkeys -> i < gtree[0].project[0].tables[X].nmaxsearchkeys
         $condition = str_replace('nCountSearchkeys', 'i', $condition);
 
-        // Handle both complete and incomplete patterns
-        $condition = str_replace('{nmaxsearchkeys}', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys", $condition);
-        $condition = str_replace('{nmaxsearchkeys', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys", $condition);
+        // Handle {:nmaxsearchkeys:} pattern (with delimiters - legacy support)
+        $condition = str_replace('{:nmaxsearchkeys:}', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys", $condition);
+        $condition = str_replace('{:nmaxsearchkeys:', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys", $condition);
+
+        // Handle bare nmaxsearchkeys (without delimiters - new simplified syntax)
+        $condition = preg_replace('/\bnmaxsearchkeys\b/', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxsearchkeys", $condition);
+
+        // Handle bare item.* variables (new simplified syntax)
+        $condition = preg_replace_callback('/\bitem\.(\w+)\b/', function($matches) {
+            $fieldName = $matches[1];
+            return "gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].{$fieldName}";
+        }, $condition);
 
         return $condition;
     }
@@ -547,34 +556,34 @@ class SimpleFixedTemplateEngine
             $table = $this->gtree[0]['project'][0]['tables'][$this->currentTableIndex];
 
             // Core Scoriet FILE variables
-            $processedLine = str_replace('{filename}', $table['filename'] ?? $table['tablename'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{filenameshort}', $table['filenameshort'] ?? substr($table['tablename'] ?? '', 0, 8), $processedLine);
-            $processedLine = str_replace('{fileid}', $table['fileid'] ?? $table['tablename'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{filenamecc}', $table['filenamecc'] ?? ucwords(str_replace('_', '', $table['tablename'] ?? '')), $processedLine);
+            $processedLine = str_replace('{:filename:}', $table['filename'] ?? $table['tablename'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:filenameshort:}', $table['filenameshort'] ?? substr($table['tablename'] ?? '', 0, 8), $processedLine);
+            $processedLine = str_replace('{:fileid:}', $table['fileid'] ?? $table['tablename'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:filenamecc:}', $table['filenamecc'] ?? ucwords(str_replace('_', '', $table['tablename'] ?? '')), $processedLine);
 
             // Master-Detail FILE variables
-            $processedLine = str_replace('{filegeneratemasterdetail}', $table['filegeneratemasterdetail'] ? 'true' : 'false', $processedLine);
-            $processedLine = str_replace('{filedetailfileid}', $table['filedetailfileid'] ?? '', $processedLine);
-            $processedLine = str_replace('{filedetailfilename}', $table['filedetailfilename'] ?? '', $processedLine);
-            $processedLine = str_replace('{filedetailkey}', $table['filedetailkey'] ?? '', $processedLine);
+            $processedLine = str_replace('{:filegeneratemasterdetail:}', $table['filegeneratemasterdetail'] ? 'true' : 'false', $processedLine);
+            $processedLine = str_replace('{:filedetailfileid:}', $table['filedetailfileid'] ?? '', $processedLine);
+            $processedLine = str_replace('{:filedetailfilename:}', $table['filedetailfilename'] ?? '', $processedLine);
+            $processedLine = str_replace('{:filedetailkey:}', $table['filedetailkey'] ?? '', $processedLine);
 
             // Legacy variables for compatibility
-            $processedLine = str_replace('{tablename}', $table['tablename'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{filekeyname}', $table['filekeyname'] ?? $table['primarykeyfield'] ?? 'id', $processedLine);
+            $processedLine = str_replace('{:tablename:}', $table['tablename'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:filekeyname:}', $table['filekeyname'] ?? $table['primarykeyfield'] ?? 'id', $processedLine);
         }
 
         // PROJECT VARIABLES
         if (isset($this->gtree[0]['project'][0])) {
             $project = $this->gtree[0]['project'][0];
-            $processedLine = str_replace('{projectname}', $project['projectname'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{projectdatabase}', $project['projectdatabase'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:projectname:}', $project['projectname'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:projectdatabase:}', $project['projectdatabase'] ?? 'Unknown', $processedLine);
         }
 
         // ITEM VARIABLES (nur im Loop)
         if ($insideLoop) {
-            $processedLine = str_replace('{item.name}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].name + '", $processedLine);
-            $processedLine = str_replace('{item.type}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].type + '", $processedLine);
-            $processedLine = str_replace('{item.controltype}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].controltype + '", $processedLine);
+            $processedLine = str_replace('{:item.name:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].name + '", $processedLine);
+            $processedLine = str_replace('{:item.type:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].type + '", $processedLine);
+            $processedLine = str_replace('{:item.controltype:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].controltype + '", $processedLine);
         }
 
         return $processedLine;
@@ -625,7 +634,7 @@ class SimpleFixedTemplateEngine
      */
     public static function solvYourExactProblem(): array
     {
-        $originalTemplate = '$sql = \'SELECT count(*) AS count FROM {filename} WHERE ({for {nmaxsearchkeys}}{item.name} LIKE \'%\' . $search . \'%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {endif}{endfor})\' . $order_by;';
+        $originalTemplate = '$sql = \'SELECT count(*) AS count FROM {:filename:} WHERE ({:for nmaxsearchkeys:}{:item.name:} LIKE \'%\' . $search . \'%\'{:if nCountSearchkeys<nmaxsearchkeys:} OR {:endif:}{:endfor:})\' . $order_by;';
 
         $demoGtree = [
             [
@@ -658,7 +667,7 @@ class SimpleFixedTemplateEngine
             'step_1_split_result' => $engine->fixComplexLines($originalTemplate),
             'step_2_generated_js' => $engine->processTemplate($originalTemplate),
             'problems_solved' => [
-                '✅ {filename} wird korrekt zu accounting_log ersetzt',
+                '✅ {:filename:} wird korrekt zu accounting_log ersetzt',
                 '✅ Keine Geister-} mehr im JavaScript',
                 '✅ Template-Konstrukte auf eigenen Zeilen',
                 '✅ Saubere Loop-Strukturen',

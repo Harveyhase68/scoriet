@@ -61,6 +61,15 @@ class Project extends Model
         'git_pr_title_template',
         'git_pr_description_template',
         'git_auto_delete_branch',
+        // FTP/SSH deployment fields
+        'deployment_type',
+        'ftp_host',
+        'ftp_port',
+        'ftp_username',
+        'ftp_password',
+        'ftp_directory',
+        'ftp_passive',
+        'ftp_ssl',
     ];
 
     protected $casts = [
@@ -76,7 +85,53 @@ class Project extends Model
         'install_script' => 'array',
         'update_script' => 'array',
         'git_auto_delete_branch' => 'boolean',
+        'ftp_passive' => 'boolean',
+        'ftp_ssl' => 'boolean',
     ];
+
+    /**
+     * Encrypt FTP password when setting
+     */
+    public function setFtpPasswordAttribute($value)
+    {
+        $this->attributes['ftp_password'] = $value ? encrypt($value) : null;
+    }
+
+    /**
+     * Decrypt FTP password when getting
+     */
+    public function getFtpPasswordAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        try {
+            return decrypt($value);
+        } catch (\Exception $e) {
+            return $value; // Return as-is if decryption fails (might be plain text from before encryption)
+        }
+    }
+
+    /**
+     * Check if project has FTP/SSH deployment configured
+     */
+    public function hasFtpDeployment(): bool
+    {
+        return !empty($this->deployment_type) && !empty($this->ftp_host) && !empty($this->ftp_username);
+    }
+
+    /**
+     * Accessor for has_ftp_deployment attribute
+     */
+    public function getHasFtpDeploymentAttribute(): bool
+    {
+        return $this->hasFtpDeployment();
+    }
+
+    /**
+     * Attributes to append to JSON serialization
+     */
+    protected $appends = ['has_ftp_deployment'];
 
     protected $with = ['owner'];
 
@@ -145,6 +200,16 @@ class Project extends Model
                     ->withPivot(['usage_type', 'alias', 'config', 'is_active', 'used_at'])
                     ->withTimestamps()
                     ->wherePivot('is_active', true);
+    }
+
+    /**
+     * Get attachments for this project (documents, images, PDFs etc.)
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ProjectAttachment::class)
+                    ->orderBy('is_pinned', 'desc')
+                    ->orderBy('created_at', 'desc');
     }
 
     /**

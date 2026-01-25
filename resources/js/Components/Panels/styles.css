@@ -1,3 +1,376 @@
+/* Global Scrollbar Styling - uses CSS variables from ThemeContext */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-scrollbar-track, var(--theme-bg-primary)) !important;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb, var(--theme-border-secondary)) !important;
+  border-radius: 5px;
+  border: 2px solid var(--theme-scrollbar-track, var(--theme-bg-primary));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-scrollbar-thumb-hover, var(--theme-text-muted)) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--theme-scrollbar-track, var(--theme-bg-primary)) !important;
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-scrollbar-thumb, var(--theme-border-secondary)) var(--theme-scrollbar-track, var(--theme-bg-primary));
+}
+
+/* Themed Input Placeholders */
+.themed-input::placeholder {
+  color: var(--theme-text-muted) !important;
+  opacity: 0.7;
+}
+
+.themed-input::-webkit-input-placeholder {
+  color: var(--theme-text-muted) !important;
+  opacity: 0.7;
+}
+
+.themed-input::-moz-placeholder {
+  color: var(--theme-text-muted) !important;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   GLOBAL DataTable Theming - applies to ALL DataTables automatically
+   Uses --theme-* CSS variables from ThemeContext
+   ============================================================ */
+
+/* Global DataTable styling - no class needed */
+.p-datatable {
+  background: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
+  border-radius: 6px !important;
+}
+
+.p-datatable .p-datatable-wrapper {
+  background: var(--theme-bg-secondary) !important;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+  padding: 8px 12px !important;
+}
+
+.p-datatable .p-datatable-tbody > tr {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--theme-border-primary) !important;
+  padding: 8px 12px !important;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: var(--theme-bg-tertiary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight {
+  background: var(--theme-accent, #3b82f6) !important;
+  color: white !important;
+}
+
+.p-datatable .p-datatable-emptymessage {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-datatable .p-datatable-emptymessage td {
+  color: var(--theme-text-secondary) !important;
+  background: var(--theme-bg-secondary) !important;
+}
+
+/* Sort icons - Global */
+.p-datatable .p-sortable-column-icon {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-datatable .p-datatable-thead > tr > th:hover .p-sortable-column-icon {
+  color: var(--theme-text-primary) !important;
+}
+
+.p-datatable .p-datatable-thead > tr > th.p-highlight .p-sortable-column-icon {
+  color: var(--theme-accent, #3b82f6) !important;
+}
+
+/* Paginator - Global */
+.p-datatable .p-paginator {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-secondary) !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.p-datatable .p-paginator .p-paginator-current {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-datatable .p-paginator .p-paginator-first,
+.p-datatable .p-paginator .p-paginator-prev,
+.p-datatable .p-paginator .p-paginator-next,
+.p-datatable .p-paginator .p-paginator-last {
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border: none !important;
+}
+
+.p-datatable .p-paginator .p-paginator-first:hover,
+.p-datatable .p-paginator .p-paginator-prev:hover,
+.p-datatable .p-paginator .p-paginator-next:hover,
+.p-datatable .p-paginator .p-paginator-last:hover {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-datatable .p-paginator .p-paginator-pages .p-paginator-page {
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border: none !important;
+}
+
+.p-datatable .p-paginator .p-paginator-pages .p-paginator-page:hover {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-datatable .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--theme-accent, #3b82f6) !important;
+  color: white !important;
+}
+
+.p-datatable .p-paginator .p-dropdown {
+  background: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-datatable .p-paginator .p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary) !important;
+}
+
+/* Loading overlay */
+.p-datatable .p-datatable-loading-overlay {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ============================================================
+   GLOBAL Splitter Theming - applies to ALL Splitters automatically
+   ============================================================ */
+
+.p-splitter {
+  background: var(--theme-bg-primary) !important;
+  border: none !important;
+}
+
+.p-splitter .p-splitter-panel {
+  background: var(--theme-bg-primary) !important;
+}
+
+.p-splitter .p-splitter-gutter {
+  background: var(--theme-bg-secondary) !important;
+}
+
+.p-splitter .p-splitter-gutter-handle {
+  background: var(--theme-border-primary) !important;
+}
+
+.p-splitter .p-splitter-gutter:hover .p-splitter-gutter-handle {
+  background: var(--theme-accent, #3b82f6) !important;
+}
+
+/* Make DataTable fill splitter panel */
+.p-splitter .p-splitter-panel .p-datatable {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.p-splitter .p-splitter-panel .p-datatable .p-datatable-wrapper {
+  flex: 1 !important;
+  overflow: auto !important;
+}
+
+/* Legacy classes - kept for backwards compatibility but no longer needed */
+.themed-datatable,
+.themed-splitter {
+  /* These classes are now optional - global rules handle theming */
+}
+
+/* Themed TabView */
+.themed-tabview {
+  background: var(--theme-bg-primary) !important;
+}
+
+.themed-tabview .p-tabview-panels {
+  background: var(--theme-bg-primary) !important;
+  padding: 0 !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.themed-tabview .p-tabview-panel {
+  background: var(--theme-bg-primary) !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  min-height: 0;
+}
+
+.themed-tabview .p-tabview-nav {
+  background: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.themed-tabview .p-tabview-nav li .p-tabview-nav-link {
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border-color: transparent !important;
+}
+
+.themed-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-primary) !important;
+  border-bottom-color: var(--theme-bg-primary) !important;
+}
+
+.themed-tabview .p-tabview-nav li .p-tabview-nav-link:hover {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Themed Dialog - uses CSS variables from ThemeContext */
+.themed-dialog .p-dialog {
+  background: var(--theme-bg-primary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
+}
+
+.themed-dialog .p-dialog-header {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  border-bottom: 1px solid var(--theme-border-primary) !important;
+}
+
+.themed-dialog .p-dialog-header .p-dialog-title {
+  color: var(--theme-text-primary) !important;
+}
+
+.themed-dialog .p-dialog-header .p-dialog-header-icon {
+  color: var(--theme-text-secondary) !important;
+}
+
+.themed-dialog .p-dialog-header .p-dialog-header-icon:hover {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.themed-dialog .p-dialog-content {
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.themed-dialog .p-dialog-footer {
+  background: var(--theme-bg-secondary) !important;
+  border-top: 1px solid var(--theme-border-primary) !important;
+}
+
+/* Global PrimeReact Dialog override for dark themes */
+.p-dialog {
+  background: var(--theme-bg-primary, #1e1e1e) !important;
+  border: 1px solid var(--theme-border-primary, #333) !important;
+}
+
+.p-dialog .p-dialog-header {
+  background: var(--theme-bg-secondary, #252525) !important;
+  color: var(--theme-text-primary, #fff) !important;
+  border-bottom: 1px solid var(--theme-border-primary, #333) !important;
+}
+
+.p-dialog .p-dialog-content {
+  background: var(--theme-bg-primary, #1e1e1e) !important;
+  color: var(--theme-text-primary, #fff) !important;
+}
+
+.p-dialog .p-dialog-footer {
+  background: var(--theme-bg-secondary, #252525) !important;
+  border-top: 1px solid var(--theme-border-primary, #333) !important;
+}
+
+/* PrimeReact InputText theming */
+.p-inputtext {
+  background: var(--theme-bg-tertiary, #333) !important;
+  color: var(--theme-text-primary, #fff) !important;
+  border-color: var(--theme-border-primary, #444) !important;
+}
+
+.p-inputtext:enabled:focus {
+  border-color: var(--theme-accent, #3b82f6) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent, #3b82f6) !important;
+}
+
+/* PrimeReact InputTextarea theming */
+.p-inputtextarea {
+  background: var(--theme-bg-tertiary, #333) !important;
+  color: var(--theme-text-primary, #fff) !important;
+  border-color: var(--theme-border-primary, #444) !important;
+}
+
+/* PrimeReact Dropdown theming */
+.p-dropdown {
+  background: var(--theme-bg-tertiary, #333) !important;
+  color: var(--theme-text-primary, #fff) !important;
+  border-color: var(--theme-border-primary, #444) !important;
+}
+
+.p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary, #fff) !important;
+}
+
+.p-dropdown-panel {
+  background: var(--theme-bg-secondary, #252525) !important;
+  border: 1px solid var(--theme-border-primary, #333) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  color: var(--theme-text-primary, #fff) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover {
+  background: var(--theme-bg-tertiary, #333) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+  background: var(--theme-accent, #3b82f6) !important;
+  color: white !important;
+}
+
+/* PrimeReact InputNumber theming */
+.p-inputnumber .p-inputtext {
+  background: var(--theme-bg-tertiary, #333) !important;
+  color: var(--theme-text-primary, #fff) !important;
+  border-color: var(--theme-border-primary, #444) !important;
+}
+
 /* Video Modal Styling */
 .video-modal .p-dialog-content {
   background: #000 !important;
@@ -13,7 +386,7 @@
   overflow: hidden !important;
 }
 
-/* TieredMenu Sidebar Styling */
+/* TieredMenu Sidebar Styling - uses CSS variables from ThemeContext */
 .tiered-menu-sidebar {
   width: 100% !important;
 }
@@ -33,7 +406,7 @@
   border: none !important;
   border-radius: 6px !important;
   padding: 8px 12px !important;
-  color: #d1d5db !important;
+  color: var(--theme-text-secondary) !important;
   transition: all 0.2s ease !important;
   display: flex !important;
   align-items: center !important;
@@ -41,30 +414,67 @@
 }
 
 .tiered-menu-sidebar .p-menuitem-link:hover {
-  background: #4b5563 !important;
-  color: white !important;
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
 }
 
 .tiered-menu-sidebar .p-menuitem-link:focus {
   box-shadow: none !important;
-  background: #4b5563 !important;
-  color: white !important;
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
 }
 
 .tiered-menu-sidebar .p-menuitem-icon {
   font-size: 14px !important;
   width: 16px !important;
   margin-right: 0 !important;
+  color: var(--theme-text-secondary) !important;
 }
 
 .tiered-menu-sidebar .p-menuitem-text {
   font-size: 14px !important;
   font-weight: 500 !important;
+  color: var(--theme-text-secondary) !important;
 }
 
 .tiered-menu-sidebar .p-submenu-icon {
   font-size: 12px !important;
-  color: #9ca3af !important;
+  color: var(--theme-text-muted) !important;
+}
+
+/* TieredMenu Submenu List (popup submenus in sidebar) */
+.tiered-menu-sidebar .p-submenu-list {
+  background: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  padding: 4px !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link {
+  color: var(--theme-text-secondary) !important;
+  background: transparent !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link .p-menuitem-text {
+  color: var(--theme-text-secondary) !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link .p-menuitem-icon {
+  color: var(--theme-text-secondary) !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link:hover {
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link:hover .p-menuitem-text {
+  color: var(--theme-text-primary) !important;
+}
+
+.tiered-menu-sidebar .p-submenu-list .p-menuitem-link:hover .p-menuitem-icon {
+  color: var(--theme-text-primary) !important;
 }
 
 /* Prevent immediate execution on parent items with submenus */
@@ -78,38 +488,38 @@
 
 /* Submenu overlay styling */
 .p-tieredmenu-overlay {
-  background: #1f2937 !important;
-  border: 1px solid #4b5563 !important;
+  background: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
   border-radius: 8px !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
 }
 
 .p-tieredmenu-overlay .p-menuitem-link {
-  color: #d1d5db !important;
+  color: var(--theme-text-secondary) !important;
   padding: 8px 12px !important;
   border-radius: 4px !important;
   margin: 2px !important;
 }
 
 .p-tieredmenu-overlay .p-menuitem-link:hover {
-  background: #374151 !important;
-  color: white !important;
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
 }
 
 .p-tieredmenu-overlay .p-separator {
-  border-top: 1px solid #4b5563 !important;
+  border-top: 1px solid var(--theme-border-secondary) !important;
   margin: 4px 8px !important;
 }
 
-/* Custom Dropdown Styling for TopBar */
+/* Custom Dropdown Styling for TopBar - uses CSS variables from ThemeContext */
 .custom-dropdown {
   height: 28px !important;
 }
 
 .custom-dropdown .p-dropdown {
   height: 28px !important;
-  background: #374151 !important;
-  border: 1px solid #4B5563 !important;
+  background: var(--theme-bg-tertiary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
   border-radius: 4px !important;
 }
 
@@ -118,11 +528,11 @@
   line-height: 1.2 !important;
   padding: 6px 8px !important;
   font-size: 13px !important;
-  color: #d1d5db !important;
+  color: var(--theme-text-secondary) !important;
   display: flex !important;
   align-items: center !important;
   box-sizing: border-box !important;
-  background: #374151 !important;
+  background: var(--theme-bg-tertiary) !important;
 }
 
 .custom-dropdown .p-dropdown .p-dropdown-trigger {
@@ -134,19 +544,19 @@
 }
 
 .custom-dropdown .p-dropdown:hover {
-  border-color: #6B7280 !important;
+  border-color: var(--theme-border-secondary) !important;
 }
 
 .custom-dropdown .p-dropdown:focus-within {
-  border-color: #6B7280 !important;
-  box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.3) !important;
+  border-color: var(--theme-border-secondary) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
   height: 28px !important;
 }
 
 .custom-dropdown .p-dropdown:focus {
   height: 28px !important;
-  border-color: #6B7280 !important;
-  box-shadow: 0 0 0 1px rgba(107, 114, 128, 0.3) !important;
+  border-color: var(--theme-border-secondary) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
 }
 
 /* Additional fixes for text alignment */
@@ -158,12 +568,12 @@
   align-items: center !important;
   margin: 0 !important;
   font-size: 13px !important;
-  background: #374151 !important;
+  background: var(--theme-bg-tertiary) !important;
   box-sizing: border-box !important;
 }
 
 .custom-dropdown .p-dropdown .p-dropdown-label.p-placeholder {
-  color: #9ca3af !important;
+  color: var(--theme-text-muted) !important;
 }
 
 /* Fix for input wrapper height issues */
@@ -186,3 +596,1567 @@
   min-height: 28px !important;
   max-height: 28px !important;
 }
+
+/* Dropdown Panel (popup) Styling - uses CSS variables from ThemeContext */
+.p-dropdown-panel {
+  background: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.p-dropdown-panel .p-dropdown-header {
+  background: var(--theme-bg-tertiary) !important;
+  border-bottom: 1px solid var(--theme-border-secondary) !important;
+  padding: 8px !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.p-dropdown-panel .p-dropdown-filter {
+  background: var(--theme-bg-primary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  border-radius: 4px !important;
+  padding: 6px 8px !important;
+}
+
+.p-dropdown-panel .p-dropdown-filter:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
+}
+
+.p-dropdown-panel .p-dropdown-filter::placeholder {
+  color: var(--theme-text-muted) !important;
+}
+
+.p-dropdown-panel .p-dropdown-filter-icon {
+  color: var(--theme-text-muted) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items-wrapper {
+  background: var(--theme-bg-secondary) !important;
+}
+
+.p-dropdown-panel .p-dropdown-items {
+  background: var(--theme-bg-secondary) !important;
+  padding: 4px !important;
+}
+
+.p-dropdown-panel .p-dropdown-item {
+  color: var(--theme-text-secondary) !important;
+  background: transparent !important;
+  border-radius: 4px !important;
+  padding: 8px 12px !important;
+  margin: 2px 0 !important;
+}
+
+.p-dropdown-panel .p-dropdown-item:hover {
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dropdown-panel .p-dropdown-item.p-highlight {
+  background: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+.p-dropdown-panel .p-dropdown-empty-message {
+  color: var(--theme-text-muted) !important;
+  padding: 8px 12px !important;
+}
+
+/* TopBar Icon Button Styling */
+.topbar-icon-btn {
+  transition: color 0.2s ease !important;
+}
+
+.topbar-icon-btn:hover {
+  color: var(--theme-accent) !important;
+}
+
+/* Navigation Panel Hover Button */
+.nav-hover-btn:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Don't apply hover background when already selected */
+.nav-hover-btn.tree-node-selected:hover {
+  background-color: var(--theme-accent-hover) !important;
+}
+
+/* Navigation Panel Popup Menu */
+.nav-popup-menu {
+  background-color: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+}
+
+/* Navigation Panel Menu Item */
+.nav-menu-item {
+  color: var(--theme-text-secondary) !important;
+}
+
+.nav-menu-item:hover {
+  color: var(--theme-text-primary) !important;
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Navigation Panel Separator */
+.nav-separator {
+  border-color: var(--theme-border-secondary) !important;
+}
+
+/* Navigation Panel Credits Box */
+.nav-credits-box {
+  background-color: var(--theme-bg-tertiary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+}
+
+/* Navigation Panel Icon Color */
+.nav-icon-color {
+  color: var(--theme-text-secondary) !important;
+}
+
+.nav-icon-color:hover {
+  color: var(--theme-text-primary) !important;
+}
+
+/* Tree Node Styling for PanelT1 */
+.tree-node-default {
+  color: var(--theme-text-secondary) !important;
+}
+
+.tree-node-selected {
+  background-color: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Selected node with hover - ensure good contrast */
+.tree-node-selected:hover {
+  background-color: var(--theme-accent-hover) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Panel Stats Box */
+.panel-stats-box {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+/* Panel Info Box */
+.panel-info-box {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+/* Panel Tree Container */
+.panel-tree-container {
+  background-color: var(--theme-bg-tertiary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+}
+
+/* Panel Button */
+.panel-btn {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.panel-btn:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Project Panel Card Styling */
+.project-panel-card .p-card-header,
+.project-panel-card .p-card-title {
+  color: var(--theme-text-primary) !important;
+  background: transparent !important;
+}
+
+.project-panel-card .p-card-body {
+  background: transparent !important;
+}
+
+.project-panel-card .p-card-content {
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+}
+
+/* Project Panel DataTable Styling */
+.project-panel-datatable {
+  background: transparent !important;
+}
+
+.project-panel-datatable .p-datatable-header {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.project-panel-datatable .p-datatable-thead > tr > th {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-secondary) !important;
+}
+
+.project-panel-datatable .p-datatable-tbody > tr {
+  background: transparent !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.project-panel-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.project-panel-datatable .p-datatable-tbody > tr:hover {
+  background: var(--theme-bg-hover) !important;
+}
+
+.project-panel-datatable .p-paginator {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-secondary) !important;
+}
+
+.project-panel-datatable .p-paginator .p-paginator-pages .p-paginator-page {
+  color: var(--theme-text-secondary) !important;
+}
+
+.project-panel-datatable .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+.project-panel-datatable .p-paginator .p-dropdown {
+  background: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.project-panel-datatable .p-datatable-emptymessage td {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Dialog Styling - uses CSS variables from ThemeContext */
+.p-dialog,
+.p-dialog.p-dialog-custom,
+.p-dialog.resource-unlock-modal {
+  background: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+}
+
+/* Dialog Header - consistent dark blue with light text across all themes */
+.p-dialog .p-dialog-header,
+.p-dialog.p-dialog-custom .p-dialog-header,
+.p-dialog.resource-unlock-modal .p-dialog-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%) !important;
+  border-bottom: 1px solid #1e40af !important;
+  color: #f3f4f6 !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-title,
+.p-dialog.p-dialog-custom .p-dialog-header .p-dialog-title,
+.p-dialog.resource-unlock-modal .p-dialog-header .p-dialog-title {
+  color: #f3f4f6 !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-header-icon {
+  color: #d1d5db !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-header-icon:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.p-dialog .p-dialog-content {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-dialog-footer {
+  background: var(--theme-bg-tertiary) !important;
+  border-top: 1px solid var(--theme-border-secondary) !important;
+}
+
+/* TabView in Dialogs */
+.p-dialog .p-tabview {
+  background: transparent !important;
+}
+
+.p-dialog .p-tabview .p-tabview-nav {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.p-dialog .p-tabview .p-tabview-nav li .p-tabview-nav-link {
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.p-dialog .p-tabview .p-tabview-nav li .p-tabview-nav-link:hover {
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog .p-tabview .p-tabview-panels {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* InputText in Dialogs */
+.p-dialog .p-inputtext {
+  background: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-inputtext:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
+}
+
+.p-dialog .p-inputtext::placeholder {
+  color: var(--theme-text-muted) !important;
+}
+
+/* InputTextarea in Dialogs */
+.p-dialog .p-inputtextarea {
+  background: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-inputtextarea:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
+}
+
+/* Dropdown in Dialogs */
+.p-dialog .p-dropdown {
+  background: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.p-dialog .p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-dropdown .p-dropdown-trigger {
+  color: var(--theme-text-secondary) !important;
+}
+
+/* Labels in Dialogs */
+.p-dialog label {
+  color: var(--theme-text-primary) !important;
+}
+
+/* Helper text in Dialogs */
+.p-dialog .text-xs.text-gray-400,
+.p-dialog .text-gray-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Checkbox styling in dialogs - ONLY for native checkboxes, NOT PrimeReact Checkbox */
+/* Use :not(.p-checkbox-input) to exclude PrimeReact's internal checkbox input */
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input) {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  background-color: var(--theme-bg-primary) !important;
+  border: 2px solid var(--theme-border-secondary) !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  vertical-align: middle !important;
+}
+
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input):hover {
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input):checked {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input):checked::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 4px !important;
+  top: 0px !important;
+  width: 6px !important;
+  height: 10px !important;
+  border: solid white !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: rotate(45deg) !important;
+}
+
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input):focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--theme-accent-transparent) !important;
+}
+
+.p-dialog input[type="checkbox"]:not(.p-checkbox-input):not(.p-hidden-accessible input):disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Ensure PrimeReact Checkbox is properly clickable */
+.p-dialog .p-checkbox {
+  display: inline-flex !important;
+  cursor: pointer !important;
+  position: relative !important;
+  vertical-align: middle !important;
+}
+
+.p-dialog .p-checkbox .p-checkbox-input {
+  cursor: pointer !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Radio button styling in dialogs */
+.p-dialog input[type="radio"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  background-color: var(--theme-bg-primary) !important;
+  border: 2px solid var(--theme-border-secondary) !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  vertical-align: middle !important;
+}
+
+.p-dialog input[type="radio"]:hover {
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog input[type="radio"]:checked {
+  background-color: var(--theme-bg-primary) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog input[type="radio"]:checked::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 3px !important;
+  top: 3px !important;
+  width: 8px !important;
+  height: 8px !important;
+  background-color: var(--theme-accent) !important;
+  border-radius: 50% !important;
+}
+
+.p-dialog input[type="radio"]:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--theme-accent-transparent) !important;
+}
+
+.p-dialog input[type="radio"]:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Override Tailwind gray classes in dialogs for theme support */
+.p-dialog .text-gray-100 {
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .text-gray-200 {
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .text-gray-300 {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-dialog .text-gray-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+.p-dialog .text-gray-500 {
+  color: var(--theme-text-muted) !important;
+}
+
+.p-dialog .bg-gray-700 {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.p-dialog .bg-gray-800 {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.p-dialog .border-gray-600 {
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.p-dialog .border-gray-700 {
+  border-color: var(--theme-border-secondary) !important;
+}
+
+/* Yellow/warning boxes in dialogs */
+.p-dialog .bg-yellow-900\/20,
+.p-dialog .bg-yellow-900\/30 {
+  background-color: var(--theme-warning-bg) !important;
+}
+
+.p-dialog .border-yellow-700,
+.p-dialog .border-yellow-600 {
+  border-color: var(--theme-warning-text) !important;
+}
+
+.p-dialog .text-yellow-300,
+.p-dialog .text-yellow-400 {
+  color: var(--theme-warning-text) !important;
+}
+
+/* Red/error boxes in dialogs */
+.p-dialog .bg-red-900\/20,
+.p-dialog .bg-red-900\/30 {
+  background-color: var(--theme-error-bg) !important;
+}
+
+.p-dialog .border-red-700,
+.p-dialog .border-red-600 {
+  border-color: var(--theme-error-text) !important;
+}
+
+.p-dialog .text-red-300,
+.p-dialog .text-red-400 {
+  color: var(--theme-error-text) !important;
+}
+
+/* Green/success boxes in dialogs */
+.p-dialog .bg-green-900\/20,
+.p-dialog .bg-green-900\/30 {
+  background-color: var(--theme-success-bg) !important;
+}
+
+.p-dialog .border-green-700,
+.p-dialog .border-green-600 {
+  border-color: var(--theme-success-text) !important;
+}
+
+.p-dialog .text-green-300,
+.p-dialog .text-green-400 {
+  color: var(--theme-success-text) !important;
+}
+
+/* Blue/info text in dialogs */
+.p-dialog .text-blue-300,
+.p-dialog .text-blue-400 {
+  color: var(--theme-accent) !important;
+}
+
+/* Textarea in dialogs */
+.p-dialog textarea {
+  background-color: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog textarea:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-transparent) !important;
+}
+
+/* HR in dialogs */
+.p-dialog hr {
+  border-color: var(--theme-border-secondary) !important;
+}
+
+/* PrimeReact Checkbox in dialogs */
+.p-dialog .p-checkbox .p-checkbox-box {
+  background-color: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  border-width: 2px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.p-dialog .p-checkbox .p-checkbox-box.p-highlight {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog .p-checkbox:not(.p-checkbox-disabled) .p-checkbox-box:hover {
+  border-color: var(--theme-accent) !important;
+}
+
+.p-dialog .p-checkbox .p-checkbox-box .p-checkbox-icon {
+  color: white !important;
+  font-size: 12px !important;
+}
+
+/* Global PrimeReact Button Styling */
+/* Text buttons - blue background, white text/icon (exclude landing page buttons) */
+.p-button.p-button-text:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn) {
+  background: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border: none !important;
+}
+
+.p-button.p-button-text:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn):hover {
+  background: var(--theme-accent-hover) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+.p-button.p-button-text:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn):focus {
+  box-shadow: 0 0 0 2px var(--theme-accent-transparent) !important;
+}
+
+.p-button.p-button-text:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn) .p-button-icon {
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Outlined buttons - blue background, white text/icon (exclude landing page buttons) */
+.p-button.p-button-outlined:not(.landing-header-btn) {
+  background: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-button-primary) !important;
+}
+
+.p-button.p-button-outlined:not(.landing-header-btn):hover {
+  background: var(--theme-accent-hover) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-accent-hover) !important;
+}
+
+.p-button.p-button-outlined:not(.landing-header-btn) .p-button-icon {
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Rounded buttons (action buttons in tables) - blue background, white icon (exclude landing page buttons) */
+.p-button.p-button-rounded:not(.landing-social-btn) {
+  background: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-button-primary) !important;
+}
+
+.p-button.p-button-rounded:not(.landing-social-btn):hover {
+  background: var(--theme-accent-hover) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+.p-button.p-button-rounded:not(.landing-social-btn) .p-button-icon {
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Rounded text buttons - transparent background, accent icon (high specificity) */
+button.p-button.p-button-rounded.p-button-text,
+button.p-button.p-button-text.p-button-rounded,
+.p-button.p-button-rounded.p-button-text.p-button-sm,
+.p-button.p-button-text.p-button-rounded.p-button-sm {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--theme-accent) !important;
+  border: none !important;
+}
+
+button.p-button.p-button-rounded.p-button-text:hover,
+button.p-button.p-button-text.p-button-rounded:hover,
+.p-button.p-button-rounded.p-button-text.p-button-sm:hover,
+.p-button.p-button-text.p-button-rounded.p-button-sm:hover {
+  background: var(--theme-bg-hover) !important;
+  background-color: var(--theme-bg-hover) !important;
+  color: var(--theme-accent) !important;
+}
+
+button.p-button.p-button-rounded.p-button-text .p-button-icon,
+button.p-button.p-button-text.p-button-rounded .p-button-icon,
+.p-button.p-button-rounded.p-button-text.p-button-sm .p-button-icon,
+.p-button.p-button-text.p-button-rounded.p-button-sm .p-button-icon {
+  color: var(--theme-accent) !important;
+}
+
+/* Specific button severity overrides */
+.p-button.p-button-danger {
+  background: var(--theme-error-text) !important;
+  border-color: var(--theme-error-text) !important;
+  color: white !important;
+}
+
+.p-button.p-button-danger:hover {
+  background: #dc2626 !important;
+  color: white !important;
+}
+
+.p-button.p-button-danger .p-button-icon {
+  color: white !important;
+}
+
+.p-button.p-button-success {
+  background: var(--theme-success-text) !important;
+  border-color: var(--theme-success-text) !important;
+  color: white !important;
+}
+
+.p-button.p-button-success:hover {
+  background: #16a34a !important;
+  color: white !important;
+}
+
+.p-button.p-button-success .p-button-icon {
+  color: white !important;
+}
+
+.p-button.p-button-warning {
+  background: var(--theme-warning-text) !important;
+  border-color: var(--theme-warning-text) !important;
+  color: white !important;
+}
+
+.p-button.p-button-warning:hover {
+  background: #d97706 !important;
+  color: white !important;
+}
+
+.p-button.p-button-warning .p-button-icon {
+  color: white !important;
+}
+
+.p-button.p-button-info {
+  background: var(--theme-info-text) !important;
+  border-color: var(--theme-info-text) !important;
+  color: white !important;
+}
+
+.p-button.p-button-info:hover {
+  background: #0284c7 !important;
+  color: white !important;
+}
+
+.p-button.p-button-info .p-button-icon {
+  color: white !important;
+}
+
+/* PickList styling for dialogs */
+.p-dialog .p-picklist {
+  background: transparent !important;
+}
+
+.p-dialog .p-picklist .p-picklist-list-wrapper {
+  background-color: var(--theme-bg-tertiary) !important;
+  border: 1px solid var(--theme-border-secondary) !important;
+  border-radius: 6px !important;
+}
+
+.p-dialog .p-picklist .p-picklist-header {
+  background-color: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+  border-bottom: 1px solid var(--theme-border-secondary) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.p-dialog .p-picklist .p-picklist-list {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-picklist .p-picklist-item {
+  color: var(--theme-text-primary) !important;
+  background: transparent !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+.p-dialog .p-picklist .p-picklist-item:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+.p-dialog .p-picklist .p-picklist-item.p-highlight {
+  background-color: var(--theme-accent-transparent) !important;
+  color: var(--theme-accent) !important;
+}
+
+.p-dialog .p-picklist .p-picklist-buttons {
+  padding: 0 0.5rem !important;
+}
+
+.p-dialog .p-picklist .p-picklist-buttons .p-button {
+  background-color: var(--theme-button-primary) !important;
+  border-color: var(--theme-button-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  margin: 0.25rem 0 !important;
+}
+
+.p-dialog .p-picklist .p-picklist-buttons .p-button:hover {
+  background-color: var(--theme-accent-hover) !important;
+}
+
+.p-dialog .p-picklist .p-picklist-buttons .p-button:disabled {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-muted) !important;
+  opacity: 0.5 !important;
+}
+
+.p-dialog .p-picklist .p-picklist-filter-container {
+  padding: 0.5rem !important;
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.p-dialog .p-picklist .p-picklist-filter-container .p-inputtext {
+  background-color: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Team Panel Card Styling */
+.team-panel-card .p-card-title {
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-card .p-card-content {
+  padding-top: 0.5rem !important;
+}
+
+/* Team Panel DataTable Styling */
+.team-panel-datatable {
+  background-color: transparent !important;
+}
+
+.team-panel-datatable .p-datatable-header {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-datatable-thead > tr > th {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-datatable-tbody > tr {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-datatable-tbody > tr:nth-child(even) {
+  background-color: var(--theme-bg-secondary) !important;
+}
+
+.team-panel-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-datatable-tbody > tr:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Team Panel DataTable Pagination (Footer) */
+.team-panel-datatable .p-paginator {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-current {
+  color: var(--theme-text-secondary) !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-first,
+.team-panel-datatable .p-paginator .p-paginator-prev,
+.team-panel-datatable .p-paginator .p-paginator-next,
+.team-panel-datatable .p-paginator .p-paginator-last {
+  background-color: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border: none !important;
+  min-width: 2.5rem !important;
+  height: 2.5rem !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-first:hover,
+.team-panel-datatable .p-paginator .p-paginator-prev:hover,
+.team-panel-datatable .p-paginator .p-paginator-next:hover,
+.team-panel-datatable .p-paginator .p-paginator-last:hover {
+  background-color: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-first:disabled,
+.team-panel-datatable .p-paginator .p-paginator-prev:disabled,
+.team-panel-datatable .p-paginator .p-paginator-next:disabled,
+.team-panel-datatable .p-paginator .p-paginator-last:disabled {
+  color: var(--theme-text-muted) !important;
+  opacity: 0.5 !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-pages .p-paginator-page {
+  background-color: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border: none !important;
+  min-width: 2.5rem !important;
+  height: 2.5rem !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-pages .p-paginator-page:hover {
+  background-color: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background-color: var(--theme-accent) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+/* Paginator Dropdown (rows per page) */
+.team-panel-datatable .p-paginator .p-dropdown {
+  background-color: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+.team-panel-datatable .p-paginator .p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary) !important;
+}
+
+.team-panel-datatable .p-paginator .p-dropdown .p-dropdown-trigger {
+  color: var(--theme-text-secondary) !important;
+}
+
+/* Empty message */
+.team-panel-datatable .p-datatable-emptymessage td {
+  color: var(--theme-text-muted) !important;
+  text-align: center !important;
+}
+
+/* ===========================================
+   Landing Page Button Styling
+   Using doubled selectors for maximum specificity
+   =========================================== */
+
+/* Landing page header buttons - theme-aware styling */
+.landing-header-btn.landing-header-btn.p-button.p-button-text {
+  color: var(--theme-text-primary) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.landing-header-btn.landing-header-btn.p-button.p-button-text:hover {
+  background-color: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.landing-header-btn.landing-header-btn.p-button.p-button-outlined {
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-primary) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.landing-header-btn.landing-header-btn.p-button.p-button-outlined:hover {
+  background-color: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Landing page Go to App button - orange gradient */
+.landing-goto-app-btn.landing-goto-app-btn.p-button {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4) !important;
+}
+
+.landing-goto-app-btn.landing-goto-app-btn.p-button:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.6) !important;
+}
+
+/* Landing page CTA section buttons - orange gradient */
+.landing-cta-btn.landing-cta-btn.p-button {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.5) !important;
+}
+
+.landing-cta-btn.landing-cta-btn.p-button:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.7) !important;
+}
+
+/* Landing page footer social buttons - ULTIMATE specificity */
+.landing-social-btn.landing-social-btn.landing-social-btn.p-button.p-button-text.p-button-rounded,
+footer .landing-social-btn.p-button.p-button-text.p-button-rounded,
+button.landing-social-btn.p-button.p-button-text.p-button-rounded {
+  color: #ffffff !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+}
+
+.landing-social-btn.landing-social-btn.landing-social-btn.p-button.p-button-text.p-button-rounded:hover,
+.landing-social-btn.landing-social-btn.landing-social-btn.p-button.p-button-text.p-button-rounded:focus,
+footer .landing-social-btn.p-button.p-button-text.p-button-rounded:hover,
+footer .landing-social-btn.p-button.p-button-text.p-button-rounded:focus,
+button.landing-social-btn.p-button.p-button-text.p-button-rounded:hover,
+button.landing-social-btn.p-button.p-button-text.p-button-rounded:focus {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.landing-social-btn.landing-social-btn.landing-social-btn .p-button-icon,
+footer .landing-social-btn .p-button-icon,
+button.landing-social-btn .p-button-icon {
+  color: #ffffff !important;
+}
+
+/* Language Selector button - ULTIMATE specificity */
+.landing-lang-selector.landing-lang-selector.landing-lang-selector.p-button.p-button-text,
+header .landing-lang-selector.p-button.p-button-text,
+button.landing-lang-selector.p-button.p-button-text {
+  color: #ffffff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+}
+
+.landing-lang-selector.landing-lang-selector.landing-lang-selector.p-button.p-button-text:hover,
+.landing-lang-selector.landing-lang-selector.landing-lang-selector.p-button.p-button-text:focus,
+header .landing-lang-selector.p-button.p-button-text:hover,
+header .landing-lang-selector.p-button.p-button-text:focus,
+button.landing-lang-selector.p-button.p-button-text:hover,
+button.landing-lang-selector.p-button.p-button-text:focus {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.landing-lang-selector.landing-lang-selector.landing-lang-selector span,
+.landing-lang-selector.landing-lang-selector.landing-lang-selector .p-button-label,
+header .landing-lang-selector span,
+header .landing-lang-selector .p-button-label,
+button.landing-lang-selector span,
+button.landing-lang-selector .p-button-label {
+  color: #ffffff !important;
+}
+
+/* ========== FormDesignerPanel Theme Styles ========== */
+
+/* Element toolbar buttons hover */
+.form-designer-panel .element-toolbar-btn:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+.form-designer-panel .element-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Properties panel labels */
+.form-designer-panel .prop-label {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--theme-text-muted) !important;
+}
+
+/* Properties panel section headers */
+.form-designer-panel .prop-section-header {
+  color: var(--theme-text-secondary) !important;
+}
+
+/* Properties panel dividers */
+.form-designer-panel .prop-divider {
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* PrimeReact InputText in form designer */
+.form-designer-panel .p-inputtext {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel .p-inputtext:enabled:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent) !important;
+}
+
+.form-designer-panel .p-inputtext:disabled {
+  background-color: var(--theme-bg-secondary) !important;
+  opacity: 0.7;
+}
+
+/* PrimeReact InputNumber in form designer */
+.form-designer-panel .p-inputnumber .p-inputtext {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel .p-inputnumber .p-inputtext:enabled:focus {
+  border-color: var(--theme-accent) !important;
+}
+
+.form-designer-panel .p-inputnumber-button {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel .p-inputnumber-button:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* PrimeReact Dropdown in form designer */
+.form-designer-panel .p-dropdown {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.form-designer-panel .p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel .p-dropdown .p-dropdown-trigger {
+  color: var(--theme-text-muted) !important;
+}
+
+.form-designer-panel .p-dropdown:not(.p-disabled):hover {
+  border-color: var(--theme-accent) !important;
+}
+
+.form-designer-panel .p-dropdown:not(.p-disabled).p-focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent) !important;
+}
+
+/* Dropdown panel (portal) */
+.form-designer-dropdown-panel {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.form-designer-dropdown-panel .p-dropdown-items {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.form-designer-dropdown-panel .p-dropdown-item {
+  color: var(--theme-text-primary) !important;
+  background-color: transparent !important;
+}
+
+.form-designer-dropdown-panel .p-dropdown-item:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+.form-designer-dropdown-panel .p-dropdown-item.p-highlight {
+  background-color: var(--theme-accent) !important;
+  color: #ffffff !important;
+}
+
+/* Native select elements in form designer */
+.form-designer-panel select {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel select:focus {
+  border-color: var(--theme-accent) !important;
+  outline: none;
+}
+
+.form-designer-panel select option {
+  background-color: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Color input styling */
+.form-designer-panel input[type="color"] {
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* Info message when no element selected */
+.form-designer-panel .no-selection-info {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Dialog modals for form designer */
+.form-designer-modal .p-dialog-content {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-modal .p-dialog-header {
+  background-color: var(--theme-dialog-header) !important;
+  color: var(--theme-text-primary) !important;
+  border-bottom: none !important;
+}
+
+.form-designer-modal .p-dialog-header .p-dialog-title {
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon {
+  color: var(--theme-text-muted) !important;
+}
+
+.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon:hover {
+  color: var(--theme-text-primary) !important;
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Modal labels and text */
+.form-designer-modal label {
+  color: var(--theme-text-secondary) !important;
+}
+
+.form-designer-modal small {
+  color: var(--theme-text-muted) !important;
+}
+
+.form-designer-modal p {
+  color: var(--theme-text-secondary) !important;
+}
+
+/* Modal inputs */
+.form-designer-modal .p-inputtext,
+.form-designer-modal .p-inputtextarea {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-modal .p-inputtext:enabled:focus,
+.form-designer-modal .p-inputtextarea:enabled:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent) !important;
+}
+
+/* Modal dropdown */
+.form-designer-modal .p-dropdown {
+  background-color: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.form-designer-modal .p-dropdown .p-dropdown-label {
+  color: var(--theme-text-primary) !important;
+}
+
+.form-designer-modal .p-dropdown .p-dropdown-trigger {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Modal dividers */
+.form-designer-modal .border-gray-700 {
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* Unlock modal specific */
+.form-designer-modal .unlock-pricing-box {
+  background-color: var(--theme-bg-secondary) !important;
+}
+
+/* Color reset button hover states */
+.form-designer-panel .color-reset-btn:hover {
+  color: #f87171 !important; /* red-400 */
+  background-color: var(--theme-bg-hover) !important;
+}
+
+/* Color input borders */
+.form-designer-panel input[type="color"] {
+  border: 1px solid var(--theme-border-primary) !important;
+}
+
+/* Color swatch displays */
+.form-designer-panel .color-swatch {
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* Preview container border in Edit Modal */
+.form-designer-modal .color-preview-container {
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* FormSet color preview - use CSS custom properties to override modal styling */
+.form-designer-modal .formset-color-preview .preview-text {
+  color: var(--preview-text-color) !important;
+}
+
+.form-designer-modal .formset-color-preview .preview-button {
+  color: var(--preview-button-text-color) !important;
+}
+
+/* React Flow MiniMap styling */
+.form-designer-panel .react-flow__minimap,
+.panelt2-container .react-flow__minimap {
+  background-color: var(--theme-bg-secondary) !important;
+  border: 2px solid var(--theme-border-primary) !important;
+  border-radius: 4px;
+}
+
+.form-designer-panel .react-flow__minimap-mask,
+.panelt2-container .react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* React Flow Controls styling */
+.form-designer-panel .react-flow__controls {
+  background-color: var(--theme-bg-secondary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
+  border-radius: 4px;
+}
+
+.form-designer-panel .react-flow__controls-button {
+  background-color: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+  color: var(--theme-text-primary) !important;
+  fill: var(--theme-text-primary) !important;
+}
+
+.form-designer-panel .react-flow__controls-button:hover {
+  background-color: var(--theme-bg-tertiary) !important;
+}
+
+.form-designer-panel .react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+/* ============================================================
+   PrimeReact Editor (Quill) Dark Mode Styling
+   Makes toolbar icons visible in dark theme
+   Using maximum specificity to override Quill defaults
+   ============================================================ */
+
+/* Editor container */
+.p-editor-container.p-editor-container {
+  background: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* Editor toolbar background */
+.p-editor-container.p-editor-container .p-editor-toolbar,
+.p-editor-container.p-editor-container .p-editor-toolbar.ql-toolbar,
+.p-editor-container.p-editor-container .ql-toolbar.ql-snow {
+  background: var(--theme-bg-tertiary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* ALL toolbar SVG strokes - maximum specificity */
+.p-editor-container .ql-snow.ql-toolbar .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar .ql-stroke,
+.p-editor-container .ql-toolbar.ql-snow .ql-stroke,
+.p-editor-container .ql-snow.ql-toolbar button .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar button .ql-stroke,
+.ql-snow.ql-toolbar .ql-stroke,
+.ql-snow .ql-toolbar .ql-stroke,
+.ql-toolbar.ql-snow .ql-stroke {
+  stroke: #9ca3af !important; /* Light gray - always visible */
+}
+
+/* ALL toolbar SVG fills */
+.p-editor-container .ql-snow.ql-toolbar .ql-fill,
+.p-editor-container .ql-snow .ql-toolbar .ql-fill,
+.p-editor-container .ql-toolbar.ql-snow .ql-fill,
+.p-editor-container .ql-snow.ql-toolbar button .ql-fill,
+.p-editor-container .ql-snow .ql-toolbar button .ql-fill,
+.ql-snow.ql-toolbar .ql-fill,
+.ql-snow .ql-toolbar .ql-fill,
+.ql-toolbar.ql-snow .ql-fill {
+  fill: #9ca3af !important; /* Light gray - always visible */
+}
+
+/* Hover states - brighter */
+.p-editor-container .ql-snow.ql-toolbar button:hover .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar button:hover .ql-stroke,
+.ql-snow.ql-toolbar button:hover .ql-stroke,
+.ql-snow .ql-toolbar button:hover .ql-stroke {
+  stroke: #e5e7eb !important; /* Even lighter on hover */
+}
+
+.p-editor-container .ql-snow.ql-toolbar button:hover .ql-fill,
+.p-editor-container .ql-snow .ql-toolbar button:hover .ql-fill,
+.ql-snow.ql-toolbar button:hover .ql-fill,
+.ql-snow .ql-toolbar button:hover .ql-fill {
+  fill: #e5e7eb !important;
+}
+
+/* Active state - accent color */
+.p-editor-container .ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar button.ql-active .ql-stroke,
+.ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.ql-snow .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #3b82f6 !important; /* Blue when active */
+}
+
+.p-editor-container .ql-snow.ql-toolbar button.ql-active .ql-fill,
+.p-editor-container .ql-snow .ql-toolbar button.ql-active .ql-fill,
+.ql-snow.ql-toolbar button.ql-active .ql-fill,
+.ql-snow .ql-toolbar button.ql-active .ql-fill {
+  fill: #3b82f6 !important;
+}
+
+/* Picker labels (dropdowns) */
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-label,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-label,
+.ql-snow.ql-toolbar .ql-picker-label,
+.ql-snow .ql-toolbar .ql-picker-label {
+  color: #9ca3af !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-label .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-label .ql-stroke,
+.ql-snow.ql-toolbar .ql-picker-label .ql-stroke,
+.ql-snow .ql-toolbar .ql-picker-label .ql-stroke {
+  stroke: #9ca3af !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-label:hover,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-label:hover,
+.ql-snow.ql-toolbar .ql-picker-label:hover,
+.ql-snow .ql-toolbar .ql-picker-label:hover {
+  color: #e5e7eb !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-label:hover .ql-stroke,
+.ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke,
+.ql-snow .ql-toolbar .ql-picker-label:hover .ql-stroke {
+  stroke: #e5e7eb !important;
+}
+
+/* Picker dropdown options */
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-options,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-options,
+.ql-snow.ql-toolbar .ql-picker-options,
+.ql-snow .ql-toolbar .ql-picker-options,
+.ql-snow .ql-picker-options {
+  background: var(--theme-bg-secondary, #1f2937) !important;
+  border-color: var(--theme-border-primary, #374151) !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-item,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-item,
+.ql-snow.ql-toolbar .ql-picker-item,
+.ql-snow .ql-toolbar .ql-picker-item,
+.ql-snow .ql-picker-item {
+  color: #9ca3af !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-item:hover,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-item:hover,
+.ql-snow.ql-toolbar .ql-picker-item:hover,
+.ql-snow .ql-toolbar .ql-picker-item:hover,
+.ql-snow .ql-picker-item:hover {
+  color: #e5e7eb !important;
+  background: var(--theme-bg-tertiary, #374151) !important;
+}
+
+.p-editor-container .ql-snow.ql-toolbar .ql-picker-item.ql-selected,
+.p-editor-container .ql-snow .ql-toolbar .ql-picker-item.ql-selected,
+.ql-snow.ql-toolbar .ql-picker-item.ql-selected,
+.ql-snow .ql-toolbar .ql-picker-item.ql-selected,
+.ql-snow .ql-picker-item.ql-selected {
+  color: #3b82f6 !important;
+}
+
+/* Editor content area */
+.p-editor-container.p-editor-container .p-editor-content,
+.p-editor-container.p-editor-container .ql-container.ql-snow {
+  background: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-editor-container.p-editor-container .p-editor-content .ql-editor,
+.p-editor-container.p-editor-container .ql-container .ql-editor {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Placeholder text */
+.p-editor-container .p-editor-content .ql-editor.ql-blank::before,
+.p-editor-container .ql-container .ql-editor.ql-blank::before {
+  color: var(--theme-text-muted, #6b7280) !important;
+}
+
+/* Tooltip styling for toolbar */
+.ql-snow .ql-tooltip,
+.p-editor-container .ql-snow .ql-tooltip {
+  background: var(--theme-bg-tertiary, #374151) !important;
+  border-color: var(--theme-border-primary, #4b5563) !important;
+  color: var(--theme-text-primary, #f3f4f6) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ql-snow .ql-tooltip input[type="text"],
+.p-editor-container .ql-snow .ql-tooltip input[type="text"] {
+  background: var(--theme-bg-secondary, #1f2937) !important;
+  border-color: var(--theme-border-primary, #374151) !important;
+  color: var(--theme-text-primary, #f3f4f6) !important;
+}
+
+.ql-snow .ql-tooltip a,
+.p-editor-container .ql-snow .ql-tooltip a {
+  color: #3b82f6 !important;
+}
+
+/* ============================================================
+   PrimeReact Success (Green) Button/Tag Dark Mode Fix
+   Makes green more readable with white text in dark theme
+   ============================================================ */
+
+/* Success Buttons - darker green for better contrast (DARK MODE ONLY) */
+.theme-dark .p-button.p-button-success {
+  background: #059669 !important; /* Darker emerald green */
+  border-color: #059669 !important;
+}
+
+.theme-dark .p-button.p-button-success:hover {
+  background: #047857 !important; /* Even darker on hover */
+  border-color: #047857 !important;
+}
+
+.theme-dark .p-button.p-button-success:focus {
+  box-shadow: 0 0 0 2px var(--theme-bg-primary, #111827), 0 0 0 4px #10b981 !important;
+}
+
+/* Success Tags - darker green (DARK MODE ONLY) */
+.theme-dark .p-tag.p-tag-success {
+  background: #059669 !important; /* Darker emerald green */
+}
+
+/* Also apply to inline success badges/spans that use successText color */
+/* These are custom status badges in the code */

@@ -3,6 +3,7 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -10,6 +11,9 @@ interface ErrorFallbackProps {
 }
 
 export default function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
+  // Theme
+  const { colors } = useTheme();
+
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -24,13 +28,13 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
   };
 
   return (
-    <div className="h-full bg-gray-800 text-gray-100 p-4">
-      <Card className="h-full bg-gray-700 border-gray-600">
+    <div className="h-full p-4" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+      <Card className="h-full" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex flex-col items-center justify-center h-full space-y-6 text-center">
           <div className="text-6xl">💥</div>
 
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-red-400">
+            <h2 className="text-2xl font-bold" style={{ color: colors.errorText }}>
               Oops! Etwas ist schiefgelaufen
             </h2>
 
@@ -41,17 +45,17 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
             />
           </div>
 
-          <div className="bg-gray-800 p-4 rounded border border-gray-600 max-w-lg w-full">
-            <h3 className="text-sm font-medium text-gray-300 mb-2">Fehlerdetails:</h3>
-            <pre className="text-xs text-red-300 whitespace-pre-wrap break-words">
+          <div className="p-4 rounded max-w-lg w-full" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Fehlerdetails:</h3>
+            <pre className="text-xs whitespace-pre-wrap break-words" style={{ color: colors.errorText }}>
               {error.message}
             </pre>
             {error.stack && (
               <details className="mt-2">
-                <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                <summary className="text-xs cursor-pointer" style={{ color: colors.textMuted }}>
                   Stack Trace anzeigen
                 </summary>
-                <pre className="text-xs text-gray-500 mt-2 whitespace-pre-wrap break-words max-h-32 overflow-auto">
+                <pre className="text-xs mt-2 whitespace-pre-wrap break-words max-h-32 overflow-auto" style={{ color: colors.textMuted }}>
                   {error.stack}
                 </pre>
               </details>
@@ -63,21 +67,21 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
               label={t.errorfallback58}
               icon="pi pi-refresh"
               onClick={resetError}
-              className="bg-blue-600 hover:bg-blue-700"
+              severity="info"
             />
 
             <Button
               label={t.errorfallback65}
               icon="pi pi-replay"
               onClick={handleReloadWithReset}
-              className="bg-orange-600 hover:bg-orange-700"
+              severity="warning"
               outlined
             />
           </div>
 
-          <div className="text-xs text-gray-400 max-w-md">
+          <div className="text-xs max-w-md" style={{ color: colors.textMuted }}>
             <p className="mb-2">
-              <strong className="text-orange-400">{t.errorfallback75}</strong> Der "{t.errorfallback65}" {t.errorfallback65_2}
+              <strong style={{ color: colors.warningText }}>{t.errorfallback75}</strong> Der "{t.errorfallback65}" {t.errorfallback65_2}
             </p>
             <p>
               {t.errorfallback77}

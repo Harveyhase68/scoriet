@@ -42,6 +42,7 @@ class CliTask extends Model
 
     // Task types constants
     const TYPE_DATABASE_IMPORT = 'database_import';
+    const TYPE_DATABASE_EXPORT = 'database_export';
     const TYPE_PROJECT_DOWNLOAD = 'project_download';
     const TYPE_TEMPLATE_UPLOAD = 'template_upload';
     const TYPE_FILE_EDIT = 'file_edit';

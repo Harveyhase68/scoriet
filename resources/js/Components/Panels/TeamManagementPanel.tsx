@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -10,24 +11,31 @@ import { Badge } from 'primereact/badge';
 import { Toolbar } from 'primereact/toolbar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
+import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import TeamModal from '@/Components/Modals/TeamModal';
 import MemberModal from '@/Components/Modals/MemberModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import '@/Components/Panels/styles.css';
 
-const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
+const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, style = {}, colors, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const setFocus = () => ref.current?.focus();
 
   return (
-    <div 
-      {...rest} 
+    <div
+      {...rest}
       ref={ref}
-      tabIndex={-1} 
-      style={{ flex: 1, padding: '5px 10px', ...style }} 
-      onMouseDownCapture={setFocus} 
+      tabIndex={-1}
+      style={{
+        flex: 1,
+        padding: '5px 10px',
+        backgroundColor: colors.bgSecondary,
+        color: colors.textPrimary,
+        ...style
+      }}
+      onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
     >
       {children}
     </div>
@@ -96,6 +104,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Use Project Context to get current project
   const { selectedProject } = useProject();
@@ -557,7 +566,6 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     if (!teamToLink) return;
 
     try {
-      console.log('Updating team links:', teamToLink.id, 'with projects:', linkedProjectIds);
       const response = await fetch(`/api/teams/${teamToLink.id}/projects`, {
         method: 'PUT',
         headers: {
@@ -568,9 +576,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         body: JSON.stringify({ project_ids: linkedProjectIds })
       });
 
-      console.log('Response status:', response.status);
       const responseData = await response.json();
-      console.log('Response data:', responseData);
 
       if (!response.ok) {
         throw new Error(responseData.error || responseData.message || 'Failed to update team links');
@@ -815,30 +821,35 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   };
 
   return (
-    <TabContent>
+    <TabContent colors={colors}>
       <Toast ref={toast} />
       <ConfirmDialog />
-      
+
       <div className="h-full flex flex-col">
         {/* Header Card */}
-        <Card title={t.panelsewnavigationpanel477} className="m-4 mb-2">
-          <div className="text-sm text-gray-400">
+        <Card
+          title={t.panelsewnavigationpanel477}
+          className="m-4 mb-2 team-panel-card"
+          style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}
+        >
+          <div className="text-sm" style={{ color: colors.textMuted }}>
             {t.teammanagementpanel417}
           </div>
         </Card>
 
         {/* Toolbar */}
         <div className="mx-4 mb-4">
-          <Toolbar 
-            left={leftToolbarTemplate} 
+          <Toolbar
+            left={leftToolbarTemplate}
             right={rightToolbarTemplate}
-            className="border border-gray-200 rounded"
+            className="rounded"
+            style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}
           />
         </div>
 
         {/* Teams Table */}
         <div className="flex-1 mx-4 mb-4">
-          <Card className="h-full">
+          <Card className="h-full team-panel-card" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
             <div className="h-full">
               <DataTable
                 value={teams}
@@ -848,11 +859,18 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 20, 50]}
-                className="p-datatable-sm"
+                className="p-datatable-sm team-panel-datatable themed-datatable"
                 scrollable
                 scrollHeight="500px"
                 sortMode="multiple"
                 removableSort
+                style={{
+                  ['--dt-bg' as string]: colors.bgSecondary,
+                  ['--dt-header-bg' as string]: colors.bgTertiary,
+                  ['--dt-border' as string]: colors.borderPrimary,
+                  ['--dt-text' as string]: colors.textPrimary,
+                  ['--dt-text-secondary' as string]: colors.textSecondary,
+                }}
               >
                 <Column
                   field="name"
@@ -952,33 +970,34 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       >
         {loadingProjects ? (
           <div className="flex justify-center items-center py-8">
-            <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+            <i className="pi pi-spin pi-spinner text-4xl" style={{ color: colors.accent }}></i>
           </div>
         ) : (
           <div className="space-y-2">
             {allProjects.length === 0 ? (
-              <div className="text-center text-gray-500 py-4">
+              <div className="text-center py-4" style={{ color: colors.textMuted }}>
                 Keine Projekte gefunden
               </div>
             ) : (
               allProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded cursor-pointer"
+                  style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}
                   onClick={() => handleToggleProjectLink(project.id)}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgHover)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bgSecondary)}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={linkedProjectIds.includes(project.id)}
                       onChange={() => handleToggleProjectLink(project.id)}
-                      className="w-4 h-4 cursor-pointer"
                       onClick={(e) => e.stopPropagation()}
                     />
                     <div>
-                      <div className="font-semibold text-white">{project.name}</div>
+                      <div className="font-semibold" style={{ color: colors.textPrimary }}>{project.name}</div>
                       {project.description && (
-                        <div className="text-sm text-gray-400">{project.description}</div>
+                        <div className="text-sm" style={{ color: colors.textMuted }}>{project.description}</div>
                       )}
                     </div>
                   </div>
@@ -1027,8 +1046,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       >
         <div className="space-y-4">
           {/* Info Box */}
-          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
-            <p className="text-yellow-300 text-sm flex items-center gap-2">
+          <div className="rounded-lg p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+            <p className="text-sm flex items-center gap-2" style={{ color: colors.warningText }}>
               <i className="pi pi-exclamation-triangle"></i>
               <strong>Achtung:</strong> Nach der Übertragung werden Sie zum Admin und können das Team nicht mehr löschen.
             </p>
@@ -1036,11 +1055,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
           {/* Step 1: Select Recipient */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               1. Wählen Sie den neuen Owner:
             </label>
             {teamMembersForTransfer.length === 0 ? (
-              <div className="text-gray-400 text-sm p-3 border border-gray-600 rounded">
+              <div className="text-sm p-3 rounded" style={{ color: colors.textMuted, border: `1px solid ${colors.borderPrimary}` }}>
                 <i className="pi pi-info-circle mr-2"></i>
                 Keine Team-Mitglieder vorhanden. Fügen Sie zuerst Mitglieder zum Team hinzu.
               </div>
@@ -1049,20 +1068,22 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 {teamMembersForTransfer.map((member) => (
                   <div
                     key={member.user_id}
-                    className={`flex items-center justify-between p-3 border rounded cursor-pointer transition-colors ${
-                      transferRecipientId === member.user_id
-                        ? 'border-blue-500 bg-blue-900/20'
-                        : 'border-gray-600 hover:bg-gray-700'
-                    }`}
+                    className="flex items-center justify-between p-3 rounded cursor-pointer transition-colors"
+                    style={{
+                      border: `1px solid ${transferRecipientId === member.user_id ? colors.accent : colors.borderPrimary}`,
+                      backgroundColor: transferRecipientId === member.user_id ? colors.infoBg : colors.bgSecondary
+                    }}
                     onClick={() => handleCheckTransferEligibility(member.user_id)}
+                    onMouseEnter={(e) => { if (transferRecipientId !== member.user_id) e.currentTarget.style.backgroundColor = colors.bgHover; }}
+                    onMouseLeave={(e) => { if (transferRecipientId !== member.user_id) e.currentTarget.style.backgroundColor = colors.bgSecondary; }}
                   >
                     <div className="flex items-center gap-3">
-                      <i className="pi pi-user text-gray-400"></i>
+                      <i className="pi pi-user" style={{ color: colors.textMuted }}></i>
                       <div>
-                        <div className="font-medium text-white">
+                        <div className="font-medium" style={{ color: colors.textPrimary }}>
                           {member.user.username || member.user.name}
                         </div>
-                        <div className="text-sm text-gray-400">{member.user.email}</div>
+                        <div className="text-sm" style={{ color: colors.textMuted }}>{member.user.email}</div>
                       </div>
                     </div>
                     <Badge value={member.role} severity={member.role === 'admin' ? 'info' : 'secondary'} />
@@ -1075,21 +1096,21 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           {/* Step 2: Show transfer options */}
           {checkingTransfer && (
             <div className="flex justify-center items-center py-4">
-              <i className="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
-              <span className="ml-2 text-gray-400">Prüfe Übertragungsmöglichkeiten...</span>
+              <i className="pi pi-spin pi-spinner text-2xl" style={{ color: colors.accent }}></i>
+              <span className="ml-2" style={{ color: colors.textMuted }}>Prüfe Übertragungsmöglichkeiten...</span>
             </div>
           )}
 
           {transferEligibility && !checkingTransfer && (
-            <div className="border border-gray-600 rounded-lg p-4 space-y-3">
-              <label className="block text-sm font-medium text-gray-300">
+            <div className="rounded-lg p-4 space-y-3" style={{ border: `1px solid ${colors.borderPrimary}` }}>
+              <label className="block text-sm font-medium" style={{ color: colors.textSecondary }}>
                 2. Übertragung an {transferEligibility.recipient.username || transferEligibility.recipient.name}:
               </label>
 
               {/* Recipient is Patron - always OK */}
               {transferEligibility.recipient.is_patron && (
-                <div className="bg-green-900/20 border border-green-700 rounded p-3">
-                  <p className="text-green-300 text-sm flex items-center gap-2">
+                <div className="rounded p-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+                  <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
                     <strong>Patron-User:</strong> Kann unbegrenzt Teams besitzen. Team bleibt aktiv!
                   </p>
@@ -1098,8 +1119,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
               {/* Recipient has available slot - also OK */}
               {!transferEligibility.recipient.is_patron && transferEligibility.transfer_outcomes?.without_slot?.team_active && (
-                <div className="bg-green-900/20 border border-green-700 rounded p-3">
-                  <p className="text-green-300 text-sm flex items-center gap-2">
+                <div className="rounded p-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+                  <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
                     <strong>Slot verfügbar:</strong> Der Empfänger hat freie Team-Slots. Team bleibt aktiv!
                   </p>
@@ -1110,8 +1131,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
               {!transferEligibility.recipient.is_patron &&
                transferEligibility.transfer_outcomes?.without_slot?.team_locked && (
                 <div className="space-y-3">
-                  <div className="bg-orange-900/20 border border-orange-700 rounded p-3">
-                    <p className="text-orange-300 text-sm">
+                  <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+                    <p className="text-sm" style={{ color: colors.warningText }}>
                       <i className="pi pi-exclamation-circle mr-2"></i>
                       Der Empfänger hat keine freien Team-Slots ({transferEligibility.recipient.owned_teams}/{transferEligibility.recipient.max_teams} Teams).
                     </p>
@@ -1120,12 +1141,14 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                   {/* Option A: Transfer with slot (if owner has one) */}
                   {transferEligibility.owner.has_slot && (
                     <div
-                      className={`p-3 border rounded cursor-pointer transition-colors ${
-                        transferWithSlot
-                          ? 'border-green-500 bg-green-900/20'
-                          : 'border-gray-600 hover:bg-gray-700'
-                      }`}
+                      className="p-3 rounded cursor-pointer transition-colors"
+                      style={{
+                        border: `1px solid ${transferWithSlot ? colors.successBorder : colors.borderPrimary}`,
+                        backgroundColor: transferWithSlot ? colors.successBg : colors.bgSecondary
+                      }}
                       onClick={() => setTransferWithSlot(true)}
+                      onMouseEnter={(e) => { if (!transferWithSlot) e.currentTarget.style.backgroundColor = colors.bgHover; }}
+                      onMouseLeave={(e) => { if (!transferWithSlot) e.currentTarget.style.backgroundColor = colors.bgSecondary; }}
                     >
                       <div className="flex items-center gap-2">
                         <input
@@ -1135,14 +1158,14 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                           className="w-4 h-4"
                         />
                         <div className="flex-1">
-                          <div className="font-medium text-white flex items-center gap-2">
-                            <i className="pi pi-check-circle text-green-400"></i>
+                          <div className="font-medium flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                            <i className="pi pi-check-circle" style={{ color: colors.successText }}></i>
                             Slot mitübertragen
                           </div>
-                          <div className="text-sm text-gray-400">
+                          <div className="text-sm" style={{ color: colors.textMuted }}>
                             Sie geben Ihren Team-Slot an den Empfänger ab (läuft ab am{' '}
                             {new Date(transferEligibility.owner.slot_expiry).toLocaleDateString('de-DE')}).
-                            <span className="text-green-400 ml-1">→ Team bleibt aktiv!</span>
+                            <span className="ml-1" style={{ color: colors.successText }}>→ Team bleibt aktiv!</span>
                           </div>
                         </div>
                       </div>
@@ -1151,12 +1174,14 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
                   {/* Option B: Transfer without slot (team will be locked) */}
                   <div
-                    className={`p-3 border rounded cursor-pointer transition-colors ${
-                      !transferWithSlot
-                        ? 'border-orange-500 bg-orange-900/20'
-                        : 'border-gray-600 hover:bg-gray-700'
-                    }`}
+                    className="p-3 rounded cursor-pointer transition-colors"
+                    style={{
+                      border: `1px solid ${!transferWithSlot ? colors.warningBorder : colors.borderPrimary}`,
+                      backgroundColor: !transferWithSlot ? colors.warningBg : colors.bgSecondary
+                    }}
                     onClick={() => setTransferWithSlot(false)}
+                    onMouseEnter={(e) => { if (transferWithSlot) e.currentTarget.style.backgroundColor = colors.bgHover; }}
+                    onMouseLeave={(e) => { if (transferWithSlot) e.currentTarget.style.backgroundColor = colors.bgSecondary; }}
                   >
                     <div className="flex items-center gap-2">
                       <input
@@ -1166,12 +1191,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                         className="w-4 h-4"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-white flex items-center gap-2">
-                          <i className="pi pi-lock text-orange-400"></i>
+                        <div className="font-medium flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                          <i className="pi pi-lock" style={{ color: colors.warningText }}></i>
                           Ohne Slot übertragen
                         </div>
-                        <div className="text-sm text-gray-400">
-                          Das Team wird <span className="text-orange-400">gesperrt</span> übertragen.
+                        <div className="text-sm" style={{ color: colors.textMuted }}>
+                          Das Team wird <span style={{ color: colors.warningText }}>gesperrt</span> übertragen.
                           Der Empfänger kann es später freischalten (50 Credits) oder weitergeben.
                         </div>
                       </div>
@@ -1180,8 +1205,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
                   {/* Info box about locked teams */}
                   {!transferWithSlot && (
-                    <div className="bg-blue-900/20 border border-blue-700 rounded p-3">
-                      <p className="text-blue-300 text-sm">
+                    <div className="rounded p-3" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                      <p className="text-sm" style={{ color: colors.infoText }}>
                         <i className="pi pi-info-circle mr-2"></i>
                         <strong>Info:</strong> Ein gesperrtes Team kann eingesehen aber nicht bearbeitet werden.
                         Der neue Owner kann jederzeit freischalten oder das Team weitergeben.
@@ -1193,21 +1218,21 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
               {/* Warning about project links that will be removed */}
               {transferEligibility.project_links?.unlink_count > 0 && (
-                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mt-3">
-                  <p className="text-red-300 text-sm font-medium flex items-center gap-2 mb-2">
+                <div className="rounded-lg p-3 mt-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+                  <p className="text-sm font-medium flex items-center gap-2 mb-2" style={{ color: colors.errorText }}>
                     <i className="pi pi-exclamation-triangle"></i>
                     {transferEligibility.project_links.unlink_count} Projekt-Verknüpfung(en) werden entfernt:
                   </p>
-                  <ul className="text-red-200 text-sm space-y-1 ml-6">
+                  <ul className="text-sm space-y-1 ml-6" style={{ color: colors.errorText }}>
                     {transferEligibility.project_links.to_unlink.map((project: any) => (
                       <li key={project.id} className="flex items-center gap-2">
-                        <i className="pi pi-times-circle text-red-400"></i>
+                        <i className="pi pi-times-circle" style={{ color: colors.errorText }}></i>
                         <span className="font-medium">{project.name}</span>
-                        <span className="text-red-400 text-xs">(privat, gehört Ihnen)</span>
+                        <span className="text-xs" style={{ color: colors.errorText }}>(privat, gehört Ihnen)</span>
                       </li>
                     ))}
                   </ul>
-                  <p className="text-red-300 text-xs mt-2 border-t border-red-700 pt-2">
+                  <p className="text-xs mt-2 pt-2" style={{ color: colors.errorText, borderTop: `1px solid ${colors.errorBorder}` }}>
                     <i className="pi pi-lightbulb mr-1"></i>
                     <strong>Tipp:</strong> Sie können diese Projekte zuerst an den neuen Owner übertragen, um die Verknüpfung zu behalten.
                   </p>
@@ -1216,12 +1241,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
               {/* Info about projects that will remain linked */}
               {transferEligibility.project_links?.to_keep?.length > 0 && (
-                <div className="bg-green-900/20 border border-green-700 rounded p-3 mt-3">
-                  <p className="text-green-300 text-sm flex items-center gap-2">
+                <div className="rounded p-3 mt-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+                  <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
                     {transferEligibility.project_links.to_keep.length} Projekt-Verknüpfung(en) bleiben erhalten:
                   </p>
-                  <ul className="text-green-200 text-xs mt-1 ml-6">
+                  <ul className="text-xs mt-1 ml-6" style={{ color: colors.successText }}>
                     {transferEligibility.project_links.to_keep.map((project: any) => (
                       <li key={project.id}>
                         {project.name} ({project.reason === 'public' ? 'öffentlich' : 'gehört dem Empfänger'})

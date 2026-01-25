@@ -2955,6 +2955,7 @@ export const es: Translations = {
   newnavigationpanel320: 'Plan de cambio',
   newnavigationpanel325: 'Volver al vestíbulo',
   newnavigationpanel333: 'Cerrar sesión',
+  newnavigationpanel357: 'Kanban Board',
   newnavigationpanel359: 'Cuenta',
   newnavigationpanel364: 'Acceso',
   newnavigationpanel369: 'Registro',
@@ -3339,6 +3340,11 @@ export const es: Translations = {
   projectpanel796: 'Miembros del proyecto',
   projectpanel803: 'Gestión de equipos',
   projectpanel815: 'Invitaciones',
+  projectpanelAttachments: 'Adjuntos',
+  projectpanelKanban: 'Kanban Board',
+  navAgileMethod: 'Métodos Ágiles',
+  projectExport: 'Exportar',
+  projectImport: 'Importar',
   projectpanel822: 'Plantillas',
   projectpanel838: 'Base de datos',
   projectpanel850: 'Todos los proyectos',
@@ -4619,6 +4625,7 @@ export const es: Translations = {
   tryDemoNow: 'Probar demo ahora',
   contactSales: 'Contactar ventas',
   welcomeBack: 'Usuario',
+  goToApp: 'Go to App',
 
   // resources/js\pages\LandingPage.tsx
   landingpage573: 'Usuario',
@@ -4627,6 +4634,7 @@ export const es: Translations = {
   currentPlan: 'Plan {t.freeLabel}',
   freeLabel: 'Gratis',
   freeTier: 'Plan Gratuito',
+  registerFirst: 'Register & Choose Plan',
 
   // resources/js\pages\LandingPage.tsx
   landingpage589: 'MÁS POPULAR',
@@ -4887,6 +4895,30 @@ export const es: Translations = {
 
   // routes\web.php
   web50: '¡Modo demo activado! Los datos se reinician cada 20 minutos.',
+
+  //js/components/AuthModals/CreditPurchaseModal.tsx
+  creditpurchasemodal72: '💳 Buy Credits',
+
+  // resources/js/pages/PublicProjectPage.tsx
+  publicProjectBy: 'by',
+  publicProjectPoweredBy: 'Powered by',
+  publicProjectTagline: 'Enterprise Code Generator',
+  projectSettings: 'Project Settings',
+  languages: 'Languages',
+  dateFormat: 'Date Format',
+  timeFormat: 'Time Format',
+  currency: 'Currency',
+  timezone: 'Timezone',
+  teams: 'Teams',
+  templates: 'Templates',
+  databases: 'Databases',
+  created: 'Created',
+  lastUpdated: 'Last updated',
+
+  // resources/js/Components/Panels/ProjectPanel.tsx - Public Link
+  copyPublicLink: 'Copy Public Link',
+  publicLinkCopied: 'Public link copied to clipboard!',
+  projectNotPublic: 'Project is private - make it public to share',
 
   //resources/js/Components/Panels/FormDesignerPanel.tsx
   formdesignerpanel555: 'Error en la comprobación de acceso',

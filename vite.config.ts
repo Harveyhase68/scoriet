@@ -39,25 +39,62 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
-                // ULTIMATE SOLUTION: No chunking for node_modules
-                // This ensures perfect load order but creates one big vendor chunk
                 manualChunks: (id) => {
-                    // Only split our app code, not vendor libraries
-                    if (!id.includes('node_modules')) {
-                        if (id.includes('/Components/Panels/')) {
-                            return 'panels';
+                    // Large libraries get their own chunks (lazy loaded when needed)
+                    if (id.includes('node_modules')) {
+                        // CodeMirror - all packages together
+                        if (id.includes('@codemirror') || id.includes('codemirror')) {
+                            return 'codemirror';
                         }
-                        if (id.includes('/Components/Modals/')) {
-                            return 'modals';
+                        // ReactFlow - diagram library (~400KB)
+                        if (id.includes('reactflow') || id.includes('@reactflow')) {
+                            return 'reactflow';
                         }
-                        if (id.includes('/Components/AuthModals/')) {
-                            return 'auth';
+                        // JSZip
+                        if (id.includes('jszip')) {
+                            return 'jszip';
                         }
+                        // PrismJS
+                        if (id.includes('prismjs')) {
+                            return 'prism';
+                        }
+                        // Quill editor
+                        if (id.includes('quill')) {
+                            return 'quill';
+                        }
+                        // rc-dock
+                        if (id.includes('rc-dock')) {
+                            return 'rc-dock';
+                        }
+                        // PrimeReact
+                        if (id.includes('primereact')) {
+                            return 'primereact';
+                        }
+                        // i18next - internationalization
+                        if (id.includes('i18next')) {
+                            return 'i18n';
+                        }
+                        // Icon libraries
+                        if (id.includes('lucide-react') || id.includes('@heroicons')) {
+                            return 'icons';
+                        }
+                        // All other node_modules go to vendor
+                        return 'vendor';
                     }
-                    // All node_modules go into default vendor chunk (no explicit return)
+
+                    // App code splitting
+                    if (id.includes('/Components/Panels/')) {
+                        return 'panels';
+                    }
+                    if (id.includes('/Components/Modals/')) {
+                        return 'modals';
+                    }
+                    if (id.includes('/Components/AuthModals/')) {
+                        return 'auth';
+                    }
                 },
             },
         },
-        chunkSizeWarningLimit: 800,
+        chunkSizeWarningLimit: 1500,
     }
 });

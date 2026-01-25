@@ -21,6 +21,7 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 // import EditProjectModal from '@/Components/Modals/EditProjectModal'; // Replaced by ProjectSettingsPanel
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -94,6 +95,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Toast ref for notifications
   const toast = useRef<Toast>(null);
@@ -173,12 +175,20 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const [loadingTemplatesData, setLoadingTemplatesData] = useState(false);
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [loadingMembersData, setLoadingMembersData] = useState(false);
+  const [projectAttachments, setProjectAttachments] = useState<any[]>([]);
+  const [loadingAttachmentsData, setLoadingAttachmentsData] = useState(false);
 
   // Project unlock and plan modals
   const [showProjectUnlockModal, setShowProjectUnlockModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Project Export
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportPreview, setExportPreview] = useState<any>(null);
+  const [exportFormat, setExportFormat] = useState<'zip' | 'tar.gz' | 'tar.xz'>('zip');
 
   // Unlock expired project subscription
   const [projectToUnlock, setProjectToUnlock] = useState<Project | null>(null);
@@ -282,6 +292,28 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       setProjectMembers([]);
     } finally {
       setLoadingMembersData(false);
+    }
+  };
+
+  const loadProjectAttachments = async (projectId: number) => {
+    setLoadingAttachmentsData(true);
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const response = await fetch(`/api/projects/${projectId}/attachments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjectAttachments(data.attachments || []);
+      }
+    } catch {
+      setProjectAttachments([]);
+    } finally {
+      setLoadingAttachmentsData(false);
     }
   };
 
@@ -804,6 +836,111 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
   };
 
+  // Export functions
+  const openExportDialog = async () => {
+    if (!currentProject) return;
+
+    setShowExportDialog(true);
+    setExportLoading(true);
+    setExportPreview(null);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/projects/${currentProject.id}/export/preview`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load export preview');
+      }
+
+      const preview = await response.json();
+      setExportPreview(preview);
+    } catch (err) {
+      console.error('Export preview error:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: 'Export-Vorschau konnte nicht geladen werden',
+        life: 3000
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const executeExport = async () => {
+    if (!currentProject) return;
+
+    setExportLoading(true);
+
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Create a download link for the export
+      const response = await fetch(`/api/projects/${currentProject.id}/export?format=${exportFormat}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Export failed');
+      }
+
+      // Get the filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `project_${currentProject.name.toLowerCase().replace(/\s+/g, '_')}.${exportFormat}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Erfolg',
+        detail: 'Projekt wurde erfolgreich exportiert',
+        life: 3000
+      });
+
+      setShowExportDialog(false);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Fehler',
+        detail: err instanceof Error ? err.message : 'Export fehlgeschlagen',
+        life: 3000
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const statusTemplate = (project: Project) => {
     if (project.is_soft_locked) {
       return (
@@ -854,7 +991,6 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <Button
             icon="pi pi-eye"
             className="p-button-rounded p-button-sm"
-            style={{ backgroundColor: '#1976d2', borderColor: '#1976d2', color: 'white' }}
             tooltip={t.projectpanel562}
             onClick={() => {
               setSelectedProjectForOverview(project);
@@ -863,13 +999,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               loadTeamsForProject(project.id);
               loadSchemasForProject(project.id);
               loadTemplatesForProject(project.id);
+              loadProjectAttachments(project.id);
             }}
           />
           <Button
             icon={unlockingProject && projectToUnlock?.id === project.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
             label="50 Credits"
             className="p-button-rounded p-button-sm"
-            style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
             tooltip="Projekt entsperren (50 Credits)"
             onClick={() => handleUnlockExpiredProject(project)}
             disabled={unlockingProject}
@@ -884,7 +1020,6 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         <Button
           icon="pi pi-eye"
           className="p-button-rounded p-button-sm"
-          style={{ backgroundColor: '#1976d2', borderColor: '#1976d2', color: 'white' }}
           tooltip={t.projectpanel562}
           onClick={() => {
             setSelectedProjectForOverview(project);
@@ -893,11 +1028,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             loadTeamsForProject(project.id);
             loadSchemasForProject(project.id);
             loadTemplatesForProject(project.id);
+            loadProjectAttachments(project.id);
           }}
         />
         <Button
           icon="pi pi-user"
-          className="p-button-rounded p-button-text p-button-sm"
+          className="p-button-rounded p-button-sm"
           tooltip={t.projectpanel575}
           onClick={() => {
             setShowMembersModal(true);
@@ -905,13 +1041,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         />
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-text p-button-sm"
+          className="p-button-rounded p-button-sm"
           tooltip={t.projectpanel583}
           onClick={() => handleEdit(project)}
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-sm p-button-danger"
+          className="p-button-rounded p-button-sm p-button-danger"
           tooltip={t.projectpanel589}
           onClick={() => confirmDelete(project)}
         />
@@ -921,29 +1057,29 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
   if (contextLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgSecondary }}>
         <Toast ref={toast} position="top-right" />
         <div className="text-center">
-          <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-          <p className="text-gray-600">Loading projects...</p>
+          <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
+          <p style={{ color: colors.textMuted }}>Loading projects...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
+    <div className="flex flex-col h-full" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
       <Toast ref={toast} position="top-right" />
       {/* Header - Fixed at top */}
       <div className="flex-shrink-0 p-6 pb-4">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <i className="pi pi-briefcase text-2xl text-blue-600"></i>
+            <i className="pi pi-briefcase text-2xl" style={{ color: colors.accent }}></i>
             <div>
-              <h1 className="text-2xl font-bold text-white">{t.projectpanel615}</h1>
+              <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.projectpanel615}</h1>
               {currentProject && (
-                <p className="text-sm text-gray-300">
-                  {t.projectpanel119}<span className="text-blue-400 font-medium">{currentProject.name}</span>
+                <p className="text-sm" style={{ color: colors.textSecondary }}>
+                  {t.projectpanel119}<span className="font-medium" style={{ color: colors.accent }}>{currentProject.name}</span>
                 </p>
               )}
             </div>
@@ -994,8 +1130,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <Card
             title={
               <div className="flex items-center justify-between">
-                <span className="flex items-center space-x-2">
-                  <i className="pi pi-star-fill text-yellow-500"></i>
+                <span className="flex items-center space-x-2" style={{ color: colors.textPrimary }}>
+                  <i className="pi pi-star-fill" style={{ color: colors.warningText }}></i>
                   <span>{t.projectpanel671}</span>
                 </span>
                 {currentProject && (
@@ -1008,47 +1144,48 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 )}
               </div>
             }
-            className="h-fit"
+            className="h-fit project-panel-card"
+            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
           >
             {currentProject ? (
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">
+                  <h3 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>
                     {currentProject.name}
                   </h3>
-                  <p className="text-gray-300 text-sm">
+                  <p className="text-sm" style={{ color: colors.textSecondary }}>
                     {currentProject.description || t.joincodemodal220}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-300">{t.projectpanel698}</span>
+                    <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel698}</span>
                     <div className="flex items-center space-x-1 mt-1">
-                      <i className="pi pi-user text-blue-400"></i>
-                      <span className="text-gray-200">{currentProject.owner.name}</span>
+                      <i className="pi pi-user" style={{ color: colors.accent }}></i>
+                      <span style={{ color: colors.textPrimary }}>{currentProject.owner.name}</span>
                     </div>
                   </div>
 
                   <div>
-                    <span className="font-medium text-gray-300">{t.projectpanel706}</span>
-                    <div className="mt-1 text-gray-200">{formatDate(currentProject.created_at)}</div>
+                    <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel706}</span>
+                    <div className="mt-1" style={{ color: colors.textPrimary }}>{formatDate(currentProject.created_at)}</div>
                   </div>
                 </div>
 
                 {/* Join Code Section */}
                 {currentProject.join_code && (
-                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderSecondary}` }}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium text-gray-300 mb-1">Join Code</div>
+                        <div className="text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Join Code</div>
                         <div className="flex items-center space-x-2">
-                          <code className="px-2 py-1 bg-gray-700 rounded text-blue-300 font-mono text-sm">
+                          <code className="px-2 py-1 rounded font-mono text-sm" style={{ backgroundColor: colors.bgTertiary, color: colors.accent }}>
                             {currentProject.join_code}
                           </code>
                           <Button
                             icon="pi pi-copy"
-                            className="p-button-rounded p-button-text p-button-sm"
+                            className="p-button-rounded p-button-sm"
                             tooltip={t.projectpanel724}
                             onClick={() => navigator.clipboard.writeText(currentProject.join_code!)}
                           />
@@ -1062,44 +1199,44 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   </div>
                 )}
 
-                <div className="grid grid-cols-5 gap-4 pt-3 border-t border-gray-600">
+                <div className="grid grid-cols-5 gap-4 pt-3" style={{ borderTop: `1px solid ${colors.borderSecondary}` }}>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-blue-400">
+                    <div className="text-xl font-bold" style={{ color: colors.accent }}>
                       {currentProject.teams_count || 0}
                     </div>
-                    <div className="text-xs text-gray-400">Teams</div>
+                    <div className="text-xs" style={{ color: colors.textMuted }}>Teams</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-cyan-400">
+                    <div className="text-xl font-bold" style={{ color: colors.infoText }}>
                       {currentProject.members_count || 0}
                     </div>
-                    <div className="text-xs text-gray-400">Members</div>
+                    <div className="text-xs" style={{ color: colors.textMuted }}>Members</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-green-400">
+                    <div className="text-xl font-bold" style={{ color: colors.successText }}>
                       {currentProject.templates_count || 0}
                     </div>
-                    <div className="text-xs text-gray-400">Templates</div>
+                    <div className="text-xs" style={{ color: colors.textMuted }}>Templates</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-purple-400">
+                    <div className="text-xl font-bold" style={{ color: '#a855f7' }}>
                       {currentProject.databases_count || 0}
                     </div>
-                    <div className="text-xs text-gray-400">Databases</div>
+                    <div className="text-xs" style={{ color: colors.textMuted }}>Databases</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-orange-400">
+                    <div className="text-xl font-bold" style={{ color: colors.warningText }}>
                       {currentProject.applications_count || 0}
                     </div>
-                    <div className="text-xs text-gray-400">Applications</div>
+                    <div className="text-xs" style={{ color: colors.textMuted }}>Applications</div>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8">
-                <i className="pi pi-briefcase text-6xl text-gray-500 mb-4"></i>
-                <h3 className="text-lg font-medium text-white mb-2">No Active Project</h3>
-                <p className="text-gray-400 mb-4">You don't have an active project yet.</p>
+                <i className="pi pi-briefcase text-6xl mb-4" style={{ color: colors.textMuted }}></i>
+                <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>No Active Project</h3>
+                <p className="mb-4" style={{ color: colors.textMuted }}>You don't have an active project yet.</p>
                 <Button
                   label={t.projectpanel776}
                   icon="pi pi-plus"
@@ -1111,7 +1248,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </Card>
 
           {/* Quick Actions */}
-          <Card title={t.projectpanel786} className="h-fit">
+          <Card
+            title={<span style={{ color: colors.textPrimary }}>{t.projectpanel786}</span>}
+            className="h-fit project-panel-card"
+            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
+          >
             <div className="grid grid-cols-2 gap-3">
               <Button
                 label={t.projectpanel766}
@@ -1147,6 +1288,34 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 disabled={!currentProject}
               />
               <Button
+                label={t.projectpanelAttachments || 'Anhänge'}
+                icon="pi pi-paperclip"
+                className="p-button-outlined flex-col h-14"
+                onClick={() => {
+                  if (currentProject) {
+                    onOpenPanel?.('project-attachments', {
+                      title: `Anhänge - ${currentProject.name}`,
+                      projectId: currentProject.id
+                    });
+                  }
+                }}
+                disabled={!currentProject || !onOpenPanel}
+              />
+              <Button
+                label={t.projectpanelKanban || 'Kanban'}
+                icon="pi pi-th-large"
+                className="p-button-outlined flex-col h-14"
+                onClick={() => {
+                  if (currentProject) {
+                    onOpenPanel?.('kanban-board', {
+                      title: `Kanban - ${currentProject.name}`,
+                      projectId: currentProject.id
+                    });
+                  }
+                }}
+                disabled={!currentProject || !onOpenPanel}
+              />
+              <Button
                 label={t.panelsewnavigationpanel184}
                 icon="pi pi-cog"
                 className="p-button-outlined flex-col h-14"
@@ -1169,42 +1338,62 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}`, filterByProject: true })}
                 disabled={!currentProject || !onOpenPanel}
               />
+              <Button
+                label={t.projectExport || 'Export'}
+                icon="pi pi-download"
+                className="p-button-outlined flex-col h-14"
+                onClick={openExportDialog}
+                disabled={!currentProject || !currentProject.is_owner}
+                title={!currentProject?.is_owner ? 'Nur der Projekt-Owner kann exportieren' : 'Projekt als Archiv exportieren'}
+              />
+              <Button
+                label={t.projectImport || 'Import'}
+                icon="pi pi-upload"
+                className="p-button-outlined flex-col h-14"
+                onClick={() => onOpenPanel?.('project-import', { title: 'Projekt importieren' })}
+                disabled={!onOpenPanel}
+                title="Projekt aus Archiv importieren"
+              />
             </div>
           </Card>
         </div>
 
         {/* Projects List */}
         <div className="space-y-4">
-          <Card title={t.projectpanel850} className="flex-1">
+          <Card
+            title={<span style={{ color: colors.textPrimary }}>{t.projectpanel850}</span>}
+            className="flex-1 project-panel-card"
+            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
+          >
             <DataTable
               value={projects.filter(p => p.id)}
-              className="p-datatable-sm"
+              className="p-datatable-sm project-panel-datatable"
               emptyMessage={t.panelt1813}
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 20]}
             >
               <Column field="name" header={t.manageteammodal316} body={nameTemplate} sortable />
-              <Column 
-                field="owner" 
-                header={t.manageteammodal320} 
+              <Column
+                field="owner"
+                header={t.manageteammodal320}
                 body={ownerTemplate}
                 className="w-40"
               />
-              <Column 
-                field="created_at" 
-                header={t.databasemanagementpanel861} 
+              <Column
+                field="created_at"
+                header={t.databasemanagementpanel861}
                 body={dateTemplate}
                 className="w-32"
                 sortable
               />
-              <Column 
-                header={t.applicationsmodal335} 
+              <Column
+                header={t.applicationsmodal335}
                 body={statusTemplate}
                 className="w-24"
               />
-              <Column 
-                header={t.applicationsmodal354} 
+              <Column
+                header={t.applicationsmodal354}
                 body={actionTemplate}
                 className="w-32"
               />
@@ -1239,7 +1428,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   id="create-name"
                   value={createForm.name}
                   onChange={(e) => {
-                    setCreateForm(prev => ({ ...prev, name: e.target.value }));
+                    // Sanitize: only allow lowercase letters, numbers, and underscores
+                    const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    setCreateForm(prev => ({ ...prev, name: sanitized }));
                     setError(''); // Clear error when user types
                   }}
                   placeholder={t.editprojectmodal240}
@@ -1248,10 +1439,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   required
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  {t.editprojectmodal569}
-                </div>
-                <div className="text-xs text-orange-400 mt-1">
-                  {t.editprojectmodal252}
+                  Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
                 </div>
               </div>
 
@@ -1278,13 +1466,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     checked={createForm.is_public}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, is_public: e.target.checked }))}
                     disabled={creating}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="rounded"
                   />
-                  <label htmlFor="create-is-public" className="text-sm font-medium text-white cursor-pointer">
+                  <label htmlFor="create-is-public" className="text-sm font-medium cursor-pointer">
                     Public Project
                   </label>
                 </div>
-                <p className="text-xs text-gray-400 mb-3">
+                <p className="text-xs mb-3" style={{ color: 'var(--theme-text-muted)' }}>
                   Public projects are visible to all users and can be discovered in the project gallery.
                 </p>
 
@@ -1295,13 +1483,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     checked={createForm.allow_join_requests}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, allow_join_requests: e.target.checked }))}
                     disabled={creating}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="rounded"
                   />
-                  <label htmlFor="create-allow-join" className="text-sm font-medium text-white cursor-pointer">
+                  <label htmlFor="create-allow-join" className="text-sm font-medium cursor-pointer">
                     Allow Join Requests
                   </label>
                 </div>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
                   Users can request to join this project using a join code.
                 </p>
               </div>
@@ -1924,6 +2112,76 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               )}
             </div>
 
+            {/* Attachments Section */}
+            <div className="bg-gray-800 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-3 text-white">
+                <i className="pi pi-paperclip mr-2"></i>
+                {t.projectpanelAttachments || 'Anhänge'}
+              </h3>
+              {loadingAttachmentsData ? (
+                <div className="flex items-center justify-center p-4">
+                  <i className="pi pi-spin pi-spinner text-orange-400 mr-2"></i>
+                  <span className="text-orange-300">Loading attachments...</span>
+                </div>
+              ) : projectAttachments.length > 0 ? (
+                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '250px', overflow: 'auto' }}>
+                  <div className="space-y-2">
+                    {projectAttachments.map((attachment: any) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-2 bg-gray-600 rounded hover:bg-gray-500">
+                        <div className="flex items-center gap-3">
+                          <i className={`${
+                            attachment.mime_type?.startsWith('image/') ? 'pi pi-image text-blue-400' :
+                            attachment.mime_type === 'application/pdf' ? 'pi pi-file-pdf text-red-400' :
+                            attachment.mime_type?.includes('word') ? 'pi pi-file-word text-blue-400' :
+                            attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet') ? 'pi pi-file-excel text-green-400' :
+                            'pi pi-file text-gray-400'
+                          }`}></i>
+                          <div>
+                            <div className="font-medium text-white">{attachment.original_filename}</div>
+                            <div className="text-xs text-gray-400">
+                              {attachment.category_label} • {attachment.formatted_size}
+                              {attachment.is_pinned && <span className="ml-2 text-yellow-400"><i className="pi pi-bookmark-fill"></i></span>}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          icon="pi pi-download"
+                          className="p-button-rounded p-button-text p-button-sm"
+                          tooltip="Herunterladen"
+                          onClick={async () => {
+                            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                            try {
+                              const response = await fetch(`/api/projects/${selectedProjectForOverview?.id}/attachments/${attachment.id}/download`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              if (response.ok) {
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = attachment.original_filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                              }
+                            } catch (err) {
+                              console.error('Download failed:', err);
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-300 italic text-center p-4">
+                  <i className="pi pi-paperclip mr-2"></i>
+                  No attachments yet.
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <div className="flex justify-between items-center pt-4 border-t border-gray-600">
               {/* Left side - Public Link */}
@@ -2037,6 +2295,170 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         onHide={() => setShowPlanModal(false)}
         initialTab={planModalInitialTab}
       />
+
+      {/* Project Export Dialog */}
+      <Dialog
+        visible={showExportDialog}
+        onHide={() => setShowExportDialog(false)}
+        header={
+          <div className="flex items-center gap-2">
+            <i className="pi pi-download text-blue-400"></i>
+            <span>Projekt exportieren</span>
+          </div>
+        }
+        style={{ width: '550px' }}
+        modal
+        closable={!exportLoading}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              label="Abbrechen"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setShowExportDialog(false)}
+              disabled={exportLoading}
+            />
+            <Button
+              label="Exportieren"
+              icon="pi pi-download"
+              onClick={executeExport}
+              loading={exportLoading}
+              disabled={!exportPreview}
+            />
+          </div>
+        }
+      >
+        {exportLoading && !exportPreview ? (
+          <div className="flex items-center justify-center p-8">
+            <i className="pi pi-spin pi-spinner text-4xl text-blue-400"></i>
+          </div>
+        ) : exportPreview ? (
+          <div className="space-y-4">
+            {/* Project Info */}
+            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+              <h4 className="text-lg font-semibold mb-2">{exportPreview.project?.name}</h4>
+              <p className="text-gray-400 text-sm">{exportPreview.project?.description || 'Keine Beschreibung'}</p>
+            </div>
+
+            {/* Export Contents */}
+            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">Enthaltene Daten:</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Anhänge:</span>
+                  <span className="font-medium">{exportPreview.counts?.attachments || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Dateigröße:</span>
+                  <span className="font-medium">{exportPreview.attachment_size_formatted || '0 B'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Schemas:</span>
+                  <span className="font-medium">{exportPreview.counts?.schemas || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Templates:</span>
+                  <span className="font-medium">{exportPreview.counts?.templates || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Code Anpassungen:</span>
+                  <span className="font-medium">{exportPreview.counts?.code_adjustments || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Formulare:</span>
+                  <span className="font-medium">{exportPreview.counts?.form_sets || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Schema Details */}
+            {exportPreview.schema_details && exportPreview.schema_details.length > 0 && (
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-semibold mb-3 text-gray-300">Schemas:</h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {exportPreview.schema_details.map((schema: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">{schema.name}</span>
+                      <span className="text-gray-500">
+                        {schema.table_count} Tabellen, {schema.version_count} Version(en)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Template Details */}
+            {exportPreview.template_details && exportPreview.template_details.length > 0 && (
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-semibold mb-3 text-gray-300">Templates:</h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {exportPreview.template_details.map((template: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">{template.name}</span>
+                      <span className="text-gray-500">
+                        {template.file_count} Dateien ({template.usage_type})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Format Selection */}
+            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">Export-Format:</h4>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="zip"
+                    checked={exportFormat === 'zip'}
+                    onChange={() => setExportFormat('zip')}
+                    className="text-blue-500"
+                  />
+                  <span className="text-sm">.zip</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="tar.gz"
+                    checked={exportFormat === 'tar.gz'}
+                    onChange={() => setExportFormat('tar.gz')}
+                    className="text-blue-500"
+                  />
+                  <span className="text-sm">.tar.gz</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportFormat"
+                    value="tar.xz"
+                    checked={exportFormat === 'tar.xz'}
+                    onChange={() => setExportFormat('tar.xz')}
+                    className="text-blue-500"
+                  />
+                  <span className="text-sm">.tar.xz</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Notice */}
+            <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-3">
+              <p className="text-sm text-blue-300">
+                <i className="pi pi-info-circle mr-2"></i>
+                Team-Zuordnungen und User-Berechtigungen werden nicht exportiert und müssen nach dem Import neu angelegt werden.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center p-8 text-gray-400">
+            Export-Vorschau konnte nicht geladen werden.
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -345,6 +345,8 @@ class AuthController extends Controller
             'language' => 'nullable|string|in:en,de,fr,es,it',
             'email_system_notifications' => 'nullable|boolean',
             'email_user_notifications' => 'nullable|boolean',
+            'kanban_initials' => 'nullable|string|max:3',
+            'kanban_color' => 'nullable|string|max:7|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
         if ($validator->fails()) {
@@ -370,6 +372,14 @@ class AuthController extends Controller
         }
         if ($request->has('email_user_notifications')) {
             $updateData['email_user_notifications'] = $request->boolean('email_user_notifications');
+        }
+
+        // Add Kanban display settings if provided
+        if ($request->has('kanban_initials')) {
+            $updateData['kanban_initials'] = $request->kanban_initials ? strtoupper($request->kanban_initials) : null;
+        }
+        if ($request->has('kanban_color')) {
+            $updateData['kanban_color'] = $request->kanban_color;
         }
 
         $user->update($updateData);
@@ -692,6 +702,38 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to update language preference'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user's preferred theme
+     */
+    public function updateTheme(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'theme' => 'required|string|in:dark,light,green,auto'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid theme selection',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = Auth::user();
+            $user->theme = $request->theme;
+            $user->save();
+
+            return response()->json([
+                'message' => 'Theme preference updated successfully',
+                'theme' => $user->theme
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update theme preference'
             ], 500);
         }
     }

@@ -599,8 +599,6 @@ class TemplateController extends Controller
                 // Check if this is a managed files list (File Manager mode)
                 if (isset($fileData['managed_files']) && is_array($fileData['managed_files']) && count($fileData['managed_files']) > 0) {
                     // Create ZIP from managed files list
-                    \Log::info("Creating ZIP from managed files", ['count' => count($fileData['managed_files'])]);
-
                     try {
                         $zipBase64 = $this->createZipFromFileList($fileData['managed_files']);
                         $processedContent = [
@@ -897,8 +895,6 @@ class TemplateController extends Controller
                 // 🆕 Check if this is a managed files list (File Manager mode)
                 if (isset($fileData['managed_files']) && is_array($fileData['managed_files']) && count($fileData['managed_files']) > 0) {
                     // Create ZIP from managed files list
-                    \Log::info("Creating ZIP from managed files", ['count' => count($fileData['managed_files'])]);
-
                     try {
                         $zipBase64 = $this->createZipFromFileList($fileData['managed_files']);
                         $processedContent = [
@@ -1108,15 +1104,6 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json(['message' => 'Template nicht gefunden'], 404);
         }
-
-        // Debug logging
-        \Log::info('Clone attempt', [
-            'user_id' => $user->id,
-            'template_id' => $template->id,
-            'template_visibility' => $template->visibility,
-            'template_creator' => $template->creator_user_id,
-            'has_purchased' => $template->visibility === 'store' ? TemplatePurchase::hasPurchased($user->id, $template->id) : 'N/A',
-        ]);
 
         $validated = $request->validate([
             'name' => [
@@ -1486,12 +1473,10 @@ class TemplateController extends Controller
     }
 
     /**
-     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this template
+     * Dispatch regeneration jobs for all projects using this template
      */
     private function dispatchRegenerationJobsForTemplate(Template $template): void
     {
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Starting job dispatch for template {$template->id} ({$template->name})");
-        
         // Find all projects that use this template
         $projectIds = \DB::table('project_template_usage')
             ->where('template_id', $template->id)
@@ -1500,38 +1485,18 @@ class TemplateController extends Controller
             ->unique()
             ->toArray();
 
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Found project IDs: " . json_encode($projectIds));
-
         if (empty($projectIds)) {
-            \Log::info("🧪 [API-TEMPLATE-QUEUE] Template {$template->id}: No projects using this template yet");
             return;
         }
 
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Template {$template->id}: Dispatching regeneration for " . count($projectIds) . " projects");
-
-        // Get job count before dispatching
-        $jobsBefore = \DB::table('jobs')->count();
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Jobs in queue before dispatch: {$jobsBefore}");
-
         // Dispatch queue jobs for each affected project
-        $dispatchedJobs = 0;
         foreach ($projectIds as $projectId) {
-            \Log::info("🧪 [API-TEMPLATE-QUEUE] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
-            
             try {
-                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
-                $dispatchedJobs++;
-                \Log::info("🧪 [API-TEMPLATE-QUEUE] Successfully dispatched job for project {$projectId}");
+                \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
             } catch (\Exception $e) {
-                \Log::error("🧪 [API-TEMPLATE-QUEUE] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+                \Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
             }
         }
-
-        // Get job count after dispatching
-        $jobsAfter = \DB::table('jobs')->count();
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
-        \Log::info("🧪 [API-TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
     }
 
     /**
@@ -1710,22 +1675,6 @@ class TemplateController extends Controller
         \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
 
         try {
-            // Debug: Log all files being exported
-            \Log::info('Exporting template files', [
-                'template_id' => $template->id,
-                'template_name' => $template->name,
-                'file_count' => $template->files->count(),
-                'files' => $template->files->map(function ($file) {
-                    return [
-                        'name' => $file->file_name,
-                        'path' => $file->file_path,
-                        'type' => $file->file_type,
-                        'content_type' => $file->content_type,
-                        'has_content' => !empty($file->file_content),
-                    ];
-                })->toArray()
-            ]);
-
             // Detect duplicate file names and prepare archive file mapping
             $fileNameCount = [];
             $fileArchiveMapping = []; // Maps original file to archive filename
@@ -1809,25 +1758,15 @@ class TemplateController extends Controller
             \Illuminate\Support\Facades\File::put($tempDir . '/README.txt', $readme);
 
             // Add all template files (flat structure - all in root, with unique names for duplicates)
-            $writtenFiles = [];
             foreach ($template->files as $file) {
                 // Skip template.json and README.txt to avoid conflicts
                 if (in_array($file->file_name, ['template.json', 'README.txt'])) {
-                    \Log::info("Skipping file: {$file->file_name}");
                     continue;
                 }
 
                 // Use mapped archive filename (handles duplicates)
                 $archiveFileName = $fileArchiveMapping[$file->id];
                 $filePath = $tempDir . '/' . $archiveFileName;
-
-                \Log::info("Writing file to archive", [
-                    'file_name' => $file->file_name,
-                    'archive_name' => $archiveFileName,
-                    'output_path' => $file->output_path,
-                    'content_type' => $file->content_type,
-                    'content_length' => strlen($file->file_content)
-                ]);
 
                 // Handle different content types
                 if ($file->content_type === 'zip') {
@@ -1838,15 +1777,7 @@ class TemplateController extends Controller
                     // Regular file - save as-is
                     \Illuminate\Support\Facades\File::put($filePath, $file->file_content);
                 }
-
-                $writtenFiles[] = $archiveFileName;
             }
-
-            \Log::info("Written files to temp directory", [
-                'temp_dir' => $tempDir,
-                'file_count' => count($writtenFiles),
-                'files' => $writtenFiles
-            ]);
 
             // Create archive
             $archiveName = $template->name . '_' . time();
@@ -1915,13 +1846,6 @@ class TemplateController extends Controller
         foreach ($finder as $file) {
             $filename = $file->getFilename();
             $localPath = $relativePath ? $relativePath . '/' . $filename : $filename;
-
-            \Log::info("Adding file to ZIP", [
-                'filename' => $filename,
-                'local_path' => $localPath,
-                'real_path' => $file->getRealPath()
-            ]);
-
             $zip->addFile($file->getRealPath(), $localPath);
         }
 
@@ -2580,8 +2504,6 @@ class TemplateController extends Controller
 
             // If it's TAR.GZ or TAR.XZ, convert to ZIP
             if ($archiveType === 'tar.gz' || $archiveType === 'tar.xz') {
-                \Log::info("Converting {$archiveType} to ZIP", ['filename' => $originalFilename]);
-
                 // Rename temp file with correct extension for PharData
                 $tempFilePathWithExt = $tempFilePath . '.' . $archiveType;
                 rename($tempFilePath, $tempFilePathWithExt);
@@ -2844,12 +2766,6 @@ class TemplateController extends Controller
         $user = Auth::user();
         $template = Template::findOrFail($id);
 
-        \Log::info('updateLinkedProjects START', [
-            'template_id' => $id,
-            'user_id' => $user->id,
-            'request_project_ids' => $request->input('project_ids')
-        ]);
-
         // Check if user can link this template
         // System templates and public templates can be linked by anyone
         // Private templates can only be linked by their creator
@@ -2879,7 +2795,6 @@ class TemplateController extends Controller
         ]);
 
         $newProjectIds = $validated['project_ids'];
-        \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
 
         // Get current linked projects (only for user's accessible projects - own + direct members + team members)
         $userAccessibleProjectIds = Project::where(function($query) use ($user) {

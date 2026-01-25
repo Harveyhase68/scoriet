@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface LoginPanelProps {
   onSwitchPanel?: (panelType: string) => void;
@@ -15,6 +16,9 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Theme sync after login
+  const { syncThemeFromUser } = useTheme();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -69,6 +73,11 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
         localStorage.setItem('user_id', userData.id.toString());
         localStorage.setItem('user_type', userData.user_type || 'free');
         localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
+
+        // Sync theme from user profile
+        if (userData.theme) {
+          syncThemeFromUser(userData.theme as ThemeMode);
+        }
       }
 
       // Success - close panel or redirect

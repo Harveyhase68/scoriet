@@ -1,4 +1,4 @@
-//resources/js/pages/Index.tsx
+// resources/js/pages/Index.tsx - Performance Monitoring v2
 import React, { useRef, useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Head } from '@inertiajs/react';
 import { DockLayout } from 'rc-dock';
@@ -12,6 +12,7 @@ import ErrorFallback from '@/Components/ErrorFallback';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { de } from '@/i18n/locales/de';
 import { en } from '@/i18n/locales/en';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Global window interface for tab data
 declare global {
@@ -46,9 +47,6 @@ import '@/Components/Panels/styles.css';
 // Lazy-loaded Panel components (code splitting!)
 const PanelT1 = lazy(() => import('@/Components/Panels/PanelT1'));
 const PanelT2 = lazy(() => import('@/Components/Panels/PanelT2'));
-const PanelT3 = lazy(() => import('@/Components/Panels/PanelT3'));
-const PanelT5 = lazy(() => import('@/Components/Panels/PanelT5'));
-const TeamsPanel = lazy(() => import('@/Components/Panels/TeamsPanel'));
 const ProjectPanel = lazy(() => import('@/Components/Panels/ProjectPanel'));
 const MyApplicationsPanel = lazy(() => import('@/Components/Panels/MyApplicationsPanel'));
 const PublicProjectsPanel = lazy(() => import('@/Components/Panels/PublicProjectsPanel'));
@@ -66,7 +64,11 @@ const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageM
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const PayoutAdminPanel = lazy(() => import('@/Components/Panels/PayoutAdminPanel'));
+const PerformanceMetricsPanel = lazy(() => import('@/Components/Panels/PerformanceMetricsPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
+const ProjectAttachmentsPanel = lazy(() => import('@/Components/Panels/ProjectAttachmentsPanel'));
+const ProjectImportPanel = lazy(() => import('@/Components/Panels/ProjectImportPanel'));
+const KanbanBoardPanel = lazy(() => import('@/Components/Panels/KanbanBoardPanel'));
 const CMSAdminPanel = lazy(() => import('@/Components/Panels/CMSAdminPanel'));
 const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPanel'));
 const CacheDebugPanel = lazy(() => import('@/Components/Panels/CacheDebugPanel'));
@@ -150,10 +152,10 @@ const initialLayout: any = {
 
 // Loading spinner component
 const PanelLoader = () => (
-  <div className="flex items-center justify-center h-64 bg-gray-800 text-gray-100">
+  <div className="flex items-center justify-center h-64 theme-bg-secondary theme-text-primary">
     <div className="text-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-      <p className="text-sm text-gray-300">Loading panel...</p>
+      <p className="text-sm theme-text-muted">Loading panel...</p>
     </div>
   </div>
 );
@@ -525,32 +527,6 @@ const loadTab = (
         group: 'card custom'
       };
 
-    case 't3':
-      return {
-        id,
-        title: data.title || 'Templates',
-        content: (
-          <Suspense fallback={<PanelLoader />}>
-            <PanelT3 />
-          </Suspense>
-        ),
-        closable: true,
-        group: 'card custom'
-      };
-
-    case 't5':
-      return {
-        id,
-        title: data.title || 'Navigation',
-        content: (
-          <Suspense fallback={<PanelLoader />}>
-            <PanelT5 />
-          </Suspense>
-        ),
-        closable: true,
-        group: 'card custom'
-      };
-
     case 'cache-debug':
       return {
         id,
@@ -563,48 +539,6 @@ const loadTab = (
         closable: true,
         group: 'card custom'
       };
-
-    case 'teams':
-    case 'teams-filtered':
-    case 'teams-filtered-filtered': {
-      // Handle rc-dock's multiple calls - use unique tab ID to store persistent data
-      const teamsTabKey = id; // Use the unique tab ID directly
-
-      // Store persistent data in a global object (rc-dock workaround)
-      if (!window._tabData) window._tabData = {};
-
-      if (data.filterByProject !== undefined || data.forceProjectId !== undefined || updateTitleCallback) {
-        // First call - store the data and callback
-        window._tabData[teamsTabKey] = {
-          filterByProject: data.filterByProject,
-          forceProjectId: data.forceProjectId,
-          title: data.title,
-          updateTitleCallback: updateTitleCallback
-        } as any;
-      }
-
-      // Get the stored data (works on subsequent calls)
-      const teamsStoredData = window._tabData[teamsTabKey] || {};
-      const teamsShouldShowProjectFilter = teamsStoredData.filterByProject === true;
-      const teamsForceProjectId = teamsStoredData.forceProjectId as number | undefined;
-      const teamsActualUpdateTitleCallback = teamsStoredData.updateTitleCallback || updateTitleCallback;
-
-      return {
-        id,
-        title: data.title || 'Teams',
-        content: (
-          <Suspense fallback={<PanelLoader />}>
-            <TeamsPanel
-              filterByProject={teamsShouldShowProjectFilter}
-              forceProjectId={teamsForceProjectId}
-              updateTabTitle={teamsActualUpdateTitleCallback}
-            />
-          </Suspense>
-        ),
-        closable: true,
-        group: 'card custom'
-      };
-    }
 
     case 'project':
       return {
@@ -926,6 +860,19 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'performance-metrics':
+      return {
+        id,
+        title: data.title || 'Performance Metrics',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <PerformanceMetricsPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'project-settings':
       return {
         id,
@@ -933,6 +880,45 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectSettingsPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'project-attachments':
+      return {
+        id,
+        title: data.title || 'Projekt-Anhänge',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ProjectAttachmentsPanel isActive={true} projectId={data.projectId} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'project-import':
+      return {
+        id,
+        title: data.title || 'Projekt importieren',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ProjectImportPanel isActive={true} onOpenPanel={openPanelFn} />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'kanban-board':
+      return {
+        id,
+        title: data.title || 'Kanban Board',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <KanbanBoardPanel isActive={true} projectId={data.projectId} />
           </Suspense>
         ),
         closable: true,
@@ -1187,6 +1173,8 @@ export default function Index(props: IndexProps = {}) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  // Theme
+  const { colors } = useTheme();
 
   // Fallback translations if lazy loading hasn't completed yet
   const tFallback = currentLanguage === 'de' ? de : en;
@@ -1306,8 +1294,6 @@ export default function Index(props: IndexProps = {}) {
             // Trigger auth change event
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
-
-            console.log(`✅ Demo auto-login successful: ${demoUser}`);
           } else {
             console.error('❌ Demo auto-login failed:', await response.text());
           }
@@ -2168,40 +2154,6 @@ useHotkeys('alt+m', () => {
     }
   }
 });
-// 3. Create new tab and maximize immediately
-useHotkeys('alt+n', () => {
-    
-  if (ref.current) {
-    const existingTab = ref.current.find('t5');
-    
-    if (existingTab) {
-      // Tab already exists - activate and maximize
-      ref.current.dockMove(existingTab, existingTab.parent, 'active');
-      setTimeout(() => {
-        if (ref.current) {
-          const tab = ref.current.find('t5');
-          if (tab && tab.parent) {
-            ref.current.dockMove(tab.parent, null, 'maximize');
-          }
-        }
-      }, 100);
-    } else {
-      // Create new tab
-      openPanel('t5');
-      
-      // Maximize after creation
-      setTimeout(() => {
-        if (ref.current) {
-          const tab = ref.current.find('t5');
-          if (tab && tab.parent) {
-            ref.current.dockMove(tab.parent, null, 'maximize');
-          }
-        }
-      }, 200);
-    }
-  }
-});
-
   // Hotkeys
   useHotkeys('alt+u', () => {
     if (ref.current) {
@@ -2405,32 +2357,32 @@ useHotkeys('alt+n', () => {
         FallbackComponent={(props) => <ErrorFallback {...props} resetError={props.resetErrorBoundary} />}
       >
         <ProjectProvider>
-        <div 
-          style={{ 
-            height: '100vh', 
-            width: '100vw', 
-            display: 'flex', 
+        <div
+          style={{
+            height: '100vh',
+            width: '100vw',
+            display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#1a1a1a'
+            backgroundColor: colors.bgPrimary
           }}
         >
           {/* TOP BAR */}
           <TopBar />
 
           {/* HAUPTBEREICH */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: colors.bgPrimary }}>
             {/* NEUE NAVIGATION LINKS */}
             <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} onOpenSqlImport={handleOpenSqlImport} onOpenDatabaseExport={handleOpenDatabaseExport} />
 
             {/* ARBEITSBEREICH MIT LINKEM PANEL UND MDI */}
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: colors.bgPrimary }}>
               {/* LINKES PANEL (Tree View) - Größe änderbar */}
               <div
                 style={{
                   width: `${leftPanelWidth}px`,
                   flexShrink: 0,
-                  backgroundColor: '#2a2a2a',
-                  borderRight: '1px solid #444'
+                  backgroundColor: colors.bgSecondary,
+                  borderRight: `1px solid ${colors.borderPrimary}`
                 }}
               >
                 <PanelT1 onOpenPanel={openPanel} />
@@ -2440,17 +2392,17 @@ useHotkeys('alt+n', () => {
               <div
                 style={{
                   width: '4px',
-                  backgroundColor: isResizing ? '#3d3df5' : 'transparent',
+                  backgroundColor: isResizing ? colors.accent : 'transparent',
                   cursor: 'ew-resize',
                   flexShrink: 0,
-                  borderLeft: '1px solid #444',
-                  borderRight: '1px solid #444'
+                  borderLeft: `1px solid ${colors.borderPrimary}`,
+                  borderRight: `1px solid ${colors.borderPrimary}`
                 }}
                 onMouseDown={handleMouseDown}
               />
 
               {/* RC-DOCK MDI AREA */}
-              <div style={{ flex: 1, position: 'relative', backgroundColor: '#1e1e1e' }}>
+              <div style={{ flex: 1, position: 'relative', backgroundColor: colors.bgPrimary }}>
                 <DockLayout
                   ref={ref}
                   layout={layout as any}
@@ -2463,7 +2415,7 @@ useHotkeys('alt+n', () => {
                     top: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: '#1e1e1e'
+                    backgroundColor: colors.bgPrimary
                   }}
                 />
               </div>

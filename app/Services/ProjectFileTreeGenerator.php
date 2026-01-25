@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PerformanceMetric;
 use App\Models\Project;
 use App\Models\ProjectGenerationTree;
 use App\Models\Template;
@@ -42,6 +43,8 @@ class ProjectFileTreeGenerator
      */
     public function generateAndSave(Project $project): ProjectGenerationTree
     {
+        $startTime = microtime(true);
+
         $tree = $this->generateTreeForProject($project);
 
         // Find or create the generation tree record
@@ -52,6 +55,30 @@ class ProjectFileTreeGenerator
         $generationTree->tree_data = $tree;
         $generationTree->markAsFresh();
         $generationTree->save();
+
+        // Track performance
+        $duration = (int) ((microtime(true) - $startTime) * 1000);
+        try {
+            $user = $project->owner;
+            PerformanceMetric::create([
+                'user_id' => $user?->id,
+                'operation' => PerformanceMetric::OP_GTREE_BUILD,
+                'operation_detail' => $project->name,
+                'duration_ms' => $duration,
+                'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                'tables_count' => count($tree),
+                'fields_count' => null,
+                'from_cache' => false,
+                'subscription_type' => $user?->subscription?->type ?? 'free',
+                'metadata' => [
+                    'tree_items' => count($tree),
+                    'project_id' => $project->id,
+                ],
+                'created_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Performance tracking failed: " . $e->getMessage());
+        }
 
         return $generationTree;
     }

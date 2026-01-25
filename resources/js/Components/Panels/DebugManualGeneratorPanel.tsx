@@ -8,6 +8,7 @@ import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import Editor from 'react-simple-code-editor';
 import ErrorFallback from '@/Components/ErrorFallback';
 import Prism from 'prismjs';
@@ -28,11 +29,23 @@ const highlightCode = (code: string) => {
   }
 };
 
+// Theme colors type for the LineNumbersCodeDisplay component
+interface ThemeColors {
+  bgPrimary: string;
+  bgSecondary: string;
+  bgTertiary: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  borderPrimary: string;
+}
+
 // Line Numbers Component for Syntax Highlighting
-const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
+const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange, colors }: {
   code: string;
   readOnly?: boolean;
   onChange?: (newCode: string) => void;
+  colors: ThemeColors;
 }) => {
   const lines = code.split('\n');
   const maxLineNumberWidth = String(lines.length).length;
@@ -51,8 +64,8 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
     return (
       <div className="line-numbers-container" style={{
         display: 'flex',
-        backgroundColor: '#1a1a1a',
-        color: '#d4d4d4',
+        backgroundColor: colors.bgSecondary,
+        color: colors.textPrimary,
         fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
         fontSize: '14px',
         lineHeight: '20px', // Fixed line height in pixels
@@ -62,9 +75,9 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
         {/* Line Numbers */}
         <div className="line-numbers" style={{
           padding: '10px 8px 10px 4px',
-          backgroundColor: '#0d1117',
-          color: '#6e7681',
-          borderRight: '1px solid #30363d',
+          backgroundColor: colors.bgTertiary,
+          color: colors.textMuted,
+          borderRight: `1px solid ${colors.borderPrimary}`,
           textAlign: 'right',
           userSelect: 'none',
           minWidth: `${maxLineNumberWidth * 0.8 + 1}em`,
@@ -127,8 +140,8 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
   return (
     <div className="line-numbers-container" style={{
       display: 'flex',
-      backgroundColor: '#1a1a1a',
-      color: '#d4d4d4',
+      backgroundColor: colors.bgSecondary,
+      color: colors.textPrimary,
       fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
       fontSize: '14px',
       lineHeight: '20px',
@@ -139,9 +152,9 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
       {/* Line Numbers */}
       <div className="line-numbers" style={{
         padding: '10px 8px 10px 4px',
-        backgroundColor: '#0d1117',
-        color: '#6e7681',
-        borderRight: '1px solid #30363d',
+        backgroundColor: colors.bgTertiary,
+        color: colors.textMuted,
+        borderRight: `1px solid ${colors.borderPrimary}`,
         textAlign: 'right',
         userSelect: 'none',
         minWidth: `${maxLineNumberWidth * 0.8 + 1}em`,
@@ -178,8 +191,8 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange }: {
             lineHeight: '20px',
             minHeight: '400px',
             width: '100%',
-            backgroundColor: '#1a1a1a',
-            color: '#d4d4d4',
+            backgroundColor: colors.bgSecondary,
+            color: colors.textPrimary,
             outline: 'none'
           }}
           className="code-editor"
@@ -279,6 +292,7 @@ export default function DebugManualGeneratorPanel({
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { selectedProject, projects } = useProject();
+  const { colors } = useTheme();
 
   // Selection States
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
@@ -1580,11 +1594,11 @@ function ${functionName}() {
         <ErrorFallback error={error} resetError={() => {}} />
       )}
     >
-      <div className="h-full bg-gray-800 text-gray-100 p-4 overflow-auto">
-        <Card className="bg-gray-700 border-gray-600">
+      <div className="debug-manual-generator-panel h-full p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+        <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-white mb-4">🔧 Debug Manual Generator</h2>
-          <p className="text-sm text-gray-300 mb-4">
+          <h2 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>🔧 Debug Manual Generator</h2>
+          <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
             Template development and code debugging for individual files
           </p>
 
@@ -1594,7 +1608,7 @@ function ${functionName}() {
 
             {/* 1. Template Dropdown - IMMER FIRST */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 📄 Template
               </label>
               <Dropdown
@@ -1608,7 +1622,7 @@ function ${functionName}() {
 
             {/* 2. File Dropdown - IMMER SECOND */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 {t.debugmanualgeneratorpanel1284}
               </label>
               <Dropdown
@@ -1628,8 +1642,8 @@ function ${functionName}() {
               {shouldShowTableDropdown() ? (
                 <>
                   {/* DB-Tabellen-Datei: Table-Dropdown anzeigen */}
-                  <label className="block text-sm font-medium text-white mb-2">
-                    {t.templatemanagementpanel118} <span className="text-xs text-green-400">{t.debugmanualgeneratorpanel1319}</span>
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                    {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1319}</span>
                   </label>
                   <Dropdown
                     value={selectedTable}
@@ -1670,8 +1684,8 @@ function ${functionName}() {
               ) : shouldShowProjectDropdown() ? (
                 <>
                   {/* 🎯 NEU: Project-Datei: Schema-Version Dropdown anzeigen */}
-                  <label className="block text-sm font-medium text-white mb-2">
-                    📐 Schema Version {schemaVersionOptions.length > 0 ? <span className="text-xs text-green-400">(Ziel-Version)</span> : <span className="text-xs text-gray-500">(keine Versionen)</span>}
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                    📐 Schema Version {schemaVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.successText }}>(Ziel-Version)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(keine Versionen)</span>}
                   </label>
                   <Dropdown
                     value={selectedSchemaVersion}
@@ -1688,7 +1702,7 @@ function ${functionName}() {
                     disabled={schemaVersionOptions.length === 0}
                   />
                   {selectedSchemaVersion && (
-                    <div className="mt-1 text-xs text-blue-400">
+                    <div className="mt-1 text-xs" style={{ color: colors.infoText }}>
                       GTree wird mit Schema-Version {selectedSchemaVersion} generiert
                     </div>
                   )}
@@ -1696,8 +1710,8 @@ function ${functionName}() {
               ) : (
                 <>
                   {/* Weder Table noch Project: Deaktiviertes Dropdown */}
-                  <label className="block text-sm font-medium text-white mb-2">
-                    {t.templatemanagementpanel118} <span className="text-xs text-gray-500">{t.debugmanualgeneratorpanel1302}</span>
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                    {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1302}</span>
                   </label>
                   <Dropdown
                     value={null}
@@ -1712,8 +1726,8 @@ function ${functionName}() {
 
             {/* 4. Project Dropdown - IMMER FOURTH (disabled wenn nicht project_file) */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                {t.debugmanualgeneratorpanel1355} {shouldShowProjectDropdown() ? <span className="text-xs text-green-400">{t.debugmanualgeneratorpanel1334}</span> : <span className="text-xs text-gray-500">{t.debugmanualgeneratorpanel1302}</span>}
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                {t.debugmanualgeneratorpanel1355} {shouldShowProjectDropdown() ? <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1334}</span> : <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1302}</span>}
               </label>
               <Dropdown
                 value={selectedProjectForGenerator}
@@ -1727,8 +1741,8 @@ function ${functionName}() {
 
             {/* 5. Language Dropdown - IMMER FIFTH (disabled wenn nicht language-enabled) */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                {t.debugmanualgeneratorpanel1342} {shouldShowLanguageDropdown() ? <span className="text-xs text-green-400">{t.debugmanualgeneratorpanel1334}</span> : <span className="text-xs text-gray-500">{t.debugmanualgeneratorpanel1302}</span>}
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                {t.debugmanualgeneratorpanel1342} {shouldShowLanguageDropdown() ? <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1334}</span> : <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1302}</span>}
               </label>
               <Dropdown
                 value={selectedLanguage}
@@ -1744,8 +1758,8 @@ function ${functionName}() {
 
             {/* 6. Migration Version Dropdown - Optional: Migration von Version X */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                📊 Migration von Version {migrationVersionOptions.length > 0 ? <span className="text-xs text-blue-400">(Optional)</span> : <span className="text-xs text-gray-500">(nicht verfügbar)</span>}
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                📊 Migration von Version {migrationVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.infoText }}>(Optional)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(nicht verfügbar)</span>}
               </label>
               <Dropdown
                 value={migrationFromVersion}
@@ -1759,7 +1773,7 @@ function ${functionName}() {
                 disabled={migrationVersionOptions.length === 0}
               />
               {migrationFromVersion && (
-                <div className="mt-1 text-xs text-blue-400">
+                <div className="mt-1 text-xs" style={{ color: colors.infoText }}>
                   Migration v{migrationFromVersion} → aktuell wird im GTree verfügbar sein
                 </div>
               )}
@@ -1776,8 +1790,9 @@ function ${functionName}() {
                 checked={includeTemplateSource}
                 onChange={(e) => setIncludeTemplateSource(e.target.checked)}
                 className="w-4 h-4"
+                style={{ accentColor: colors.accent }}
               />
-              <label htmlFor="include-template-source" className="text-sm text-gray-300 cursor-pointer">
+              <label htmlFor="include-template-source" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
                 {t.debugmanualgeneratorpanel1360}
               </label>
             </div>
@@ -1791,39 +1806,39 @@ function ${functionName}() {
               <Panel
                 header={
                   <div className="flex items-center gap-2">
-                    <i className="pi pi-times-circle text-red-500"></i>
-                    <span className="font-semibold text-red-300">
+                    <i className="pi pi-times-circle" style={{ color: colors.errorText }}></i>
+                    <span className="font-semibold" style={{ color: colors.errorText }}>
                       {t.debugmanualgeneratorpanel1325} ({syntaxErrors.length})
                     </span>
                   </div>
                 }
                 toggleable
                 collapsed={false}
-                className="bg-red-900 border-red-500"
                 pt={{
-                  header: { className: 'bg-red-800 border-red-500 text-red-200' },
-                  content: { className: 'bg-red-900 border-red-500 text-red-100' },
-                  togglerIcon: { className: 'text-red-300' }
+                  root: { style: { backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` } },
+                  header: { style: { backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.errorText } },
+                  content: { style: { backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.textPrimary } },
+                  togglerIcon: { style: { color: colors.errorText } }
                 }}
               >
                 <div className="space-y-2">
-                  <p className="text-sm text-red-200">
+                  <p className="text-sm" style={{ color: colors.errorText }}>
                     <strong>CRITICAL:</strong> {t.debugmanualgeneratorpanel1397}
                   </p>
 
-                  <div className="bg-red-950 p-3 rounded border border-red-600 max-h-64 overflow-auto">
+                  <div className="p-3 rounded border max-h-64 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.errorText }}>
                     <ul className="list-disc list-inside space-y-2 text-sm">
                       {syntaxErrors.map((err, idx) => (
-                        <li key={idx} className="text-red-200">
-                          <span className="text-red-300 font-semibold">{err.file}</span>
+                        <li key={idx} style={{ color: colors.textPrimary }}>
+                          <span className="font-semibold" style={{ color: colors.errorText }}>{err.file}</span>
                           <br />
-                          <span className="text-red-100 ml-5">{err.error}</span>
+                          <span className="ml-5" style={{ color: colors.textPrimary }}>{err.error}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <p className="text-xs text-red-300 mt-2 italic">
+                  <p className="text-xs mt-2 italic" style={{ color: colors.errorText }}>
                     {t.debugmanualgeneratorpanel1400}
                   </p>
                 </div>
@@ -1837,33 +1852,33 @@ function ${functionName}() {
               <Panel
                 header={
                   <div className="flex items-center gap-2">
-                    <i className="pi pi-exclamation-triangle text-yellow-400"></i>
-                    <span className="font-semibold text-yellow-300">
+                    <i className="pi pi-exclamation-triangle" style={{ color: colors.warningText }}></i>
+                    <span className="font-semibold" style={{ color: colors.warningText }}>
                       ⚠️ Template Syntax Warnings ({syntaxWarnings.length})
                     </span>
                   </div>
                 }
                 toggleable
                 collapsed={true}
-                className="bg-yellow-900 border-yellow-600"
                 pt={{
-                  header: { className: 'bg-yellow-800 border-yellow-600 text-yellow-200' },
-                  content: { className: 'bg-yellow-900 border-yellow-600 text-yellow-100' },
-                  togglerIcon: { className: 'text-yellow-300' }
+                  root: { style: { backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` } },
+                  header: { style: { backgroundColor: colors.warningBg, borderColor: colors.warningText, color: colors.warningText } },
+                  content: { style: { backgroundColor: colors.warningBg, borderColor: colors.warningText, color: colors.textPrimary } },
+                  togglerIcon: { style: { color: colors.warningText } }
                 }}
               >
                 <div className="space-y-2">
-                  <p className="text-sm text-yellow-200">
+                  <p className="text-sm" style={{ color: colors.warningText }}>
                     {t.debugmanualgeneratorpanel1755}
                   </p>
 
-                  <div className="bg-yellow-950 p-3 rounded border border-yellow-700 max-h-48 overflow-auto">
+                  <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.warningText }}>
                     <ul className="list-disc list-inside space-y-2 text-sm">
                       {syntaxWarnings.map((warn, idx) => (
-                        <li key={idx} className="text-yellow-200">
-                          <span className="text-yellow-300 font-semibold">{warn.file}</span>
+                        <li key={idx} style={{ color: colors.textPrimary }}>
+                          <span className="font-semibold" style={{ color: colors.warningText }}>{warn.file}</span>
                           <br />
-                          <span className="text-yellow-100 ml-5">{warn.warning}</span>
+                          <span className="ml-5" style={{ color: colors.textPrimary }}>{warn.warning}</span>
                         </li>
                       ))}
                     </ul>
@@ -1879,39 +1894,39 @@ function ${functionName}() {
               <Panel
                 header={
                   <div className="flex items-center gap-2">
-                    <i className="pi pi-exclamation-triangle text-orange-400"></i>
-                    <span className="font-semibold text-orange-300">
+                    <i className="pi pi-exclamation-triangle" style={{ color: colors.warningText }}></i>
+                    <span className="font-semibold" style={{ color: colors.warningText }}>
                       Unknown Variables ({unknownVariables.length})
                     </span>
                   </div>
                 }
                 toggleable
                 collapsed={true}
-                className="bg-orange-900 border-orange-600"
                 pt={{
-                  header: { className: 'bg-orange-800 border-orange-600 text-orange-200' },
-                  content: { className: 'bg-orange-900 border-orange-600 text-orange-100' },
-                  togglerIcon: { className: 'text-orange-300' }
+                  root: { style: { backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` } },
+                  header: { style: { backgroundColor: colors.warningBg, borderColor: colors.warningText, color: colors.warningText } },
+                  content: { style: { backgroundColor: colors.warningBg, borderColor: colors.warningText, color: colors.textPrimary } },
+                  togglerIcon: { style: { color: colors.warningText } }
                 }}
               >
                 <div className="space-y-2">
-                  <p className="text-sm text-orange-200">
+                  <p className="text-sm" style={{ color: colors.warningText }}>
                     The following variables are <strong>not defined</strong> and will output <strong>"undefined"</strong>:
                   </p>
 
-                  <div className="bg-orange-950 p-3 rounded border border-orange-700 max-h-48 overflow-auto">
+                  <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.warningText }}>
                     <ul className="list-disc list-inside space-y-1 text-sm font-mono">
                       {unknownVariables.map((warning, idx) => (
-                        <li key={idx} className="text-orange-200">
-                          <span className="text-orange-300 font-semibold">{warning.file}</span>
-                          <span className="text-orange-400">, line {warning.line}</span>
-                          : <span className="text-yellow-300">{`{${warning.variable}}`}</span>
+                        <li key={idx} style={{ color: colors.textPrimary }}>
+                          <span className="font-semibold" style={{ color: colors.warningText }}>{warning.file}</span>
+                          <span style={{ color: colors.textSecondary }}>, line {warning.line}</span>
+                          : <span style={{ color: colors.accent }}>{`{${warning.variable}}`}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <p className="text-xs text-orange-300 mt-2 italic">
+                  <p className="text-xs mt-2 italic" style={{ color: colors.warningText }}>
                     💡 Tip: Define custom template variables or use existing project fields.
                   </p>
                 </div>
@@ -1925,42 +1940,42 @@ function ${functionName}() {
               <Panel
                 header={
                   <div className="flex items-center gap-2">
-                    <i className="pi pi-times-circle text-red-400"></i>
-                    <span className="font-semibold text-red-300">
+                    <i className="pi pi-times-circle" style={{ color: colors.errorText }}></i>
+                    <span className="font-semibold" style={{ color: colors.errorText }}>
                       Required Variables Missing ({requiredMissing.length})
                     </span>
                   </div>
                 }
                 toggleable
                 collapsed={true}
-                className="bg-red-900 border-red-600"
                 pt={{
-                  header: { className: 'bg-red-800 border-red-600 text-red-200' },
-                  content: { className: 'bg-red-900 border-red-600 text-red-100' },
-                  togglerIcon: { className: 'text-red-300' }
+                  root: { style: { backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` } },
+                  header: { style: { backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.errorText } },
+                  content: { style: { backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.textPrimary } },
+                  togglerIcon: { style: { color: colors.errorText } }
                 }}
               >
                 <div className="space-y-2">
-                  <p className="text-sm text-red-200">
+                  <p className="text-sm" style={{ color: colors.errorText }}>
                     These variables are <strong>required</strong> but not filled in the project. Output: <strong>"undefined"</strong>
                   </p>
 
-                  <div className="bg-red-950 p-3 rounded border border-red-700 max-h-48 overflow-auto">
+                  <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.errorText }}>
                     <ul className="list-disc list-inside space-y-1 text-sm font-mono">
                       {requiredMissing.map((warning, idx) => (
-                        <li key={idx} className="text-red-200">
-                          <span className="text-red-300 font-semibold">{warning.file}</span>
-                          <span className="text-red-400">, line {warning.line}</span>
-                          : <span className="text-yellow-300">{`{${warning.variable}}`}</span>
+                        <li key={idx} style={{ color: colors.textPrimary }}>
+                          <span className="font-semibold" style={{ color: colors.errorText }}>{warning.file}</span>
+                          <span style={{ color: colors.textSecondary }}>, line {warning.line}</span>
+                          : <span style={{ color: colors.accent }}>{`{${warning.variable}}`}</span>
                           {warning.description && (
-                            <span className="text-red-300 ml-2">- {warning.description}</span>
+                            <span className="ml-2" style={{ color: colors.errorText }}>- {warning.description}</span>
                           )}
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <p className="text-xs text-red-300 mt-2 italic">
+                  <p className="text-xs mt-2 italic" style={{ color: colors.errorText }}>
                     ⚠️ Please fill these required variables in the project settings.
                   </p>
                 </div>
@@ -1974,48 +1989,48 @@ function ${functionName}() {
               <Panel
                 header={
                   <div className="flex items-center gap-2">
-                    <i className="pi pi-info-circle text-blue-400"></i>
-                    <span className="font-semibold text-blue-300">
+                    <i className="pi pi-info-circle" style={{ color: colors.infoText }}></i>
+                    <span className="font-semibold" style={{ color: colors.infoText }}>
                       Optional Variables ({optionalMissing.length})
                     </span>
                   </div>
                 }
                 toggleable
                 collapsed={true}
-                className="bg-blue-900 border-blue-600"
                 pt={{
-                  header: { className: 'bg-blue-800 border-blue-600 text-blue-200' },
-                  content: { className: 'bg-blue-900 border-blue-600 text-blue-100' },
-                  togglerIcon: { className: 'text-blue-300' }
+                  root: { style: { backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` } },
+                  header: { style: { backgroundColor: colors.infoBg, borderColor: colors.infoText, color: colors.infoText } },
+                  content: { style: { backgroundColor: colors.infoBg, borderColor: colors.infoText, color: colors.textPrimary } },
+                  togglerIcon: { style: { color: colors.infoText } }
                 }}
               >
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-200">
+                  <p className="text-sm" style={{ color: colors.infoText }}>
                     These optional variables are not filled. Default value or <strong>empty string ""</strong> will be used.
                   </p>
 
-                  <div className="bg-blue-950 p-3 rounded border border-blue-700 max-h-48 overflow-auto">
+                  <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.infoText }}>
                     <ul className="list-disc list-inside space-y-1 text-sm font-mono">
                       {optionalMissing.map((warning, idx) => (
-                        <li key={idx} className="text-blue-200">
-                          <span className="text-blue-300 font-semibold">{warning.file}</span>
-                          <span className="text-blue-400">, line {warning.line}</span>
-                          : <span className="text-yellow-300">{`{${warning.variable}}`}</span>
+                        <li key={idx} style={{ color: colors.textPrimary }}>
+                          <span className="font-semibold" style={{ color: colors.infoText }}>{warning.file}</span>
+                          <span style={{ color: colors.textSecondary }}>, line {warning.line}</span>
+                          : <span style={{ color: colors.accent }}>{`{${warning.variable}}`}</span>
                           {warning.default_value && (
-                            <span className="text-green-300 ml-2">→ default: "{warning.default_value}"</span>
+                            <span className="ml-2" style={{ color: colors.successText }}>→ default: "{warning.default_value}"</span>
                           )}
                           {!warning.default_value && (
-                            <span className="text-gray-400 ml-2">→ ""</span>
+                            <span className="ml-2" style={{ color: colors.textMuted }}>→ ""</span>
                           )}
                           {warning.description && (
-                            <div className="text-blue-300 ml-6 text-xs">└ {warning.description}</div>
+                            <div className="ml-6 text-xs" style={{ color: colors.infoText }}>└ {warning.description}</div>
                           )}
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <p className="text-xs text-blue-300 mt-2 italic">
+                  <p className="text-xs mt-2 italic" style={{ color: colors.infoText }}>
                     ℹ️ Optional variables - you can fill them if needed.
                   </p>
                 </div>
@@ -2060,7 +2075,7 @@ function ${functionName}() {
               icon={loading ? "pi pi-spinner pi-spin" : ((isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-code")}
               onClick={fetchCode}
               disabled={!isButtonEnabled || isProjectLocked() || isSchemaLocked()}
-              className={(isProjectLocked() || isSchemaLocked()) ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}
+              style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.infoText, color: colors.textInverse }}
               tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
             />
 
@@ -2069,7 +2084,7 @@ function ${functionName}() {
               icon={(isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-play"}
               onClick={executeCode}
               disabled={!preparedCode || isProjectLocked() || isSchemaLocked()}
-              className={(isProjectLocked() || isSchemaLocked()) ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+              style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.successText, color: colors.textInverse }}
               tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
             />
 
@@ -2193,27 +2208,28 @@ function ${functionName}() {
                 }
               }}
               disabled={!preparedCode}
-              className="bg-blue-600 hover:bg-blue-700"
+              style={{ backgroundColor: colors.infoText, color: colors.textInverse }}
             />
 
             <Button
               label={editorUnlocked ? "Lock Editor" : "Unlock Editor"}
               icon={editorUnlocked ? "pi pi-lock" : "pi pi-unlock"}
               onClick={handleUnlockEditor}
-              className={editorUnlocked ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"}
+              style={{ backgroundColor: editorUnlocked ? colors.errorText : colors.warningText, color: colors.textInverse }}
               tooltip={editorUnlocked ? "Lock and reset editor" : "Enable editor for manual tests"}
               tooltipOptions={{ position: 'top' }}
             />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-900 border-b border-red-600 text-red-200">
+            <div className="p-4 border-b" style={{ backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.errorText }}>
               <div className="flex items-center">
                 <span className="mr-2">⚠️</span>
                 <span>{error}</span>
                 <button
                   onClick={() => setError('')}
-                  className="ml-auto text-red-400 hover:text-red-200"
+                  className="ml-auto hover:opacity-80"
+                  style={{ color: colors.errorText }}
                 >
                   ✕
                 </button>
@@ -2223,16 +2239,16 @@ function ${functionName}() {
 
           {/* 3-Tab System */}
           {preparedCode && (
-            <div className="bg-gray-700">
+            <div style={{ backgroundColor: colors.bgSecondary }}>
               <TabView
                 activeIndex={activeTabIndex}
                 onTabChange={(e: any) => setActiveTabIndex(e.index)}
-                className="bg-gray-700"
+                className="themed-tabview"
               >
-              <TabPanel header={t.debugmanualgeneratorpanel1531} className="text-gray-100">
-                <div className="bg-gray-900 p-4 rounded border border-gray-600">
+              <TabPanel header={t.debugmanualgeneratorpanel1531} style={{ color: colors.textPrimary }}>
+                <div className="p-4 rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-400">Editable JavaScript code</span>
+                    <span className="text-sm" style={{ color: colors.textMuted }}>Editable JavaScript code</span>
                     <div className="flex gap-2">
                       <Button
                         label={t.debugmanualgeneratorpanel1537}
@@ -2259,7 +2275,7 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!localStorage.getItem('scoriet_gtree')}
-                        className="p-button-outlined p-button-sm p-button-secondary"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
                       />
                       <Button
                         label={t.debugmanualgeneratorpanel1564}
@@ -2286,7 +2302,7 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!localStorage.getItem('scoriet_gtree')}
-                        className="p-button-outlined p-button-sm p-button-success"
+                        style={{ backgroundColor: colors.successText, borderColor: colors.successText, color: colors.textInverse }}
                       />
                       <Button
                         label="Import GTree"
@@ -2338,7 +2354,7 @@ function ${functionName}() {
                           };
                           fileInput.click();
                         }}
-                        className="p-button-outlined p-button-sm p-button-warning"
+                        style={{ backgroundColor: colors.warningText, borderColor: colors.warningText, color: colors.textInverse }}
                         tooltip="GTree JSON oder JS Datei hochladen und in localStorage speichern"
                         tooltipOptions={{ position: 'top' }}
                       />
@@ -2347,7 +2363,7 @@ function ${functionName}() {
                         icon="pi pi-paste"
                         size="small"
                         onClick={() => setShowGTreeImportModal(true)}
-                        className="p-button-outlined p-button-sm p-button-info"
+                        style={{ backgroundColor: colors.infoText, borderColor: colors.infoText, color: colors.textInverse }}
                         tooltip="GTree JSON aus Zwischenablage einfügen (STRG+V)"
                         tooltipOptions={{ position: 'top' }}
                       />
@@ -2370,20 +2386,20 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!preparedCode}
-                        className="p-button-outlined p-button-sm"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
                       />
                     </div>
                   </div>
 
                   {/* Code Editor with Line Numbers and Syntax Highlighting */}
-                  <div className="w-full bg-gray-900 border border-gray-600 rounded code-editor-container" style={{height: '400px', overflow: 'auto'}}>
+                  <div className="w-full border rounded code-editor-container" style={{height: '400px', overflow: 'auto', backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary}}>
                     <ErrorBoundary
                       fallback={
-                        <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
+                        <div className="h-full flex items-center justify-center" style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}>
                           <div className="text-center">
                             <div className="text-4xl mb-2">⚠️</div>
                             <p>Code Editor could not be loaded</p>
-                            <p className="text-sm text-gray-400">Use a simple textarea as a fallback.</p>
+                            <p className="text-sm" style={{ color: colors.textMuted }}>Use a simple textarea as a fallback.</p>
                           </div>
                         </div>
                       }
@@ -2392,43 +2408,44 @@ function ${functionName}() {
                         code={preparedCode || `Klicken Sie auf "${t.debugmanualgeneratorpanel1369}" um den Code zu sehen...`}
                         readOnly={!editorUnlocked}
                         onChange={(newCode) => setPreparedCode(newCode)}
+                        colors={colors}
                       />
                     </ErrorBoundary>
                   </div>
 
                   {/* Custom Syntax Highlighting Styles */}
                   <style>{`
-                    .code-editor-container {
+                    .debug-manual-generator-panel .code-editor-container {
                       scrollbar-width: auto;
-                      scrollbar-color: #555 #2d2d2d;
+                      scrollbar-color: ${colors.borderPrimary} ${colors.bgSecondary};
                     }
-                    .code-editor-container::-webkit-scrollbar {
+                    .debug-manual-generator-panel .code-editor-container::-webkit-scrollbar {
                       width: 20px;
                       height: 20px;
                       -webkit-appearance: none;
                     }
-                    .code-editor-container::-webkit-scrollbar-track {
-                      background: #2d2d2d;
+                    .debug-manual-generator-panel .code-editor-container::-webkit-scrollbar-track {
+                      background: ${colors.bgSecondary};
                       border-radius: 4px;
                     }
-                    .code-editor-container::-webkit-scrollbar-thumb {
-                      background: #555;
+                    .debug-manual-generator-panel .code-editor-container::-webkit-scrollbar-thumb {
+                      background: ${colors.borderPrimary};
                       border-radius: 6px;
-                      border: 3px solid #2d2d2d;
+                      border: 3px solid ${colors.bgSecondary};
                       min-height: 30px;
                     }
-                    .code-editor-container::-webkit-scrollbar-thumb:hover {
-                      background: #777;
+                    .debug-manual-generator-panel .code-editor-container::-webkit-scrollbar-thumb:hover {
+                      background: ${colors.textMuted};
                     }
-                    .code-editor-container::-webkit-scrollbar-corner {
-                      background: #2d2d2d;
+                    .debug-manual-generator-panel .code-editor-container::-webkit-scrollbar-corner {
+                      background: ${colors.bgSecondary};
                     }
-                    .code-editor {
-                      caret-color: #d4d4d4;
-                      background-color: #1a1a1a !important;
+                    .debug-manual-generator-panel .code-editor {
+                      caret-color: ${colors.textPrimary};
+                      background-color: ${colors.bgSecondary} !important;
                     }
-                    .code-editor textarea {
-                      color: #d4d4d4 !important;
+                    .debug-manual-generator-panel .code-editor textarea {
+                      color: ${colors.textPrimary} !important;
                       background: transparent !important;
                       resize: none;
                       white-space: pre !important;
@@ -2436,22 +2453,74 @@ function ${functionName}() {
                       word-break: normal !important;
                       overflow-x: auto !important;
                     }
-                    .code-editor pre {
+                    .debug-manual-generator-panel .code-editor pre {
                       background: transparent !important;
                       margin: 0;
                       white-space: pre !important;
                       overflow-wrap: normal !important;
                       word-break: normal !important;
                     }
+                    /* Prism.js syntax highlighting for theme support */
+                    .debug-manual-generator-panel .code-editor-container .token.comment,
+                    .debug-manual-generator-panel .code-editor-container .token.prolog,
+                    .debug-manual-generator-panel .code-editor-container .token.doctype,
+                    .debug-manual-generator-panel .code-editor-container .token.cdata {
+                      color: ${colors.textMuted} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.punctuation {
+                      color: ${colors.textSecondary} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.property,
+                    .debug-manual-generator-panel .code-editor-container .token.tag,
+                    .debug-manual-generator-panel .code-editor-container .token.boolean,
+                    .debug-manual-generator-panel .code-editor-container .token.number,
+                    .debug-manual-generator-panel .code-editor-container .token.constant,
+                    .debug-manual-generator-panel .code-editor-container .token.symbol,
+                    .debug-manual-generator-panel .code-editor-container .token.deleted {
+                      color: ${colors.errorText} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.selector,
+                    .debug-manual-generator-panel .code-editor-container .token.attr-name,
+                    .debug-manual-generator-panel .code-editor-container .token.string,
+                    .debug-manual-generator-panel .code-editor-container .token.char,
+                    .debug-manual-generator-panel .code-editor-container .token.builtin,
+                    .debug-manual-generator-panel .code-editor-container .token.inserted {
+                      color: ${colors.successText} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.operator,
+                    .debug-manual-generator-panel .code-editor-container .token.entity,
+                    .debug-manual-generator-panel .code-editor-container .token.url,
+                    .debug-manual-generator-panel .code-editor-container .token.variable {
+                      color: ${colors.warningText} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.atrule,
+                    .debug-manual-generator-panel .code-editor-container .token.attr-value,
+                    .debug-manual-generator-panel .code-editor-container .token.function,
+                    .debug-manual-generator-panel .code-editor-container .token.class-name {
+                      color: ${colors.infoText} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.keyword {
+                      color: ${colors.accent} !important;
+                    }
+                    .debug-manual-generator-panel .code-editor-container .token.regex,
+                    .debug-manual-generator-panel .code-editor-container .token.important {
+                      color: ${colors.warningText} !important;
+                    }
+                    /* Line numbers styling */
+                    .debug-manual-generator-panel .code-editor-container .line-numbers {
+                      background-color: ${colors.bgTertiary} !important;
+                      color: ${colors.textMuted} !important;
+                      border-right: 1px solid ${colors.borderPrimary} !important;
+                    }
                   `}</style>
                 </div>
               </TabPanel>
 
-              <TabPanel header={t.debugmanualgeneratorpanel1679} className="text-gray-100">
-                <div className="bg-gray-900 rounded border border-gray-600">
+              <TabPanel header={t.debugmanualgeneratorpanel1679} style={{ color: colors.textPrimary }}>
+                <div className="rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   {/* Button Bar */}
-                  <div className="flex justify-between items-center p-2 border-b border-gray-600 bg-gray-800">
-                    <div className="text-sm text-gray-400">Generated PHP code</div>
+                  <div className="flex justify-between items-center p-2 border-b" style={{ borderColor: colors.borderPrimary, backgroundColor: colors.bgSecondary }}>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>Generated PHP code</div>
                     <div className="flex gap-2">
                       <Button
                         label={t.debugmanualgeneratorpanel1591}
@@ -2472,7 +2541,7 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!executedResult}
-                        className="p-button-outlined p-button-sm"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
                       />
                       <Button
                         label="Code downloaden"
@@ -2497,7 +2566,7 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!executedResult}
-                        className="p-button-outlined p-button-sm p-button-success"
+                        style={{ backgroundColor: colors.successText, borderColor: colors.successText, color: colors.textInverse }}
                       />
                     </div>
                   </div>
@@ -2508,7 +2577,7 @@ function ${functionName}() {
                       className="text-sm whitespace-pre-wrap font-mono"
                       style={{
                         fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
-                        color: '#d4d4d4',
+                        color: colors.textPrimary,
                         lineHeight: 1.4
                       }}
                     >
@@ -2518,13 +2587,13 @@ function ${functionName}() {
                 </div>
               </TabPanel>
 
-              <TabPanel header={t.debugmanualgeneratorpanel1750} className="text-gray-100">
-                <div className="bg-gray-900 p-4 rounded border border-gray-600 max-h-96 overflow-auto">
+              <TabPanel header={t.debugmanualgeneratorpanel1750} style={{ color: colors.textPrimary }}>
+                <div className="p-4 rounded border max-h-96 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   <div
                     className="text-sm whitespace-pre-wrap font-mono"
                     style={{
                       fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
-                      color: '#d4d4d4',
+                      color: colors.textPrimary,
                       lineHeight: 1.4
                     }}
                   >
@@ -2548,6 +2617,12 @@ function ${functionName}() {
           setShowGTreeImportModal(false);
           setGtreeImportText('');
         }}
+        pt={{
+          root: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+          header: { style: { backgroundColor: colors.dialogHeader, color: colors.textPrimary, borderBottom: `1px solid ${colors.borderPrimary}` } },
+          content: { style: { backgroundColor: colors.bgSecondary, color: colors.textPrimary } },
+          footer: { style: { backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` } }
+        }}
         footer={
           <div>
             <Button
@@ -2558,18 +2633,20 @@ function ${functionName}() {
                 setGtreeImportText('');
               }}
               className="p-button-text"
+              style={{ color: colors.textSecondary }}
             />
             <Button
               label="Importieren"
               icon="pi pi-check"
               onClick={handleGTreeImportFromText}
               disabled={!gtreeImportText.trim()}
+              style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
             />
           </div>
         }
       >
         <div className="mb-3">
-          <p className="text-gray-300 mb-2">
+          <p className="mb-2" style={{ color: colors.textSecondary }}>
             Fügen Sie das GTree JSON hier ein (STRG+V):
           </p>
           <InputTextarea
@@ -2579,12 +2656,172 @@ function ${functionName}() {
             className="w-full font-mono text-sm"
             placeholder={`Beispiel:\n[\n  {\n    "project": [\n      {\n        "projectname": "MyProject",\n        "tables": [...]\n      }\n    ]\n  }\n]`}
             autoFocus
+            style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
           />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
             💡 Tip: You can leave "const gtree = " at the beginning - it will be removed automatically.
           </p>
         </div>
       </Dialog>
+
+      {/* Theme CSS for PrimeReact Components */}
+      <style>{`
+        /* Dropdown Styling */
+        .debug-manual-generator-panel .p-dropdown {
+          background-color: ${colors.bgTertiary} !important;
+          border-color: ${colors.borderPrimary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown:not(.p-disabled):hover {
+          border-color: ${colors.accent} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown .p-dropdown-label {
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown .p-dropdown-trigger {
+          color: ${colors.textSecondary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown-panel {
+          background-color: ${colors.bgSecondary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown-items .p-dropdown-item {
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown-items .p-dropdown-item:hover {
+          background-color: ${colors.bgTertiary} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+          background-color: ${colors.accent} !important;
+          color: ${colors.textInverse} !important;
+        }
+        .debug-manual-generator-panel .p-dropdown .p-dropdown-label.p-placeholder {
+          color: ${colors.textMuted} !important;
+        }
+
+        /* Card Styling */
+        .debug-manual-generator-panel .p-card {
+          background-color: ${colors.bgSecondary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-card .p-card-content {
+          color: ${colors.textPrimary} !important;
+        }
+
+        /* TabView Styling */
+        .debug-manual-generator-panel .themed-tabview .p-tabview-nav {
+          background-color: ${colors.bgSecondary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .themed-tabview .p-tabview-nav li .p-tabview-nav-link {
+          background-color: transparent !important;
+          color: ${colors.textSecondary} !important;
+          border-color: transparent !important;
+        }
+        .debug-manual-generator-panel .themed-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.accent} !important;
+          border-color: ${colors.accent} !important;
+        }
+        .debug-manual-generator-panel .themed-tabview .p-tabview-nav li:not(.p-highlight):not(.p-disabled):hover .p-tabview-nav-link {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .themed-tabview .p-tabview-panels {
+          background-color: ${colors.bgSecondary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+
+        /* Button Styling */
+        .debug-manual-generator-panel .p-button.p-button-outlined {
+          color: ${colors.textSecondary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-button.p-button-outlined:hover {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+
+        /* InputTextarea in Dialog */
+        .p-dialog .p-inputtextarea {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .p-dialog .p-inputtextarea:focus {
+          border-color: ${colors.accent} !important;
+          box-shadow: 0 0 0 1px ${colors.accent} !important;
+        }
+        .p-dialog .p-inputtextarea::placeholder {
+          color: ${colors.textMuted} !important;
+          opacity: 0.7;
+        }
+
+        /* Code Editor Theme Styling */
+        .debug-manual-generator-panel .code-editor-container .line-numbers-container {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .line-numbers {
+          background-color: ${colors.bgSecondary} !important;
+          color: ${colors.textMuted} !important;
+          border-right: 1px solid ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .code-editor {
+          background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .code-editor textarea {
+          color: ${colors.textPrimary} !important;
+          caret-color: ${colors.textPrimary} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .code-editor pre {
+          color: ${colors.textPrimary} !important;
+        }
+        /* Prism.js syntax highlighting overrides for light theme */
+        .debug-manual-generator-panel .code-editor-container .token.comment,
+        .debug-manual-generator-panel .code-editor-container .token.prolog,
+        .debug-manual-generator-panel .code-editor-container .token.doctype,
+        .debug-manual-generator-panel .code-editor-container .token.cdata {
+          color: ${colors.textMuted} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.punctuation {
+          color: ${colors.textSecondary} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.property,
+        .debug-manual-generator-panel .code-editor-container .token.tag,
+        .debug-manual-generator-panel .code-editor-container .token.boolean,
+        .debug-manual-generator-panel .code-editor-container .token.number,
+        .debug-manual-generator-panel .code-editor-container .token.constant,
+        .debug-manual-generator-panel .code-editor-container .token.symbol {
+          color: ${colors.errorText} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.selector,
+        .debug-manual-generator-panel .code-editor-container .token.attr-name,
+        .debug-manual-generator-panel .code-editor-container .token.string,
+        .debug-manual-generator-panel .code-editor-container .token.char,
+        .debug-manual-generator-panel .code-editor-container .token.builtin {
+          color: ${colors.successText} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.operator,
+        .debug-manual-generator-panel .code-editor-container .token.entity,
+        .debug-manual-generator-panel .code-editor-container .token.url,
+        .debug-manual-generator-panel .code-editor-container .token.variable {
+          color: ${colors.warningText} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.atrule,
+        .debug-manual-generator-panel .code-editor-container .token.attr-value,
+        .debug-manual-generator-panel .code-editor-container .token.keyword {
+          color: ${colors.infoText} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.function {
+          color: ${colors.accent} !important;
+        }
+        .debug-manual-generator-panel .code-editor-container .token.regex,
+        .debug-manual-generator-panel .code-editor-container .token.important {
+          color: ${colors.warningText} !important;
+        }
+      `}</style>
     </ErrorBoundary>
   );
 }

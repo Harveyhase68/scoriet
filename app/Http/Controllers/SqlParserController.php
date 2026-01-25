@@ -149,8 +149,6 @@ class SqlParserController extends Controller
             // 🛡️ BREAKING CHANGE DETECTION - Critical Security Check (can be skipped)
             if (!$skipBreakingChangeCheck) {
                 $this->validateNonBreakingChange($schema, $parsedTables);
-            } else {
-                \Log::info("⚠️ Breaking change check SKIPPED by user for schema {$schema->id}");
             }
 
             // 🔄 TRANSACTION: Wrap entire import in transaction to prevent orphan versions
@@ -168,8 +166,6 @@ class SqlParserController extends Controller
                         $schemaVersion = SchemaVersion::createNewVersion($schema, $description);
                         $schemaVersion->refresh();
                     }
-
-                    \Log::info("📎 Appending tables to existing version {$schemaVersion->version_number} for schema {$schema->id}");
 
                     // Append parsed tables to existing version (merge with existing tables)
                     $this->schemaStorageService->addTablesToVersion($schemaVersion, $parsedTables, true);
@@ -193,8 +189,6 @@ class SqlParserController extends Controller
 
             // 🎯 AUTOMATISCHES LAYOUT: Nur bei erster Version (wenn DB leer ist)
             if ($schema->last_version == 1) {
-                \Log::info("🎯 [AUTO-LAYOUT] Generating automatic layout for first import (schema {$schema->id}, version {$schemaVersion->version_number})");
-
                 try {
                     // Tabellennamen extrahieren
                     $tableNames = [];
@@ -219,11 +213,6 @@ class SqlParserController extends Controller
                         }
                     }
 
-                    \Log::info("🎯 [AUTO-LAYOUT] Extracted data", [
-                        'tables' => $tableNames,
-                        'foreignKeys' => $foreignKeys
-                    ]);
-
                     // Projekt-Einstellungen laden für Diagram-Layout
                     $project = $schema->projects()->first();
                     $settings = null;
@@ -235,7 +224,6 @@ class SqlParserController extends Controller
                             'tableWidth' => $project->diagram_table_width ?? 280,
                             'tableHeight' => $project->diagram_table_height ?? 450,
                         ];
-                        \Log::info("🎯 [AUTO-LAYOUT] Using project settings from project {$project->id}", $settings);
                     }
 
                     // Layout generieren mit interner Methode
@@ -259,13 +247,15 @@ class SqlParserController extends Controller
                             ];
                         }
 
-                        \App\Models\SchemaDesignerLayout::create([
-                            'schema_id' => $schema->id,
-                            'version_number' => $schemaVersion->version_number,
-                            'layout_data' => $formattedLayout, // Laravel cast macht automatisch json_encode
-                        ]);
-
-                        \Log::info("🎯 [AUTO-LAYOUT] Successfully generated and saved layout for " . count($layoutPositions) . " tables");
+                        \App\Models\SchemaDesignerLayout::updateOrCreate(
+                            [
+                                'schema_id' => $schema->id,
+                                'version_number' => $schemaVersion->version_number,
+                            ],
+                            [
+                                'layout_data' => $formattedLayout, // Laravel cast macht automatisch json_encode
+                            ]
+                        );
                     }
                 } catch (\Exception $e) {
                     \Log::error("🎯 [AUTO-LAYOUT] Failed to generate automatic layout: " . $e->getMessage());
@@ -285,11 +275,15 @@ class SqlParserController extends Controller
                         ->get();
 
                     foreach ($previousLayouts as $layout) {
-                        \App\Models\SchemaDesignerLayout::create([
-                            'schema_id' => $schema->id,
-                            'version_number' => $schemaVersion->version_number,
-                            'layout_data' => $layout->layout_data,
-                        ]);
+                        \App\Models\SchemaDesignerLayout::updateOrCreate(
+                            [
+                                'schema_id' => $schema->id,
+                                'version_number' => $schemaVersion->version_number,
+                            ],
+                            [
+                                'layout_data' => $layout->layout_data,
+                            ]
+                        );
                     }
                 }
             }
@@ -392,14 +386,6 @@ class SqlParserController extends Controller
             }
         }
 
-        // 🐛 DEBUG: Log what we found
-        \Log::info("🐛 Breaking change debug", [
-            'existing_tables_raw' => $existingTables,
-            'new_table_names_raw' => $newTableNames,
-            'parsed_tables_keys' => array_keys($newParsedTables),
-            'parsed_tables_sample' => array_slice($newParsedTables, 0, 2)
-        ]);
-
         // Define framework/system tables to ignore (these are common across projects)
         $systemTables = [
             'users', 'user', 'profile', 'profiles', 'cache', 'caches',
@@ -418,13 +404,6 @@ class SqlParserController extends Controller
         $businessExistingTables = array_diff($existingTables, $systemTables);
         $businessNewTables = array_diff($newTableNames, $systemTables);
 
-        // 🐛 DEBUG: Log after filtering
-        \Log::info("🐛 After system table filtering", [
-            'business_existing_tables' => $businessExistingTables,
-            'business_new_tables' => $businessNewTables,
-            'system_tables_filtered' => $systemTables
-        ]);
-
         // Find overlap between business tables
         $tableOverlap = array_intersect($businessExistingTables, $businessNewTables);
 
@@ -432,16 +411,6 @@ class SqlParserController extends Controller
         if (empty($tableOverlap)) {
             $existingBusinessCount = count($businessExistingTables);
             $newBusinessCount = count($businessNewTables);
-
-            // 🐛 DEBUG: Log the exact values before creating lists
-            \Log::error("🐛 Error message debug", [
-                'businessExistingTables' => $businessExistingTables,
-                'businessNewTables' => $businessNewTables,
-                'existingBusinessCount' => $existingBusinessCount,
-                'newBusinessCount' => $newBusinessCount,
-                'businessExistingTables_type' => gettype($businessExistingTables),
-                'businessNewTables_type' => gettype($businessNewTables)
-            ]);
 
             // Create readable table lists - fix array handling
             $existingTablesList = empty($businessExistingTables) ? 'none' : implode(', ', array_slice(array_values($businessExistingTables), 0, 5));
@@ -459,14 +428,6 @@ class SqlParserController extends Controller
                 "✅ Alternative: Ensure at least one business table name matches between versions."
             );
         }
-
-        \Log::info("✅ Breaking change validation passed", [
-            'schema_id' => $schema->id,
-            'schema_name' => $schema->name,
-            'overlapping_tables' => $tableOverlap,
-            'existing_business_tables' => count($businessExistingTables),
-            'new_business_tables' => count($businessNewTables)
-        ]);
     }
 
     public function getSchemaVersion($id)
@@ -540,8 +501,6 @@ class SqlParserController extends Controller
      */
     public function validateImport(Request $request)
     {
-        \Log::info("[FK-Validate] ========== VALIDATE IMPORT CALLED ==========");
-
         // Increase PHP limits for large SQL operations
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 300); // 5 minutes
@@ -613,20 +572,8 @@ class SqlParserController extends Controller
             $missingTables = [];
             $fkDetails = [];
 
-            \Log::info("[FK-Validate] Starting FK validation", [
-                'newTableNames' => $newTableNames,
-                'existingTableNames' => $existingTableNames,
-                'allAvailableTables' => $allAvailableTables,
-                'tables_count' => count($parsedTables),
-            ]);
-
             foreach ($parsedTables as $tableData) {
                 $tableName = $tableData['table_name'] ?? 'unknown';
-
-                \Log::info("[FK-Validate] Checking table: {$tableName}", [
-                    'has_constraints' => isset($tableData['constraints']),
-                    'constraints_count' => isset($tableData['constraints']) ? count($tableData['constraints']) : 0,
-                ]);
 
                 if (isset($tableData['constraints'])) {
                     foreach ($tableData['constraints'] as $constraint) {
@@ -642,20 +589,11 @@ class SqlParserController extends Controller
                                 ?? $constraint['references']['columns']
                                 ?? [];
 
-                            \Log::info("[FK-Validate] FK constraint found", [
-                                'from_table' => $tableName,
-                                'references_table' => $referencedTable,
-                                'columns' => $constraint['columns'] ?? [],
-                            ]);
-
                             if ($referencedTable) {
                                 $referencedTableLower = strtolower($referencedTable);
 
                                 // Check if referenced table is NOT in available tables
-                                $isInAvailable = in_array($referencedTableLower, $allAvailableTables);
-                                \Log::info("[FK-Validate] Checking if '{$referencedTable}' (lower: '{$referencedTableLower}') is in available tables: " . ($isInAvailable ? 'YES' : 'NO'));
-
-                                if (!$isInAvailable) {
+                                if (!in_array($referencedTableLower, $allAvailableTables)) {
                                     if (!in_array($referencedTable, $missingTables)) {
                                         $missingTables[] = $referencedTable;
                                     }
@@ -673,11 +611,6 @@ class SqlParserController extends Controller
                     }
                 }
             }
-
-            \Log::info("[FK-Validate] Validation complete", [
-                'missing_tables' => $missingTables,
-                'fk_details_count' => count($fkDetails),
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -748,13 +681,10 @@ class SqlParserController extends Controller
     }
 
     /**
-     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this schema
+     * Dispatch regeneration jobs for all projects using this schema
      */
     private function dispatchRegenerationJobs(FloatingSchema $schema): void
     {
-        // 🧪 TEST LOGGING: Start der Job-Dispatching-Protokollierung
-        \Log::info("🧪 [QUEUE-TEST] Starting job dispatch for schema {$schema->id} ({$schema->name})");
-        
         // Find all projects that use this schema
         $projectIds = \DB::table('project_schemas')
             ->where('schema_id', $schema->id)
@@ -762,37 +692,17 @@ class SqlParserController extends Controller
             ->unique()
             ->toArray();
 
-        \Log::info("🧪 [QUEUE-TEST] Found project IDs: " . json_encode($projectIds));
-
         if (empty($projectIds)) {
-            \Log::warning("🧪 [QUEUE-TEST] Schema {$schema->id}: No projects affected for queue regeneration");
             return;
         }
 
-        \Log::info("🧪 [QUEUE-TEST] Schema {$schema->id}: Dispatching regeneration for " . count($projectIds) . " projects");
-
-        // Get job count before dispatching
-        $jobsBefore = \DB::table('jobs')->count();
-        \Log::info("🧪 [QUEUE-TEST] Jobs in queue before dispatch: {$jobsBefore}");
-
         // Dispatch queue jobs for each affected project
-        $dispatchedJobs = 0;
         foreach ($projectIds as $projectId) {
-            \Log::info("🧪 [QUEUE-TEST] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
-            
             try {
-                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
-                $dispatchedJobs++;
-                \Log::info("🧪 [QUEUE-TEST] Successfully dispatched job for project {$projectId}");
+                \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
             } catch (\Exception $e) {
-                \Log::error("🧪 [QUEUE-TEST] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+                \Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
             }
         }
-
-        // Get job count after dispatching
-        $jobsAfter = \DB::table('jobs')->count();
-        \Log::info("🧪 [QUEUE-TEST] Jobs in queue after dispatch: {$jobsAfter}");
-        \Log::info("🧪 [QUEUE-TEST] Total dispatched jobs: {$dispatchedJobs}");
-        \Log::info("🧪 [QUEUE-TEST] Job dispatch completed for schema {$schema->id}");
     }
 }

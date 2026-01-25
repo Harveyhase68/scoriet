@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SqlImportModalProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  // Theme
+  const { colors } = useTheme();
 
   const { selectedProject } = useProject();
   const [sqlScript, setSqlScript] = useState('');
@@ -357,7 +360,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   const validateSqlImport = async (): Promise<boolean> => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) {
-      console.log('[FK-Validate] No token, skipping validation');
       return true; // Skip validation if no token
     }
 
@@ -372,13 +374,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         append_to_current_version: appendToCurrentVersion,
       };
 
-      console.log('[FK-Validate] Sending validation request:', {
-        schema_id: selectedSchemaId,
-        database_type: getDatabaseTypeForParser(),
-        append_to_current_version: appendToCurrentVersion,
-        sql_length: sqlScript.length,
-      });
-
       const response = await fetch('/api/sql-validate-import', {
         method: 'POST',
         headers: {
@@ -390,21 +385,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       });
 
       const result = await response.json();
-      console.log('[FK-Validate] Response:', result);
 
       if (!response.ok || !result.success) {
-        console.log('[FK-Validate] Validation request failed:', result.error);
         setError(result.error || 'Validation failed');
         return false;
       }
 
       // Check for missing FK references
-      console.log('[FK-Validate] has_missing_references:', result.has_missing_references);
-      console.log('[FK-Validate] missing_fk_tables:', result.missing_fk_tables);
-      console.log('[FK-Validate] fk_details:', result.fk_details);
-
       if (result.has_missing_references && result.missing_fk_tables.length > 0) {
-        console.log('[FK-Validate] Showing FK warning dialog');
         setMissingFkTables(result.missing_fk_tables);
         setFkDetails(result.fk_details || []);
         setShowFkWarning(true);
@@ -422,10 +410,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         return false; // Don't proceed, show warning instead
       }
 
-      console.log('[FK-Validate] No missing FKs, proceeding with import');
       return true; // All good, proceed with import
     } catch (err) {
-      console.error('[FK-Validate] Exception:', err);
+      console.error('FK validation error:', err);
       setError(err instanceof Error ? err.message : 'Validation failed');
       return false;
     } finally {
@@ -505,15 +492,23 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       onSuccess(result);
 
       // Show success message
-      const tableCount = result.tables_created || result.tables_imported || 0;
+      const tableCount = result.tables_count || result.tables_created || result.tables_imported || 0;
       setError(null);
       setSqlScript(''); // Clear the SQL script
+      setDescription(''); // Clear description
       setShowFkWarning(false);
       setMissingFkTables([]);
       setFkDetails([]);
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
       // Use a simple alert-style success state (reuse error display with different styling)
       setSuccessMessage(`🎉 Import successful! ${tableCount} table(s) imported. You can close this window or import more.`);
+
+      // Reload schemas to show updated version numbers
+      await loadEditableSchemas();
 
     } catch (err) {
       setError(err instanceof Error ? err.message : t.sqlimportmodal203);
@@ -885,53 +880,56 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       className="sql-import-modal"
       contentStyle={{
         padding: '0',
-        backgroundColor: '#1f2937',
-        color: 'white',
+        backgroundColor: colors.dialogContent,
+        color: colors.textPrimary,
         maxHeight: '80vh',
         overflow: 'auto'
       }}
       headerStyle={{
-        backgroundColor: '#1f2937',
-        color: 'white',
-        borderBottom: '1px solid #374151'
+        backgroundColor: colors.dialogHeader,
+        color: colors.textPrimary,
+        borderBottom: `1px solid ${colors.borderPrimary}`
       }}
     >
-      <div className="bg-gray-800 h-full">
-        <p className="text-sm text-gray-400 px-6 pt-4 pb-2">Import database schema from SQL script</p>
+      <div className="h-full" style={{ backgroundColor: colors.bgSecondary }}>
+        <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>Import database schema from SQL script</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           {/* Tabs */}
-          <div className="flex border-b border-gray-600">
+          <div className="flex" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
             <button
               type="button"
               onClick={() => setActiveTab('paste')}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'paste'
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className="px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === 'paste' ? colors.accent : colors.textMuted,
+                borderBottom: activeTab === 'paste' ? `2px solid ${colors.accent}` : 'none',
+                backgroundColor: activeTab === 'paste' ? colors.bgTertiary : 'transparent'
+              }}
             >
               📝 Paste SQL
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('upload')}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'upload'
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className="px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === 'upload' ? colors.accent : colors.textMuted,
+                borderBottom: activeTab === 'upload' ? `2px solid ${colors.accent}` : 'none',
+                backgroundColor: activeTab === 'upload' ? colors.bgTertiary : 'transparent'
+              }}
             >
               📁 Upload File
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('service')}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'service'
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className="px-6 py-3 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === 'service' ? colors.accent : colors.textMuted,
+                borderBottom: activeTab === 'service' ? `2px solid ${colors.accent}` : 'none',
+                backgroundColor: activeTab === 'service' ? colors.bgTertiary : 'transparent'
+              }}
             >
               🔌 Lokaler Import (Service)
             </button>
@@ -940,13 +938,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           <div ref={modalContentRef} className="p-6 overflow-y-auto flex-1">
             {/* Success Display */}
             {successMessage && (
-              <div className="mb-4 p-3 bg-green-900 border border-green-600 rounded text-green-200">
+              <div className="mb-4 p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                 <div className="flex items-center justify-between">
                   <span>{successMessage}</span>
                   <button
                     type="button"
                     onClick={() => setSuccessMessage(null)}
-                    className="ml-4 text-green-400 hover:text-green-200"
+                    className="ml-4"
+                    style={{ color: colors.successText }}
                   >
                     ✕
                   </button>
@@ -956,7 +955,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
             {/* Error Display */}
             {error && (
-              <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded text-red-200">
+              <div className="mb-4 p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
                 <div className="flex items-center">
                   <span className="mr-2">⚠️</span>
                   <span>{error}</span>
@@ -966,25 +965,25 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
             {/* FK Warning Display */}
             {showFkWarning && missingFkTables.length > 0 && (
-              <div ref={fkWarningRef} className="mb-4 p-4 bg-yellow-900/50 border border-yellow-600 rounded">
+              <div ref={fkWarningRef} className="mb-4 p-4 rounded" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">⚠️</span>
                   <div className="flex-1">
-                    <h4 className="text-yellow-300 font-semibold mb-2">
+                    <h4 className="font-semibold mb-2" style={{ color: colors.warningText }}>
                       Missing Foreign Key References
                     </h4>
-                    <p className="text-yellow-200 text-sm mb-3">
+                    <p className="text-sm mb-3" style={{ color: colors.warningText }}>
                       The imported table(s) reference the following tables which don't exist in the schema:
                     </p>
-                    <div className="bg-gray-800 rounded p-3 mb-3">
-                      <ul className="list-disc list-inside text-yellow-100 space-y-1">
+                    <div className="rounded p-3 mb-3" style={{ backgroundColor: colors.bgPrimary }}>
+                      <ul className="list-disc list-inside space-y-1" style={{ color: colors.warningText }}>
                         {missingFkTables.map((table, index) => (
                           <li key={index} className="font-mono text-sm">{table}</li>
                         ))}
                       </ul>
                     </div>
                     {fkDetails.length > 0 && (
-                      <div className="text-xs text-gray-400 mb-3">
+                      <div className="text-xs mb-3" style={{ color: colors.textMuted }}>
                         <p className="mb-1">FK Details:</p>
                         {fkDetails.map((fk, index) => (
                           <p key={index} className="font-mono ml-2">
@@ -993,14 +992,15 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         ))}
                       </div>
                     )}
-                    <p className="text-yellow-200 text-sm">
+                    <p className="text-sm" style={{ color: colors.warningText }}>
                       These foreign key constraints will be <strong>skipped</strong> during import.
                       The table will be imported but without these FK relationships.
                     </p>
                     <div className="mt-4 flex gap-3">
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded font-medium transition-colors"
+                        className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.warningBorder }}
                       >
                         Import Anyway
                       </button>
@@ -1011,7 +1011,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                           setMissingFkTables([]);
                           setFkDetails([]);
                         }}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+                        className="px-4 py-2 text-white rounded transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.bgTertiary }}
                       >
                         Cancel
                       </button>
@@ -1024,21 +1025,25 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             {/* Schema Selection and Description */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   Target Schema
                 </label>
                 {preselectedSchemaId ? (
-                  <div className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded text-gray-200">
+                  <div
+                    className="w-full px-3 py-2 rounded"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textSecondary }}
+                  >
                     {schemas.find(schema => schema.id === preselectedSchemaId)?.name || `Schema ${preselectedSchemaId}`} (v{schemas.find(schema => schema.id === preselectedSchemaId)?.last_version ? schemas.find(schema => schema.id === preselectedSchemaId)!.last_version + 1 : '?'})
-                    <span className="text-xs text-gray-400 ml-2">(pre-selected)</span>
+                    <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(pre-selected)</span>
                   </div>
                 ) : loadingSchemas ? (
-                  <div className="text-gray-400 text-sm">Loading schemas...</div>
+                  <div className="text-sm" style={{ color: colors.textMuted }}>Loading schemas...</div>
                 ) : schemas.length > 0 ? (
                   <select
                     value={selectedSchemaId || ''}
                     onChange={(e) => setSelectedSchemaId(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded focus:outline-none"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   >
                     {schemas.map(schema => (
                       <option key={schema.id} value={schema.id}>
@@ -1047,13 +1052,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     ))}
                   </select>
                 ) : (
-                  <div className="text-gray-400 text-sm">
+                  <div className="text-sm" style={{ color: colors.textMuted }}>
                     {selectedProject ? t.sqlimportmodal301 : t.databaseexportmodal344}
                   </div>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   Description (optional)
                 </label>
                 <input
@@ -1061,23 +1066,24 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t.sqlimportmodal313}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
               </div>
             </div>
 
             {/* Import Options */}
-            <div className="mb-4 p-3 bg-gray-700 rounded border border-gray-600">
-              <div className="text-sm font-medium text-gray-300 mb-3">Import Options</div>
+            <div className="mb-4 p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
+              <div className="text-sm font-medium mb-3" style={{ color: colors.textSecondary }}>Import Options</div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={appendToCurrentVersion}
                     onChange={(e) => setAppendToCurrentVersion(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-500 bg-gray-600 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 rounded"
                   />
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm" style={{ color: colors.textSecondary }}>
                     Append to current version (don't create new version)
                   </span>
                 </label>
@@ -1086,14 +1092,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     type="checkbox"
                     checked={skipBreakingChangeCheck}
                     onChange={(e) => setSkipBreakingChangeCheck(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-500 bg-gray-600 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 rounded"
                   />
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm" style={{ color: colors.textSecondary }}>
                     Skip breaking change check (allow completely new structure)
                   </span>
                 </label>
               </div>
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
                 ⚠️ Use these options carefully - they bypass safety checks designed to protect your schema history.
               </div>
             </div>
@@ -1101,7 +1107,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             {/* Content Area */}
             {activeTab === 'paste' ? (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   SQL Script
                 </label>
                 <textarea
@@ -1109,9 +1115,10 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   onChange={(e) => setSqlScript(e.target.value)}
                   placeholder={t.sqlimportmodal328}
                   rows={12}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none font-mono text-sm resize-none"
+                  className="w-full px-3 py-2 rounded font-mono text-sm resize-none focus:outline-none sql-import-input"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
-                <div className="mt-2 text-xs text-gray-400">
+                <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
                   Supports MySQL and PostgreSQL CREATE TABLE, ALTER TABLE statements and constraints.
                   Parser is selected based on project database settings.
                 </div>
@@ -1121,7 +1128,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {/* Database Connection Form */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Connection Type
                     </label>
                     <select
@@ -1144,7 +1151,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                           setServiceSchemaName('');
                         }
                       }}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded focus:outline-none"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
                     >
                       <option value="mysql">MySQL</option>
@@ -1154,7 +1162,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Host
                     </label>
                     <input
@@ -1162,12 +1170,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       value={serviceHost}
                       onChange={(e) => setServiceHost(e.target.value)}
                       placeholder="localhost"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Port
                     </label>
                     <input
@@ -1175,12 +1184,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       value={servicePort}
                       onChange={(e) => setServicePort(e.target.value)}
                       placeholder="3306"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Username
                     </label>
                     <input
@@ -1188,12 +1198,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       value={serviceUsername}
                       onChange={(e) => setServiceUsername(e.target.value)}
                       placeholder="root"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Password
                     </label>
                     <input
@@ -1201,7 +1212,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       value={servicePassword}
                       onChange={(e) => setServicePassword(e.target.value)}
                       placeholder="password"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
                     />
                   </div>
@@ -1210,7 +1222,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       type="button"
                       onClick={handleTestConnection}
                       disabled={testingConnection || servicePolling || !serviceHost || !serviceUsername}
-                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-medium transition-colors"
+                      className="w-full px-4 py-2 rounded font-medium transition-colors disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: (testingConnection || servicePolling || !serviceHost || !serviceUsername) ? colors.bgTertiary : colors.accent,
+                        color: (testingConnection || servicePolling || !serviceHost || !serviceUsername) ? colors.textMuted : 'white'
+                      }}
                     >
                       {testingConnection ? '⏳ Testing...' : '🔌 Test Connection'}
                     </button>
@@ -1219,27 +1235,29 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
                 {/* Connection Test Result */}
                 {connectionTestResult && (
-                  <div className={`p-3 rounded border ${
-                    connectionTestResult.success
-                      ? 'bg-green-900/30 border-green-600'
-                      : 'bg-red-900/30 border-red-600'
-                  }`}>
+                  <div
+                    className="p-3 rounded"
+                    style={{
+                      backgroundColor: connectionTestResult.success ? colors.successBg : colors.errorBg,
+                      border: `1px solid ${connectionTestResult.success ? colors.successBorder : colors.errorBorder}`
+                    }}
+                  >
                     {connectionTestResult.success ? (
                       <div>
-                        <div className="flex items-center gap-2 text-green-300 font-medium mb-2">
+                        <div className="flex items-center gap-2 font-medium mb-2" style={{ color: colors.successText }}>
                           <span>✅</span> Connection successful
                           {connectionTestResult.server_version && (
-                            <span className="text-xs text-green-400">({connectionTestResult.server_version})</span>
+                            <span className="text-xs" style={{ color: colors.successText }}>({connectionTestResult.server_version})</span>
                           )}
                         </div>
                         {availableDatabases.length > 0 && (
-                          <div className="text-sm text-green-200">
+                          <div className="text-sm" style={{ color: colors.successText }}>
                             Found {availableDatabases.length} database(s)
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 text-red-300">
+                      <div className="flex items-center gap-2" style={{ color: colors.errorText }}>
                         <span>❌</span> {connectionTestResult.error}
                       </div>
                     )}
@@ -1249,8 +1267,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {/* Database Selection - Show dropdown if databases available, otherwise text input */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Database {availableDatabases.length > 0 && <span className="text-green-400 text-xs">({availableDatabases.length} available)</span>}
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                      Database {availableDatabases.length > 0 && <span className="text-xs" style={{ color: colors.successText }}>({availableDatabases.length} available)</span>}
                     </label>
                     {availableDatabases.length > 0 ? (
                       <select
@@ -1332,7 +1350,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                             }
                           }
                         }}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        className="w-full px-3 py-2 rounded focus:outline-none"
+                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       >
                         <option value="">-- Select Database --</option>
@@ -1346,26 +1365,28 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         value={serviceDatabase}
                         onChange={(e) => setServiceDatabase(e.target.value)}
                         placeholder="database_name"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                        className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       />
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Schema Name
                       {serviceConnectionType === 'postgresql' && (
-                        <span className="text-blue-400 text-xs ml-1">(required for PostgreSQL)</span>
+                        <span className="text-xs ml-1" style={{ color: colors.accent }}>(required for PostgreSQL)</span>
                       )}
                       {serviceConnectionType !== 'postgresql' && (
-                        <span className="text-gray-500 text-xs ml-1">(optional)</span>
+                        <span className="text-xs ml-1" style={{ color: colors.textMuted }}>(optional)</span>
                       )}
                     </label>
                     {availableSchemas.length > 0 ? (
                       <select
                         value={serviceSchemaName}
                         onChange={(e) => setServiceSchemaName(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        className="w-full px-3 py-2 rounded focus:outline-none"
+                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       >
                         <option value="">-- Select Schema --</option>
@@ -1379,7 +1400,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         value={serviceSchemaName}
                         onChange={(e) => setServiceSchemaName(e.target.value)}
                         placeholder={serviceConnectionType === 'postgresql' ? 'public' : 'Leave empty to use database name'}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                        className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
+                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       />
                     )}
@@ -1392,7 +1414,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     type="button"
                     onClick={handleServiceImport}
                     disabled={serviceTaskId !== null || testingConnection || !serviceDatabase || !selectedSchemaId || (serviceConnectionType === 'postgresql' && !serviceSchemaName)}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-medium transition-colors"
+                    className="px-6 py-3 rounded font-medium transition-colors disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: (serviceTaskId !== null || testingConnection || !serviceDatabase || !selectedSchemaId || (serviceConnectionType === 'postgresql' && !serviceSchemaName)) ? colors.bgTertiary : colors.accent,
+                      color: (serviceTaskId !== null || testingConnection || !serviceDatabase || !selectedSchemaId || (serviceConnectionType === 'postgresql' && !serviceSchemaName)) ? colors.textMuted : 'white'
+                    }}
                     title={serviceTaskId ? 'An import task is already running' : (serviceConnectionType === 'postgresql' && !serviceSchemaName) ? 'Schema name is required for PostgreSQL' : ''}
                   >
                     {servicePolling ? '⏳ Processing...' : serviceTaskId ? '⏸️ Task Running' : '🚀 Start Import'}
@@ -1402,12 +1428,15 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {/* Live Log */}
                 {serviceLog.length > 0 && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Log
                     </label>
-                    <div className="bg-gray-900 border border-gray-600 rounded p-4 max-h-48 overflow-y-scroll font-mono text-xs">
+                    <div
+                      className="rounded p-4 max-h-48 overflow-y-scroll font-mono text-xs"
+                      style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                    >
                       {serviceLog.map((log, index) => (
-                        <div key={index} className="text-gray-300 mb-1">
+                        <div key={index} className="mb-1" style={{ color: colors.textSecondary }}>
                           {log}
                         </div>
                       ))}
@@ -1418,10 +1447,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   Upload SQL File
                 </label>
-                <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
+                <div
+                  className="border-2 border-dashed rounded-lg p-8 text-center"
+                  style={{ borderColor: colors.borderPrimary }}
+                >
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1429,46 +1461,51 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  
+
                   {sqlScript ? (
-                    <div className="text-green-400">
+                    <div style={{ color: colors.successText }}>
                       <div className="text-2xl mb-2">✅</div>
                       <p className="font-medium">File loaded successfully!</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
                         {sqlScript.length} characters loaded
                       </p>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+                        className="mt-3 px-4 py-2 text-white rounded text-sm transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.accent }}
                       >
                         Choose Different File
                       </button>
                     </div>
                   ) : (
-                    <div className="text-gray-400">
+                    <div style={{ color: colors.textMuted }}>
                       <div className="text-4xl mb-3">📁</div>
                       <p className="font-medium mb-2">Click to select SQL file</p>
-                      <p className="text-sm text-gray-500 mb-4">
+                      <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                         Supports .sql and .txt files
                       </p>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                        className="px-6 py-2 text-white rounded transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.accent }}
                       >
                         Choose File
                       </button>
                     </div>
                   )}
                 </div>
-                
+
                 {sqlScript && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                       Preview (first 500 characters)
                     </label>
-                    <div className="bg-gray-900 border border-gray-600 rounded p-3 text-xs font-mono text-gray-300 max-h-32 overflow-y-auto">
+                    <div
+                      className="rounded p-3 text-xs font-mono max-h-32 overflow-y-auto"
+                      style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textSecondary }}
+                    >
                       {sqlScript.substring(0, 500)}
                       {sqlScript.length > 500 && '...'}
                     </div>
@@ -1480,12 +1517,16 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
           {/* Footer */}
           {activeTab !== 'service' ? (
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-600 bg-gray-900">
+            <div
+              className="flex justify-end gap-3 p-6"
+              style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}
+            >
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={loading || validating}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 rounded transition-colors hover:opacity-80"
+                style={{ backgroundColor: colors.buttonPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textInverse }}
               >
                 Cancel
               </button>
@@ -1493,11 +1534,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 <button
                   type="submit"
                   disabled={loading || validating || !sqlScript.trim()}
-                  className={`px-6 py-2 rounded font-medium transition-colors ${
-                    loading || validating || !sqlScript.trim()
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
+                  className="px-6 py-2 rounded font-medium transition-colors disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: loading || validating || !sqlScript.trim() ? colors.bgTertiary : colors.accent,
+                    color: loading || validating || !sqlScript.trim() ? colors.textMuted : 'white'
+                  }}
                 >
                   {validating ? (
                     <div className="flex items-center">
@@ -1516,13 +1557,17 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
               )}
             </div>
           ) : (
-            <div className="flex justify-between items-center p-6 border-t border-gray-600 bg-gray-900">
+            <div
+              className="flex justify-between items-center p-6"
+              style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}
+            >
               <div className="flex gap-3">
                 {serviceTaskId && servicePolling && (
                   <button
                     type="button"
                     onClick={handleCancelTask}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-medium transition-colors"
+                    className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
+                    style={{ backgroundColor: colors.errorBg }}
                   >
                     🚫 Cancel Import
                   </button>
@@ -1531,7 +1576,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   <button
                     type="button"
                     onClick={resetServiceState}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium transition-colors"
+                    className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
+                    style={{ backgroundColor: colors.accent }}
                   >
                     ➕ New Import
                   </button>
@@ -1540,7 +1586,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded font-medium transition-colors"
+                className="px-4 py-2 rounded transition-colors hover:opacity-80"
+                style={{ backgroundColor: colors.buttonPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textInverse }}
               >
                 {servicePolling ? 'Close (Import continues in background)' : 'Close'}
               </button>
@@ -1548,6 +1595,19 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           )}
         </form>
       </div>
+
+      {/* Theme-aware styles for placeholder text */}
+      <style>{`
+        .sql-import-modal .sql-import-input::placeholder,
+        .sql-import-modal textarea::placeholder {
+          color: var(--theme-text-muted);
+          opacity: 0.7;
+        }
+        .sql-import-modal select option {
+          background-color: var(--theme-bg-secondary);
+          color: var(--theme-text-primary);
+        }
+      `}</style>
     </Dialog>
   );
 }

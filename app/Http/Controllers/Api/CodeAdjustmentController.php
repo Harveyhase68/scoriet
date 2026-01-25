@@ -207,7 +207,7 @@ class CodeAdjustmentController extends Controller
 
         $validated = $request->validate([
             'insertion_type' => 'required|in:beginning,end,middle',
-            'anchor_text' => 'required|string',
+            'anchor_text' => 'required_unless:insertion_type,beginning|nullable|string',
             'insertion_content' => 'required|string',
             'line_offset' => 'nullable|integer',
             'insertion_order' => 'nullable|integer|min:0',
@@ -217,7 +217,7 @@ class CodeAdjustmentController extends Controller
         $insertion = CodeAdjustmentInsertion::create([
             'code_adjustment_id' => $adjustmentId,
             'insertion_type' => $validated['insertion_type'],
-            'anchor_text' => $validated['anchor_text'],
+            'anchor_text' => $validated['anchor_text'] ?? '',
             'insertion_content' => $validated['insertion_content'],
             'line_offset' => $validated['line_offset'] ?? 0,
             'insertion_order' => $validated['insertion_order'] ?? 0,
@@ -251,12 +251,17 @@ class CodeAdjustmentController extends Controller
 
         $validated = $request->validate([
             'insertion_type' => 'sometimes|required|in:beginning,end,middle',
-            'anchor_text' => 'sometimes|required|string',
+            'anchor_text' => 'nullable|string',
             'insertion_content' => 'sometimes|required|string',
             'line_offset' => 'nullable|integer',
             'insertion_order' => 'nullable|integer|min:0',
             'description' => 'nullable|string|max:500',
         ]);
+
+        // Ensure anchor_text is empty string if null (for 'beginning' type)
+        if (array_key_exists('anchor_text', $validated) && $validated['anchor_text'] === null) {
+            $validated['anchor_text'] = '';
+        }
 
         $insertion->update($validated);
 
@@ -367,7 +372,7 @@ class CodeAdjustmentController extends Controller
             'file_pattern' => 'required|string|max:500',
             'insertions' => 'required|array|min:1',
             'insertions.*.insertion_type' => 'required|in:beginning,end,middle',
-            'insertions.*.anchor_text' => 'required|string',
+            'insertions.*.anchor_text' => 'nullable|string',
             'insertions.*.insertion_content' => 'required|string',
             'insertions.*.line_offset' => 'nullable|integer',
             'insertions.*.description' => 'nullable|string|max:500',
@@ -390,7 +395,7 @@ class CodeAdjustmentController extends Controller
             CodeAdjustmentInsertion::create([
                 'code_adjustment_id' => $adjustment->id,
                 'insertion_type' => $insertionData['insertion_type'],
-                'anchor_text' => $insertionData['anchor_text'],
+                'anchor_text' => $insertionData['anchor_text'] ?? '',
                 'insertion_content' => $insertionData['insertion_content'],
                 'line_offset' => $insertionData['line_offset'] ?? 0,
                 'insertion_order' => $index,
@@ -685,7 +690,7 @@ class CodeAdjustmentController extends Controller
             'data.adjustments.*.is_active' => 'nullable|boolean',
             'data.adjustments.*.insertions' => 'required|array',
             'data.adjustments.*.insertions.*.insertion_type' => 'required|in:beginning,end,middle',
-            'data.adjustments.*.insertions.*.anchor_text' => 'required|string',
+            'data.adjustments.*.insertions.*.anchor_text' => 'nullable|string',
             'data.adjustments.*.insertions.*.insertion_content' => 'required|string',
             'data.adjustments.*.insertions.*.line_offset' => 'nullable|integer',
             'data.adjustments.*.insertions.*.insertion_order' => 'nullable|integer|min:0',
@@ -735,7 +740,7 @@ class CodeAdjustmentController extends Controller
                 CodeAdjustmentInsertion::create([
                     'code_adjustment_id' => $adjustment->id,
                     'insertion_type' => $insertionData['insertion_type'],
-                    'anchor_text' => $insertionData['anchor_text'],
+                    'anchor_text' => $insertionData['anchor_text'] ?? '',
                     'insertion_content' => $insertionData['insertion_content'],
                     'line_offset' => $insertionData['line_offset'] ?? 0,
                     'insertion_order' => $insertionData['insertion_order'] ?? $index,

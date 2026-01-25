@@ -45,12 +45,14 @@ class TemplateFile extends Model
         'zip_filename',
         'file_order',
         'form_window_type',
+        'is_include_only',
     ];
 
     protected $casts = [
         'template_id' => 'integer',
         'file_order' => 'integer',
         'form_window_type' => 'integer',
+        'is_include_only' => 'boolean',
     ];
 
     /**

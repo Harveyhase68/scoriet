@@ -26,6 +26,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 // ========== INTERFACES ==========
@@ -456,6 +457,7 @@ const nodeTypes = {
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const { colors } = useTheme();
   const setFocus = () => ref.current?.focus();
 
   return (
@@ -463,10 +465,17 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
       {...rest}
       ref={ref}
       tabIndex={-1}
-      style={{ flex: 1, padding: '0', height: '100%', ...style }}
+      style={{
+        flex: 1,
+        padding: '0',
+        height: '100%',
+        backgroundColor: colors.bgPrimary,
+        color: colors.textPrimary,
+        ...style
+      }}
       onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
+      className="form-designer-panel"
     >
       {children}
     </div>
@@ -484,6 +493,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   // i18n
   const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Theme
+  const { colors } = useTheme();
 
   // Refs
   const toastRef = useRef<Toast>(null);
@@ -1274,7 +1286,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       {/* Main Layout */}
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           {/* Left - FormSet Selection */}
           <div className="flex items-center gap-3">
             <Dropdown
@@ -1289,6 +1301,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               dataKey="id"
               placeholder="FormSet auswählen..."
               className="w-64"
+              panelClassName="form-designer-dropdown-panel"
               loading={loadingFormSets}
               emptyMessage="Keine FormSets vorhanden"
             />
@@ -1327,11 +1340,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             {/* Subscription Status */}
             {accessStatus?.has_access && !accessStatus.is_patron && accessStatus.days_remaining !== undefined && (
               <span
-                className={`text-xs px-2 py-1 rounded ${
-                  accessStatus.days_remaining > 30 ? 'bg-green-900/50 text-green-400' :
-                  accessStatus.days_remaining > 7 ? 'bg-yellow-900/50 text-yellow-400' :
-                  'bg-red-900/50 text-red-400'
-                }`}
+                className="text-xs px-2 py-1 rounded"
+                style={{
+                  backgroundColor: accessStatus.days_remaining > 30 ? colors.successBg :
+                    accessStatus.days_remaining > 7 ? colors.warningBg : colors.errorBg,
+                  color: accessStatus.days_remaining > 30 ? colors.successText :
+                    accessStatus.days_remaining > 7 ? colors.warningText : colors.errorText,
+                  border: `1px solid ${accessStatus.days_remaining > 30 ? colors.successBorder :
+                    accessStatus.days_remaining > 7 ? colors.warningBorder : colors.errorBorder}`
+                }}
                 title={`Läuft ab am: ${accessStatus.expires_at ? new Date(accessStatus.expires_at).toLocaleDateString('de-DE') : 'Unbekannt'}`}
               >
                 <i className="pi pi-clock mr-1"></i>
@@ -1339,13 +1356,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               </span>
             )}
             {accessStatus?.has_access && accessStatus.is_patron && (
-              <span className="text-xs px-2 py-1 rounded bg-purple-900/50 text-purple-400" title="Patron Mitglied">
+              <span
+                className="text-xs px-2 py-1 rounded"
+                style={{ backgroundColor: colors.infoBg, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}
+                title="Patron Mitglied"
+              >
                 <i className="pi pi-star mr-1"></i>
                 Patron
               </span>
             )}
             {hasUnsavedChanges && (
-              <span className="text-yellow-400 text-sm">
+              <span className="text-sm" style={{ color: colors.warningText }}>
                 <i className="pi pi-exclamation-circle mr-1"></i>
                 Ungespeicherte Änderungen
               </span>
@@ -1370,14 +1391,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         {/* Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Element Toolbar (Left) */}
-          <div className="w-48 bg-gray-900 border-r border-gray-700 overflow-y-auto">
+          <div className="w-48 overflow-y-auto" style={{ backgroundColor: colors.bgSecondary, borderRight: `1px solid ${colors.borderPrimary}` }}>
             <div className="p-2">
-              <h4 className="text-gray-400 text-xs font-semibold uppercase mb-2">Container</h4>
+              <h4 className="text-xs font-semibold uppercase mb-2" style={{ color: colors.textMuted }}>Container</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.containers.map(elem => (
                   <button
                     key={elem.value}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors element-toolbar-btn"
+                    style={{ color: colors.textSecondary }}
                     onClick={() => addElement(elem.value)}
                     disabled={!selectedWindow}
                   >
@@ -1387,12 +1409,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-gray-400 text-xs font-semibold uppercase mt-4 mb-2">Navigation</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Navigation</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.navigation.map(elem => (
                   <button
                     key={elem.value}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors element-toolbar-btn"
+                    style={{ color: colors.textSecondary }}
                     onClick={() => addElement(elem.value)}
                     disabled={!selectedWindow}
                   >
@@ -1402,12 +1425,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-gray-400 text-xs font-semibold uppercase mt-4 mb-2">Aktionen</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Aktionen</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.actions.map(elem => (
                   <button
                     key={elem.value}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors element-toolbar-btn"
+                    style={{ color: colors.textSecondary }}
                     onClick={() => addElement(elem.value)}
                     disabled={!selectedWindow}
                   >
@@ -1417,12 +1441,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-gray-400 text-xs font-semibold uppercase mt-4 mb-2">Layout</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Layout</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.layout.map(elem => (
                   <button
                     key={elem.value}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors element-toolbar-btn"
+                    style={{ color: colors.textSecondary }}
                     onClick={() => addElement(elem.value)}
                     disabled={!selectedWindow}
                   >
@@ -1526,7 +1551,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 />
               </ReactFlow>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
                 <div className="text-center">
                   <i className="pi pi-window-maximize text-4xl mb-2"></i>
                   <p>Wählen Sie ein FormSet und ein Fenster aus</p>
@@ -1537,12 +1562,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
           {/* Properties Panel (Right) */}
           {propertiesPanelVisible && (
-            <div className="w-72 bg-gray-900 border-l border-gray-700 overflow-y-auto">
+            <div className="w-72 overflow-y-auto" style={{ backgroundColor: colors.bgSecondary, borderLeft: `1px solid ${colors.borderPrimary}` }}>
               <div className="p-3">
                 {selectedElement ? (
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-white font-semibold">Element-Eigenschaften</h4>
+                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Element-Eigenschaften</h4>
                       <Button
                         icon="pi pi-trash"
                         className="p-button-danger p-button-sm p-button-text"
@@ -1553,7 +1578,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-gray-400 text-xs mb-1">Typ</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Typ</label>
                         <InputText
                           value={selectedElement.element_type}
                           disabled
@@ -1564,7 +1589,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       {selectedElement.element_type.startsWith('button_') && (
                         <>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Label</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Label</label>
                             <InputText
                               value={selectedElement.button_label || ''}
                               onChange={(e) => {
@@ -1583,7 +1608,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Icon (pi-xxx)</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Icon (pi-xxx)</label>
                             <InputText
                               value={selectedElement.button_icon || ''}
                               onChange={(e) => {
@@ -1605,7 +1630,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           {/* Button-Farben - kompaktes Layout mit Reset */}
                           <div className="flex gap-3">
                             <div>
-                              <label className="block text-gray-400 text-xs mb-1">Hintergrund</label>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Hintergrund</label>
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="color"
@@ -1658,7 +1683,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                       }
                                       setHasUnsavedChanges(true);
                                     }}
-                                    className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded"
+                                    className="w-5 h-5 flex items-center justify-center rounded color-reset-btn"
+                                    style={{ color: colors.textMuted }}
                                     title="Auf Standard zurücksetzen"
                                   >
                                     <i className="pi pi-times text-xs"></i>
@@ -1667,7 +1693,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               </div>
                             </div>
                             <div>
-                              <label className="block text-gray-400 text-xs mb-1">Schrift</label>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Schrift</label>
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="color"
@@ -1720,7 +1746,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                       }
                                       setHasUnsavedChanges(true);
                                     }}
-                                    className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded"
+                                    className="w-5 h-5 flex items-center justify-center rounded color-reset-btn"
+                                    style={{ color: colors.textMuted }}
                                     title="Auf Standard zurücksetzen"
                                   >
                                     <i className="pi pi-times text-xs"></i>
@@ -1734,7 +1761,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'container' && (
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Max. Felder (für Tabs)</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Max. Felder (für Tabs)</label>
                           <InputNumber
                             value={selectedElement.max_fields || null}
                             onChange={(e) => {
@@ -1760,7 +1787,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       {['container', 'menu_container', 'tab_container'].includes(selectedElement.element_type) && (
                         <>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Abstand (Gap in px)</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Abstand (Gap in px)</label>
                             <InputNumber
                               value={selectedElement.container_gap ?? 8}
                               onChange={(e) => {
@@ -1782,7 +1809,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Spalten</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Spalten</label>
                             <select
                               value={selectedElement.container_columns ?? 1}
                               onChange={(e) => {
@@ -1797,7 +1824,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                 }
                                 setHasUnsavedChanges(true);
                               }}
-                              className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
+                              className="w-full p-2 rounded text-sm focus:outline-none"
+                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                             >
                               <option value={1}>1 Spalte</option>
                               <option value={2}>2 Spalten</option>
@@ -1809,7 +1837,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'menu_container' && (
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Ausrichtung</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Ausrichtung</label>
                           <select
                             value={selectedElement.container_orientation || 'vertical'}
                             onChange={(e) => {
@@ -1824,7 +1852,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               }
                               setHasUnsavedChanges(true);
                             }}
-                            className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
+                            className="w-full p-2 rounded text-sm focus:outline-none"
+                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                           >
                             <option value="vertical">Vertikal (↓)</option>
                             <option value="horizontal">Horizontal (→)</option>
@@ -1834,7 +1863,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'tab_panel' && (
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Tab-Titel</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Tab-Titel</label>
                           <InputText
                             value={selectedElement.tab_label || ''}
                             onChange={(e) => {
@@ -1856,7 +1885,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">X</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>X</label>
                           <InputNumber
                             value={selectedNodeData?.x ?? selectedElement.x_position}
                             onChange={(e) => {
@@ -1880,7 +1909,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           />
                         </div>
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Y</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Y</label>
                           <InputNumber
                             value={selectedNodeData?.y ?? selectedElement.y_position}
                             onChange={(e) => {
@@ -1907,7 +1936,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Breite</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Breite</label>
                           <InputNumber
                             value={selectedNodeData?.width ?? selectedElement.width}
                             onChange={(e) => {
@@ -1936,7 +1965,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           />
                         </div>
                         <div>
-                          <label className="block text-gray-400 text-xs mb-1">Höhe</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Höhe</label>
                           <InputNumber
                             value={selectedNodeData?.height ?? selectedElement.height}
                             onChange={(e) => {
@@ -1970,7 +1999,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ) : selectedWindow ? (
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-white font-semibold">Fenster-Eigenschaften</h4>
+                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Fenster-Eigenschaften</h4>
                       <Button
                         icon="pi pi-save"
                         className="p-button-success p-button-sm p-button-text"
@@ -1981,7 +2010,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-gray-400 text-xs mb-1">Typ</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Typ</label>
                         <InputText
                           value={WINDOW_TYPE_LABELS[selectedWindow.window_type]}
                           disabled
@@ -1989,7 +2018,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-400 text-xs mb-1">Anzeigename</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Anzeigename</label>
                         <InputText
                           value={selectedWindow.display_name || ''}
                           onChange={(e) => updateWindowProperty('display_name', e.target.value || null)}
@@ -1999,11 +2028,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       </div>
 
                       {/* Window Sizes */}
-                      <div className="border-t border-gray-700 pt-3">
-                        <h5 className="text-gray-300 text-sm font-medium mb-2">Standard-Größe (Default)</h5>
+                      <div className="border-t pt-3" style={{ borderColor: colors.borderPrimary }}>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Standard-Größe (Default)</h5>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Breite</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Breite</label>
                             <InputNumber
                               value={selectedWindow.default_width}
                               onChange={(e) => updateWindowProperty('default_width', e.value ?? 800)}
@@ -2013,7 +2042,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Höhe</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Höhe</label>
                             <InputNumber
                               value={selectedWindow.default_height}
                               onChange={(e) => updateWindowProperty('default_height', e.value ?? 600)}
@@ -2026,10 +2055,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       </div>
 
                       <div>
-                        <h5 className="text-gray-300 text-sm font-medium mb-2">Minimal-Größe</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Minimal-Größe</h5>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Min. Breite</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Min. Breite</label>
                             <InputNumber
                               value={selectedWindow.min_width}
                               onChange={(e) => updateWindowProperty('min_width', e.value ?? 400)}
@@ -2039,7 +2068,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-gray-400 text-xs mb-1">Min. Höhe</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Min. Höhe</label>
                             <InputNumber
                               value={selectedWindow.min_height}
                               onChange={(e) => updateWindowProperty('min_height', e.value ?? 300)}
@@ -2052,11 +2081,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       </div>
 
                       {/* Window Colors */}
-                      <div className="border-t border-gray-700 pt-3 mt-3">
-                        <h5 className="text-gray-300 text-sm font-medium mb-2">Fenster-Farben</h5>
+                      <div className="border-t pt-3 mt-3" style={{ borderColor: colors.borderPrimary }}>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Fenster-Farben</h5>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Hintergrund</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Hintergrund</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2074,7 +2103,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Fensterfarbe</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Fensterfarbe</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2092,7 +2121,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Textfarbe</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Textfarbe</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2116,67 +2145,67 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     {/* FormSet Default Colors */}
                     {selectedFormSet && (
                       <div className="border-t border-gray-700 pt-3 mt-4">
-                        <h5 className="text-gray-300 text-sm font-medium mb-2">FormSet Standard-Farben</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>FormSet Standard-Farben</h5>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Hintergrund</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Hintergrund</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
                                 style={{ backgroundColor: selectedFormSet.default_background_color }}
                               ></div>
-                              <span className="text-gray-500 text-xs">{selectedFormSet.default_background_color}</span>
+                              <span className="text-xs" style={{ color: colors.textMuted }}>{selectedFormSet.default_background_color}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Fenster</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Fenster</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
                                 style={{ backgroundColor: selectedFormSet.default_window_color }}
                               ></div>
-                              <span className="text-gray-500 text-xs">{selectedFormSet.default_window_color}</span>
+                              <span className="text-xs" style={{ color: colors.textMuted }}>{selectedFormSet.default_window_color}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Text</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Text</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
                                 style={{ backgroundColor: selectedFormSet.default_text_color }}
                               ></div>
-                              <span className="text-gray-500 text-xs">{selectedFormSet.default_text_color}</span>
+                              <span className="text-xs" style={{ color: colors.textMuted }}>{selectedFormSet.default_text_color}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Button-BG</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Button-BG</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
                                 style={{ backgroundColor: selectedFormSet.default_button_color }}
                               ></div>
-                              <span className="text-gray-500 text-xs">{selectedFormSet.default_button_color}</span>
+                              <span className="text-xs" style={{ color: colors.textMuted }}>{selectedFormSet.default_button_color}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-gray-400 text-xs">Button-Text</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>Button-Text</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
                                 style={{ backgroundColor: selectedFormSet.default_button_text_color }}
                               ></div>
-                              <span className="text-gray-500 text-xs">{selectedFormSet.default_button_text_color}</span>
+                              <span className="text-xs" style={{ color: colors.textMuted }}>{selectedFormSet.default_button_text_color}</span>
                             </div>
                           </div>
                         </div>
-                        <p className="text-gray-500 text-xs mt-2 italic">
+                        <p className="text-xs mt-2 italic" style={{ color: colors.textMuted }}>
                           Standard-Farben werden im FormSet-Bearbeiten-Dialog geändert.
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-gray-500 text-center py-8">
+                  <div className="text-center py-8" style={{ color: colors.textMuted }}>
                     <i className="pi pi-info-circle text-2xl mb-2"></i>
                     <p className="text-sm">Wählen Sie ein Element aus, um dessen Eigenschaften zu bearbeiten</p>
                   </div>
@@ -2194,21 +2223,29 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         header="Neues FormSet erstellen"
         style={{ width: '500px' }}
         modal
-        contentStyle={{ backgroundColor: '#1f2937', color: 'white' }}
-        headerStyle={{ backgroundColor: '#111827', color: 'white', border: 'none' }}
+        className="form-designer-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-gray-300 text-sm mb-1">Name *</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Name *</label>
             <InputText
               value={newFormSetName}
-              onChange={(e) => setNewFormSetName(e.target.value)}
+              onChange={(e) => {
+                // Sanitize: only allow lowercase letters, numbers, and underscores
+                const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                setNewFormSetName(sanitized);
+              }}
               className="w-full"
               placeholder="z.B. laravel_primereact"
             />
+            <small className="mt-1 block" style={{ color: colors.textMuted }}>
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
           </div>
           <div>
-            <label className="block text-gray-300 text-sm mb-1">Beschreibung</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Beschreibung</label>
             <InputTextarea
               value={newFormSetDescription}
               onChange={(e) => setNewFormSetDescription(e.target.value)}
@@ -2218,7 +2255,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             />
           </div>
           <div>
-            <label className="block text-gray-300 text-sm mb-1">Sichtbarkeit</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Sichtbarkeit</label>
             <Dropdown
               value={newFormSetVisibility}
               options={[
@@ -2230,6 +2267,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               optionLabel="label"
               optionValue="value"
               className="w-full"
+              panelClassName="form-designer-dropdown-panel"
             />
           </div>
           <div className="flex justify-end gap-2 pt-4">
@@ -2256,22 +2294,30 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         header="FormSet bearbeiten"
         style={{ width: '600px' }}
         modal
-        contentStyle={{ backgroundColor: '#1f2937', color: 'white' }}
-        headerStyle={{ backgroundColor: '#111827', color: 'white', border: 'none' }}
+        className="form-designer-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
       >
         {selectedFormSet && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Name *</label>
+                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Name *</label>
                 <InputText
                   value={selectedFormSet.name}
-                  onChange={(e) => setSelectedFormSet({ ...selectedFormSet, name: e.target.value })}
+                  onChange={(e) => {
+                    // Sanitize: only allow lowercase letters, numbers, and underscores
+                    const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    setSelectedFormSet({ ...selectedFormSet, name: sanitized });
+                  }}
                   className="w-full"
                 />
+                <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                  Only lowercase letters (a-z), numbers (0-9), underscores (_)
+                </small>
               </div>
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Sichtbarkeit</label>
+                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Sichtbarkeit</label>
                 <Dropdown
                   value={selectedFormSet.visibility}
                   options={[
@@ -2283,12 +2329,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   optionLabel="label"
                   optionValue="value"
                   className="w-full"
+                  panelClassName="form-designer-dropdown-panel"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Beschreibung</label>
+              <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Beschreibung</label>
               <InputTextarea
                 value={selectedFormSet.description || ''}
                 onChange={(e) => setSelectedFormSet({ ...selectedFormSet, description: e.target.value })}
@@ -2298,19 +2345,28 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             </div>
 
             {/* Default Colors Section */}
-            <div className="border-t border-gray-700 pt-4">
-              <h4 className="text-white font-semibold mb-3">Standard-Farben</h4>
-              <p className="text-gray-400 text-xs mb-3">
+            <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
+              <h4 className="font-semibold mb-3" style={{ color: colors.textPrimary }}>Standard-Farben</h4>
+              <p className="text-xs mb-3" style={{ color: colors.textMuted }}>
                 Diese Farben werden als Standard für alle Fenster verwendet, sofern nicht überschrieben.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-300 text-sm mb-2">Hintergrund</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Hintergrund</label>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="formset-bg-color"
+                      value={selectedFormSet.default_background_color}
+                      onChange={(e) => setSelectedFormSet({ ...selectedFormSet, default_background_color: e.target.value })}
+                      className="sr-only"
+                    />
                     <div
-                      className="w-10 h-10 rounded border-2 border-gray-600 cursor-pointer"
-                      style={{ backgroundColor: selectedFormSet.default_background_color }}
+                      className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: selectedFormSet.default_background_color, borderColor: colors.borderPrimary }}
+                      onClick={() => document.getElementById('formset-bg-color')?.click()}
+                      title="Farbe auswählen"
                     ></div>
                     <InputText
                       value={selectedFormSet.default_background_color}
@@ -2321,11 +2377,20 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-300 text-sm mb-2">Fensterfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Fensterfarbe</label>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="formset-window-color"
+                      value={selectedFormSet.default_window_color}
+                      onChange={(e) => setSelectedFormSet({ ...selectedFormSet, default_window_color: e.target.value })}
+                      className="sr-only"
+                    />
                     <div
-                      className="w-10 h-10 rounded border-2 border-gray-600 cursor-pointer"
-                      style={{ backgroundColor: selectedFormSet.default_window_color }}
+                      className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: selectedFormSet.default_window_color, borderColor: colors.borderPrimary }}
+                      onClick={() => document.getElementById('formset-window-color')?.click()}
+                      title="Farbe auswählen"
                     ></div>
                     <InputText
                       value={selectedFormSet.default_window_color}
@@ -2336,11 +2401,20 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-300 text-sm mb-2">Textfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Textfarbe</label>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="formset-text-color"
+                      value={selectedFormSet.default_text_color}
+                      onChange={(e) => setSelectedFormSet({ ...selectedFormSet, default_text_color: e.target.value })}
+                      className="sr-only"
+                    />
                     <div
-                      className="w-10 h-10 rounded border-2 border-gray-600 cursor-pointer"
-                      style={{ backgroundColor: selectedFormSet.default_text_color }}
+                      className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: selectedFormSet.default_text_color, borderColor: colors.borderPrimary }}
+                      onClick={() => document.getElementById('formset-text-color')?.click()}
+                      title="Farbe auswählen"
                     ></div>
                     <InputText
                       value={selectedFormSet.default_text_color}
@@ -2351,11 +2425,20 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-300 text-sm mb-2">Button-Hintergrundfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Button-Hintergrundfarbe</label>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="formset-button-color"
+                      value={selectedFormSet.default_button_color}
+                      onChange={(e) => setSelectedFormSet({ ...selectedFormSet, default_button_color: e.target.value })}
+                      className="sr-only"
+                    />
                     <div
-                      className="w-10 h-10 rounded border-2 border-gray-600 cursor-pointer"
-                      style={{ backgroundColor: selectedFormSet.default_button_color }}
+                      className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: selectedFormSet.default_button_color, borderColor: colors.borderPrimary }}
+                      onClick={() => document.getElementById('formset-button-color')?.click()}
+                      title="Farbe auswählen"
                     ></div>
                     <InputText
                       value={selectedFormSet.default_button_color}
@@ -2366,11 +2449,20 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-300 text-sm mb-2">Button-Textfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Button-Textfarbe</label>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="formset-button-text-color"
+                      value={selectedFormSet.default_button_text_color}
+                      onChange={(e) => setSelectedFormSet({ ...selectedFormSet, default_button_text_color: e.target.value })}
+                      className="sr-only"
+                    />
                     <div
-                      className="w-10 h-10 rounded border-2 border-gray-600 cursor-pointer"
-                      style={{ backgroundColor: selectedFormSet.default_button_text_color }}
+                      className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: selectedFormSet.default_button_text_color, borderColor: colors.borderPrimary }}
+                      onClick={() => document.getElementById('formset-button-text-color')?.click()}
+                      title="Farbe auswählen"
                     ></div>
                     <InputText
                       value={selectedFormSet.default_button_text_color}
@@ -2384,22 +2476,27 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             </div>
 
             {/* Color Preview */}
-            <div className="border-t border-gray-700 pt-4">
-              <h4 className="text-white font-semibold mb-2">Vorschau</h4>
+            <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
+              <h4 className="font-semibold mb-2" style={{ color: colors.textPrimary }}>Vorschau</h4>
               <div
-                className="rounded-lg p-4 border border-gray-600"
-                style={{ backgroundColor: selectedFormSet.default_background_color }}
+                className="formset-color-preview rounded-lg p-4"
+                style={{
+                  backgroundColor: selectedFormSet.default_background_color,
+                  border: `1px solid ${colors.borderPrimary}`,
+                  '--preview-text-color': selectedFormSet.default_text_color,
+                  '--preview-button-text-color': selectedFormSet.default_button_text_color
+                } as React.CSSProperties}
               >
                 <div
                   className="rounded p-3"
                   style={{ backgroundColor: selectedFormSet.default_window_color }}
                 >
-                  <p style={{ color: selectedFormSet.default_text_color }} className="text-sm mb-2">
+                  <p className="text-sm mb-2 preview-text">
                     Beispieltext in der Fensterfarbe
                   </p>
                   <button
-                    className="px-3 py-1 rounded text-sm"
-                    style={{ backgroundColor: selectedFormSet.default_button_color, color: selectedFormSet.default_button_text_color }}
+                    className="px-3 py-1 rounded text-sm preview-button"
+                    style={{ backgroundColor: selectedFormSet.default_button_color }}
                   >
                     Button-Beispiel
                   </button>
@@ -2407,7 +2504,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+            <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: colors.borderPrimary }}>
               <Button
                 label="Löschen"
                 icon="pi pi-trash"
@@ -2500,30 +2597,31 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         header="Form Designer freischalten"
         style={{ width: '500px' }}
         modal
-        contentStyle={{ backgroundColor: '#1f2937', color: 'white' }}
-        headerStyle={{ backgroundColor: '#111827', color: 'white', border: 'none' }}
+        className="form-designer-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
       >
         <div className="space-y-6">
           {/* Info Section */}
           <div className="text-center">
             <i className="pi pi-lock text-5xl text-yellow-400 mb-4"></i>
-            <h3 className="text-xl font-bold text-white mb-2">Feature freischalten</h3>
-            <p className="text-gray-300 text-sm">
+            <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>Feature freischalten</h3>
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
               Der Form Designer ermöglicht es Ihnen, visuelle Formular-Vorlagen für Ihre Projekte zu erstellen.
               Gestalten Sie Fenster, Buttons, Container und mehr per Drag & Drop.
             </p>
           </div>
 
           {/* Pricing Info */}
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgSecondary }}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-400">Kosten:</span>
+              <span style={{ color: colors.textMuted }}>Kosten:</span>
               <span className="text-xl font-bold text-blue-400">
                 {accessStatus?.unlock_cost || 50} Credits / Jahr
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Ihre Credits:</span>
+              <span style={{ color: colors.textMuted }}>Ihre Credits:</span>
               <span className={`text-xl font-bold ${(accessStatus?.user_credits || 0) >= (accessStatus?.unlock_cost || 50) ? 'text-green-400' : 'text-red-400'}`}>
                 {accessStatus?.user_credits || 0} Credits
               </span>
@@ -2564,7 +2662,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 }}
                 loading={unlocking}
               />
-              <p className="text-gray-500 text-xs text-center">
+              <p className="text-xs text-center" style={{ color: colors.textMuted }}>
                 Die Freischaltung gilt für 1 Jahr und kann danach verlängert werden.
               </p>
             </div>
@@ -2576,8 +2674,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 </p>
               </div>
 
-              <div className="border-t border-gray-700 pt-4">
-                <p className="text-gray-400 text-sm text-center mb-3">Credits kaufen mit:</p>
+              <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
+                <p className="text-sm text-center mb-3" style={{ color: colors.textMuted }}>Credits kaufen mit:</p>
                 <div className="flex gap-3">
                   <Button
                     label="Stripe"
@@ -2603,8 +2701,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           )}
 
           {/* Patron Info */}
-          <div className="border-t border-gray-700 pt-4 text-center">
-            <p className="text-gray-500 text-xs">
+          <div className="border-t pt-4 text-center" style={{ borderColor: colors.borderPrimary }}>
+            <p className="text-xs" style={{ color: colors.textMuted }}>
               <i className="pi pi-star text-yellow-400 mr-1"></i>
               Patron Monthly-Mitglieder haben kostenlosen Zugang zu allen Features.
             </p>

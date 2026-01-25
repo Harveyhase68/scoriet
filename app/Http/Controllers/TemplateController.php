@@ -495,13 +495,6 @@ class TemplateController extends Controller
     public function addDbSchemaDependency(Request $request, $id)
     {
         try {
-            // Debug: Log the request data
-            \Log::info('Add DB Schema Dependency Request', [
-                'template_id' => $id,
-                'request_data' => $request->all(),
-                'content_type' => $request->header('Content-Type'),
-            ]);
-
             $template = Template::findOrFail($id);
             $user = auth()->user();
 
@@ -525,26 +518,14 @@ class TemplateController extends Controller
 
                 // Ensure is_required is a boolean
                 $validated['is_required'] = $validated['is_required'] ?? true;
-
-                \Log::info('Validation passed', ['validated_data' => $validated]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                \Log::error('Validation failed', [
-                    'errors' => $e->errors(),
-                    'request_data' => $request->all()
-                ]);
                 throw $e;
             }
 
             $schema = \App\Models\FloatingSchema::findOrFail($validated['schema_id']);
-            \Log::info('Found schema', ['schema' => $schema->toArray()]);
 
             // Check if user can access this schema (owner or public) - using type-safe comparison
             if ((string)$schema->owner_id !== (string)$user->id && $schema->visibility !== 'public') {
-                \Log::error('Schema access denied', [
-                    'schema_owner_id' => $schema->owner_id,
-                    'user_id' => $user->id,
-                    'schema_visibility' => $schema->visibility
-                ]);
                 return response()->json([
                     'success' => false,
                     'error' => 'Access denied to this DB schema',
@@ -556,24 +537,12 @@ class TemplateController extends Controller
                 ->where('schema_id', $schema->id)
                 ->first();
 
-            \Log::info('Dependency check', [
-                'existing_dependency' => $existingDependency ? $existingDependency->toArray() : null
-            ]);
-
             if ($existingDependency) {
-                \Log::error('Dependency already exists');
                 return response()->json([
                     'success' => false,
                     'error' => 'Template already depends on this DB schema',
                 ], 409);
             }
-
-            \Log::info('Creating dependency', [
-                'template_id' => $template->id,
-                'schema_id' => $schema->id,
-                'is_required' => $validated['is_required'] ?? true,
-                'alias' => $validated['alias'] ?? null,
-            ]);
 
             $dependency = \App\Models\TemplateDbSchemaDependency::create([
                 'template_id' => $template->id,
@@ -582,20 +551,12 @@ class TemplateController extends Controller
                 'alias' => $validated['alias'] ?? null,
             ]);
 
-            \Log::info('Dependency created successfully', ['dependency_id' => $dependency->id]);
-
             return response()->json([
                 'success' => true,
                 'dependency' => $dependency->load(['template', 'dbSchema']),
                 'message' => 'DB schema dependency added successfully',
             ], 201);
         } catch (\Exception $e) {
-            \Log::error('Exception in addDbSchemaDependency', [
-                'exception' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -722,12 +683,10 @@ class TemplateController extends Controller
     }
 
     /**
-     * 🔄 QUEUE JOBS: Dispatch regeneration jobs for all projects using this template
+     * Dispatch regeneration jobs for all projects using this template
      */
     private function dispatchRegenerationJobsForTemplate(Template $template): void
     {
-        \Log::info("🧪 [TEMPLATE-QUEUE] Starting job dispatch for template {$template->id} ({$template->name})");
-        
         // Find all projects that use this template
         $projectIds = \DB::table('project_template_usage')
             ->where('template_id', $template->id)
@@ -736,38 +695,18 @@ class TemplateController extends Controller
             ->unique()
             ->toArray();
 
-        \Log::info("🧪 [TEMPLATE-QUEUE] Found project IDs: " . json_encode($projectIds));
-
         if (empty($projectIds)) {
-            \Log::info("🧪 [TEMPLATE-QUEUE] Template {$template->id}: No projects using this template yet");
             return;
         }
 
-        \Log::info("🧪 [TEMPLATE-QUEUE] Template {$template->id}: Dispatching regeneration for " . count($projectIds) . " projects");
-
-        // Get job count before dispatching
-        $jobsBefore = \DB::table('jobs')->count();
-        \Log::info("🧪 [TEMPLATE-QUEUE] Jobs in queue before dispatch: {$jobsBefore}");
-
         // Dispatch queue jobs for each affected project
-        $dispatchedJobs = 0;
         foreach ($projectIds as $projectId) {
-            \Log::info("🧪 [TEMPLATE-QUEUE] Dispatching RegenerateProjectGenerationTree job for project {$projectId}");
-            
             try {
-                $job = \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
-                $dispatchedJobs++;
-                \Log::info("🧪 [TEMPLATE-QUEUE] Successfully dispatched job for project {$projectId}");
+                \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
             } catch (\Exception $e) {
-                \Log::error("🧪 [TEMPLATE-QUEUE] Failed to dispatch job for project {$projectId}: " . $e->getMessage());
+                \Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
             }
         }
-
-        // Get job count after dispatching
-        $jobsAfter = \DB::table('jobs')->count();
-        \Log::info("🧪 [TEMPLATE-QUEUE] Jobs in queue after dispatch: {$jobsAfter}");
-        \Log::info("🧪 [TEMPLATE-QUEUE] Total dispatched jobs: {$dispatchedJobs}");
-        \Log::info("🧪 [TEMPLATE-QUEUE] Job dispatch completed for template {$template->id}");
     }
 
     /**

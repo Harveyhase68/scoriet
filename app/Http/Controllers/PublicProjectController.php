@@ -63,6 +63,21 @@ class PublicProjectController extends Controller
             ->select('schemas.id', 'schemas.name', 'schemas.description')
             ->get();
 
+        // Get attachments (public listing without download - only metadata)
+        $attachments = $project->attachments()
+            ->select('id', 'original_filename', 'mime_type', 'category', 'size', 'is_pinned')
+            ->get()
+            ->map(function ($attachment) {
+                return [
+                    'id' => $attachment->id,
+                    'original_filename' => $attachment->original_filename,
+                    'mime_type' => $attachment->mime_type,
+                    'category_label' => $attachment->getCategoryLabel(),
+                    'formatted_size' => $attachment->getFormattedSize(),
+                    'is_pinned' => $attachment->is_pinned,
+                ];
+            });
+
         // Prepare public project data (exclude sensitive fields)
         $publicProjectData = [
             'id' => $project->id,
@@ -92,6 +107,7 @@ class PublicProjectController extends Controller
             'teams' => $teams,
             'templates' => $templates,
             'schemas' => $schemas,
+            'attachments' => $attachments,
         ];
 
         return Inertia::render('PublicProjectPage', [

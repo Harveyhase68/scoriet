@@ -9,6 +9,7 @@ import { Message } from 'primereact/message';
 import { apiClient as api } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TemplateMedia {
   id: number;
@@ -62,6 +63,7 @@ const TemplateStorePanel: React.FC = () => {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage);
   const toast = useToast();
+  const { colors } = useTheme();
 
   // Store state
   const [templates, setTemplates] = useState<StoreTemplate[]>([]);
@@ -299,22 +301,22 @@ const TemplateStorePanel: React.FC = () => {
   // Loading state
   if (loading && templates.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <div className="text-center">
-          <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-          <p className="text-gray-400">Loading templates...</p>
+          <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
+          <p style={{ color: colors.textMuted }}>Loading templates...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
+    <div className="template-store-panel flex flex-col h-full p-6" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <i className="pi pi-shopping-cart text-2xl text-purple-500"></i>
-          <h1 className="text-2xl font-bold text-white">Template Store</h1>
+          <i className="pi pi-shopping-cart text-2xl" style={{ color: colors.accent }}></i>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Template Store</h1>
         </div>
         <div className="flex items-center space-x-3">
           <Tag
@@ -357,7 +359,7 @@ const TemplateStorePanel: React.FC = () => {
           {/* Search & Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             <div className="flex items-center space-x-2 flex-1" style={{ minWidth: '200px' }}>
-              <i className="pi pi-search text-gray-400"></i>
+              <i className="pi pi-search" style={{ color: colors.textMuted }}></i>
               <InputText
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -375,6 +377,7 @@ const TemplateStorePanel: React.FC = () => {
               onChange={(e) => setCategoryFilter(e.value)}
               placeholder="Category"
               className="p-dropdown-sm"
+              panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '150px' }}
             />
             <Dropdown
@@ -386,6 +389,7 @@ const TemplateStorePanel: React.FC = () => {
               onChange={(e) => setLanguageFilter(e.value)}
               placeholder="Language"
               className="p-dropdown-sm"
+              panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '150px' }}
             />
             <Dropdown
@@ -394,6 +398,7 @@ const TemplateStorePanel: React.FC = () => {
               onChange={(e) => setSortBy(e.value)}
               placeholder="Sort By"
               className="p-dropdown-sm"
+              panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '140px' }}
             />
           </div>
@@ -402,9 +407,9 @@ const TemplateStorePanel: React.FC = () => {
           <div className="flex-1 overflow-y-auto">
             {templates.length === 0 ? (
               <div className="text-center py-12">
-                <i className="pi pi-inbox text-6xl text-gray-600 mb-4"></i>
-                <h3 className="text-lg font-medium text-white mb-2">No templates found</h3>
-                <p className="text-gray-400">
+                <i className="pi pi-inbox text-6xl mb-4" style={{ color: colors.textMuted }}></i>
+                <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>No templates found</h3>
+                <p style={{ color: colors.textMuted }}>
                   {searchTerm ? 'Try adjusting your search or filters' : 'No templates available in the store yet'}
                 </p>
               </div>
@@ -413,24 +418,25 @@ const TemplateStorePanel: React.FC = () => {
                 {templates.map((template) => (
                   <Card
                     key={template.id}
-                    className="h-fit hover:shadow-lg transition-shadow bg-gray-800 border-gray-700 cursor-pointer"
+                    className="h-fit hover:shadow-lg transition-shadow cursor-pointer"
+                    style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}
                     onClick={() => openTemplateDetail(template)}
                     header={
-                      <div className="px-3 py-2 border-b border-gray-700 bg-gray-800">
+                      <div className="px-3 py-2" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                         <div className="flex items-center justify-between">
                           {/* Left: Name + Developer */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-semibold text-white truncate">
+                            <h3 className="text-sm font-semibold truncate" style={{ color: colors.textPrimary }}>
                               {template.name}
                             </h3>
-                            <div className="flex items-center text-xs text-gray-400">
+                            <div className="flex items-center text-xs" style={{ color: colors.textMuted }}>
                               <i className="pi pi-user text-xs mr-1"></i>
                               <span className="truncate">{template.creator?.username || 'Unknown'}</span>
                             </div>
                           </div>
                           {/* Right: Price */}
                           {!template.is_purchased && !template.is_own ? (
-                            <span className="text-sm font-semibold text-yellow-400 flex-shrink-0">
+                            <span className="text-sm font-semibold flex-shrink-0" style={{ color: colors.warningText }}>
                               {getPriceDisplay(template)}
                             </span>
                           ) : template.is_purchased ? (
@@ -442,7 +448,7 @@ const TemplateStorePanel: React.FC = () => {
                       </div>
                     }
                   >
-                    <div className="px-3 py-2 bg-gray-800">
+                    <div className="px-3 py-2" style={{ backgroundColor: colors.bgSecondary }}>
                       {/* Middle: Logo + Tags/Stats */}
                       <div className="flex items-start gap-3 mb-2">
                         {/* Tags & Stats left */}
@@ -455,13 +461,13 @@ const TemplateStorePanel: React.FC = () => {
                               <Tag value={template.language} severity="success" className="text-xs px-1 py-0" />
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                          <div className="flex items-center gap-3 text-xs" style={{ color: colors.textMuted }}>
                             <span className="flex items-center gap-1">
                               <i className="pi pi-shopping-cart text-xs"></i>
                               {template.sales_count || 0}
                             </span>
                             <span className="flex items-center gap-1">
-                              <i className="pi pi-star text-yellow-500 text-xs"></i>
+                              <i className="pi pi-star text-xs" style={{ color: colors.warningText }}></i>
                               {template.review_score || 0}
                             </span>
                           </div>
@@ -472,20 +478,20 @@ const TemplateStorePanel: React.FC = () => {
                             src={`/api/media/${template.logo.id}/serve`}
                             alt={template.name}
                             className="w-10 h-10 rounded object-cover flex-shrink-0"
-                            style={{ backgroundColor: '#374151' }}
+                            style={{ backgroundColor: colors.bgTertiary }}
                           />
                         ) : (
                           <div
                             className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: '#374151' }}
+                            style={{ backgroundColor: colors.bgTertiary }}
                           >
-                            <i className="pi pi-box text-sm text-gray-500"></i>
+                            <i className="pi pi-box text-sm" style={{ color: colors.textMuted }}></i>
                           </div>
                         )}
                       </div>
 
                       {/* Bottom: Description */}
-                      <p className="text-xs text-gray-400 line-clamp-1 border-t border-gray-700 pt-2">
+                      <p className="text-xs line-clamp-1 pt-2" style={{ color: colors.textMuted, borderTop: `1px solid ${colors.borderPrimary}` }}>
                         {template.description || 'No description available'}
                       </p>
                     </div>
@@ -503,7 +509,7 @@ const TemplateStorePanel: React.FC = () => {
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   className="p-button-outlined p-button-sm"
                 />
-                <span className="text-gray-400">
+                <span style={{ color: colors.textMuted }}>
                   Page {page} of {Math.ceil(totalRecords / rows)}
                 </span>
                 <Button
@@ -517,19 +523,19 @@ const TemplateStorePanel: React.FC = () => {
           </div>
 
           {/* Statistics Footer */}
-          <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-purple-400">{totalRecords}</div>
-                <div className="text-sm text-gray-400">Templates</div>
+                <div className="text-2xl font-bold" style={{ color: colors.accent }}>{totalRecords}</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>Templates</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-400">{categories.length}</div>
-                <div className="text-sm text-gray-400">Categories</div>
+                <div className="text-2xl font-bold" style={{ color: colors.infoText }}>{categories.length}</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>Categories</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-400">{templates.length}</div>
-                <div className="text-sm text-gray-400">Showing</div>
+                <div className="text-2xl font-bold" style={{ color: colors.successText }}>{templates.length}</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>Showing</div>
               </div>
             </div>
           </div>
@@ -540,13 +546,13 @@ const TemplateStorePanel: React.FC = () => {
         <div className="flex-1 overflow-y-auto">
           {purchasesLoading ? (
             <div className="flex items-center justify-center py-12">
-              <i className="pi pi-spinner pi-spin text-3xl text-blue-500"></i>
+              <i className="pi pi-spinner pi-spin text-3xl" style={{ color: colors.accent }}></i>
             </div>
           ) : purchases.length === 0 ? (
             <div className="text-center py-12">
-              <i className="pi pi-shopping-bag text-6xl text-gray-600 mb-4"></i>
-              <h3 className="text-lg font-medium text-white mb-2">No purchases yet</h3>
-              <p className="text-gray-400 mb-4">You haven't purchased any templates yet</p>
+              <i className="pi pi-shopping-bag text-6xl mb-4" style={{ color: colors.textMuted }}></i>
+              <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>No purchases yet</h3>
+              <p className="mb-4" style={{ color: colors.textMuted }}>You haven't purchased any templates yet</p>
               <Button
                 label="Browse Store"
                 icon="pi pi-shopping-cart"
@@ -558,11 +564,12 @@ const TemplateStorePanel: React.FC = () => {
               {purchases.map((purchase) => (
                 <Card
                   key={purchase.id}
-                  className="h-fit bg-gray-800 border-gray-700"
+                  className="h-fit"
+                  style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}
                   header={
-                    <div className="p-4 border-b border-gray-700 bg-gray-800">
+                    <div className="p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-base font-semibold text-white truncate">
+                        <h3 className="text-base font-semibold truncate" style={{ color: colors.textPrimary }}>
                           {purchase.template?.name}
                         </h3>
                         <Tag value="Purchased" severity="success" className="text-xs" />
@@ -570,12 +577,12 @@ const TemplateStorePanel: React.FC = () => {
                     </div>
                   }
                 >
-                  <div className="p-4 space-y-2 bg-gray-800">
-                    <div className="flex items-center text-sm text-gray-400">
+                  <div className="p-4 space-y-2" style={{ backgroundColor: colors.bgSecondary }}>
+                    <div className="flex items-center text-sm" style={{ color: colors.textMuted }}>
                       <i className="pi pi-user mr-2"></i>
                       <span>Sold by: {purchase.seller?.username}</span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-400">
+                    <div className="flex items-center text-sm" style={{ color: colors.textMuted }}>
                       <i className="pi pi-wallet mr-2"></i>
                       <span>
                         Paid: {purchase.payment_type === 'credits'
@@ -583,7 +590,7 @@ const TemplateStorePanel: React.FC = () => {
                           : `€${(typeof purchase.price_euros === 'string' ? parseFloat(purchase.price_euros) : (purchase.price_euros || 0)).toFixed(2)}`}
                       </span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-400">
+                    <div className="flex items-center text-sm" style={{ color: colors.textMuted }}>
                       <i className="pi pi-calendar mr-2"></i>
                       <span>{formatDate(purchase.created_at)}</span>
                     </div>
@@ -601,21 +608,23 @@ const TemplateStorePanel: React.FC = () => {
         onHide={() => setDetailModalVisible(false)}
         header={
           <div className="flex items-center gap-3">
-            <i className="pi pi-box text-purple-500"></i>
+            <i className="pi pi-box" style={{ color: colors.accent }}></i>
             <span>{selectedTemplate?.name}</span>
           </div>
         }
         style={{ width: '700px', maxWidth: '95vw' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable
         resizable
-        className="p-dialog-custom"
+        className="template-store-detail-modal"
       >
         {selectedTemplate && (
           <div className="space-y-4">
             {/* Template Info - TOP */}
-            <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="flex items-start gap-4">
                 {/* Logo */}
                 {selectedTemplate.logo?.id ? (
@@ -623,7 +632,7 @@ const TemplateStorePanel: React.FC = () => {
                     src={`/api/media/${selectedTemplate.logo.id}/serve`}
                     alt={selectedTemplate.name}
                     className="w-16 h-16 rounded-lg object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{ backgroundColor: '#374151' }}
+                    style={{ backgroundColor: colors.bgTertiary }}
                     onClick={() => {
                       setLightboxMedia(selectedTemplate.logo!);
                       setLightboxVisible(true);
@@ -632,9 +641,9 @@ const TemplateStorePanel: React.FC = () => {
                 ) : (
                   <div
                     className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: '#374151' }}
+                    style={{ backgroundColor: colors.bgTertiary }}
                   >
-                    <i className="pi pi-box text-2xl text-gray-500"></i>
+                    <i className="pi pi-box text-2xl" style={{ color: colors.textMuted }}></i>
                   </div>
                 )}
 
@@ -642,8 +651,8 @@ const TemplateStorePanel: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-xl font-semibold text-white m-0">{selectedTemplate.name}</h3>
-                      <p className="text-gray-400 text-sm m-0">
+                      <h3 className="text-xl font-semibold m-0" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
+                      <p className="text-sm m-0" style={{ color: colors.textMuted }}>
                         <i className="pi pi-user mr-1"></i>
                         by {selectedTemplate.creator?.username}
                       </p>
@@ -656,12 +665,12 @@ const TemplateStorePanel: React.FC = () => {
 
                   {/* Stats */}
                   <div className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-1 text-gray-400">
+                    <div className="flex items-center gap-1" style={{ color: colors.textMuted }}>
                       <i className="pi pi-shopping-cart"></i>
                       <span>{selectedTemplate.sales_count || 0} sales</span>
                     </div>
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <i className="pi pi-star text-yellow-500"></i>
+                    <div className="flex items-center gap-1" style={{ color: colors.textMuted }}>
+                      <i className="pi pi-star" style={{ color: colors.warningText }}></i>
                       <span>{selectedTemplate.review_score || 0}/10</span>
                     </div>
                   </div>
@@ -670,27 +679,27 @@ const TemplateStorePanel: React.FC = () => {
 
               {/* Description */}
               {selectedTemplate.description && (
-                <p className="text-gray-300 text-sm mt-3 mb-0">{selectedTemplate.description}</p>
+                <p className="text-sm mt-3 mb-0" style={{ color: colors.textSecondary }}>{selectedTemplate.description}</p>
               )}
             </div>
 
             {/* Purchase Section */}
-            <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-gray-400 text-sm">Price</span>
-                  <div className="text-2xl font-bold text-yellow-400">{getPriceDisplay(selectedTemplate)}</div>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>Price</span>
+                  <div className="text-2xl font-bold" style={{ color: colors.warningText }}>{getPriceDisplay(selectedTemplate)}</div>
                 </div>
 
                 {selectedTemplate.is_purchased ? (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-900/30 rounded-lg border border-green-700">
-                    <i className="pi pi-check-circle text-green-500"></i>
-                    <span className="text-green-400 font-medium">Already Purchased</span>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+                    <i className="pi pi-check-circle" style={{ color: colors.successText }}></i>
+                    <span className="font-medium" style={{ color: colors.successText }}>Already Purchased</span>
                   </div>
                 ) : selectedTemplate.is_own ? (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-900/30 rounded-lg border border-blue-700">
-                    <i className="pi pi-user text-blue-500"></i>
-                    <span className="text-blue-400 font-medium">Your Template</span>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                    <i className="pi pi-user" style={{ color: colors.infoText }}></i>
+                    <span className="font-medium" style={{ color: colors.infoText }}>Your Template</span>
                   </div>
                 ) : (
                   <Button
@@ -709,9 +718,9 @@ const TemplateStorePanel: React.FC = () => {
                currentCredits < selectedTemplate.price_credits &&
                !selectedTemplate.is_purchased &&
                !selectedTemplate.is_own && (
-                <div className="mt-3 p-3 bg-red-900/20 rounded-lg border border-red-800 flex items-center gap-2">
-                  <i className="pi pi-exclamation-triangle text-red-500"></i>
-                  <span className="text-sm text-red-300">
+                <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+                  <i className="pi pi-exclamation-triangle" style={{ color: colors.errorText }}></i>
+                  <span className="text-sm" style={{ color: colors.errorText }}>
                     You need <strong>{selectedTemplate.price_credits}</strong> credits but only have <strong>{currentCredits}</strong>.
                   </span>
                 </div>
@@ -731,8 +740,8 @@ const TemplateStorePanel: React.FC = () => {
               if (allMedia.length === 0) return null;
 
               return (
-                <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+                <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: colors.textMuted }}>
                     <i className="pi pi-images"></i>
                     Media ({allMedia.length})
                   </h4>
@@ -762,7 +771,7 @@ const TemplateStorePanel: React.FC = () => {
                           }}
                         >
                           {item.media_type === 'video' ? (
-                            <div className="relative w-20 h-20 rounded-lg overflow-hidden" style={{ backgroundColor: '#374151' }}>
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden" style={{ backgroundColor: colors.bgTertiary }}>
                               {videoThumbnail ? (
                                 <img
                                   src={videoThumbnail}
@@ -771,7 +780,7 @@ const TemplateStorePanel: React.FC = () => {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <i className="pi pi-video text-xl text-gray-500"></i>
+                                  <i className="pi pi-video text-xl" style={{ color: colors.textMuted }}></i>
                                 </div>
                               )}
                               {/* Play overlay */}
@@ -784,7 +793,7 @@ const TemplateStorePanel: React.FC = () => {
                               src={`/api/media/${item.id}/serve`}
                               alt={item.title || 'Media'}
                               className="w-20 h-20 rounded-lg object-cover"
-                              style={{ backgroundColor: '#374151' }}
+                              style={{ backgroundColor: colors.bgTertiary }}
                             />
                           )}
                         </div>
@@ -807,10 +816,12 @@ const TemplateStorePanel: React.FC = () => {
         }}
         header={lightboxMedia?.title || 'Media Preview'}
         style={{ width: '90vw', maxWidth: '1200px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable={false}
-        className="p-dialog-custom"
+        className="template-store-lightbox-modal"
       >
         {lightboxMedia && (
           <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
@@ -850,23 +861,25 @@ const TemplateStorePanel: React.FC = () => {
         onHide={() => setPaymentModalVisible(false)}
         header={
           <div className="flex items-center gap-3">
-            <i className="pi pi-credit-card text-green-500"></i>
+            <i className="pi pi-credit-card" style={{ color: colors.successText }}></i>
             <span>Payment Method</span>
           </div>
         }
         style={{ width: '400px', maxWidth: '95vw' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
-        className="p-dialog-custom"
+        className="template-store-payment-modal"
       >
         <div className="space-y-4">
-          <p className="text-gray-300 text-sm">
+          <p className="text-sm" style={{ color: colors.textSecondary }}>
             Choose your preferred payment method for{' '}
-            <strong className="text-white">{selectedTemplate?.name}</strong>
+            <strong style={{ color: colors.textPrimary }}>{selectedTemplate?.name}</strong>
           </p>
 
           <div className="text-center mb-4">
-            <span className="text-2xl font-bold text-yellow-400">
+            <span className="text-2xl font-bold" style={{ color: colors.warningText }}>
               {selectedTemplate && getPriceDisplay(selectedTemplate)}
             </span>
           </div>
@@ -876,51 +889,130 @@ const TemplateStorePanel: React.FC = () => {
             <button
               onClick={() => handlePurchase('stripe')}
               disabled={purchasing}
-              className="w-full p-4 rounded-lg border-2 border-gray-600 hover:border-blue-500 bg-gray-800 hover:bg-gray-700 transition-all flex items-center justify-between group"
+              className="w-full p-4 rounded-lg transition-all flex items-center justify-between group"
+              style={{
+                backgroundColor: colors.bgSecondary,
+                border: `2px solid ${colors.borderPrimary}`,
+              }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                   <i className="pi pi-credit-card text-white text-lg"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-medium text-white">Credit Card</div>
-                  <div className="text-xs text-gray-400">Powered by Stripe</div>
+                  <div className="font-medium" style={{ color: colors.textPrimary }}>Credit Card</div>
+                  <div className="text-xs" style={{ color: colors.textMuted }}>Powered by Stripe</div>
                 </div>
               </div>
-              <i className="pi pi-chevron-right text-gray-400 group-hover:text-blue-400"></i>
+              <i className="pi pi-chevron-right" style={{ color: colors.textMuted }}></i>
             </button>
 
             <button
               onClick={() => handlePurchase('paypal')}
               disabled={purchasing}
-              className="w-full p-4 rounded-lg border-2 border-gray-600 hover:border-blue-500 bg-gray-800 hover:bg-gray-700 transition-all flex items-center justify-between group"
+              className="w-full p-4 rounded-lg transition-all flex items-center justify-between group"
+              style={{
+                backgroundColor: colors.bgSecondary,
+                border: `2px solid ${colors.borderPrimary}`,
+              }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
                   <i className="pi pi-paypal text-white text-lg"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-medium text-white">PayPal</div>
-                  <div className="text-xs text-gray-400">Pay with PayPal account</div>
+                  <div className="font-medium" style={{ color: colors.textPrimary }}>PayPal</div>
+                  <div className="text-xs" style={{ color: colors.textMuted }}>Pay with PayPal account</div>
                 </div>
               </div>
-              <i className="pi pi-chevron-right text-gray-400 group-hover:text-blue-400"></i>
+              <i className="pi pi-chevron-right" style={{ color: colors.textMuted }}></i>
             </button>
           </div>
 
           {purchasing && (
             <div className="text-center py-2">
-              <i className="pi pi-spinner pi-spin text-blue-500 mr-2"></i>
-              <span className="text-gray-400">Initializing payment...</span>
+              <i className="pi pi-spinner pi-spin mr-2" style={{ color: colors.accent }}></i>
+              <span style={{ color: colors.textMuted }}>Initializing payment...</span>
             </div>
           )}
 
-          <p className="text-xs text-gray-500 text-center mt-4">
+          <p className="text-xs text-center mt-4" style={{ color: colors.textMuted }}>
             <i className="pi pi-lock mr-1"></i>
             Your payment is secure and encrypted
           </p>
         </div>
       </Dialog>
+
+      {/* Theme-aware styles for PrimeReact components */}
+      <style>{`
+        .template-store-panel .p-inputtext {
+          background-color: var(--theme-bg-secondary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .template-store-panel .p-inputtext:hover {
+          border-color: var(--theme-accent);
+        }
+        .template-store-panel .p-inputtext:focus {
+          border-color: var(--theme-accent);
+          box-shadow: 0 0 0 1px var(--theme-accent);
+        }
+        .template-store-panel .p-inputtext::placeholder {
+          color: var(--theme-text-muted);
+        }
+        .template-store-panel .p-dropdown {
+          background-color: var(--theme-bg-secondary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .template-store-panel .p-dropdown:hover {
+          border-color: var(--theme-accent);
+        }
+        .template-store-panel .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary);
+        }
+        .template-store-panel .p-dropdown .p-dropdown-trigger {
+          color: var(--theme-text-muted);
+        }
+        /* Dropdown Panel - rendered as portal outside component */
+        .template-store-dropdown-panel {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .template-store-dropdown-panel .p-dropdown-items {
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .template-store-dropdown-panel .p-dropdown-item {
+          color: var(--theme-text-primary) !important;
+        }
+        .template-store-dropdown-panel .p-dropdown-item:hover {
+          background-color: var(--theme-bg-tertiary) !important;
+        }
+        .template-store-dropdown-panel .p-dropdown-item.p-highlight {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        .template-store-panel .p-button-outlined {
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .template-store-panel .p-button-outlined:hover {
+          background-color: var(--theme-bg-tertiary);
+          border-color: var(--theme-accent);
+        }
+        .template-store-panel .p-card {
+          border: 1px solid var(--theme-border-primary);
+        }
+        .template-store-panel .p-card:hover {
+          border-color: var(--theme-accent);
+        }
+        .template-store-panel .p-card .p-card-body {
+          padding: 0;
+        }
+        .template-store-panel .p-card .p-card-content {
+          padding: 0;
+        }
+      `}</style>
     </div>
   );
 };

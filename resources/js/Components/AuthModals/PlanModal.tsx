@@ -8,6 +8,7 @@ import { Message } from 'primereact/message';
 import { CheckIcon, HeartIcon, CurrencyEuroIcon } from '@heroicons/react/24/outline';
 import { pricingUtils } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PlanModalProps {
   visible: boolean;
@@ -19,6 +20,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
   const [activeTabIndex, setActiveTabIndex] = useState(initialTab);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -402,8 +404,8 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       modal
       header={t.planmodal116}
       style={{ width: '95vw', maxWidth: '1400px' }}
-      contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
-      headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
+      contentStyle={{ padding: '20px', backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+      headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
       className="plan-modal"
     >
       {/* Error Message */}
@@ -412,19 +414,25 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       )}
 
       {/* Current Plan Status */}
-      <div className={`bg-gray-800 p-4 rounded-lg border-l-4 ${userStatus.user_type === 'patron' ? 'border-l-green-400' : 'border-l-blue-400'} mb-4`}>
+      <div
+        className="p-4 rounded-lg border-l-4 mb-4"
+        style={{
+          backgroundColor: colors.bgSecondary,
+          borderLeftColor: userStatus.user_type === 'patron' ? colors.successText : colors.accent
+        }}
+      >
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-white">Current Plan</h3>
+          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Current Plan</h3>
           <Badge
             value={getCurrentPlanName()}
             severity={userStatus.user_type === 'patron' ? 'success' : 'info'}
           />
         </div>
-        <p className="text-gray-300">
+        <p style={{ color: colors.textSecondary }}>
           {userStatus.user_type === 'patron' ? (
-            <>You're currently on the <strong className="text-green-400">{getCurrentPlanName()}</strong> plan. Thank you for being a Patron!</>
+            <>You're currently on the <strong style={{ color: colors.successText }}>{getCurrentPlanName()}</strong> plan. Thank you for being a Patron!</>
           ) : (
-            <>You're currently on the <strong className="text-blue-400">Free plan</strong>. Upgrade to unlock more features or buy credits on demand!</>
+            <>You're currently on the <strong style={{ color: colors.accent }}>Free plan</strong>. Upgrade to unlock more features or buy credits on demand!</>
           )}
         </p>
       </div>
@@ -438,7 +446,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         <TabPanel header="💎 Subscriptions" leftIcon="pi pi-star">
           <div className="space-y-4">
             <div className="text-center mb-4">
-              <p className="text-gray-300 text-sm">
+              <p className="text-sm" style={{ color: colors.textSecondary }}>
                 Subscribe for unlimited access or credit-based usage with teams
               </p>
             </div>
@@ -448,31 +456,35 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
               {pricingTiers.map((plan, index) => (
                 <Card
                   key={index}
-                  className={`text-center ${plan.popular ? 'ring-2 ring-blue-400 bg-gray-700' : 'bg-gray-700'} border border-gray-600 hover:shadow-xl transition-shadow`}
+                  className="text-center hover:shadow-xl transition-shadow"
+                  style={{
+                    backgroundColor: colors.bgTertiary,
+                    border: plan.popular ? `2px solid ${colors.accent}` : `1px solid ${colors.borderSecondary}`
+                  }}
                 >
                   <div className="p-6">
                     {plan.popular && (
                       <Badge value={t.planmodal143} severity="info" className="mb-4" />
                     )}
-                    <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                    <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                       {plan.name}
                       {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                     </h3>
-                    <div className="text-3xl font-bold text-blue-400 mb-2">
+                    <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                       {plan.price}
                       {plan.name === "Patron Monthly" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg text-gray-400">/Monthly</span>
+                        <span className="text-lg" style={{ color: colors.textMuted }}>/Monthly</span>
                       )}
                       {plan.name === "Patron Annual" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg text-gray-400">/Annually</span>
+                        <span className="text-lg" style={{ color: colors.textMuted }}>/Annually</span>
                       )}
                     </div>
-                    <p className="text-gray-300 mb-6">{plan.description}</p>
+                    <p className="mb-6" style={{ color: colors.textSecondary }}>{plan.description}</p>
 
-                    <ul className="text-left text-gray-300 mb-8 space-y-2">
+                    <ul className="text-left mb-8 space-y-2" style={{ color: colors.textSecondary }}>
                       {plan.features.map((feature, fIndex) => (
                         <li key={fIndex} className="flex items-center">
-                          <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                          <CheckIcon className="w-5 h-5 mr-2 flex-shrink-0" style={{ color: colors.successText }} />
                           {feature}
                         </li>
                       ))}
@@ -552,7 +564,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
             </div>
 
             {/* Footer Note */}
-            <div className="text-center text-gray-400 text-sm mt-6">
+            <div className="text-center text-sm mt-6" style={{ color: colors.textMuted }}>
               <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
             </div>
           </div>
@@ -561,11 +573,11 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         {/* Buy Credits Tab */}
         <TabPanel header="💳 Buy Credits" leftIcon="pi pi-wallet">
           <div className="space-y-4">
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-600 mb-6">
-              <p className="text-gray-300 text-sm mb-2">
-                <strong className="text-blue-400">Pay as you go!</strong> Stay on the Free plan and buy credits when you need them.
+            <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderSecondary}` }}>
+              <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
+                <strong style={{ color: colors.accent }}>Pay as you go!</strong> Stay on the Free plan and buy credits when you need them.
               </p>
-              <p className="text-gray-400 text-xs">
+              <p className="text-xs" style={{ color: colors.textMuted }}>
                 Each code generation costs 5 credits. Credits never expire.
               </p>
             </div>
@@ -575,7 +587,11 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
               {creditPackages.map((pkg, index) => (
                 <Card
                   key={index}
-                  className={`text-center ${pkg.popular ? 'ring-2 ring-blue-400 bg-gray-700' : pkg.bestValue ? 'ring-2 ring-green-500 bg-gray-700' : 'bg-gray-700'} border border-gray-600 hover:shadow-xl transition-shadow`}
+                  className="text-center hover:shadow-xl transition-shadow"
+                  style={{
+                    backgroundColor: colors.bgTertiary,
+                    border: pkg.popular ? `2px solid ${colors.accent}` : pkg.bestValue ? `2px solid ${colors.successText}` : `1px solid ${colors.borderSecondary}`
+                  }}
                 >
                   <div className="p-6">
                     {pkg.popular && (
@@ -587,24 +603,24 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
 
                     <div className="mb-4">
                       <CurrencyEuroIcon className="w-12 h-12 text-yellow-400 mx-auto mb-2" />
-                      <h3 className="text-3xl font-bold text-white mb-1">
+                      <h3 className="text-3xl font-bold mb-1" style={{ color: colors.textPrimary }}>
                         {pkg.credits}
                       </h3>
-                      <p className="text-sm text-gray-400">Credits</p>
+                      <p className="text-sm" style={{ color: colors.textMuted }}>Credits</p>
                     </div>
 
-                    <div className="text-4xl font-bold text-blue-400 mb-2">
+                    <div className="text-4xl font-bold mb-2" style={{ color: colors.accent }}>
                       €{pkg.price.toFixed(2)}
                     </div>
 
-                    <div className="bg-gray-800 rounded p-3 mb-6">
-                      <p className="text-xs text-gray-400">Price per credit</p>
-                      <p className="text-lg font-semibold text-green-400">
+                    <div className="rounded p-3 mb-6" style={{ backgroundColor: colors.bgSecondary }}>
+                      <p className="text-xs" style={{ color: colors.textMuted }}>Price per credit</p>
+                      <p className="text-lg font-semibold" style={{ color: colors.successText }}>
                         €{pkg.pricePerCredit}
                       </p>
                     </div>
 
-                    <div className="text-sm text-gray-300 mb-6">
+                    <div className="text-sm mb-6" style={{ color: colors.textSecondary }}>
                       <p>≈ {Math.floor(pkg.credits / 5)} code generations</p>
                     </div>
 
@@ -632,7 +648,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
             </div>
 
             {/* Info Note */}
-            <div className="text-center text-gray-400 text-sm mt-6">
+            <div className="text-center text-sm mt-6" style={{ color: colors.textMuted }}>
               <p>💡 Credits are added to your account immediately and never expire.</p>
             </div>
           </div>

@@ -5,12 +5,14 @@ import { Button } from 'primereact/button';
 import { Badge } from 'primereact/badge';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TopBar() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { projects, selectedProject, setSelectedProject, loading } = useProject();
+  const { colors } = useTheme();
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [latestUnreadThreadId, setLatestUnreadThreadId] = useState<number | null>(null);
@@ -81,14 +83,8 @@ export default function TopBar() {
     }
   }, [selectedProject]);
 
-  // Load unread messages count
+  // Load unread messages count (also in demo mode)
   const loadUnreadMessages = useCallback(async () => {
-    if (isDemoMode) {
-      setUnreadMessagesCount(0);
-      setLatestUnreadThreadId(null);
-      return;
-    }
-
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
@@ -131,7 +127,7 @@ export default function TopBar() {
       setUnreadMessagesCount(0);
       setLatestUnreadThreadId(null);
     }
-  }, [isDemoMode]);
+  }, []);
 
   // Load unread messages on mount and periodically
   useEffect(() => {
@@ -180,7 +176,13 @@ export default function TopBar() {
   }, [selectedProject, loadPendingApplications]);
 
   return (
-    <div className="h-12 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-4 relative">
+    <div
+      className="h-12 flex items-center justify-between px-4 relative"
+      style={{
+        backgroundColor: colors.bgSecondary,
+        borderBottom: `1px solid ${colors.borderPrimary}`
+      }}
+    >
       {/* Left: Logo and Brand */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
@@ -190,7 +192,7 @@ export default function TopBar() {
             className="h-8 w-auto"
             style={{ maxHeight: '32px', width: 'auto' }}
           />
-          <div className="text-xs text-gray-500">Enterprise Code Generator</div>
+          <div className="text-xs" style={{ color: colors.textMuted }}>Enterprise Code Generator</div>
         </div>
       </div>
 
@@ -210,7 +212,7 @@ export default function TopBar() {
       <div className="flex items-center space-x-4">
         {/* Project Selector */}
         <div className="flex items-center space-x-2">
-          <i className="pi pi-briefcase text-gray-400 text-sm"></i>
+          <i className="pi pi-briefcase text-sm" style={{ color: colors.textMuted }}></i>
           <Dropdown
             key={selectedProject ? `project-${selectedProject.id}` : 'no-project'}
             value={selectedProject ? selectedProject.id : null}
@@ -245,31 +247,31 @@ export default function TopBar() {
             showClear={false}
             itemTemplate={(option) => (
               <div className="flex items-center justify-between w-full">
-                <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                <span style={{ color: option.is_soft_locked ? colors.errorText : undefined }}>{option.name}</span>
                 {option.is_soft_locked && (
-                  <i className="pi pi-lock text-red-500 ml-2" title="Abo abgelaufen" />
+                  <i className="pi pi-lock ml-2" style={{ color: colors.errorText }} title="Abo abgelaufen" />
                 )}
                 {option.subscription?.days_remaining !== null && option.subscription?.days_remaining <= 14 && !option.is_soft_locked && (
-                  <i className="pi pi-exclamation-triangle text-yellow-500 ml-2" title={`Läuft in ${option.subscription.days_remaining} Tagen ab`} />
+                  <i className="pi pi-exclamation-triangle ml-2" style={{ color: colors.warningText }} title={`Läuft in ${option.subscription.days_remaining} Tagen ab`} />
                 )}
               </div>
             )}
             valueTemplate={(option) => option ? (
               <div className="flex items-center">
-                <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
+                <span style={{ color: option.is_soft_locked ? colors.errorText : undefined }}>{option.name}</span>
                 {option.is_soft_locked && (
-                  <i className="pi pi-lock text-red-500 ml-2" />
+                  <i className="pi pi-lock ml-2" style={{ color: colors.errorText }} />
                 )}
               </div>
             ) : t.teammodal146}
           />
           {selectedProject && !selectedProject.is_soft_locked && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs" style={{ color: colors.textMuted }}>
               by {selectedProject.owner.name}
             </span>
           )}
           {selectedProject?.is_soft_locked && (
-            <span className="text-xs text-red-400 flex items-center gap-1">
+            <span className="text-xs flex items-center gap-1" style={{ color: colors.errorText }}>
               <i className="pi pi-lock" />
               Abo abgelaufen!
             </span>
@@ -281,8 +283,8 @@ export default function TopBar() {
           <div className="relative">
             <Button
               icon="pi pi-bell"
-              className="p-button-text p-button-sm text-gray-400 hover:text-yellow-400"
-              style={{ padding: '4px' }}
+              className="p-button-text p-button-sm topbar-icon-btn"
+              style={{ padding: '4px', color: colors.textMuted }}
               tooltip={`${pendingApplicationsCount} pending application${pendingApplicationsCount > 1 ? 's' : ''}`}
               onClick={() => {
                 // Trigger opening Applications Modal via custom event
@@ -302,32 +304,33 @@ export default function TopBar() {
         )}
 
         {/* Message Notification */}
-        {!isDemoMode && (
-          <div className="relative">
-            <Button
-              icon="pi pi-envelope"
-              className={`p-button-text p-button-sm ${unreadMessagesCount > 0 ? 'text-yellow-400 animate-pulse' : 'text-gray-400 hover:text-blue-400'}`}
-              style={{ padding: '4px' }}
-              tooltip={unreadMessagesCount > 0 ? `${unreadMessagesCount} neue Nachricht(en)` : 'Nachrichten'}
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('openMessaging', {
-                  detail: { threadId: latestUnreadThreadId }
-                }));
-              }}
+        <div className="relative">
+          <Button
+            icon="pi pi-envelope"
+            className={`p-button-text p-button-sm topbar-icon-btn ${unreadMessagesCount > 0 ? 'animate-pulse' : ''}`}
+            style={{
+              padding: '4px',
+              color: unreadMessagesCount > 0 ? colors.warningText : colors.textMuted
+            }}
+            tooltip={unreadMessagesCount > 0 ? `${unreadMessagesCount} neue Nachricht(en)` : 'Nachrichten'}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('openMessaging', {
+                detail: { threadId: latestUnreadThreadId }
+              }));
+            }}
+          />
+          {unreadMessagesCount > 0 && (
+            <Badge
+              value={unreadMessagesCount}
+              severity="danger"
+              className="absolute -top-1 -right-1 text-xs flex items-center justify-center"
+              style={{ minWidth: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             />
-            {unreadMessagesCount > 0 && (
-              <Badge
-                value={unreadMessagesCount}
-                severity="danger"
-                className="absolute -top-1 -right-1 text-xs flex items-center justify-center"
-                style={{ minWidth: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              />
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Clock */}
-        <div className="flex items-center space-x-2 text-xs text-gray-400">
+        <div className="flex items-center space-x-2 text-xs" style={{ color: colors.textMuted }}>
           <i className="pi pi-clock"></i>
           <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>

@@ -37,9 +37,11 @@ class Subscription extends Model
     public const TYPE_DATABASE_DESIGNER = 'database_designer';
     public const TYPE_SCHEMA_MIGRATION = 'schema_migration';
     public const TYPE_MESSAGE_ATTACHMENTS = 'message_attachments';
+    public const TYPE_KANBAN_BOARD = 'kanban_board';
 
     // Feature unlock costs (in credits)
     public const FORM_DESIGNER_UNLOCK_COST = 50;
+    public const KANBAN_BOARD_UNLOCK_COST = 50;
     public const GIT_INTEGRATION_UNLOCK_COST = 50;
     public const CODE_ADJUSTMENTS_UNLOCK_COST = 50;
     public const DATABASE_DESIGNER_UNLOCK_COST = 50;
@@ -390,6 +392,7 @@ class Subscription extends Model
             self::TYPE_DATABASE_DESIGNER => 'Datenbank Designer',
             self::TYPE_SCHEMA_MIGRATION => 'Schema Migration',
             self::TYPE_MESSAGE_ATTACHMENTS => 'Nachrichten-Anhänge',
+            self::TYPE_KANBAN_BOARD => 'Kanban Board',
             default => ucfirst($this->subscription_type),
         };
     }
@@ -1360,6 +1363,168 @@ class Subscription extends Model
             'access_type' => $subscription->is_free_tier ? 'patron' : 'credits',
             'patron_level' => $subscription->is_free_tier ? 'monthly' : null,
             'credits_paid' => $subscription->is_free_tier ? 0 : self::MESSAGE_ATTACHMENTS_UNLOCK_COST,
+            'granted_at' => $subscription->created_at?->toISOString(),
+            'expires_at' => $subscription->expires_at?->toISOString(),
+            'days_remaining' => $daysRemaining,
+            'is_patron' => $subscription->is_free_tier,
+            'is_expired' => $subscription->isExpired(),
+            'can_renew' => !$subscription->is_free_tier,
+            'user_credits' => $userCredits,
+        ];
+    }
+
+    // ========================================
+    // Kanban Board Specific Methods
+    // ========================================
+
+    /**
+     * Scope for Kanban Board subscriptions
+     */
+    public function scopeKanbanBoard($query)
+    {
+        return $query->where('subscription_type', self::TYPE_KANBAN_BOARD);
+    }
+
+    /**
+     * Check if user has Kanban Board access
+     */
+    public static function hasKanbanBoardAccess(int $userId): bool
+    {
+        // System/Admin users always have access
+        $user = User::find($userId);
+        if ($user && $user->isAdmin()) {
+            return true;
+        }
+
+        // Patrons always have access
+        if ($user && $user->isPatron()) {
+            return true;
+        }
+
+        return static::hasActiveSubscription($userId, self::TYPE_KANBAN_BOARD);
+    }
+
+    /**
+     * Unlock Kanban Board with credits (1 year subscription)
+     */
+    public static function unlockKanbanBoardWithCredits(int $userId): ?self
+    {
+        // Check if user has enough credits
+        $user = User::find($userId);
+        if (!$user || $user->credits < self::KANBAN_BOARD_UNLOCK_COST) {
+            return null;
+        }
+
+        // Deduct credits
+        $user->decrement('credits', self::KANBAN_BOARD_UNLOCK_COST);
+
+        // Check for existing subscription to extend
+        $existing = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_KANBAN_BOARD)
+            ->first();
+
+        if ($existing) {
+            // Extend existing subscription by 1 year from current expiry or now
+            $baseDate = $existing->expires_at && $existing->expires_at->isFuture()
+                ? $existing->expires_at
+                : Carbon::now();
+            $existing->update([
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => $baseDate->copy()->addYear(),
+            ]);
+            return $existing;
+        }
+
+        // Create new subscription (1 year)
+        return static::create([
+            'user_id' => $userId,
+            'subscription_type' => self::TYPE_KANBAN_BOARD,
+            'entity_id' => null,
+            'is_free_tier' => false,
+            'is_active' => true,
+            'is_soft_locked' => false,
+            'expires_at' => Carbon::now()->addYear(),
+        ]);
+    }
+
+    /**
+     * Unlock Kanban Board via Patron subscription
+     */
+    public static function unlockKanbanBoardWithPatron(int $userId): self
+    {
+        return static::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'subscription_type' => self::TYPE_KANBAN_BOARD,
+            ],
+            [
+                'entity_id' => null,
+                'is_free_tier' => true, // Free for Patrons
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => null, // Permanent for Patrons
+            ]
+        );
+    }
+
+    /**
+     * Get Kanban Board access status for user
+     */
+    public static function getKanbanBoardAccessStatus(int $userId): array
+    {
+        $user = User::find($userId);
+        $userCredits = $user ? $user->credits : 0;
+
+        // System/Admin users always have access
+        if ($user && $user->isAdmin()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'system',
+                'is_system' => true,
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $userCredits,
+            ];
+        }
+
+        // Patrons always have access
+        if ($user && $user->isPatron()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $user->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $userCredits,
+            ];
+        }
+
+        $subscription = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_KANBAN_BOARD)
+            ->first();
+
+        if (!$subscription) {
+            return [
+                'has_access' => false,
+                'access_type' => null,
+                'unlock_cost' => self::KANBAN_BOARD_UNLOCK_COST,
+                'user_credits' => $userCredits,
+            ];
+        }
+
+        $daysRemaining = null;
+        if ($subscription->expires_at) {
+            $daysRemaining = max(0, (int) Carbon::now()->diffInDays($subscription->expires_at, false));
+        }
+
+        return [
+            'has_access' => $subscription->isValid(),
+            'access_type' => $subscription->is_free_tier ? 'patron' : 'credits',
+            'patron_level' => $subscription->is_free_tier ? 'monthly' : null,
+            'credits_paid' => $subscription->is_free_tier ? 0 : self::KANBAN_BOARD_UNLOCK_COST,
             'granted_at' => $subscription->created_at?->toISOString(),
             'expires_at' => $subscription->expires_at?->toISOString(),
             'days_remaining' => $daysRemaining,

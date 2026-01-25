@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TableField {
   id: string;
@@ -82,6 +83,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const [tableName, setTableName] = useState('');
   const [fileKeyName, setFileKeyName] = useState('');
@@ -282,18 +284,20 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
       onClick={handleClose}
     >
       <div
-        className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-600"
+        className="create-table-modal rounded-lg p-6 w-full max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white flex items-center">
+          <h2 className="text-xl font-bold flex items-center" style={{ color: colors.textPrimary }}>
             <i className="pi pi-table mr-2"></i>
             Create New Table
           </h2>
           <button
             onClick={handleClose}
             disabled={loading}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="transition-colors hover:opacity-80"
+            style={{ color: colors.textMuted }}
           >
             <i className="pi pi-times text-xl"></i>
           </button>
@@ -303,7 +307,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
           {/* Table Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 Table Name *
               </label>
               <input
@@ -312,14 +316,15 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                 value={tableName}
                 onChange={(e) => handleTableNameChange(e.target.value)}
                 disabled={loading}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 placeholder={t.createtablemodal300}
                 maxLength={64}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 File Key Name
               </label>
               <div className="relative">
@@ -328,7 +333,8 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   value={fileKeyName}
                   onChange={(e) => handleFileKeyNameChange(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   placeholder={t.createtablemodal316}
                   maxLength={64}
                   list="keynames"
@@ -343,7 +349,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   File Name Renamed
                 </label>
                 <input
@@ -351,17 +357,18 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   value={fileNameRenamed}
                   onChange={(e) => setFileNameRenamed(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   placeholder={t.createtablemodal339}
                   maxLength={100}
                 />
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                   Used for template {'{file_name_renamed}'} variable
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   File Name Short
                 </label>
                 <input
@@ -369,11 +376,12 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   value={fileNameShort}
                   onChange={(e) => setFileNameShort(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   placeholder="e.g., usr, prod"
                   maxLength={50}
                 />
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                   Used for template {'{file_name_short}'} variable
                 </div>
               </div>
@@ -383,14 +391,15 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
           {/* Fields Section */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium" style={{ color: colors.textSecondary }}>
                 Fields *
               </label>
               <button
                 type="button"
                 onClick={addField}
                 disabled={loading}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-3 py-1 rounded text-white text-sm flex items-center space-x-1"
+                className="px-3 py-1 rounded text-white text-sm flex items-center space-x-1 hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: colors.accent }}
               >
                 <i className="pi pi-plus"></i>
                 <span>Add Field</span>
@@ -399,25 +408,26 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {fields.map((field) => (
-                <div key={field.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                <div key={field.id} className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                   {/* Row 1: Main field properties */}
                   <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
                     {/* Field Name - 2x größer */}
                     <div className="lg:col-span-2">
-                      <label className="block text-xs text-gray-400 mb-1">Name</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Name</label>
                       <input
                         type="text"
                         value={field.name}
                         onChange={(e) => updateField(field.id, { name: e.target.value })}
                         disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         placeholder={t.createtablemodal398}
                       />
                     </div>
 
                     {/* Data Type */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Type</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Type</label>
                       <select
                         value={field.type}
                         onChange={(e) => {
@@ -431,7 +441,8 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                           }
                         }}
                         disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       >
                         {DATA_TYPES.map(type => (
                           <option key={type} value={type}>{type}</option>
@@ -441,7 +452,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                     {/* Length (for VARCHAR, CHAR, etc.) */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Length</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Length</label>
                       <input
                         type="number"
                         value={field.length || ''}
@@ -451,13 +462,14 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         }}
                         disabled={loading}
                         placeholder="e.g., 50"
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       />
                     </div>
 
                     {/* Control Type */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Control</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Control</label>
                       <select
                         value={field.controlType}
                         onChange={(e) => {
@@ -470,7 +482,8 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                           }
                         }}
                         disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       >
                         {CONTROL_TYPES.map(type => (
                           <option key={type} value={type}>{type}</option>
@@ -480,12 +493,13 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                     {/* Constraint Type */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Constraint</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Constraint</label>
                       <select
                         value={field.constraintType}
                         onChange={(e) => updateField(field.id, { constraintType: e.target.value as 'none' | 'primary' | 'index' | 'unique' })}
                         disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       >
                         <option value="none">None</option>
                         <option value="primary">Primary Key</option>
@@ -500,7 +514,8 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         type="button"
                         onClick={() => removeField(field.id)}
                         disabled={loading || fields.length <= 1}
-                        className="text-red-400 hover:text-red-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className="disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80"
+                        style={{ color: colors.errorText }}
                         title={t.createtablemodal497}
                       >
                         <i className="pi pi-trash"></i>
@@ -512,20 +527,21 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                   <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
                     {/* Comment - nimmt 4 Spalten */}
                     <div className="lg:col-span-4">
-                      <label className="block text-xs text-gray-400 mb-1">Comment</label>
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Comment</label>
                       <input
                         type="text"
                         value={field.comment}
                         onChange={(e) => updateField(field.id, { comment: e.target.value })}
                         disabled={loading}
-                        className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         placeholder="Field description..."
                       />
                     </div>
 
                     {/* Checkboxes - zusammen in den restlichen 3 Spalten */}
                     <div className="lg:col-span-3 flex items-end gap-4">
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
                         <input
                           type="checkbox"
                           checked={field.nullable}
@@ -535,7 +551,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         />
                         Nullable
                       </label>
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
                         <input
                           type="checkbox"
                           checked={field.unsigned}
@@ -545,7 +561,7 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
                         />
                         Unsigned
                       </label>
-                      <label className="flex items-center text-xs text-gray-400">
+                      <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
                         <input
                           type="checkbox"
                           checked={field.autoIncrement}
@@ -560,31 +576,33 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                   {/* Row 3: Link fields - only visible for COMBOBOX, LISTBOX, RADIOBUTTONS */}
                   {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2 border-t border-gray-600">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                       {/* Link Table */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Link Table</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Link Table</label>
                         <select
                           value={field.linkTable}
                           onChange={(e) => updateField(field.id, { linkTable: e.target.value, linkField: '', linkDisplayField: '', linkOrderField: '' })}
                           disabled={loading}
-                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         >
                           <option value="">-- Select Table --</option>
-                          {availableTables.map(tableName => (
-                            <option key={tableName} value={tableName}>{tableName}</option>
+                          {availableTables.map(tblName => (
+                            <option key={tblName} value={tblName}>{tblName}</option>
                           ))}
                         </select>
                       </div>
 
                       {/* Link Field (Value) */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Value Field</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Value Field</label>
                         <select
                           value={field.linkField}
                           onChange={(e) => updateField(field.id, { linkField: e.target.value })}
                           disabled={loading || !field.linkTable}
-                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         >
                           <option value="">-- Value Field --</option>
                           {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
@@ -595,12 +613,13 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                       {/* Link Display Field */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Display Field</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Display Field</label>
                         <select
                           value={field.linkDisplayField}
                           onChange={(e) => updateField(field.id, { linkDisplayField: e.target.value })}
                           disabled={loading || !field.linkTable}
-                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         >
                           <option value="">-- Display Field --</option>
                           {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
@@ -611,12 +630,13 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                       {/* Link Order Field */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Order Field</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Order Field</label>
                         <select
                           value={field.linkOrderField}
                           onChange={(e) => updateField(field.id, { linkOrderField: e.target.value })}
                           disabled={loading || !field.linkTable}
-                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         >
                           <option value="">-- Order Field --</option>
                           {(linkFieldOptions[field.linkTable] || []).map(fieldName => (
@@ -627,12 +647,13 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
 
                       {/* Link Order Direction */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Direction</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Direction</label>
                         <select
                           value={field.linkOrderDirection}
                           onChange={(e) => updateField(field.id, { linkOrderDirection: e.target.value as 'ASC' | 'DESC' })}
                           disabled={loading}
-                          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         >
                           <option value="ASC">ASC</option>
                           <option value="DESC">DESC</option>
@@ -646,8 +667,8 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
           </div>
 
           {error && (
-            <div className="bg-red-900 border border-red-700 rounded-lg p-3">
-              <p className="text-red-300 text-sm">{error}</p>
+            <div className="rounded-lg p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+              <p className="text-sm" style={{ color: colors.errorText }}>{error}</p>
             </div>
           )}
 
@@ -656,14 +677,16 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+              className="px-4 py-2 rounded transition-colors hover:opacity-90"
+              style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !tableName.trim()}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors flex items-center space-x-2"
+              className="px-4 py-2 text-white rounded transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              style={{ backgroundColor: colors.accent }}
             >
               {loading ? (
                 <>
@@ -680,6 +703,19 @@ export default function CreateTableModal({ isOpen, onClose, onTableCreated, load
           </div>
         </form>
       </div>
+
+      {/* Theme-aware styles for placeholder text */}
+      <style>{`
+        .create-table-modal input::placeholder,
+        .create-table-modal textarea::placeholder {
+          color: var(--theme-text-muted);
+          opacity: 0.7;
+        }
+        .create-table-modal select option {
+          background-color: var(--theme-bg-secondary);
+          color: var(--theme-text-primary);
+        }
+      `}</style>
     </div>
   );
 

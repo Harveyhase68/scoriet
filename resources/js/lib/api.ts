@@ -100,7 +100,6 @@ class ApiClient {
     // Dispatch session forcibly ended event (for single-session enforcement)
     // Only notify once to avoid multiple notifications from concurrent API calls
     if (!alreadyNotified && !isLoggingOut) {
-      console.log('🔴 API handleAuthError - dispatching sessionForciblyEnded');
       sessionStorage.setItem('session_revoke_notified', 'true');
       window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
         detail: { reason: 'token_revoked' }

@@ -32,7 +32,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 ### ✅ **Completed Features** (Alpha Ready)
 
 #### 🎨 **Core Platform**
-- ✅ **Modern UI/UX**: Professional dark theme with dockable panels
+- ✅ **Theme System**: Dark/Light mode with dynamic color switching via `useTheme()` hook
+- ✅ **Modern UI/UX**: Professional theme-aware interface with dockable panels
 - ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
 - ✅ **Internationalization (i18n)**: 5 languages with automatic browser detection
 - ✅ **CSS Flag Icons**: Beautiful country flags using pure CSS gradients
@@ -54,13 +55,15 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Edit Masks**: Field-level input masks for data validation
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **Excel Translation Import**: Bulk import translations from Excel files
-- ✅ **SQL Parser Engine**: Advanced MySQL schema parsing with relationship detection
+- ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
+- ✅ **PostgreSQL Import**: Full support for PostgreSQL SQL dumps and schema import
 - ✅ **Schema Versioning**: Automatic version tracking for database changes
 - ✅ **Schema Diff & Migration**: Compare schema versions and generate SQL migration scripts
 - ✅ **Copy Database**: Clone schemas with all tables, fields, and relationships
 
 #### 🚀 **Code Generation System**
 - ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
+- ✅ **Template Includes**: Reusable template snippets with `{:include: path/file.ext:}` syntax
 - ✅ **Debug Manual Generator**: Real-time template debugging and testing
 - ✅ **Full Code Generation**: Generate complete projects from multiple templates
 - ✅ **Multi-Template Support**: Stack multiple templates for complex applications
@@ -71,18 +74,28 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Error Reporting**: Comprehensive syntax error detection and reporting in ERRORS.txt
 - ✅ **Progress Tracking**: Real-time generation progress with file counters
 - ✅ **ZIP Download**: Package generated code with all files and error reports
+- ✅ **Form Designer**: Visual form design with database field integration
+- ✅ **Code Adjustments**: Post-generation code customization system
 
 #### 👥 **Project & Team Management**
 - ✅ **Project Management**: Teams, projects, and collaboration tools
 - ✅ **Public Projects Gallery**: Clone and share projects with credit system
 - ✅ **Team Collaboration**: Invite members, assign roles, manage permissions
 - ✅ **Project Settings**: Comprehensive project configuration and variable management
+- ✅ **Kanban Board**: Visual project task management with drag-and-drop cards
+- ✅ **Project Import/Export**: ZIP-based project backup and restore
+- ✅ **Project Attachments**: File attachments and documents per project
+- ✅ **Protected Files**: Mark generated files as protected from overwrite
+- ✅ **Messaging System**: In-app messaging with file attachments
 
 #### 🔐 **Admin & Review System**
 - ✅ **Template Review System**: Inner Core reviewer approval workflow
 - ✅ **User Management Panel**: Assign Inner Core reviewer permissions
 - ✅ **System Settings Panel**: Global API keys, pricing management, user administration
 - ✅ **Review Dashboard**: Approve/reject templates with feedback system
+- ✅ **Performance Metrics**: System performance monitoring and tracking
+- ✅ **Deployment Logs**: Real-time logging for code deployment operations
+- ✅ **Cache Management**: Debug panel for cache inspection and clearing
 
 #### ✨ **Quality & Developer Experience**
 - ✅ **Production Ready**: Clean codebase with zero ESLint errors
@@ -90,17 +103,18 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Error Boundary**: Graceful error handling with user-friendly messages
 - ✅ **Toast Notifications**: Professional feedback system for user actions
 - ✅ **Loading States**: Smooth loading indicators throughout the application
+- ✅ **VSCode Extension**: Template syntax highlighting and snippets for VSCode
+- ✅ **Query Builder**: Visual SQL query builder for database operations
 
 ### 🚧 **In Progress** (Coming Soon)
-- 🚧 **Multi-Language Templates**: Support for more programming languages
-- 🚧 **Advanced Template Variables**: Custom template placeholders and helpers
+- 🚧 **FTP/SSH Upload**: Direct deployment via FTP or SFTP to remote servers
 - 🚧 **Payment Integration**: PayPal and Stripe subscription handling
 - 🚧 **AI Integration**: Claude API for enhanced code generation
-- 🚧 **Team Permissions**: Advanced role-based access control
-- 🚧 **Version Control**: Template and project versioning system
+- 🚧 **GitHub Integration**: Direct push to GitHub repositories
+- 🚧 **Advanced Team Permissions**: Enhanced role-based access control
 
 ### 📅 **Planned Features** (Roadmap)
-- 📅 **Multi-Database Support**: PostgreSQL, SQLite, SQL Server support
+- 📅 **Multi-Database Support**: SQLite, SQL Server support (PostgreSQL already supported)
 - 📅 **Advanced Code Analysis**: Static analysis and code quality metrics
 - 📅 **Template Marketplace**: Share and download community templates
 - 📅 **API Ecosystem**: Public API for third-party integrations
@@ -135,6 +149,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 
 #### 🚀 **Code Generation Engine**
 - **Template Engine** - Powerful client-side template execution with JavaScript integration
+- **Template Includes** - Reusable template snippets with `{:include:}` syntax
 - **Debug Manual Generator** - Real-time template debugging with live preview
 - **Full Code Generation** - Generate complete projects from multiple templates
 - **Multi-Template Support** - Stack templates for complex application scaffolding
@@ -145,7 +160,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **Error Reporting** - Comprehensive syntax error detection with ERRORS.txt
 - **Progress Tracking** - Real-time generation progress with file counters
 - **ZIP Download** - Package generated code with all files and error reports
-- **Real-time Generation** - Instant code generation without server processing
+- **Form Designer** - Visual form creation with database field binding
+- **Code Adjustments** - Post-generation code customization system
 
 #### 🔐 **Security & Admin**
 - **Enterprise Security** - Laravel Passport OAuth2 with Password Grant authentication
@@ -154,13 +170,20 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **Template Review System** - Inner Core reviewer approval workflow
 - **Admin Dashboard** - System settings, pricing, API key management
 - **Role-Based Access** - Granular permissions for teams and projects
+- **Deployment Logs** - Real-time logging for deployment operations
+- **Performance Metrics** - System monitoring and performance tracking
+- **Cache Management** - Debug panel for cache inspection
 
 #### 🏢 **Collaboration**
 - **Project Management** - Teams, projects, and collaboration tools
+- **Kanban Board** - Visual project task management with drag-and-drop
+- **Project Import/Export** - ZIP-based project backup and migration
+- **Project Attachments** - File attachments and documentation per project
+- **Protected Files** - Mark files as protected from overwrite during regeneration
+- **Messaging System** - In-app messaging with file attachments
 - **Public Gallery** - Clone and share projects with the community
 - **Credit System** - Track project clones and give credit to creators
 - **Team Invitations** - Invite members and manage team access
-- **CMS Pages** - Inertia-based content management with React components
 
 ### 🏗️ Architecture
 
@@ -179,10 +202,10 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 
 **Template System:**
 - Client-side JavaScript execution with full ES6+ support
-- Advanced placeholder system (`{projectname}`, `{tablename}`, `{item.name}`, `{item.type}`)
-- Powerful loop constructs (`{for {nmaxitemsnokey}}`, `{endfor}`)
-- Conditional logic (`{if condition}`, `{else}`, `{endif}`)
-- Switch statements (`{switch variable}`, `{case value}`, `{break}`, `{endswitch}`)
+- Advanced placeholder system (`{:projectname:}`, `{:tablename:}`, `{:item.name:}`, `{:item.type:}`)
+- Powerful loop constructs (`{:for nmaxitemsnokey:}`, `{:endfor:}`)
+- Conditional logic (`{:if condition:}`, `{:else:}`, `{:endif:}`)
+- Switch statements (`{:switch variable:}`, `{:case value:}`, `{:break:}`, `{:endswitch:}`)
 - ZIP template upload for complete project structures
 - Automatic file path organization (/components/, /services/, /data/, etc.)
 - Real-time debugging with live preview
@@ -328,47 +351,58 @@ The Debug Manual Generator provides real-time template debugging and testing:
 
 #### Template Variables
 ```javascript
-{projectname}        // Current project name
-{tablename}          // Database table name
-{item.name}          // Field name from database schema
-{item.type}          // Field data type (VARCHAR, INT, etc.)
-{item.typecast}      // PHP typecast ((int), (string), etc.)
-{item.controltype}   // UI control type (14=int, 24=string, etc.)
+{:projectname:}        // Current project name
+{:tablename:}          // Database table name
+{:item.name:}          // Field name from database schema
+{:item.type:}          // Field data type (VARCHAR, INT, etc.)
+{:item.typecast:}      // PHP typecast ((int), (string), etc.)
+{:item.controltype:}   // UI control type (14=int, 24=string, etc.)
 ```
 
 #### Loop Constructs
 ```javascript
-{for {nmaxitemsnokey}}
+{:for nmaxitemsnokey:}
   // Loop through all database fields without key
-  $p_{item.name} = {item.typecast}0;
-{endfor}
+  $p_{:item.name:} = {:item.typecast:}0;
+{:endfor:}
 ```
 
 #### Conditional Logic
 ```javascript
-{if {item.typecast}=="(int)"}
-  $p_{item.name} = {item.typecast}0;
-{else}
-  $p_{item.name} = {item.typecast}"";
-{endif}
+{:if item.typecast=="(int)":}
+  $p_{:item.name:} = {:item.typecast:}0;
+{:else:}
+  $p_{:item.name:} = {:item.typecast:}"";
+{:endif:}
+```
+
+#### Include Constructs
+```javascript
+// Include reusable template snippets from other files
+{:include: common/header.tpl:}
+{:include: partials/validation.tpl:}
+{:include: shared/footer.tpl:}
+
+// Includes are resolved recursively - included files can include other files
+// Great for reusable code blocks, common headers, footers, and shared logic
 ```
 
 #### Switch Statements
 ```javascript
-{switch {item.controltype}}
-{case 14}
+{:switch item.controltype:}
+{:case 14:}
   // Integer field processing
-  echo "Processing integer field: {item.name}";
-{break}
-{case 24}
+  echo "Processing integer field: {:item.name:}";
+{:break:}
+{:case 24:}
   // String field processing
-  echo "Processing string field: {item.name}";
-{break}
-{default}
+  echo "Processing string field: {:item.name:}";
+{:break:}
+{:default:}
   // Default processing
-  echo "Processing other field: {item.name}";
-{break}
-{endswitch}
+  echo "Processing other field: {:item.name:}";
+{:break:}
+{:endswitch:}
 ```
 
 ### 📁 File Organization
@@ -470,6 +504,26 @@ generated_project.zip
 - **ZIP Packaging**: Automatic compression of all output
 - **Filename Sanitization**: Safe filenames for all platforms
 - **Memory Efficient**: Streams large outputs directly to ZIP
+
+### 🎨 Form Designer
+
+Visual form creation with database integration:
+
+- **Drag & Drop Interface**: Arrange form fields visually
+- **Database Field Binding**: Link form elements to schema fields
+- **Control Type Selection**: Choose appropriate input controls
+- **Layout Options**: Flexible form layout configuration
+- **Preview Mode**: See form appearance before generation
+- **Template Integration**: Generate forms from database schemas
+
+### 🔧 Code Adjustments
+
+Post-generation code customization system:
+
+- **Custom Modifications**: Define code adjustments per project
+- **Pattern Matching**: Apply adjustments based on file patterns
+- **Version Safe**: Adjustments reapplied after regeneration
+- **Team Sharing**: Share adjustments with team members
 
 #### Example Usage
 ```typescript
@@ -644,6 +698,7 @@ Advanced MySQL schema parsing capabilities:
 - **Metadata Generation**: Create rich metadata for template systems
 - **Error Handling**: Graceful handling of malformed SQL
 - **Performance Optimization**: Efficient parsing of large schemas
+- **PostgreSQL Support**: Full support for PostgreSQL dumps and syntax
 
 ## 🏢 Project & Team Management
 
@@ -669,6 +724,38 @@ Comprehensive project and team collaboration features:
 - **Cloning System**: Clone interesting projects to your account
 - **Credit System**: Original creators receive credit for clones
 - **Discovery**: Browse community projects and templates
+
+### 📋 Kanban Board
+
+Scoriet includes a built-in Kanban board for visual project management:
+
+- **Drag & Drop**: Intuitive card management with drag-and-drop interface
+- **Custom Columns**: Create and organize workflow columns
+- **Card Management**: Create, edit, and archive task cards
+- **Labels & Tags**: Color-coded labels for task categorization
+- **Assignees**: Assign team members to cards
+- **Comments**: Discussion threads on cards
+- **Activity Log**: Track all card changes and updates
+- **Board Roles**: Permission system for board access
+
+### 📦 Project Import/Export
+
+Complete project backup and migration system:
+
+- **ZIP Export**: Export entire projects with schemas, templates, and settings
+- **ZIP Import**: Import projects from backup files
+- **Version Preservation**: Maintains schema versions and history
+- **Cross-Instance**: Move projects between Scoriet installations
+- **Team Sharing**: Share complete project packages with teams
+
+### 📎 Project Attachments
+
+File management for project documentation:
+
+- **File Upload**: Attach documents, images, and files to projects
+- **Organized Storage**: Files organized by project
+- **Download & Preview**: Easy access to attached files
+- **Multiple Formats**: Support for common file types
 
 ### ⭐ Template Review System
 
@@ -796,6 +883,35 @@ Inner Core Reviewers: 5
 Admin Users: 2
 ```
 
+### 📋 Deployment Logs
+
+Real-time logging for deployment operations:
+
+- **Live Monitoring**: Watch deployment progress in real-time
+- **Log Levels**: Info, success, warning, and error messages
+- **Task Tracking**: Monitor background task status
+- **Auto-Scroll**: Automatic scroll to latest entries
+- **Log Clearing**: Clean up old deployment logs
+- **Timestamp Display**: Precise timing for all log entries
+
+### 🔒 Protected Files
+
+Prevent generated files from being overwritten:
+
+- **File Protection**: Mark specific files as protected
+- **Regeneration Safe**: Protected files preserved during regeneration
+- **Visual Indicators**: Clear marking of protected files
+- **Bulk Management**: Manage multiple protected files at once
+
+### 💬 Messaging System
+
+In-app communication for teams:
+
+- **Direct Messages**: Send messages to team members
+- **File Attachments**: Share files in messages
+- **Notification System**: Alerts for new messages
+- **Message History**: Complete conversation archives
+
 ### 🌍 Internationalization Features
 
 Scoriet includes comprehensive multilingual support:
@@ -821,6 +937,37 @@ Scoriet includes comprehensive multilingual support:
 - Custom CSS flag components in `Components/CSSFlag.tsx`
 - Language selector component with PrimeReact integration
 - Automatic lobby language inheritance in registration forms
+
+### 🔧 VSCode Extension
+
+Scoriet provides a VSCode extension for template development:
+
+- **Syntax Highlighting**: Color-coded Scoriet template syntax
+- **Snippets**: Quick insertion of common template constructs
+- **Bracket Matching**: Proper matching for `{:` and `:}` delimiters
+- **Auto-Complete**: Suggestions for template variables and constructs
+- **Installation**: Available in `/public/downloads/vscode-scoriet-templates/`
+
+### 🔍 Query Builder
+
+Visual SQL query builder for database operations:
+
+- **Visual Interface**: Build queries without writing SQL
+- **Table Selection**: Choose from available database tables
+- **Column Picker**: Select specific columns to query
+- **Filter Builder**: Add WHERE conditions visually
+- **Join Support**: Create JOIN operations graphically
+- **Result Preview**: See query results immediately
+- **Export**: Copy generated SQL for use elsewhere
+
+### 📊 Performance Metrics
+
+System monitoring and performance tracking:
+
+- **Real-time Metrics**: Monitor system performance
+- **Usage Statistics**: Track resource utilization
+- **Bottleneck Detection**: Identify performance issues
+- **Historical Data**: View performance trends over time
 
 ### Development Features
 - ⚡ **Hot Reload** - Instant UI updates

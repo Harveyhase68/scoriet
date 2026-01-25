@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-//import { Badge } from 'primereact/badge';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProjectUnlockModalProps {
   visible: boolean;
@@ -28,6 +28,7 @@ export default function ProjectUnlockModal({
   currentCount = 1,
   maxFreeCount = 1
 }: ProjectUnlockModalProps) {
+  const { colors } = useTheme();
   const hasEnoughCredits = currentCredits >= creditCost;
   const creditsNeeded = creditCost - currentCredits;
 
@@ -43,52 +44,50 @@ export default function ProjectUnlockModal({
       modal
       header={`🔓 Unlock Additional ${resourceName}`}
       style={{ width: '90vw', maxWidth: '600px' }}
-      contentStyle={{ padding: '24px', backgroundColor: '#111827', color: 'white' }}
-      headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
       className="resource-unlock-modal"
     >
       <div className="space-y-6">
         {/* Limit Reached Info */}
-        <div className="bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-lg p-4">
+        <div className="rounded-lg p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
           <div className="flex items-start">
             <div className="flex-shrink-0">
-              <i className="pi pi-lock text-yellow-400 text-2xl"></i>
+              <i className="pi pi-lock text-2xl" style={{ color: colors.warningText }}></i>
             </div>
             <div className="ml-3 flex-1">
-              <h3 className="text-lg font-semibold text-yellow-400 mb-2">
+              <h3 className="text-lg font-semibold mb-2" style={{ color: colors.warningText }}>
                 Free Plan Limit Reached
               </h3>
-              <p className="text-gray-300 text-sm">
-                You currently have <strong className="text-white">{currentCount} {currentCount === 1 ? resourceName.toLowerCase() : resourceNamePlural}</strong> (maximum for Free plan: {maxFreeCount}).
+              <p className="text-sm" style={{ color: colors.textSecondary }}>
+                You currently have <strong style={{ color: colors.textPrimary }}>{currentCount} {currentCount === 1 ? resourceName.toLowerCase() : resourceNamePlural}</strong> (maximum for Free plan: {maxFreeCount}).
               </p>
             </div>
           </div>
         </div>
 
         {/* Unlock Details */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-600">
-          <h4 className="text-white font-semibold mb-4 flex items-center">
-            <i className="pi pi-key text-blue-400 mr-2"></i>
+        <div className="rounded-lg p-6" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
+          <h4 className="font-semibold mb-4 flex items-center" style={{ color: colors.textPrimary }}>
+            <i className="pi pi-key mr-2" style={{ color: colors.accent }}></i>
             Unlock +1 {resourceName} for 1 Year
           </h4>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-gray-700">
-              <span className="text-gray-300">Cost:</span>
-              <span className="text-xl font-bold text-blue-400">{creditCost} Credits</span>
+            <div className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${colors.borderSecondary}` }}>
+              <span style={{ color: colors.textSecondary }}>Cost:</span>
+              <span className="text-xl font-bold" style={{ color: colors.accent }}>{creditCost} Credits</span>
             </div>
 
             <div className="flex items-center justify-between py-2">
-              <span className="text-gray-300">Your Balance:</span>
-              <span className={`text-xl font-bold ${hasEnoughCredits ? 'text-green-400' : 'text-red-400'}`}>
+              <span style={{ color: colors.textSecondary }}>Your Balance:</span>
+              <span className="text-xl font-bold" style={{ color: hasEnoughCredits ? colors.successText : colors.errorText }}>
                 {currentCredits} Credits
               </span>
             </div>
           </div>
 
           {!hasEnoughCredits && (
-            <div className="mt-4 bg-red-900 bg-opacity-30 border border-red-600 rounded p-3">
-              <p className="text-sm text-red-300">
+            <div className="mt-4 rounded p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
+              <p className="text-sm" style={{ color: colors.errorText }}>
                 <i className="pi pi-exclamation-triangle mr-2"></i>
                 You need <strong>{creditsNeeded} more credits</strong> to unlock this {resourceName.toLowerCase()}.
               </p>
@@ -96,8 +95,8 @@ export default function ProjectUnlockModal({
           )}
 
           {hasEnoughCredits && (
-            <div className="mt-4 bg-green-900 bg-opacity-30 border border-green-600 rounded p-3">
-              <p className="text-sm text-green-300">
+            <div className="mt-4 rounded p-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
+              <p className="text-sm" style={{ color: colors.successText }}>
                 <i className="pi pi-check-circle mr-2"></i>
                 You have enough credits! After unlocking, this {resourceName.toLowerCase()} will be available for <strong>1 year</strong>.
               </p>
@@ -154,19 +153,20 @@ export default function ProjectUnlockModal({
         </div>
 
         {/* Additional Info */}
-        <div className="text-center text-gray-400 text-xs">
+        <div className="text-center text-xs" style={{ color: colors.textMuted }}>
           <p>
             💡 <strong>Tip:</strong> Upgrade to{' '}
             {onUpgradePatron ? (
               <button
                 type="button"
                 onClick={onUpgradePatron}
-                className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
+                className="underline font-semibold"
+                style={{ color: colors.warningText }}
               >
                 {unlimitedPlan}
               </button>
             ) : (
-              <span className="text-yellow-400 font-semibold">{unlimitedPlan}</span>
+              <span className="font-semibold" style={{ color: colors.warningText }}>{unlimitedPlan}</span>
             )}
             {' '}for unlimited {resourceNamePlural}!
           </p>

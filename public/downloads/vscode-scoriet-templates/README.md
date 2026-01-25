@@ -14,79 +14,89 @@ This extension injects Scoriet template syntax highlighting into:
 
 #### Simple Placeholders
 ```
-{projectname}
-{tablename}
-{filename}
+{:projectname:}
+{:tablename:}
+{:filename:}
 ```
 
 #### Object Properties (Dotted Notation)
 ```
-{item.name}
-{field.type}
-{project.tables}
-{form.element.property}
+{:item.name:}
+{:field.type:}
+{:project.tables:}
+{:form.element.property:}
 ```
 
 #### Loop Constructs
 ```
-{for {nmaxitems}}
-  {item.name}: {item.type}
-{endfor}
+{:for nmaxitems:}
+  {:item.name:}: {:item.type:}
+{:endfor:}
 
-{for %}
+{:for %:}
   ...
-{endfor}
+{:endfor:}
 ```
 
 #### Conditionals
 ```
-{if item.phptype eq 'string'}
+{:if item.phptype eq 'string':}
   ...
-{elseif item.phptype eq 'int'}
+{:elseif item.phptype eq 'int':}
   ...
-{else}
+{:else:}
   ...
-{endif}
+{:endif:}
 ```
 
 #### Switch/Case
 ```
-{switch {item.controltype}}
-{case 14}
+{:switch item.controltype:}
+{:case 14:}
   Text field
-{case 24}
+{:case 24:}
   Numeric field
-{default}
+{:default:}
   Unknown
-{endswitch}
+{:endswitch:}
 ```
 
 #### Built-in Functions
 ```
-{upper(tablename)}
-{capitalize(item.name)}
-{camelcase(field.name)}
-{substr(item.name, 0, -3)}
-{replace(tablename, '_', '-')}
+{:upper(tablename):}
+{:capitalize(item.name):}
+{:camelcase(field.name):}
+{:substr(item.name, 0, -3):}
+{:replace(tablename, '_', '-'):}
 ```
 
 #### JavaScript Code Blocks
 ```
-{code}
+{:code:}
   // Your JavaScript code here
   let result = processData();
   sContentResult += result;
-{codeend}
+{:codeend:}
 ```
 
 #### Counter Variables
 ```
-{nmaxitems}
-{nmaxkeys}
-{nmaxforeignkeys}
-{nmaxtables}
-{nmaxlanguages}
+{:nmaxitems:}
+{:nmaxkeys:}
+{:nmaxforeignkeys:}
+{:nmaxtables:}
+{:nmaxlanguages:}
 ```
+
+#### Include Constructs
+Include reusable template snippets from other files:
+```
+{:include: /includes/header.php:}
+{:include: lib/validation.php:}
+{:include: helper.php:}
+```
+
+**Note:** Include files must be marked as "Include-Only" in the template editor. They will not be generated as separate files, only embedded where referenced.
 
 ## Installation
 
@@ -109,13 +119,16 @@ The extension uses semantic token colors that work with most themes:
 - **Variables**: Orange/Yellow
 - **Functions**: Blue
 - **Counters**: Green
-- **Punctuation** (`{`, `}`): Gray
+- **Punctuation** (`{:`, `:}`): Gray
 
 ## Requirements
 
 - VS Code 1.60.0 or higher
 
 ## Release Notes
+
+### 1.1.0
+- Updated syntax from `{tagname}` to `{:tagname:}` to avoid conflicts with Twig and other template engines
 
 ### 1.0.0
 - Initial release

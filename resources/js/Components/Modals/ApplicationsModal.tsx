@@ -8,6 +8,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Application {
   id: number;
@@ -48,6 +49,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
@@ -189,11 +191,11 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   const userTemplate = (application: Application) => {
     return (
       <div className="flex items-center space-x-2">
-        <i className="pi pi-user text-blue-500"></i>
+        <i className="pi pi-user" style={{ color: colors.accent }}></i>
         <div>
-          <div className="font-medium">{application.user.name}</div>
+          <div className="font-medium" style={{ color: colors.textPrimary }}>{application.user.name}</div>
           {application.user.username && (
-            <div className="text-sm text-gray-500">@{application.user.username}</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>@{application.user.username}</div>
           )}
         </div>
       </div>
@@ -202,7 +204,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
   const messageTemplate = (application: Application) => {
     if (!application.message) {
-      return <span className="text-gray-400 italic">No message</span>;
+      return <span className="italic" style={{ color: colors.textMuted }}>No message</span>;
     }
 
     const shortMessage = application.message.length > 50 
@@ -248,15 +250,15 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
   const reviewTemplate = (application: Application) => {
     if (application.status === 'pending') {
-      return <span className="text-gray-400">-</span>;
+      return <span style={{ color: colors.textMuted }}>-</span>;
     }
 
     return (
       <div>
-        <div className="text-sm">
+        <div className="text-sm" style={{ color: colors.textPrimary }}>
           {application.reviewer?.name || t.testprojectschemas50}
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs" style={{ color: colors.textMuted }}>
           {application.reviewed_at ? formatDate(application.reviewed_at) : ''}
         </div>
       </div>
@@ -280,6 +282,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
         visible={visible}
         onHide={handleClose}
         style={{ width: '900px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
@@ -297,19 +301,19 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <i className="pi pi-spinner pi-spin text-2xl text-blue-500"></i>
+              <i className="pi pi-spinner pi-spin text-2xl" style={{ color: colors.accent }}></i>
             </div>
           ) : (
             <DataTable
               value={applications}
-              className="p-datatable-sm"
+              className="p-datatable-sm applications-modal-table"
               emptyMessage={t.applicationsmodal301}
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 20]}
               header={
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">
+                <div className="flex justify-between items-center" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
+                  <span className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
                     Applications ({applications.length})
                   </span>
                   <Button
@@ -380,6 +384,8 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
         visible={showReviewModal}
         onHide={() => setShowReviewModal(false)}
         style={{ width: '450px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
@@ -388,24 +394,24 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
       >
         <div className="space-y-4">
           {selectedApplication && (
-            <Card>
+            <Card style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <i className="pi pi-user text-blue-500"></i>
-                  <strong>{selectedApplication.user.name}</strong>
+                  <i className="pi pi-user" style={{ color: colors.accent }}></i>
+                  <strong style={{ color: colors.textPrimary }}>{selectedApplication.user.name}</strong>
                   {selectedApplication.user.username && (
-                    <span className="text-gray-500">@{selectedApplication.user.username}</span>
+                    <span style={{ color: colors.textMuted }}>@{selectedApplication.user.username}</span>
                   )}
                 </div>
 
-                <div className="text-sm text-gray-300">
+                <div className="text-sm" style={{ color: colors.textSecondary }}>
                   Applied on {formatDate(selectedApplication.created_at)}
                 </div>
 
                 {selectedApplication.message && (
-                  <div className="p-3 bg-gray-50 rounded text-sm text-gray-800">
-                    <strong className="text-gray-700">Message:</strong>
-                    <p className="mt-1 text-gray-800">{selectedApplication.message}</p>
+                  <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
+                    <strong style={{ color: colors.textSecondary }}>Message:</strong>
+                    <p className="mt-1" style={{ color: colors.textPrimary }}>{selectedApplication.message}</p>
                   </div>
                 )}
               </div>
@@ -413,7 +419,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
           )}
 
           <div className="field">
-            <label htmlFor="review-notes" className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="review-notes" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               {reviewAction === 'approve' ? 'Welcome Message' : t.applicationsmodal412} (Optional)
             </label>
             <InputTextarea
@@ -421,7 +427,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
               placeholder={
-                reviewAction === 'approve' 
+                reviewAction === 'approve'
                   ? t.applicationsmodal420
                   : t.applicationsmodal421
               }
@@ -429,6 +435,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
               rows={3}
               disabled={reviewing}
               maxLength={500}
+              style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
             />
           </div>
 
@@ -450,6 +457,65 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
           </div>
         </div>
       </Dialog>
+
+      {/* Theme-aware DataTable styles */}
+      <style>{`
+        .applications-modal-table.p-datatable {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .applications-modal-table .p-datatable-header {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .applications-modal-table .p-datatable-thead > tr > th {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .applications-modal-table .p-datatable-tbody > tr {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .applications-modal-table .p-datatable-tbody > tr > td {
+          border-color: var(--theme-border-primary) !important;
+        }
+        .applications-modal-table .p-datatable-tbody > tr:hover {
+          background-color: var(--theme-bg-hover) !important;
+        }
+        .applications-modal-table .p-paginator {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .applications-modal-table .p-paginator .p-paginator-pages .p-paginator-page {
+          color: var(--theme-text-primary) !important;
+        }
+        .applications-modal-table .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        .applications-modal-table .p-paginator .p-paginator-first,
+        .applications-modal-table .p-paginator .p-paginator-prev,
+        .applications-modal-table .p-paginator .p-paginator-next,
+        .applications-modal-table .p-paginator .p-paginator-last {
+          color: var(--theme-text-primary) !important;
+        }
+        .applications-modal-table .p-paginator .p-dropdown {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .applications-modal-table .p-paginator .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .applications-modal-table .p-paginator .p-inputtext {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+      `}</style>
     </>
   );
 }

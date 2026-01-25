@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FloatingSchema;
+use App\Models\PerformanceMetric;
 use App\Models\SchemaVersion;
 use App\Models\SchemaDesignerLayout;
 use App\Models\SchemaTable;
@@ -346,23 +347,6 @@ class SchemaController extends Controller
     {
         $user = Auth::user();
 
-        // 🔍 IMMEDIATE DEBUG LOGGING
-        Log::info("🚨 DELETE REQUEST RECEIVED", [
-            'timestamp' => now()->toISOString(),
-            'user_id' => $user->id,
-            'schema_id' => $schema->id,
-            'schema_name' => $schema->name,
-            'request_method' => $request->method(),
-            'request_url' => $request->fullUrl(),
-            'request_body' => $request->all(),
-            'force_delete_param' => $request->input('force_delete'),
-            'request_headers' => [
-                'content-type' => $request->header('Content-Type'),
-                'accept' => $request->header('Accept'),
-                'user-agent' => $request->header('User-Agent')
-            ]
-        ]);
-
         // Check if user can delete this schema
         if (!$schema->canBeEditedBy($user)) {
             return response()->json(['message' => 'Unauthorized to delete this schema'], 403);
@@ -392,105 +376,53 @@ class SchemaController extends Controller
         }
 
         try {
-            Log::info("🗑️ Starting schema deletion", [
-                'schema_id' => $schema->id,
-                'schema_name' => $schema->name,
-                'user_id' => $user->id,
-                'projects_count' => $projectsCount,
-                'versions_count' => $versionsCount,
-                'tables_count' => $totalTablesCount,
-                'force_delete' => $forceDelete
-            ]);
+            // Remove project associations first
+            ProjectSchema::where('schema_id', $schema->id)->delete();
 
-            // 🚨 STEP 1: Remove project associations OUTSIDE the transaction first
-            Log::info("🔥 Pre-emptive project association removal");
-            $deletedProjectAssociations = ProjectSchema::where('schema_id', $schema->id)->delete();
-            Log::info("✅ Pre-removed {$deletedProjectAssociations} project associations");
-
-            // Try to detach using Eloquent as well (belt and suspenders)
+            // Try to detach using Eloquent as well
             try {
                 $schema->projects()->detach();
-                Log::info("✅ Eloquent detach completed");
             } catch (\Exception $e) {
-                Log::warning("⚠️ Eloquent detach failed: " . $e->getMessage());
+                // Ignore - already removed via direct delete
             }
 
-            // 🚨 STEP 2: Now delete the schema and all related data
-            DB::transaction(function () use ($schema, $user) {
-                Log::info("🔥 Starting main deletion transaction for schema {$schema->id}");
-
+            // Delete the schema and all related data
+            DB::transaction(function () use ($schema) {
                 // Get all related IDs first
                 $versionIds = $schema->versions()->pluck('id')->toArray();
                 $tableIds = SchemaTable::whereIn('schema_version_id', $versionIds)->pluck('id')->toArray();
                 $constraintIds = SchemaConstraint::whereIn('table_id', $tableIds)->pluck('id')->toArray();
                 $referenceIds = SchemaForeignKeyReference::whereIn('constraint_id', $constraintIds)->pluck('id')->toArray();
 
-                Log::info("🔍 Deletion scope", [
-                    'schema_id' => $schema->id,
-                    'version_ids' => $versionIds,
-                    'table_ids' => $tableIds,
-                    'constraint_ids' => $constraintIds,
-                    'reference_ids' => $referenceIds
-                ]);
-
                 // Delete in proper dependency order
                 if (!empty($referenceIds)) {
-                    $deletedReferenceColumns = SchemaForeignKeyReferenceColumn::whereIn('reference_id', $referenceIds)->delete();
-                    Log::info("✅ Removed {$deletedReferenceColumns} foreign key reference columns");
+                    SchemaForeignKeyReferenceColumn::whereIn('reference_id', $referenceIds)->delete();
                 }
 
                 if (!empty($constraintIds)) {
-                    $deletedReferences = SchemaForeignKeyReference::whereIn('constraint_id', $constraintIds)->delete();
-                    Log::info("✅ Removed {$deletedReferences} foreign key references");
-                }
-
-                if (!empty($constraintIds)) {
-                    $deletedConstraintColumns = SchemaConstraintColumn::whereIn('constraint_id', $constraintIds)->delete();
-                    Log::info("✅ Removed {$deletedConstraintColumns} constraint columns");
+                    SchemaForeignKeyReference::whereIn('constraint_id', $constraintIds)->delete();
+                    SchemaConstraintColumn::whereIn('constraint_id', $constraintIds)->delete();
                 }
 
                 if (!empty($tableIds)) {
-                    $deletedConstraints = SchemaConstraint::whereIn('table_id', $tableIds)->delete();
-                    Log::info("✅ Removed {$deletedConstraints} constraints");
+                    SchemaConstraint::whereIn('table_id', $tableIds)->delete();
+                    SchemaField::whereIn('table_id', $tableIds)->delete();
                 }
 
-                if (!empty($tableIds)) {
-                    $deletedFields = SchemaField::whereIn('table_id', $tableIds)->delete();
-                    Log::info("✅ Removed {$deletedFields} schema fields");
-                }
-
-                // Delete schema designer layouts (they use schema_id, not schema_version_id)
-                $deletedLayouts = SchemaDesignerLayout::where('schema_id', $schema->id)->delete();
-                Log::info("✅ Removed {$deletedLayouts} schema designer layouts");
+                // Delete schema designer layouts
+                SchemaDesignerLayout::where('schema_id', $schema->id)->delete();
 
                 if (!empty($versionIds)) {
-                    $deletedTables = SchemaTable::whereIn('schema_version_id', $versionIds)->delete();
-                    Log::info("✅ Removed {$deletedTables} schema tables");
-                }
-
-                if (!empty($versionIds)) {
-                    $deletedVersions = SchemaVersion::whereIn('id', $versionIds)->delete();
-                    Log::info("✅ Removed {$deletedVersions} schema versions");
+                    SchemaTable::whereIn('schema_version_id', $versionIds)->delete();
+                    SchemaVersion::whereIn('id', $versionIds)->delete();
                 }
 
                 // Double-check project associations are gone
-                $remainingAssociations = ProjectSchema::where('schema_id', $schema->id)->count();
-                Log::info("🔍 Remaining project associations: {$remainingAssociations}");
-
-                if ($remainingAssociations > 0) {
-                    ProjectSchema::where('schema_id', $schema->id)->delete();
-                    Log::info("✅ Force-removed remaining project associations");
-                }
+                ProjectSchema::where('schema_id', $schema->id)->delete();
 
                 // Finally delete the schema itself
                 $schema->delete();
-                Log::info("✅ Removed schema itself");
             });
-
-            Log::info("🎉 Schema deletion completed successfully", [
-                'schema_id' => $schema->id,
-                'user_id' => $user->id
-            ]);
 
             return response()->json([
                 'message' => 'Schema and all related data deleted successfully',
@@ -546,13 +478,14 @@ class SchemaController extends Controller
     public function getSchemaVersions(FloatingSchema $schema): JsonResponse
     {
         $user = Auth::user();
-        
+
         // Check if user can access this schema
         if (!$schema->canBeAccessedBy($user)) {
             return response()->json(['message' => 'Schema not found'], 404);
         }
 
         $versions = $schema->versions()
+            ->withCount('tables')
             ->orderByDesc('version_number')
             ->get();
 
@@ -564,8 +497,9 @@ class SchemaController extends Controller
      */
     public function getVersionTables(SchemaVersion $version): JsonResponse
     {
+        $startTime = microtime(true);
         $user = Auth::user();
-        
+
         // If this schema version has a schema, check access
         if ($version->hasSchema()) {
             $schema = $version->schema;
@@ -595,6 +529,28 @@ class SchemaController extends Controller
                 });
             });
         });
+
+        // Track performance
+        $duration = (int) ((microtime(true) - $startTime) * 1000);
+        $tablesCount = $tables->count();
+        $fieldsCount = $tables->sum(fn($t) => $t->fields->count());
+
+        try {
+            PerformanceMetric::create([
+                'user_id' => $user?->id,
+                'operation' => PerformanceMetric::OP_SCHEMA_LOAD,
+                'operation_detail' => $version->schema?->name ?? 'Version #' . $version->id,
+                'duration_ms' => $duration,
+                'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                'tables_count' => $tablesCount,
+                'fields_count' => $fieldsCount,
+                'from_cache' => false,
+                'subscription_type' => $user?->subscription?->type ?? 'free',
+                'created_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Performance tracking failed: " . $e->getMessage());
+        }
 
         return response()->json($tables);
     }
@@ -693,8 +649,6 @@ class SchemaController extends Controller
             'columns.*.link_order_field' => 'nullable|string|max:64',
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
         ]);
-
-        \Log::info('CreateTable Request Data:', $request->all());
 
         try {
             // Create the table
@@ -882,12 +836,6 @@ class SchemaController extends Controller
         ]);
 
         try {
-            // Debug: Log the incoming request data
-            Log::info('UpdateTable Request Data:', [
-                'table_name' => $request->table_name,
-                'columns' => $request->columns
-            ]);
-
             // Update the table
             $table->update([
                 'table_name' => $request->table_name,
@@ -925,8 +873,6 @@ class SchemaController extends Controller
                 ->filter() // Remove null entries
                 ->values()
                 ->toArray();
-
-            Log::info('💾 Saved Foreign Keys before update:', ['foreign_keys' => $existingForeignKeys]);
 
             // ✅ AKADEMISCH KORREKTE LÖSUNG: UPDATE/INSERT/DELETE statt DELETE/INSERT
             // Lade bestehende Felder
@@ -984,11 +930,9 @@ class SchemaController extends Controller
                         // UPDATE: Field already exists - preserve ID!
                         $field = $existingFields->get($fieldName);
                         $field->update($fieldData);
-                        Log::info("✏️ UPDATED field: {$fieldName} (ID preserved: {$field->id})");
                     } else {
                         // INSERT: New field
                         $field = \App\Models\SchemaField::create($fieldData);
-                        Log::info("➕ INSERTED new field: {$fieldName} (ID: {$field->id})");
                     }
 
                     $updatedFields[$fieldName] = $field;
@@ -1008,68 +952,162 @@ class SchemaController extends Controller
                 // DELETE fields that are no longer in the request
                 $fieldsToDelete = $existingFields->keys()->diff($incomingFieldNames);
                 foreach ($fieldsToDelete as $fieldName) {
-                    $field = $existingFields->get($fieldName);
-                    Log::info("🗑️ DELETING removed field: {$fieldName} (ID: {$field->id})");
-                    $field->delete();
+                    $existingFields->get($fieldName)->delete();
                 }
             }
 
-            // Delete old constraints (except FK - they're saved separately)
-            \App\Models\SchemaConstraint::where('table_id', $table->id)
+            // ============================================================
+            // SMART CONSTRAINT UPDATE: Only change what was actually changed
+            // Preserve existing constraint names and IDs!
+            // ============================================================
+
+            // Load existing constraints (non-FK) with their columns
+            $existingConstraints = \App\Models\SchemaConstraint::where('table_id', $table->id)
                 ->where('constraint_type', '!=', 'FOREIGN KEY')
-                ->delete();
+                ->with('constraintColumns')
+                ->get();
 
-            // Create PRIMARY KEY constraint if we have primary key fields
-            if (!empty($primaryKeyFields)) {
-                // Generate constraint name from field names
-                $fieldNames = collect($primaryKeyFields)->pluck('field_name')->toArray();
-                $constraintName = 'PK_' . $table->table_name . '_' . implode('_', $fieldNames);
+            // Build maps of existing constraints by type and field
+            $existingPK = $existingConstraints->firstWhere('constraint_type', 'PRIMARY KEY');
+            $existingIndexes = $existingConstraints->filter(fn($c) => in_array($c->constraint_type, ['INDEX', 'KEY']));
+            $existingUniques = $existingConstraints->where('constraint_type', 'UNIQUE');
 
-                $primaryKeyConstraint = \App\Models\SchemaConstraint::create([
-                    'table_id' => $table->id,
-                    'constraint_name' => $constraintName,
-                    'constraint_type' => 'PRIMARY KEY',
-                ]);
+            // Get current field IDs from existing constraints
+            $existingIndexFieldIds = $existingIndexes->mapWithKeys(function($idx) {
+                $fieldIds = $idx->constraintColumns->pluck('field_id')->sort()->values()->toArray();
+                return [implode(',', $fieldIds) => $idx];
+            });
 
-                // Add constraint columns for primary key
-                foreach ($primaryKeyFields as $index => $field) {
-                    \App\Models\SchemaConstraintColumn::create([
-                        'constraint_id' => $primaryKeyConstraint->id,
-                        'field_id' => $field->id,
-                        'column_order' => $index,
+            $existingUniqueFieldIds = $existingUniques->mapWithKeys(function($uq) {
+                $fieldIds = $uq->constraintColumns->pluck('field_id')->sort()->values()->toArray();
+                return [implode(',', $fieldIds) => $uq];
+            });
+
+            // --- PRIMARY KEY: Update only if changed ---
+            $newPKFieldIds = collect($primaryKeyFields)->pluck('id')->sort()->values()->toArray();
+            $existingPKFieldIds = $existingPK
+                ? $existingPK->constraintColumns->pluck('field_id')->sort()->values()->toArray()
+                : [];
+
+            if ($newPKFieldIds !== $existingPKFieldIds) {
+                // PK changed - need to update
+                if ($existingPK) {
+                    if (empty($newPKFieldIds)) {
+                        // PK removed
+                        $existingPK->delete();
+                    } else {
+                        // PK columns changed - update constraint columns (keep constraint name!)
+                        \App\Models\SchemaConstraintColumn::where('constraint_id', $existingPK->id)->delete();
+                        foreach ($primaryKeyFields as $index => $field) {
+                            \App\Models\SchemaConstraintColumn::create([
+                                'constraint_id' => $existingPK->id,
+                                'field_id' => $field->id,
+                                'column_order' => $index,
+                            ]);
+                        }
+                    }
+                } elseif (!empty($newPKFieldIds)) {
+                    // New PK - create with generated name
+                    $fieldNames = collect($primaryKeyFields)->pluck('field_name')->toArray();
+                    $constraintName = 'PK_' . $table->table_name . '_' . implode('_', $fieldNames);
+
+                    $newPK = \App\Models\SchemaConstraint::create([
+                        'table_id' => $table->id,
+                        'constraint_name' => $constraintName,
+                        'constraint_type' => 'PRIMARY KEY',
                     ]);
+                    foreach ($primaryKeyFields as $index => $field) {
+                        \App\Models\SchemaConstraintColumn::create([
+                            'constraint_id' => $newPK->id,
+                            'field_id' => $field->id,
+                            'column_order' => $index,
+                        ]);
+                    }
                 }
             }
 
-            // Create INDEX constraints for individual fields
-            foreach ($indexFields as $field) {
-                $constraintName = 'IDX_' . $table->table_name . '_' . $field->field_name;
+            // --- INDEX: Only add/remove what changed ---
+            $newIndexFieldIds = collect($indexFields)->mapWithKeys(function($field) {
+                return [(string)$field->id => $field];
+            });
 
-                $indexConstraint = \App\Models\SchemaConstraint::create([
+            // Find indexes to remove (exist but not in new list)
+            foreach ($existingIndexes as $existingIdx) {
+                $fieldIdKey = $existingIdx->constraintColumns->pluck('field_id')->sort()->values()->implode(',');
+                $fieldIds = $existingIdx->constraintColumns->pluck('field_id')->toArray();
+
+                // Check if this index's fields are still marked as index
+                $stillNeeded = false;
+                foreach ($fieldIds as $fid) {
+                    if ($newIndexFieldIds->has((string)$fid)) {
+                        $stillNeeded = true;
+                        break;
+                    }
+                }
+
+                if (!$stillNeeded) {
+                    $existingIdx->delete();
+                } else {
+                    // Mark as processed
+                    foreach ($fieldIds as $fid) {
+                        $newIndexFieldIds->forget((string)$fid);
+                    }
+                }
+            }
+
+            // Add new indexes (fields that are marked as index but don't have constraint yet)
+            foreach ($newIndexFieldIds as $fieldId => $field) {
+                $constraintName = $table->table_name . '_' . $field->field_name . '_ckey';
+
+                $newIdx = \App\Models\SchemaConstraint::create([
                     'table_id' => $table->id,
                     'constraint_name' => $constraintName,
-                    'constraint_type' => 'INDEX',
+                    'constraint_type' => 'KEY', // Use KEY for consistency with PHP parser
                 ]);
-
                 \App\Models\SchemaConstraintColumn::create([
-                    'constraint_id' => $indexConstraint->id,
+                    'constraint_id' => $newIdx->id,
                     'field_id' => $field->id,
                     'column_order' => 0,
                 ]);
             }
 
-            // Create UNIQUE constraints for individual fields
-            foreach ($uniqueFields as $field) {
-                $constraintName = 'UQ_' . $table->table_name . '_' . $field->field_name;
+            // --- UNIQUE: Only add/remove what changed ---
+            $newUniqueFieldIds = collect($uniqueFields)->mapWithKeys(function($field) {
+                return [(string)$field->id => $field];
+            });
 
-                $uniqueConstraint = \App\Models\SchemaConstraint::create([
+            // Find uniques to remove
+            foreach ($existingUniques as $existingUq) {
+                $fieldIds = $existingUq->constraintColumns->pluck('field_id')->toArray();
+
+                $stillNeeded = false;
+                foreach ($fieldIds as $fid) {
+                    if ($newUniqueFieldIds->has((string)$fid)) {
+                        $stillNeeded = true;
+                        break;
+                    }
+                }
+
+                if (!$stillNeeded) {
+                    $existingUq->delete();
+                } else {
+                    foreach ($fieldIds as $fid) {
+                        $newUniqueFieldIds->forget((string)$fid);
+                    }
+                }
+            }
+
+            // Add new uniques
+            foreach ($newUniqueFieldIds as $fieldId => $field) {
+                $constraintName = $table->table_name . '_' . $field->field_name . '_ukey';
+
+                $newUq = \App\Models\SchemaConstraint::create([
                     'table_id' => $table->id,
                     'constraint_name' => $constraintName,
                     'constraint_type' => 'UNIQUE',
                 ]);
-
                 \App\Models\SchemaConstraintColumn::create([
-                    'constraint_id' => $uniqueConstraint->id,
+                    'constraint_id' => $newUq->id,
                     'field_id' => $field->id,
                     'column_order' => 0,
                 ]);
@@ -1155,8 +1193,6 @@ class SchemaController extends Controller
                         'referenced_field_id' => $refFieldId,
                     ]);
                 }
-
-                Log::info('✅ Restored Foreign Key:', ['constraint' => $fkData['constraint_name']]);
             }
 
             $table->load(['fields', 'constraints']);
@@ -1210,37 +1246,12 @@ class SchemaController extends Controller
     public function deleteTableWithVersionCopy(SchemaVersion $version, \App\Models\SchemaTable $table, Request $request): JsonResponse
     {
         $user = Auth::user();
-        
-        // IMMEDIATE DEBUG: Log exact route model binding resolution
-        \Log::info("🚨 ROUTE MODEL BINDING DEBUG: Method entry", [
-            'timestamp' => now()->toISOString(),
-            'user_id' => $user->id,
-            'request_url' => $request->fullUrl(),
-            'request_method' => $request->method(),
-            'route_name' => $request->route()->getName(),
-            'route_uri' => $request->route()->uri(),
-            'raw_route_parameters' => $request->route()->parameters(),
-            'version_param_from_route' => [
-                'id' => $version->id,
-                'version_number' => $version->version_number,
-                'schema_id' => $version->schema_id
-            ],
-            'table_param_from_route' => [
-                'id' => $table->id,
-                'table_name' => $table->table_name,
-                'schema_version_id' => $table->schema_version_id,
-                'laravel_route_key' => $table->getRouteKey(),
-                'laravel_route_key_name' => $table->getRouteKeyName()
-            ],
-            'request_segments' => $request->segments(),
-            'uri_path' => $request->path()
-        ]);
-        
+
         // Check if this schema version has a schema and user can edit it
         if (!$version->hasSchema()) {
             return response()->json(['message' => 'This action requires a floating schema'], 400);
         }
-        
+
         $schema = $version->schema;
         if (!$schema->canBeEditedBy($user)) {
             return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
@@ -1252,122 +1263,25 @@ class SchemaController extends Controller
         }
 
         try {
-            \Log::info("🔍 API CALLED: deleteTableWithVersionCopy", [
-                'user_id' => $user->id,
-                'schema_id' => $schema->id,
-                'schema_name' => $schema->name,
-                'version_id' => $version->id,
-                'version_number' => $version->version_number,
-                'table_id_from_route' => $table->id,
-                'table_name_from_route' => $table->table_name,
-                'table_schema_version_id' => $table->schema_version_id,
-                'request_url' => $request->fullUrl(),
-                'route_params' => $request->route()->parameters(),
-                'raw_route_table_id' => $request->route()->parameter('table'),
-                'request_method' => $request->method(),
-                'request_path' => $request->path()
-            ]);
-            
-            // CRITICAL: Verify the table actually belongs to this version
-            \Log::info("🔍 CRITICAL VERIFICATION: Checking table ownership", [
-                'table_id' => $table->id,
-                'table_name' => $table->table_name,
-                'table_belongs_to_version_id' => $table->schema_version_id,
-                'expected_version_id' => $version->id,
-                'table_belongs_to_correct_version' => $table->schema_version_id === (string)$version->id,
-                'version_tables_count' => $version->tables()->count(),
-                'all_table_ids_in_version' => $version->tables()->pluck('id')->toArray(),
-                'all_table_names_in_version' => $version->tables()->pluck('table_name', 'id')->toArray()
-            ]);
-            
-            // Double-check: Find the table by ID in this specific version
-            $tableFoundInVersion = $version->tables()->where('id', $table->id)->first();
-            \Log::info("🔍 DOUBLE CHECK: Table lookup by ID in version", [
-                'searching_for_table_id' => $table->id,
-                'found_in_version' => !!$tableFoundInVersion,
-                'found_table_name' => $tableFoundInVersion ? $tableFoundInVersion->table_name : 'NOT FOUND',
-                'found_table_id' => $tableFoundInVersion ? $tableFoundInVersion->id : 'NOT FOUND'
-            ]);
-            
             // Create new version with complete copy of current data
             $newVersion = SchemaVersion::createNewVersionWithCopy(
-                $schema, 
+                $schema,
                 $version->version_number,
                 $request->input('description', "Table deletion: {$table->table_name}")
             );
-            
-            \Log::info("✅ New version created", [
-                'new_version_id' => $newVersion->id,
-                'new_version_number' => $newVersion->version_number
-            ]);
-            
+
             // Find the table to delete in the NEW version
-            \Log::info("🔍 BEFORE: Looking for table to delete in new version", [
-                'searching_for_table_name' => $table->table_name,
-                'original_table_id' => $table->id,
-                'new_version_id' => $newVersion->id,
-                'all_tables_in_new_version' => $newVersion->tables()->select('id', 'table_name')->get()->toArray()
-            ]);
-            
             $tableToDelete = $newVersion->tables()->where('table_name', $table->table_name)->first();
-            
-            \Log::info("🔍 AFTER: Table lookup result in new version", [
-                'searching_for_table_name' => $table->table_name,
-                'original_table_id' => $table->id,
-                'new_version_id' => $newVersion->id,
-                'found' => !!$tableToDelete,
-                'found_table_id' => $tableToDelete ? $tableToDelete->id : 'NULL',
-                'found_table_name' => $tableToDelete ? $tableToDelete->table_name : 'NULL',
-                'total_tables_in_new_version' => $newVersion->tables()->count(),
-                'sql_query' => $newVersion->tables()->where('table_name', $table->table_name)->toSql(),
-                'sql_bindings' => $newVersion->tables()->where('table_name', $table->table_name)->getBindings()
-            ]);
-            
+
             if (!$tableToDelete) {
-                \Log::error("❌ Table not found in new version", [
-                    'table_name' => $table->table_name,
-                    'new_version_tables' => $newVersion->tables()->pluck('table_name')->toArray()
-                ]);
                 throw new \Exception("Table '{$table->table_name}' not found in new version {$newVersion->version_number}");
             }
-            
+
             // Delete the table from the NEW version only
-            \Log::info("🗑️ ABOUT TO DELETE: Final confirmation before deletion", [
-                'table_id_to_delete' => $tableToDelete->id,
-                'table_name_to_delete' => $tableToDelete->table_name,
-                'table_schema_version_id' => $tableToDelete->schema_version_id,
-                'new_version_id' => $newVersion->id,
-                'original_table_requested' => $table->table_name,
-                'original_table_id_requested' => $table->id,
-                'about_to_delete_correct_table' => $tableToDelete->table_name === $table->table_name,
-                'laravel_model_class' => get_class($tableToDelete),
-                'laravel_model_key' => $tableToDelete->getKey()
-            ]);
-            
-            // Get all related data before deletion for logging
-            $fieldsCount = $tableToDelete->fields()->count();
-            $constraintsCount = $tableToDelete->constraints()->count();
-            
-            \Log::info("🗑️ Table relationships before deletion", [
-                'table_id' => $tableToDelete->id,
-                'table_name' => $tableToDelete->table_name,
-                'fields_count' => $fieldsCount,
-                'constraints_count' => $constraintsCount
-            ]);
-            
             $tableToDelete->delete();
-            
-            \Log::info("✅ Table deletion completed", [
-                'deleted_table_id' => $tableToDelete->id,
-                'deleted_table_name' => $tableToDelete->table_name,
-                'remaining_tables_in_version' => $newVersion->tables()->count(),
-                'remaining_table_names' => $newVersion->tables()->pluck('table_name')->toArray()
-            ]);
-            
-            \Log::info("✅ Table deleted successfully from new version");
 
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => 'New version created and table deleted',
                 'new_version' => $newVersion,
                 'new_version_number' => $newVersion->version_number
@@ -1460,12 +1374,30 @@ class SchemaController extends Controller
         }
 
         try {
-            // Hard delete
+            $deletedVersionNumber = $version->version_number;
+
+            // Delete associated designer layout for this version
+            \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
+                ->where('version_number', $deletedVersionNumber)
+                ->delete();
+
+            // Hard delete the version
             $version->delete();
+
+            // Update schema's last_version if we deleted the current last version
+            if ($schema->last_version === $deletedVersionNumber) {
+                // Find the new highest version number
+                $newLastVersion = $schema->versions()->max('version_number');
+                $schema->update(['last_version' => $newLastVersion]);
+            }
+
+            // Refresh the schema to get updated values
+            $schema->refresh();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Schema version deleted successfully',
+                'new_last_version' => $schema->last_version,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -2073,12 +2005,6 @@ class SchemaController extends Controller
         $user = Auth::user();
         $schema = FloatingSchema::findOrFail($id);
 
-        \Log::info('updateLinkedProjects START', [
-            'schema_id' => $id,
-            'user_id' => $user->id,
-            'request_project_ids' => $request->input('project_ids')
-        ]);
-
         // Check if user can link this schema
         // System schemas and public schemas can be linked by anyone
         // Private schemas can only be linked by their owner
@@ -2106,7 +2032,6 @@ class SchemaController extends Controller
         ]);
 
         $newProjectIds = $validated['project_ids'] ?? [];
-        \Log::info('updateLinkedProjects VALIDATED', ['new_project_ids' => $newProjectIds]);
 
         // Get current user's accessible projects (own projects + direct members + team members)
         $userAccessibleProjectIds = Project::where(function($query) use ($user) {

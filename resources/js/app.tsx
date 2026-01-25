@@ -1,6 +1,7 @@
 import React from 'react';
 import '../css/app.css';
 import './styles/fonts';
+import './Components/Panels/styles.css'; // Global panel theming (DataTables, Splitters, etc.)
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -8,6 +9,7 @@ import { createRoot } from 'react-dom/client';
 import './i18n'; // Initialize i18n
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { apiClient } from '@/lib/api';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -72,11 +74,13 @@ createInertiaApp({
         const root = createRoot(el);
 
         root.render(
-            <ToastProvider>
-                <ProjectProvider>
-                    <App {...props} />
-                </ProjectProvider>
-            </ToastProvider>
+            <ThemeProvider>
+                <ToastProvider>
+                    <ProjectProvider>
+                        <App {...props} />
+                    </ProjectProvider>
+                </ToastProvider>
+            </ThemeProvider>
         );
     },
     progress: {

@@ -14,6 +14,7 @@ import { usePage } from '@inertiajs/react';
 import { ProtectedFilesEditor } from '@/Components/ProtectedFilesEditor';
 import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TemplateVariable {
     id?: number;
@@ -65,6 +66,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Get template categories and languages from Inertia props
   const { props } = usePage<any>();
@@ -375,12 +377,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             visible={visible}
             onHide={onCancel}
             style={{ width: '800px' }}
+            contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+            headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
             modal
             closable
             draggable={true}
             resizable={true}
         >
-            <form className="space-y-4">
+            <form className="template-modal-form space-y-4">
                 {/* Template Name */}
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -403,7 +407,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 placeholder="my_template_name"
                                 className="w-full font-mono"
                                 onChange={(e) => {
-                                    field.onChange(e);
+                                    // Sanitize: only allow lowercase letters, numbers, and underscores
+                                    const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                                    field.onChange(sanitized);
                                     checkFormChanges();
                                 }}
                             />
@@ -412,7 +418,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {errors.name && (
                         <small className="text-red-400 mt-1 block">{errors.name.message}</small>
                     )}
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                         {t.templatemodal228}
                     </div>
                 </div>
@@ -469,6 +475,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 placeholder={t.templatemodal281}
                                 className="w-full"
                                 inputClassName="w-full"
+                                panelClassName="template-modal-autocomplete-panel"
                                 dropdown
                                 forceSelection={false}
                             />
@@ -477,7 +484,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {errors.category && (
                         <small className="text-red-400 mt-1 block">{errors.category.message}</small>
                     )}
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                         {t.templatemodal293} {templateCategories.slice(0, 5).join(', ')}...
                     </div>
                 </div>
@@ -510,6 +517,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 placeholder={t.templatemodal322}
                                 className="w-full"
                                 inputClassName="w-full"
+                                panelClassName="template-modal-autocomplete-panel"
                                 dropdown
                                 forceSelection={false}
                             />
@@ -518,7 +526,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {errors.language && (
                         <small className="text-red-400 mt-1 block">{errors.language.message}</small>
                     )}
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                         {t.templatemodal334} {templateLanguages.slice(0, 5).join(', ')}...
                     </div>
                 </div>
@@ -555,15 +563,15 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {/* Visibility - Hidden if locked (cloned from store) */}
                     {editingTemplate?.visibility_locked ? (
                         <div className="flex-1">
-                            <label className="block text-sm font-medium mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                 {t.templatemodal366}
                             </label>
-                            <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                                 <div className="flex items-center gap-2">
                                     <i className="pi pi-lock text-yellow-500"></i>
-                                    <span className="text-gray-300">Private (gesperrt)</span>
+                                    <span style={{ color: colors.textSecondary }}>Private (gesperrt)</span>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                     Von einem gekauften Template geklont - Sichtbarkeit kann nicht geändert werden
                                 </p>
                             </div>
@@ -600,6 +608,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         ]}
                                         placeholder={t.templatemodal320}
                                         className="w-full"
+                                        panelClassName="template-modal-dropdown-panel"
                                     />
                                 )}
                             />
@@ -628,7 +637,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 checkFormChanges();
                                             }}
                                         />
-                                        <label htmlFor="is_system_template" className="cursor-pointer text-gray-200">
+                                        <label htmlFor="is_system_template" className="cursor-pointer" style={{ color: colors.textSecondary }}>
                                             {t.templatemodal399}
                                         </label>
                                     </div>
@@ -756,9 +765,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 )}
 
                 {/* Template Files Section */}
-                <div className="border-t pt-4 mt-4">
+                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-300">{t.templatemodal362}</h3>
+                        <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal362}</h3>
                         <Button
                             size="small"
                             icon="pi pi-plus"
@@ -787,22 +796,22 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                    )}
                     
                     {templateFiles.length > 0 ? (
-                        <div className="max-h-60 overflow-y-auto border border-gray-600 rounded bg-gray-700">
-                            <table className="w-full text-sm text-gray-100">
-                                <thead className="bg-gray-600 border-b border-gray-500">
+                        <div className="max-h-60 overflow-y-auto rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                            <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
+                                <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                                     <tr>
-                                        <th className="px-3 py-2 text-left text-gray-100">Name</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Typ</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Größe</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Aktionen</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Name</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Typ</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Größe</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Aktionen</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {templateFiles.map((file, index) => (
-                                        <tr key={file.id || index} className="border-t border-gray-600 hover:bg-gray-600 transition-colors">
+                                        <tr key={file.id || index} className="transition-colors" style={{ borderTop: `1px solid ${colors.borderPrimary}` }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <td className="px-3 py-2">
-                                                <div className="flex items-center text-gray-100">
-                                                    <i className="pi pi-file mr-2 text-gray-300"></i>
+                                                <div className="flex items-center" style={{ color: colors.textPrimary }}>
+                                                    <i className="pi pi-file mr-2" style={{ color: colors.textSecondary }}></i>
                                                     {file.file_name}
                                                 </div>
                                             </td>
@@ -811,7 +820,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                     {fileTypes.find(ft => ft.value === file.file_type)?.label || file.file_type}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-2 text-gray-100">
+                                            <td className="px-3 py-2" style={{ color: colors.textPrimary }}>
                                                 {file.file_content?.length || 0} {t.templatemodal480}
                                             </td>
                                             <td className="px-3 py-2">
@@ -844,16 +853,16 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             </table>
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
+                        <div className="text-center py-8 rounded" style={{ color: colors.textSecondary, border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                             {t.templatemodal513}
                         </div>
                     )}
                 </div>
 
                 {/* Custom Variables Section */}
-                <div className="border-t pt-4 mt-4">
+                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-300">{t.templatemodal521}</h3>
+                        <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal521}</h3>
                         <Button
                             size="small"
                             icon="pi pi-plus"
@@ -884,29 +893,29 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     )}
 
                     {templateVariables && templateVariables.length > 0 ? (
-                        <div className="max-h-60 overflow-y-auto border border-gray-600 rounded bg-gray-700">
-                            <table className="w-full text-sm text-gray-100">
-                                <thead className="bg-gray-600 border-b border-gray-500">
+                        <div className="max-h-60 overflow-y-auto rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                            <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
+                                <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                                     <tr>
-                                        <th className="px-3 py-2 text-left text-gray-100">Variable Name</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Beschreibung</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Default</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Pflicht</th>
-                                        <th className="px-3 py-2 text-left text-gray-100">Aktionen</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Variable Name</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Beschreibung</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Default</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Pflicht</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Aktionen</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {templateVariables.map((variable, index) => (
-                                        <tr key={variable.id || index} className="border-t border-gray-600 hover:bg-gray-600 transition-colors">
+                                        <tr key={variable.id || index} className="transition-colors" style={{ borderTop: `1px solid ${colors.borderPrimary}` }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <td className="px-3 py-2">
-                                                <div className="flex items-center text-gray-100">
+                                                <div className="flex items-center" style={{ color: colors.textPrimary }}>
                                                     <span className="font-mono text-yellow-300">{'{' + variable.variable_name + '}'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-2 text-gray-100">
+                                            <td className="px-3 py-2" style={{ color: colors.textPrimary }}>
                                                 {variable.description || '-'}
                                             </td>
-                                            <td className="px-3 py-2 text-gray-100">
+                                            <td className="px-3 py-2" style={{ color: colors.textPrimary }}>
                                                 {variable.default_value || '-'}
                                             </td>
                                             <td className="px-3 py-2">
@@ -956,7 +965,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             </table>
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-gray-300 border border-gray-600 rounded bg-gray-700">
+                        <div className="text-center py-8 rounded" style={{ color: colors.textSecondary, border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                             {t.templatemodal625}
                         </div>
                     )}
@@ -977,7 +986,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         checkFormChanges();
                                     }}
                                 />
-                                <label htmlFor="is_active" className="cursor-pointer text-gray-200">
+                                <label htmlFor="is_active" className="cursor-pointer" style={{ color: colors.textSecondary }}>
                                     {t.templatemodal646}
                                 </label>
                             </div>
@@ -986,8 +995,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 </div>
 
                 {/* Protected Files Section */}
-                <div className="border-t pt-4 mt-4">
-                    <h3 className="text-lg font-semibold text-gray-300 mb-4">Protected Files</h3>
+                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>Protected Files</h3>
                     <ProtectedFilesEditor
                         files={protectedFiles}
                         onChange={setProtectedFiles}
@@ -995,8 +1004,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 </div>
 
                 {/* Deployment Scripts Section */}
-                <div className="border-t pt-4 mt-4">
-                    <h3 className="text-lg font-semibold text-gray-300 mb-4">Deployment Scripts</h3>
+                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>Deployment Scripts</h3>
                     <DeploymentScriptsEditor
                         installScript={installScript}
                         updateScript={updateScript}
@@ -1038,6 +1047,117 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     </Button>
                 </div>
             </form>
+
+            {/* Theme-aware styles for PrimeReact components */}
+            <style>{`
+                .template-modal-form .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-inputtext:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .template-modal-form .p-inputtext::placeholder {
+                    color: var(--theme-text-muted) !important;
+                }
+                .template-modal-form .p-inputtextarea {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-inputtextarea:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .template-modal-form .p-autocomplete .p-autocomplete-input {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-autocomplete .p-autocomplete-input:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                /* AutoComplete Panel - rendered as portal outside dialog */
+                .template-modal-autocomplete-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-autocomplete-panel .p-autocomplete-items {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-modal-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+                    color: var(--theme-text-primary) !important;
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-modal-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                }
+                .template-modal-autocomplete-panel .p-autocomplete-items .p-autocomplete-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-modal-form .p-chips .p-chips-multiple-container {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-chips .p-chips-multiple-container:focus-within {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .template-modal-form .p-chips .p-chips-multiple-container .p-chips-input-token input {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-modal-form .p-chips .p-chips-multiple-container .p-chips-token {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-modal-form .p-dropdown {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-dropdown:focus,
+                .template-modal-form .p-dropdown.p-focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .template-modal-form .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                /* Dropdown Panel - rendered as portal outside dialog */
+                .template-modal-dropdown-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-dropdown-panel .p-dropdown-items {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-modal-dropdown-panel .p-dropdown-item {
+                    color: var(--theme-text-primary) !important;
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-modal-dropdown-panel .p-dropdown-item:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                }
+                .template-modal-dropdown-panel .p-dropdown-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-modal-form .p-checkbox .p-checkbox-box {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-checkbox .p-checkbox-box.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    border-color: var(--theme-accent) !important;
+                }
+                .template-modal-form label {
+                    color: var(--theme-text-secondary) !important;
+                }
+            `}</style>
         </Dialog>
         <PlanModal
             visible={showPlanModal}

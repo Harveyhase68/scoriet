@@ -13,6 +13,7 @@ import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 
@@ -76,6 +77,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Use Project Context to get current project and projects list
   const { selectedProject: contextSelectedProject, projects: contextProjects } = useProject();
@@ -1287,13 +1289,24 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // No global loading screen - show loading per table
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white overflow-hidden">
+    <div className="database-management-panel flex flex-col h-full overflow-hidden" style={{
+      backgroundColor: colors.bgPrimary,
+      color: colors.textPrimary,
+      '--theme-bg-primary': colors.bgPrimary,
+      '--theme-bg-secondary': colors.bgSecondary,
+      '--theme-bg-tertiary': colors.bgTertiary,
+      '--theme-text-primary': colors.textPrimary,
+      '--theme-text-muted': colors.textMuted,
+      '--theme-border-primary': colors.borderPrimary,
+      '--theme-accent': colors.accent,
+      '--theme-dialog-header': colors.dialogHeader,
+    } as React.CSSProperties}>
       <div className="flex-shrink-0 p-6 pb-0">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <i className="pi pi-database text-2xl text-blue-600"></i>
-          <h1 className="text-2xl font-bold text-white">{t.databasemanagementpanel798}</h1>
+          <i className="pi pi-database text-2xl" style={{ color: colors.accent }}></i>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.databasemanagementpanel798}</h1>
         </div>
         <div className="flex space-x-2 gap-2">
           <Button
@@ -1330,7 +1343,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {/* MY SCHEMAS TABLE */}
-        <Card title="Meine Datenbanken" className="mb-4">
+        <Card title="Meine Datenbanken" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
             {/* Type Filter - show 'system' option only for system/admin users */}
@@ -1345,6 +1358,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               onChange={(e) => setMyTypeFilter(e.value)}
               placeholder="Type"
               className="w-32"
+              panelClassName="database-dropdown-panel"
             />
             <InputText
               value={mySearchTerm}
@@ -1403,7 +1417,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       </Card>
 
       {/* COMMUNITY SCHEMAS TABLE */}
-      <Card title="System & Öffentliche Datenbanken" className="mb-4">
+      <Card title="System & Öffentliche Datenbanken" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
             <Dropdown
@@ -1416,6 +1430,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               onChange={(e) => setCommunityTypeFilter(e.value)}
               placeholder="Type"
               className="w-32"
+              panelClassName="database-dropdown-panel"
             />
             <InputText
               value={communitySearchTerm}
@@ -1512,25 +1527,34 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+        className="database-create-modal"
       >
         <div className="space-y-4">
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Schema Name *
             </label>
             <InputText
               value={createForm.name}
-              onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => {
+                // Sanitize: only allow lowercase letters, numbers, and underscores
+                const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                setCreateForm(prev => ({ ...prev, name: sanitized }));
+              }}
               placeholder={t.databasemanagementpanel923}
               className="w-full"
               disabled={creating}
               required
             />
+            <small className="mt-1 block" style={{ color: colors.textMuted }}>
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Description
             </label>
             <InputTextarea
@@ -1544,7 +1568,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Visibility
             </label>
             <Dropdown
@@ -1554,8 +1578,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               placeholder={t.databasemanagementpanel952}
               className="w-full"
               disabled={creating}
+              panelClassName="database-dropdown-panel"
             />
-            <small className="text-gray-500">
+            <small style={{ color: colors.textMuted }}>
               Public schemas can be linked by other users. Private schemas are only visible to you.
             </small>
           </div>
@@ -1571,10 +1596,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 className="w-4 h-4 cursor-pointer"
                 disabled={creating}
               />
-              <label htmlFor="is_system_schema" className="text-sm font-medium text-gray-200 cursor-pointer">
+              <label htmlFor="is_system_schema" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
                 Is System Database
               </label>
-              <small className="text-gray-500 ml-2">
+              <small className="ml-2" style={{ color: colors.textMuted }}>
                 (System databases are available to all users)
               </small>
             </div>
@@ -1582,8 +1607,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           {/* Project Assignment - Only show user's OWN projects (not team projects) */}
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              {t.createteammodal117 || 'Projects'} <span className="text-gray-500 text-xs">(optional)</span>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+              {t.createteammodal117 || 'Projects'} <span className="text-xs" style={{ color: colors.textMuted }}>(optional)</span>
             </label>
             <MultiSelect
               value={createForm.project_ids}
@@ -1599,8 +1624,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               showClear
               maxSelectedLabels={3}
               selectedItemsLabel="{0} projects selected"
+              panelClassName="database-multiselect-panel"
             />
-            <small className="text-gray-500">
+            <small style={{ color: colors.textMuted }}>
               Link this database to one or more of your projects. Hold Ctrl/Cmd to select multiple.
             </small>
           </div>
@@ -1633,25 +1659,34 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-edit-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Schema Name *
             </label>
             <InputText
               value={editForm.name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => {
+                // Sanitize: only allow lowercase letters, numbers, and underscores
+                const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                setEditForm(prev => ({ ...prev, name: sanitized }));
+              }}
               placeholder={t.databasemanagementpanel923}
               className="w-full"
               disabled={saving}
               required
             />
+            <small className="mt-1 block" style={{ color: colors.textMuted }}>
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Description
             </label>
             <InputTextarea
@@ -1665,7 +1700,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Visibility
             </label>
             <Dropdown
@@ -1675,6 +1710,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               placeholder={t.databasemanagementpanel952}
               className="w-full"
               disabled={saving}
+              panelClassName="database-dropdown-panel"
             />
           </div>
 
@@ -1689,10 +1725,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 className="w-4 h-4 cursor-pointer"
                 disabled={saving}
               />
-              <label htmlFor="edit_is_system_schema" className="text-sm font-medium text-gray-200 cursor-pointer">
+              <label htmlFor="edit_is_system_schema" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
                 Is System Database
               </label>
-              <small className="text-gray-500 ml-2">
+              <small className="ml-2" style={{ color: colors.textMuted }}>
                 (System databases are available to all users)
               </small>
             </div>
@@ -1726,14 +1762,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-associate-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-blue-50 rounded border border-blue-200">
-            <h4 className="font-medium text-blue-800 mb-1">
+          <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+            <h4 className="font-medium mb-1" style={{ color: colors.infoText }}>
               {associatingSchema?.name}
             </h4>
-            <p className="text-sm text-blue-600">
+            <p className="text-sm" style={{ color: colors.infoText, opacity: 0.9 }}>
               {associatingSchema?.description || t.schemaexportcontroller226}
             </p>
           </div>
@@ -1741,7 +1779,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           {/* Only show project dropdown if no forceProjectId (not from TreeView) */}
           {!forceProjectId && (
             <div className="field">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 Select Project *
               </label>
               <Dropdown
@@ -1751,24 +1789,25 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 placeholder={t.databasemanagementpanel1084}
                 className="w-full"
                 disabled={associating}
+                panelClassName="database-dropdown-panel"
               />
             </div>
           )}
 
           {/* Show project name if forceProjectId is set */}
           {forceProjectId && forceProjectName && (
-            <div className="p-3 bg-green-50 rounded border border-green-200">
-              <label className="block text-sm font-medium text-green-800 mb-1">
+            <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+              <label className="block text-sm font-medium mb-1" style={{ color: colors.successText }}>
                 Link to Project:
               </label>
-              <p className="text-base font-semibold text-green-900">
+              <p className="text-base font-semibold" style={{ color: colors.successText }}>
                 {forceProjectName}
               </p>
             </div>
           )}
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Association Type
             </label>
             <Dropdown
@@ -1777,11 +1816,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               options={associationTypeOptions}
               className="w-full"
               disabled={associating}
+              panelClassName="database-dropdown-panel"
             />
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Alias (optional)
             </label>
             <InputText
@@ -1821,20 +1861,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable={!deleting}
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-delete-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="p-4 bg-red-50 border border-red-200 rounded">
+          <div className="p-4 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
             <div className="flex items-center mb-2">
-              <i className="pi pi-exclamation-triangle text-red-600 mr-2"></i>
-              <h4 className="font-bold text-red-800">{t.databasemanagementpanel1163}</h4>
+              <i className="pi pi-exclamation-triangle mr-2" style={{ color: colors.errorText }}></i>
+              <h4 className="font-bold" style={{ color: colors.errorText }}>{t.databasemanagementpanel1163}</h4>
             </div>
-            <p className="text-red-700 text-sm mb-3">
+            <p className="text-sm mb-3" style={{ color: colors.errorText }}>
               This action will permanently delete the schema and <strong>ALL</strong> related data:
             </p>
 
             {deleteInfo && (
-              <ul className="text-red-700 text-sm space-y-1 mb-3">
+              <ul className="text-sm space-y-1 mb-3" style={{ color: colors.errorText }}>
                 <li>🗂️ <strong>{deleteInfo.versions_count}</strong> schema versions</li>
                 <li>🏗️ <strong>{deleteInfo.tables_count}</strong> database tables</li>
                 <li>🔗 <strong>{deleteInfo.projects_count}</strong> project associations</li>
@@ -1843,13 +1885,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               </ul>
             )}
 
-            <p className="text-red-800 font-medium text-sm">
+            <p className="font-medium text-sm" style={{ color: colors.errorText }}>
               💀 This action <u>cannot be undone</u>!
             </p>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Gib <strong>DELETE</strong> ein, um zu bestätigen:
             </label>
             <input
@@ -1857,17 +1899,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="DELETE"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              className="w-full px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              style={{
+                backgroundColor: colors.bgTertiary,
+                color: colors.textPrimary,
+                border: `1px solid ${colors.borderPrimary}`
+              }}
               disabled={deleting}
               autoComplete="off"
             />
-            <small className="text-gray-600">
+            <small style={{ color: colors.textMuted }}>
               Du musst exakt DELETE (Großbuchstaben) eingeben
             </small>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-100 border border-red-400 rounded text-red-700 text-sm">
+            <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
               {error}
             </div>
           )}
@@ -1901,20 +1948,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-export-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-blue-50 rounded border border-blue-200">
-            <h4 className="font-medium text-blue-800 mb-1">
+          <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+            <h4 className="font-medium mb-1" style={{ color: colors.infoText }}>
               Export for {contextSelectedProject?.name}
             </h4>
-            <p className="text-sm text-blue-600">
+            <p className="text-sm" style={{ color: colors.infoText, opacity: 0.9 }}>
               Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
             </p>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Select Languages *
             </label>
             <MultiSelect
@@ -1925,8 +1974,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               className="w-full"
               disabled={exporting}
               display="chip"
+              panelClassName="database-multiselect-panel"
             />
-            <small className="text-gray-600">
+            <small style={{ color: colors.textMuted }}>
               Select one or more languages for the translation export
             </small>
           </div>
@@ -1964,20 +2014,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-import-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-green-50 rounded border border-green-200">
-            <h4 className="font-medium text-green-800 mb-1">
+          <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+            <h4 className="font-medium mb-1" style={{ color: colors.successText }}>
               Import for {contextSelectedProject?.name}
             </h4>
-            <p className="text-sm text-green-600">
+            <p className="text-sm" style={{ color: colors.successText, opacity: 0.9 }}>
               Upload an Excel file with translations. The file must follow the export format.
             </p>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Upload Excel File *
             </label>
             <FileUpload
@@ -1991,7 +2043,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               chooseLabel={t.databasemanagementpanel1324}
               disabled={importing}
             />
-            <small className="text-gray-600">
+            <small style={{ color: colors.textMuted }}>
               Excel files only (.xlsx, .xls), max 10MB
             </small>
           </div>
@@ -2022,20 +2074,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
-        className="p-dialog-custom"
+        className="database-copy-modal"
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="p-3 bg-blue-700 rounded border border-blue-500">
-            <h4 className="font-medium text-white mb-1">
+          <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+            <h4 className="font-medium mb-1" style={{ color: colors.infoText }}>
               Copy: {copyingSchema?.name}
             </h4>
-            <p className="text-sm text-blue-100">
+            <p className="text-sm" style={{ color: colors.infoText, opacity: 0.9 }}>
               This will create a complete copy of the database schema including all tables, fields, constraints, and designer layouts. The copy will be set to version 1.
             </p>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               New Schema Name *
             </label>
             <InputText
@@ -2046,13 +2100,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={copying}
               required
             />
-            <small className="text-gray-500">
+            <small style={{ color: colors.textMuted }}>
               Choose a unique name for the copied schema
             </small>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-700 border border-red-500 rounded text-red-100 text-sm">
+            <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
               {error}
             </div>
           )}
@@ -2103,22 +2157,26 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         closable
         draggable={true}
         resizable={true}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+        className="database-link-modal"
       >
         {loadingProjects ? (
           <div className="flex justify-center items-center py-8">
-            <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+            <i className="pi pi-spin pi-spinner text-4xl" style={{ color: colors.accent }}></i>
           </div>
         ) : (
           <div className="space-y-2">
             {allProjects.length === 0 ? (
-              <div className="text-center text-gray-500 py-4">
+              <div className="text-center py-4" style={{ color: colors.textMuted }}>
                 Keine Projekte gefunden
               </div>
             ) : (
               allProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded cursor-pointer database-link-item"
+                  style={{ border: `1px solid ${colors.borderPrimary}` }}
                   onClick={() => handleToggleProjectLink(project.id)}
                 >
                   <div className="flex items-center gap-3 flex-1">
@@ -2130,9 +2188,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                       onClick={(e) => e.stopPropagation()}
                     />
                     <div>
-                      <div className="font-semibold text-white">{project.name}</div>
+                      <div className="font-semibold" style={{ color: colors.textPrimary }}>{project.name}</div>
                       {project.description && (
-                        <div className="text-sm text-gray-400">{project.description}</div>
+                        <div className="text-sm" style={{ color: colors.textMuted }}>{project.description}</div>
                       )}
                     </div>
                   </div>
@@ -2163,6 +2221,374 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         onHide={() => setShowPlanModal(false)}
         initialTab={planModalInitialTab}
       />
+
+      {/* Theme-aware styles for PrimeReact components */}
+      <style>{`
+        .database-management-panel .p-card .p-card-title {
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-card .p-card-content {
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-inputtext {
+          background-color: var(--theme-bg-tertiary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-inputtext:hover {
+          border-color: var(--theme-accent);
+        }
+        .database-management-panel .p-inputtext:focus {
+          border-color: var(--theme-accent);
+          box-shadow: 0 0 0 1px var(--theme-accent);
+        }
+        .database-management-panel .p-inputtext::placeholder {
+          color: var(--theme-text-muted);
+        }
+        .database-management-panel .p-dropdown {
+          background-color: var(--theme-bg-tertiary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-dropdown:hover {
+          border-color: var(--theme-accent);
+        }
+        .database-management-panel .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-dropdown .p-dropdown-trigger {
+          color: var(--theme-text-muted);
+        }
+        /* Dropdown Panel - rendered as portal */
+        .database-dropdown-panel {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .database-dropdown-panel .p-dropdown-items {
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .database-dropdown-panel .p-dropdown-item {
+          color: var(--theme-text-primary) !important;
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .database-dropdown-panel .p-dropdown-item:hover {
+          background-color: var(--theme-bg-tertiary) !important;
+        }
+        .database-dropdown-panel .p-dropdown-item.p-highlight {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        /* MultiSelect Panel - rendered as portal */
+        .database-multiselect-panel {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box {
+          background-color: var(--theme-bg-tertiary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box.p-highlight {
+          background-color: var(--theme-accent) !important;
+          border-color: var(--theme-accent) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header .p-multiselect-filter-container .p-inputtext {
+          background-color: var(--theme-bg-tertiary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header .p-multiselect-close {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-multiselect-panel .p-multiselect-header .p-multiselect-close:hover {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-items-wrapper {
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-items {
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-item {
+          color: var(--theme-text-primary) !important;
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-item:hover {
+          background-color: var(--theme-bg-tertiary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-item.p-highlight {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        .database-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box {
+          background-color: var(--theme-bg-tertiary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .database-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box.p-highlight {
+          background-color: var(--theme-accent) !important;
+          border-color: var(--theme-accent) !important;
+        }
+        .database-multiselect-panel .p-multiselect-empty-message {
+          color: var(--theme-text-muted) !important;
+          background-color: var(--theme-bg-secondary) !important;
+        }
+        /* Create Modal MultiSelect */
+        .database-create-modal .p-multiselect {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-create-modal .p-multiselect:hover {
+          border-color: var(--theme-accent) !important;
+        }
+        .database-create-modal .p-multiselect .p-multiselect-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .database-create-modal .p-multiselect .p-multiselect-label.p-placeholder {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-create-modal .p-multiselect .p-multiselect-trigger {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-create-modal .p-multiselect-token {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        .database-create-modal .p-inputtext {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-create-modal .p-inputtext:focus {
+          border-color: var(--theme-accent) !important;
+          box-shadow: 0 0 0 1px var(--theme-accent) !important;
+        }
+        .database-create-modal .p-inputtext::placeholder {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-create-modal .p-inputtextarea {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-create-modal .p-inputtextarea:focus {
+          border-color: var(--theme-accent) !important;
+          box-shadow: 0 0 0 1px var(--theme-accent) !important;
+        }
+        .database-create-modal .p-inputtextarea::placeholder {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-create-modal .p-dropdown {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-create-modal .p-dropdown:hover {
+          border-color: var(--theme-accent) !important;
+        }
+        .database-create-modal .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary) !important;
+        }
+        /* Link Modal styles */
+        .database-link-modal .database-link-item:hover {
+          background-color: var(--theme-bg-tertiary) !important;
+        }
+        .database-link-modal input[type="checkbox"] {
+          accent-color: var(--theme-accent);
+        }
+        /* Edit Modal styles */
+        .database-edit-modal .p-inputtext,
+        .database-associate-modal .p-inputtext,
+        .database-delete-modal .p-inputtext,
+        .database-export-modal .p-inputtext,
+        .database-import-modal .p-inputtext,
+        .database-copy-modal .p-inputtext {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-inputtext:focus,
+        .database-associate-modal .p-inputtext:focus,
+        .database-delete-modal .p-inputtext:focus,
+        .database-export-modal .p-inputtext:focus,
+        .database-import-modal .p-inputtext:focus,
+        .database-copy-modal .p-inputtext:focus {
+          border-color: var(--theme-accent) !important;
+          box-shadow: 0 0 0 1px var(--theme-accent) !important;
+        }
+        .database-edit-modal .p-inputtext::placeholder,
+        .database-associate-modal .p-inputtext::placeholder,
+        .database-delete-modal .p-inputtext::placeholder,
+        .database-export-modal .p-inputtext::placeholder,
+        .database-import-modal .p-inputtext::placeholder,
+        .database-copy-modal .p-inputtext::placeholder {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-edit-modal .p-inputtextarea,
+        .database-associate-modal .p-inputtextarea,
+        .database-delete-modal .p-inputtextarea,
+        .database-export-modal .p-inputtextarea,
+        .database-import-modal .p-inputtextarea,
+        .database-copy-modal .p-inputtextarea {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-inputtextarea:focus,
+        .database-associate-modal .p-inputtextarea:focus,
+        .database-delete-modal .p-inputtextarea:focus,
+        .database-export-modal .p-inputtextarea:focus,
+        .database-import-modal .p-inputtextarea:focus,
+        .database-copy-modal .p-inputtextarea:focus {
+          border-color: var(--theme-accent) !important;
+          box-shadow: 0 0 0 1px var(--theme-accent) !important;
+        }
+        .database-edit-modal .p-dropdown,
+        .database-associate-modal .p-dropdown,
+        .database-delete-modal .p-dropdown,
+        .database-export-modal .p-dropdown,
+        .database-import-modal .p-dropdown,
+        .database-copy-modal .p-dropdown {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-dropdown:hover,
+        .database-associate-modal .p-dropdown:hover,
+        .database-delete-modal .p-dropdown:hover,
+        .database-export-modal .p-dropdown:hover,
+        .database-import-modal .p-dropdown:hover,
+        .database-copy-modal .p-dropdown:hover {
+          border-color: var(--theme-accent) !important;
+        }
+        .database-edit-modal .p-dropdown .p-dropdown-label,
+        .database-associate-modal .p-dropdown .p-dropdown-label,
+        .database-delete-modal .p-dropdown .p-dropdown-label,
+        .database-export-modal .p-dropdown .p-dropdown-label,
+        .database-import-modal .p-dropdown .p-dropdown-label,
+        .database-copy-modal .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-multiselect,
+        .database-associate-modal .p-multiselect,
+        .database-delete-modal .p-multiselect,
+        .database-export-modal .p-multiselect,
+        .database-import-modal .p-multiselect,
+        .database-copy-modal .p-multiselect {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-multiselect:hover,
+        .database-associate-modal .p-multiselect:hover,
+        .database-delete-modal .p-multiselect:hover,
+        .database-export-modal .p-multiselect:hover,
+        .database-import-modal .p-multiselect:hover,
+        .database-copy-modal .p-multiselect:hover {
+          border-color: var(--theme-accent) !important;
+        }
+        .database-edit-modal .p-multiselect .p-multiselect-label,
+        .database-associate-modal .p-multiselect .p-multiselect-label,
+        .database-delete-modal .p-multiselect .p-multiselect-label,
+        .database-export-modal .p-multiselect .p-multiselect-label,
+        .database-import-modal .p-multiselect .p-multiselect-label,
+        .database-copy-modal .p-multiselect .p-multiselect-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .database-edit-modal .p-multiselect .p-multiselect-label.p-placeholder,
+        .database-associate-modal .p-multiselect .p-multiselect-label.p-placeholder,
+        .database-delete-modal .p-multiselect .p-multiselect-label.p-placeholder,
+        .database-export-modal .p-multiselect .p-multiselect-label.p-placeholder,
+        .database-import-modal .p-multiselect .p-multiselect-label.p-placeholder,
+        .database-copy-modal .p-multiselect .p-multiselect-label.p-placeholder {
+          color: var(--theme-text-muted) !important;
+        }
+        .database-edit-modal .p-multiselect-token,
+        .database-associate-modal .p-multiselect-token,
+        .database-delete-modal .p-multiselect-token,
+        .database-export-modal .p-multiselect-token,
+        .database-import-modal .p-multiselect-token,
+        .database-copy-modal .p-multiselect-token {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        /* Checkbox styling in modals */
+        .database-edit-modal input[type="checkbox"],
+        .database-associate-modal input[type="checkbox"],
+        .database-delete-modal input[type="checkbox"],
+        .database-export-modal input[type="checkbox"],
+        .database-import-modal input[type="checkbox"],
+        .database-copy-modal input[type="checkbox"] {
+          accent-color: var(--theme-accent);
+        }
+        /* FileUpload styling */
+        .database-import-modal .p-fileupload {
+          background-color: var(--theme-bg-secondary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .database-import-modal .p-fileupload .p-button {
+          background-color: var(--theme-accent) !important;
+          border-color: var(--theme-accent) !important;
+        }
+        /* DataTable styling */
+        .database-management-panel .p-datatable {
+          background-color: var(--theme-bg-tertiary);
+        }
+        .database-management-panel .p-datatable .p-datatable-header {
+          background-color: var(--theme-bg-secondary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-datatable .p-datatable-thead > tr > th {
+          background-color: var(--theme-bg-secondary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-datatable .p-datatable-tbody > tr {
+          background-color: var(--theme-bg-tertiary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-datatable .p-datatable-tbody > tr > td {
+          border-color: var(--theme-border-primary);
+        }
+        .database-management-panel .p-datatable .p-datatable-tbody > tr:nth-child(even) {
+          background-color: var(--theme-bg-secondary);
+        }
+        .database-management-panel .p-datatable .p-datatable-tbody > tr:hover {
+          background-color: var(--theme-bg-primary) !important;
+        }
+        /* Paginator styling */
+        .database-management-panel .p-paginator {
+          background-color: var(--theme-bg-secondary);
+          border-color: var(--theme-border-primary);
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-paginator .p-paginator-current {
+          color: var(--theme-text-muted);
+        }
+        .database-management-panel .p-paginator .p-paginator-element {
+          color: var(--theme-text-primary);
+        }
+        .database-management-panel .p-paginator .p-paginator-element:hover {
+          background-color: var(--theme-bg-tertiary);
+        }
+        .database-management-panel .p-paginator .p-paginator-element.p-highlight {
+          background-color: var(--theme-accent);
+          color: white;
+        }
+        .database-management-panel .p-paginator .p-dropdown {
+          background-color: var(--theme-bg-tertiary);
+          border-color: var(--theme-border-primary);
+        }
+        .database-management-panel .p-paginator .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary);
+        }
+      `}</style>
       </div>
     </div>
   );

@@ -32,7 +32,7 @@ class TestTreeGenerator extends Command
         $projectId = $this->argument('project_id');
         
         $this->info('🌳 Testing ProjectFileTreeGenerator');
-        $this->info('=================================');
+        $this->info('------------------------------------');
 
         // Get project
         $project = Project::find($projectId);

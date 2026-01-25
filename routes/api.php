@@ -178,6 +178,7 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::put('/profile/password', [AuthController::class, 'updatePassword']);
     Route::put('/profile/language', [AuthController::class, 'updateLanguage']);
+    Route::put('/profile/theme', [AuthController::class, 'updateTheme']);
     Route::put('/profile/seller', [AuthController::class, 'updateSellerProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -337,6 +338,29 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/{projectId}/generations', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getGenerations'])->name('api.generations.index');
     Route::get('/projects/{projectId}/generations/{generationId}/files', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getGenerationFiles'])->name('api.generations.files');
     Route::post('/projects/{projectId}/generations/{generationId}/fetch-file', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'fetchFileFromGeneration'])->name('api.generations.fetch-file');
+
+    // Project Attachments (Documents, Images, PDFs etc.)
+    Route::prefix('projects/{projectId}/attachments')->name('api.project-attachments.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'store'])->name('store');
+        Route::get('/{attachmentId}', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'show'])->name('show');
+        Route::put('/{attachmentId}', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'update'])->name('update');
+        Route::delete('/{attachmentId}', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'destroy'])->name('destroy');
+        Route::get('/{attachmentId}/download', [\App\Http\Controllers\Api\ProjectAttachmentController::class, 'download'])->name('download');
+    });
+
+    // Project Export/Import (Archive)
+    Route::prefix('projects/{projectId}')->name('api.project-export.')->group(function () {
+        Route::get('/export/preview', [\App\Http\Controllers\Api\ProjectExportController::class, 'preview'])->name('preview');
+        Route::get('/export', [\App\Http\Controllers\Api\ProjectExportController::class, 'export'])->name('export');
+    });
+
+    // Project Import (Upload ZIP and import)
+    Route::prefix('projects/import')->name('api.project-import.')->group(function () {
+        Route::post('/analyze', [\App\Http\Controllers\Api\ProjectImportController::class, 'analyze'])->name('analyze');
+        Route::post('/execute', [\App\Http\Controllers\Api\ProjectImportController::class, 'execute'])->name('execute');
+        Route::post('/cancel', [\App\Http\Controllers\Api\ProjectImportController::class, 'cancel'])->name('cancel');
+    });
 
     // Template Review System (Inner Core only)
     Route::prefix('template-reviews')->name('api.template-reviews.')->group(function () {
@@ -523,6 +547,13 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/projects/{project}/git-settings', [ProjectController::class, 'updateGitSettings']);
     Route::delete('/projects/{project}/git-settings', [ProjectController::class, 'removeGitIntegration']);
 
+    // FTP/SSH Deployment
+    Route::get('/projects/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'getSettings']);
+    Route::put('/projects/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'updateSettings']);
+    Route::delete('/projects/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'removeSettings']);
+    Route::post('/projects/{project}/ftp-test', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'testConnection']);
+    Route::post('/projects/{project}/ftp-upload', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'upload']);
+
     // Teams Management - Debug Route
     Route::get('/teams-debug', function() {
         $user = Auth::user();
@@ -582,9 +613,10 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'saveLayout']);
     Route::get('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'getLayout']);
 
-    // Schema Export API - NEW! Uses real table data from schema_tables + schema_fields
+    // Schema Export API - Uses real table data from schema_tables + schema_fields
     Route::get('/schemas/{schema}/export', [SchemaExportController::class, 'exportSchema']);
     Route::get('/schemas/{schema}/export/mysql', [SchemaExportController::class, 'exportAsMySQL']);
+    Route::get('/schemas/{schema}/export/postgresql', [SchemaExportController::class, 'exportAsPostgreSQL']);
     Route::get('/schemas/{schema}/table-count', [SchemaExportController::class, 'getTableCount']);
 
     // Schema Diff & Migration Generator
@@ -664,6 +696,15 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/payouts/history', [\App\Http\Controllers\Api\PayoutAdminController::class, 'getPayoutHistory']);
         Route::get('/payouts/export-sepa', [\App\Http\Controllers\Api\PayoutAdminController::class, 'exportSepaXml']);
         Route::get('/payouts/export-csv', [\App\Http\Controllers\Api\PayoutAdminController::class, 'exportCsv']);
+
+        // Performance Metrics
+        Route::get('/performance/overview', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'overview']);
+        Route::get('/performance/daily', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'daily']);
+        Route::get('/performance/operations/{operation}', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'operation']);
+        Route::get('/performance/slow', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'slow']);
+        Route::get('/performance/hourly', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'hourly']);
+        Route::get('/performance/by-subscription', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'bySubscription']);
+        Route::post('/performance/cleanup', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'cleanup']);
     });
 });
 
@@ -2307,5 +2348,52 @@ Route::middleware('auth:api')->prefix('messages')->group(function () {
 
     // Admin broadcast
     Route::post('/broadcast', [App\Http\Controllers\Api\MessageController::class, 'broadcast']);
+});
+
+// Kanban Board Routes
+Route::middleware('auth:api')->prefix('kanban')->group(function () {
+    // Access Control
+    Route::get('/access', [App\Http\Controllers\Api\KanbanController::class, 'checkAccess']);
+    Route::post('/unlock', [App\Http\Controllers\Api\KanbanController::class, 'unlockFeature']);
+
+    // Board
+    Route::get('/project/{projectId}', [App\Http\Controllers\Api\KanbanController::class, 'getBoard']);
+    Route::put('/board/{boardId}', [App\Http\Controllers\Api\KanbanController::class, 'updateBoard']);
+
+    // Columns
+    Route::post('/board/{boardId}/columns', [App\Http\Controllers\Api\KanbanController::class, 'createColumn']);
+    Route::put('/columns/{columnId}', [App\Http\Controllers\Api\KanbanController::class, 'updateColumn']);
+    Route::delete('/columns/{columnId}', [App\Http\Controllers\Api\KanbanController::class, 'deleteColumn']);
+    Route::put('/board/{boardId}/columns/reorder', [App\Http\Controllers\Api\KanbanController::class, 'reorderColumns']);
+
+    // Cards
+    Route::post('/columns/{columnId}/cards', [App\Http\Controllers\Api\KanbanController::class, 'createCard']);
+    Route::get('/cards/{cardId}', [App\Http\Controllers\Api\KanbanController::class, 'getCard']);
+    Route::put('/cards/{cardId}', [App\Http\Controllers\Api\KanbanController::class, 'updateCard']);
+    Route::put('/cards/{cardId}/move', [App\Http\Controllers\Api\KanbanController::class, 'moveCard']);
+    Route::delete('/cards/{cardId}', [App\Http\Controllers\Api\KanbanController::class, 'deleteCard']);
+
+    // Comments
+    Route::post('/cards/{cardId}/comments', [App\Http\Controllers\Api\KanbanController::class, 'addComment']);
+
+    // Labels
+    Route::post('/board/{boardId}/labels', [App\Http\Controllers\Api\KanbanController::class, 'createLabel']);
+    Route::put('/labels/{labelId}', [App\Http\Controllers\Api\KanbanController::class, 'updateLabel']);
+    Route::delete('/labels/{labelId}', [App\Http\Controllers\Api\KanbanController::class, 'deleteLabel']);
+
+    // Assignees
+    Route::post('/cards/{cardId}/assign-me', [App\Http\Controllers\Api\KanbanController::class, 'assignMe']);
+    Route::delete('/cards/{cardId}/unassign-me', [App\Http\Controllers\Api\KanbanController::class, 'unassignMe']);
+    Route::post('/cards/{cardId}/assignees', [App\Http\Controllers\Api\KanbanController::class, 'addAssignee']);
+    Route::delete('/cards/{cardId}/assignees/{userId}', [App\Http\Controllers\Api\KanbanController::class, 'removeAssignee']);
+
+    // Team members (for assignee dropdown)
+    Route::get('/board/{boardId}/team-members', [App\Http\Controllers\Api\KanbanController::class, 'getTeamMembers']);
+
+    // Kanban Roles
+    Route::get('/roles', [App\Http\Controllers\Api\KanbanController::class, 'getAvailableRoles']);
+    Route::get('/board/{boardId}/roles', [App\Http\Controllers\Api\KanbanController::class, 'getProjectRoles']);
+    Route::post('/board/{boardId}/roles', [App\Http\Controllers\Api\KanbanController::class, 'setUserRole']);
+    Route::delete('/board/{boardId}/roles/{userId}', [App\Http\Controllers\Api\KanbanController::class, 'removeUserRole']);
 });
 

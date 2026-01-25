@@ -25,13 +25,13 @@ class UltimateTemplateEngine
     private string $currentLoopContext = 'fields'; // 'fields', 'keys', 'fieldsnokey', 'constraints'
     private array $loopContextStack = []; // Stack for nested loops
 
-    // 🆕 {code} Block Processing
+    // 🆕 {:code:} Block Processing
     private array $codeBlocks = []; // Store extracted code blocks
     private int $codeBlockCounter = 0; // Counter for user_code_N functions
 
     // 🎯 Switch Case tracking for auto-break insertion
     private bool $inSwitchCase = false;
-    private bool $userManagesBreaks = false; // If user writes ANY {break}, they manage ALL breaks
+    private bool $userManagesBreaks = false; // If user writes ANY {:break:}, they manage ALL breaks
 
     public function __construct(array $gtree)
     {
@@ -114,7 +114,7 @@ class UltimateTemplateEngine
         }
 
         foreach ($lines as $line) {
-            if (preg_match_all('/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/', $line, $matches, PREG_OFFSET_CAPTURE)) {
+            if (preg_match_all('/\{:([a-zA-Z_][a-zA-Z0-9_.]*):\}/', $line, $matches, PREG_OFFSET_CAPTURE)) {
                 foreach ($matches[1] as $match) {
                     $variableName = $match[0];
 
@@ -211,7 +211,7 @@ class UltimateTemplateEngine
 
         foreach ($lines as $line) {
             // Find all {variable} patterns (only valid variable names)
-            if (preg_match_all('/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/', $line, $matches, PREG_OFFSET_CAPTURE)) {
+            if (preg_match_all('/\{:([a-zA-Z_][a-zA-Z0-9_.]*):\}/', $line, $matches, PREG_OFFSET_CAPTURE)) {
                 foreach ($matches[1] as $match) {
                     $variableName = $match[0];
 
@@ -271,8 +271,17 @@ class UltimateTemplateEngine
             return true;
         }
 
-        // Check if it has a known prefix (project., file., item., field., form., formset.)
-        if (preg_match('/^(project|file|item|field|form|formset)\./', $variable)) {
+        // Check if it's a function call like upper(tablename), lower(item.name)
+        if (preg_match('/^(\w+)\(/', $variable, $funcMatch)) {
+            $funcName = strtolower($funcMatch[1]);
+            $knownFunctions = ['upper', 'lower', 'capitalize', 'plural', 'singular', 'camelcase', 'pascalcase', 'snakecase', 'kebabcase', 'length', 'strlen', 'substr', 'replace'];
+            if (in_array($funcName, $knownFunctions)) {
+                return true;
+            }
+        }
+
+        // Check if it has a known prefix (project., file., item., field., form., formset., table., language., keys., foreignkeys., migration.)
+        if (preg_match('/^(project|file|item|field|form|formset|table|language|keys|foreignkeys|migration)\./', $variable)) {
             return true;
         }
 
@@ -280,7 +289,8 @@ class UltimateTemplateEngine
         $legacyMappings = [
             // PROJECT BASICS
             'projectname', 'projectcaption', 'projectid', 'projectdatabase',
-            'projecturl', 'projectdirectory', 'startpage', 'defaultlanguage',
+            'projecturl', 'projectdirectory', 'startpage',
+            'defaultlanguage', 'defaultlanguagename', 'defaultlanguageindex',
             'filenameshortlength',
 
             // LOCALIZATION SETTINGS
@@ -298,7 +308,7 @@ class UltimateTemplateEngine
             'laravelversion',
 
             // FILE/TABLE INFO
-            'tablename', 'filename', 'filenameshort', 'fileid', 'filenamecc',
+            'tablename', 'tableindex', 'filename', 'filenameshort', 'fileid',
             'filecaption', 'filedescription', 'filekeyname',
             'filegeneratemasterdetail', 'filedetailfileid', 'filedetailfilename',
             'filedetailkey',
@@ -344,7 +354,11 @@ class UltimateTemplateEngine
      */
     public function processTemplate(string $templateContent, string $functionName = 'generate', int $tableIndex = null, bool $includeSource = false, int $formWindowType = 0): string
     {
-        // 🆕 STEP 1: Extract {code}...{codeend} blocks FIRST before any processing
+        // 🛠️ Detect used functions BEFORE any content transformation
+        $originalTemplateContent = $templateContent;
+        $usedFunctions = $this->detectUsedFunctions($originalTemplateContent);
+
+        // 🆕 STEP 1: Extract {:code:}...{:codeend:} blocks FIRST before any processing
         $templateContent = $this->extractCodeBlocks($templateContent);
 
         // 🔧 SAUBERE LÖSUNG: Text-Literale schützen, dann per echte Newlines (char 10) aufteilen
@@ -366,6 +380,23 @@ class UltimateTemplateEngine
         // 🎨 Add form window index as local constant for form.* variables
         if ($formWindowType > 0) {
             $jsFunction .= "  const currentFormWindowIdx = {$this->currentFormWindowIdx}; // form_window_type: {$formWindowType}\n";
+        }
+
+        // 🛠️ Add only USED built-in functions
+        if (!empty($usedFunctions)) {
+            $jsFunction .= "  // Built-in functions\n";
+            foreach ($usedFunctions as $funcName) {
+                if (isset($this->functions[$funcName])) {
+                    $jsFunction .= "  const {$funcName} = {$this->functions[$funcName]};\n";
+                }
+            }
+        }
+
+        // 🎯 Set current table info on project level (tablename, tableindex)
+        if ($tableIndex !== null) {
+            $jsFunction .= "  // Current table context\n";
+            $jsFunction .= "  gtree[0].project[0].tableindex = {$tableIndex};\n";
+            $jsFunction .= "  gtree[0].project[0].tablename = gtree[0].project[0].tables[{$tableIndex}]?.filename || '';\n";
         }
         $jsFunction .= "  \n";
 
@@ -405,134 +436,134 @@ class UltimateTemplateEngine
         $ifStack = 0;
         $forStack = 0;
         $switchStack = 0;
-        $codeStack = 0; // Track {code}...{codeend} blocks
-        $elseUsedStack = []; // Track if {else} was used in each IF block
+        $codeStack = 0; // Track {:code:}...{:codeend:} blocks
+        $elseUsedStack = []; // Track if {:else:} was used in each IF block
 
         foreach ($lines as $lineNum => $line) {
             $lineNum++; // Human-readable line numbers (1-based)
             $line = trim($line);
 
             // Check for invalid closing brackets like {else], {endif], {endfor]
-            if (preg_match('/\{(else|elseif|endif|endfor|endswitch|if|for|switch|case|default|othercase|break|code|codeend)\]/', $line)) {
+            if (preg_match('/\{:(else|elseif|endif|endfor|endswitch|if|for|switch|case|default|othercase|break|code|codeend):\]/', $line)) {
                 $errors[] = "Line {$lineNum}: Invalid syntax - use } instead of ] to close template tags";
             }
 
-            // 🎯 Check for common typos in {codeend}
-            if (preg_match('/\{codend\}/', $line)) {
-                $errors[] = "Line {$lineNum}: Typo detected - use {codeend} instead of {codend}";
+            // 🎯 Check for common typos in {:codeend:}
+            if (preg_match('/\{:codend:\}/', $line)) {
+                $errors[] = "Line {$lineNum}: Typo detected - use {:codeend:} instead of {:codend:}";
             }
-            if (preg_match('/\{code end\}/', $line)) {
-                $errors[] = "Line {$lineNum}: Invalid syntax - use {codeend} instead of {code end} (no space)";
+            if (preg_match('/\{:code end:\}/', $line)) {
+                $errors[] = "Line {$lineNum}: Invalid syntax - use {:codeend:} instead of {:code end:} (no space)";
             }
 
             // Check {if} without condition
-            if (preg_match('/^\{if\s*\}\s*$/', $line)) {
-                $errors[] = "Line {$lineNum}: {if} requires a condition. Example: {if {item.name} === 'id'}";
+            if (preg_match('/^\{:if\s*:\}\s*$/', $line)) {
+                $errors[] = "Line {$lineNum}: {:if:} requires a condition. Example: {:if item.name === 'id':}";
             }
 
             // Check {elseif} without condition
-            if (preg_match('/^\{elseif\s*\}\s*$/', $line)) {
-                $errors[] = "Line {$lineNum}: {elseif} requires a condition. Use {else} for default case. Example: {elseif {item.type} === 'VARCHAR'}";
+            if (preg_match('/^\{:elseif\s*:\}\s*$/', $line)) {
+                $errors[] = "Line {$lineNum}: {:elseif:} requires a condition. Use {:else:} for default case. Example: {:elseif item.type === 'VARCHAR':}";
             }
 
             // Check {switch} without variable
-            if (preg_match('/^\{switch\s*\}\s*$/', $line)) {
-                $errors[] = "Line {$lineNum}: {switch} requires a variable. Example: {switch {item.type}}";
+            if (preg_match('/^\{:switch\s*:\}\s*$/', $line)) {
+                $errors[] = "Line {$lineNum}: {:switch:} requires a variable. Example: {:switch item.type:}";
             }
 
             // Check {for} without loop variable
-            if (preg_match('/^\{for\s*\}\s*$/', $line)) {
-                $errors[] = "Line {$lineNum}: {for} requires a loop variable. Example: {for {nmaxitems}}";
+            if (preg_match('/^\{:for\s*:\}\s*$/', $line)) {
+                $errors[] = "Line {$lineNum}: {:for:} requires a loop variable. Example: {:for nmaxitems:}";
             }
 
             // Track nesting
-            if (preg_match('/\{if\s+/', $line)) {
+            if (preg_match('/\{:if\s+/', $line)) {
                 $ifStack++;
                 $elseUsedStack[$ifStack] = false; // New IF block, no else yet
             }
-            if (preg_match('/\{for\s+/', $line)) {
+            if (preg_match('/\{:for\s+/', $line)) {
                 $forStack++;
             }
-            if (preg_match('/\{switch\s+/', $line)) {
+            if (preg_match('/\{:switch\s+/', $line)) {
                 $switchStack++;
             }
 
-            // 🎯 Track {code} blocks
-            if (strpos($line, '{code}') !== false) {
+            // 🎯 Track {:code:} blocks
+            if (strpos($line, '{:code:}') !== false) {
                 if ($codeStack > 0) {
-                    $warnings[] = "Line {$lineNum}: Nested {code} blocks detected - this may cause issues";
+                    $warnings[] = "Line {$lineNum}: Nested {:code:} blocks detected - this may cause issues";
                 }
                 $codeStack++;
             }
 
-            // Check {else} - only once per IF block
-            if (strpos($line, '{else}') !== false && strpos($line, '{elseif') === false) {
+            // Check {:else:} - only once per IF block
+            if (strpos($line, '{:else:}') !== false && strpos($line, '{:elseif') === false) {
                 if ($ifStack === 0) {
-                    $errors[] = "Line {$lineNum}: {else} without matching {if}";
+                    $errors[] = "Line {$lineNum}: {:else:} without matching {:if:}";
                 } elseif (isset($elseUsedStack[$ifStack]) && $elseUsedStack[$ifStack]) {
-                    $errors[] = "Line {$lineNum}: Multiple {else} blocks in same {if} - only one {else} allowed";
+                    $errors[] = "Line {$lineNum}: Multiple {:else:} blocks in same {:if:} - only one {:else:} allowed";
                 } else {
                     $elseUsedStack[$ifStack] = true; // Mark else as used for this IF block
                 }
             }
 
-            // Check {elseif} after {else}
-            if (strpos($line, '{elseif') !== false) {
+            // Check {elseif} after {:else:}
+            if (strpos($line, '{:elseif') !== false) {
                 if ($ifStack === 0) {
-                    $errors[] = "Line {$lineNum}: {elseif} without matching {if}";
+                    $errors[] = "Line {$lineNum}: {:elseif:} without matching {:if:}";
                 } elseif (isset($elseUsedStack[$ifStack]) && $elseUsedStack[$ifStack]) {
-                    $errors[] = "Line {$lineNum}: {elseif} after {else} - {elseif} must come before {else}";
+                    $errors[] = "Line {$lineNum}: {:elseif:} after {:else:} - {:elseif:} must come before {:else:}";
                 }
             }
 
             // Check closing tags
-            if (strpos($line, '{endif}') !== false || strpos($line, '{/if}') !== false) {
+            if (strpos($line, '{:endif:}') !== false || strpos($line, '{:/if:}') !== false) {
                 if ($ifStack <= 0) {
-                    $errors[] = "Line {$lineNum}: {endif} without matching {if}";
+                    $errors[] = "Line {$lineNum}: {:endif:} without matching {:if:}";
                 } else {
                     unset($elseUsedStack[$ifStack]); // Clean up stack
                     $ifStack--;
                 }
             }
-            if (strpos($line, '{endfor}') !== false || strpos($line, '{/for}') !== false) {
+            if (strpos($line, '{:endfor:}') !== false || strpos($line, '{:/for:}') !== false) {
                 $forStack--;
                 if ($forStack < 0) {
-                    $errors[] = "Line {$lineNum}: {endfor} without matching {for}";
+                    $errors[] = "Line {$lineNum}: {:endfor:} without matching {:for:}";
                 }
             }
-            if (strpos($line, '{endswitch}') !== false || strpos($line, '{/switch}') !== false) {
+            if (strpos($line, '{:endswitch:}') !== false || strpos($line, '{:/switch:}') !== false) {
                 $switchStack--;
                 if ($switchStack < 0) {
-                    $errors[] = "Line {$lineNum}: {endswitch} without matching {switch}";
+                    $errors[] = "Line {$lineNum}: {:endswitch:} without matching {:switch:}";
                 }
             }
 
-            // 🎯 Track {codeend} blocks
-            if (strpos($line, '{codeend}') !== false) {
+            // 🎯 Track {:codeend:} blocks
+            if (strpos($line, '{:codeend:}') !== false) {
                 $codeStack--;
                 if ($codeStack < 0) {
-                    $errors[] = "Line {$lineNum}: {codeend} without matching {code}";
+                    $errors[] = "Line {$lineNum}: {:codeend:} without matching {:code:}";
                 }
             }
 
-            // Check {case} / {default} / {othercase} outside {switch}
-            if ((preg_match('/\{case\s+/', $line) || strpos($line, '{default}') !== false || strpos($line, '{othercase}') !== false) && $switchStack === 0) {
-                $errors[] = "Line {$lineNum}: {case}/{default}/{othercase} without matching {switch}";
+            // Check {case} / {:default:} / {:othercase:} outside {switch}
+            if ((preg_match('/\{:case\s+/', $line) || strpos($line, '{:default:}') !== false || strpos($line, '{:othercase:}') !== false) && $switchStack === 0) {
+                $errors[] = "Line {$lineNum}: {:case:}/{:default:}/{:othercase:} without matching {:switch:}";
             }
         }
 
         // Check for unclosed blocks
         if ($ifStack > 0) {
-            $errors[] = "Missing {endif} - {$ifStack} unclosed {if} block(s)";
+            $errors[] = "Missing {:endif:} - {$ifStack} unclosed {:if:} block(s)";
         }
         if ($forStack > 0) {
-            $errors[] = "Missing {endfor} - {$forStack} unclosed {for} loop(s)";
+            $errors[] = "Missing {:endfor:} - {$forStack} unclosed {:for:} loop(s)";
         }
         if ($switchStack > 0) {
-            $errors[] = "Missing {endswitch} - {$switchStack} unclosed {switch} block(s)";
+            $errors[] = "Missing {:endswitch:} - {$switchStack} unclosed {:switch:} block(s)";
         }
         if ($codeStack > 0) {
-            $errors[] = "Missing {codeend} - {$codeStack} unclosed {code} block(s)";
+            $errors[] = "Missing {:codeend:} - {$codeStack} unclosed {:code:} block(s)";
         }
 
         return [
@@ -616,7 +647,7 @@ class UltimateTemplateEngine
         // 🎛️ ENHANCED SWITCH PROCESSING WITH SMART AUTO-BREAK
         if ($this->isSwitchStart($line)) {
             $this->inSwitchCase = false;
-            $this->userManagesBreaks = false; // Reset: assume auto-break until user writes {break}
+            $this->userManagesBreaks = false; // Reset: assume auto-break until user writes {:break:}
             return $this->processSwitchStart($line, $tableIndex);
         }
 
@@ -643,7 +674,7 @@ class UltimateTemplateEngine
         }
 
         if ($this->isSwitchBreak($line)) {
-            // User wrote {break} → they manage ALL breaks in this switch
+            // User wrote {:break:} → they manage ALL breaks in this switch
             $this->userManagesBreaks = true;
             return "      break;\n";
         }
@@ -687,9 +718,9 @@ class UltimateTemplateEngine
 
         // 🔧 SAUBERE LÖSUNG: Only treat as block loop if {for} is at start of line or standalone
         // This prevents inline loops from being treated as block structure
-        if (preg_match('/^\s*\{for\s+(.*?)\}\s*$/', $line) ||
-            preg_match('/^\s*\{for %\}\s*$/', $line) ||
-            preg_match('/^\s*\{foreach .+?\}\s*$/', $line)) {
+        if (preg_match('/^\s*\{:for\s+(.*?):\}\s*$/', $line) ||
+            preg_match('/^\s*\{:for %:\}\s*$/', $line) ||
+            preg_match('/^\s*\{:foreach .+?:\}\s*$/', $line)) {
             return true;
         }
 
@@ -705,7 +736,7 @@ class UltimateTemplateEngine
         }
 
         // Enhanced for loop syntax
-        if (preg_match('/\{for\s+(.+?)\s+in\s+(.+?)\}/', $line, $matches)) {
+        if (preg_match('/\{:for\s+(.+?)\s+in\s+(.+?):\}/', $line, $matches)) {
             $variable = $matches[1];
             $collection = $matches[2];
             $this->pushLoopContext('fields');
@@ -713,59 +744,59 @@ class UltimateTemplateEngine
         }
 
         // 🎯 KEYS LOOP - Loop through keys array
-        if (strpos($line, '{for {nmaxkeys}}') !== false) {
+        if (strpos($line, '{:for nmaxkeys:}') !== false) {
             $this->pushLoopContext('keys');
             $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxkeys; i++) {\n";
         }
 
         // 🎯 FIELDS WITHOUT KEY LOOP - Loop through fieldsnokey array
-        if (strpos($line, '{for {nmaxitemsnokey}}') !== false) {
+        if (strpos($line, '{:for nmaxitemsnokey:}') !== false) {
             $this->pushLoopContext('fieldsnokey');
             $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnokey; i++) {\n";
         }
 
         // 🎯 CONSTRAINTS LOOP - Loop through constraints array
-        if (strpos($line, '{for {nmaxconstraints}}') !== false) {
+        if (strpos($line, '{:for nmaxconstraints:}') !== false) {
             $this->pushLoopContext('constraints');
             $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxconstraints; i++) {\n";
         }
 
         // Standard nmaxitems loop
-        if (strpos($line, '{for {nmaxitems}}') !== false) {
+        if (strpos($line, '{:for nmaxitems:}') !== false) {
             $this->pushLoopContext('fields');
             $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitems; i++) {\n";
         }
 
         // Tables loop
-        if (strpos($line, '{for {nmaxtables}}') !== false) {
+        if (strpos($line, '{:for nmaxtables:}') !== false) {
             $this->pushLoopContext('tables');
             return "  for (let tableIdx = 0; tableIdx < gtree[0].project[0].nmaxtables; tableIdx++) {\n";
         }
 
         // 🎯 MIGRATION LOOPS - Loop through migration change arrays
-        if (strpos($line, '{for {nmaxmigration_tables}}') !== false) {
+        if (strpos($line, '{:for nmaxmigration_tables:}') !== false) {
             $this->pushLoopContext('migration_tables');
             return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_tables; migIdx++) {\n";
         }
-        if (strpos($line, '{for {nmaxmigration_fields}}') !== false) {
+        if (strpos($line, '{:for nmaxmigration_fields:}') !== false) {
             $this->pushLoopContext('migration_fields');
             return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_fields; migIdx++) {\n";
         }
-        if (strpos($line, '{for {nmaxmigration_indexes}}') !== false) {
+        if (strpos($line, '{:for nmaxmigration_indexes:}') !== false) {
             $this->pushLoopContext('migration_indexes');
             return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_indexes; migIdx++) {\n";
         }
-        if (strpos($line, '{for {nmaxmigration_foreignkeys}}') !== false) {
+        if (strpos($line, '{:for nmaxmigration_foreignkeys:}') !== false) {
             $this->pushLoopContext('migration_foreignkeys');
             return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_foreignkeys; migIdx++) {\n";
         }
 
-        // Custom count loops
-        if (preg_match('/\{for\s+\{(.+?)\}\}/', $line, $matches)) {
+        // Custom count loops - matches {:for countvar:}
+        if (preg_match('/\{:for\s+(\w+):\}/', $line, $matches)) {
             $countVar = $matches[1];
             $this->pushLoopContext('fields'); // Default to fields
             return "  for (let i = 0; i < gtree[0].project[0].{$countVar}; i++) {\n";
@@ -773,9 +804,9 @@ class UltimateTemplateEngine
 
         // 🎯 RAW JAVASCRIPT LOOP - Pass through as-is if it looks like JavaScript syntax
         // Detect patterns like: {for let i = 0; i < 9; i++} or {for (let i = 0; i < 9; i++)}
-        if (preg_match('/\{for\s+(let|var|const)\s+/', $line) || preg_match('/\{for\s*\(/', $line)) {
+        if (preg_match('/\{:for\s+(let|var|const)\s+/', $line) || preg_match('/\{:for\s*\(/', $line)) {
             // Extract the JavaScript loop code between {for and }
-            if (preg_match('/\{for\s+(.+?)\}\s*$/', $line, $matches)) {
+            if (preg_match('/\{:for\s+(.+?):\}\s*$/', $line, $matches)) {
                 $jsLoopCode = trim($matches[1]);
                 $this->pushLoopContext('custom'); // Custom JavaScript loop context
                 return "  for ({$jsLoopCode}) {\n";
@@ -834,10 +865,10 @@ class UltimateTemplateEngine
 
     private function isLoopEnd(string $line): bool
     {
-        // 🔧 SAUBERE LÖSUNG: Only treat as block loop end if {endfor} is standalone
-        // This prevents inline {endfor} from being treated as block structure
-        if (preg_match('/^\s*\{endfor\}\s*$/', $line) ||
-            preg_match('/^\s*\{\/for\}\s*$/', $line)) {
+        // 🔧 SAUBERE LÖSUNG: Only treat as block loop end if {:endfor:} is standalone
+        // This prevents inline {:endfor:} from being treated as block structure
+        if (preg_match('/^\s*\{:endfor:\}\s*$/', $line) ||
+            preg_match('/^\s*\{:\/for:\}\s*$/', $line)) {
             return true;
         }
 
@@ -849,12 +880,12 @@ class UltimateTemplateEngine
      */
     private function isConditionalStart(string $line): bool
     {
-        return preg_match('/\{if\s+(.+)\}/', $line);
+        return preg_match('/\{:if\s+(.+):\}/', $line);
     }
 
     private function processConditionalStart(string $line, ?int $tableIndex): string
     {
-        if (preg_match('/\{if\s+(.+)\}/', $line, $matches)) {
+        if (preg_match('/\{:if\s+(.+):\}/', $line, $matches)) {
             $condition = trim($matches[1]);
             $jsCondition = $this->processCondition($condition, $tableIndex);
             return "  if ({$jsCondition}) {\n";
@@ -868,8 +899,8 @@ class UltimateTemplateEngine
         $condition = str_replace('nCountSearchkeys', 'i', $condition);
         $condition = str_replace('nCount', 'i', $condition);
 
-        // 🔧 Extract and replace all {variable} patterns in the condition
-        $condition = preg_replace_callback('/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/', function($matches) use ($tableIndex) {
+        // 🔧 Extract and replace all {:variable:} patterns in the condition (legacy support)
+        $condition = preg_replace_callback('/\{:([a-zA-Z_][a-zA-Z0-9_.]*):\}/', function($matches) use ($tableIndex) {
             $varName = $matches[1];
             $replacement = $this->processVariable($varName, $tableIndex);
 
@@ -878,6 +909,19 @@ class UltimateTemplateEngine
             // We need only: gtree[0].project[0].filename
             $replacement = preg_replace("/^'\s*\+\s*/", '', $replacement); // Remove leading ' +
             $replacement = preg_replace("/\s*\+\s*'$/", '', $replacement); // Remove trailing  + '
+
+            return $replacement;
+        }, $condition);
+
+        // 🔧 NEW: Also support bare variable names like item.typecast (without {:...:})
+        // Match dotted variable names that are NOT inside quotes and NOT already processed
+        $condition = preg_replace_callback('/\b(item|field|table|project|file|form)\.[a-zA-Z_][a-zA-Z0-9_.]*\b/', function($matches) use ($tableIndex) {
+            $varName = $matches[0];
+            $replacement = $this->processVariable($varName, $tableIndex);
+
+            // 🎯 Clean up the JavaScript concatenation syntax for conditions
+            $replacement = preg_replace("/^'\s*\+\s*/", '', $replacement);
+            $replacement = preg_replace("/\s*\+\s*'$/", '', $replacement);
 
             return $replacement;
         }, $condition);
@@ -905,32 +949,32 @@ class UltimateTemplateEngine
     private function isConditionalElseif(string $line): bool
     {
         // Match {elseif condition} OR just {elseif} (treated as else)
-        return strpos($line, '{elseif') !== false;
+        return strpos($line, '{:elseif') !== false;
     }
 
     private function processConditionalElseif(string $line, ?int $tableIndex): string
     {
         // Match {elseif condition}
-        if (preg_match('/\{elseif\s+(.+)\}/', $line, $matches)) {
+        if (preg_match('/\{:elseif\s+(.+):\}/', $line, $matches)) {
             $condition = trim($matches[1]);
             $jsCondition = $this->processCondition($condition, $tableIndex);
             return "  } else if ({$jsCondition}) {\n";
         }
 
         // {elseif} without condition - ERROR (caught by validation, but don't process)
-        // DO NOT treat as {else} to avoid double else blocks!
+        // DO NOT treat as {:else:} to avoid double else blocks!
         return "  // ERROR: {elseif} requires a condition\n";
     }
 
     private function isConditionalElse(string $line): bool
     {
-        // Match {else} but NOT {elseif}
-        return strpos($line, '{else}') !== false && strpos($line, '{elseif') === false;
+        // Match {:else:} but NOT {elseif}
+        return strpos($line, '{:else:}') !== false && strpos($line, '{:elseif') === false;
     }
 
     private function isConditionalEnd(string $line): bool
     {
-        return strpos($line, '{endif}') !== false || strpos($line, '{/if}') !== false;
+        return strpos($line, '{:endif:}') !== false || strpos($line, '{:/if:}') !== false;
     }
 
     /**
@@ -938,17 +982,17 @@ class UltimateTemplateEngine
      */
     private function isSwitchStart(string $line): bool
     {
-        return preg_match('/\{switch\s+(.+?)\}/', $line);
+        return preg_match('/\{:switch\s+(.+?):\}/', $line);
     }
 
     private function processSwitchStart(string $line, ?int $tableIndex): string
     {
         // Match {switch ...} including nested {variable} - use greedy match to last }
-        if (preg_match('/\{switch\s+(.+)\}\s*$/', $line, $matches)) {
+        if (preg_match('/\{:switch\s+(.+):\}\s*$/', $line, $matches)) {
             $switchVar = trim($matches[1]);
 
             // If switchVar contains {variable}, extract and process it
-            if (preg_match('/^\{([a-zA-Z_][a-zA-Z0-9_.]*)\}$/', $switchVar, $varMatch)) {
+            if (preg_match('/^\{:([a-zA-Z_][a-zA-Z0-9_.]*):\}$/', $switchVar, $varMatch)) {
                 $varName = $varMatch[1];
                 $jsSwitchVar = $this->processVariable($varName, $tableIndex);
                 // Remove wrapping quotes from processVariable
@@ -966,12 +1010,12 @@ class UltimateTemplateEngine
 
     private function isSwitchCase(string $line): bool
     {
-        return preg_match('/\{case\s+(.+?)\}/', $line);
+        return preg_match('/\{:case\s+(.+?):\}/', $line);
     }
 
     private function processSwitchCase(string $line): string
     {
-        if (preg_match('/\{case\s+(.+?)\}/', $line, $matches)) {
+        if (preg_match('/\{:case\s+(.+?):\}/', $line, $matches)) {
             $caseValue = trim($matches[1]);
             // Handle both quoted and unquoted case values
             if (!preg_match('/^["\'].*["\']$/', $caseValue) && !is_numeric($caseValue)) {
@@ -984,17 +1028,17 @@ class UltimateTemplateEngine
 
     private function isSwitchDefault(string $line): bool
     {
-        return strpos($line, '{default}') !== false || strpos($line, '{othercase}') !== false;
+        return strpos($line, '{:default:}') !== false || strpos($line, '{:othercase:}') !== false;
     }
 
     private function isSwitchBreak(string $line): bool
     {
-        return strpos($line, '{break}') !== false;
+        return strpos($line, '{:break:}') !== false;
     }
 
     private function isSwitchEnd(string $line): bool
     {
-        return strpos($line, '{endswitch}') !== false || strpos($line, '{/switch}') !== false;
+        return strpos($line, '{:endswitch:}') !== false || strpos($line, '{:/switch:}') !== false;
     }
 
     /**
@@ -1002,13 +1046,13 @@ class UltimateTemplateEngine
      */
     private function isMacroDefinition(string $line): bool
     {
-        return preg_match('/\{macro\s+(\w+)(?:\((.*?)\))?\}/', $line);
+        return preg_match('/\{:macro\s+(\w+)(?:\((.*?)\))?:\}/', $line);
     }
 
     private function processMacroDefinition(string $line): string
     {
         // Macros are processed at compile time, not at runtime
-        if (preg_match('/\{macro\s+(\w+)(?:\((.*?)\))?\}/', $line, $matches)) {
+        if (preg_match('/\{:macro\s+(\w+)(?:\((.*?)\))?:\}/', $line, $matches)) {
             $macroName = $matches[1];
             $params = isset($matches[2]) ? explode(',', $matches[2]) : [];
             // Store macro for later expansion
@@ -1019,7 +1063,7 @@ class UltimateTemplateEngine
 
     private function isMacroCall(string $line): bool
     {
-        return preg_match('/\{@(\w+)(?:\((.*?)\))?\}/', $line);
+        return preg_match('/\{:@(\w+)(?:\((.*?)\))?:\}/', $line);
     }
 
     private function processMacroCall(string $line, ?int $tableIndex): string
@@ -1033,17 +1077,21 @@ class UltimateTemplateEngine
      */
     private function isFunctionCall(string $line): bool
     {
-        return preg_match('/\{(\w+)\((.*?)\)\}/', $line);
+        // Only return true if the line contains ONLY a function call (no surrounding text)
+        // Lines with mixed content (text + function) should go through processContentLine
+        $trimmed = trim($line);
+        return preg_match('/^\{:(\w+)\((.*?)\):\}$/', $trimmed);
     }
 
     private function processFunctionCall(string $line, ?int $tableIndex): string
     {
-        if (preg_match('/\{(\w+)\((.*?)\)\}/', $line, $matches)) {
+        if (preg_match('/\{:(\w+)\((.*?)\):\}/', $line, $matches)) {
             $functionName = $matches[1];
             $args = $matches[2];
 
             if (isset($this->functions[$functionName])) {
-                $jsArgs = $this->processVariable($args, $tableIndex);
+                // Use processFunctionArguments for correct JS expression (without quotes)
+                $jsArgs = $this->processFunctionArguments($args, $tableIndex);
                 return "  sContentResult += {$functionName}({$jsArgs});\n";
             }
         }
@@ -1084,13 +1132,13 @@ class UltimateTemplateEngine
         $trimmedLine = trim($line);
 
         // Skip if it's a standalone template command
-        if (preg_match('/^\s*\{(for|endfor|if|endif|switch|endswitch|case|default|\/\w+)\s*.*?\}\s*$/', $line)) {
+        if (preg_match('/^\s*\{:(for|endfor|if|endif|switch|endswitch|case|default|\/\w+)\s*.*?:\}\s*$/', $line)) {
             return false;
         }
 
         // Check for inline template syntax including nested braces like {for {nmaxsearchkeys}}
-        return preg_match('/\{(for\s+.*?|endfor|if\s+.*?|endif)\}/', $line) ||
-               preg_match('/\{for\s+\{[^}]+\}\}/', $line);
+        return preg_match('/\{:(for\s+.*?|endfor|if\s+.*?|endif):\}/', $line) ||
+               preg_match('/\{:for\s+\{:[^:]+:\}:\}/', $line);
     }
 
     private function processMixedContentLine(string $line, ?int $tableIndex): string
@@ -1102,8 +1150,12 @@ class UltimateTemplateEngine
         // Parse the line character by character to find template syntax
         while ($currentPos < $lineLength) {
             // Find next template syntax (including nested braces like {for {nmaxsearchkeys}})
-            // Use greedy matching for {if ...} to handle nested {variables}
-            if (preg_match('/\{for\s+\{[^}]+\}\}|\{if\s+[^}]*\{[^}]+\}[^}]*\}|\{(for\s+\w+|endfor|if\s+\w+|endif)\}/', $line, $matches, PREG_OFFSET_CAPTURE, $currentPos)) {
+            // Pattern matches:
+            // - {:for {:var:}:} (old nested syntax)
+            // - {:for word:} (new simple syntax)
+            // - {:if condition:} (conditions like item.islast==false)
+            // - {:endif:}, {:endfor:}
+            if (preg_match('/\{:for\s+\{:[^:]+:\}:\}|\{:for\s+\w+:\}|\{:if\s+[^:]+:\}|\{:endif:\}|\{:endfor:\}/', $line, $matches, PREG_OFFSET_CAPTURE, $currentPos)) {
                 $matchText = $matches[0][0];
                 $matchPos = $matches[0][1];
 
@@ -1121,16 +1173,16 @@ class UltimateTemplateEngine
                 }
 
                 // Process the template syntax
-                if (strpos($matchText, '{for ') === 0) {
+                if (strpos($matchText, '{:for ') === 0) {
                     // Start of inline loop
                     $result .= $this->processInlineLoopStart($matchText, $tableIndex);
-                } elseif ($matchText === '{endfor}') {
+                } elseif ($matchText === '{:endfor:}') {
                     // End of inline loop
                     $result .= $this->processInlineLoopEnd();
-                } elseif (strpos($matchText, '{if ') === 0) {
+                } elseif (strpos($matchText, '{:if ') === 0) {
                     // Start of inline conditional
                     $result .= $this->processInlineConditionalStart($matchText, $tableIndex);
-                } elseif ($matchText === '{endif}') {
+                } elseif ($matchText === '{:endif:}') {
                     // End of inline conditional
                     $result .= $this->processInlineConditionalEnd();
                 }
@@ -1160,9 +1212,19 @@ class UltimateTemplateEngine
     {
         $this->loopDepth++;
 
-        // Extract loop variable from {for {variable}}
-        if (preg_match('/\{for\s+\{(.+?)\}\}/', $matchText, $matches)) {
+        // Extract loop variable - support BOTH formats:
+        // New format: {:for nmaxitems:}
+        // Old format: {:for {:nmaxitems:}:}
+        $loopVar = null;
+        if (preg_match('/\{:for\s+(\w+):\}/', $matchText, $matches)) {
+            // New simple format: {:for nmaxitems:}
             $loopVar = $matches[1];
+        } elseif (preg_match('/\{:for\s+\{:(.+?):\}:\}/', $matchText, $matches)) {
+            // Old nested format: {:for {:nmaxitems:}:}
+            $loopVar = $matches[1];
+        }
+
+        if ($loopVar) {
 
             // Handle different loop variable types
             if ($loopVar === 'nmaxkeys') {
@@ -1229,7 +1291,7 @@ class UltimateTemplateEngine
         }
 
         // Handle simple {for %} syntax
-        if (strpos($matchText, '{for %}') !== false) {
+        if (strpos($matchText, '{:for %:}') !== false) {
             $this->pushLoopContext('fields');
             if ($tableIndex !== null) {
                 return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
@@ -1252,7 +1314,7 @@ class UltimateTemplateEngine
     {
         // Extract condition from {if condition} - handle nested braces
         // Match from {if to the last } (to handle nested {variable})
-        if (preg_match('/^\{if\s+(.+)\}$/', $matchText, $matches)) {
+        if (preg_match('/^\{:if\s+(.+):\}$/', $matchText, $matches)) {
             $condition = trim($matches[1]);
             $jsCondition = $this->processCondition($condition, $tableIndex);
             return "  if ({$jsCondition}) {\n";
@@ -1297,14 +1359,16 @@ class UltimateTemplateEngine
      */
     private function hasVariables(string $line): bool
     {
-        // Only match valid template variable names (not JavaScript objects like {'key': value})
-        return preg_match('/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/', $line);
+        // Match valid template variable names AND function calls
+        // Variables: {:varname:}, {:item.name:}
+        // Functions: {:upper(tablename):}, {:substr(name, 0, 3):}
+        return preg_match('/\{:([a-zA-Z_][a-zA-Z0-9_.]*(?:\([^)]*\))?):\}/', $line);
     }
 
     private function processAllVariables(string $line, ?int $tableIndex): string
     {
         // Process all template variables with enhanced handling
-        $processedLine = preg_replace_callback('/\{([^}]+)\}/', function($matches) use ($tableIndex) {
+        $processedLine = preg_replace_callback('/\{:([^:]+):\}/', function($matches) use ($tableIndex) {
             $variableResult = $this->processVariable($matches[1], $tableIndex);
 
             // Clean up the variable result - remove JavaScript concatenation syntax for content lines
@@ -1323,15 +1387,17 @@ class UltimateTemplateEngine
         $parts = [];
         $currentPart = '';
 
-        // Split the line by variables - ONLY match valid variable names (alphanumeric + dots, no quotes/special chars)
+        // Match BOTH simple variables AND function calls
+        // Pattern 1: {:varname:} - simple variable
+        // Pattern 2: {:funcname(args):} - function call
         $offset = 0;
-        while (preg_match('/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/', $line, $matches, PREG_OFFSET_CAPTURE, $offset)) {
-            $variableName = $matches[1][0];
-            $variableStart = $matches[0][1];
+        while (preg_match('/\{:([a-zA-Z_][a-zA-Z0-9_.]*(?:\([^)]*\))?):\}/', $line, $matches, PREG_OFFSET_CAPTURE, $offset)) {
+            $match = $matches[1][0];
+            $matchStart = $matches[0][1];
 
-            // Add text before variable
-            if ($variableStart > $offset) {
-                $textBefore = substr($line, $offset, $variableStart - $offset);
+            // Add text before match
+            if ($matchStart > $offset) {
+                $textBefore = substr($line, $offset, $matchStart - $offset);
                 $currentPart .= $this->escapeForJavaScript($textBefore);
             }
 
@@ -1341,21 +1407,27 @@ class UltimateTemplateEngine
                 $currentPart = '';
             }
 
-            // Add the variable
-            $variableResult = $this->processVariable($variableName, $tableIndex);
-            // Remove the surrounding quotes from processVariable result
-            $cleanVariable = str_replace(["' + ", " + '"], '', $variableResult);
-            $cleanVariable = trim($cleanVariable, "'");
+            // Check if it's a function call
+            if (preg_match('/^(\w+)\((.+)\)$/', $match, $funcMatch)) {
+                $funcName = $funcMatch[1];
+                $funcArgs = $funcMatch[2];
 
-            // Remove any || fallback patterns that got added incorrectly
-            $cleanVariable = preg_replace('/\s*\|\|\s*[\'"].*?[\'"]/', '', $cleanVariable);
+                // Process the arguments (they might be variables)
+                $processedArgs = $this->processFunctionArguments($funcArgs, $tableIndex);
+                $parts[] = "{$funcName}({$processedArgs})";
+            } else {
+                // Simple variable
+                $variableResult = $this->processVariable($match, $tableIndex);
+                $cleanVariable = str_replace(["' + ", " + '"], '', $variableResult);
+                $cleanVariable = trim($cleanVariable, "'");
+                $cleanVariable = preg_replace('/\s*\|\|\s*[\'"].*?[\'"]/', '', $cleanVariable);
+                $parts[] = $cleanVariable;
+            }
 
-            $parts[] = $cleanVariable;
-
-            $offset = $variableStart + strlen($matches[0][0]);
+            $offset = $matchStart + strlen($matches[0][0]);
         }
 
-        // Add remaining text after last variable
+        // Add remaining text after last match
         if ($offset < strlen($line)) {
             $textAfter = substr($line, $offset);
             $currentPart .= $this->escapeForJavaScript($textAfter);
@@ -1372,6 +1444,83 @@ class UltimateTemplateEngine
         }
 
         return implode(' + ', $parts);
+    }
+
+    /**
+     * 🛠️ Process function arguments - convert variable names to JS expressions
+     */
+    private function processFunctionArguments(string $args, ?int $tableIndex): string
+    {
+        // Split by comma, but respect nested parentheses
+        $argList = array_map('trim', explode(',', $args));
+        $processedArgs = [];
+
+        foreach ($argList as $arg) {
+            // Check if arg is a string literal (starts and ends with quotes)
+            if ((str_starts_with($arg, '"') && str_ends_with($arg, '"')) ||
+                (str_starts_with($arg, "'") && str_ends_with($arg, "'"))) {
+                $processedArgs[] = $arg;
+            }
+            // Check if arg is a number
+            elseif (is_numeric($arg)) {
+                $processedArgs[] = $arg;
+            }
+            // It's a variable name - get the raw JS expression
+            else {
+                $jsExpr = $this->getVariableAsJsExpression($arg, $tableIndex);
+                $processedArgs[] = $jsExpr;
+            }
+        }
+
+        return implode(', ', $processedArgs);
+    }
+
+    /**
+     * 🛠️ Get variable as pure JS expression (without string concatenation quotes)
+     */
+    private function getVariableAsJsExpression(string $variable, ?int $tableIndex): string
+    {
+        $variable = trim($variable);
+
+        // Check legacyMappings first (most common variables)
+        $legacyMappings = [
+            'projectname' => "gtree[0].project[0].projectname",
+            'projectcaption' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            'projectid' => "gtree[0].project[0].projectid",
+            'projectdatabase' => "gtree[0].project[0].projectdatabase",
+            'tablename' => "gtree[0].project[0].tablename", // Set directly on project level before execution
+            'tableindex' => "gtree[0].project[0].tableindex", // Set directly on project level before execution
+            'filename' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filename" : "gtree[0].project[0].tables[tableIdx].filename",
+            'filekeyname' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].primarykeyfield" : "gtree[0].project[0].tables[tableIdx].primarykeyfield",
+        ];
+
+        if (isset($legacyMappings[$variable])) {
+            return $legacyMappings[$variable];
+        }
+
+        // Item variables (inside loops)
+        if (strpos($variable, 'item.') === 0) {
+            $itemVar = substr($variable, 5);
+            $baseExpr = $tableIndex !== null
+                ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
+                : "gtree[0].project[0].tables[tableIdx].fields[i]";
+            return "{$baseExpr}.{$itemVar}";
+        }
+
+        // Table variables (inside nmaxtables loops)
+        if (strpos($variable, 'table.') === 0) {
+            $tableVar = substr($variable, 6);
+            return "gtree[0].project[0].tables[tableIdx].{$tableVar}";
+        }
+
+        // Language variables (inside nmaxlanguages loops)
+        if (strpos($variable, 'language.') === 0) {
+            $langVar = substr($variable, 9);
+            return "gtree[0].project[0].lang[i].{$langVar}";
+        }
+
+        // Fallback - try direct project access
+        return "gtree[0].project[0].{$variable}";
     }
 
     private function processVariable(string $variable, ?int $tableIndex): string
@@ -1465,7 +1614,9 @@ class UltimateTemplateEngine
             'projecturl' => "gtree[0].project[0].projecturl",
             'projectdirectory' => "gtree[0].project[0].projectdirectory",
             'startpage' => "gtree[0].project[0].startpage",
-            'defaultlanguage' => "gtree[0].project[0].defaultlanguage",
+            'defaultlanguage' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].code", // Language code (e.g., 'en', 'de')
+            'defaultlanguagename' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].name", // Language name (e.g., 'English', 'Deutsch')
+            'defaultlanguageindex' => "gtree[0].project[0].selectedlanguageindex", // Language index (e.g., 0, 1, 2)
             'filenameshortlength' => "gtree[0].project[0].filenameshortlength",
 
             // LANGUAGE VARIABLES (selected/current language)
@@ -1489,12 +1640,12 @@ class UltimateTemplateEngine
             'currencysym' => "gtree[0].project[0].currency_symbol",
             'timezone' => "gtree[0].project[0].timezone",
 
-            // TEMPLATE INFO
+            // TEMPLATE INFO (values are set directly on project level in UltimateTemplateController)
             'templateid' => "gtree[0].project[0].templateid",
             'projecttemplateid' => "gtree[0].project[0].templateid", // Alias for backward compatibility
-            'templatename' => "gtree[0].project[0].template.name",
-            'templatecategory' => "gtree[0].project[0].template.lang[gtree[0].project[0].selectedlanguageindex].category",
-            'templatedescription' => "gtree[0].project[0].template.lang[gtree[0].project[0].selectedlanguageindex].description",
+            'templatename' => "gtree[0].project[0].templatename",
+            'templatecategory' => "gtree[0].project[0].templatecategory",
+            'templatedescription' => "gtree[0].project[0].templatedescription",
 
             // TEMPLATE FILE VARIABLES (per-file, injected during processing)
             'templatefolder' => "gtree[0].project[0].templatefolder", // Folder from output path
@@ -1507,11 +1658,11 @@ class UltimateTemplateEngine
             'laravelversion' => "gtree[0].project[0].laravelversion",
 
             // FILE/TABLE INFO
-            'tablename' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].tablename" : "gtree[0].project[0].tables[tableIdx].tablename",
+            'tablename' => "gtree[0].project[0].tablename", // Set directly on project level before execution
+            'tableindex' => "gtree[0].project[0].tableindex", // Set directly on project level before execution
             'filename' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filename" : "gtree[0].project[0].tables[tableIdx].filename",
             'filenameshort' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filenameshort" : "gtree[0].project[0].tables[tableIdx].filenameshort",
             'fileid' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fileid" : "gtree[0].project[0].tables[tableIdx].fileid",
-            'filenamecc' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filenamecc" : "gtree[0].project[0].tables[tableIdx].filenamecc",
             'filecaption' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].lang[gtree[0].project[0].selectedlanguageindex].caption" : "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'filedescription' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].lang[gtree[0].project[0].selectedlanguageindex].caption" : "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'filekeyname' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].primarykeyfield" : "gtree[0].project[0].tables[tableIdx].primarykeyfield",
@@ -1604,6 +1755,28 @@ class UltimateTemplateEngine
             return "' + " . $languageMappings[$variable] . " + '";
         }
 
+        // 🎯 TABLE VARIABLES (for {:for nmaxtables:} loops)
+        // These variables are only available inside {:for nmaxtables:} loops
+        $tableMappings = [
+            'table.tablename' => "gtree[0].project[0].tables[tableIdx].filename", // tablename = filename in gtree structure
+            'table.filename' => "gtree[0].project[0].tables[tableIdx].filename",
+            'table.filenameshort' => "gtree[0].project[0].tables[tableIdx].filenameshort",
+            'table.fileid' => "gtree[0].project[0].tables[tableIdx].fileid",
+            'table.caption' => "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            'table.primarykey' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
+            'table.primarykeyfield' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
+            'table.nmaxitems' => "gtree[0].project[0].tables[tableIdx].nmaxitems",
+            'table.nmaxitemsnokey' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
+            'table.nmaxkeys' => "gtree[0].project[0].tables[tableIdx].nmaxkeys",
+            'table.nmaxforeignkeys' => "gtree[0].project[0].tables[tableIdx].nmaxforeignkeys",
+            'table.nmaxsearchkeys' => "gtree[0].project[0].tables[tableIdx].nmaxsearchkeys",
+            'table.index' => "tableIdx",
+        ];
+
+        if (isset($tableMappings[$variable]) && $this->getCurrentLoopContext() === 'tables') {
+            return "' + " . $tableMappings[$variable] . " + '";
+        }
+
         // 🎯 MIGRATION TABLE VARIABLES (for {for {nmaxmigration_tables}} loops)
         $migrationTableMappings = [
             'migration.action' => "gtree[0].project[0].migration.tables[migIdx].action",
@@ -1681,18 +1854,37 @@ class UltimateTemplateEngine
      */
     private function initializeBuiltInFunctions(): void
     {
+        // All functions use String(str ?? "") to safely handle null/undefined values
         $this->functions = [
-            'upper' => 'function(str) { return str.toUpperCase(); }',
-            'lower' => 'function(str) { return str.toLowerCase(); }',
-            'capitalize' => 'function(str) { return str.charAt(0).toUpperCase() + str.slice(1); }',
-            'plural' => 'function(str) { return str + "s"; }',
-            'singular' => 'function(str) { return str.endsWith("s") ? str.slice(0, -1) : str; }',
-            'camelcase' => 'function(str) { return str.replace(/_([a-z])/g, function(g) { return g[1].toUpperCase(); }); }',
-            'snakecase' => 'function(str) { return str.replace(/([A-Z])/g, "_$1").toLowerCase(); }',
-            'length' => 'function(str) { return str.length; }',
-            'substr' => 'function(str, start, len) { return str.substr(start, len); }',
-            'replace' => 'function(str, search, replace) { return str.replace(new RegExp(search, "g"), replace); }',
+            'upper' => 'function(str) { return String(str ?? "").toUpperCase(); }',
+            'lower' => 'function(str) { return String(str ?? "").toLowerCase(); }',
+            'capitalize' => 'function(str) { str = String(str ?? ""); return str.length > 0 ? str.charAt(0).toUpperCase() + str.slice(1) : ""; }',
+            'plural' => 'function(str) { return String(str ?? "") + "s"; }',
+            'singular' => 'function(str) { str = String(str ?? ""); return str.endsWith("s") ? str.slice(0, -1) : str; }',
+            'camelcase' => 'function(str) { return String(str ?? "").replace(/_([a-z])/g, function(g) { return g[1].toUpperCase(); }); }',
+            'snakecase' => 'function(str) { return String(str ?? "").replace(/([A-Z])/g, "_$1").toLowerCase(); }',
+            'length' => 'function(str) { return String(str ?? "").length; }',
+            'substr' => 'function(str, start, len) { return String(str ?? "").substr(start, len); }',
+            'replace' => 'function(str, search, replace) { return String(str ?? "").replace(new RegExp(search, "g"), replace); }',
+            'pascalcase' => 'function(str) { return String(str ?? "").split(/[_\\s-]+/).map(function(w) { return w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""; }).join(""); }',
+            'kebabcase' => 'function(str) { return String(str ?? "").replace(/([a-z])([A-Z])/g, "$1-$2").replace(/[_\\s]+/g, "-").toLowerCase(); }',
+            'strlen' => 'function(str) { return String(str ?? "").length; }',
         ];
+    }
+
+    /**
+     * 🔍 Detect which built-in functions are used in template
+     */
+    private function detectUsedFunctions(string $templateContent): array
+    {
+        $usedFunctions = [];
+        foreach (array_keys($this->functions) as $funcName) {
+            // Match {:funcname( or {:funcname (with space
+            if (preg_match('/\{:' . preg_quote($funcName, '/') . '\s*\(/i', $templateContent)) {
+                $usedFunctions[] = $funcName;
+            }
+        }
+        return $usedFunctions;
     }
 
     /**
@@ -1743,7 +1935,7 @@ class UltimateTemplateEngine
     }
 
     /**
-     * 🆕 EXTRACT {code}...{codeend} BLOCKS
+     * 🆕 EXTRACT {:code:}...{:codeend:} BLOCKS
      * Extract JavaScript code blocks from template and replace with placeholder
      */
     private function extractCodeBlocks(string $templateContent): string
@@ -1752,11 +1944,11 @@ class UltimateTemplateEngine
         $this->codeBlocks = [];
         $this->codeBlockCounter = 0;
 
-        // Find all {code}...{codeend} blocks
-        $pattern = '/\{code\}(.*?)\{codeend\}/s';
+        // Find all {:code:}...{:codeend:} blocks
+        $pattern = '/\{:code:\}(.*?)\{:codeend:\}/s';
 
         $templateContent = preg_replace_callback($pattern, function($matches) {
-            // Store the code block content (without {code} and {codeend})
+            // Store the code block content (without {:code:} and {:codeend:})
             $codeContent = $matches[1];
             $this->codeBlocks[] = $codeContent;
             $this->codeBlockCounter++;

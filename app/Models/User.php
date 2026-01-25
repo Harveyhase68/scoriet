@@ -23,11 +23,14 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
+        'theme', // User's preferred theme (dark, light, green, auto)
         'password',
         'username', // GitHub-style unique username
         'user_type',
         'is_active', // Account active status (false = deactivated due to inactivity)
         'language', // User's preferred language
+        'kanban_initials', // 2-3 letter initials for Kanban boards
+        'kanban_color', // Hex color for Kanban avatar
         'credits',
         'patron_type',
         'pending_project_invitation_id',
@@ -135,6 +138,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getTeamRole(Team $team): ?string
     {
         return $team->getUserRole($this);
+    }
+
+    // Projects owned by this user
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'owner_id');
     }
 
     // Project applications relationship
@@ -937,6 +946,82 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_unlimited' => $isUnlimited,
             'is_full' => !$isUnlimited && $used >= $limit,
             'is_warning' => !$isUnlimited && ($used / $limit) >= 0.8, // 80% warning threshold
+        ];
+    }
+
+    // ==================== KANBAN INITIALS ====================
+
+    /**
+     * Default colors for auto-generated avatars
+     */
+    const KANBAN_COLORS = [
+        '#3b82f6', // Blue
+        '#8b5cf6', // Purple
+        '#06b6d4', // Cyan
+        '#10b981', // Emerald
+        '#f59e0b', // Amber
+        '#ef4444', // Red
+        '#ec4899', // Pink
+        '#6366f1', // Indigo
+        '#84cc16', // Lime
+        '#14b8a6', // Teal
+    ];
+
+    /**
+     * Get user's Kanban initials (custom or auto-generated)
+     */
+    public function getKanbanInitials(): string
+    {
+        // Return custom initials if set
+        if (!empty($this->kanban_initials)) {
+            return strtoupper($this->kanban_initials);
+        }
+
+        // Auto-generate from username or name
+        $source = $this->username ?: $this->name ?: 'U';
+
+        // If username has underscore or dot, use first letters of each part
+        if (preg_match('/[._]/', $source)) {
+            $parts = preg_split('/[._]/', $source);
+            $initials = '';
+            foreach ($parts as $part) {
+                if (!empty($part)) {
+                    $initials .= strtoupper($part[0]);
+                }
+                if (strlen($initials) >= 2) break;
+            }
+            return $initials ?: strtoupper(substr($source, 0, 2));
+        }
+
+        // Otherwise just take first 2 characters
+        return strtoupper(substr($source, 0, 2));
+    }
+
+    /**
+     * Get user's Kanban avatar color (custom or auto-generated based on ID)
+     */
+    public function getKanbanColor(): string
+    {
+        // Return custom color if set
+        if (!empty($this->kanban_color)) {
+            return $this->kanban_color;
+        }
+
+        // Auto-generate based on user ID for consistency
+        $colorIndex = $this->id % count(self::KANBAN_COLORS);
+        return self::KANBAN_COLORS[$colorIndex];
+    }
+
+    /**
+     * Get complete Kanban display info
+     */
+    public function getKanbanDisplayInfo(): array
+    {
+        return [
+            'initials' => $this->getKanbanInitials(),
+            'color' => $this->getKanbanColor(),
+            'has_custom_initials' => !empty($this->kanban_initials),
+            'has_custom_color' => !empty($this->kanban_color),
         ];
     }
 }

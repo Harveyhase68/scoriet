@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useToast } from '@/contexts/ToastContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from 'primereact/button';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { DataTable } from 'primereact/datatable';
@@ -42,6 +43,7 @@ export default function SystemSettingsPanel() {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const toast = useToast();
+  const { colors } = useTheme();
   const [, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -168,19 +170,19 @@ export default function SystemSettingsPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-800">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <ProgressSpinner />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-800 text-gray-100">
-      <div className="flex-shrink-0 p-6 border-b border-gray-700">
-        <h3 className="text-2xl font-semibold text-white mb-2">
+    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+      <div className="flex-shrink-0 p-6" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
+        <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
           ⚙️ System Settings
         </h3>
-        <p className="text-sm text-gray-300">
+        <p className="text-sm" style={{ color: colors.textSecondary }}>
           Configure global system settings for Scoriet
         </p>
       </div>
@@ -189,7 +191,7 @@ export default function SystemSettingsPanel() {
         <TabView
           activeIndex={activeTabIndex}
           onTabChange={(e) => setActiveTabIndex(e.index)}
-          className="h-full"
+          className="h-full themed-tabview"
         >
           {/* Settings Tab */}
           <TabPanel header="Settings" leftIcon="pi pi-cog">
@@ -197,16 +199,16 @@ export default function SystemSettingsPanel() {
               <div className="max-w-4xl">
                 <form onSubmit={handleSubmit(onSubmit)}>
             {/* Google Translate API Section */}
-            <div className="bg-gray-700 rounded-lg p-6 mb-6">
-              <h4 className="text-lg font-semibold text-white mb-4">
+            <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+              <h4 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>
                 🌍 Google Translate API
               </h4>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                 Configure the global Google Translate API key for Business plan users
               </p>
 
               <div className="field">
-                <label htmlFor="global_google_translate_key" className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="global_google_translate_key" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   Global API Key
                 </label>
                 <Controller
@@ -223,16 +225,16 @@ export default function SystemSettingsPanel() {
                     />
                   )}
                 />
-                <small className="text-gray-400 mt-1 block">
+                <small className="mt-1 block" style={{ color: colors.textMuted }}>
                   This key will be used for Business plan users. Leave empty to require users to provide their own key.
                 </small>
               </div>
             </div>
 
             {/* Pricing Section */}
-            <div className="bg-gray-700 rounded-lg p-6 mb-6">
+            <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-white">
+                <h4 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
                   💰 Subscription Pricing
                 </h4>
                 <Button
@@ -248,19 +250,19 @@ export default function SystemSettingsPanel() {
                   tooltipOptions={{ position: 'left' }}
                 />
               </div>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                 Set prices for Patron subscriptions (in €)
               </p>
 
-              <div className="bg-gray-800 border border-gray-600 rounded p-3 mb-4">
-                <p className="text-xs text-gray-300">
+              <div className="rounded p-3 mb-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                <p className="text-xs" style={{ color: colors.textSecondary }}>
                   💡 <strong>Note:</strong> Prices are cached for 10 minutes. After saving changes, click <strong>"Refresh Price Cache"</strong> to make them visible to all users immediately.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="field">
-                  <label htmlFor="price_patron_annual" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="price_patron_annual" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     Patron Annual (€/year) *
                   </label>
                   <Controller
@@ -287,12 +289,12 @@ export default function SystemSettingsPanel() {
                     )}
                   />
                   {errors.price_patron_annual && (
-                    <small className="text-red-400 mt-1 block">{errors.price_patron_annual.message}</small>
+                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_patron_annual.message}</small>
                   )}
                 </div>
 
                 <div className="field">
-                  <label htmlFor="price_patron_monthly" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="price_patron_monthly" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     Patron Monthly (€/month) *
                   </label>
                   <Controller
@@ -319,21 +321,21 @@ export default function SystemSettingsPanel() {
                     )}
                   />
                   {errors.price_patron_monthly && (
-                    <small className="text-red-400 mt-1 block">{errors.price_patron_monthly.message}</small>
+                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_patron_monthly.message}</small>
                   )}
                 </div>
               </div>
 
-              <h5 className="text-md font-semibold text-white mb-3 mt-6">
+              <h5 className="text-md font-semibold mb-3 mt-6" style={{ color: colors.textPrimary }}>
                 Credit Packages
               </h5>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                 Set prices for credit packages (in €)
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="field">
-                  <label htmlFor="price_credits_500" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="price_credits_500" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     500 Credits (€) *
                   </label>
                   <Controller
@@ -360,12 +362,12 @@ export default function SystemSettingsPanel() {
                     )}
                   />
                   {errors.price_credits_500 && (
-                    <small className="text-red-400 mt-1 block">{errors.price_credits_500.message}</small>
+                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_credits_500.message}</small>
                   )}
                 </div>
 
                 <div className="field">
-                  <label htmlFor="price_credits_1000" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="price_credits_1000" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     1000 Credits (€) *
                   </label>
                   <Controller
@@ -392,12 +394,12 @@ export default function SystemSettingsPanel() {
                     )}
                   />
                   {errors.price_credits_1000 && (
-                    <small className="text-red-400 mt-1 block">{errors.price_credits_1000.message}</small>
+                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_credits_1000.message}</small>
                   )}
                 </div>
 
                 <div className="field">
-                  <label htmlFor="price_credits_2500" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="price_credits_2500" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                     2500 Credits (€) *
                   </label>
                   <Controller
@@ -424,7 +426,7 @@ export default function SystemSettingsPanel() {
                     )}
                   />
                   {errors.price_credits_2500 && (
-                    <small className="text-red-400 mt-1 block">{errors.price_credits_2500.message}</small>
+                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_credits_2500.message}</small>
                   )}
                 </div>
               </div>
@@ -457,13 +459,13 @@ export default function SystemSettingsPanel() {
           {/* User Management Tab */}
           <TabPanel header="User Management" leftIcon="pi pi-users">
             <div className="p-6">
-              <div className="bg-gray-700 rounded-lg p-6 mb-6">
+              <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h4 className="text-lg font-semibold text-white">
+                    <h4 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
                       👥 User Management
                     </h4>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
                       Manage users and assign Inner Core Reviewer permissions
                     </p>
                   </div>

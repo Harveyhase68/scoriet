@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 //import { useTranslation } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProtectedFilesEditorProps {
   files: string[];
@@ -15,6 +16,7 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
   title
 }) => {
   //const { t } = useTranslation('en');
+  const { colors } = useTheme();
   const [newFile, setNewFile] = useState('');
 
   const handleAdd = () => {
@@ -37,11 +39,11 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
 
   return (
     <div className="protected-files-editor">
-      {title && <h3 className="text-lg font-semibold mb-3">{title}</h3>}
+      {title && <h3 className="text-lg font-semibold mb-3 theme-text-primary">{title}</h3>}
 
-      <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-sm text-blue-100">
+      <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
         <strong>Info:</strong> These files will not be overwritten during updates.
-        They are typically configuration files like <code className="bg-blue-800 px-1 rounded">.env</code>, <code className="bg-blue-800 px-1 rounded">config.toml</code>, or database files.
+        They are typically configuration files like <code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">.env</code>, <code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">config.toml</code>, or database files.
       </div>
 
       {!readOnly && (
@@ -52,12 +54,26 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
             onChange={(e) => setNewFile(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="e.g., .env, config.toml, data/local.db"
-            className="flex-1 px-3 py-2 border border-gray-600 rounded bg-gray-700 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 border rounded focus:outline-none"
+            style={{
+              backgroundColor: colors.bgSecondary,
+              color: colors.textPrimary,
+              borderColor: colors.borderPrimary,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = colors.accent;
+              e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}40`;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = colors.borderPrimary;
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
           <button
             type="button"
             onClick={handleAdd}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+            className="px-4 py-2 rounded transition"
+            style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
             disabled={!newFile.trim()}
           >
             Add File
@@ -67,21 +83,28 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
 
       <div className="space-y-2">
         {files.length === 0 ? (
-          <div className="text-gray-400 italic p-3 text-center border border-dashed border-gray-600 rounded">
+          <div className="italic p-3 text-center border border-dashed rounded theme-text-muted theme-border-primary">
             No protected files defined
           </div>
         ) : (
           files.map((file, index) => (
             <div
               key={index}
-              className="flex items-center justify-between p-3 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600 transition"
+              className="flex items-center justify-between p-3 rounded transition"
+              style={{
+                backgroundColor: colors.bgTertiary,
+                border: `1px solid ${colors.borderPrimary}`,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.bgTertiary}
             >
-              <span className="font-mono text-sm text-gray-100">{file}</span>
+              <span className="font-mono text-sm theme-text-primary">{file}</span>
               {!readOnly && (
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className="text-red-500 hover:text-red-700 font-bold"
+                  className="font-bold"
+                  style={{ color: colors.buttonDanger }}
                   title="Remove"
                 >
                   ✕

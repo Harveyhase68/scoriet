@@ -18,6 +18,7 @@ import { TreeTable } from 'primereact/treetable';
 import { TreeNode } from 'primereact/treenode';
 import { usePage } from '@inertiajs/react';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FileInfo {
     path: string;
@@ -130,6 +131,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const { props } = usePage<any>();
     const templateCategories = props.templateCategories || [];
     const templateLanguages = props.templateLanguages || [];
+    const { colors } = useTheme();
 
     // Wizard state
     const [currentStep, setCurrentStep] = useState(0);
@@ -954,9 +956,9 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         const currentExcludeDirs = getCurrentExcludeDirs();
 
         return (
-            <div className="bg-gray-800 rounded-lg p-4 mb-4 border border-gray-300">
+            <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-medium text-gray-300">Dateiendungen-Filter</h4>
+                    <h4 className="font-medium" style={{ color: colors.textSecondary }}>Dateiendungen-Filter</h4>
                     <Button
                         icon="pi pi-times"
                         size="small"
@@ -967,7 +969,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 {/* Preset selection */}
                 <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-200 mb-1">Preset auswählen</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Preset auswählen</label>
                     <div className="flex gap-2 flex-wrap">
                         {presets.map(preset => (
                             <div key={preset.name} className="flex items-center">
@@ -1053,7 +1055,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 {/* Extension chips */}
                 <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                         Dateiendungen (z.B. php, tsx, js)
                     </label>
                     <Chips
@@ -1075,7 +1077,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 {/* Exclude directories chips */}
                 <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                         <i className="pi pi-ban text-red-500 mr-1" />
                         Ausschluss-Verzeichnisse (z.B. vendor, node_modules)
                     </label>
@@ -1094,7 +1096,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             input: { className: 'flex-1 w-full' }
                         }}
                     />
-                    <p className="text-xs text-gray-300 mt-1">
+                    <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                         Dateien in diesen Verzeichnissen werden nicht ausgewählt. Wildcards erlaubt (z.B. cmake-build-*)
                     </p>
                 </div>
@@ -1292,7 +1294,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     </div>
                 </div>
 
-                <p className="text-sm text-gray-300 mb-4">{stepDescription}</p>
+                <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>{stepDescription}</p>
 
                 {/* Extension panel */}
                 {showFilter && renderExtensionPanel(filesOnly, selection, setSelection)}
@@ -1368,13 +1370,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         <div className="w-full max-w-xl">
                             {/* Import mode tabs */}
                             <div className="flex justify-center mb-6">
-                                <div className="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                                <div className="inline-flex rounded-lg p-1" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                                     <button
-                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                            importMode === 'upload'
-                                                ? 'bg-white shadow text-blue-600'
-                                                : 'text-gray-600 hover:text-gray-800'
-                                        }`}
+                                        className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                                        style={{
+                                            backgroundColor: importMode === 'upload' ? colors.bgPrimary : 'transparent',
+                                            color: importMode === 'upload' ? colors.accent : colors.textSecondary,
+                                            boxShadow: importMode === 'upload' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                                        }}
                                         onClick={() => setImportMode('upload')}
                                         disabled={loading}
                                     >
@@ -1382,11 +1385,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         Archiv hochladen
                                     </button>
                                     <button
-                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                            importMode === 'service'
-                                                ? 'bg-white shadow text-blue-600'
-                                                : 'text-gray-600 hover:text-gray-800'
-                                        }`}
+                                        className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                                        style={{
+                                            backgroundColor: importMode === 'service' ? colors.bgPrimary : 'transparent',
+                                            color: importMode === 'service' ? colors.accent : colors.textSecondary,
+                                            boxShadow: importMode === 'service' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                                        }}
                                         onClick={() => setImportMode('service')}
                                         disabled={loading}
                                     >
@@ -1398,10 +1402,10 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                             {importMode === 'upload' ? (
                                 <>
-                                    <h3 className="text-lg font-medium mb-4 text-center">
+                                    <h3 className="text-lg font-medium mb-4 text-center" style={{ color: colors.textPrimary }}>
                                         Archiv hochladen
                                     </h3>
-                                    <p className="text-sm text-gray-500 mb-6 text-center">
+                                    <p className="text-sm mb-6 text-center" style={{ color: colors.textMuted }}>
                                         Laden Sie ein .zip, .tar.gz oder .tar.xz Archiv mit Ihren Template-Dateien hoch. Wenn Sie viele Dateien in ein Template umwandeln möchten, wäre es einfacher, zuerst das Archiv lokal zu entpacken, dann mit einem gewohnten Editor wie VS Code zu bearbeiten. Dann wieder packen und hochladen!
                                     </p>
 
@@ -1418,11 +1422,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         disabled={loading}
                                         emptyTemplate={
                                             <div className="flex flex-col items-center py-8">
-                                                <i className="pi pi-cloud-upload text-4xl text-gray-400 mb-4" />
-                                                <p className="text-gray-500">
+                                                <i className="pi pi-cloud-upload text-4xl mb-4" style={{ color: colors.textMuted }} />
+                                                <p style={{ color: colors.textMuted }}>
                                                     Datei hier ablegen oder klicken zum Auswählen
                                                 </p>
-                                                <p className="text-sm text-gray-400 mt-2">
+                                                <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
                                                     .zip, .tar.gz, .tar.xz (max 100MB)
                                                 </p>
                                             </div>
@@ -1432,7 +1436,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     {loading && (
                                         <div className="mt-4">
                                             <ProgressBar mode="indeterminate" style={{ height: '6px' }} />
-                                            <p className="text-sm text-gray-500 mt-2 text-center">
+                                            <p className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
                                                 Archiv wird extrahiert...
                                             </p>
                                         </div>
@@ -1440,10 +1444,10 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 </>
                             ) : (
                                 <>
-                                    <h3 className="text-lg font-medium mb-4 text-center">
+                                    <h3 className="text-lg font-medium mb-4 text-center" style={{ color: colors.textPrimary }}>
                                         Lokaler Import (Service)
                                     </h3>
-                                    <p className="text-sm text-gray-500 mb-6 text-center">
+                                    <p className="text-sm mb-6 text-center" style={{ color: colors.textMuted }}>
                                         Geben Sie den Pfad zu einem lokalen Verzeichnis ein. Der Scoriet Service liest alle Dateien und lädt sie automatisch hoch.
                                     </p>
 
@@ -1455,7 +1459,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium mb-2">
+                                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                                 Verzeichnispfad
                                             </label>
                                             <InputText
@@ -1465,7 +1469,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                                 placeholder="C:\Projekte\MeinTemplate"
                                                 disabled={loading}
                                             />
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                                 Vollständiger Pfad zum Verzeichnis auf Ihrem lokalen Computer
                                             </p>
                                         </div>
@@ -1483,11 +1487,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     {loading && (
                                         <div className="mt-4">
                                             <ProgressBar mode="indeterminate" style={{ height: '6px' }} />
-                                            <p className="text-sm text-gray-500 mt-2 text-center">
+                                            <p className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
                                                 {serviceStatus}
                                             </p>
                                             {serviceLogs && (
-                                                <pre className="mt-3 p-3 bg-gray-900 text-gray-100 rounded text-xs font-mono max-h-40 overflow-auto">
+                                                <pre className="mt-3 p-3 rounded text-xs font-mono max-h-40 overflow-auto" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
                                                     {serviceLogs}
                                                 </pre>
                                             )}
@@ -1560,14 +1564,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 />
                             </div>
                         </div>
-                        <p className="text-sm text-gray-500 mb-4">
+                        <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                             Diese Dateien wurden in Schritt 2 und 3 nicht ausgewählt. Sie können hier einzelne Dateien oder ganze Verzeichnisse als ZIP-Archiv bündeln.
                         </p>
 
                         {remainingFilesTree.length > 0 ? (
                             <>
                                 <div className="mb-4">
-                                    <label className="block text-sm font-medium mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                         Archiv-Name (für ausgewählte Dateien)
                                     </label>
                                     <InputText
@@ -1608,7 +1612,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         field="path"
                                         header="Pfad"
                                         body={(node) => (
-                                            <span className="font-mono text-xs text-gray-500">{node.data.path}</span>
+                                            <span className="font-mono text-xs" style={{ color: colors.textMuted }}>{node.data.path}</span>
                                         )}
                                     />
                                     <Column
@@ -1647,9 +1651,9 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         </h3>
 
                         {/* Summary */}
-                        <div className="bg-gray-900 rounded-lg p-4 mb-6">
-                            <h4 className="font-medium mb-2">Zusammenfassung</h4>
-                            <ul className="text-sm text-gray-300 space-y-1">
+                        <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: colors.bgSecondary }}>
+                            <h4 className="font-medium mb-2" style={{ color: colors.textPrimary }}>Zusammenfassung</h4>
+                            <ul className="text-sm space-y-1" style={{ color: colors.textSecondary }}>
                                 <li><i className="pi pi-file mr-2" />{templateFileCount} Template-Dateien</li>
                                 <li><i className="pi pi-image mr-2" />{staticFileCount} Statische Dateien</li>
                                 <li><i className="pi pi-folder mr-2" />{staticDirFileCount} Dateien in Static Directory ({staticDirectoryName}.zip)</li>
@@ -1658,7 +1662,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Name *
                                 </label>
                                 <InputText
@@ -1667,13 +1671,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     className="w-full"
                                     placeholder="mein_template"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                     Nur Kleinbuchstaben, Zahlen und Unterstriche erlaubt
                                 </p>
                             </div>
 
                             <div className="col-span-2">
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Beschreibung
                                 </label>
                                 <InputTextarea
@@ -1687,7 +1691,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                             {/* Category with dropdown and manual input */}
                             <div>
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Kategorie *
                                 </label>
                                 <AutoComplete
@@ -1701,14 +1705,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     dropdown
                                     forceSelection={false}
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                     Vorschläge: {templateCategories.slice(0, 5).join(', ')}...
                                 </p>
                             </div>
 
                             {/* Language with dropdown and manual input */}
                             <div>
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Sprache *
                                 </label>
                                 <AutoComplete
@@ -1722,14 +1726,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     dropdown
                                     forceSelection={false}
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                     Vorschläge: {templateLanguages.slice(0, 5).join(', ')}...
                                 </p>
                             </div>
 
                             {/* Tags */}
                             <div className="col-span-2">
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Tags
                                 </label>
                                 <Chips
@@ -1743,14 +1747,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         input: { className: 'flex-1 w-full' }
                                     }}
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                     Mit Enter oder Komma neue Tags hinzufügen
                                 </p>
                             </div>
 
                             {/* Visibility */}
                             <div className="col-span-2">
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     Sichtbarkeit
                                 </label>
                                 <Dropdown
@@ -1799,43 +1803,43 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {templateVisibility === 'private' && (
                                 <div className="col-span-2 space-y-3">
                                     {checkingSubscription ? (
-                                        <div className="py-4 text-center bg-gray-100 rounded-lg border border-gray-300">
+                                        <div className="py-4 text-center rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                                            <p className="text-gray-500 text-sm">Überprüfe Subscription...</p>
+                                            <p className="text-sm" style={{ color: colors.textMuted }}>Überprüfe Subscription...</p>
                                         </div>
                                     ) : needsPrivateUnlock ? (
                                         <>
-                                            <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-3">
-                                                <p className="text-yellow-700 text-sm mb-1">
+                                            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
+                                                <p className="text-yellow-300 text-sm mb-1">
                                                     <i className="pi pi-lock mr-2"></i>
                                                     <strong>Private Template - Premium Feature</strong>
                                                 </p>
-                                                <p className="text-gray-600 text-xs">
+                                                <p className="text-xs" style={{ color: colors.textSecondary }}>
                                                     Private Templates kosten <strong>50 Credits pro Jahr</strong>. Öffentliche Templates sind kostenlos!
                                                 </p>
                                             </div>
 
-                                            <div className="bg-gray-100 rounded-lg p-3 border border-gray-300">
+                                            <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                                                 <div className="flex justify-between items-center text-sm mb-1">
-                                                    <span className="text-gray-600">Ihre Credits:</span>
-                                                    <span className="text-gray-900 font-bold">{currentUser?.credits || 0}</span>
+                                                    <span style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                                                    <span className="font-bold" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm mb-1">
-                                                    <span className="text-gray-600">Benötigt:</span>
-                                                    <span className="text-yellow-600 font-bold">50</span>
+                                                    <span style={{ color: colors.textSecondary }}>Benötigt:</span>
+                                                    <span className="text-yellow-400 font-bold">50</span>
                                                 </div>
-                                                <hr className="border-gray-300 my-1" />
+                                                <hr className="my-1" style={{ borderColor: colors.borderPrimary }} />
                                                 <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-600">Danach:</span>
-                                                    <span className={`font-bold ${(currentUser?.credits || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <span style={{ color: colors.textSecondary }}>Danach:</span>
+                                                    <span className={`font-bold ${(currentUser?.credits || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                                                         {(currentUser?.credits || 0) >= 50 ? (currentUser?.credits || 0) - 50 : `${50 - (currentUser?.credits || 0)} fehlen`}
                                                     </span>
                                                 </div>
                                             </div>
 
                                             {(currentUser?.credits || 0) < 50 && (
-                                                <div className="bg-red-50 border border-red-400 rounded-lg p-2">
-                                                    <p className="text-red-600 text-xs">
+                                                <div className="bg-red-900/20 border border-red-700 rounded-lg p-2">
+                                                    <p className="text-red-300 text-xs">
                                                         Sie benötigen <strong>{50 - (currentUser?.credits || 0)} weitere Credits</strong>.
                                                     </p>
                                                 </div>
@@ -1878,19 +1882,19 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             </div>
                                         </>
                                     ) : privateUnlockConfirmed ? (
-                                        <div className="bg-green-50 border border-green-400 rounded-lg p-3">
-                                            <p className="text-green-700 text-sm flex items-center gap-2">
+                                        <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
+                                            <p className="text-green-300 text-sm flex items-center gap-2">
                                                 <i className="pi pi-check-circle"></i>
                                                 <strong>Freigeschaltet!</strong> 50 Credits werden beim Erstellen abgezogen.
                                             </p>
                                         </div>
                                     ) : hasCheckedSubscription && availableSlots > 0 ? (
-                                        <div className="bg-green-50 border border-green-400 rounded-lg p-3">
-                                            <p className="text-green-700 text-sm flex items-center gap-2">
+                                        <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
+                                            <p className="text-green-300 text-sm flex items-center gap-2">
                                                 <i className="pi pi-check-circle"></i>
                                                 <strong>Slot verfügbar!</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
                                             </p>
-                                            <p className="text-gray-500 text-xs mt-1">
+                                            <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                                 Keine zusätzlichen Credits erforderlich.
                                             </p>
                                         </div>
@@ -1901,15 +1905,15 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {/* Store Template Info */}
                             {templateVisibility === 'store' && (
                                 <div className="col-span-2">
-                                    <div className="bg-purple-50 border border-purple-400 rounded-lg p-3">
-                                        <p className="text-purple-700 text-sm mb-2">
+                                    <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-3">
+                                        <p className="text-purple-300 text-sm mb-2">
                                             <i className="pi pi-shopping-cart mr-2"></i>
                                             <strong>Store Template - Verkaufe dein Template!</strong>
                                         </p>
-                                        <p className="text-gray-600 text-xs mb-2">
+                                        <p className="text-xs mb-2" style={{ color: colors.textSecondary }}>
                                             Dein Template wird im Store angezeigt, sobald es von einem Admin freigegeben wurde oder 5+ positive Reviews hat.
                                         </p>
-                                        <p className="text-gray-500 text-xs">
+                                        <p className="text-xs" style={{ color: colors.textMuted }}>
                                             <i className="pi pi-info-circle mr-1"></i>
                                             Preiseinstellung und Media-Upload sind nach dem Erstellen im Template Management verfügbar.
                                         </p>
@@ -1982,11 +1986,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     <div>
                         <span>Template importieren</span>
                         {originalName && (
-                            <span className="text-sm text-gray-500 ml-2">— {originalName}</span>
+                            <span className="text-sm ml-2" style={{ color: colors.textMuted }}>— {originalName}</span>
                         )}
                     </div>
                 }
                 style={{ width: '90vw', maxWidth: '1200px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 maximizable
                 modal
                 footer={renderFooter}
@@ -2014,6 +2020,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 onHide={() => setPreviewFile(null)}
                 header={previewFile?.path}
                 style={{ width: '80vw', maxWidth: '900px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 maximizable
             >
                 {loadingPreview ? (
@@ -2023,7 +2031,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 ) : previewFile?.is_binary ? (
                     <Message severity="warn" text="Binärdatei - Vorschau nicht verfügbar" />
                 ) : (
-                    <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-auto max-h-[60vh] text-sm font-mono whitespace-pre-wrap">
+                    <pre className="p-4 rounded overflow-auto max-h-[60vh] text-sm font-mono whitespace-pre-wrap" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
                         {previewFile?.content}
                     </pre>
                 )}
@@ -2035,6 +2043,138 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 onHide={handlePlanModalClose}
                 initialTab={1}
             />
+
+            {/* Theme-aware styles for PrimeReact components */}
+            <style>{`
+                .template-import-wizard .p-steps .p-steps-item .p-menuitem-link {
+                    background-color: transparent !important;
+                }
+                .template-import-wizard .p-steps .p-steps-item .p-steps-number {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-steps .p-steps-item.p-highlight .p-steps-number {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-import-wizard .p-steps .p-steps-item .p-steps-title {
+                    color: var(--theme-text-secondary) !important;
+                }
+                .template-import-wizard .p-datatable {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-datatable .p-datatable-header {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-datatable .p-datatable-thead > tr > th {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-datatable .p-datatable-tbody > tr {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-datatable .p-datatable-tbody > tr > td {
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-datatable .p-datatable-tbody > tr:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-import-wizard .p-treetable {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-thead > tr > th {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr > td {
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-import-wizard .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-inputtext:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .template-import-wizard .p-inputtextarea {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-dropdown {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-dropdown-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-import-wizard .p-autocomplete .p-autocomplete-input {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-autocomplete-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-import-wizard .p-chips .p-chips-multiple-container {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-chips .p-chips-multiple-container .p-chips-input-token input {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-chips .p-chips-multiple-container .p-chips-token {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-import-wizard .p-fileupload .p-fileupload-content {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-fileupload .p-fileupload-buttonbar {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-checkbox .p-checkbox-box {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-checkbox .p-checkbox-box.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    border-color: var(--theme-accent) !important;
+                }
+            `}</style>
         </>
     );
 }

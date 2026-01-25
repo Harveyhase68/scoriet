@@ -30,7 +30,7 @@ class TestTreeUpdate extends Command
         $projectId = $this->argument('project_id');
         
         $this->info("🌳 Testing tree update for project {$projectId}");
-        $this->info("===========================================");
+        $this->info("------------------------------------------------");
 
         $project = Project::find($projectId);
         if (!$project) {

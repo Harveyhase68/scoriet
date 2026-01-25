@@ -30,7 +30,7 @@ class TestProjectSchemas extends Command
         $projectId = $this->argument('project_id');
         
         $this->info("🔍 Testing schema connections for project {$projectId}");
-        $this->info("===========================================");
+        $this->info("-------------------------------------------------------");
 
         // Get all available schemas
         $allSchemas = DB::table('schemas')->get();

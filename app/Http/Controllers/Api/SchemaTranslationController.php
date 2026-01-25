@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PerformanceMetric;
 use App\Models\SchemaTranslation;
 use App\Models\Language;
 use App\Models\Project;
@@ -11,12 +12,15 @@ use App\Models\SchemaTable;
 use App\Models\SchemaField;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SchemaTranslationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+
         $query = SchemaTranslation::with(['creator', 'language']);
 
         // Filter by language code
@@ -44,6 +48,26 @@ class SchemaTranslationController extends Controller
         }
 
         $translations = $query->orderBy('item_name')->orderBy('code')->get();
+
+        // Track performance
+        $duration = (int) ((microtime(true) - $startTime) * 1000);
+        $user = auth()->user();
+        try {
+            PerformanceMetric::create([
+                'user_id' => $user?->id,
+                'operation' => PerformanceMetric::OP_TRANSLATION_LOAD,
+                'operation_detail' => $request->get('code', 'all languages'),
+                'duration_ms' => $duration,
+                'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                'tables_count' => $translations->count(),
+                'fields_count' => null,
+                'from_cache' => false,
+                'subscription_type' => $user?->subscription?->type ?? 'free',
+                'created_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Performance tracking failed: " . $e->getMessage());
+        }
 
         return response()->json($translations);
     }
@@ -226,7 +250,29 @@ class SchemaTranslationController extends Controller
     // Get all translations for a specific item across all languages
     public function getItemTranslations(Request $request, string $itemName): JsonResponse
     {
+        $startTime = microtime(true);
+
         $translations = SchemaTranslation::getAllTranslationsForItem($itemName);
+
+        // Track performance
+        $duration = (int) ((microtime(true) - $startTime) * 1000);
+        $user = auth()->user();
+        try {
+            PerformanceMetric::create([
+                'user_id' => $user?->id,
+                'operation' => PerformanceMetric::OP_TRANSLATION_LOAD,
+                'operation_detail' => $itemName,
+                'duration_ms' => $duration,
+                'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                'tables_count' => count($translations),
+                'fields_count' => null,
+                'from_cache' => false,
+                'subscription_type' => $user?->subscription?->type ?? 'free',
+                'created_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Performance tracking failed: " . $e->getMessage());
+        }
 
         return response()->json([
             'item_name' => $itemName,

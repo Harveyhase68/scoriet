@@ -19,6 +19,7 @@ import { Tag } from 'primereact/tag';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ========== INTERFACES ==========
 
@@ -87,6 +88,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   const modifiedFileInputRef = useRef<HTMLInputElement>(null);
   const { selectedProject } = useProject();
   const _t = useTranslation(getStoredLanguage());
+  const { colors } = useTheme();
 
   // Code Adjustments Access State (Premium Feature)
   const [codeAdjustmentsAccess, setCodeAdjustmentsAccess] = useState<{
@@ -631,7 +633,19 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           detail: isNew ? 'Insertion added' : 'Insertion updated',
         });
         setShowInsertionDialog(false);
-        loadAdjustments();
+        // Reload adjustments and update selectedAdjustment with fresh data
+        const adjResponse = await fetch(`/api/projects/${selectedProject.id}/code-adjustments`, {
+          headers: getAuthHeaders(),
+        });
+        const adjData = await adjResponse.json();
+        if (adjData.success) {
+          setAdjustments(adjData.data);
+          // Update selectedAdjustment to the fresh version with same ID
+          const updatedAdjustment = adjData.data.find((a: CodeAdjustment) => a.id === selectedAdjustment.id);
+          if (updatedAdjustment) {
+            setSelectedAdjustment(updatedAdjustment);
+          }
+        }
       }
     } catch (error) {
       console.error('Save insertion error:', error);
@@ -1117,7 +1131,6 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
           if (!analyzeData.success || !analyzeData.data.insertions || analyzeData.data.insertions.length === 0) {
             // No insertions found or analysis failed, skip
-            console.log(`[BATCH] No insertions for ${file.path}`);
             continue;
           }
 
@@ -1148,7 +1161,6 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
           if (createData.success) {
             successCount++;
-            console.log(`[BATCH] Created adjustment for ${file.path}`);
           } else {
             errorCount++;
             console.error(`[BATCH] Failed to create adjustment for ${file.path}:`, createData.message);
@@ -1351,8 +1363,8 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
   if (!selectedProject) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-gray-500">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
+        <div className="text-center" style={{ color: colors.textMuted }}>
           <i className="pi pi-folder-open text-4xl mb-2" />
           <p>Please select a project first</p>
         </div>
@@ -1364,7 +1376,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
   if (loadingAccess) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <ProgressSpinner />
       </div>
     );
@@ -1374,13 +1386,13 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
   if (!codeAdjustmentsAccess?.has_access) {
     return (
-      <div className="h-full flex flex-col bg-gray-900 text-white">
+      <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         <Toast ref={toast} />
 
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-gray-700">
+        <div className="flex items-center justify-between p-3" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>
           <div className="flex items-center gap-2">
-            <i className="pi pi-sliders-h text-xl text-blue-400" />
+            <i className="pi pi-sliders-h text-xl" style={{ color: colors.accent }} />
             <h2 className="text-lg font-semibold">Code Anpassungen</h2>
             <Tag value={selectedProject.name} severity="info" />
           </div>
@@ -1389,20 +1401,20 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         {/* Premium Banner */}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="max-w-md w-full">
-            <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+            <div className="rounded-lg p-6 text-center" style={{ backgroundColor: colors.infoBg, borderWidth: '2px', borderStyle: 'solid', borderColor: colors.accent }}>
               <div className="text-4xl mb-4">🔒</div>
-              <h3 className="text-xl font-semibold text-purple-200 mb-2">
+              <h3 className="text-xl font-semibold mb-2" style={{ color: colors.infoText }}>
                 Code Anpassungen ist ein Premium-Feature
               </h3>
-              <p className="text-gray-400 mb-4">
+              <p className="mb-4" style={{ color: colors.textMuted }}>
                 Mit Code Anpassungen können Sie automatisch eigene Modifikationen in den generierten Code einfügen.
               </p>
 
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
-                <div className="text-2xl font-bold text-purple-300 mb-1">
+              <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgTertiary }}>
+                <div className="text-2xl font-bold mb-1" style={{ color: colors.accent }}>
                   {codeAdjustmentsAccess?.unlock_cost || 50} Credits / Jahr
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm" style={{ color: colors.textMuted }}>
                   Einmalige Freischaltung für 12 Monate
                 </div>
               </div>
@@ -1420,19 +1432,19 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 loading={unlocking}
               />
 
-              <div className="mt-4 text-sm text-gray-500">
-                <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+              <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
+                <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                 <ul className="text-left space-y-1">
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
                     <span>📝</span> Einzelcode Vergleich
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
                     <span>📁</span> Verzeichnis Vergleich
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
                     <span>⚙️</span> Verwaltung von Anpassungen
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
                     <span>🔄</span> Automatische Anwendung bei Generierung
                   </li>
                 </ul>
@@ -1447,14 +1459,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   // ========== MAIN RENDER (WITH ACCESS) ==========
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <Toast ref={toast} />
       <ConfirmDialog />
 
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-700">
+      <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>
         <div className="flex items-center gap-2">
-          <i className="pi pi-sliders-h text-xl text-blue-400" />
+          <i className="pi pi-sliders-h text-xl" style={{ color: colors.accent }} />
           <h2 className="text-lg font-semibold">Code Anpassungen</h2>
           <Tag value={selectedProject.name} severity="info" />
           {/* Access Status Badge */}
@@ -1504,19 +1516,39 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       <TabView
         activeIndex={activeTabIndex}
         onTabChange={(e) => setActiveTabIndex(e.index)}
-        className="flex-1 flex flex-col"
+        className="flex-1 flex flex-col themed-tabview overflow-hidden"
+        style={{
+          backgroundColor: colors.bgPrimary,
+          minHeight: 0,
+          ['--theme-bg-primary' as string]: colors.bgPrimary,
+          ['--theme-bg-secondary' as string]: colors.bgSecondary,
+          ['--theme-bg-tertiary' as string]: colors.bgTertiary,
+          ['--theme-border-primary' as string]: colors.borderPrimary,
+          ['--theme-text-primary' as string]: colors.textPrimary,
+          ['--theme-text-secondary' as string]: colors.textSecondary,
+        }}
       >
         {/* Tab 1: Management */}
-        <TabPanel header="Verwaltung" leftIcon="pi pi-list mr-2">
+        <TabPanel header="Verwaltung" leftIcon="pi pi-list mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           {loading ? (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-64" style={{ backgroundColor: colors.bgPrimary }}>
               <ProgressSpinner />
             </div>
           ) : (
-            <Splitter className="h-full" style={{ minHeight: '400px' }}>
+            <Splitter
+              className="h-full themed-splitter"
+              style={{
+                minHeight: '400px',
+                backgroundColor: colors.bgPrimary,
+                border: 'none',
+                ['--theme-bg-primary' as string]: colors.bgPrimary,
+                ['--theme-bg-secondary' as string]: colors.bgSecondary,
+                ['--theme-border-secondary' as string]: colors.borderSecondary,
+              }}
+            >
               {/* Left: Adjustments List */}
-              <SplitterPanel size={35} minSize={20}>
-                <div className="p-2">
+              <SplitterPanel size={35} minSize={20} style={{ backgroundColor: colors.bgPrimary, display: 'flex', flexDirection: 'column' }}>
+                <div className="p-2 flex-1 overflow-auto" style={{ backgroundColor: colors.bgPrimary }}>
                   <DataTable
                     value={adjustments}
                     selection={selectedAdjustment}
@@ -1526,7 +1558,18 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     scrollHeight="flex"
                     emptyMessage="Keine Anpassungen vorhanden"
                     size="small"
-                    className="text-sm"
+                    paginator
+                    rows={10}
+                    rowsPerPageOptions={[5, 10, 25]}
+                    className="text-sm themed-datatable"
+                    style={{
+                      backgroundColor: colors.bgSecondary,
+                      ['--dt-bg' as string]: colors.bgSecondary,
+                      ['--dt-header-bg' as string]: colors.bgTertiary,
+                      ['--dt-border' as string]: colors.borderPrimary,
+                      ['--dt-text' as string]: colors.textPrimary,
+                      ['--dt-text-secondary' as string]: colors.textSecondary,
+                    }}
                   >
                     <Column
                       field="is_active"
@@ -1546,7 +1589,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       header="Datei-Pattern"
                       style={{ maxWidth: '150px' }}
                       body={(row: CodeAdjustment) => (
-                        <span className="text-xs font-mono text-gray-400">{row.file_pattern}</span>
+                        <span className="text-xs font-mono" style={{ color: colors.textMuted }}>{row.file_pattern}</span>
                       )}
                     />
                     <Column
@@ -1584,23 +1627,27 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               </SplitterPanel>
 
               {/* Right: Details */}
-              <SplitterPanel size={65} minSize={30}>
-                <div className="p-3">
+              <SplitterPanel size={65} minSize={30} style={{ backgroundColor: colors.bgPrimary, display: 'flex', flexDirection: 'column' }}>
+                <div className="p-3 flex-1 overflow-auto" style={{ backgroundColor: colors.bgPrimary }}>
                   {selectedAdjustment ? (
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-semibold">{selectedAdjustment.name}</h3>
+                        <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{selectedAdjustment.name}</h3>
                         <Button
                           label="Insertion hinzufugen"
                           icon="pi pi-plus"
                           size="small"
                           onClick={() => {
+                            // Get next order: max existing order + 1, or 0 if no insertions
+                            const maxOrder = selectedAdjustment.insertions && selectedAdjustment.insertions.length > 0
+                              ? Math.max(...selectedAdjustment.insertions.map(ins => ins.insertion_order))
+                              : -1;
                             setEditingInsertion({
                               insertion_type: 'middle',
                               anchor_text: '',
                               insertion_content: '',
                               line_offset: 0,
-                              insertion_order: selectedAdjustment.insertions?.length || 0,
+                              insertion_order: maxOrder + 1,
                             });
                             setShowInsertionDialog(true);
                           }}
@@ -1608,10 +1655,10 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       </div>
 
                       {/* Meta info */}
-                      <div className="grid grid-cols-3 gap-2 mb-4 text-sm text-gray-400">
+                      <div className="grid grid-cols-3 gap-2 mb-4 text-sm" style={{ color: colors.textMuted }}>
                         <div>
                           <span className="font-medium">Pattern:</span>{' '}
-                          <code className="text-blue-300">{selectedAdjustment.file_pattern}</code>
+                          <code style={{ color: colors.accent }}>{selectedAdjustment.file_pattern}</code>
                         </div>
                         <div>
                           <span className="font-medium">Confidence:</span>{' '}
@@ -1628,6 +1675,18 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                         value={selectedAdjustment.insertions || []}
                         emptyMessage="Keine Insertions"
                         size="small"
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25]}
+                        className="themed-datatable"
+                        style={{
+                          ['--dt-bg' as string]: colors.bgSecondary,
+                          ['--dt-header-bg' as string]: colors.bgTertiary,
+                          ['--dt-border' as string]: colors.borderPrimary,
+                          ['--dt-text' as string]: colors.textPrimary,
+                          ['--dt-text-secondary' as string]: colors.textSecondary,
+                          ['--theme-accent' as string]: colors.accent,
+                        }}
                       >
                         <Column
                           field="insertion_type"
@@ -1639,7 +1698,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                           field="anchor_text"
                           header="Anker"
                           body={(row: CodeAdjustmentInsertion) => (
-                            <pre className="text-xs bg-gray-800 p-1 rounded max-h-16 overflow-auto">
+                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                               {row.anchor_text.substring(0, 100)}
                               {row.anchor_text.length > 100 && '...'}
                             </pre>
@@ -1649,7 +1708,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                           field="insertion_content"
                           header="Code"
                           body={(row: CodeAdjustmentInsertion) => (
-                            <pre className="text-xs bg-gray-800 p-1 rounded max-h-16 overflow-auto text-green-300">
+                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                               {row.insertion_content.substring(0, 100)}
                               {row.insertion_content.length > 100 && '...'}
                             </pre>
@@ -1682,7 +1741,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       </DataTable>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="flex items-center justify-center h-64" style={{ color: colors.textMuted }}>
                       <div className="text-center">
                         <i className="pi pi-arrow-left text-3xl mb-2" />
                         <p>Wahle eine Anpassung aus der Liste</p>
@@ -1696,7 +1755,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         </TabPanel>
 
         {/* Tab 2: Einzelcode Vergleich */}
-        <TabPanel header="Einzelcode Vergleich" leftIcon="pi pi-file mr-2">
+        <TabPanel header="Einzelcode Vergleich" leftIcon="pi pi-file mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           <div className="p-4">
             {/* Hidden file inputs */}
             <input
@@ -1716,14 +1775,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             {/* Quick File Selector from Generation */}
             {generations.length > 0 && (
-              <div className="border border-gray-700 rounded p-3 mb-4 bg-gray-800/50">
+              <div className="rounded p-3 mb-4" style={{ backgroundColor: colors.bgSecondary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center gap-2 mb-2">
-                  <i className="pi pi-bolt text-yellow-400" />
+                  <i className="pi pi-bolt" style={{ color: colors.warningText }} />
                   <span className="text-sm font-medium">Schnellauswahl aus Generierung</span>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Generierung</label>
+                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Generierung</label>
                     <Dropdown
                       value={selectedGenerationId}
                       options={generations.map(g => ({
@@ -1740,7 +1799,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-gray-400 mb-1">Datei aus Archiv</label>
+                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Datei aus Archiv</label>
                     <Dropdown
                       value={selectedFilePath}
                       options={generationFiles.map(f => ({
@@ -1775,7 +1834,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-1">
                   Datei-Pattern
-                  <span className="text-gray-400 text-xs ml-2">(%1 = Tabellenname, %2 = Sprache)</span>
+                  <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname, %2 = Sprache)</span>
                 </label>
                 <InputText
                   value={analysisFilename}
@@ -1837,7 +1896,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             {/* Analysis Results */}
             {analysisResult && (
-              <div className="border border-gray-700 rounded p-4">
+              <div className="rounded p-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold">Analyse-Ergebnis</h4>
                   <div className="flex items-center gap-4">
@@ -1856,30 +1915,42 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 </div>
 
                 <div className="grid grid-cols-5 gap-2 mb-4 text-sm">
-                  <div className="bg-gray-800 p-2 rounded text-center">
-                    <div className="text-gray-400">Template</div>
+                  <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div style={{ color: colors.textMuted }}>Template</div>
                     <div className="text-lg">{analysisResult.analysis.template_lines}</div>
                   </div>
-                  <div className="bg-gray-800 p-2 rounded text-center">
-                    <div className="text-gray-400">Modified</div>
+                  <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div style={{ color: colors.textMuted }}>Modified</div>
                     <div className="text-lg">{analysisResult.analysis.modified_lines}</div>
                   </div>
-                  <div className="bg-gray-800 p-2 rounded text-center">
-                    <div className="text-gray-400">Common</div>
-                    <div className="text-lg text-green-400">{analysisResult.analysis.common_lines}</div>
+                  <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div style={{ color: colors.textMuted }}>Common</div>
+                    <div className="text-lg" style={{ color: colors.successText }}>{analysisResult.analysis.common_lines}</div>
                   </div>
-                  <div className="bg-gray-800 p-2 rounded text-center">
-                    <div className="text-gray-400">Added</div>
-                    <div className="text-lg text-blue-400">{analysisResult.analysis.added_lines}</div>
+                  <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div style={{ color: colors.textMuted }}>Added</div>
+                    <div className="text-lg" style={{ color: colors.accent }}>{analysisResult.analysis.added_lines}</div>
                   </div>
-                  <div className="bg-gray-800 p-2 rounded text-center">
-                    <div className="text-gray-400">Removed</div>
-                    <div className="text-lg text-red-400">{analysisResult.analysis.removed_lines}</div>
+                  <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div style={{ color: colors.textMuted }}>Removed</div>
+                    <div className="text-lg" style={{ color: colors.errorText }}>{analysisResult.analysis.removed_lines}</div>
                   </div>
                 </div>
 
                 {analysisResult.insertions.length > 0 ? (
-                  <DataTable value={analysisResult.insertions} size="small">
+                  <DataTable
+                    value={analysisResult.insertions}
+                    size="small"
+                    className="themed-datatable"
+                    style={{
+                      ['--dt-bg' as string]: colors.bgSecondary,
+                      ['--dt-header-bg' as string]: colors.bgTertiary,
+                      ['--dt-border' as string]: colors.borderPrimary,
+                      ['--dt-text' as string]: colors.textPrimary,
+                      ['--dt-text-secondary' as string]: colors.textSecondary,
+                      ['--theme-accent' as string]: colors.accent,
+                    }}
+                  >
                     <Column
                       field="insertion_type"
                       header="Typ"
@@ -1890,7 +1961,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       field="anchor_text"
                       header="Anker-Text"
                       body={(row) => (
-                        <pre className="text-xs bg-gray-800 p-1 rounded max-h-12 overflow-auto">
+                        <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                           {row.anchor_text.substring(0, 80)}
                           {row.anchor_text.length > 80 && '...'}
                         </pre>
@@ -1900,7 +1971,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       field="insertion_content"
                       header="Einzufügender Code"
                       body={(row) => (
-                        <pre className="text-xs bg-gray-800 p-1 rounded max-h-12 overflow-auto text-green-300">
+                        <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                           {row.insertion_content.substring(0, 100)}
                           {row.insertion_content.length > 100 && '...'}
                         </pre>
@@ -1909,7 +1980,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     <Column field="line_count" header="Zeilen" style={{ width: '70px' }} />
                   </DataTable>
                 ) : (
-                  <div className="text-center text-gray-500 py-4">
+                  <div className="text-center py-4" style={{ color: colors.textMuted }}>
                     Keine Änderungen erkannt
                   </div>
                 )}
@@ -1919,7 +1990,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         </TabPanel>
 
         {/* Tab 3: Verzeichnis Vergleich */}
-        <TabPanel header="Verzeichnis Vergleich" leftIcon="pi pi-folder mr-2">
+        <TabPanel header="Verzeichnis Vergleich" leftIcon="pi pi-folder mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             {/* Hidden file input for archive */}
             <input
@@ -1931,10 +2002,10 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             />
 
             {/* Generation Selection */}
-            <div className="border border-gray-700 rounded p-3 mb-4 bg-gray-800/50">
+            <div className="rounded p-3 mb-4" style={{ backgroundColor: colors.bgSecondary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <i className="pi pi-database text-blue-400" />
+                  <i className="pi pi-database" style={{ color: colors.accent }} />
                   <span className="text-sm font-medium">Referenz-Generierung (Original)</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -1961,22 +2032,22 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             </div>
 
             {/* Source Selection */}
-            <div className="border border-gray-700 rounded p-4 mb-4">
+            <div className="rounded p-4 mb-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
               <h5 className="font-semibold mb-3">Quelle für modifizierte Dateien</h5>
               <div className="flex gap-4">
                 <div
-                  className={`flex-1 p-4 rounded border-2 cursor-pointer transition-all ${
-                    directorySource === 'upload'
-                      ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-gray-600 hover:border-gray-500'
-                  }`}
+                  className="flex-1 p-4 rounded border-2 cursor-pointer transition-all"
+                  style={{
+                    borderColor: directorySource === 'upload' ? colors.accent : colors.borderSecondary,
+                    backgroundColor: directorySource === 'upload' ? `${colors.accent}15` : 'transparent'
+                  }}
                   onClick={() => setDirectorySource('upload')}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <i className="pi pi-upload text-xl text-blue-400" />
+                    <i className="pi pi-upload text-xl" style={{ color: colors.accent }} />
                     <span className="font-medium">Archiv hochladen</span>
                   </div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm" style={{ color: colors.textMuted }}>
                     ZIP, tar.gz oder tar.xz
                   </p>
                   {directorySource === 'upload' && (
@@ -1994,34 +2065,34 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 </div>
 
                 <div
-                  className={`flex-1 p-4 rounded border-2 cursor-pointer transition-all ${
-                    directorySource === 'service'
-                      ? 'border-green-500 bg-green-500/10'
-                      : 'border-gray-600 hover:border-gray-500'
-                  }`}
+                  className="flex-1 p-4 rounded border-2 cursor-pointer transition-all"
+                  style={{
+                    borderColor: directorySource === 'service' ? colors.successText : colors.borderSecondary,
+                    backgroundColor: directorySource === 'service' ? `${colors.successText}15` : 'transparent'
+                  }}
                   onClick={() => setDirectorySource('service')}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <i className="pi pi-server text-xl text-green-400" />
+                    <i className="pi pi-server text-xl" style={{ color: colors.successText }} />
                     <span className="font-medium">Vom Service</span>
                   </div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm" style={{ color: colors.textMuted }}>
                     Scoriet-Service
                   </p>
                   {directorySource === 'service' && (
-                    <div className="mt-3 text-xs text-yellow-400">
+                    <div className="mt-3 text-xs text-yellow-700">
                       <i className="pi pi-info-circle mr-1" />
-                      Erfordert laufenden Service
+                      Bitte starten Sie das lokale Service dafür
                     </div>
                   )}
                 </div>
 
                 <div
-                  className={`flex-1 p-4 rounded border-2 cursor-pointer transition-all ${
-                    directorySource === 'git'
-                      ? 'border-purple-500 bg-purple-500/10'
-                      : 'border-gray-600 hover:border-gray-500'
-                  }`}
+                  className="flex-1 p-4 rounded border-2 cursor-pointer transition-all"
+                  style={{
+                    borderColor: directorySource === 'git' ? '#9333ea' : colors.borderSecondary,
+                    backgroundColor: directorySource === 'git' ? 'rgba(147, 51, 234, 0.1)' : 'transparent'
+                  }}
                   onClick={() => {
                     setDirectorySource('git');
                     if (gitProviders.length === 0) {
@@ -2030,16 +2101,16 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   }}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <i className="pi pi-github text-xl text-purple-400" />
+                    <i className="pi pi-github text-xl" style={{ color: '#a855f7' }} />
                     <span className="font-medium">GitHub/GitLab</span>
                   </div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm" style={{ color: colors.textMuted }}>
                     Aus Git-Repository
                   </p>
                   {directorySource === 'git' && (
                     <div className="mt-3 space-y-2">
                       {loadingGitProviders ? (
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <div className="flex items-center gap-2 text-xs" style={{ color: colors.textMuted }}>
                           <ProgressSpinner style={{ width: '16px', height: '16px' }} />
                           Lade Provider...
                         </div>
@@ -2128,7 +2199,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             {/* Comparison Results */}
             {directoryCompareResult && (
-              <div className="border border-gray-700 rounded p-4">
+              <div className="rounded p-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center justify-between mb-4">
                   <h5 className="font-semibold">Vergleichsergebnis</h5>
                   <div className="flex gap-3 text-sm">
@@ -2148,6 +2219,15 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     selectionMode="single"
                     selection={directoryCompareResult.files.find(f => f.path === selectedCompareFile)}
                     onSelectionChange={(e) => setSelectedCompareFile((e.value as any)?.path || null)}
+                    className="themed-datatable"
+                    style={{
+                      ['--dt-bg' as string]: colors.bgSecondary,
+                      ['--dt-header-bg' as string]: colors.bgTertiary,
+                      ['--dt-border' as string]: colors.borderPrimary,
+                      ['--dt-text' as string]: colors.textPrimary,
+                      ['--dt-text-secondary' as string]: colors.textSecondary,
+                      ['--theme-accent' as string]: colors.accent,
+                    }}
                   >
                     <Column
                       field="status"
@@ -2183,16 +2263,16 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     />
                   </DataTable>
                 ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <i className="pi pi-check-circle text-4xl text-green-500 mb-2" />
+                  <div className="text-center py-8" style={{ color: colors.textMuted }}>
+                    <i className="pi pi-check-circle text-4xl mb-2" style={{ color: colors.successText }} />
                     <p>Keine Änderungen gefunden - alle Dateien sind identisch</p>
                   </div>
                 )}
 
                 {/* Batch create adjustments button - only show when there are modified files */}
                 {directoryCompareResult.files.filter(f => f.status === 'modified').length > 0 && (
-                  <div className="mt-4 flex items-center justify-between border-t border-gray-700 pt-4">
-                    <div className="text-sm text-gray-400">
+                  <div className="mt-4 flex items-center justify-between pt-4" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: colors.borderPrimary }}>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>
                       {batchProgress ? (
                         <span className="flex items-center gap-2">
                           <i className="pi pi-spin pi-spinner" />
@@ -2218,7 +2298,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             {/* Help text when no comparison done yet */}
             {!directoryCompareResult && !comparingDirectory && (
-              <div className="text-center text-gray-500 py-8 border border-dashed border-gray-700 rounded">
+              <div className="text-center py-8 rounded" style={{ color: colors.textMuted, borderWidth: '1px', borderStyle: 'dashed', borderColor: colors.borderPrimary }}>
                 <i className="pi pi-folder-open text-4xl mb-3" />
                 <p className="mb-2">Vergleichen Sie ein ganzes Projekt-Verzeichnis</p>
                 <p className="text-sm">
@@ -2248,14 +2328,21 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <label className="block text-sm font-medium mb-1">Name</label>
             <InputText
               value={editingAdjustment.name || ''}
-              onChange={(e) => setEditingAdjustment({ ...editingAdjustment, name: e.target.value })}
+              onChange={(e) => {
+                // Sanitize: only allow lowercase letters, numbers, and underscores
+                const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                setEditingAdjustment({ ...editingAdjustment, name: sanitized });
+              }}
               className="w-full"
             />
+            <small className="mt-1 block" style={{ color: colors.textMuted }}>
+              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+            </small>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
               Datei-Pattern
-              <span className="text-gray-400 text-xs ml-2">(%1 = Tabellenname, %2 = Sprache)</span>
+              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname, %2 = Sprache)</span>
             </label>
             <InputText
               value={editingAdjustment.file_pattern || ''}
@@ -2320,7 +2407,12 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               <Dropdown
                 value={editingInsertion.insertion_type}
                 options={insertionTypeOptions}
-                onChange={(e) => setEditingInsertion({ ...editingInsertion, insertion_type: e.value })}
+                onChange={(e) => setEditingInsertion({
+                  ...editingInsertion,
+                  insertion_type: e.value,
+                  // Clear anchor_text when switching to 'beginning' type
+                  anchor_text: e.value === 'beginning' ? '' : editingInsertion.anchor_text
+                })}
                 className="w-full"
               />
             </div>
@@ -2345,20 +2437,27 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           <div>
             <label className="block text-sm font-medium mb-1">
               Anker-Text
-              <span className="text-gray-400 text-xs ml-2">(Code zum Finden der Position)</span>
+              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
+                {editingInsertion.insertion_type === 'beginning'
+                  ? '(optional - wird am Dateianfang eingefügt)'
+                  : '(Code zum Finden der Position)'}
+              </span>
             </label>
             <InputTextarea
               value={editingInsertion.anchor_text || ''}
               onChange={(e) => setEditingInsertion({ ...editingInsertion, anchor_text: e.target.value })}
               rows={4}
               className="w-full font-mono text-sm"
-              placeholder="Der Code, nach dem eingefugt werden soll..."
+              placeholder={editingInsertion.insertion_type === 'beginning'
+                ? 'Optional - leer lassen für Dateianfang'
+                : 'Der Code, nach dem eingefugt werden soll...'}
+              disabled={editingInsertion.insertion_type === 'beginning'}
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
               Einzufugender Code
-              <span className="text-gray-400 text-xs ml-2">
+              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
                 (Variablen: {Object.keys(availableVariables).join(', ')})
               </span>
             </label>
@@ -2407,15 +2506,22 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               <label className="block text-sm font-medium mb-1">Name *</label>
               <InputText
                 value={newAdjustmentData.name}
-                onChange={(e) => setNewAdjustmentData({ ...newAdjustmentData, name: e.target.value })}
+                onChange={(e) => {
+                  // Sanitize: only allow lowercase letters, numbers, and underscores
+                  const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                  setNewAdjustmentData({ ...newAdjustmentData, name: sanitized });
+                }}
                 className="w-full"
-                placeholder="z.B. User-Funktion in table_user.php"
+                placeholder="z.B. user_function_in_table_user"
               />
+              <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                Only lowercase letters (a-z), numbers (0-9), underscores (_)
+              </small>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">
                 Datei-Pattern
-                <span className="text-gray-400 text-xs ml-2">(%1 = Tabellenname)</span>
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname)</span>
               </label>
               <InputText
                 value={newAdjustmentData.file_pattern}
@@ -2436,7 +2542,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           </div>
 
           {/* Insertions List */}
-          <div className="border border-gray-700 rounded p-3">
+          <div className="rounded p-3" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-semibold">
                 Einfügungen ({editableInsertions.length})
@@ -2451,7 +2557,19 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             </div>
 
             {editableInsertions.length > 0 ? (
-              <DataTable value={editableInsertions} size="small">
+              <DataTable
+                value={editableInsertions}
+                size="small"
+                className="themed-datatable"
+                style={{
+                  ['--dt-bg' as string]: colors.bgSecondary,
+                  ['--dt-header-bg' as string]: colors.bgTertiary,
+                  ['--dt-border' as string]: colors.borderPrimary,
+                  ['--dt-text' as string]: colors.textPrimary,
+                  ['--dt-text-secondary' as string]: colors.textSecondary,
+                  ['--theme-accent' as string]: colors.accent,
+                }}
+              >
                 <Column
                   field="insertion_type"
                   header="Typ"
@@ -2462,7 +2580,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   field="anchor_text"
                   header="Anker-Text"
                   body={(row) => (
-                    <pre className="text-xs bg-gray-800 p-1 rounded max-h-10 overflow-auto">
+                    <pre className="text-xs p-1 rounded max-h-10 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                       {row.anchor_text.substring(0, 60)}
                       {row.anchor_text.length > 60 && '...'}
                     </pre>
@@ -2472,7 +2590,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   field="insertion_content"
                   header="Einzufügender Code"
                   body={(row) => (
-                    <pre className="text-xs bg-gray-800 p-1 rounded max-h-10 overflow-auto text-green-300">
+                    <pre className="text-xs p-1 rounded max-h-10 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                       {row.insertion_content.substring(0, 80)}
                       {row.insertion_content.length > 80 && '...'}
                     </pre>
@@ -2503,7 +2621,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 />
               </DataTable>
             ) : (
-              <div className="text-center text-gray-500 py-4">
+              <div className="text-center py-4" style={{ color: colors.textMuted }}>
                 Keine Einfügungen. Klicken Sie auf "Neue Einfügung" um eine hinzuzufügen.
               </div>
             )}
@@ -2561,7 +2679,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <div>
               <label className="block text-sm font-medium mb-1">
                 Anker-Text *
-                <span className="text-gray-400 text-xs ml-2">(Code zum Finden der Position)</span>
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(Code zum Finden der Position)</span>
               </label>
               <InputTextarea
                 value={editingAnalysisInsertion.anchor_text}
@@ -2575,7 +2693,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <div>
               <label className="block text-sm font-medium mb-1">
                 Einzufügender Code *
-                <span className="text-gray-400 text-xs ml-2">
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
                   (Variablen: {Object.keys(availableVariables).join(', ')})
                 </span>
               </label>
@@ -2666,45 +2784,45 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <label className="block text-sm font-medium mb-2">Import-Modus</label>
             <div className="flex flex-col gap-2">
               <div
-                className={`p-3 rounded border-2 cursor-pointer transition-all ${
-                  importMode === 'merge'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
+                className="p-3 rounded border-2 cursor-pointer transition-all"
+                style={{
+                  borderColor: importMode === 'merge' ? colors.accent : colors.borderSecondary,
+                  backgroundColor: importMode === 'merge' ? `${colors.accent}15` : 'transparent'
+                }}
                 onClick={() => setImportMode('merge')}
               >
                 <div className="flex items-center gap-2">
-                  <i className={`pi ${importMode === 'merge' ? 'pi-check-circle text-blue-400' : 'pi-circle text-gray-500'}`} />
+                  <i className={`pi ${importMode === 'merge' ? 'pi-check-circle' : 'pi-circle'}`} style={{ color: importMode === 'merge' ? colors.accent : colors.textMuted }} />
                   <span className="font-medium">Zusammenführen (Merge)</span>
                 </div>
-                <p className="text-sm text-gray-400 mt-1 ml-6">
+                <p className="text-sm mt-1 ml-6" style={{ color: colors.textMuted }}>
                   Fügt nur neue Anpassungen hinzu. Bestehende werden übersprungen.
                 </p>
               </div>
 
               <div
-                className={`p-3 rounded border-2 cursor-pointer transition-all ${
-                  importMode === 'replace'
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
+                className="p-3 rounded border-2 cursor-pointer transition-all"
+                style={{
+                  borderColor: importMode === 'replace' ? colors.warningText : colors.borderSecondary,
+                  backgroundColor: importMode === 'replace' ? `${colors.warningText}15` : 'transparent'
+                }}
                 onClick={() => setImportMode('replace')}
               >
                 <div className="flex items-center gap-2">
-                  <i className={`pi ${importMode === 'replace' ? 'pi-check-circle text-orange-400' : 'pi-circle text-gray-500'}`} />
+                  <i className={`pi ${importMode === 'replace' ? 'pi-check-circle' : 'pi-circle'}`} style={{ color: importMode === 'replace' ? colors.warningText : colors.textMuted }} />
                   <span className="font-medium">Ersetzen (Replace)</span>
                 </div>
-                <p className="text-sm text-gray-400 mt-1 ml-6">
-                  <span className="text-orange-400">Achtung:</span> Löscht alle bestehenden Anpassungen und ersetzt sie durch die importierten.
+                <p className="text-sm mt-1 ml-6" style={{ color: colors.textMuted }}>
+                  <span style={{ color: colors.warningText }}>Achtung:</span> Löscht alle bestehenden Anpassungen und ersetzt sie durch die importierten.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Info */}
-          <div className="bg-gray-800/50 rounded p-3 text-sm text-gray-400">
+          <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, color: colors.textMuted }}>
             <div className="flex items-start gap-2">
-              <i className="pi pi-info-circle text-blue-400 mt-0.5" />
+              <i className="pi pi-info-circle mt-0.5" style={{ color: colors.accent }} />
               <div>
                 <p>Importierte Anpassungen werden dem aktuellen Projekt zugeordnet.</p>
                 <p className="mt-1">Sie können Anpassungen zwischen Projekten teilen, indem Sie sie exportieren und in einem anderen Projekt importieren.</p>

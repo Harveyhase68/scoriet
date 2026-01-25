@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
-import { confirmDialog } from 'primereact/confirmdialog';
-import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useToast } from '@/contexts/ToastContext';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -12,6 +10,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
 import { MultiSelect } from 'primereact/multiselect';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FormSet {
     id: number;
@@ -48,6 +47,7 @@ const getAuthHeaders = () => {
 const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenPanel }) => {
     const { selectedProject } = useProject();
     const toast = useToast();
+    const { colors } = useTheme();
 
     // Get current user ID for permission checks
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
@@ -72,6 +72,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [savingLink, setSavingLink] = useState(false);
+
+    // Delete Modal State
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [formSetToDelete, setFormSetToDelete] = useState<FormSet | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleting, setDeleting] = useState(false);
 
     // Load data on mount
     useEffect(() => {
@@ -254,33 +260,52 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         onOpenPanel?.('form-designer', { formSetId: formSet.id, title: `Form Designer: ${formSet.name}` });
     };
 
-    // Delete FormSet
+    // Delete FormSet - Show custom dialog with DELETE confirmation
     const handleDelete = (formSet: FormSet) => {
-        confirmDialog({
-            message: `Möchten Sie das FormSet "${formSet.name}" wirklich löschen? Alle Fenster und Elemente werden ebenfalls gelöscht.`,
-            header: 'FormSet löschen',
-            icon: 'pi pi-exclamation-triangle',
-            acceptClassName: 'p-button-danger',
-            acceptLabel: 'Ja, löschen',
-            rejectLabel: 'Abbrechen',
-            accept: async () => {
-                try {
-                    const response = await fetch(`/api/form-sets/${formSet.id}`, {
-                        method: 'DELETE',
-                        headers: getAuthHeaders(),
-                    });
-                    if (response.ok) {
-                        toast.showSuccess('FormSet erfolgreich gelöscht');
-                        loadMyFormSets();
-                    } else {
-                        toast.showError('Fehler beim Löschen');
-                    }
-                } catch (error) {
-                    console.error('Error deleting FormSet:', error);
-                    toast.showError('Netzwerkfehler beim Löschen');
-                }
-            },
-        });
+        setFormSetToDelete(formSet);
+        setDeleteConfirmText('');
+        setDeleteModalVisible(true);
+    };
+
+    // Execute FormSet deletion
+    const executeDelete = async () => {
+        if (!formSetToDelete) return;
+
+        if (deleteConfirmText !== 'DELETE') {
+            toast.showError('Geben Sie DELETE ein um zu bestätigen');
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            const response = await fetch(`/api/form-sets/${formSetToDelete.id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders(),
+            });
+            if (response.ok) {
+                toast.showSuccess('FormSet erfolgreich gelöscht');
+                setDeleteModalVisible(false);
+                setFormSetToDelete(null);
+                setDeleteConfirmText('');
+                loadMyFormSets();
+            } else {
+                toast.showError('Fehler beim Löschen');
+            }
+        } catch (error) {
+            console.error('Error deleting FormSet:', error);
+            toast.showError('Netzwerkfehler beim Löschen');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    // Close delete modal
+    const handleDeleteModalHide = () => {
+        if (!deleting) {
+            setDeleteModalVisible(false);
+            setFormSetToDelete(null);
+            setDeleteConfirmText('');
+        }
     };
 
     // Quick link to current project
@@ -311,7 +336,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
     // Visibility tag renderer
     const visibilityBodyTemplate = (formSet: FormSet) => {
-        const colors: Record<string, string> = {
+        const visibilityColors: Record<string, string> = {
             'private': 'bg-gray-500',
             'team': 'bg-blue-500',
             'public': 'bg-green-500',
@@ -322,7 +347,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             'public': 'Öffentlich',
         };
         return (
-            <span className={`px-2 py-1 ${colors[formSet.visibility] || 'bg-gray-500'} text-white rounded text-xs`}>
+            <span className={`px-2 py-1 ${visibilityColors[formSet.visibility] || 'bg-gray-500'} text-white rounded text-xs`}>
                 {labels[formSet.visibility] || formSet.visibility}
             </span>
         );
@@ -348,11 +373,10 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     };
 
     return (
-        <div className="p-4 h-full overflow-auto bg-gray-800">
-            <ConfirmDialog />
+        <div className="formset-management-panel p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
 
             {/* MY FORMSETS TABLE */}
-            <Card title="Meine FormSets" className="mb-4">
+            <Card title="Meine FormSets" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                         <Dropdown
@@ -366,6 +390,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             onChange={(e) => setMyVisibilityFilter(e.value)}
                             placeholder="Sichtbarkeit"
                             className="w-40"
+                            panelClassName="formset-dropdown-panel"
                         />
                         <InputText
                             value={mySearchTerm}
@@ -435,7 +460,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             </Card>
 
             {/* PUBLIC FORMSETS TABLE */}
-            <Card title="System & Öffentliche FormSets" className="mb-4">
+            <Card title="System & Öffentliche FormSets" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                         <InputText
@@ -495,11 +520,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 header={`"${formSetToLink?.name}" mit Projekten verknüpfen`}
                 style={{ width: '500px' }}
                 modal
-                contentStyle={{ backgroundColor: '#1f2937', color: 'white' }}
-                headerStyle={{ backgroundColor: '#111827', color: 'white', border: 'none' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+                className="formset-link-modal"
             >
                 <div className="space-y-4">
-                    <p className="text-gray-300 text-sm">
+                    <p className="text-sm" style={{ color: colors.textMuted }}>
                         Wählen Sie die Projekte aus, mit denen dieses FormSet verknüpft werden soll.
                     </p>
 
@@ -514,9 +540,10 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         filter
                         filterPlaceholder="Suchen..."
                         emptyMessage="Keine Projekte gefunden"
+                        panelClassName="formset-multiselect-panel"
                     />
 
-                    <div className="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                    <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <Button
                             label="Abbrechen"
                             className="p-button-secondary"
@@ -533,6 +560,285 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     </div>
                 </div>
             </Dialog>
+
+            {/* Delete FormSet Dialog */}
+            <Dialog
+                visible={deleteModalVisible}
+                onHide={handleDeleteModalHide}
+                header="FormSet löschen"
+                style={{ width: '450px' }}
+                modal
+                closable={!deleting}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+                className="formset-delete-modal"
+            >
+                <div className="space-y-4">
+                    {/* Warning */}
+                    <div className="rounded p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+                        <div className="flex items-start gap-3">
+                            <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.errorText }}></i>
+                            <div>
+                                <h4 className="font-semibold" style={{ color: colors.errorText }}>Warnung: Permanentes Löschen</h4>
+                                <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                                    Das FormSet <strong style={{ color: colors.textPrimary }}>"{formSetToDelete?.name}"</strong> wird unwiderruflich gelöscht.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* What will be deleted */}
+                    <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                        <p className="mb-2" style={{ color: colors.textSecondary }}>Folgendes wird gelöscht:</p>
+                        <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
+                            <li>Das FormSet und alle Einstellungen</li>
+                            <li>Alle Fenster ({formSetToDelete?.windows_count || 0} Fenster)</li>
+                            <li>Alle Formular-Elemente</li>
+                            <li>Alle Projekt-Verknüpfungen</li>
+                        </ul>
+                    </div>
+
+                    {/* Confirmation Input */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                            Geben Sie <strong style={{ color: colors.errorText }}>DELETE</strong> ein um zu bestätigen
+                        </label>
+                        <InputText
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="DELETE"
+                            className="w-full"
+                            disabled={deleting}
+                        />
+                        <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                            Sie müssen exakt DELETE (Großbuchstaben) eingeben
+                        </small>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                        <Button
+                            label="Abbrechen"
+                            icon="pi pi-times"
+                            className="p-button-secondary"
+                            onClick={handleDeleteModalHide}
+                            disabled={deleting}
+                        />
+                        <Button
+                            label={deleting ? 'Lösche...' : 'FormSet löschen'}
+                            icon={deleting ? 'pi pi-spinner pi-spin' : 'pi pi-trash'}
+                            className="p-button-danger"
+                            onClick={executeDelete}
+                            disabled={deleting || deleteConfirmText !== 'DELETE'}
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
+            {/* Theme-aware styles for PrimeReact components */}
+            <style>{`
+                .formset-management-panel .p-card .p-card-title {
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-card .p-card-content {
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-inputtext {
+                    background-color: var(--theme-bg-tertiary);
+                    border-color: var(--theme-border-primary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-inputtext:hover {
+                    border-color: var(--theme-accent);
+                }
+                .formset-management-panel .p-inputtext:focus {
+                    border-color: var(--theme-accent);
+                    box-shadow: 0 0 0 1px var(--theme-accent);
+                }
+                .formset-management-panel .p-inputtext::placeholder {
+                    color: var(--theme-text-muted);
+                }
+                .formset-management-panel .p-dropdown {
+                    background-color: var(--theme-bg-tertiary);
+                    border-color: var(--theme-border-primary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-dropdown:hover {
+                    border-color: var(--theme-accent);
+                }
+                .formset-management-panel .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-dropdown .p-dropdown-trigger {
+                    color: var(--theme-text-muted);
+                }
+                /* Dropdown Panel - rendered as portal */
+                .formset-dropdown-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .formset-dropdown-panel .p-dropdown-items {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .formset-dropdown-panel .p-dropdown-item {
+                    color: var(--theme-text-primary) !important;
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .formset-dropdown-panel .p-dropdown-item:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                }
+                .formset-dropdown-panel .p-dropdown-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                /* MultiSelect Panel - rendered as portal */
+                .formset-multiselect-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    border-color: var(--theme-accent) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header .p-multiselect-filter-container .p-inputtext {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header .p-multiselect-close {
+                    color: var(--theme-text-muted) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-header .p-multiselect-close:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-items-wrapper {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-items {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-item {
+                    color: var(--theme-text-primary) !important;
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-item:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .formset-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    border-color: var(--theme-accent) !important;
+                }
+                .formset-multiselect-panel .p-multiselect-empty-message {
+                    color: var(--theme-text-muted) !important;
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                /* Link Modal MultiSelect */
+                .formset-link-modal .p-multiselect {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-link-modal .p-multiselect:hover {
+                    border-color: var(--theme-accent) !important;
+                }
+                .formset-link-modal .p-multiselect .p-multiselect-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-link-modal .p-multiselect .p-multiselect-label.p-placeholder {
+                    color: var(--theme-text-muted) !important;
+                }
+                .formset-link-modal .p-multiselect .p-multiselect-trigger {
+                    color: var(--theme-text-muted) !important;
+                }
+                .formset-link-modal .p-multiselect-token {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                /* Delete Modal InputText */
+                .formset-delete-modal .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .formset-delete-modal .p-inputtext:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .formset-delete-modal .p-inputtext::placeholder {
+                    color: var(--theme-text-muted) !important;
+                }
+                /* DataTable styling */
+                .formset-management-panel .p-datatable {
+                    background-color: var(--theme-bg-tertiary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-header {
+                    background-color: var(--theme-bg-secondary);
+                    border-color: var(--theme-border-primary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-thead > tr > th {
+                    background-color: var(--theme-bg-secondary);
+                    border-color: var(--theme-border-primary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-tbody > tr {
+                    background-color: var(--theme-bg-tertiary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-tbody > tr > td {
+                    border-color: var(--theme-border-primary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-tbody > tr:nth-child(even) {
+                    background-color: var(--theme-bg-secondary);
+                }
+                .formset-management-panel .p-datatable .p-datatable-tbody > tr:hover {
+                    background-color: var(--theme-bg-primary) !important;
+                }
+                /* Paginator styling */
+                .formset-management-panel .p-paginator {
+                    background-color: var(--theme-bg-secondary);
+                    border-color: var(--theme-border-primary);
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-paginator .p-paginator-current {
+                    color: var(--theme-text-muted);
+                }
+                .formset-management-panel .p-paginator .p-paginator-element {
+                    color: var(--theme-text-primary);
+                }
+                .formset-management-panel .p-paginator .p-paginator-element:hover {
+                    background-color: var(--theme-bg-tertiary);
+                }
+                .formset-management-panel .p-paginator .p-paginator-element.p-highlight {
+                    background-color: var(--theme-accent);
+                    color: white;
+                }
+                .formset-management-panel .p-paginator .p-dropdown {
+                    background-color: var(--theme-bg-tertiary);
+                    border-color: var(--theme-border-primary);
+                }
+                .formset-management-panel .p-paginator .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary);
+                }
+            `}</style>
         </div>
     );
 };
