@@ -405,6 +405,63 @@ class SvcController extends Controller
     }
 
     /**
+     * Create a new database export task
+     * Called from GUI when user wants to export schema to local database
+     *
+     * POST /cli/svc/tasks/database-export
+     */
+    public function createDatabaseExportTask(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'payload.connection_type' => 'required|in:mysql,postgresql,mssql',
+            'payload.host' => 'required|string',
+            'payload.port' => 'nullable|integer',
+            'payload.database' => 'required|string',
+            'payload.username' => 'required|string',
+            'payload.password' => 'nullable|string',
+            'payload.schema_name' => 'nullable|string|max:100',
+            'payload.sql_script' => 'required|string',
+            'payload.drop_tables_first' => 'nullable|boolean',
+        ]);
+
+        $user = $request->user();
+        $payload = $request->input('payload');
+
+        $task = CliTask::create([
+            'task_type' => CliTask::TYPE_DATABASE_EXPORT,
+            'user_id' => $user->id,
+            'project_id' => null,
+            'payload' => [
+                'connection_type' => $payload['connection_type'],
+                'host' => $payload['host'],
+                'port' => $payload['port'] ?? ($payload['connection_type'] === 'postgresql' ? 5432 : ($payload['connection_type'] === 'mssql' ? 1433 : 3306)),
+                'database' => $payload['database'],
+                'username' => $payload['username'],
+                'password' => $payload['password'] ?? '',
+                'schema_name' => $payload['schema_name'] ?? null,
+                'sql_script' => $payload['sql_script'],
+                'drop_tables_first' => $payload['drop_tables_first'] ?? true,
+            ],
+            'priority' => 15, // High priority
+            'max_retries' => 0, // No auto-retry for export
+        ]);
+
+        Log::info('📝 [SVC] Database export task created', [
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'connection_type' => $payload['connection_type'],
+            'database' => $payload['database'],
+            'sql_length' => strlen($payload['sql_script']),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'task_id' => $task->id,
+            'message' => 'Database export task created. The service will process it shortly.',
+        ], 201);
+    }
+
+    /**
      * Create a new project download task
      * Called when user generates project and wants to download locally
      *
@@ -563,8 +620,9 @@ class SvcController extends Controller
             $constraints = [];
 
             // Add indexes as constraints
+            // Note: Use 'KEY' instead of 'INDEX' for consistency with PHP SQLParser
             foreach ($table['indexes'] ?? [] as $index) {
-                $type = 'INDEX';
+                $type = 'KEY';
                 if ($index['is_primary']) {
                     $type = 'PRIMARY KEY';
                 } elseif ($index['is_unique']) {

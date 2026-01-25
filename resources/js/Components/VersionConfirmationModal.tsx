@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface VersionConfirmationModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function VersionConfirmationModal({
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   if (!isOpen) return null;
 
@@ -30,15 +32,22 @@ export default function VersionConfirmationModal({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md mx-4">
+      <div
+        className="rounded-lg w-full max-w-md mx-4"
+        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-600">
-          <h3 className="text-lg font-semibold text-white">
+        <div
+          className="flex justify-between items-center p-4"
+          style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.dialogHeader }}
+        >
+          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
             {t.versionconfirmationmodal29}
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="transition-colors hover:opacity-80"
+            style={{ color: colors.textMuted }}
           >
             ✕
           </button>
@@ -47,17 +56,20 @@ export default function VersionConfirmationModal({
         {/* Body */}
         <div className="p-6">
           <div className="mb-6">
-            <p className="text-gray-300 mb-2">
-              {t.versionconfirmationmodal51}<span className="font-semibold text-blue-400">{actionDescription}</span>.
+            <p className="mb-2" style={{ color: colors.textSecondary }}>
+              {t.versionconfirmationmodal51}<span className="font-semibold" style={{ color: colors.accent }}>{actionDescription}</span>.
             </p>
             {tableName && (
-              <div className="mt-4 p-3 bg-red-900 border border-red-500 rounded">
-                <p className="text-red-200 font-bold text-center">
+              <div
+                className="mt-4 p-3 rounded"
+                style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}
+              >
+                <p className="font-bold text-center" style={{ color: colors.errorText }}>
                   {t.versionconfirmationmodal56} "{tableName}" {t.versionconfirmationmodal56a}
                 </p>
               </div>
             )}
-            <p className="text-gray-400 text-sm">
+            <p className="text-sm" style={{ color: colors.textMuted }}>
               {t.versionconfirmationmodal53}
             </p>
           </div>
@@ -66,13 +78,14 @@ export default function VersionConfirmationModal({
             {/* New Version Option Button */}
             <button
               onClick={onNewVersion}
-              className="w-full p-4 bg-green-900/20 border border-green-600/50 rounded hover:bg-green-900/40 hover:border-green-500 transition-all duration-200 group"
+              className="w-full p-4 rounded transition-all duration-200 group hover:opacity-90"
+              style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}
             >
               <div className="flex items-center">
                 <span className="text-xl mr-3 group-hover:scale-110 transition-transform">🔄</span>
                 <div className="text-left">
-                  <div className="font-medium text-green-400 text-base">{t.versionconfirmationmodal67}</div>
-                  <div className="text-sm text-green-300/80">
+                  <div className="font-medium text-base" style={{ color: colors.successText }}>{t.versionconfirmationmodal67}</div>
+                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>
                     {displayVersion} → {displayVersion.replace(/\d+$/, (match) => String(parseInt(match) + 1))}
                   </div>
                 </div>
@@ -82,13 +95,14 @@ export default function VersionConfirmationModal({
             {/* Continue Editing Option Button */}
             <button
               onClick={onContinueEditing}
-              className="w-full p-4 bg-blue-900/20 border border-blue-600/50 rounded hover:bg-blue-900/40 hover:border-blue-500 transition-all duration-200 group"
+              className="w-full p-4 rounded transition-all duration-200 group hover:opacity-90"
+              style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}
             >
               <div className="flex items-center">
                 <span className="text-xl mr-3 group-hover:scale-110 transition-transform">✏️</span>
                 <div className="text-left">
-                  <div className="font-medium text-blue-400 text-base">{t.versionconfirmationmodal90}{displayVersion}{t.versionconfirmationmodal90a}</div>
-                  <div className="text-sm text-blue-300/80">
+                  <div className="font-medium text-base" style={{ color: colors.infoText }}>{t.versionconfirmationmodal90}{displayVersion}{t.versionconfirmationmodal90a}</div>
+                  <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>
                     {t.versionconfirmationmodal84}
                   </div>
                 </div>
@@ -96,16 +110,23 @@ export default function VersionConfirmationModal({
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-gray-700/50 rounded text-xs text-gray-400">
+          <div
+            className="mt-4 p-3 rounded text-xs"
+            style={{ backgroundColor: colors.bgTertiary, color: colors.textMuted }}
+          >
             {t.versionconfirmationmodal92}
           </div>
         </div>
 
         {/* Footer - nur Abbrechen Button */}
-        <div className="flex justify-end gap-3 p-4 border-t border-gray-600">
+        <div
+          className="flex justify-end gap-3 p-4"
+          style={{ borderTop: `1px solid ${colors.borderPrimary}` }}
+        >
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+            className="px-4 py-2 rounded transition-colors hover:opacity-90"
+            style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
           >
             {t.versionconfirmationmodal102}
           </button>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\UltimateTemplateEngine;
 use App\Services\TemplateCacheService;
+use App\Services\TemplateIncludeResolver;
 use App\Services\SchemaDiffService;
 use App\Services\MigrationSqlGenerator;
 use App\Models\Template;
@@ -17,6 +18,8 @@ use App\Models\SchemaTranslation;
 use App\Models\ProjectFormSet;
 use App\Models\ProjectGeneration;
 use App\Services\CreditService;
+use App\Services\PerformanceTrackingService;
+use App\Models\PerformanceMetric;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -111,15 +114,6 @@ class UltimateTemplateController extends Controller
             // 🎯 NEU: schema_version für Project-Dateien - erlaubt Auswahl einer spezifischen Schema-Version
             $schemaVersion = $request->query('schema_version'); // For project_file types - specific schema version
 
-            \Log::info("🚀 Main processTemplate", [
-                'templateId' => $templateId,
-                'projectId' => $projectId,
-                'tableName' => $tableName,
-                'languageCode' => $languageCode,
-                'schemaVersion' => $schemaVersion,
-                'migrationFromVersion' => $migrationFromVersion
-            ]);
-
             // Load project and schema data (with optional migration)
             // 🎯 WICHTIG: $tableName wird übergeben, um zu bestimmen, ob Migrations eingebunden werden sollen
             // Wenn $tableName gesetzt ist (db_table_file) → KEINE Migrations im GTree
@@ -141,9 +135,22 @@ class UltimateTemplateController extends Controller
             // 🎯 Initialize cache service (only if enabled in config)
             $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
 
-            foreach ($template->files as $file) {
+            // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            $resolvedFiles = $includeResolution['files'];
+            $includeErrors = $includeResolution['errors'];
+
+            // Log include errors if any
+            if (!empty($includeErrors)) {
+                \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution", $includeErrors);
+            }
+
+            foreach ($resolvedFiles as $file) {
+                // Convert back to object if needed for compatibility
+                $file = (object) $file;
+
                 // 🎯 Skip ZIP files - they are handled client-side in CodeGenerationPanel
-                if ($file->content_type === 'zip') {
+                if (($file->content_type ?? null) === 'zip') {
                     continue;
                 }
 
@@ -157,15 +164,10 @@ class UltimateTemplateController extends Controller
                             tableName: $tableName,
                             languageCode: $languageCode,
                             compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
-                                \Log::info("🔥 [CACHE MISS] Compiling template file {$file->id} ({$file->file_name})");
                                 return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
                             },
                             includeSource: $includeSource
                         );
-
-                        if ($fileResult) {
-                            \Log::info("✅ [CACHE HIT] Loaded from cache: file {$file->id} ({$file->file_name})");
-                        }
                     } catch (\Exception $e) {
                         \Log::warning("⚠️ [CACHE ERROR] Cache lookup failed for file {$file->id}: {$e->getMessage()}. Compiling without cache.");
                         $fileResult = null;
@@ -174,7 +176,6 @@ class UltimateTemplateController extends Controller
 
                 // Fallback: No cache or cache disabled
                 if (!$fileResult) {
-                    \Log::info("🔨 [NO CACHE] Compiling without cache: file {$file->id} ({$file->file_name})");
                     $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
                 }
 
@@ -560,8 +561,6 @@ class UltimateTemplateController extends Controller
         $ttl = now()->addHours(24);
 
         return Cache::remember($cacheKey, $ttl, function() use ($schemaVersionId) {
-            \Log::info("🔥 [SCHEMA CACHE MISS] Loading schema tables from database for version {$schemaVersionId}");
-
             return SchemaTable::where('schema_version_id', $schemaVersionId)
                 ->with([
                     'floatingSchema', // 🔗 Load schema info for database name
@@ -610,13 +609,6 @@ class UltimateTemplateController extends Controller
             $customVariables[$variableName] = $projectValue ?? $defaultValue;
         }
 
-        \Log::info("🎨 Custom Template Variables Loaded", [
-            'templateId' => $templateId,
-            'languageCode' => $languageCode,
-            'count' => count($customVariables),
-            'variables' => $customVariables
-        ]);
-
         $projectData = [
             // === BASIC PROJECT INFO ===
             'projectname' => $projectName,
@@ -644,6 +636,7 @@ class UltimateTemplateController extends Controller
             // === PATHS AND URLS ===
             'projectdirectory' => $actualProject ? ($actualProject->project_directory ?? 'C:\\Users\\Public\\Documents\\' . $projectName) : 'C:\\Users\\Public\\Documents\\ScorietDemo',
             'projecturl' => $actualProject ? ($actualProject->project_url ?? 'http://localhost/' . strtolower($projectName)) : 'http://localhost/scorietdemo',
+            'startpage' => $actualProject ? ($actualProject->start_page ?? 'index.php') : 'index.php',
 
             // === TEMPLATE INFO ===
             'templateid' => $templateId,
@@ -965,19 +958,6 @@ class UltimateTemplateController extends Controller
                 ->filter() // Remove nulls
                 ->values() // 🎯 Re-index array to 0,1,2... instead of keeping original keys
                 ->toArray();
-
-            // 🐛 DEBUG: Log extracted fields
-            \Log::info("🐛 Extracted constraint fields for {$tableName}", [
-                'total_constraints' => $constraints->count(),
-                'uniqueFields' => $uniqueFields,
-                'indexFields' => $indexFields,
-                'sample_constraint' => $constraints->first() ? [
-                    'name' => $constraints->first()->constraint_name,
-                    'type' => $constraints->first()->constraint_type,
-                    'columns_count' => $constraints->first()->constraintColumns->count(),
-                    'first_column' => $constraints->first()->constraintColumns->first()?->field_name
-                ] : null
-            ]);
 
             // Enhanced field mapping with translations
             $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields) {
@@ -1340,14 +1320,6 @@ class UltimateTemplateController extends Controller
         $templateId = $file->template_id ?? null;
         $projectId = $gtreeData['gtree'][0]['project'][0]['projectid'] ?? null;
 
-        \Log::info("📋 Template File processing", [
-            'file_id' => $file->id,
-            'file_name' => $file->file_name,
-            'template_id' => $templateId,
-            'projectId' => $projectId,
-            'languageCode' => $languageCode
-        ]);
-
         // ✅ VALIDATE TEMPLATE SYNTAX FIRST (blocks on errors!)
         $syntaxValidation = $engine->validateTemplateSyntax($content);
         $syntaxErrors = $syntaxValidation['errors'];
@@ -1634,13 +1606,6 @@ class UltimateTemplateController extends Controller
             $schemaIds = $request->input('schema_ids', []);
             $languageCodes = $request->input('language_codes', ['en']);
 
-            \Log::info("🚀 Full Project Generation Started", [
-                'project_id' => $projectId,
-                'templates' => count($templateIds),
-                'schemas' => count($schemaIds),
-                'languages' => count($languageCodes),
-            ]);
-
             // Load project
             $project = Project::find($projectId);
             if (!$project) {
@@ -1666,26 +1631,12 @@ class UltimateTemplateController extends Controller
 
             // Process each template
             foreach ($templates as $template) {
-                \Log::info("🔨 Processing template", ['id' => $template->id, 'name' => $template->name]);
-
                 // Build gtree for this template (includes ALL project tables)
                 $gtreeData = $this->buildUltimateGtree($projectId, $template->id, $template);
                 $engine = new UltimateTemplateEngine($gtreeData['gtree']);
 
                 // Extract tables from gtree
                 $tablesFromGtree = $gtreeData['gtree'][0]['project'][0]['tables'] ?? [];
-
-                \Log::info("📊 Gtree tables extracted", [
-                    'template_id' => $template->id,
-                    'template_name' => $template->name,
-                    'tables_count' => count($tablesFromGtree),
-                    'gtree_structure_keys' => array_keys($gtreeData),
-                    'project_keys' => isset($gtreeData['gtree'][0]['project'][0]) ? array_keys($gtreeData['gtree'][0]['project'][0]) : 'NO PROJECT',
-                    'has_tables_key' => isset($gtreeData['gtree'][0]['project'][0]['tables']),
-                    'first_table_sample' => !empty($tablesFromGtree) ? array_keys($tablesFromGtree[0]) : 'NO TABLES',
-                    'first_table_schemaid' => !empty($tablesFromGtree) ? ($tablesFromGtree[0]['schemaid'] ?? 'NO SCHEMAID') : 'NO TABLES',
-                    'first_table_databasename' => !empty($tablesFromGtree) ? ($tablesFromGtree[0]['databasename'] ?? 'NO DATABASENAME') : 'NO TABLES',
-                ]);
 
                 // Filter tables if specific schemas were selected
                 if (!empty($schemaIds)) {
@@ -1700,18 +1651,25 @@ class UltimateTemplateController extends Controller
                         // Check if table's schema_id is in selected schemas
                         return isset($tableData['schemaid']) && in_array($tableData['schemaid'], $schemaIds);
                     });
-                    \Log::info("🔍 Tables filtered by schema", [
-                        'original_count' => $originalCount,
-                        'filtered_count' => count($tablesFromGtree),
-                        'requested_schema_ids' => $schemaIds,
-                        'actual_schema_ids_in_tables' => $actualSchemaIds,
-                    ]);
+                }
+
+                // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
+                $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+                $resolvedFiles = $includeResolution['files'];
+                $includeErrors = $includeResolution['errors'];
+
+                // Log include errors if any
+                if (!empty($includeErrors)) {
+                    \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution in generateFullProject", $includeErrors);
                 }
 
                 // Process each file in the template
-                foreach ($template->files as $file) {
+                foreach ($resolvedFiles as $file) {
+                    // Convert back to object if needed for compatibility
+                    $file = (object) $file;
+
                     // 🎯 Skip ZIP files - they are handled client-side in CodeGenerationPanel
-                    if ($file->content_type === 'zip') {
+                    if (($file->content_type ?? null) === 'zip') {
                         continue;
                     }
 
@@ -1889,13 +1847,6 @@ class UltimateTemplateController extends Controller
                 }
             }
 
-            \Log::info("✅ Generation complete", [
-                'files' => count($generatedFiles),
-                'operations' => $completedOperations,
-                'syntax_errors' => count($syntaxErrors),
-                'adjustment_warnings' => count($adjustmentWarnings),
-            ]);
-
             // ⚠️ Log all syntax errors (if any)
             if (!empty($syntaxErrors)) {
                 \Log::warning("⚠️ Syntax errors found during generation", [
@@ -2055,14 +2006,36 @@ class UltimateTemplateController extends Controller
 
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
-            \Log::info("🎉 ZIP created and recorded successfully", [
-                'path' => $zipPath,
-                'size' => $zipFileSize,
-                'generation_id' => $generation->id,
-                'generation_number' => $generationNumber,
-                'execution_time' => $executionTime . 'ms',
-                'syntax_errors' => count($syntaxErrors),
-            ]);
+            // Track performance metrics
+            \Log::info("📊 Performance tracking - execution time: {$executionTime}ms");
+            try {
+                $tablesCount = count($tablesFromGtree ?? []);
+                $fieldsCount = 0;
+                foreach (($tablesFromGtree ?? []) as $table) {
+                    $fieldsCount += count($table['fields'] ?? []);
+                }
+
+                PerformanceMetric::create([
+                    'user_id' => $user?->id,
+                    'operation' => PerformanceMetric::OP_GENERATION,
+                    'operation_detail' => $project->name . ' (' . count($templates) . ' templates)',
+                    'duration_ms' => (int) $executionTime,
+                    'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                    'tables_count' => $tablesCount,
+                    'fields_count' => $fieldsCount,
+                    'from_cache' => false,
+                    'subscription_type' => $user?->subscription?->type ?? ($user?->isPatron() ? 'patron' : 'free'),
+                    'metadata' => [
+                        'template_count' => count($templates),
+                        'files_generated' => count($generatedFiles),
+                        'syntax_errors' => count($syntaxErrors),
+                    ],
+                    'created_at' => now(),
+                ]);
+                \Log::info("📊 Performance metric saved successfully");
+            } catch (\Exception $trackingError) {
+                \Log::error("❌ Performance tracking failed: " . $trackingError->getMessage() . " | Trace: " . $trackingError->getTraceAsString());
+            }
 
             // Return download response with error information in headers
             // NOTE: File is NOT deleted after send - kept for future comparisons
@@ -2232,16 +2205,6 @@ JS;
                 ], 400);
             }
 
-            $memoryStart = memory_get_usage(true);
-            \Log::info("🚀 [BATCH] Processing {$templateId} for " . count($tables) . " tables", [
-                'templateId' => $templateId,
-                'projectId' => $projectId,
-                'tableCount' => count($tables),
-                'languageCode' => $languageCode,
-                'includeGtree' => $includeGtree ? 'YES' : 'NO',
-                'memoryStart' => round($memoryStart / 1024 / 1024, 2) . ' MB'
-            ]);
-
             // Initialize cache service
             $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
 
@@ -2255,27 +2218,30 @@ JS;
                 $cachedGtree = \Cache::get($gtreeCacheKey);
                 if ($cachedGtree) {
                     $gtreeData = ['gtree' => $cachedGtree];
-                    \Log::info("✅ [GTREE CACHE HIT] Loaded from Redis (saved ~6s + 46 MB!)");
                 }
             }
 
             // Build gtree if not cached
             if (!$gtreeData) {
-                \Log::info("❌ [GTREE CACHE MISS] Building gtree...");
                 $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template);
 
                 // Cache for 24 hours
                 if ($cacheService) {
                     \Cache::put($gtreeCacheKey, $gtreeData['gtree'], now()->addHours(24));
                 }
-
-                if ($includeGtree) {
-                    $memoryAfterGtree = memory_get_usage(true);
-                    \Log::info("📊 [MEMORY] After gtree: " . round($memoryAfterGtree / 1024 / 1024, 2) . " MB (+" . round(($memoryAfterGtree - $memoryStart) / 1024 / 1024, 2) . " MB)");
-                }
             }
 
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
+
+            // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns ONCE before processing all tables
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            $resolvedFiles = $includeResolution['files'];
+            $includeErrors = $includeResolution['errors'];
+
+            // Log include errors if any
+            if (!empty($includeErrors)) {
+                \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution in processTemplateBatch", $includeErrors);
+            }
 
             // Process each table
             $results = [];
@@ -2287,9 +2253,12 @@ JS;
                     // Process template files for this table
                     $processedFiles = [];
 
-                    foreach ($template->files as $file) {
+                    foreach ($resolvedFiles as $file) {
+                        // Convert back to object if needed for compatibility
+                        $file = (object) $file;
+
                         // Skip ZIP files
-                        if ($file->content_type === 'zip') {
+                        if (($file->content_type ?? null) === 'zip') {
                             continue;
                         }
 
@@ -2303,14 +2272,9 @@ JS;
                                     tableName: $tableName,
                                     languageCode: $languageCode,
                                     compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
-                                        \Log::info("🔥 [BATCH CACHE MISS] Compiling file {$file->id} for table {$tableName}");
                                         return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
                                     }
                                 );
-
-                                if ($fileResult) {
-                                    \Log::info("✅ [BATCH CACHE HIT] file {$file->id} for table {$tableName}");
-                                }
                             } catch (\Exception $e) {
                                 \Log::warning("⚠️ [BATCH CACHE ERROR] file {$file->id}: {$e->getMessage()}");
                                 $fileResult = null;
@@ -2341,9 +2305,6 @@ JS;
                     // 🧹 Force garbage collection every 2 tables
                     if ($tableCount % 2 === 0) {
                         gc_collect_cycles();
-                        $memoryAfterTable = memory_get_usage(true);
-                        $totalTables = count($tables);
-                        \Log::info("📊 [MEMORY] After table {$tableCount}/{$totalTables}: " . round($memoryAfterTable / 1024 / 1024, 2) . " MB");
                     }
 
                 } catch (\Exception $e) {
@@ -2361,11 +2322,6 @@ JS;
             }
 
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
-            $memoryBeforeResponse = memory_get_usage(true);
-            $memoryPeak = memory_get_peak_usage(true);
-
-            \Log::info("✅ [BATCH] Completed in {$executionTime}ms for " . count($tables) . " tables");
-            \Log::info("📊 [MEMORY] Before response: " . round($memoryBeforeResponse / 1024 / 1024, 2) . " MB | Peak: " . round($memoryPeak / 1024 / 1024, 2) . " MB");
 
             // 🚀 Build response with optional gtree (MASSIVE BANDWIDTH SAVE!)
             $response = response()->json([
@@ -2479,7 +2435,20 @@ JS;
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
             $generatedFiles = [];
 
-            foreach ($template->files as $templateFile) {
+            // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            $resolvedFiles = $includeResolution['files'];
+            $includeErrors = $includeResolution['errors'];
+
+            // Log include errors if any
+            if (!empty($includeErrors)) {
+                \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution in generateForCli", $includeErrors);
+            }
+
+            foreach ($resolvedFiles as $templateFile) {
+                // Convert back to object if needed for compatibility
+                $templateFile = (object) $templateFile;
+
                 try {
                     // Process template for each file
                     // The engine already has gtree in constructor, processTemplate uses it internally
@@ -2668,14 +2637,6 @@ JS;
                         'reason' => $warning['reason'],
                     ];
                 }
-            }
-
-            // Log applied adjustments
-            if (!empty($result['applied'])) {
-                \Log::info("✅ Code adjustments applied", [
-                    'file' => $filename,
-                    'applied' => count($result['applied']),
-                ]);
             }
 
             return $result['content'];

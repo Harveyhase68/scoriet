@@ -102,12 +102,10 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
   }, [project]);
 
   useEffect(() => {
-    console.log(t.projectinvitationsmodal100, { visible, projectId: project?.id });
     if (visible && project) {
-      console.log(t.projectinvitationsmodal102);
       loadInvitations();
     }
-     
+
   }, [visible, project]); // Removed loadInvitations from dependencies to prevent re-render loop
 
   const sendInvitation = async () => {
@@ -115,12 +113,10 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       return;
     }
 
-    console.log(t.projectinvitationsmodal113);
     try {
       setSending(true);
       setError('');
       setSuccess('');
-      console.log(t.projectinvitationsmodal118);
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
@@ -143,23 +139,16 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       });
 
       const data = await response.json();
-      console.log(t.projectinvitationsmodal141, data);
 
       if (!response.ok) {
         throw new Error(data.message || t.manageteammodal129);
       }
 
-      console.log(t.projectinvitationsmodal147);
       setSuccess(t.projectinvitationsmodal148);
-
-      console.log(t.projectinvitationsmodal150);
       setInviteForm({ email: '', role: 'member', message: '' });
-
-      console.log(t.projectinvitationsmodal153);
 
       // Add the new invitation to the list
       if (data.invitation) {
-        console.log(t.projectinvitationsmodal157, data.invitation);
 
         // Enrich the invitation with ALL fields that the table expects
         const enrichedInvitation: ProjectInvitation = {
@@ -179,21 +168,13 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
           invited_user: data.invitation.invited_user
         };
 
-        console.log(t.projectinvitationsmodal177, enrichedInvitation);
         setInvitations(prev => [enrichedInvitation, ...prev]);
       }
 
-      // KEEP DISABLED: Call onSuccess callback (this causes parent re-render!)
-      // console.log(t.projectinvitationsmodal182);
-      // onSuccess?.();
-
       // Auto-clear success message after 5 seconds
       setTimeout(() => {
-        console.log(t.projectinvitationsmodal187);
         setSuccess('');
       }, 5000);
-
-      console.log(t.projectinvitationsmodal191);
     } catch (error) {
       setError(error instanceof Error ? error.message : t.projectinvitationsmodal193);
     } finally {

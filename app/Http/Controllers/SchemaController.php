@@ -105,7 +105,7 @@ class SchemaController extends Controller
                 if ($schemaCount >= 1) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Free users können nur 1 Datenbank erstellen. Upgrade zu Patron oder kaufe eine zusätzliche Datenbank für 25 Credits/Jahr.',
+                        'error' => 'Free users können nur 1 Datenbank erstellen. Upgrade zu Patron oder kaufe eine zusätzliche Datenbank für 50 Credits/Jahr.',
                         'error_code' => 'SCHEMA_LIMIT_REACHED',
                         'limit' => 1,
                         'current' => $schemaCount,

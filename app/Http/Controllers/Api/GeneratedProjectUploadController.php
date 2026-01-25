@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PerformanceMetric;
 use App\Models\Project;
 use App\Models\ProjectGeneration;
 use App\Models\SchemaVersion;
@@ -22,6 +23,8 @@ class GeneratedProjectUploadController extends Controller
      */
     public function upload(Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+
         $request->validate([
             'project_id' => 'required|exists:projects,id',
             'archive' => 'required|file|mimes:zip|max:512000', // Max 500MB
@@ -32,6 +35,9 @@ class GeneratedProjectUploadController extends Controller
             'template_names' => 'nullable|array',
             'files_count' => 'nullable|numeric|min:0',
             'is_download_only' => 'nullable', // Sent as string 'true'/'false' from FormData
+            // Performance tracking data from frontend
+            'generation_time_ms' => 'nullable|numeric|min:0',
+            'fields_count' => 'nullable|numeric|min:0',
         ]);
 
         $user = Auth::user();
@@ -121,6 +127,40 @@ class GeneratedProjectUploadController extends Controller
             'filename' => $filename,
             'file_size' => $fileSize,
         ]);
+
+        // Track performance metrics
+        $uploadTime = round((microtime(true) - $startTime) * 1000, 2);
+        $generationTimeMs = (int) $request->input('generation_time_ms', 0);
+        $fieldsCount = (int) $request->input('fields_count', 0);
+
+        try {
+            PerformanceMetric::create([
+                'user_id' => $user?->id,
+                'operation' => PerformanceMetric::OP_GENERATION,
+                'operation_detail' => $project->name . ' (' . count($templateNames) . ' templates)',
+                'duration_ms' => $generationTimeMs > 0 ? $generationTimeMs : (int) $uploadTime,
+                'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                'tables_count' => count($tables),
+                'fields_count' => $fieldsCount,
+                'from_cache' => false,
+                'subscription_type' => $user?->subscription?->type ?? ($user?->isPatron() ? 'patron' : 'free'),
+                'metadata' => [
+                    'template_count' => count($templateNames),
+                    'files_generated' => $filesCount,
+                    'file_size_bytes' => $fileSize,
+                    'upload_time_ms' => $uploadTime,
+                    'generation_number' => $generationNumber,
+                ],
+                'created_at' => now(),
+            ]);
+            \Log::info("📊 Performance metric saved", [
+                'operation' => 'generation',
+                'duration_ms' => $generationTimeMs > 0 ? $generationTimeMs : (int) $uploadTime,
+                'tables' => count($tables),
+            ]);
+        } catch (\Exception $trackingError) {
+            \Log::error("❌ Performance tracking failed: " . $trackingError->getMessage());
+        }
 
         // Build download URL (for deployment service)
         $downloadUrl = url("/api/generated-projects/download/{$filename}");

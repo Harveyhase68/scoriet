@@ -1,9 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { TabContentProps } from '@/types';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
-import { Card } from 'primereact/card';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Badge } from 'primereact/badge';
@@ -18,25 +16,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { AutoComplete } from 'primereact/autocomplete';
 import { SelectButton } from 'primereact/selectbutton';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
-
-const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const setFocus = () => ref.current?.focus();
-
-  return (
-    <div
-      {...rest}
-      ref={ref}
-      tabIndex={-1}
-      style={{ flex: 1, padding: '5px 10px', ...style }}
-      onMouseDownCapture={setFocus}
-      onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
-    >
-      {children}
-    </div>
-  );
-};
+import { useTheme } from '@/contexts/ThemeContext';
+import '@/Components/Panels/styles.css';
 
 interface User {
   id: number;
@@ -77,6 +58,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage);
+
+  // Theme
+  const { colors } = useTheme();
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,6 +326,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
   const handleDeleteThread = async (thread: Thread) => {
     confirmDialog({
+      group: 'messaging',
       message: 'Möchten Sie diese Konversation wirklich löschen?',
       header: 'Konversation löschen',
       icon: 'pi pi-exclamation-triangle',
@@ -454,7 +439,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         setHasAttachmentAccess(true);
         setAttachmentAccessStatus(data.status);
         setShowUnlockDialog(false);
-        setShowAttachmentDialog(true);
+        // Attachment dialog not needed - user can now use the file picker directly
         toast.current?.show({
           severity: 'success',
           summary: 'Freigeschaltet!',
@@ -899,16 +884,53 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   };
 
   return (
-    <TabContent>
+    <div
+      className="h-full overflow-hidden"
+      style={{
+        flex: 1,
+        padding: '5px 10px',
+        backgroundColor: colors.bgPrimary,
+        color: colors.textPrimary,
+      }}
+    >
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog group="messaging" />
 
-      <Card className="h-full overflow-hidden">
-        <Toolbar className="mb-3" left={leftToolbarTemplate} />
+      <div
+        className="h-full overflow-hidden rounded-lg"
+        style={{
+          backgroundColor: colors.bgSecondary,
+          border: `1px solid ${colors.borderPrimary}`,
+          padding: '1rem',
+        }}
+      >
+        <Toolbar
+          className="mb-3"
+          left={leftToolbarTemplate}
+          style={{ backgroundColor: colors.bgSecondary, border: 'none' }}
+        />
 
-        <Splitter style={{ height: 'calc(100vh - 250px)' }} className="mb-3">
+        <Splitter
+          style={{
+            height: 'calc(100vh - 250px)',
+            backgroundColor: colors.bgPrimary,
+            ['--theme-bg-primary' as string]: colors.bgPrimary,
+            ['--theme-bg-secondary' as string]: colors.bgSecondary,
+            ['--theme-border-primary' as string]: colors.borderPrimary,
+          }}
+          className="mb-3 themed-splitter"
+        >
           {/* Thread List */}
-          <SplitterPanel size={40} minSize={30}>
+          <SplitterPanel
+            size={40}
+            minSize={15}
+            style={{
+              backgroundColor: colors.bgPrimary,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
             <DataTable
               value={threads}
               loading={loading}
@@ -921,7 +943,15 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               emptyMessage="Keine Nachrichten"
               scrollable
               scrollHeight="flex"
-              className="text-sm"
+              className="text-sm themed-datatable flex-1"
+              style={{
+                height: '100%',
+                ['--dt-bg' as string]: colors.bgSecondary,
+                ['--dt-header-bg' as string]: colors.bgTertiary,
+                ['--dt-border' as string]: colors.borderPrimary,
+                ['--dt-text' as string]: colors.textPrimary,
+                ['--dt-text-secondary' as string]: colors.textSecondary,
+              }}
               rowClassName={(data) => data.has_unread ? 'bg-blue-900/20' : ''}
             >
               <Column field="subject" header="Betreff" body={subjectTemplate} sortable style={{ minWidth: '200px' }} />
@@ -932,18 +962,27 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           </SplitterPanel>
 
           {/* Message View */}
-          <SplitterPanel size={60} minSize={40}>
+          <SplitterPanel
+            size={60}
+            minSize={20}
+            style={{
+              backgroundColor: colors.bgPrimary,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
             {selectedThread ? (
-              <div className="flex flex-col h-full p-3">
+              <div className="flex flex-col h-full p-3 overflow-hidden" style={{ backgroundColor: colors.bgPrimary }}>
                 {/* Thread Header */}
-                <div className="border-b border-gray-600 pb-3 mb-3">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                <div className="pb-3 mb-3" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                  <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     {selectedThread.is_broadcast && (
                       <Badge value="System" severity="danger" />
                     )}
                     {selectedThread.subject}
                   </h3>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm" style={{ color: colors.textSecondary }}>
                     Mit: {selectedThread.other_participants?.map(p => p.name || p.username).join(', ') || '-'}
                   </div>
                 </div>
@@ -958,14 +997,15 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                   {hasMoreOlder && (
                     <div className="text-center py-2">
                       {loadingMoreMessages ? (
-                        <span className="text-gray-400 text-sm">
+                        <span className="text-sm" style={{ color: colors.textMuted }}>
                           <i className="pi pi-spin pi-spinner mr-2" />
                           Lade ältere Nachrichten...
                         </span>
                       ) : (
                         <button
                           onClick={loadMoreMessages}
-                          className="text-blue-400 hover:text-blue-300 text-sm"
+                          className="text-sm"
+                          style={{ color: colors.accent }}
                         >
                           <i className="pi pi-arrow-up mr-1" />
                           Ältere Nachrichten laden ({totalMessages - (selectedThread.messages?.length || 0)} weitere)
@@ -976,28 +1016,32 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                   {selectedThread.messages?.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`p-3 rounded-lg ${
-                        msg.sender_id === parseInt(localStorage.getItem('user_id') || '0')
-                          ? 'bg-blue-900/30 ml-8'
-                          : 'bg-gray-700/50 mr-8'
-                      }`}
+                      className="p-3 rounded-lg"
+                      style={{
+                        backgroundColor: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0')
+                          ? `${colors.accent}30`
+                          : colors.bgTertiary,
+                        marginLeft: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0') ? '2rem' : 0,
+                        marginRight: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0') ? 0 : '2rem',
+                      }}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm">
+                        <span className="font-semibold text-sm" style={{ color: colors.textPrimary }}>
                           {msg.sender?.name || msg.sender?.username || 'Unbekannt'}
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs" style={{ color: colors.textMuted }}>
                           {formatDate(msg.created_at)}
                         </span>
                       </div>
-                      <div className="text-sm whitespace-pre-wrap">{msg.body}</div>
+                      <div className="text-sm whitespace-pre-wrap" style={{ color: colors.textPrimary }}>{msg.body}</div>
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {msg.attachments.map((att: any) => (
                             <button
                               key={att.id}
                               onClick={() => handleDownloadAttachment(att.id, att.original_filename)}
-                              className="flex items-center gap-1 text-xs bg-gray-600 px-2 py-1 rounded hover:bg-gray-500 cursor-pointer"
+                              className="flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer"
+                              style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}
                             >
                               <i className="pi pi-download" />
                               {att.original_filename}
@@ -1010,20 +1054,22 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 </div>
 
                 {/* Reply Box */}
-                <div className="border-t border-gray-600 pt-3">
+                <div className="pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                   {/* Selected files display */}
                   {selectedFiles.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-2">
                       {selectedFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-1 bg-gray-700 px-2 py-1 rounded text-sm"
+                          className="flex items-center gap-1 px-2 py-1 rounded text-sm"
+                          style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                         >
                           <i className="pi pi-paperclip text-xs" />
                           <span className="max-w-[150px] truncate">{file.name}</span>
                           <button
                             onClick={() => removeSelectedFile(index)}
-                            className="text-red-400 hover:text-red-300 ml-1"
+                            className="ml-1"
+                            style={{ color: colors.errorText }}
                           >
                             <i className="pi pi-times text-xs" />
                           </button>
@@ -1038,6 +1084,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       placeholder="Antwort schreiben..."
                       rows={2}
                       className="flex-1"
+                      style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && e.ctrlKey) {
                           handleReply();
@@ -1077,7 +1124,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted, backgroundColor: colors.bgPrimary }}>
                 <div className="text-center">
                   <i className="pi pi-envelope text-4xl mb-3" />
                   <p>Wählen Sie eine Konversation aus</p>
@@ -1086,7 +1133,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             )}
           </SplitterPanel>
         </Splitter>
-      </Card>
+      </div>
 
       {/* Compose Modal */}
       <Dialog
@@ -1095,7 +1142,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         header="Neue Nachricht"
         style={{ width: '550px' }}
         modal
-        className="p-fluid"
+        className="p-fluid themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
       >
         <div className="space-y-4">
           {/* Recipient Type Selection */}
@@ -1150,7 +1199,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                   </div>
                 )}
               />
-              <small className="text-gray-400">Suche in: Projekt-/Team-Mitglieder, frühere Kontakte</small>
+              <small style={{ color: colors.textMuted }}>Suche in: Projekt-/Team-Mitglieder, frühere Kontakte</small>
             </div>
           )}
 
@@ -1174,7 +1223,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 )}
                 emptyMessage="Keine Projekte verfügbar"
               />
-              <small className="text-gray-400">Nachricht wird an alle Projekt-Mitglieder gesendet</small>
+              <small style={{ color: colors.textMuted }}>Nachricht wird an alle Projekt-Mitglieder gesendet</small>
             </div>
           )}
 
@@ -1201,18 +1250,18 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 )}
                 emptyMessage="Keine Teams verfügbar"
               />
-              <small className="text-gray-400">Nachricht wird an alle Team-Mitglieder gesendet</small>
+              <small style={{ color: colors.textMuted }}>Nachricht wird an alle Team-Mitglieder gesendet</small>
             </div>
           )}
 
           {/* Broadcast Info */}
           {recipientType === 'broadcast' && (
-            <div className="bg-yellow-900/30 border border-yellow-600 rounded p-3">
-              <div className="flex items-center gap-2 text-yellow-400">
+            <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+              <div className="flex items-center gap-2" style={{ color: colors.warningText }}>
                 <i className="pi pi-exclamation-triangle" />
                 <span className="font-medium">System-Broadcast</span>
               </div>
-              <p className="text-sm text-gray-300 mt-1">
+              <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                 Diese Nachricht wird an alle registrierten Benutzer gesendet.
               </p>
             </div>
@@ -1255,17 +1304,19 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               </Button>
             </div>
             {composeFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 p-2 bg-gray-700/30 rounded">
+              <div className="flex flex-wrap gap-2 p-2 rounded" style={{ backgroundColor: colors.bgTertiary }}>
                 {composeFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-1 bg-gray-600 px-2 py-1 rounded text-sm"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-sm"
+                    style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
                   >
                     <i className="pi pi-paperclip text-xs" />
                     <span className="max-w-[150px] truncate">{file.name}</span>
                     <button
                       onClick={() => removeComposeFile(index)}
-                      className="text-red-400 hover:text-red-300 ml-1"
+                      className="ml-1"
+                      style={{ color: colors.errorText }}
                     >
                       <i className="pi pi-times text-xs" />
                     </button>
@@ -1316,6 +1367,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         header="Anhänge freischalten"
         style={{ width: '400px' }}
         modal
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -1337,53 +1391,53 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       >
         <div className="space-y-4">
           <div className="text-center mb-4">
-            <i className="pi pi-paperclip text-4xl text-blue-400 mb-2" />
-            <h3 className="text-lg font-semibold">Nachrichten-Anhänge</h3>
+            <i className="pi pi-paperclip text-4xl mb-2" style={{ color: colors.accent }} />
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Nachrichten-Anhänge</h3>
           </div>
 
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary }}>
             <div className="flex justify-between items-center mb-3">
-              <span className="text-gray-300">Ihre Credits:</span>
-              <span className={`font-bold ${(attachmentAccessStatus?.user_credits || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+              <span style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+              <span className="font-bold" style={{ color: (attachmentAccessStatus?.user_credits || 0) >= 50 ? colors.successText : colors.errorText }}>
                 {attachmentAccessStatus?.user_credits || 0} Credits
               </span>
             </div>
             <div className="flex justify-between items-center mb-3">
-              <span className="text-gray-300">Kosten:</span>
-              <span className="font-bold text-yellow-400">50 Credits</span>
+              <span style={{ color: colors.textSecondary }}>Kosten:</span>
+              <span className="font-bold" style={{ color: colors.warningText }}>50 Credits</span>
             </div>
-            <hr className="border-gray-600 my-2" />
+            <hr className="my-2" style={{ borderColor: colors.borderPrimary }} />
             <div className="flex justify-between items-center">
-              <span className="text-gray-300">Verbleibend:</span>
-              <span className={`font-bold ${(attachmentAccessStatus?.user_credits || 0) - 50 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span style={{ color: colors.textSecondary }}>Verbleibend:</span>
+              <span className="font-bold" style={{ color: (attachmentAccessStatus?.user_credits || 0) - 50 >= 0 ? colors.successText : colors.errorText }}>
                 {Math.max(0, (attachmentAccessStatus?.user_credits || 0) - 50)} Credits
               </span>
             </div>
           </div>
 
           {(attachmentAccessStatus?.user_credits || 0) < 50 && (
-            <div className="bg-red-900/30 border border-red-600 rounded p-3">
-              <div className="flex items-center gap-2 text-red-400">
+            <div className="rounded p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+              <div className="flex items-center gap-2" style={{ color: colors.errorText }}>
                 <i className="pi pi-exclamation-triangle" />
                 <span>Nicht genügend Credits!</span>
               </div>
-              <p className="text-sm text-gray-300 mt-1">
+              <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                 Sie benötigen mindestens 50 Credits zum Freischalten.
               </p>
             </div>
           )}
 
-          <div className="bg-blue-900/30 border border-blue-600 rounded p-3">
+          <div className="rounded p-3" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
             <div className="flex items-start gap-2">
-              <i className="pi pi-info-circle text-blue-400 mt-0.5" />
-              <div className="text-sm text-gray-300">
+              <i className="pi pi-info-circle mt-0.5" style={{ color: colors.infoText }} />
+              <div className="text-sm" style={{ color: colors.textSecondary }}>
                 <p className="mb-1">Mit Nachrichten-Anhängen können Sie:</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>Dateien an Nachrichten anhängen</li>
                   <li>Bilder, PDFs, Dokumente teilen</li>
                   <li>ZIP-Archive versenden</li>
                 </ul>
-                <p className="mt-2 text-yellow-400">
+                <p className="mt-2" style={{ color: colors.warningText }}>
                   <i className="pi pi-star mr-1" />
                   Gültig für 1 Jahr nach Freischaltung
                 </p>
@@ -1391,14 +1445,14 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             </div>
           </div>
 
-          <div className="bg-purple-900/30 border border-purple-600 rounded p-3 text-center">
-            <span className="text-purple-300 text-sm">
+          <div className="rounded p-3 text-center" style={{ backgroundColor: `${colors.accent}20`, border: `1px solid ${colors.accent}` }}>
+            <span className="text-sm" style={{ color: colors.accent }}>
               <i className="pi pi-crown mr-1" />
               Patron-Mitglieder erhalten dieses Feature kostenlos!
             </span>
           </div>
         </div>
       </Dialog>
-    </TabContent>
+    </div>
   );
 }

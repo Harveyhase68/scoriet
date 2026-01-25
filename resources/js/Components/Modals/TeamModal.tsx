@@ -9,6 +9,7 @@ import { MultiSelect } from 'primereact/multiselect';
 import { Message } from 'primereact/message';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 
 interface TeamSubscriptionInfo {
@@ -70,6 +71,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const { projects } = useProject();
   const [formData, setFormData] = useState<{
@@ -314,56 +316,58 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       visible={visible}
       onHide={onHide}
       style={{ width: '500px' }}
+      contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+      headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
       modal
-      className="p-fluid"
+      className="team-modal p-fluid"
     >
       {/* Loading State */}
       {checkingSubscription && !team && (
         <div className="py-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Checking subscription...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: colors.accent }}></div>
+          <p style={{ color: colors.textMuted }}>Checking subscription...</p>
         </div>
       )}
 
       {/* Unlock Screen - only for new teams */}
       {!checkingSubscription && needsUnlock && !team && (
         <div className="space-y-4">
-          <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
-            <p className="text-yellow-300 text-sm mb-2">
+          <div className="rounded-lg p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+            <p className="text-sm mb-2" style={{ color: colors.warningText }}>
               <strong>Team Feature - Free Tier</strong>
             </p>
-            <p className="text-gray-300 text-sm">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
               Teams is an additional feature for free users. Each team costs <strong>50 credits per year</strong>.
             </p>
             {ownedTeams > 0 && (
-              <p className="text-gray-300 text-sm mt-2">
+              <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
                 You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>
                 {activeSubscriptions > 0 && ` (${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''})`}.
               </p>
             )}
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-300">Your Credits:</span>
-              <span className="text-white font-bold text-lg">{currentUser?.credits || 0}</span>
+              <span style={{ color: colors.textSecondary }}>Your Credits:</span>
+              <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-300">Required Credits:</span>
-              <span className="text-yellow-400 font-bold text-lg">50</span>
+              <span style={{ color: colors.textSecondary }}>Required Credits:</span>
+              <span className="font-bold text-lg" style={{ color: colors.warningText }}>50</span>
             </div>
-            <hr className="border-gray-700 my-2" />
+            <hr className="my-2" style={{ borderColor: colors.borderPrimary }} />
             <div className="flex justify-between items-center">
-              <span className="text-gray-300">After Unlock:</span>
-              <span className={`font-bold text-lg ${hasEnoughCredits ? 'text-green-400' : 'text-red-400'}`}>
+              <span style={{ color: colors.textSecondary }}>After Unlock:</span>
+              <span className="font-bold text-lg" style={{ color: hasEnoughCredits ? colors.successText : colors.errorText }}>
                 {hasEnoughCredits ? (currentUser?.credits || 0) - 50 : `Need ${creditsNeeded} more`}
               </span>
             </div>
           </div>
 
           {!hasEnoughCredits && (
-            <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
-              <p className="text-red-300 text-sm">
+            <div className="rounded-lg p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+              <p className="text-sm" style={{ color: colors.errorText }}>
                 You don't have enough credits. You need <strong>{creditsNeeded} more credits</strong> to unlock the team feature.
               </p>
             </div>
@@ -389,12 +393,13 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
             )}
           </div>
 
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-center" style={{ color: colors.textMuted }}>
             Or upgrade to{' '}
             <button
               type="button"
               onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
-              className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
+              className="underline font-semibold"
+              style={{ color: colors.warningText }}
             >
               Patron Monthly
             </button>
@@ -412,7 +417,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           )}
 
           <div className="field">
-            <label htmlFor="name" className="block text-sm font-medium mb-2 text-gray-100">
+            <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Team Name *
             </label>
             <InputText
@@ -423,16 +428,16 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               required
               className={nameError ? 'p-invalid' : ''}
             />
-            <small className="text-gray-400 text-xs mt-1 block">
+            <small className="text-xs mt-1 block" style={{ color: colors.textMuted }}>
               Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
             </small>
             {nameError && (
-              <small className="text-red-400 text-xs mt-1 block">{nameError}</small>
+              <small className="text-xs mt-1 block" style={{ color: colors.errorText }}>{nameError}</small>
             )}
           </div>
 
           <div className="field">
-            <label htmlFor="description" className="block text-sm font-medium mb-2 text-gray-100">
+            <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Description
             </label>
             <InputTextarea
@@ -445,7 +450,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           </div>
 
           <div className="field">
-            <label htmlFor="project_ids" className="block text-sm font-medium mb-2 text-gray-100">
+            <label htmlFor="project_ids" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Projects
             </label>
             <MultiSelect
@@ -459,8 +464,9 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               placeholder={t.teammodal206}
               display="chip"
               className="w-full"
+              panelClassName="team-modal-multiselect-panel"
             />
-            <small className="text-gray-600">
+            <small className="text-xs mt-1 block" style={{ color: colors.textMuted }}>
               Select one or more projects for this team
             </small>
           </div>
@@ -472,14 +478,14 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
                 checked={formData.is_active}
                 onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.checked || false }))}
               />
-              <label htmlFor="is_active" className="text-sm text-gray-100">
+              <label htmlFor="is_active" className="text-sm" style={{ color: colors.textPrimary }}>
                 Team is active
               </label>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-gray-600 mt-6">
+        <div className="flex justify-end gap-2 pt-4 mt-6" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
           <Button
             type="button"
             label={t.applicationsmodal432}
@@ -498,6 +504,140 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       </form>
       ) : null}
 
+        {/* Theme-aware styles for PrimeReact components */}
+        <style>{`
+          .team-modal .p-inputtext {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+            color: var(--theme-text-primary);
+          }
+          .team-modal .p-inputtext:hover {
+            border-color: var(--theme-accent);
+          }
+          .team-modal .p-inputtext:focus {
+            border-color: var(--theme-accent);
+            box-shadow: 0 0 0 1px var(--theme-accent);
+          }
+          .team-modal .p-inputtext::placeholder {
+            color: var(--theme-text-muted);
+          }
+          .team-modal .p-inputtextarea {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+            color: var(--theme-text-primary);
+          }
+          .team-modal .p-inputtextarea:hover {
+            border-color: var(--theme-accent);
+          }
+          .team-modal .p-inputtextarea:focus {
+            border-color: var(--theme-accent);
+            box-shadow: 0 0 0 1px var(--theme-accent);
+          }
+          .team-modal .p-inputtextarea::placeholder {
+            color: var(--theme-text-muted);
+          }
+          .team-modal .p-multiselect {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+            color: var(--theme-text-primary);
+          }
+          .team-modal .p-multiselect:hover {
+            border-color: var(--theme-accent);
+          }
+          .team-modal .p-multiselect.p-focus {
+            border-color: var(--theme-accent);
+            box-shadow: 0 0 0 1px var(--theme-accent);
+          }
+          .team-modal .p-multiselect .p-multiselect-label {
+            color: var(--theme-text-primary);
+          }
+          .team-modal .p-multiselect .p-multiselect-label.p-placeholder {
+            color: var(--theme-text-muted);
+          }
+          .team-modal .p-multiselect .p-multiselect-trigger {
+            color: var(--theme-text-muted);
+          }
+          /* MultiSelect Panel - rendered as portal outside dialog */
+          .team-modal-multiselect-panel {
+            background-color: var(--theme-bg-secondary) !important;
+            border-color: var(--theme-border-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header {
+            background-color: var(--theme-bg-secondary) !important;
+            border-color: var(--theme-border-primary) !important;
+            color: var(--theme-text-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box {
+            background-color: var(--theme-bg-tertiary) !important;
+            border-color: var(--theme-border-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header .p-checkbox .p-checkbox-box.p-highlight {
+            background-color: var(--theme-accent) !important;
+            border-color: var(--theme-accent) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header .p-multiselect-filter-container .p-inputtext {
+            background-color: var(--theme-bg-tertiary) !important;
+            border-color: var(--theme-border-primary) !important;
+            color: var(--theme-text-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header .p-multiselect-close {
+            color: var(--theme-text-muted) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-header .p-multiselect-close:hover {
+            background-color: var(--theme-bg-tertiary) !important;
+            color: var(--theme-text-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-items-wrapper {
+            background-color: var(--theme-bg-secondary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-items {
+            background-color: var(--theme-bg-secondary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-item {
+            color: var(--theme-text-primary) !important;
+            background-color: var(--theme-bg-secondary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-item:hover {
+            background-color: var(--theme-bg-tertiary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-item.p-highlight {
+            background-color: var(--theme-accent) !important;
+            color: white !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box {
+            background-color: var(--theme-bg-tertiary) !important;
+            border-color: var(--theme-border-primary) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-item .p-checkbox .p-checkbox-box.p-highlight {
+            background-color: var(--theme-accent) !important;
+            border-color: var(--theme-accent) !important;
+          }
+          .team-modal-multiselect-panel .p-multiselect-empty-message {
+            color: var(--theme-text-muted) !important;
+            background-color: var(--theme-bg-secondary) !important;
+          }
+          .team-modal .p-multiselect-token {
+            background-color: var(--theme-accent);
+            color: white;
+          }
+          .team-modal .p-checkbox .p-checkbox-box {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+          }
+          .team-modal .p-checkbox .p-checkbox-box:hover {
+            border-color: var(--theme-accent);
+          }
+          .team-modal .p-checkbox .p-checkbox-box.p-highlight {
+            background-color: var(--theme-accent);
+            border-color: var(--theme-accent);
+          }
+          .team-modal .p-button-text {
+            color: var(--theme-text-primary);
+          }
+          .team-modal .p-button-text:hover {
+            background-color: var(--theme-bg-tertiary);
+          }
+        `}</style>
     </Dialog>
     <PlanModal
       visible={showPlanModal}

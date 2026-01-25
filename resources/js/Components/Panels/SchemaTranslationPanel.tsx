@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/contexts/ToastContext';
-import { Button } from 'primereact/button';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
@@ -48,6 +48,7 @@ export default function SchemaTranslationPanel() {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const toast = useToast();
+  const { colors } = useTheme();
   const { selectedProject } = useProject();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [schemaStructure, setSchemaStructure] = useState<SchemaTable[]>([]);
@@ -201,10 +202,10 @@ export default function SchemaTranslationPanel() {
     return schemaStructure.map(table => ({
       label: (
         <div className="flex items-center gap-2">
-          <span className="text-blue-300">📁</span>
-          <span className="font-mono">{table.table_name}</span>
+          <span style={{ color: colors.infoText }}>📁</span>
+          <span className="font-mono" style={{ color: colors.textPrimary }}>{table.table_name}</span>
           {table.schema_name && (
-            <Tag value={table.schema_name} style={{ backgroundColor: '#9333ea', color: 'white' }} />
+            <Tag value={table.schema_name} style={{ backgroundColor: colors.accent, color: 'white' }} />
           )}
           {table.comment && (
             <Tag value={table.comment} severity="info" />
@@ -215,8 +216,8 @@ export default function SchemaTranslationPanel() {
       children: table.fields.map(field => ({
         label: (
           <div className="flex items-center gap-2">
-            <span className="text-green-300">📄</span>
-            <span className="font-mono text-sm">{field.field_name}</span>
+            <span style={{ color: colors.successText }}>📄</span>
+            <span className="font-mono text-sm" style={{ color: colors.textPrimary }}>{field.field_name}</span>
             <Tag value={field.field_type} severity="success" />
             {field.comment && (
               <Tag value={field.comment} severity="warning" />
@@ -660,7 +661,7 @@ export default function SchemaTranslationPanel() {
   const renderTranslationDetail = () => {
     if (!selectedItem) {
       return (
-        <div className="flex items-center justify-center h-full text-gray-400">
+        <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
           <div className="text-center">
             <div className="text-4xl mb-4">🌍</div>
             <h3 className="text-lg font-semibold mb-2">Select an item to translate</h3>
@@ -674,20 +675,20 @@ export default function SchemaTranslationPanel() {
 
     return (
       <div className="h-full flex flex-col">
-        <div className="flex-shrink-0 p-4 border-b border-gray-600">
+        <div className="flex-shrink-0 p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl">{itemInfo.icon}</span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-white">{itemInfo.displayName}</h3>
+                  <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{itemInfo.displayName}</h3>
                   <Tag value={itemInfo.type} severity={itemInfo.color === 'blue' ? 'info' : 'success'} />
                 </div>
-                <p className="text-sm text-gray-400">Manage translations for this {itemInfo.type.toLowerCase()}</p>
+                <p className="text-sm" style={{ color: colors.textMuted }}>Manage translations for this {itemInfo.type.toLowerCase()}</p>
               </div>
             </div>
             {autoSaving && (
-              <div className="flex items-center gap-2 text-green-400">
+              <div className="flex items-center gap-2" style={{ color: colors.successText }}>
                 <i className="pi pi-spin pi-spinner"></i>
                 <span className="text-sm">Auto-saving...</span>
               </div>
@@ -698,12 +699,12 @@ export default function SchemaTranslationPanel() {
         <div className="flex-1 p-4 overflow-auto">
           {/* Show info message if no translations exist yet */}
           {Object.keys(selectedItemTranslations).length === 0 && (
-            <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-200">
+            <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
+              <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
                 <i className="pi pi-info-circle"></i>
                 <div>
                   <p className="font-semibold">{t.schematranslationpanel701} "{selectedItem}"</p>
-                  <p className="text-sm text-blue-300 mt-1">
+                  <p className="text-sm mt-1" style={{ color: colors.infoText, opacity: 0.8 }}>
                     Enter translations below to create new entries. They will be auto-saved after 1 second of inactivity.
                   </p>
                 </div>
@@ -713,12 +714,12 @@ export default function SchemaTranslationPanel() {
 
           <div className="grid gap-4">
             {languages.map(language => (
-              <div key={language.code} className="bg-gray-700 rounded-lg p-4">
+              <div key={language.code} className="rounded-lg p-4" style={{ backgroundColor: colors.bgSecondary }}>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-xl">{language.flag || '🏴'}</span>
                   <div>
-                    <h4 className="font-semibold text-white">{language.name}</h4>
-                    <p className="text-sm text-gray-400">{language.native_name}</p>
+                    <h4 className="font-semibold" style={{ color: colors.textPrimary }}>{language.name}</h4>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>{language.native_name}</p>
                   </div>
                   <Tag value={language.code.toUpperCase()} severity="info" />
                   {selectedItemTranslations[language.code] && (
@@ -729,7 +730,8 @@ export default function SchemaTranslationPanel() {
                   placeholder={`Enter ${language.name} translation...`}
                   value={selectedItemTranslations[language.code] || ''}
                   onChange={(e) => handleTranslationChange(language.code, e.target.value)}
-                  className="w-full"
+                  className="w-full schema-translation-input"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
               </div>
             ))}
@@ -740,46 +742,44 @@ export default function SchemaTranslationPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-800 text-gray-100">
-      <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
+    <div className="schema-translation-panel h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+      <div className="flex-shrink-0 p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
               Schema Translation Manager
             </h3>
-            <p className="text-sm text-gray-300">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
               Translate database table and field names for internationalization
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              icon="pi pi-download"
-              label={t.schematranslationpanel753}
-              size="small"
-              severity="success"
-              outlined
+            <button
               onClick={() => setShowExportDialog(true)}
               disabled={!selectedProject || exporting}
-            />
-            <Button
-              icon="pi pi-upload"
-              label={t.schematranslationpanel762}
-              size="small"
-              severity="info"
-              outlined
+              className="schema-translation-btn px-3 py-1.5 rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-md active:scale-95"
+              style={{ backgroundColor: colors.accent, color: 'white' }}
+            >
+              <i className="pi pi-download mr-2"></i>{t.schematranslationpanel753}
+            </button>
+            <button
               onClick={() => setShowImportDialog(true)}
               disabled={!selectedProject || importing}
-            />
-            <Button
-              icon="pi pi-google"
-              label={t.schematranslationpanel771}
-              size="small"
-              severity="warning"
-              outlined
+              className="schema-translation-btn px-3 py-1.5 rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-md active:scale-95"
+              style={{ backgroundColor: colors.accent, color: 'white' }}
+            >
+              <i className="pi pi-upload mr-2"></i>{t.schematranslationpanel762}
+            </button>
+            <button
               onClick={handleAutoTranslate}
               disabled={!selectedProject || translating}
-              loading={translating}
-            />
+              className="schema-translation-btn px-3 py-1.5 rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-md active:scale-95"
+              style={{ backgroundColor: colors.warningBg, color: colors.warningText }}
+            >
+              {translating && <i className="pi pi-spinner pi-spin mr-2"></i>}
+              {!translating && <i className="pi pi-google mr-2"></i>}
+              {t.schematranslationpanel771}
+            </button>
           </div>
         </div>
       </div>
@@ -787,53 +787,49 @@ export default function SchemaTranslationPanel() {
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Panel - Schema Tree */}
         <div
-          className="flex-shrink-0 border-r border-gray-600 bg-gray-700 flex flex-col relative h-full"
-          style={{ width: `${sidebarWidth}px` }}
+          className="flex-shrink-0 flex flex-col relative h-full"
+          style={{ width: `${sidebarWidth}px`, borderRight: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}
         >
-          <div className="p-4 border-b border-gray-600 flex-shrink-0">
+          <div className="p-4 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
             <div className="flex justify-between items-start mb-2">
-              <h4 className="font-semibold text-white">Database Schema</h4>
+              <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Database Schema</h4>
               {/* Expand/Collapse Buttons */}
               {schemaStructure.length > 0 && (
                 <div className="flex gap-1">
-                  <Button
-                    icon="pi pi-plus"
-                    size="small"
-                    text
-                    rounded
-                    severity="secondary"
+                  <button
                     onClick={expandAll}
-                    tooltip={t.panelt1791}
-                    tooltipOptions={{ position: 'bottom' }}
-                  />
-                  <Button
-                    icon="pi pi-minus"
-                    size="small"
-                    text
-                    rounded
-                    severity="secondary"
+                    title={t.panelt1791}
+                    className="p-1 rounded hover:opacity-80 transition-opacity"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    <i className="pi pi-plus text-sm"></i>
+                  </button>
+                  <button
                     onClick={collapseAll}
-                    tooltip={t.panelt1798}
-                    tooltipOptions={{ position: 'bottom' }}
-                  />
+                    title={t.panelt1798}
+                    className="p-1 rounded hover:opacity-80 transition-opacity"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    <i className="pi pi-minus text-sm"></i>
+                  </button>
                 </div>
               )}
             </div>
-            <p className="text-sm text-gray-400">Select tables and fields to translate</p>
+            <p className="text-sm" style={{ color: colors.textMuted }}>Select tables and fields to translate</p>
             {selectedProject && (
-              <p className="text-xs text-blue-300 mt-1">Project: {selectedProject.name}</p>
+              <p className="text-xs mt-1" style={{ color: colors.accent }}>Project: {selectedProject.name}</p>
             )}
           </div>
           <div className="flex-1 p-4 overflow-y-auto overflow-x-auto min-h-0">
             {!selectedProject ? (
-              <div className="text-center text-gray-400 mt-8">
+              <div className="text-center mt-8" style={{ color: colors.textMuted }}>
                 <div className="text-2xl mb-2">📋</div>
                 <p>Please select a project first</p>
               </div>
             ) : loading ? (
-              <div className="text-center text-gray-400">Loading schema...</div>
+              <div className="text-center" style={{ color: colors.textMuted }}>Loading schema...</div>
             ) : schemaStructure.length === 0 ? (
-              <div className="text-center text-gray-400 mt-8">
+              <div className="text-center mt-8" style={{ color: colors.textMuted }}>
                 <div className="text-2xl mb-2">📭</div>
                 <p>No schema tables found</p>
                 <p className="text-xs mt-1">This project has no schema data to translate</p>
@@ -869,7 +865,7 @@ export default function SchemaTranslationPanel() {
 
           {/* Resize Handle */}
           <div
-            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors"
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize transition-colors"
             onMouseDown={(e) => {
               e.preventDefault();
               setIsResizing(true);
@@ -893,7 +889,7 @@ export default function SchemaTranslationPanel() {
               document.addEventListener('mouseup', handleMouseUp);
             }}
             style={{
-              backgroundColor: isResizing ? '#3b82f6' : 'transparent',
+              backgroundColor: isResizing ? colors.accent : 'transparent',
               width: '4px',
               marginRight: '-2px'
             }}
@@ -901,7 +897,7 @@ export default function SchemaTranslationPanel() {
         </div>
 
         {/* Right Panel - Translation Detail */}
-        <div className="flex-1 bg-gray-800 h-full min-w-0">
+        <div className="flex-1 h-full min-w-0" style={{ backgroundColor: colors.bgPrimary }}>
           {renderTranslationDetail()}
         </div>
       </div>
@@ -911,19 +907,21 @@ export default function SchemaTranslationPanel() {
         header={t.databasemanagementpanel1229}
         visible={showExportDialog}
         onHide={() => setShowExportDialog(false)}
-        style={{ width: '500px' }}
+        style={{ width: '500px', backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, borderBottom: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
         resizable={true}
       >
         <div className="space-y-4">
-          <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
-            <div className="flex items-center gap-2 text-blue-200">
+          <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
+            <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
               <i className="pi pi-info-circle"></i>
               <div>
                 <p className="font-semibold">Export for {selectedProject?.name}</p>
-                <p className="text-sm text-blue-300 mt-1">
+                <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
                   Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
                 </p>
               </div>
@@ -931,7 +929,7 @@ export default function SchemaTranslationPanel() {
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Select Languages *
             </label>
             <MultiSelect
@@ -943,26 +941,29 @@ export default function SchemaTranslationPanel() {
               disabled={exporting}
               display="chip"
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               Select one or more languages for the translation export
             </small>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
-            <Button
-              label={t.applicationsmodal432}
-              icon="pi pi-times"
+            <button
               onClick={() => setShowExportDialog(false)}
-              className="p-button-text"
               disabled={exporting}
-            />
-            <Button
-              label={exporting ? "Exporting..." : t.databasemanagementpanel1280}
-              icon={exporting ? "pi pi-spinner pi-spin" : "pi pi-download"}
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+            >
+              <i className="pi pi-times mr-2"></i>{t.applicationsmodal432}
+            </button>
+            <button
               onClick={handleExportTranslations}
               disabled={exporting || selectedLanguagesForExport.length === 0}
-              severity="success"
-            />
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.accent, color: 'white' }}
+            >
+              <i className={exporting ? "pi pi-spinner pi-spin mr-2" : "pi pi-download mr-2"}></i>
+              {exporting ? "Exporting..." : t.databasemanagementpanel1280}
+            </button>
           </div>
         </div>
       </Dialog>
@@ -975,19 +976,21 @@ export default function SchemaTranslationPanel() {
           setShowImportDialog(false);
           setImportFile(null);
         }}
-        style={{ width: '500px' }}
+        style={{ width: '500px', backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, borderBottom: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
         resizable={true}
       >
         <div className="space-y-4">
-          <div className="mb-4 p-4 bg-green-900 border border-green-500 rounded-lg">
-            <div className="flex items-center gap-2 text-green-200">
+          <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
+            <div className="flex items-center gap-2" style={{ color: colors.successText }}>
               <i className="pi pi-info-circle"></i>
               <div>
                 <p className="font-semibold">Import for {selectedProject?.name}</p>
-                <p className="text-sm text-green-300 mt-1">
+                <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
                   Upload an Excel file with translations. Select which languages to import.
                 </p>
               </div>
@@ -995,7 +998,7 @@ export default function SchemaTranslationPanel() {
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Upload Excel File *
             </label>
             <FileUpload
@@ -1009,13 +1012,13 @@ export default function SchemaTranslationPanel() {
               chooseLabel={importFile ? importFile.name : t.databasemanagementpanel1324}
               disabled={importing}
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               Excel files only (.xlsx, .xls), max 10MB
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Select Languages to Import *
             </label>
             <MultiSelect
@@ -1027,29 +1030,32 @@ export default function SchemaTranslationPanel() {
               disabled={importing}
               display="chip"
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               Only selected languages will be imported from the Excel file
             </small>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
-            <Button
-              label={t.applicationsmodal432}
-              icon="pi pi-times"
+            <button
               onClick={() => {
                 setShowImportDialog(false);
                 setImportFile(null);
               }}
-              className="p-button-text"
               disabled={importing}
-            />
-            <Button
-              label={importing ? "Importing..." : t.databasemanagementpanel893}
-              icon={importing ? "pi pi-spinner pi-spin" : "pi pi-upload"}
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+            >
+              <i className="pi pi-times mr-2"></i>{t.applicationsmodal432}
+            </button>
+            <button
               onClick={handleConfirmImport}
               disabled={importing || !importFile || selectedLanguagesForImport.length === 0}
-              severity="info"
-            />
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.infoBg, color: colors.infoText }}
+            >
+              <i className={importing ? "pi pi-spinner pi-spin mr-2" : "pi pi-upload mr-2"}></i>
+              {importing ? "Importing..." : t.databasemanagementpanel893}
+            </button>
           </div>
         </div>
       </Dialog>
@@ -1062,21 +1068,23 @@ export default function SchemaTranslationPanel() {
           setShowAutoTranslateDialog(false);
           setTranslateAllItems(false);
         }}
-        style={{ width: '550px' }}
+        style={{ width: '550px', backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, borderBottom: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
         modal
         closable={!translating}
         draggable={true}
         resizable={true}
       >
         <div className="space-y-4">
-          <div className="mb-4 p-4 bg-yellow-900 border border-yellow-500 rounded-lg">
-            <div className="flex items-center gap-2 text-yellow-200">
+          <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
+            <div className="flex items-center gap-2" style={{ color: colors.warningText }}>
               <i className="pi pi-info-circle"></i>
               <div>
                 <p className="font-semibold">
                   {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : t.schematranslationpanel771)}
                 </p>
-                <p className="text-sm text-yellow-300 mt-1">
+                <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
                   {translateAllItems
                     ? t.schematranslationpanel1078
                     : t.schematranslationpanel1079
@@ -1103,17 +1111,17 @@ export default function SchemaTranslationPanel() {
                 className="w-4 h-4"
                 disabled={translating}
               />
-              <label htmlFor={t.schematranslationpanel1090} className="text-sm font-medium text-gray-300 cursor-pointer">
+              <label htmlFor={t.schematranslationpanel1090} className="text-sm font-medium cursor-pointer" style={{ color: colors.textSecondary }}>
                 🚀 Translate all tables and fields
               </label>
             </div>
-            <small className="text-gray-400 ml-6">
+            <small className="ml-6" style={{ color: colors.textMuted }}>
               Automatically translates all items that have the source language
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Source Language *
             </label>
             <Dropdown
@@ -1133,13 +1141,13 @@ export default function SchemaTranslationPanel() {
               }))}
               className="w-full"
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               The language to translate FROM (must already have a translation)
             </small>
           </div>
 
           <div className="field">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Target Languages *
             </label>
             <MultiSelect
@@ -1152,28 +1160,28 @@ export default function SchemaTranslationPanel() {
               className="w-full"
               display="chip"
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               Languages to translate TO
             </small>
           </div>
 
           {translating && translationProgress.total > 0 && (
-            <div className="p-3 bg-green-50 rounded border border-green-200">
-              <p className="text-sm text-green-700 font-medium">
+            <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
+              <p className="text-sm font-medium" style={{ color: colors.successText }}>
                 ⏳ Translating {translationProgress.current} of {translationProgress.total} items...
               </p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div className="w-full rounded-full h-2 mt-2" style={{ backgroundColor: colors.bgTertiary }}>
                 <div
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(translationProgress.current / translationProgress.total) * 100}%` }}
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(translationProgress.current / translationProgress.total) * 100}%`, backgroundColor: colors.accent }}
                 />
               </div>
             </div>
           )}
 
           {!translating && (
-            <div className="mb-4 p-4 bg-blue-900 border border-blue-500 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-200">
+            <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
+              <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
                 <i className="pi pi-info-circle"></i>
                 <div>
                   <p className="font-semibold">
@@ -1182,7 +1190,7 @@ export default function SchemaTranslationPanel() {
                       : `0.00${Math.max(1, targetLanguagesForTranslate.length * 2)}`
                     }
                   </p>
-                  <p className="text-sm text-blue-300 mt-1">
+                  <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
                     {translateAllItems
                       ? `(${estimatedCharCount} chars × ${targetLanguagesForTranslate.length} languages = ${estimatedCharCount * targetLanguagesForTranslate.length} total chars)`
                       : `(${(selectedItemTranslations[sourceLanguageForTranslate]?.length || 0) * targetLanguagesForTranslate.length} characters)`
@@ -1194,42 +1202,45 @@ export default function SchemaTranslationPanel() {
           )}
 
           <div className="flex justify-end space-x-2 pt-4 gap-2">
-            <Button
-              label={t.applicationsmodal432}
-              icon="pi pi-times"
+            <button
               onClick={() => {
                 setShowAutoTranslateDialog(false);
                 setTranslateAllItems(false);
               }}
-              className="p-button-text"
               disabled={translating}
-            />
-            <Button
-              label={translating ? "Translating..." : t.schematranslationpanel1205}
-              icon={translating ? "pi pi-spinner pi-spin" : "pi pi-google"}
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+            >
+              <i className="pi pi-times mr-2"></i>{t.applicationsmodal432}
+            </button>
+            <button
               onClick={handleConfirmAutoTranslate}
               disabled={
                 translating ||
                 targetLanguagesForTranslate.length === 0 ||
                 (!translateAllItems && (!selectedItem || !selectedItemTranslations[sourceLanguageForTranslate]))
               }
-              severity="warning"
-            />
+              className="px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: colors.warningBg, color: colors.warningText }}
+            >
+              <i className={translating ? "pi pi-spinner pi-spin mr-2" : "pi pi-google mr-2"}></i>
+              {translating ? "Translating..." : t.schematranslationpanel1205}
+            </button>
           </div>
         </div>
       </Dialog>
 
-      {/* Custom CSS for compact tree */}
+      {/* Custom CSS for compact tree and theme-aware styles */}
       <style>{`
         .schema-tree-compact {
           width: 100% !important;
           height: auto !important;
-          background: #1f2937 !important;
+          background: var(--theme-bg-secondary) !important;
         }
         .schema-tree-compact .p-tree-container {
           width: 100% !important;
           overflow: visible !important;
-          background: #1f2937 !important;
+          background: var(--theme-bg-secondary) !important;
         }
         .schema-tree-compact .p-treenode {
           padding: 0.125rem 0 !important;
@@ -1239,17 +1250,108 @@ export default function SchemaTranslationPanel() {
           min-height: 1.5rem !important;
           background: transparent !important;
         }
+        .schema-tree-compact .p-treenode-content:hover {
+          background: var(--theme-bg-tertiary) !important;
+        }
         .schema-tree-compact .p-tree-toggler {
           width: 1.25rem !important;
           height: 1.25rem !important;
+          color: var(--theme-text-secondary) !important;
         }
         .schema-tree-compact .p-treenode-label {
           font-size: 0.875rem !important;
+          color: var(--theme-text-primary) !important;
         }
         .schema-tree-compact .p-tag {
           font-size: 0.75rem !important;
           padding: 0.125rem 0.375rem !important;
           height: 1.25rem !important;
+        }
+        .schema-tree-compact .p-highlight > .p-treenode-content {
+          background: var(--theme-bg-tertiary) !important;
+        }
+
+        /* Input placeholder styling */
+        .schema-translation-panel .schema-translation-input::placeholder {
+          color: var(--theme-text-muted);
+          opacity: 0.7;
+        }
+
+        /* Button hover effects */
+        .schema-translation-btn {
+          cursor: pointer;
+        }
+
+        /* PrimeReact components styling - in panel and dialogs */
+        .schema-translation-panel .p-dropdown,
+        .schema-translation-panel .p-multiselect,
+        .p-dialog .p-dropdown,
+        .p-dialog .p-multiselect {
+          background: var(--theme-bg-tertiary) !important;
+          border: 1px solid var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .schema-translation-panel .p-dropdown-label,
+        .schema-translation-panel .p-multiselect-label,
+        .p-dialog .p-dropdown-label,
+        .p-dialog .p-multiselect-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .schema-translation-panel .p-dropdown-trigger,
+        .schema-translation-panel .p-multiselect-trigger,
+        .p-dialog .p-dropdown-trigger,
+        .p-dialog .p-multiselect-trigger {
+          color: var(--theme-text-secondary) !important;
+        }
+
+        /* Dropdown/MultiSelect panel overlay styling */
+        .p-dropdown-panel,
+        .p-multiselect-panel {
+          background: var(--theme-bg-secondary) !important;
+          border: 1px solid var(--theme-border-primary) !important;
+        }
+        .p-dropdown-panel .p-dropdown-items,
+        .p-multiselect-panel .p-multiselect-items {
+          background: var(--theme-bg-secondary) !important;
+        }
+        .p-dropdown-panel .p-dropdown-item,
+        .p-multiselect-panel .p-multiselect-item {
+          color: var(--theme-text-primary) !important;
+          background: transparent !important;
+        }
+        .p-dropdown-panel .p-dropdown-item:hover,
+        .p-multiselect-panel .p-multiselect-item:hover {
+          background: var(--theme-bg-tertiary) !important;
+        }
+        .p-dropdown-panel .p-dropdown-item.p-highlight,
+        .p-multiselect-panel .p-multiselect-item.p-highlight {
+          background: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .p-multiselect-panel .p-multiselect-header {
+          background: var(--theme-bg-secondary) !important;
+          border-bottom: 1px solid var(--theme-border-primary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .p-multiselect-panel .p-checkbox .p-checkbox-box {
+          background: var(--theme-bg-tertiary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-multiselect-panel .p-checkbox .p-checkbox-box.p-highlight {
+          background: var(--theme-accent) !important;
+          border-color: var(--theme-accent) !important;
+        }
+        .p-multiselect-panel .p-multiselect-close {
+          color: var(--theme-text-secondary) !important;
+        }
+
+        /* MultiSelect chips */
+        .p-multiselect-token {
+          background: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .p-multiselect-token-icon {
+          color: var(--theme-text-secondary) !important;
         }
       `}</style>
     </div>

@@ -10,6 +10,7 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
+import { Checkbox } from 'primereact/checkbox';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { apiClient as api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
@@ -18,6 +19,7 @@ import TemplateModal from './TemplateModal';
 import VariableModal from './VariableModal';
 import TemplateImportWizardPanel from './TemplateImportWizardPanel';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TemplateSubscription {
     id: number;
@@ -89,6 +91,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     // i18n setup
     const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
     const { t } = useTranslation(currentLanguage);
+    const { colors } = useTheme();
 
     // Use Project Context to get current project
     const { selectedProject } = useProject();
@@ -643,12 +646,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     };
 
     const handleCloneNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newName = e.target.value;
-        setCloneName(newName);
+        // Sanitize: only allow lowercase letters, numbers, and underscores
+        const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        setCloneName(sanitized);
 
         // Debounce name check
         setTimeout(() => {
-            checkNameExists(newName);
+            checkNameExists(sanitized);
         }, 500);
     };
 
@@ -672,13 +676,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         } catch (error: any) {
             console.error('Clone error:', error.response?.data);
             const errorMessage = error.response?.data?.message || t.templatemanagementpanel291;
-            const debugInfo = error.response?.data?.debug;
-            if (debugInfo) {
-                console.log('Debug info:', debugInfo);
-                toast.showError(`${errorMessage} (User ID: ${debugInfo.your_user_id})`);
-            } else {
-                toast.showError(errorMessage);
-            }
+            toast.showError(errorMessage);
         }
     };
 
@@ -1139,16 +1137,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     };
 
     const handleArchiveImport = async (file: File) => {
-        console.log('handleArchiveImport called with file:', file.name, file.type, file.size);
-
         try {
             const formData = new FormData();
             formData.append('template_file', file);
             formData.append('overwrite_existing', 'false');
 
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
-            console.log('Sending archive import request to /api/templates/import');
 
             const response = await fetch('/api/templates/import', {
                 method: 'POST',
@@ -1544,11 +1538,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const uniqueCommunityLanguages = Array.from(new Set(communityTemplates.map(t => t.language).filter(Boolean)));
 
     return (
-        <div className="flex flex-col h-full bg-gray-800 text-gray-100">
+        <div className="template-management-panel flex flex-col h-full" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
             {/* Header - Fixed at top */}
             <div className="flex-shrink-0 p-4 pb-2">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-white">{t.panelsewnavigationpanel188}</h2>
+                    <h2 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.panelsewnavigationpanel188}</h2>
                     <div className="flex gap-2">
                         <Button
                             icon="pi pi-plus"
@@ -1794,7 +1788,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             header={t.applicationsmodal354}
                             body={(template) => {
                                 const isOwner = parseInt(template.creator_user_id) === currentUserId;
-                                const hasLinkedProjects = (template.linked_project_ids?.length || 0) > 0;
 
                                 // If template is soft-locked, show only View and Unlock buttons
                                 if (template.is_soft_locked) {
@@ -1835,15 +1828,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             onClick={() => handleOpenLinkModal(template)}
                                             tooltip="Mit Projekten verknüpfen"
                                         />
-                                        {/* Toggle active button - show if template has linked projects */}
-                                        {hasLinkedProjects && (
-                                            <Button
-                                                icon="pi pi-eye-slash"
-                                                className="p-button-text p-button-warning p-button-sm"
-                                                onClick={() => handleToggleActive(template)}
-                                                tooltip="Verknüpfungen verwalten"
-                                            />
-                                        )}
                                         <Button
                                             icon="pi pi-eye"
                                             className="p-button-text p-button-sm"
@@ -2032,7 +2016,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             <span className="px-2 py-1 bg-orange-500 text-white rounded text-xs">
                                                 Store
                                             </span>
-                                            <span className="text-xs text-gray-400">{priceText}</span>
+                                            <span className="text-xs" style={{ color: colors.textMuted }}>{priceText}</span>
                                         </div>
                                     );
                                 }
@@ -2110,7 +2094,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             <span className="px-2 py-1 bg-yellow-500 text-white rounded text-xs">
                                                 Prüfung
                                             </span>
-                                            <span className="text-xs text-gray-400">{score}/{maxScore} Punkte</span>
+                                            <span className="text-xs" style={{ color: colors.textMuted }}>{score}/{maxScore} Punkte</span>
                                         </div>
                                     );
                                 }
@@ -2224,7 +2208,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <Column
                                 header="Verkäufer"
                                 body={(template) => (
-                                    <span className="text-gray-300 text-sm">
+                                    <span className="text-sm" style={{ color: colors.textSecondary }}>
                                         {template.seller_username || template.creator?.username || 'Unknown'}
                                     </span>
                                 )}
@@ -2315,8 +2299,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 style={{ width: '800px' }}
                 contentStyle={{
                     maxHeight: 'calc(100vh - 200px)',
-                    overflowY: 'auto'
+                    overflowY: 'auto',
+                    backgroundColor: colors.bgPrimary,
+                    color: colors.textPrimary
                 }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
@@ -2346,12 +2333,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             {viewingTemplate.files && viewingTemplate.files.length > 0 ? (
                                 <div className="mt-2 space-y-2">
                                     {viewingTemplate.files.map((file) => (
-                                        <div key={file.id} className="border border-gray-600 bg-gray-800 p-3 rounded">
+                                        <div key={file.id} className="p-3 rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                                             <div className="flex justify-between items-center mb-2">
-                                                <strong>{file.file_name}</strong>
+                                                <strong style={{ color: colors.textPrimary }}>{file.file_name}</strong>
                                                 <Tag value={file.file_type} />
                                             </div>
-                                            <pre className="text-xs bg-gray-800 text-gray-200 p-2 rounded overflow-x-auto">
+                                            <pre className="text-xs p-2 rounded overflow-x-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.textSecondary }}>
                                                 {file.file_content.substring(0, 500)}
                                                 {file.file_content.length > 500 && '...'}
                                             </pre>
@@ -2359,7 +2346,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     ))}
                                 </div>
                             ) : (
-                                <div className="mt-2 text-gray-500">Keine Dateien vorhanden</div>
+                                <div className="mt-2" style={{ color: colors.textMuted }}>Keine Dateien vorhanden</div>
                             )}
                         </div>
                     </div>
@@ -2392,6 +2379,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     </>
                 }
                 style={{ width: '500px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
@@ -2399,7 +2388,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                             Neuer Template-Name
                         </label>
                         <InputText
@@ -2407,20 +2396,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             onChange={handleCloneNameChange}
                             placeholder={t.templatemanagementpanel939}
                             className="w-full"
-                            style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                            style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                         />
                         {nameCheckLoading && (
-                            <div className="text-sm text-blue-400 mt-1">
+                            <div className="text-sm mt-1" style={{ color: colors.accent }}>
                                 🔍 Prüfe Verfügbarkeit...
                             </div>
                         )}
                         {nameExists && (
-                            <div className="text-sm text-red-400 mt-1">
+                            <div className="text-sm mt-1" style={{ color: colors.errorText }}>
                                 ❌ Name darf nicht doppelt vergeben werden
                             </div>
                         )}
                         {!nameExists && cloneName.trim() && !nameCheckLoading && (
-                            <div className="text-sm text-green-400 mt-1">
+                            <div className="text-sm mt-1" style={{ color: colors.successText }}>
                                 ✅ Name ist verfügbar
                             </div>
                         )}
@@ -2429,14 +2418,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     {/* Hide visibility selector for purchased templates - they must be private */}
                     {!((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
                         <div>
-                            <label className="block text-sm font-medium mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                 Sichtbarkeit
                             </label>
                             <select
                                 value={cloneVisibility}
                                 onChange={(e) => setCloneVisibility(e.target.value as 'public' | 'private')}
                                 className="w-full p-2 border rounded"
-                                style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                             >
                                 <option value="public">Public (für alle sichtbar)</option>
                                 <option value="private">Private (nur für Sie)</option>
@@ -2446,8 +2435,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                     {/* Show info for purchased templates */}
                     {((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
-                        <div className="p-3 bg-blue-900/30 rounded-lg border border-blue-700">
-                            <div className="flex items-center gap-2 text-blue-300">
+                        <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(37, 99, 235, 0.2)', border: `1px solid ${colors.accent}` }}>
+                            <div className="flex items-center gap-2" style={{ color: colors.accent }}>
                                 <i className="pi pi-info-circle"></i>
                                 <span className="text-sm">
                                     Gekaufte Templates werden als <strong>Private</strong> geklont.
@@ -2456,9 +2445,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         </div>
                     )}
 
-                    <div className="bg-gray-700 p-3 rounded text-sm">
-                        <strong>Quelle:</strong> {templateToClone?.name}<br/>
-                        <strong>Typ:</strong> {templateToClone?.is_system_template ? t.ultimatetemplatecontroller301 : templateToClone?.visibility}
+                    <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgSecondary }}>
+                        <strong style={{ color: colors.textSecondary }}>Quelle:</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.name}</span><br/>
+                        <strong style={{ color: colors.textSecondary }}>Typ:</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.is_system_template ? t.ultimatetemplatecontroller301 : templateToClone?.visibility}</span>
                     </div>
                 </div>
             </Dialog>
@@ -2480,6 +2469,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={showDeleteModal}
                 onHide={handleDeleteModalHide}
                 style={{ width: '450px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
@@ -2488,25 +2479,25 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             >
                 <div className="space-y-4">
                     <div className="flex items-start space-x-3">
-                        <i className="pi pi-exclamation-triangle text-orange-500 text-2xl mt-1"></i>
+                        <i className="pi pi-exclamation-triangle text-2xl mt-1" style={{ color: colors.warningText }}></i>
                         <div>
-                            <h3 className="text-xl font-bold text-gray-300 mb-2">
+                            <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>
                                 Permanentes Löschen
                             </h3>
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
                                 {templateToDelete && (
                                     <>
-                                        Das Template <strong>{templateToDelete.name}</strong> wird permanent gelöscht.
+                                        Das Template <strong style={{ color: colors.textPrimary }}>{templateToDelete.name}</strong> wird permanent gelöscht.
                                     </>
                                 )}
                             </p>
-                            <p className="text-sm text-gray-600 mb-4">
+                            <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
                                 Alle Dateien, Variablen und Konfigurationen werden unwiderruflich entfernt.
                             </p>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Gib <strong>DELETE</strong> ein, um zu bestätigen:
+                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                    Gib <strong style={{ color: colors.textPrimary }}>DELETE</strong> ein, um zu bestätigen:
                                 </label>
                                 <InputText
                                     value={deleteConfirmText}
@@ -2514,8 +2505,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     placeholder="DELETE"
                                     className="w-full"
                                     disabled={deleting}
+                                    style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                 />
-                                <small className="text-gray-500 mt-1 block">
+                                <small className="mt-1 block" style={{ color: colors.textMuted }}>
                                     Du musst exakt DELETE (Großbuchstaben) eingeben
                                 </small>
                             </div>
@@ -2564,6 +2556,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     </>
                 }
                 style={{ width: '600px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
@@ -2571,33 +2565,34 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             >
                 {loadingProjects ? (
                     <div className="flex justify-center items-center py-8">
-                        <i className="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
+                        <i className="pi pi-spin pi-spinner text-4xl" style={{ color: colors.accent }}></i>
                     </div>
                 ) : (
                     <div className="space-y-2">
                         {allProjects.length === 0 ? (
-                            <div className="text-center text-gray-500 py-4">
+                            <div className="text-center py-4" style={{ color: colors.textMuted }}>
                                 Keine Projekte gefunden
                             </div>
                         ) : (
                             allProjects.map((project) => (
                                 <div
                                     key={project.id}
-                                    className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                                    className="flex items-center justify-between p-3 rounded cursor-pointer"
+                                    style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}
                                     onClick={() => handleToggleProjectLink(project.id)}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgHover)}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bgSecondary)}
                                 >
                                     <div className="flex items-center gap-3 flex-1">
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             checked={linkedProjectIds.includes(project.id)}
                                             onChange={() => handleToggleProjectLink(project.id)}
-                                            className="w-4 h-4 cursor-pointer"
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                         <div>
-                                            <div className="font-semibold text-white">{project.name}</div>
+                                            <div className="font-semibold" style={{ color: colors.textPrimary }}>{project.name}</div>
                                             {project.description && (
-                                                <div className="text-sm text-gray-400">{project.description}</div>
+                                                <div className="text-sm" style={{ color: colors.textMuted }}>{project.description}</div>
                                             )}
                                         </div>
                                     </div>
@@ -2630,6 +2625,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     </>
                 }
                 style={{ width: '600px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
@@ -2637,27 +2634,28 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             >
                 <div className="space-y-2">
                     {(templateToToggle?.linked_projects?.length || 0) === 0 ? (
-                        <div className="text-center text-gray-500 py-4">
+                        <div className="text-center py-4" style={{ color: colors.textMuted }}>
                             Keine Projekte verknüpft
                         </div>
                     ) : (
                         templateToToggle?.linked_projects?.map((project) => (
                             <div
                                 key={project.id}
-                                className="flex items-center justify-between p-3 border border-gray-600 rounded hover:bg-gray-700 cursor-pointer"
+                                className="flex items-center justify-between p-3 rounded cursor-pointer"
+                                style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}
                                 onClick={() => handleToggleProjectActivation(project.id)}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgHover)}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bgSecondary)}
                             >
                                 <div className="flex items-center gap-3 flex-1">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={projectActivationStates[project.id] || false}
                                         onChange={() => handleToggleProjectActivation(project.id)}
-                                        className="w-4 h-4 cursor-pointer"
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                     <div>
-                                        <div className="font-semibold text-white">{project.name}</div>
-                                        <div className="text-sm text-gray-400">
+                                        <div className="font-semibold" style={{ color: colors.textPrimary }}>{project.name}</div>
+                                        <div className="text-sm" style={{ color: colors.textMuted }}>
                                             {projectActivationStates[project.id] ? 'Aktiv' : 'Inaktiv'}
                                         </div>
                                     </div>
@@ -2674,13 +2672,15 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={storeSettingsModalVisible}
                 onHide={() => setStoreSettingsModalVisible(false)}
                 style={{ width: '700px' }}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
                 modal
                 closable
                 draggable={true}
                 resizable={true}
             >
                 {/* Status Info */}
-                <div className="p-3 rounded mb-4" style={{ backgroundColor: templateForStoreSettings?.is_store_approved ? '#065f46' : '#78350f' }}>
+                <div className="p-3 rounded mb-4" style={{ backgroundColor: templateForStoreSettings?.is_store_approved ? '#065f46' : '#78350f', color: templateForStoreSettings?.is_store_approved ? '#ffffff' : '#ffffff' }}>
                     <div className="flex items-center gap-2">
                         <i className={`pi ${templateForStoreSettings?.is_store_approved ? 'pi-check-circle' : 'pi-clock'}`}></i>
                         <span>
@@ -2693,16 +2693,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 {/* Sales Stats */}
                 {templateForStoreSettings?.sales_count !== undefined && templateForStoreSettings.sales_count > 0 && (
-                    <div className="grid grid-cols-2 gap-4 p-3 rounded mb-4" style={{ backgroundColor: '#1f2937' }}>
+                    <div className="grid grid-cols-2 gap-4 p-3 rounded mb-4" style={{ backgroundColor: colors.bgSecondary }}>
                         <div className="text-center">
                             <div className="text-2xl font-bold text-green-400">{templateForStoreSettings.sales_count}</div>
-                            <div className="text-sm text-gray-400">Verkäufe</div>
+                            <div className="text-sm" style={{ color: colors.textMuted }}>Verkäufe</div>
                         </div>
                         <div className="text-center">
                             <div className="text-2xl font-bold text-yellow-400">
-                                {templateForStoreSettings.total_revenue?.toFixed(2) || '0.00'}
+                                {Number(templateForStoreSettings.total_revenue || 0).toFixed(2)}
                             </div>
-                            <div className="text-sm text-gray-400">Einnahmen (Gesamt)</div>
+                            <div className="text-sm" style={{ color: colors.textMuted }}>Einnahmen (Gesamt)</div>
                         </div>
                     </div>
                 )}
@@ -2743,7 +2743,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             {/* Price Input */}
                             {storePriceType === 'credits' ? (
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                         Preis in Credits (Minimum: 50)
                                     </label>
                                     <InputText
@@ -2752,15 +2752,15 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         onChange={(e) => setStorePriceCredits(parseInt(e.target.value) || 50)}
                                         min={50}
                                         className="w-full"
-                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                        style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
-                                    <small className="text-gray-400 mt-1 block">
+                                    <small className="mt-1 block" style={{ color: colors.textMuted }}>
                                         Du erhältst 80%: {Math.floor(storePriceCredits * 0.8)} Credits pro Verkauf
                                     </small>
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                         Preis in EUR (Minimum: 1.00)
                                     </label>
                                     <InputText
@@ -2770,16 +2770,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         min={1}
                                         step={0.01}
                                         className="w-full"
-                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                        style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
-                                    <small className="text-gray-400 mt-1 block">
+                                    <small className="mt-1 block" style={{ color: colors.textMuted }}>
                                         Du erhältst 80%: {(storePriceEuros * 0.8).toFixed(2)} EUR pro Verkauf
                                     </small>
                                 </div>
                             )}
 
                             {/* Revenue Split Info */}
-                            <div className="p-3 rounded text-sm" style={{ backgroundColor: '#1e3a5f' }}>
+                            <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary }}>
                                 <i className="pi pi-info-circle mr-2"></i>
                                 <strong>Erlösverteilung:</strong> 80% an dich, 20% Plattformgebühr
                             </div>
@@ -2816,7 +2816,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     {/* Logo Preview */}
                                     <div
                                         className="w-32 h-32 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden"
-                                        style={{ borderColor: '#4B5563', backgroundColor: '#1f2937' }}
+                                        style={{ borderColor: colors.borderPrimary, backgroundColor: colors.bgSecondary }}
                                     >
                                         {templateMedia.logo ? (
                                             <img
@@ -2825,7 +2825,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <div className="text-center text-gray-500">
+                                            <div className="text-center" style={{ color: colors.textMuted }}>
                                                 <i className="pi pi-image text-3xl mb-1"></i>
                                                 <div className="text-xs">Kein Logo</div>
                                             </div>
@@ -2855,7 +2855,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 className="p-button-sm p-button-danger p-button-outlined"
                                             />
                                         )}
-                                        <small className="text-gray-400">Max. 2MB, wird auf 256x256 skaliert</small>
+                                        <small style={{ color: colors.textMuted }}>Max. 2MB, wird auf 256x256 skaliert</small>
                                     </div>
                                 </div>
                             </div>
@@ -2881,7 +2881,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     className="p-button-sm mb-3"
                                     disabled={uploadingImages}
                                 />
-                                <small className="text-gray-400 ml-2">Max. 5MB pro Bild, mehrere möglich</small>
+                                <small className="ml-2" style={{ color: colors.textMuted }}>Max. 5MB pro Bild, mehrere möglich</small>
 
                                 {/* Images Gallery */}
                                 {templateMedia.images.length > 0 ? (
@@ -2904,7 +2904,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-4 text-center text-gray-500 border-2 border-dashed rounded-lg" style={{ borderColor: '#4B5563' }}>
+                                    <div className="p-4 text-center border-2 border-dashed rounded-lg" style={{ borderColor: colors.borderPrimary, color: colors.textMuted }}>
                                         <i className="pi pi-images text-2xl mb-2"></i>
                                         <div className="text-sm">Noch keine Bilder hochgeladen</div>
                                     </div>
@@ -2925,7 +2925,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         onChange={(e) => setNewVideoUrl(e.target.value)}
                                         placeholder="https://youtube.com/watch?v=... oder https://vimeo.com/..."
                                         className="flex-1"
-                                        style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                        style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
                                     <Button
                                         label={addingVideo ? '...' : 'Hinzufügen'}
@@ -2940,18 +2940,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     onChange={(e) => setNewVideoTitle(e.target.value)}
                                     placeholder="Video-Titel (optional)"
                                     className="w-full mb-3"
-                                    style={{ backgroundColor: '#374151', color: '#fff', border: '1px solid #4B5563' }}
+                                    style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                 />
 
                                 {/* Videos List */}
                                 {templateMedia.videos.length > 0 ? (
                                     <div className="space-y-3">
                                         {templateMedia.videos.map((video: any) => (
-                                            <div key={video.id} className="p-3 rounded-lg" style={{ backgroundColor: '#1f2937' }}>
+                                            <div key={video.id} className="p-3 rounded-lg" style={{ backgroundColor: colors.bgSecondary }}>
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <div className="font-medium">{video.title || 'Video'}</div>
-                                                        <div className="text-xs text-gray-400 truncate max-w-md">{video.video_url}</div>
+                                                        <div className="font-medium" style={{ color: colors.textPrimary }}>{video.title || 'Video'}</div>
+                                                        <div className="text-xs truncate max-w-md" style={{ color: colors.textMuted }}>{video.video_url}</div>
                                                     </div>
                                                     <Button
                                                         icon="pi pi-trash"
@@ -2973,7 +2973,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-4 text-center text-gray-500 border-2 border-dashed rounded-lg" style={{ borderColor: '#4B5563' }}>
+                                    <div className="p-4 text-center border-2 border-dashed rounded-lg" style={{ borderColor: colors.borderPrimary, color: colors.textMuted }}>
                                         <i className="pi pi-video text-2xl mb-2"></i>
                                         <div className="text-sm">Noch keine Videos hinzugefügt</div>
                                         <div className="text-xs mt-1">YouTube und Vimeo Links werden als eingebettete Videos angezeigt</div>
@@ -2997,6 +2997,122 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     loadMyTemplates();
                 }}
             />
+
+            {/* Theme-aware styles for PrimeReact components */}
+            <style>{`
+                .template-management-panel .p-datatable {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-datatable .p-datatable-header {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-datatable .p-datatable-thead > tr > th {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-datatable .p-datatable-tbody > tr {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-datatable .p-datatable-tbody > tr > td {
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-datatable .p-datatable-tbody > tr:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-management-panel .p-paginator {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-paginator .p-paginator-pages .p-paginator-page {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-management-panel .p-paginator .p-paginator-first,
+                .template-management-panel .p-paginator .p-paginator-prev,
+                .template-management-panel .p-paginator .p-paginator-next,
+                .template-management-panel .p-paginator .p-paginator-last {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-paginator .p-dropdown {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-paginator .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-paginator .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-card {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-card .p-card-title {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-card .p-card-content {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-tabview .p-tabview-nav {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-tabview .p-tabview-nav li .p-tabview-nav-link {
+                    background-color: transparent !important;
+                    color: var(--theme-text-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-accent) !important;
+                    border-color: var(--theme-accent) !important;
+                }
+                .template-management-panel .p-tabview .p-tabview-panels {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-dropdown {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-dropdown-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-management-panel .p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-management-panel .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-management-panel .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                .template-management-panel .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-management-panel .p-inputtext::placeholder {
+                    color: var(--theme-text-muted) !important;
+                }
+            `}</style>
         </div>
     );
 };

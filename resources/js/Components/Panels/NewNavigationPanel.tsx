@@ -1,4 +1,4 @@
-// resources/js/Components/Panels/NewNavigationPanel.tsx
+// resources/js/Components/Panels/NewNavigationPanel.tsx - Performance Metrics included
 import React, { useState, useCallback } from 'react';
 import { TieredMenu } from 'primereact/tieredmenu';
 import { MenuItem } from 'primereact/menuitem';
@@ -10,6 +10,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ProjectWizardModal from '@/Components/ProjectWizardModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -23,6 +24,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const { t } = useTranslation(currentLanguage);
 
   const { selectedProject, loadProjects, setSelectedProject } = useProject();
+  const { colors } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
@@ -350,6 +352,20 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
+          label: t.navAgileMethod || 'Agile Methods',
+          icon: 'pi pi-chart-line',
+          items: [
+            {
+              label: t.newnavigationpanel357 || 'Kanban Board',
+              icon: 'pi pi-th-large',
+              command: () => onOpenPanel('kanban-board')
+            },
+          ]
+        },
+        {
+          separator: true
+        },
+        {
           label: t.panelsewnavigationpanel211,
           icon: 'pi pi-send',
           command: () => onOpenPanel('my-applications')
@@ -503,6 +519,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             command: () => onOpenPanel('payout-admin')
           },
           {
+            label: 'Performance',
+            icon: 'pi pi-chart-line',
+            command: () => onOpenPanel('performance-metrics')
+          },
+          {
             separator: true
           },
           {
@@ -527,18 +548,20 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-user-edit',
           command: () => onOpenModal?.('profile')
         },
-        // Messaging button
-        ...(!isDemoMode ? [{
+        // Messaging button (always shown, also in demo mode)
+        {
           label: 'Nachrichten',
           icon: 'pi pi-envelope',
           command: () => window.dispatchEvent(new CustomEvent('openMessaging'))
-        }] : []),
-        // 🎯 Hide "Change Plan" in DEMO mode
-        ...(!isDemoMode ? [{
+        },
+        // 🎯 "Change Plan" - greyed out in DEMO mode but still visible
+        {
           label: t.panelsewnavigationpanel320,
           icon: 'pi pi-credit-card',
-          command: () => onOpenModal?.('plan')
-        }] : []),
+          disabled: isDemoMode,
+          className: isDemoMode ? 'opacity-50 cursor-not-allowed' : '',
+          command: () => !isDemoMode && onOpenModal?.('plan')
+        },
         {
           label: t.panelsewnavigationpanel112,
           icon: 'pi pi-external-link',
@@ -594,15 +617,24 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   ];
 
   return (
-    <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-gray-800 border-r border-gray-700 flex flex-col h-full transition-all duration-300`}>
+    <div
+      className={`${isCollapsed ? 'w-16' : 'w-64'} flex flex-col h-full transition-all duration-300`}
+      style={{
+        backgroundColor: colors.bgSecondary,
+        borderRight: `1px solid ${colors.borderPrimary}`
+      }}
+    >
       {/* Toggle Button */}
-      <div className="p-3 border-b border-gray-700 flex items-center justify-center">
+      <div
+        className="p-3 flex items-center justify-center"
+        style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}
+      >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 hover:bg-gray-700 rounded transition-colors w-full flex justify-center"
+          className="p-2 rounded transition-colors w-full flex justify-center nav-hover-btn"
           title={isCollapsed ? 'Expand Menu' : t.panelsewnavigationpanel384}
         >
-          <i className={`pi ${isCollapsed ? 'pi-angle-right' : 'pi-angle-left'} text-gray-400`}></i>
+          <i className={`pi ${isCollapsed ? 'pi-angle-right' : 'pi-angle-left'}`} style={{ color: colors.textMuted }}></i>
         </button>
       </div>
 
@@ -610,7 +642,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       <div className="flex-1 p-4">
         {!isCollapsed ? (
           <div className="mb-4">
-            <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Navigation</div>
+            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>Navigation</div>
             <TieredMenu
               model={navigationItems}
               style={{ 
@@ -626,53 +658,53 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           <div className="flex flex-col space-y-2">
             {/* Back to Lobby and Home buttons */}
             <div className="relative group">
-              <button 
+              <button
                 onClick={() => window.location.href = '/'}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors"
                 title={t.panelsewnavigationpanel112}
               >
-                <i className="pi pi-arrow-left text-gray-300"></i>
+                <i className="pi pi-arrow-left" style={{ color: colors.textSecondary }}></i>
               </button>
             </div>
             <div className="relative group">
               <button
                 onClick={() => onOpenPanel('home')}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors"
                 title={t.panelsewnavigationpanel120}
               >
-                <i className="pi pi-home text-gray-300"></i>
+                <i className="pi pi-home" style={{ color: colors.textSecondary }}></i>
               </button>
             </div>
             <div className="relative group">
               <button
                 onClick={() => setShowWizard(true)}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors"
                 title="Project Setup Wizard"
               >
-                <i className="pi pi-sparkles text-gray-300"></i>
+                <i className="pi pi-sparkles" style={{ color: colors.textSecondary }}></i>
               </button>
             </div>
             {/* Icon-only navigation with TieredMenu - only 3 main categories */}
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-briefcase text-gray-300" title={t.manageteammodal316}></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className="pi pi-briefcase nav-icon-color" title={t.manageteammodal316}></i>
               </button>
               {/* Popup submenu for Project */}
-              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('project')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('project')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-home"></i>
                     <span>{t.newnavigationpanel133}</span>
                   </button>
 
                   <div className="relative group/settings">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-cog"></i>
                       <span>{t.newnavigationpanel138}</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Settings */}
-                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/settings:opacity-100 group-hover/settings:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/settings:opacity-100 group-hover/settings:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={() => {
                           if (selectedProject) {
@@ -682,37 +714,57 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           } else {
                             onOpenPanel('project');
                           }
-                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-sliders-h"></i>
                           <span>{t.newnavigationpanel142})</span>
                         </button>
                       </div>
                     </div>
                   </div>
-                  <div className="border-t border-gray-600 my-2"></div>
+                  <div className="border-t nav-separator my-2"></div>
 
                   <div className="relative group/teams">
-                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-users"></i>
                       <span>Teams</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Teams */}
-                    <div className="absolute left-full top-0 ml-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
                       <div className="p-2">
-                        <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-cog"></i>
                           <span>Team Management 💰</span>
                         </button>
                       </div>
                     </div>
                   </div>
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <button onClick={() => onOpenPanel('my-applications')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <div className="border-t nav-separator my-2"></div>
+
+                  {/* Agile Methods submenu */}
+                  <div className="relative group/agile">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                      <i className="pi pi-chart-line"></i>
+                      <span>{t.navAgileMethod || 'Agile Methods'}</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    {/* Sub-submenu for Agile Methods */}
+                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/agile:opacity-100 group-hover/agile:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <button onClick={() => onOpenPanel('kanban-board')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                          <i className="pi pi-th-large"></i>
+                          <span>{t.newnavigationpanel357 || 'Kanban Board'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t nav-separator my-2"></div>
+                  <button onClick={() => onOpenPanel('my-applications')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-send"></i>
                     <span>{t.panelsewnavigationpanel211}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('public-projects')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('public-projects')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-globe"></i>
                     <span>{t.panelsewnavigationpanel216}</span>
                   </button>
@@ -722,29 +774,29 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             {/* Templates - Top Level */}
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-cog text-gray-300" title={t.panelsewnavigationpanel184}></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className="pi pi-cog nav-icon-color" title={t.panelsewnavigationpanel184}></i>
               </button>
               {/* Popup submenu for Templates */}
-              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('template-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-list"></i>
                     <span>{t.panelsewnavigationpanel188}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-shopping-cart"></i>
                     <span>Template Store</span>
                   </button>
                   {/* Only show Template Review for Inner Core members */}
                   {isInnerCore && (
-                    <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-star-fill text-yellow-400"></i>
                       <span>Template Review</span>
                     </button>
                   )}
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <div className="border-t nav-separator my-2"></div>
+                  <button onClick={() => onOpenPanel('template-db-schema-dependencies')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-link"></i>
                     <span>{t.panelsewnavigationpanel201}</span>
                   </button>
@@ -754,17 +806,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             {/* Formulare - Top Level */}
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-window-maximize text-gray-300" title="Formulare"></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className="pi pi-window-maximize nav-icon-color" title="Formulare"></i>
               </button>
               {/* Popup submenu for Formulare */}
-              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => checkFormDesignerAccess('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => checkFormDesignerAccess('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-list"></i>
                     <span>Formular Management 💰</span>
                   </button>
-                  <button onClick={() => checkFormDesignerAccess('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => checkFormDesignerAccess('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-pencil"></i>
                     <span>Formular Editor 💰</span>
                   </button>
@@ -773,34 +825,34 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             </div>
 
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-database text-gray-300" title={t.panelsewnavigationpanel223}></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className="pi pi-database nav-icon-color" title={t.panelsewnavigationpanel223}></i>
               </button>
               {/* Popup submenu for Database */}
-              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('database-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-cog"></i>
                     <span>{t.panelsewnavigationpanel540}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('t2')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('t2')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-window-maximize"></i>
                     <span>{t.panelsewnavigationpanel544}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('schema-translation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('schema-translation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-language"></i>
                     <span>{t.panelsewnavigationpanel548}</span>
                   </button>
-                  <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sync"></i>
                     <span>Schema Migration 💰</span>
                   </button>
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <div className="border-t nav-separator my-2"></div>
+                  <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-upload"></i>
                     <span>{t.panelsewnavigationpanel246}</span>
                   </button>
-                  <button onClick={() => onOpenDatabaseExport && onOpenDatabaseExport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenDatabaseExport && onOpenDatabaseExport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-download"></i>
                     <span>{t.panelsewnavigationpanel251}</span>
                   </button>
@@ -809,29 +861,29 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             </div>
 
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className="pi pi-wrench text-gray-300" title={t.panelsewnavigationpanel258}></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className="pi pi-wrench nav-icon-color" title={t.panelsewnavigationpanel258}></i>
               </button>
               {/* Popup submenu for Generator */}
-              <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
-                  <button onClick={() => onOpenPanel('debug-manual-generator')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('debug-manual-generator')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-wrench"></i>
                     <span>Debug Manual Generator</span>
                   </button>
-                  <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-play"></i>
                     <span>{t.panelsewnavigationpanel576}</span>
                   </button>
-                  <div className="border-t border-gray-600 my-2"></div>
-                  <button onClick={() => onOpenPanel('code-adjustments')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <div className="border-t nav-separator my-2"></div>
+                  <button onClick={() => onOpenPanel('code-adjustments')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sliders-h"></i>
                     <span>Code Anpassungen 💰</span>
                   </button>
                   {userType === 'system' && (
                     <>
-                      <div className="border-t border-gray-600 my-2"></div>
-                      <button onClick={() => onOpenPanel('cache-debug')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <div className="border-t nav-separator my-2"></div>
+                      <button onClick={() => onOpenPanel('cache-debug')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-server"></i>
                         <span>Cache Debug</span>
                       </button>
@@ -843,26 +895,30 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             {(userType === 'system' || userType === 'admin') && (
               <div className="relative group">
-                <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                  <i className="pi pi-cog text-gray-300" title={t.panelsewnavigationpanel281}></i>
+                <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                  <i className="pi pi-cog nav-icon-color" title={t.panelsewnavigationpanel281}></i>
                 </button>
                 {/* Popup submenu for Administration */}
-                <div className="absolute left-full top-0 ml-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="p-2">
-                    <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-cog"></i>
                       <span>System Settings</span>
                     </button>
-                    <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-globe"></i>
                       <span>Language Management</span>
                     </button>
-                    <button onClick={() => onOpenPanel('payout-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button onClick={() => onOpenPanel('payout-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-wallet"></i>
                       <span>Auszahlungen</span>
                     </button>
-                    <div className="border-t border-gray-600 my-2"></div>
-                    <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                    <button onClick={() => onOpenPanel('performance-metrics')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                      <i className="pi pi-chart-line"></i>
+                      <span>Performance</span>
+                    </button>
+                    <div className="border-t nav-separator my-2"></div>
+                    <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-file-edit"></i>
                       <span>CMS Admin</span>
                     </button>
@@ -875,25 +931,26 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       </div>
 
       {/* Profile Section at Bottom */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t nav-separator">
         {!isCollapsed ? (
           <>
-            <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Account</div>
+            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>Account</div>
 
             {/* Credits Display */}
             {isLoggedIn && (
-              <div className="mb-3 p-3 bg-gray-900 rounded-lg border border-gray-600">
+              <div className="mb-3 p-3 rounded-lg nav-credits-box">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <i className="pi pi-wallet text-yellow-400"></i>
-                    <span className="text-sm text-gray-300">Credits</span>
+                    <i className="pi pi-wallet" style={{ color: colors.warningText }}></i>
+                    <span className="text-sm" style={{ color: colors.textSecondary }}>Credits</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-lg font-bold text-yellow-400">{userCredits}</span>
+                    <span className="text-lg font-bold" style={{ color: colors.warningText }}>{userCredits}</span>
                     {!isDemoMode && (
                       <button
                         onClick={() => onOpenModal?.('plan')}
-                        className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
                         title="Buy Credits"
                       >
                         <i className="pi pi-plus"></i>
@@ -902,10 +959,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </div>
                 </div>
                 {patronType && (
-                  <div className="mt-2 pt-2 border-t border-gray-700">
+                  <div className="mt-2 pt-2 border-t nav-separator">
                     <div className="flex items-center space-x-1">
-                      <i className="pi pi-star-fill text-purple-400 text-xs"></i>
-                      <span className="text-xs text-purple-400 font-semibold">
+                      <i className="pi pi-star-fill text-xs" style={{ color: colors.accent }}></i>
+                      <span className="text-xs font-semibold" style={{ color: colors.accent }}>
                         Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
                       </span>
                     </div>
@@ -929,28 +986,29 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             {/* Credits Badge in Collapsed Mode */}
             {isLoggedIn && (
               <div className="relative group/credits">
-                <div className="w-8 h-8 flex items-center justify-center rounded bg-gray-900 border border-gray-600">
-                  <i className="pi pi-wallet text-yellow-400 text-xs"></i>
+                <div className="w-8 h-8 flex items-center justify-center rounded nav-credits-box">
+                  <i className="pi pi-wallet text-xs" style={{ color: colors.warningText }}></i>
                 </div>
                 {/* Popup for credits */}
-                <div className="absolute left-full bottom-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible transition-all duration-200 z-50">
+                <div className="absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible transition-all duration-200 z-50">
                   <div className="p-3">
-                    <div className="text-xs text-gray-400 mb-1">Your Credits</div>
+                    <div className="text-xs mb-1" style={{ color: colors.textMuted }}>Your Credits</div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-2xl font-bold text-yellow-400">{userCredits}</span>
+                      <span className="text-2xl font-bold" style={{ color: colors.warningText }}>{userCredits}</span>
                       {!isDemoMode && (
                         <button
                           onClick={() => onOpenModal?.('plan')}
-                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                          className="text-xs px-2 py-1 rounded"
+                          style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
                         >
                           Buy
                         </button>
                       )}
                     </div>
                     {patronType && (
-                      <div className="flex items-center space-x-1 mt-2 pt-2 border-t border-gray-700">
-                        <i className="pi pi-star-fill text-purple-400 text-xs"></i>
-                        <span className="text-xs text-purple-400">
+                      <div className="flex items-center space-x-1 mt-2 pt-2 border-t nav-separator">
+                        <i className="pi pi-star-fill text-xs" style={{ color: colors.accent }}></i>
+                        <span className="text-xs" style={{ color: colors.accent }}>
                           Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
                         </span>
                       </div>
@@ -962,37 +1020,38 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
             {/* Profile icon with popup menu */}
             <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors">
-                <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} text-gray-300`} title={isLoggedIn ? userName : t.panelsewnavigationpanel359}></i>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+                <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} nav-icon-color`} title={isLoggedIn ? userName : t.panelsewnavigationpanel359}></i>
               </button>
               {/* Popup submenu for Profile */}
-              <div className="absolute left-full bottom-0 ml-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   {isLoggedIn ? (
                     <>
-                      <button onClick={() => onOpenModal?.('profile')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <button onClick={() => onOpenModal?.('profile')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-user-edit"></i>
                         <span>{t.newnavigationpanel315}</span>
                       </button>
-                      {/* Messaging Button */}
-                      {!isDemoMode && (
-                        <button onClick={() => window.dispatchEvent(new CustomEvent('openMessaging'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-envelope"></i>
-                          <span>Nachrichten</span>
-                        </button>
-                      )}
-                      {/* 🎯 Hide "Change Plan" in DEMO mode */}
-                      {!isDemoMode && (
-                        <button onClick={() => onOpenModal?.('plan')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                          <i className="pi pi-credit-card"></i>
-                          <span>{t.newnavigationpanel320}</span>
-                        </button>
-                      )}
-                      <button onClick={() => window.location.href = '/'} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      {/* Messaging Button (always shown, also in demo mode) */}
+                      <button onClick={() => window.dispatchEvent(new CustomEvent('openMessaging'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                        <i className="pi pi-envelope"></i>
+                        <span>Nachrichten</span>
+                      </button>
+                      {/* 🎯 "Change Plan" - greyed out in DEMO mode but still visible */}
+                      <button
+                        onClick={() => !isDemoMode && onOpenModal?.('plan')}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 text-sm rounded ${isDemoMode ? 'cursor-not-allowed' : 'nav-menu-item nav-hover-btn'}`}
+                        style={isDemoMode ? { color: colors.textMuted } : undefined}
+                        disabled={isDemoMode}
+                      >
+                        <i className="pi pi-credit-card"></i>
+                        <span>{t.newnavigationpanel320}</span>
+                      </button>
+                      <button onClick={() => window.location.href = '/'} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-external-link"></i>
                         <span>{t.newnavigationpanel325}</span>
                       </button>
-                      <div className="border-t border-gray-600 my-2"></div>
+                      <div className="border-t nav-separator my-2"></div>
                       <button onClick={() => {
                         // 🎯 DEMO MODE: Redirect to main site, not demo subdomain
                         if (isDemoMode) {
@@ -1017,20 +1076,20 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         setIsLoggedIn(false);
                         setUserName('');
                         window.location.href = '/';
-                      }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      }} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-sign-out"></i>
                         <span>{t.panelsewnavigationpanel333}</span>
                       </button>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => onOpenModal?.('login')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                      <button onClick={() => onOpenModal?.('login')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-sign-in"></i>
                         <span>Login</span>
                       </button>
                       {/* 🎯 Hide "Register" button in DEMO mode */}
                       {!isDemoMode && (
-                        <button onClick={() => onOpenModal?.('register')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                        <button onClick={() => onOpenModal?.('register')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-user-plus"></i>
                           <span>Register</span>
                         </button>

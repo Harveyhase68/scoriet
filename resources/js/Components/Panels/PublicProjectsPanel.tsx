@@ -12,6 +12,7 @@ import JoinCodeModal from '@/Components/Modals/JoinCodeModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -38,6 +39,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Toast ref for notifications
   const toast = useRef<Toast>(null);
@@ -273,24 +275,24 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <Toast ref={toast} position="top-right" />
         <div className="text-center">
-          <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-          <p className="text-gray-600">Loading public projects...</p>
+          <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
+          <p style={{ color: colors.textSecondary }}>Loading public projects...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
+    <div className="flex flex-col h-full p-6" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <Toast ref={toast} position="top-right" />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <i className="pi pi-globe text-2xl text-green-600"></i>
-          <h1 className="text-2xl font-bold text-white">Public Projects</h1>
+          <i className="pi pi-globe text-2xl" style={{ color: colors.successText }}></i>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Public Projects</h1>
         </div>
         <div className="flex space-x-2">
           <Button
@@ -317,13 +319,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       {/* Search */}
       <div className="mb-6">
         <div className="flex items-center space-x-2">
-          <i className="pi pi-search text-gray-400"></i>
+          <i className="pi pi-search" style={{ color: colors.textMuted }}></i>
           <InputText
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t.publicprojectspanel253}
             className="flex-1"
             disabled={loading}
+            style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
           />
         </div>
       </div>
@@ -332,12 +335,12 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       <div className="flex-1 overflow-y-auto">
         {filteredProjects.length === 0 ? (
           <div className="text-center py-8">
-            <i className="pi pi-search text-6xl text-gray-500 mb-4"></i>
-            <h3 className="text-lg font-medium text-white mb-2">
+            <i className="pi pi-search text-6xl mb-4" style={{ color: colors.textMuted }}></i>
+            <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>
               {searchTerm ? 'No matching projects' : t.publicprojectspanel266}
             </h3>
-            <p className="text-gray-400 mb-4">
-              {searchTerm 
+            <p className="mb-4" style={{ color: colors.textMuted }}>
+              {searchTerm
                 ? t.publicprojectspanel270
                 : t.publicprojectspanel271
               }
@@ -356,11 +359,12 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
             {filteredProjects.map((project) => (
               <Card
                 key={project.id}
-                className="h-fit hover:shadow-lg transition-shadow bg-gray-800 border-gray-700"
+                className="h-fit hover:shadow-lg transition-shadow"
+                style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}
                 header={
-                  <div className="p-4 border-b border-gray-700 bg-gray-800">
+                  <div className="p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-white truncate">
+                      <h3 className="text-lg font-semibold truncate" style={{ color: colors.textPrimary }}>
                         {project.name}
                       </h3>
                       <Tag
@@ -370,20 +374,20 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                         className="ml-2"
                       />
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-300">
+                    <div className="flex items-center space-x-2 text-sm" style={{ color: colors.textSecondary }}>
                       <i className="pi pi-user"></i>
                       <span>{project.owner.name}</span>
                       {project.owner.username && (
-                        <span className="text-gray-400">@{project.owner.username}</span>
+                        <span style={{ color: colors.textMuted }}>@{project.owner.username}</span>
                       )}
                     </div>
                   </div>
                 }
               >
-                <div className="p-4 space-y-4 bg-gray-800">
+                <div className="p-4 space-y-4" style={{ backgroundColor: colors.bgSecondary }}>
                   {/* Description */}
                   <div>
-                    <p className="text-sm text-gray-300 line-clamp-3 min-h-[3.5rem]">
+                    <p className="text-sm line-clamp-3 min-h-[3.5rem]" style={{ color: colors.textSecondary }}>
                       {project.description || t.publicprojectspanel316}
                     </p>
                   </div>
@@ -391,25 +395,25 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                   {/* Stats */}
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <div className="flex items-center space-x-1">
-                      <i className="pi pi-users text-blue-400"></i>
-                      <span className="text-gray-300">{project.teams_count}</span>
+                      <i className="pi pi-users" style={{ color: colors.accent }}></i>
+                      <span style={{ color: colors.textSecondary }}>{project.teams_count}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <i className="pi pi-database text-purple-400"></i>
-                      <span className="text-gray-300">{project.schemas_count || 0}</span>
+                      <i className="pi pi-database" style={{ color: '#a855f7' }}></i>
+                      <span style={{ color: colors.textSecondary }}>{project.schemas_count || 0}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <i className="pi pi-file text-green-400"></i>
-                      <span className="text-gray-300">{project.templates_count || 0}</span>
+                      <i className="pi pi-file" style={{ color: colors.successText }}></i>
+                      <span style={{ color: colors.textSecondary }}>{project.templates_count || 0}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <i className="pi pi-calendar text-gray-400"></i>
-                      <span className="text-gray-400">{formatDate(project.created_at)}</span>
+                      <i className="pi pi-calendar" style={{ color: colors.textMuted }}></i>
+                      <span style={{ color: colors.textMuted }}>{formatDate(project.created_at)}</span>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-3 border-t border-gray-700">
+                  <div className="pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     {currentUserId === project.owner.id ? (
                       <Button
                         label={t.publicprojectspanel338}
@@ -436,23 +440,23 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       </div>
 
       {/* Statistics */}
-      <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+      <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-blue-400">{projects.length}</div>
-            <div className="text-sm text-gray-400">Total Projects</div>
+            <div className="text-2xl font-bold" style={{ color: colors.accent }}>{projects.length}</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>Total Projects</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-green-400">
+            <div className="text-2xl font-bold" style={{ color: colors.successText }}>
               {projects.filter(p => p.can_join).length}
             </div>
-            <div className="text-sm text-gray-400">Accepting Members</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>Accepting Members</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-purple-400">
+            <div className="text-2xl font-bold" style={{ color: '#a855f7' }}>
               {filteredProjects.length}
             </div>
-            <div className="text-sm text-gray-400">Showing</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>Showing</div>
           </div>
         </div>
       </div>
@@ -480,6 +484,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         visible={showCloneModal}
         onHide={handleCloneModalHide}
         style={{ width: '500px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
@@ -492,7 +498,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
           )}
 
           <div className="field">
-            <label htmlFor="clone-name" className="block text-sm font-medium text-white mb-2">
+            <label htmlFor="clone-name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Project Name *
             </label>
             <InputText
@@ -503,11 +509,12 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               className="w-full"
               disabled={cloning !== null}
               required
+              style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
             />
           </div>
 
           <div className="field">
-            <label htmlFor="clone-description" className="block text-sm font-medium text-white mb-2">
+            <label htmlFor="clone-description" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Description
             </label>
             <InputTextarea
@@ -518,6 +525,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               className="w-full"
               rows={3}
               disabled={cloning !== null}
+              style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
             />
           </div>
 
@@ -529,30 +537,30 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 onChange={(e) => setCloneForm(prev => ({ ...prev, is_public: e.checked || false }))}
                 disabled={cloning !== null}
               />
-              <label htmlFor="clone-is-public" className="text-sm font-medium text-white">
+              <label htmlFor="clone-is-public" className="text-sm font-medium" style={{ color: colors.textPrimary }}>
                 Public Project
               </label>
             </div>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs" style={{ color: colors.textSecondary }}>
               Public projects are visible to all users and can be discovered in the project gallery.
               Private projects are only visible to you and your team members.
             </p>
           </div>
 
           {projectToClone && (
-            <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+            <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="text-sm">
-                <div className="font-medium text-gray-300 mb-1">Original Project:</div>
-                <div className="text-white">{projectToClone.name}</div>
-                <div className="text-gray-400 text-xs mt-1">
+                <div className="font-medium mb-1" style={{ color: colors.textSecondary }}>Original Project:</div>
+                <div style={{ color: colors.textPrimary }}>{projectToClone.name}</div>
+                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                   by {projectToClone.owner.name}
                 </div>
                 <div className="flex gap-4 mt-2 text-xs">
-                  <span className="text-blue-400">
+                  <span style={{ color: colors.accent }}>
                     <i className="pi pi-database mr-1"></i>
                     {projectToClone.schemas_count || 0} Schemas
                   </span>
-                  <span className="text-green-400">
+                  <span style={{ color: colors.successText }}>
                     <i className="pi pi-file mr-1"></i>
                     {projectToClone.templates_count || 0} Templates
                   </span>
@@ -563,17 +571,17 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
           {/* Credit warning for free users at limit */}
           {needsCredits && (
-            <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-700">
+            <div className="p-3 rounded-lg" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
               <div className="text-sm">
-                <div className="font-medium text-yellow-300 mb-1">
+                <div className="font-medium mb-1" style={{ color: colors.warningText }}>
                   <i className="pi pi-exclamation-triangle mr-2"></i>
                   50 Credits erforderlich
                 </div>
-                <p className="text-gray-300 text-xs mb-2">
+                <p className="text-xs mb-2" style={{ color: colors.textSecondary }}>
                   Sie haben Ihr kostenloses Projekt-Limit erreicht. Das Clonen dieses Projekts kostet 50 Credits (1 Jahr gültig).
                 </p>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Ihre Credits: <strong className="text-white">{currentUser?.credits || 0}</strong></span>
+                  <span style={{ color: colors.textMuted }}>Ihre Credits: <strong style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</strong></span>
                   {(currentUser?.credits || 0) < 50 && (
                     <Button
                       label="Credits kaufen"

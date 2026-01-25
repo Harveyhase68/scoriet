@@ -6,6 +6,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -43,6 +44,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,9 +111,9 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
     const getIcon = (status: string) => {
       switch (status) {
-        case 'approved': return 'pi-check-circle';
-        case 'rejected': return 'pi-times-circle';
-        default: return 'pi-clock';
+        case 'approved': return 'pi pi-check-circle';
+        case 'rejected': return 'pi pi-times-circle';
+        default: return 'pi pi-clock';
       }
     };
 
@@ -129,8 +131,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
   const projectTemplate = (application: Application) => {
     return (
       <div>
-        <div className="font-medium">{application.project.name}</div>
-        <div className="text-sm text-gray-500">
+        <div className="font-medium" style={{ color: colors.textPrimary }}>{application.project.name}</div>
+        <div className="text-sm" style={{ color: colors.textMuted }}>
           by {application.project.owner.name}
           {application.project.owner.username && ` (@${application.project.owner.username})`}
         </div>
@@ -140,7 +142,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
   const messageTemplate = (application: Application) => {
     if (!application.message) {
-      return <span className="text-gray-400 italic">No message</span>;
+      return <span className="italic" style={{ color: colors.textMuted }}>No message</span>;
     }
 
     const shortMessage = application.message.length > 40 
@@ -177,7 +179,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
   const reviewNotesTemplate = (application: Application) => {
     if (!application.review_notes) {
-      return <span className="text-gray-400">-</span>;
+      return <span style={{ color: colors.textMuted }}>-</span>;
     }
 
     const shortNotes = application.review_notes.length > 30 
@@ -200,22 +202,22 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <div className="text-center">
-          <i className="pi pi-spinner pi-spin text-4xl text-blue-500 mb-4"></i>
-          <p className="text-gray-600">Loading applications...</p>
+          <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
+          <p style={{ color: colors.textSecondary }}>Loading applications...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full p-6 bg-gray-900 text-white">
+    <div className="flex flex-col h-full p-6" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <i className="pi pi-send text-2xl text-blue-600"></i>
-          <h1 className="text-2xl font-bold text-white">My Applications</h1>
+          <i className="pi pi-send text-2xl" style={{ color: colors.accent }}></i>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>My Applications</h1>
         </div>
         <Button
           icon="pi pi-refresh"
@@ -230,12 +232,12 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         <Message severity="error" text={error} className="mb-4" />
       )}
 
-      <Card title={t.myapplicationspanel228} className="flex-1">
+      <Card title={t.myapplicationspanel228} className="flex-1" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
         {applications.length === 0 ? (
           <div className="text-center py-8">
-            <i className="pi pi-inbox text-6xl text-gray-500 mb-4"></i>
-            <h3 className="text-lg font-medium text-gray-600 mb-2">No Applications</h3>
-            <p className="text-gray-400 mb-4">You haven't applied to any projects yet.</p>
+            <i className="pi pi-inbox text-6xl mb-4" style={{ color: colors.textMuted }}></i>
+            <h3 className="text-lg font-medium mb-2" style={{ color: colors.textSecondary }}>No Applications</h3>
+            <p className="mb-4" style={{ color: colors.textMuted }}>You haven't applied to any projects yet.</p>
           </div>
         ) : (
           <DataTable
@@ -298,6 +300,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         visible={showDetailsModal}
         onHide={() => setShowDetailsModal(false)}
         style={{ width: '600px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         closable
         draggable={true}
@@ -392,6 +396,66 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
           </div>
         )}
       </Dialog>
+
+      {/* Theme-aware DataTable styles */}
+      <style>{`
+        .p-datatable {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .p-datatable .p-datatable-thead > tr > th {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-datatable .p-datatable-tbody > tr {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+        }
+        .p-datatable .p-datatable-tbody > tr > td {
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-datatable .p-datatable-tbody > tr:hover {
+          background-color: var(--theme-bg-hover) !important;
+        }
+        .p-paginator {
+          background-color: var(--theme-bg-tertiary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-paginator .p-paginator-pages .p-paginator-page {
+          color: var(--theme-text-primary) !important;
+        }
+        .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+          background-color: var(--theme-accent) !important;
+          color: white !important;
+        }
+        .p-paginator .p-paginator-first,
+        .p-paginator .p-paginator-prev,
+        .p-paginator .p-paginator-next,
+        .p-paginator .p-paginator-last {
+          color: var(--theme-text-primary) !important;
+        }
+        .p-paginator .p-dropdown {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-paginator .p-dropdown .p-dropdown-label {
+          color: var(--theme-text-primary) !important;
+        }
+        .p-paginator .p-inputtext {
+          background-color: var(--theme-bg-secondary) !important;
+          color: var(--theme-text-primary) !important;
+          border-color: var(--theme-border-primary) !important;
+        }
+        .p-card .p-card-title {
+          color: var(--theme-text-primary) !important;
+        }
+        .p-card .p-card-content {
+          color: var(--theme-text-primary) !important;
+        }
+      `}</style>
     </div>
   );
 }

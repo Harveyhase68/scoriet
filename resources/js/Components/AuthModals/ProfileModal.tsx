@@ -13,6 +13,7 @@ import { Message } from 'primereact/message';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -31,6 +32,9 @@ interface UserData {
   updated_at?: string;
   credits?: number;
   user_type?: string;
+  // Kanban display settings
+  kanban_initials?: string;
+  kanban_color?: string;
   // Email notification settings
   email_system_notifications?: boolean;
   email_user_notifications?: boolean;
@@ -128,6 +132,38 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
+  // Theme context
+  const { themeMode, setThemeMode, colors } = useTheme();
+
+  // Theme options for dropdown
+  const themeOptions: { label: string; value: ThemeMode; icon: string; description: string }[] = [
+    { label: 'Dunkel', value: 'dark', icon: 'pi pi-moon', description: 'Dunkles Design' },
+    { label: 'Hell', value: 'light', icon: 'pi pi-sun', description: 'Helles Design' },
+    { label: 'Grün', value: 'green', icon: 'pi pi-palette', description: 'Grünes Design' },
+    { label: 'Automatisch', value: 'auto', icon: 'pi pi-clock', description: '6-18 Uhr hell, sonst dunkel' },
+  ];
+
+  // Helper function to darken/lighten a hex color
+  const adjustColorHex = (hex: string, amount: number): string => {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+  };
+
+  // Helper function to get contrasting text color (black or white) based on background
+  const getContrastTextColor = (hexColor: string): string => {
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    // Calculate relative luminance using sRGB formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? '#1e293b' : '#ffffff';
+  };
+
   // Listen for language changes from other components
   useEffect(() => {
     const handleLanguageChangeEvent = (event: CustomEvent) => {
@@ -141,37 +177,60 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     };
   }, []);
 
-  // Add CSS for dark theme dropdown styling
+  // Add CSS for theme-aware dropdown styling
   React.useEffect(() => {
     const style = document.createElement('style');
+    style.id = 'profile-dropdown-styles';
     style.textContent = `
       .profile-language-dropdown-panel {
-        background: #374151 !important;
-        border: 1px solid #4b5563 !important;
+        background: var(--theme-bg-tertiary) !important;
+        border: 1px solid var(--theme-border-secondary) !important;
         border-radius: 6px !important;
       }
       .profile-language-dropdown-panel .p-dropdown-item {
         background: transparent !important;
-        color: #f3f4f6 !important;
+        color: var(--theme-text-primary) !important;
         border: none !important;
         padding: 0 !important;
       }
       .profile-language-dropdown-panel .p-dropdown-item:hover {
-        background: #4b5563 !important;
-        color: #ffffff !important;
+        background: var(--theme-bg-hover) !important;
+        color: var(--theme-text-primary) !important;
       }
       .profile-language-dropdown-panel .p-dropdown-item.p-highlight {
-        background: #3b82f6 !important;
-        color: #ffffff !important;
+        background: var(--theme-accent) !important;
+        color: var(--theme-text-inverse) !important;
       }
       .profile-language-dropdown-panel .p-dropdown-item-group {
-        background: #374151 !important;
-        color: #9ca3af !important;
+        background: var(--theme-bg-tertiary) !important;
+        color: var(--theme-text-muted) !important;
+      }
+      .profile-themed-dropdown .p-dropdown {
+        background: var(--theme-bg-tertiary) !important;
+        border: 1px solid var(--theme-border-secondary) !important;
+        color: var(--theme-text-primary) !important;
+      }
+      .profile-themed-dropdown .p-dropdown:hover {
+        border-color: var(--theme-border-primary) !important;
+      }
+      .profile-themed-dropdown .p-dropdown .p-dropdown-label {
+        color: var(--theme-text-primary) !important;
+      }
+      .profile-themed-dropdown .p-dropdown .p-dropdown-trigger {
+        color: var(--theme-text-muted) !important;
       }
     `;
+    // Remove existing style if present
+    const existingStyle = document.getElementById('profile-dropdown-styles');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
     document.head.appendChild(style);
     return () => {
-      document.head.removeChild(style);
+      const styleToRemove = document.getElementById('profile-dropdown-styles');
+      if (styleToRemove) {
+        styleToRemove.remove();
+      }
     };
   }, []);
   const [userData, setUserData] = useState<UserData>({
@@ -475,7 +534,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await fetch('/api/messages/attachment-access', {
+      const response = await fetch('/api/messages/attachments/access', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -959,6 +1018,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           name: userData.name,
           email: userData.email,
           language: userData.language,
+          kanban_initials: userData.kanban_initials || null,
+          kanban_color: userData.kanban_color || null,
           email_system_notifications: userData.email_system_notifications,
           email_user_notifications: userData.email_user_notifications,
         }),
@@ -1213,7 +1274,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 readOnly={true}
                 style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
               />
-              <small className="text-gray-500">
+              <small style={{ color: colors.textMuted }}>
                 {t.profilemodal510}
               </small>
             </div>
@@ -1250,8 +1311,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               />
             </div>
 
-            <div className="field">
-              <label htmlFor="profile-language" className="block text-sm font-medium mb-2">
+            <div className="field profile-themed-dropdown">
+              <label htmlFor="profile-language" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 {t.preferredLanguage}
               </label>
               <Dropdown
@@ -1262,6 +1323,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 placeholder={t.languageDescription}
                 className="w-full"
                 panelClassName="profile-language-dropdown-panel"
+                style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
                 itemTemplate={(option: any) => {
                   const lang = supportedLanguages.find(l => l.code === option.value);
                   return (
@@ -1270,15 +1332,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         <CSSFlag country={option.value === 'en' ? 'us' : option.value} size="md" />
                       </span>
                       <div className="flex-1">
-                        <div className="font-medium text-gray-100">{lang?.nativeName}</div>
-                        <div className="text-xs text-gray-400">{lang?.name}</div>
+                        <div className="font-medium" style={{ color: colors.textPrimary }}>{lang?.nativeName}</div>
+                        <div className="text-xs" style={{ color: colors.textMuted }}>{lang?.name}</div>
                       </div>
                     </div>
                   );
                 }}
                 valueTemplate={(selectedOption: any) => {
                   if (!selectedOption) {
-                    return <span className="text-sm text-gray-500">Select Language</span>;
+                    return <span className="text-sm" style={{ color: colors.textMuted }}>Select Language</span>;
                   }
                   const languageCode = selectedOption.value || selectedOption;
                   const lang = supportedLanguages.find(l => l.code === languageCode);
@@ -1287,32 +1349,136 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       <span className="mr-2 flex-shrink-0" style={{ width: '20px', textAlign: 'center' }}>
                         <CSSFlag country={lang.code === 'en' ? 'us' : lang.code} size="sm" />
                       </span>
-                      <span className="text-sm font-medium">{lang.nativeName}</span>
+                      <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>{lang.nativeName}</span>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-500">Select Language</span>
+                    <span className="text-sm" style={{ color: colors.textMuted }}>Select Language</span>
                   );
                 }}
               />
-              <small className="text-gray-500">
+              <small style={{ color: colors.textMuted }}>
                 {t.languageDescription}
               </small>
             </div>
 
+            {/* Theme Selection */}
+            <div className="field profile-themed-dropdown">
+              <label htmlFor="profile-theme" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-palette mr-2" style={{ color: colors.accent }}></i>
+                Design / Theme
+              </label>
+              <Dropdown
+                id="profile-theme"
+                value={themeMode}
+                options={themeOptions}
+                onChange={(e) => setThemeMode(e.value)}
+                placeholder="Design auswählen"
+                className="w-full"
+                panelClassName="profile-language-dropdown-panel"
+                style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
+                itemTemplate={(option) => (
+                  <div className="flex items-center w-full" style={{ minHeight: '40px', padding: '0.5rem 0.75rem' }}>
+                    <span className="mr-3 flex-shrink-0" style={{ width: '24px', textAlign: 'center' }}>
+                      <i className={option.icon} style={{ color: colors.accent }}></i>
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-medium" style={{ color: colors.textPrimary }}>{option.label}</div>
+                      <div className="text-xs" style={{ color: colors.textMuted }}>{option.description}</div>
+                    </div>
+                  </div>
+                )}
+                valueTemplate={(selectedOption) => {
+                  if (!selectedOption) {
+                    return <span className="text-sm" style={{ color: colors.textMuted }}>Design auswählen</span>;
+                  }
+                  const option = themeOptions.find(o => o.value === (selectedOption.value || selectedOption));
+                  return option ? (
+                    <div className="flex items-center py-1">
+                      <span className="mr-2 flex-shrink-0" style={{ width: '20px', textAlign: 'center' }}>
+                        <i className={option.icon} style={{ color: colors.accent }}></i>
+                      </span>
+                      <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>{option.label}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm" style={{ color: colors.textMuted }}>Design auswählen</span>
+                  );
+                }}
+              />
+              <small style={{ color: colors.textMuted }}>
+                Wähle dein bevorzugtes Farbschema. Bei &quot;Automatisch&quot; wird tagsüber (6-18 Uhr) das helle Design verwendet.
+              </small>
+            </div>
+
+            {/* Kanban Display Settings */}
+            <div className="field mt-4">
+              <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-th-large mr-2" style={{ color: colors.accent }}></i>
+                Kanban-Anzeige
+              </label>
+              <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
+                <div className="flex items-center gap-4">
+                  {/* Preview Avatar */}
+                  <div
+                    className="flex items-center justify-center rounded-full font-bold text-sm"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      background: userData.kanban_color
+                        ? `linear-gradient(135deg, ${userData.kanban_color}, ${adjustColorHex(userData.kanban_color, -30)})`
+                        : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                      color: getContrastTextColor(userData.kanban_color || '#3b82f6'),
+                    }}
+                  >
+                    {(userData.kanban_initials || userData.username?.substring(0, 2) || 'AB').toUpperCase()}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {/* Initials Input */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>Kürzel:</label>
+                      <InputText
+                        value={userData.kanban_initials || ''}
+                        onChange={(e) => setUserData(prev => ({ ...prev, kanban_initials: e.target.value.toUpperCase().substring(0, 3) }))}
+                        placeholder={userData.username?.substring(0, 2).toUpperCase() || 'AB'}
+                        maxLength={3}
+                        className="w-20 text-center"
+                        style={{ padding: '0.25rem 0.5rem' }}
+                      />
+                      <span className="text-xs" style={{ color: colors.textMuted }}>max. 3 Zeichen</span>
+                    </div>
+                    {/* Color Input */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>Farbe:</label>
+                      <input
+                        type="color"
+                        value={userData.kanban_color || '#3b82f6'}
+                        onChange={(e) => setUserData(prev => ({ ...prev, kanban_color: e.target.value }))}
+                        className="w-10 h-8 cursor-pointer rounded"
+                        style={{ padding: 0, border: `1px solid ${colors.borderSecondary}` }}
+                      />
+                      <span className="text-xs" style={{ color: colors.textMuted }}>{userData.kanban_color || '#3b82f6'}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
+                  Diese Einstellungen werden im Kanban-Board für Ihre Zuweisung angezeigt.
+                </p>
+              </div>
+            </div>
+
             {/* Email Notification Settings */}
             <div className="field mt-4">
-              <label className="block text-sm font-medium mb-3">
-                <i className="pi pi-envelope mr-2 text-blue-400"></i>
+              <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-envelope mr-2" style={{ color: colors.accent }}></i>
                 {t.emailNotifications || 'E-Mail Benachrichtigungen'}
               </label>
-              <div className="space-y-3 bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
                 {/* System Notifications */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-200">
+                    <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
                       {t.emailSystemNotifications || 'System-Benachrichtigungen'}
                     </span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
                       {t.emailSystemNotificationsDesc || 'Wichtige Systemmeldungen, Ankündigungen und Admin-Nachrichten'}
                     </p>
                   </div>
@@ -1322,14 +1488,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     disabled={loadingProfile}
                   />
                 </div>
-                <Divider className="my-2" />
+                <Divider className="my-2" style={{ borderColor: colors.borderSecondary }} />
                 {/* User/Team Notifications */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-200">
+                    <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
                       {t.emailUserNotifications || 'Benutzer-Nachrichten'}
                     </span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
                       {t.emailUserNotificationsDesc || 'Nachrichten von anderen Benutzern, Teams und Projekt-Benachrichtigungen'}
                     </p>
                   </div>
@@ -1437,10 +1603,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         <TabPanel header="Subscriptions" leftIcon="pi pi-unlock">
           <div className="space-y-6">
             {/* Credits Display */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-lg">Ihre Credits:</span>
-                <span className="text-white font-bold text-2xl">{cliStatus?.credits || 0}</span>
+                <span className="text-lg" style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                <span className="font-bold text-2xl" style={{ color: colors.textPrimary }}>{cliStatus?.credits || 0}</span>
               </div>
               <div className="mt-2">
                 <Button
@@ -1455,21 +1621,36 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* Attachment Storage Display */}
             {storageStatus && (
-              <div className={`rounded-lg p-4 border ${
-                storageStatus.is_full
-                  ? 'bg-red-900/30 border-red-600'
-                  : storageStatus.is_warning
-                    ? 'bg-yellow-900/30 border-yellow-600'
-                    : 'bg-gray-800 border-gray-700'
-              }`}>
+              <div
+                className="rounded-lg p-4"
+                style={{
+                  backgroundColor: storageStatus.is_full
+                    ? colors.errorBg
+                    : storageStatus.is_warning
+                      ? colors.warningBg
+                      : colors.bgTertiary,
+                  border: `1px solid ${storageStatus.is_full
+                    ? colors.errorBorder
+                    : storageStatus.is_warning
+                      ? colors.warningBorder
+                      : colors.borderSecondary}`
+                }}
+              >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <i className="pi pi-cloud text-blue-400"></i>
+                  <span className="flex items-center gap-2" style={{ color: colors.textSecondary }}>
+                    <i className="pi pi-cloud" style={{ color: colors.accent }}></i>
                     Anhang-Speicher:
                   </span>
-                  <span className={`font-bold ${
-                    storageStatus.is_full ? 'text-red-400' : storageStatus.is_warning ? 'text-yellow-400' : 'text-white'
-                  }`}>
+                  <span
+                    className="font-bold"
+                    style={{
+                      color: storageStatus.is_full
+                        ? colors.errorText
+                        : storageStatus.is_warning
+                          ? colors.warningText
+                          : colors.textPrimary
+                    }}
+                  >
                     {storageStatus.is_unlimited
                       ? 'Unbegrenzt'
                       : `${storageStatus.used_formatted} / ${storageStatus.limit_formatted}`
@@ -1478,30 +1659,31 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 </div>
                 {!storageStatus.is_unlimited && (
                   <>
-                    <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                    <div className="w-full rounded-full h-2.5 mb-2" style={{ backgroundColor: colors.bgHover }}>
                       <div
-                        className={`h-2.5 rounded-full transition-all ${
-                          storageStatus.is_full
-                            ? 'bg-red-500'
+                        className="h-2.5 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, storageStatus.percentage)}%`,
+                          backgroundColor: storageStatus.is_full
+                            ? colors.errorText
                             : storageStatus.is_warning
-                              ? 'bg-yellow-500'
-                              : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${Math.min(100, storageStatus.percentage)}%` }}
+                              ? colors.warningText
+                              : colors.accent
+                        }}
                       ></div>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500">
+                    <div className="flex justify-between text-xs" style={{ color: colors.textMuted }}>
                       <span>{storageStatus.percentage}% verwendet</span>
                       <span>{storageStatus.remaining_formatted} frei</span>
                     </div>
                     {storageStatus.is_full && (
-                      <div className="mt-2 text-sm text-red-400 flex items-center gap-1">
+                      <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.errorText }}>
                         <i className="pi pi-exclamation-triangle"></i>
                         Speicher voll! Löschen Sie alte Nachrichten um Platz zu schaffen.
                       </div>
                     )}
                     {storageStatus.is_warning && !storageStatus.is_full && (
-                      <div className="mt-2 text-sm text-yellow-400 flex items-center gap-1">
+                      <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.warningText }}>
                         <i className="pi pi-exclamation-circle"></i>
                         Speicher fast voll!
                       </div>
@@ -1513,9 +1695,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* Patron Notice */}
             {cliStatus?.cli.is_patron && (
-              <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
-                <p className="text-purple-300 flex items-center gap-2">
-                  <i className="pi pi-star-fill text-yellow-400"></i>
+              <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                <p className="flex items-center gap-2" style={{ color: colors.infoText }}>
+                  <i className="pi pi-star-fill" style={{ color: '#facc15' }}></i>
                   <strong>Patron Status</strong> - Sie haben unbegrenzten Zugang zu allen Features!
                 </p>
               </div>
@@ -1523,14 +1705,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* All Available Features */}
             <div className="mt-4">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i className="pi pi-th-large text-blue-400"></i>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-th-large" style={{ color: colors.accent }}></i>
                 Verfügbare Features
               </h3>
 
               {loadingFeatures ? (
                 <div className="flex items-center justify-center py-8">
-                  <i className="pi pi-spin pi-spinner text-2xl text-blue-400"></i>
+                  <i className="pi pi-spin pi-spinner text-2xl" style={{ color: colors.accent }}></i>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1546,35 +1728,39 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       <div key={feature.type}>
                         {/* Feature Card */}
                         <div
-                          className={`rounded-lg p-4 border ${
-                            isBundle
-                              ? 'bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-blue-600'
+                          className="rounded-lg p-4"
+                          style={{
+                            backgroundColor: isBundle
+                              ? colors.infoBg
+                              : colors.bgTertiary,
+                            border: `1px solid ${isBundle
+                              ? colors.infoBorder
                               : feature.unlocked
-                              ? 'bg-gray-800 border-green-600'
-                              : 'bg-gray-800 border-gray-700'
-                          }`}
+                                ? colors.successBorder
+                                : colors.borderSecondary}`
+                          }}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <i className={`pi ${feature.icon} ${feature.iconColor}`}></i>
-                                <span className="font-semibold text-white">{feature.name}</span>
+                                <i className={`pi ${feature.icon}`} style={{ color: colors.accent }}></i>
+                                <span className="font-semibold" style={{ color: colors.textPrimary }}>{feature.name}</span>
                                 {isBundle && (
-                                  <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs rounded-full font-bold">
+                                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full font-bold" style={{ backgroundColor: colors.warningText, color: '#000' }}>
                                     SPARE 10 CREDITS!
                                   </span>
                                 )}
                                 {feature.is_patron && (
-                                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                                  <span className="px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>
                                     Patron
                                   </span>
                                 )}
                               </div>
-                              <p className="text-gray-400 text-sm">{feature.description}</p>
+                              <p className="text-sm" style={{ color: colors.textMuted }}>{feature.description}</p>
 
                               {/* Expiry Info */}
                               {feature.unlocked && !feature.is_patron && feature.expires_at && (
-                                <p className="text-gray-400 text-sm mt-1">
+                                <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
                                   Gültig bis: {new Date(feature.expires_at).toLocaleDateString('de-DE')}
                                   {feature.days_remaining !== null && ` (${feature.days_remaining} Tage)`}
                                 </p>
@@ -1585,7 +1771,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                             <div className="flex flex-col items-end gap-2">
                               {feature.unlocked ? (
                                 <>
-                                  <span className="px-3 py-1 bg-green-600 text-white rounded-full text-sm flex items-center gap-1">
+                                  <span className="px-3 py-1 rounded-full text-sm flex items-center gap-1" style={{ backgroundColor: colors.buttonSuccess, color: colors.textInverse }}>
                                     <i className="pi pi-check"></i> Aktiv
                                   </span>
                                   {/* Extend button for already unlocked features (not for patron) */}
@@ -1613,7 +1799,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                 </>
                               ) : (
                                 <>
-                                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded-full text-sm flex items-center gap-1">
+                                  <span className="px-3 py-1 rounded-full text-sm flex items-center gap-1" style={{ backgroundColor: colors.bgHover, color: colors.textSecondary }}>
                                     <i className="pi pi-lock"></i> Gesperrt
                                   </span>
                                   {!feature.is_patron && (
@@ -1621,8 +1807,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                       {/* Entity-based features (like Team) - show info + button */}
                                       {feature.requiresEntity ? (
                                         <div className="mt-2 text-right">
-                                          <span className="text-gray-500 text-xs block mb-1">{feature.entityInfo}</span>
-                                          <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs">
+                                          <span className="text-xs block mb-1" style={{ color: colors.textMuted }}>{feature.entityInfo}</span>
+                                          <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: colors.bgHover, color: colors.textSecondary }}>
                                             {feature.cost} Credits/Jahr pro {feature.name}
                                           </span>
                                         </div>
@@ -1672,26 +1858,30 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               <div key={child.type} className="flex">
                                 {/* Tree line indicator */}
                                 <div className="flex flex-col items-center mr-3" style={{ width: '20px' }}>
-                                  <div className={`w-px bg-gray-600 ${index === 0 ? 'h-4' : 'h-full'}`}></div>
-                                  <span className="text-gray-500 text-lg leading-none">└</span>
+                                  <div className={`w-px ${index === 0 ? 'h-4' : 'h-full'}`} style={{ backgroundColor: colors.borderSecondary }}></div>
+                                  <span className="text-lg leading-none" style={{ color: colors.textMuted }}>└</span>
                                 </div>
 
                                 {/* Child Feature Card */}
                                 <div
-                                  className={`flex-1 rounded-lg p-3 border ${
-                                    child.unlocked ? 'bg-gray-800/70 border-green-600/50' : 'bg-gray-800/50 border-gray-700'
-                                  }`}
+                                  className="flex-1 rounded-lg p-3"
+                                  style={{
+                                    backgroundColor: `${colors.bgTertiary}b3`,
+                                    border: `1px solid ${child.unlocked ? `${colors.successBorder}80` : colors.borderSecondary}`
+                                  }}
                                 >
                                   <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                      <i className={`pi ${child.icon} ${child.iconColor} text-sm`}></i>
-                                      <span className="font-medium text-white text-sm">{child.name}</span>
+                                      <i className={`pi ${child.icon} text-sm`} style={{ color: colors.accent }}></i>
+                                      <span className="font-medium text-sm" style={{ color: colors.textPrimary }}>{child.name}</span>
                                       {child.unlocked && (
-                                        <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                          child.covered_by_bundle
-                                            ? 'bg-blue-600/70 text-white'
-                                            : 'bg-green-600/70 text-white'
-                                        }`}>
+                                        <span
+                                          className="px-2 py-0.5 rounded-full text-xs"
+                                          style={{
+                                            backgroundColor: child.covered_by_bundle ? `${colors.accent}b3` : `${colors.buttonSuccess}b3`,
+                                            color: colors.textInverse
+                                          }}
+                                        >
                                           {child.covered_by_bundle ? 'Im Bundle' : 'Aktiv'}
                                         </span>
                                       )}
@@ -1723,9 +1913,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                       )}
                                     </div>
                                   </div>
-                                  <p className="text-gray-500 text-xs mt-1">{child.description}</p>
+                                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{child.description}</p>
                                   {child.unlocked && !child.is_patron && child.expires_at && (
-                                    <p className="text-gray-500 text-xs mt-1">
+                                    <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                       {child.covered_by_bundle ? 'Bundle gültig bis: ' : 'Gültig bis: '}
                                       {new Date(child.expires_at).toLocaleDateString('de-DE')}
                                     </p>
@@ -1744,8 +1934,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* Not enough credits warning */}
             {cliStatus && !cliStatus.cli.is_patron && (cliStatus.credits < 50) && (
-              <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
-                <p className="text-red-300 text-sm flex items-center gap-2">
+              <div className="rounded-lg p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+                <p className="text-sm flex items-center gap-2" style={{ color: colors.errorText }}>
                   <i className="pi pi-exclamation-triangle"></i>
                   Sie haben nicht genug Credits. Kaufen Sie Credits um Features freizuschalten.
                 </p>
@@ -1753,13 +1943,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             )}
 
             {/* All Active Subscriptions Overview - Only entity-based (projects, databases, teams, templates) */}
-            <Divider />
+            <Divider style={{ borderColor: colors.borderSecondary }} />
             <div className="mt-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i className="pi pi-list text-blue-400"></i>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-list" style={{ color: colors.accent }}></i>
                 Einzelne Abonnements
               </h3>
-              <p className="text-gray-500 text-sm mb-4">
+              <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                 Weitere Projekte, private Templates oder weitere Datenbanken - diese können beliebig oft verlängert werden.
               </p>
 
@@ -1771,15 +1961,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 if (loadingSubscriptions) {
                   return (
                     <div className="flex items-center justify-center py-8">
-                      <i className="pi pi-spin pi-spinner text-2xl text-blue-400"></i>
+                      <i className="pi pi-spin pi-spinner text-2xl" style={{ color: colors.accent }}></i>
                     </div>
                   );
                 }
 
                 if (entitySubscriptions.length === 0) {
                   return (
-                    <div className="bg-gray-800/50 rounded-lg p-4 text-center">
-                      <p className="text-gray-400">Sie haben noch keine weiteren Projekte, private Templates oder weitere Datenbanken freigeschaltet.</p>
+                    <div className="rounded-lg p-4 text-center" style={{ backgroundColor: `${colors.bgTertiary}80` }}>
+                      <p style={{ color: colors.textMuted }}>Sie haben noch keine weiteren Projekte, private Templates oder weitere Datenbanken freigeschaltet.</p>
                     </div>
                   );
                 }
@@ -1789,25 +1979,29 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     {entitySubscriptions.map((sub) => (
                     <div
                       key={sub.id}
-                      className={`bg-gray-800 rounded-lg p-4 border ${
-                        sub.is_expired || sub.is_soft_locked
-                          ? 'border-red-600'
-                          : sub.is_eligible_for_bonus
-                          ? 'border-yellow-600'
-                          : sub.days_until_expiry !== null && sub.days_until_expiry <= 14
-                          ? 'border-orange-600'
-                          : 'border-gray-700'
-                      }`}
+                      className="rounded-lg p-4"
+                      style={{
+                        backgroundColor: colors.bgTertiary,
+                        border: `1px solid ${
+                          sub.is_expired || sub.is_soft_locked
+                            ? colors.errorBorder
+                            : sub.is_eligible_for_bonus
+                            ? colors.warningBorder
+                            : sub.days_until_expiry !== null && sub.days_until_expiry <= 14
+                            ? colors.warningBorder
+                            : colors.borderSecondary
+                        }`
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-white">{sub.type_display}</span>
+                            <span className="font-semibold" style={{ color: colors.textPrimary }}>{sub.type_display}</span>
                             {sub.entity_name && (
-                              <span className="text-gray-400">- {sub.entity_name}</span>
+                              <span style={{ color: colors.textMuted }}>- {sub.entity_name}</span>
                             )}
                             {sub.is_patron && (
-                              <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                              <span className="px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>
                                 Patron
                               </span>
                             )}
@@ -1817,34 +2011,34 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                           {sub.expires_at_formatted ? (
                             <div className="text-sm">
                               {sub.is_expired || sub.is_soft_locked ? (
-                                <span className="text-red-400 flex items-center gap-1">
+                                <span className="flex items-center gap-1" style={{ color: colors.errorText }}>
                                   <i className="pi pi-exclamation-circle"></i>
                                   Abgelaufen am {sub.expires_at_formatted}
                                 </span>
                               ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 3 ? (
-                                <span className="text-red-400 flex items-center gap-1">
+                                <span className="flex items-center gap-1" style={{ color: colors.errorText }}>
                                   <i className="pi pi-clock"></i>
                                   Läuft ab in {sub.days_until_expiry} {sub.days_until_expiry === 1 ? 'Tag' : 'Tagen'} ({sub.expires_at_formatted})
                                 </span>
                               ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 14 ? (
-                                <span className="text-yellow-400 flex items-center gap-1">
+                                <span className="flex items-center gap-1" style={{ color: colors.warningText }}>
                                   <i className="pi pi-clock"></i>
                                   Läuft ab in {sub.days_until_expiry} Tagen ({sub.expires_at_formatted})
                                 </span>
                               ) : (
-                                <span className="text-gray-400">
+                                <span style={{ color: colors.textMuted }}>
                                   Gültig bis {sub.expires_at_formatted}
                                   {sub.days_until_expiry !== null && ` (${sub.days_until_expiry} Tage)`}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-green-400 text-sm">Unbegrenzt gültig</span>
+                            <span className="text-sm" style={{ color: colors.successText }}>Unbegrenzt gültig</span>
                           )}
 
                           {/* Early Renewal Bonus */}
                           {sub.is_eligible_for_bonus && (
-                            <div className="mt-2 px-2 py-1 bg-green-900/30 border border-green-700 rounded text-green-300 text-xs inline-flex items-center gap-1">
+                            <div className="mt-2 px-2 py-1 rounded text-xs inline-flex items-center gap-1" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                               <i className="pi pi-gift"></i>
                               Jetzt verlängern und +{sub.bonus_days} Bonus-Tage erhalten!
                             </div>
@@ -1886,44 +2080,44 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               modal
             >
               <div className="space-y-4">
-                <p className="text-gray-300">
+                <p style={{ color: colors.textSecondary }}>
                   Sie haben bereits ein CLI oder Service Abonnement. Wählen Sie eine Option:
                 </p>
                 {bundleDiscountInfo?.options.map((option: any, index: number) => (
                   <div
                     key={index}
-                    className={`bg-gray-800 rounded-lg p-4 border cursor-pointer transition-colors ${
-                      option.price < 0
-                        ? 'border-green-600 hover:border-green-400'
-                        : 'border-gray-700 hover:border-blue-500'
-                    }`}
+                    className="rounded-lg p-4 cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: colors.bgTertiary,
+                      border: `1px solid ${option.price < 0 ? colors.successBorder : colors.borderSecondary}`
+                    }}
                     onClick={() => {
                       setShowBundleOptions(false);
                       handleUnlock('bundle', option.type);
                     }}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="font-semibold text-white">{option.label}</span>
+                      <span className="font-semibold" style={{ color: colors.textPrimary }}>{option.label}</span>
                       {option.price < 0 ? (
-                        <span className="text-lg font-bold text-green-400 flex items-center gap-1">
+                        <span className="text-lg font-bold flex items-center gap-1" style={{ color: colors.successText }}>
                           <i className="pi pi-plus-circle"></i>
                           +{Math.abs(option.price)} Credits
                         </span>
                       ) : option.price === 0 ? (
-                        <span className="text-lg font-bold text-yellow-400">Kostenlos!</span>
+                        <span className="text-lg font-bold" style={{ color: colors.warningText }}>Kostenlos!</span>
                       ) : (
-                        <span className="text-lg font-bold text-blue-400">{option.price} Credits</span>
+                        <span className="text-lg font-bold" style={{ color: colors.accent }}>{option.price} Credits</span>
                       )}
                     </div>
-                    <p className="text-gray-400 text-sm">{option.description}</p>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>{option.description}</p>
                     {option.price < 0 && (
-                      <div className="mt-2 px-3 py-2 bg-green-900/30 border border-green-700 rounded text-green-300 text-sm flex items-center gap-2">
+                      <div className="mt-2 px-3 py-2 rounded text-sm flex items-center gap-2" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                         <i className="pi pi-gift"></i>
                         <span>Sie erhalten <strong>{Math.abs(option.price)} Credits</strong> gutgeschrieben!</span>
                       </div>
                     )}
                     {option.discount && option.discount > 0 && option.price >= 0 && (
-                      <div className="mt-2 text-yellow-400 text-sm flex items-center gap-1">
+                      <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.warningText }}>
                         <i className="pi pi-tag"></i>
                         Sie sparen {option.discount} Credits!
                       </div>
@@ -1938,15 +2132,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card">
           <div className="space-y-6">
             {/* Current Plan Info */}
-            <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, borderLeft: `4px solid ${colors.accent}` }}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-white">{t.profilemodal616}</h3>
+                <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.profilemodal616}</h3>
                 <Badge
                   value={cliStatus?.cli.is_patron ? (userData.user_type === 'patron' ? 'Patron' : 'Free') : 'Free'}
                   severity={cliStatus?.cli.is_patron ? 'success' : 'info'}
                 />
               </div>
-              <p className="text-gray-300">
+              <p style={{ color: colors.textSecondary }}>
                 {cliStatus?.cli.is_patron
                   ? 'Sie haben als Patron unbegrenzten Zugang zu allen Features!'
                   : 'Sie nutzen aktuell den kostenlosen Plan. Upgraden Sie für mehr Features!'
@@ -1956,21 +2150,21 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* Patron Notice or Upgrade Option */}
             {cliStatus?.cli.is_patron ? (
-              <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
-                <p className="text-purple-300 flex items-center gap-2">
-                  <i className="pi pi-star-fill text-yellow-400"></i>
+              <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                <p className="flex items-center gap-2" style={{ color: colors.infoText }}>
+                  <i className="pi pi-star-fill" style={{ color: '#facc15' }}></i>
                   <strong>Patron Status</strong> - Vielen Dank für Ihre Unterstützung!
                 </p>
               </div>
             ) : (
-              <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-600 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <i className="pi pi-heart-fill text-red-400"></i>
+                    <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                      <i className="pi pi-heart-fill" style={{ color: '#f87171' }}></i>
                       Werden Sie Patron!
                     </h3>
-                    <p className="text-gray-300 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                       Unbegrenzter Zugang zu allen Features, private Projekte, Templates und mehr.
                     </p>
                   </div>
@@ -1986,12 +2180,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             )}
 
             {/* Credits Section */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-gray-300 text-lg">Ihre Credits:</span>
-                <span className="text-white font-bold text-2xl">{cliStatus?.credits || userData.credits || 0}</span>
+                <span className="text-lg" style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                <span className="font-bold text-2xl" style={{ color: colors.textPrimary }}>{cliStatus?.credits || userData.credits || 0}</span>
               </div>
-              <p className="text-gray-400 text-sm mb-3">
+              <p className="text-sm mb-3" style={{ color: colors.textMuted }}>
                 Credits werden für Projekte, Datenbanken, Teams und Code-Generierung benötigt.
               </p>
               <Button
@@ -2004,26 +2198,26 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             </div>
 
             {/* Quick Info */}
-            <div className="bg-blue-900/20 border border-blue-600 rounded-lg p-4">
-              <h4 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
+            <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+              <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: colors.infoText }}>
                 <i className="pi pi-info-circle"></i>
                 Preise im Überblick
               </h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="text-gray-300">
-                  <i className="pi pi-folder text-blue-400 mr-2"></i>
+                <div style={{ color: colors.textSecondary }}>
+                  <i className="pi pi-folder mr-2" style={{ color: colors.accent }}></i>
                   Projekt: 50 Credits/Jahr
                 </div>
-                <div className="text-gray-300">
-                  <i className="pi pi-database text-green-400 mr-2"></i>
+                <div style={{ color: colors.textSecondary }}>
+                  <i className="pi pi-database mr-2" style={{ color: colors.successText }}></i>
                   Datenbank: 50 Credits/Jahr
                 </div>
-                <div className="text-gray-300">
-                  <i className="pi pi-users text-purple-400 mr-2"></i>
+                <div style={{ color: colors.textSecondary }}>
+                  <i className="pi pi-users mr-2" style={{ color: colors.accent }}></i>
                   Team: 50 Credits/Jahr
                 </div>
-                <div className="text-gray-300">
-                  <i className="pi pi-code text-yellow-400 mr-2"></i>
+                <div style={{ color: colors.textSecondary }}>
+                  <i className="pi pi-code mr-2" style={{ color: colors.warningText }}></i>
                   Generierung: 5 Credits
                 </div>
               </div>
@@ -2042,13 +2236,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             )}
 
             {/* Enable Seller Mode */}
-            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div>
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <i className="pi pi-shopping-bag text-green-400"></i>
+                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                  <i className="pi pi-shopping-bag" style={{ color: colors.successText }}></i>
                   Verkäufer-Modus aktivieren
                 </h3>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
                   Aktivieren Sie diesen Modus, um Templates im Store zu verkaufen.
                 </p>
               </div>
@@ -2062,26 +2256,26 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <>
                 {/* Earnings Overview */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg">
-                    <p className="text-gray-400 text-sm">Ausstehende Auszahlung</p>
-                    <p className="text-2xl font-bold text-green-400">
+                  <div className="p-4 rounded-lg" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>Ausstehende Auszahlung</p>
+                    <p className="text-2xl font-bold" style={{ color: colors.successText }}>
                       {parseFloat(String(userData.pending_earnings || 0)).toFixed(2)} €
                     </p>
                   </div>
-                  <div className="p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
-                    <p className="text-gray-400 text-sm">Gesamt verdient</p>
-                    <p className="text-2xl font-bold text-blue-400">
+                  <div className="p-4 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>Gesamt verdient</p>
+                    <p className="text-2xl font-bold" style={{ color: colors.infoText }}>
                       {parseFloat(String(userData.total_earnings || 0)).toFixed(2)} €
                     </p>
                   </div>
                 </div>
 
-                <Divider />
+                <Divider style={{ borderColor: colors.borderSecondary }} />
 
                 {/* Company Information */}
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i className="pi pi-building text-blue-400"></i>
+                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                    <i className="pi pi-building" style={{ color: colors.accent }}></i>
                     Unternehmensdaten
                   </h4>
 
@@ -2099,8 +2293,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       />
                     </div>
 
-                    <div className="field">
-                      <label htmlFor="company_country" className="block text-sm font-medium mb-2">
+                    <div className="field profile-themed-dropdown">
+                      <label htmlFor="company_country" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                         Land *
                       </label>
                       <Dropdown
@@ -2111,6 +2305,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         className="w-full"
                         placeholder="Land auswählen"
                         filter
+                        panelClassName="profile-language-dropdown-panel"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
                       />
                     </div>
                   </div>
@@ -2205,8 +2401,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     Auszahlungsmethode
                   </h4>
 
-                  <div className="field mb-4">
-                    <label htmlFor="payout_method" className="block text-sm font-medium mb-2">
+                  <div className="field mb-4 profile-themed-dropdown">
+                    <label htmlFor="payout_method" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                       Auszahlungsart *
                     </label>
                     <Dropdown
@@ -2216,6 +2412,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       onChange={(e) => setSellerData(prev => ({ ...prev, payout_method: e.value }))}
                       className="w-full"
                       placeholder="Auszahlungsart wählen"
+                      panelClassName="profile-language-dropdown-panel"
+                      style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
                     />
                   </div>
 
@@ -2305,52 +2503,52 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         <TabPanel header="Git" leftIcon="pi pi-github">
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <i className="pi pi-link text-blue-400"></i>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-2" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-link" style={{ color: colors.accent }}></i>
                 Git Provider verbinden
                 {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
-                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Patron</span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>Patron</span>
                 )}
                 {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
-                  <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.infoBorder, color: colors.textInverse }}>
                     {gitIntegrationAccess.days_remaining} Tage verbleibend
                   </span>
                 )}
               </h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
                 Verbinden Sie Ihren GitHub oder GitLab Account, um generierten Code direkt in Ihre Repositories zu pushen.
               </p>
             </div>
 
             {/* Subscription Required Banner */}
             {gitIntegrationAccess && !gitIntegrationAccess.has_access && (
-              <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-4 mb-4">
+              <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2 text-purple-300 mb-1">
+                    <div className="flex items-center gap-2 mb-1" style={{ color: colors.infoText }}>
                       <i className="pi pi-lock"></i>
                       <span className="font-semibold">Git Integration ist ein Premium-Feature</span>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm" style={{ color: colors.textMuted }}>
                       Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-purple-200 mb-1">
+                    <div className="text-lg font-bold mb-1" style={{ color: colors.infoText }}>
                       {gitIntegrationAccess.unlock_cost} Credits
                     </div>
-                    <div className="text-xs text-gray-400 mb-2">für 1 Jahr</div>
+                    <div className="text-xs mb-2" style={{ color: colors.textMuted }}>für 1 Jahr</div>
                     <Button
                       type="button"
                       label={unlockingGit ? "Freischalten..." : "Jetzt freischalten"}
                       icon={unlockingGit ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
                       className="p-button-sm"
-                      style={{ backgroundColor: '#9333ea', borderColor: '#9333ea' }}
+                      style={{ backgroundColor: colors.accent, borderColor: colors.accent }}
                       onClick={unlockGitIntegration}
                       disabled={unlockingGit || (cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50)}
                     />
                     {(cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50) && (
-                      <p className="text-xs text-red-400 mt-1">Nicht genug Credits</p>
+                      <p className="text-xs mt-1" style={{ color: colors.errorText }}>Nicht genug Credits</p>
                     )}
                   </div>
                 </div>
@@ -2359,31 +2557,31 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {loadingGitProviders ? (
               <div className="flex justify-center py-8">
-                <i className="pi pi-spinner pi-spin text-2xl text-blue-400"></i>
+                <i className="pi pi-spinner pi-spin text-2xl" style={{ color: colors.accent }}></i>
               </div>
             ) : gitIntegrationAccess?.has_access === false ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8" style={{ color: colors.textMuted }}>
                 <i className="pi pi-lock text-4xl mb-2"></i>
                 <p>Schalten Sie Git Integration frei, um Provider zu verbinden.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* GitHub */}
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
-                        <i className="pi pi-github text-xl text-white"></i>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.bgHover }}>
+                        <i className="pi pi-github text-xl" style={{ color: colors.textPrimary }}></i>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-white">GitHub</h4>
+                        <h4 className="font-semibold" style={{ color: colors.textPrimary }}>GitHub</h4>
                         {gitProviders.find(p => p.provider === 'github') ? (
-                          <p className="text-sm text-green-400 flex items-center gap-1">
+                          <p className="text-sm flex items-center gap-1" style={{ color: colors.successText }}>
                             <i className="pi pi-check-circle"></i>
                             Verbunden als @{gitProviders.find(p => p.provider === 'github')?.username}
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-400">Nicht verbunden</p>
+                          <p className="text-sm" style={{ color: colors.textMuted }}>Nicht verbunden</p>
                         )}
                       </div>
                     </div>
@@ -2412,21 +2610,29 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 </div>
 
                 {/* GitLab */}
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-900 rounded-full flex items-center justify-center">
-                        <i className="pi pi-gitlab text-xl text-orange-400"></i>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.warningBg }}>
+                        <svg width="20" height="20" viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M190.044 362.424L258.115 153.039H121.973L190.044 362.424Z" fill="#E24329"/>
+                          <path d="M190.044 362.424L121.973 153.039H18.3215L190.044 362.424Z" fill="#FC6D26"/>
+                          <path d="M18.3215 153.039L0.548553 207.679C-1.03196 212.551 0.774928 217.903 5.00759 220.977L190.044 362.424L18.3215 153.039Z" fill="#FCA326"/>
+                          <path d="M18.3215 153.039H121.973L79.0326 21.5082C77.2303 15.9733 69.3552 15.9733 67.5528 21.5082L18.3215 153.039Z" fill="#E24329"/>
+                          <path d="M190.044 362.424L258.115 153.039H361.766L190.044 362.424Z" fill="#FC6D26"/>
+                          <path d="M361.766 153.039L379.539 207.679C381.12 212.551 379.313 217.903 375.08 220.977L190.044 362.424L361.766 153.039Z" fill="#FCA326"/>
+                          <path d="M361.766 153.039H258.115L301.055 21.5082C302.858 15.9733 310.733 15.9733 312.535 21.5082L361.766 153.039Z" fill="#E24329"/>
+                        </svg>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-white">GitLab</h4>
+                        <h4 className="font-semibold" style={{ color: colors.textPrimary }}>GitLab</h4>
                         {gitProviders.find(p => p.provider === 'gitlab') ? (
-                          <p className="text-sm text-green-400 flex items-center gap-1">
+                          <p className="text-sm flex items-center gap-1" style={{ color: colors.successText }}>
                             <i className="pi pi-check-circle"></i>
                             Verbunden als @{gitProviders.find(p => p.provider === 'gitlab')?.username}
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-400">Nicht verbunden</p>
+                          <p className="text-sm" style={{ color: colors.textMuted }}>Nicht verbunden</p>
                         )}
                       </div>
                     </div>
@@ -2455,12 +2661,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 </div>
 
                 {/* Info Box */}
-                <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mt-4">
-                  <h5 className="font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                <div className="rounded-lg p-4 mt-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
+                  <h5 className="font-semibold mb-2 flex items-center gap-2" style={{ color: colors.infoText }}>
                     <i className="pi pi-info-circle"></i>
                     Wie funktioniert es?
                   </h5>
-                  <ul className="text-gray-400 text-sm space-y-1">
+                  <ul className="text-sm space-y-1" style={{ color: colors.textMuted }}>
                     <li>1. Verbinden Sie Ihren GitHub oder GitLab Account</li>
                     <li>2. Wählen Sie im Projekt ein Repository aus</li>
                     <li>3. Nach der Code-Generierung können Sie direkt pushen</li>

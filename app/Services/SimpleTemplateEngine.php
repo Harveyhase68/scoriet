@@ -83,14 +83,14 @@ class SimpleTemplateEngine
      */
     private function isLoopStart(string $line): bool
     {
-        return strpos($line, '{for {nmaxitems}}') !== false
-            || strpos($line, '{for {nmaxsearchkeys}}') !== false
-            || strpos($line, '{for %}') !== false;
+        return strpos($line, '{:for nmaxitems:}') !== false
+            || strpos($line, '{:for nmaxsearchkeys:}') !== false
+            || strpos($line, '{:for %:}') !== false;
     }
 
     private function isLoopEnd(string $line): bool
     {
-        return strpos($line, '{endfor}') !== false;
+        return strpos($line, '{:endfor:}') !== false;
     }
 
     /**
@@ -125,9 +125,9 @@ class SimpleTemplateEngine
 
         $project = $this->gtree[0]['project'][0];
         $replacements = [
-            '{projectname}' => $project['projectname'] ?? 'Unknown',
-            '{projectdatabase}' => $project['projectdatabase'] ?? 'Unknown',
-            '{projecturl}' => $project['projecturl'] ?? 'Unknown',
+            '{:projectname:}' => $project['projectname'] ?? 'Unknown',
+            '{:projectdatabase:}' => $project['projectdatabase'] ?? 'Unknown',
+            '{:projecturl:}' => $project['projecturl'] ?? 'Unknown',
         ];
 
         foreach ($replacements as $search => $replace) {
@@ -150,11 +150,11 @@ class SimpleTemplateEngine
 
         $table = $this->gtree[0]['project'][0]['tables'][$this->currentTableIndex];
         $replacements = [
-            '{tablename}' => $table['tablename'] ?? 'Unknown',
-            '{filename}' => $table['tablename'] ?? 'Unknown', // Alias
-            '{filekeyname}' => $table['primarykeyfield'] ?? 'id', // 🎯 DAS WAR DER FEHLER!
-            '{nmaxitems}' => $table['nmaxitems'] ?? 0,
-            '{nmaxsearchkeys}' => $table['nmaxitems'] ?? 0, // Für Suchfelder
+            '{:tablename:}' => $table['tablename'] ?? 'Unknown',
+            '{:filename:}' => $table['tablename'] ?? 'Unknown', // Alias
+            '{:filekeyname:}' => $table['primarykeyfield'] ?? 'id', // 🎯 DAS WAR DER FEHLER!
+            '{:nmaxitems:}' => $table['nmaxitems'] ?? 0,
+            '{:nmaxsearchkeys:}' => $table['nmaxitems'] ?? 0, // Für Suchfelder
         ];
 
         foreach ($replacements as $search => $replace) {
@@ -173,11 +173,11 @@ class SimpleTemplateEngine
     {
         // Diese werden zu JavaScript-Variablen, die zur Laufzeit aufgelöst werden
         $replacements = [
-            '{item.name}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '",
-            '{item.type}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '",
-            '{item.controltype}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].controltype + '",
-            '{field.name}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '",
-            '{field.type}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '",
+            '{:item.name:}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '",
+            '{:item.type:}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '",
+            '{:item.controltype:}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].controltype + '",
+            '{:field.name:}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '",
+            '{:field.type:}' => "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '",
         ];
 
         foreach ($replacements as $search => $replace) {
@@ -214,9 +214,9 @@ class SimpleTemplateEngine
     {
         $templateContent = '$sql = \'SELECT count(*) AS count FROM {tablename} WHERE (\';
 $searchConditions = [];
-{for {nmaxitems}}
+{:for nmaxitems:}
 $searchConditions[] = \'{item.name} LIKE \\\'%\' . $search . \'%\\\'\';
-{endfor}
+{:endfor:}
 $sql .= implode(\' OR \', $searchConditions);
 $sql .= \')\' . $order_by;';
 

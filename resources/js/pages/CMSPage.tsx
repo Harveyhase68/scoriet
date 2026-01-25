@@ -7,6 +7,7 @@ import { Dialog } from 'primereact/dialog';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 import {
   CheckIcon,
@@ -39,6 +40,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
   // Language state
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   // Handle language change
   const handleLanguageChange = (language: SupportedLanguage) => {
@@ -196,9 +198,9 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
     <>
       <Head title={`${title} - Scoriet`} />
 
-      <div className="min-h-screen bg-gray-900 text-white overflow-y-auto max-h-screen">
+      <div className="min-h-screen overflow-y-auto max-h-screen cms-page-container" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         {/* Header - EXACTLY like LandingPage.tsx */}
-        <header className="bg-gray-800 border-b border-gray-700">
+        <header style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
@@ -224,7 +226,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                 {/* Home Button */}
                 <Button
                   label="Home"
-                  className="p-button-text"
+                  className="p-button-outlined p-button-info"
                   style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                   onClick={() => window.location.href = '/'}
                 />
@@ -233,14 +235,14 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                   <>
                     <Button
                       label={t.login}
-                      className="p-button-text"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => handleOpenModal('login')}
                     />
                     {!isDemoMode && (
                       <Button
                         label={t.register}
-                        className="p-button-outlined"
+                        className="p-button-outlined p-button-info"
                         style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                         onClick={() => handleOpenModal('register')}
                       />
@@ -251,7 +253,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                     <Button
                       label={t.profile}
                       icon="pi pi-user"
-                      className="p-button-text"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => setActiveModal('profile')}
                     />
@@ -265,7 +267,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                     <Button
                       label={t.logout}
                       icon="pi pi-sign-out"
-                      className="p-button-outlined"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={handleLogout}
                     />
@@ -285,7 +287,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
         </header>
 
         {/* Content Section */}
-        <section className="py-20 bg-gray-900">
+        <section className="py-20" style={{ backgroundColor: colors.bgPrimary }}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Edit Button for System User */}
             {userData?.user_type === 'system' && pageId && (
@@ -303,22 +305,41 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
               </div>
             )}
 
-            <h1 className="text-4xl font-bold text-center mb-8 text-blue-400">
+            <h1 className="text-4xl font-bold text-center mb-8" style={{ color: colors.accent }}>
               {title}
             </h1>
 
-            <div className="bg-gray-800 rounded-lg shadow-lg p-8">
+            <div className="rounded-lg shadow-lg p-8" style={{ backgroundColor: colors.bgSecondary }}>
               <div
                 className="cms-content"
                 dangerouslySetInnerHTML={{ __html: content }}
               />
             </div>
 
-            {/* Custom CSS for CMS content - Inline styles from DB take precedence */}
+            {/* Custom CSS for CMS content and themed buttons */}
             <style>{`
+              /* Theme-aware text buttons - high specificity to override PrimeReact */
+              .cms-page-container .p-button.p-button-text,
+              .cms-page-container .p-button.p-button-text .p-button-label,
+              .cms-page-container .p-button.p-button-text .p-button-icon {
+                color: var(--theme-text-primary) !important;
+              }
+              .cms-page-container .p-button.p-button-text:hover,
+              .cms-page-container .p-button.p-button-text:hover .p-button-label,
+              .cms-page-container .p-button.p-button-text:hover .p-button-icon {
+                background: var(--theme-bg-hover) !important;
+                color: var(--theme-text-primary) !important;
+              }
+              .cms-page-container .p-button.p-button-rounded.p-button-text,
+              .cms-page-container .p-button.p-button-rounded.p-button-text .p-button-icon {
+                color: var(--theme-text-primary) !important;
+              }
+              .cms-page-container .p-button.p-button-rounded.p-button-text:hover {
+                background: var(--theme-bg-hover) !important;
+              }
               .cms-content {
                 max-width: none;
-                color: #d1d5db;
+                color: var(--theme-text-secondary);
               }
               .cms-content h1 {
                 font-size: 2.25rem;
@@ -326,6 +347,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                 margin-top: 1.5rem;
                 margin-bottom: 1rem;
                 line-height: 1.2;
+                color: var(--theme-text-primary);
               }
               .cms-content h2 {
                 font-size: 1.5rem;
@@ -333,6 +355,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                 margin-top: 1.5rem;
                 margin-bottom: 1rem;
                 line-height: 1.3;
+                color: var(--theme-text-primary);
               }
               .cms-content h3 {
                 font-size: 1.25rem;
@@ -340,6 +363,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                 margin-top: 1.25rem;
                 margin-bottom: 0.75rem;
                 line-height: 1.3;
+                color: var(--theme-text-primary);
               }
               .cms-content p {
                 margin-bottom: 1rem;
@@ -363,11 +387,11 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
                 font-weight: 700;
               }
               .cms-content a {
-                color: #60a5fa;
+                color: var(--theme-accent);
                 text-decoration: underline;
               }
               .cms-content a:hover {
-                color: #93c5fd;
+                color: var(--theme-accent-hover);
               }
               .cms-content br {
                 display: block;
@@ -379,59 +403,59 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
         </section>
 
         {/* Footer - EXACTLY like LandingPage.tsx */}
-        <footer className="bg-gray-800 border-t border-gray-700 py-12">
+        <footer className="py-12" style={{ backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-4 gap-8">
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-white">Scoriet</h3>
-                <p className="text-gray-400 mb-4">
+                <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Scoriet</h3>
+                <p className="mb-4" style={{ color: colors.textSecondary }}>
                   The future of code generation. Built by developers, for developers.
                 </p>
                 <div className="flex space-x-4 gap-3">
-                  <Button icon="pi pi-github" className="p-button-text p-button-rounded" />
-                  <Button icon="pi pi-twitter" className="p-button-text p-button-rounded" />
-                  <Button icon="pi pi-discord" className="p-button-text p-button-rounded" />
+                  <Button icon="pi pi-github" className="p-button-outlined p-button-info p-button-rounded" />
+                  <Button icon="pi pi-twitter" className="p-button-outlined p-button-info p-button-rounded" />
+                  <Button icon="pi pi-discord" className="p-button-outlined p-button-info p-button-rounded" />
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-4 text-white">{t.productLabel}</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">{t.featuresLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.pricingLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.templatesLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.examplesLink}</a></li>
+                <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.productLabel}</h4>
+                <ul className="space-y-2" style={{ color: colors.textSecondary }}>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.featuresLink}</a></li>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.pricingLink}</a></li>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.templatesLink}</a></li>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.examplesLink}</a></li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-4 text-white">{t.resourcesLabel}</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">{t.documentationLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.apiReferenceLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.tutorialsLink}</a></li>
-                  <li><a href={`/${currentLanguage}/downloads`} className="hover:text-white">{t.downloadsLink}</a></li>
+                <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.resourcesLabel}</h4>
+                <ul className="space-y-2" style={{ color: colors.textSecondary }}>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.documentationLink}</a></li>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.apiReferenceLink}</a></li>
+                  <li><a href="#" style={{ color: colors.textSecondary }}>{t.tutorialsLink}</a></li>
+                  <li><a href={`/${currentLanguage}/downloads`} style={{ color: colors.textSecondary }}>{t.downloadsLink}</a></li>
                 </ul>
               </div>
 
               <div>
-                  <h4 className="font-semibold mb-4 text-white">{t.supportLabel}</h4>
-                  <ul className="space-y-2 text-gray-400">
-                      <li><a href={`/${currentLanguage}/help`} className="hover:text-white">{t.helpCenterLink}</a></li>
-                      <li><a href={`/${currentLanguage}/impressum`} className="hover:text-white">Impressum</a></li>
-                      <li><a href="#" className="hover:text-white">{t.contactUsLink}</a></li>
-                      <li><a href="#" className="hover:text-white">{t.communityLink}</a></li>
+                  <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.supportLabel}</h4>
+                  <ul className="space-y-2" style={{ color: colors.textSecondary }}>
+                      <li><a href={`/${currentLanguage}/help`} style={{ color: colors.textSecondary }}>{t.helpCenterLink}</a></li>
+                      <li><a href={`/${currentLanguage}/impressum`} style={{ color: colors.textSecondary }}>Impressum</a></li>
+                      <li><a href="#" style={{ color: colors.textSecondary }}>{t.contactUsLink}</a></li>
+                      <li><a href="#" style={{ color: colors.textSecondary }}>{t.communityLink}</a></li>
                   </ul>
               </div>
             </div>
 
             <Divider />
 
-            <div className="flex justify-between items-center text-gray-400">
+            <div className="flex justify-between items-center" style={{ color: colors.textSecondary }}>
               <p></p>
               <div className="flex space-x-6">
-                <a href="#" className="hover:text-white">{t.privacyPolicy}</a>
-                <a href="#" className="hover:text-white">{t.termsOfService}</a>
+                <a href="#" style={{ color: colors.textSecondary }}>{t.privacyPolicy}</a>
+                <a href="#" style={{ color: colors.textSecondary }}>{t.termsOfService}</a>
               </div>
             </div>
           </div>
@@ -445,35 +469,35 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
         modal
         header={t.cmspage412}
         style={{ width: '95vw', maxWidth: '1400px' }}
-        contentStyle={{ padding: '20px', backgroundColor: '#111827', color: 'white' }}
-        headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
+        contentStyle={{ padding: '20px', backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
         className="plan-modal"
       >
         <div className="space-y-6">
           {/* Current Plan Status */}
-          <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-blue-400">
+          <div className="p-4 rounded-lg border-l-4" style={{ backgroundColor: colors.bgSecondary, borderLeftColor: colors.accent }}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-white">{t.cmspage422}</h3>
+              <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.cmspage422}</h3>
               <Badge value="Free" severity="info" />
             </div>
-            <p className="text-gray-300">
-              {t.cmspage387}<strong className="text-blue-400">Free plan</strong>. {t.cmspage45}
+            <p style={{ color: colors.textSecondary }}>
+              {t.cmspage387}<strong style={{ color: colors.accent }}>Free plan</strong>. {t.cmspage45}
             </p>
           </div>
 
           {/* Plans Grid */}
           <div className="grid md:grid-cols-3 gap-6">
             {/* Free Plan */}
-            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
+            <div className="text-center hover:shadow-xl transition-shadow rounded-lg" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Free</h3>
-                <div className="text-3xl font-bold text-blue-400 mb-2">
+                <h3 className="text-2xl font-bold mb-2" style={{ color: colors.textPrimary }}>Free</h3>
+                <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                   €0
-                  <span className="text-lg text-gray-400">/forever</span>
+                  <span className="text-lg" style={{ color: colors.textMuted }}>/forever</span>
                 </div>
-                <p className="text-gray-300 mb-6">Get started with basics</p>
+                <p className="mb-6" style={{ color: colors.textSecondary }}>Get started with basics</p>
 
-                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                <ul className="text-left mb-8 space-y-2" style={{ color: colors.textSecondary }}>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
                     1 project
@@ -502,17 +526,17 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
             </div>
 
             {/* Patron Annual Plan */}
-            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg ring-2 ring-blue-400">
+            <div className="text-center hover:shadow-xl transition-shadow rounded-lg ring-2" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, outlineColor: colors.accent }}>
               <div className="p-6">
                 <Badge value="Best Value" severity="info" className="mb-4" />
-                <h3 className="text-2xl font-bold text-white mb-2">Patron Annual</h3>
-                <div className="text-3xl font-bold text-blue-400 mb-2">
+                <h3 className="text-2xl font-bold mb-2" style={{ color: colors.textPrimary }}>Patron Annual</h3>
+                <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                   {systemSettings ? `€${systemSettings.price_patron_annual}` : "€34.90"}
-                  <span className="text-lg text-gray-400">/year</span>
+                  <span className="text-lg" style={{ color: colors.textMuted }}>/year</span>
                 </div>
-                <p className="text-gray-300 mb-6">Teams + credit-based generation</p>
+                <p className="mb-6" style={{ color: colors.textSecondary }}>Teams + credit-based generation</p>
 
-                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                <ul className="text-left mb-8 space-y-2" style={{ color: colors.textSecondary }}>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
                     Teams unlocked
@@ -545,19 +569,19 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
             </div>
 
             {/* Patron Monthly Plan */}
-            <div className="text-center bg-gray-700 border border-gray-600 hover:shadow-xl transition-shadow rounded-lg">
+            <div className="text-center hover:shadow-xl transition-shadow rounded-lg" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                   Patron Monthly
                   <HeartIcon className="w-6 h-6 text-red-500 ml-2" />
                 </h3>
-                <div className="text-3xl font-bold text-blue-400 mb-2">
+                <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                   {systemSettings ? `€${systemSettings.price_patron_monthly}` : "€49.90"}
-                  <span className="text-lg text-gray-400">/month</span>
+                  <span className="text-lg" style={{ color: colors.textMuted }}>/month</span>
                 </div>
-                <p className="text-gray-300 mb-6">Everything unlimited</p>
+                <p className="mb-6" style={{ color: colors.textSecondary }}>Everything unlimited</p>
 
-                <ul className="text-left text-gray-300 mb-8 space-y-2">
+                <ul className="text-left mb-8 space-y-2" style={{ color: colors.textSecondary }}>
                   <li className="flex items-center">
                     <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
                     Unlimited everything
@@ -591,7 +615,7 @@ export default function CMSPage({ title, content, pageId, slug: _slug, locale: _
           </div>
 
           {/* Footer Note */}
-          <div className="text-center text-gray-400 text-sm">
+          <div className="text-center text-sm" style={{ color: colors.textMuted }}>
             <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
           </div>
         </div>

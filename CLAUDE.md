@@ -38,7 +38,6 @@ Scoriet is an Enterprise Code Generator built with modern web technologies. It's
   - `NavigationPanel.tsx` - Top navigation bar
   - `PanelT1.tsx` - Left sidebar tree view
   - `PanelT2.tsx` - Main content panel
-  - `PanelT3.tsx` - Interactive panel
   - `PanelT5.tsx` - Database explorer
 
 ### Backend Structure
@@ -153,10 +152,13 @@ Schema-related models follow naming convention:
   - Public: `/api/auth/register`, `/api/oauth/token`, `/api/auth/forgot-password`
   - Protected: `/api/user`, `/api/profile/*`, `/api/sql-parse*` (require auth:api middleware)
 
-## Template System (Future)
+## Template System
 The application is designed around a template-based code generation system:
-- Templates support placeholders like `{projectname}`
-- Loop constructs: `{for %}{endfor}` and `{for {nmaxitems}}{item.name}{endfor}`
+- Templates support placeholders like `{:projectname:}`
+- Loop constructs: `{:for %:}{:endfor:}` and `{:for nmaxitems:}{:item.name:}{:endfor:}`
+- Conditionals: `{:if item.type=="int":}...{:else:}...{:endif:}`
+- JavaScript code blocks: `{:code:}...{:codeend:}`
+- Include constructs: `{:include: path/file.ext:}` to embed reusable template snippets
 - JavaScript integration for complex generation logic
 - Client-side execution for security and performance
 - "wenn du curl verwendest, immer 10.0.0.8 verwenden, localhost geht auf meinem computer nicht"

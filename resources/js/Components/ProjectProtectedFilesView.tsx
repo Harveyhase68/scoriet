@@ -1,6 +1,7 @@
 import React from 'react';
 //import { useTranslation } from '@/i18n';
 import { ProtectedFilesEditor } from './ProtectedFilesEditor';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Template {
   id: number;
@@ -22,6 +23,7 @@ export const ProjectProtectedFilesView: React.FC<ProjectProtectedFilesViewProps>
   readOnly = false
 }) => {
   //const { t } = useTranslation('en');
+  const { colors } = useTheme();
 
   // Check if file exists (this would need to be implemented via API)
   const checkFileExists = (_filename: string): boolean => {
@@ -33,44 +35,44 @@ export const ProjectProtectedFilesView: React.FC<ProjectProtectedFilesViewProps>
     <div className="project-protected-files-view">
       {/* Templates Protected Files (Read-only) */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-3">Protected Files from Templates</h3>
-        <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-sm text-blue-100">
+        <h3 className="text-lg font-semibold mb-3 theme-text-primary">Protected Files from Templates</h3>
+        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
           These files are protected by the templates linked to this project. They cannot be edited here.
         </div>
 
         {!Array.isArray(templates) || templates.length === 0 ? (
-          <div className="text-gray-500 italic p-3 text-center border border-dashed border-gray-600 rounded">
+          <div className="italic p-3 text-center border border-dashed rounded theme-text-muted theme-border-primary">
             No templates linked
           </div>
         ) : (
-          <div className="overflow-x-auto border-gray-600">
-            <table className="w-full border-collapse border border-gray-600">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border theme-border-primary" style={{ borderColor: colors.borderPrimary }}>
               <thead>
-                <tr className="bg-gray-800">
-                  <th className="border border-gray-600 px-4 py-2 text-left text-gray-300">Template</th>
-                  <th className="border border-gray-600 px-4 py-2 text-left text-gray-300">Protected File</th>
-                  <th className="border border-gray-600 px-4 py-2 text-center text-gray-300">Exists on Disk</th>
+                <tr style={{ backgroundColor: colors.bgTertiary }}>
+                  <th className="border px-4 py-2 text-left theme-text-secondary" style={{ borderColor: colors.borderPrimary }}>Template</th>
+                  <th className="border px-4 py-2 text-left theme-text-secondary" style={{ borderColor: colors.borderPrimary }}>Protected File</th>
+                  <th className="border px-4 py-2 text-center theme-text-secondary" style={{ borderColor: colors.borderPrimary }}>Exists on Disk</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.isArray(templates) && templates.flatMap((template) =>
                   (template.protected_files || []).length === 0 ? (
                     <tr key={`${template.id}-empty`}>
-                      <td className="border border-gray-600 px-4 py-2">{template.name}</td>
-                      <td className="border border-gray-600 px-4 py-2 italic text-gray-300" colSpan={2}>
+                      <td className="border px-4 py-2 theme-text-primary" style={{ borderColor: colors.borderPrimary }}>{template.name}</td>
+                      <td className="border px-4 py-2 italic theme-text-muted" style={{ borderColor: colors.borderPrimary }} colSpan={2}>
                         No protected files
                       </td>
                     </tr>
                   ) : (
                     (template.protected_files || []).map((file, index) => (
-                      <tr key={`${template.id}-${index}`} className="hover:bg-gray-700">
-                        <td className="border border-gray-600 px-4 py-2">{template.name}</td>
-                        <td className="border border-gray-600 px-4 py-2 font-mono text-sm">{file}</td>
-                        <td className="border border-gray-600 px-4 py-2 text-center">
+                      <tr key={`${template.id}-${index}`} className="transition-colors" style={{ backgroundColor: 'transparent' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <td className="border px-4 py-2 theme-text-primary" style={{ borderColor: colors.borderPrimary }}>{template.name}</td>
+                        <td className="border px-4 py-2 font-mono text-sm theme-text-primary" style={{ borderColor: colors.borderPrimary }}>{file}</td>
+                        <td className="border px-4 py-2 text-center" style={{ borderColor: colors.borderPrimary }}>
                           {checkFileExists(file) ? (
-                            <span className="text-green-300 font-bold">✓ Yes</span>
+                            <span style={{ color: colors.successText }} className="font-bold">✓ Yes</span>
                           ) : (
-                            <span className="text-gray-300">✗ No</span>
+                            <span className="theme-text-muted">✗ No</span>
                           )}
                         </td>
                       </tr>
@@ -91,7 +93,7 @@ export const ProjectProtectedFilesView: React.FC<ProjectProtectedFilesViewProps>
           readOnly={readOnly}
           title="Project-Specific Protected Files"
         />
-        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+        <div className="mt-3 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
           <strong>Note:</strong> These are additional files specific to this project that should be protected during updates.
           They will be combined with the template protected files.
         </div>

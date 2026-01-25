@@ -7,11 +7,12 @@ import { Tag } from 'primereact/tag';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Badge } from 'primereact/badge';
 import { useToast } from '@/contexts/ToastContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { apiClient as api } from '@/lib/api';
 import { TabContentProps } from '@/types';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
-const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
+const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, style = {}, colors, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const setFocus = () => ref.current?.focus();
 
@@ -20,10 +21,9 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
       {...rest}
       ref={ref}
       tabIndex={-1}
-      style={{ flex: 1, padding: '5px 10px', ...style }}
+      style={{ flex: 1, padding: '5px 10px', backgroundColor: colors.bgPrimary, color: colors.textPrimary, ...style }}
       onMouseDownCapture={setFocus}
       onTouchStartCapture={setFocus}
-      className="bg-gray-800 text-gray-100"
     >
       {children}
     </div>
@@ -86,6 +86,7 @@ const TemplateReviewPanel: React.FC = () => {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage); // Future use for i18n
   const toast = useToast();
+  const { colors } = useTheme();
 
   // State
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -243,9 +244,9 @@ const TemplateReviewPanel: React.FC = () => {
   const nameBodyTemplate = (rowData: Template) => {
     return (
       <div>
-        <div className="font-semibold text-white">{rowData.name}</div>
+        <div className="font-semibold" style={{ color: colors.textPrimary }}>{rowData.name}</div>
         {rowData.description && (
-          <div className="text-sm text-gray-400 truncate max-w-xs">
+          <div className="text-sm truncate max-w-xs" style={{ color: colors.textMuted }}>
             {rowData.description}
           </div>
         )}
@@ -256,8 +257,8 @@ const TemplateReviewPanel: React.FC = () => {
   const creatorBodyTemplate = (rowData: Template) => {
     return (
       <div>
-        <div className="text-white">{rowData.creator.name}</div>
-        <div className="text-xs text-gray-400">{rowData.creator.email}</div>
+        <div style={{ color: colors.textPrimary }}>{rowData.creator.name}</div>
+        <div className="text-xs" style={{ color: colors.textMuted }}>{rowData.creator.email}</div>
       </div>
     );
   };
@@ -277,7 +278,7 @@ const TemplateReviewPanel: React.FC = () => {
       return (
         <div className="flex flex-col gap-1">
           <Tag value="Store" severity="warning" icon="pi pi-shopping-cart" />
-          <span className="text-xs text-gray-400">{priceText}</span>
+          <span className="text-xs" style={{ color: colors.textMuted }}>{priceText}</span>
         </div>
       );
     }
@@ -385,16 +386,16 @@ const TemplateReviewPanel: React.FC = () => {
   };
 
   return (
-    <TabContent>
+    <TabContent colors={colors}>
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: colors.textPrimary }}>
               <i className="pi pi-star-fill text-yellow-400"></i>
               Template Review Queue
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
               Review public and store templates awaiting approval
             </p>
           </div>
@@ -481,55 +482,58 @@ const TemplateReviewPanel: React.FC = () => {
           onHide={() => setQuickViewVisible(false)}
           style={{ width: '600px' }}
           modal
+          className="themed-dialog"
+          headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+          contentStyle={{ backgroundColor: colors.dialogContent, color: colors.textPrimary }}
         >
           {selectedTemplate && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-xl font-bold text-white">{selectedTemplate.name}</h3>
-                <p className="text-gray-400 mt-2">{selectedTemplate.description || 'No description'}</p>
+                <h3 className="text-xl font-bold" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
+                <p className="mt-2" style={{ color: colors.textMuted }}>{selectedTemplate.description || 'No description'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-gray-400 text-sm">Category:</span>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>Category:</span>
                   <div className="mt-1">
                     <Tag value={selectedTemplate.category} severity="info" />
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-400 text-sm">Language:</span>
-                  <div className="mt-1 text-white">{selectedTemplate.language}</div>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>Language:</span>
+                  <div className="mt-1" style={{ color: colors.textPrimary }}>{selectedTemplate.language}</div>
                 </div>
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Tags:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>Tags:</span>
                 <div className="mt-1 flex gap-2 flex-wrap">
                   {selectedTemplate.tags && selectedTemplate.tags.length > 0 ? (
                     selectedTemplate.tags.map((tag, idx) => (
                       <Tag key={idx} value={tag} severity="secondary" />
                     ))
                   ) : (
-                    <span className="text-gray-500">No tags</span>
+                    <span style={{ color: colors.textMuted }}>No tags</span>
                   )}
                 </div>
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Creator:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>Creator:</span>
                 <div className="mt-1">
-                  <div className="text-white">{selectedTemplate.creator.name}</div>
-                  <div className="text-xs text-gray-400">{selectedTemplate.creator.email}</div>
+                  <div style={{ color: colors.textPrimary }}>{selectedTemplate.creator.name}</div>
+                  <div className="text-xs" style={{ color: colors.textMuted }}>{selectedTemplate.creator.email}</div>
                 </div>
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Type:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>Type:</span>
                 <div className="mt-1">
                   {selectedTemplate.visibility === 'store' ? (
                     <div className="flex items-center gap-2">
                       <Tag value="Store Template" severity="warning" icon="pi pi-shopping-cart" />
-                      <span className="text-white">
+                      <span style={{ color: colors.textPrimary }}>
                         {selectedTemplate.price_type === 'euros' && selectedTemplate.price_euros != null
                           ? `${Number(selectedTemplate.price_euros).toFixed(2)} EUR`
                           : selectedTemplate.price_type === 'credits' && selectedTemplate.price_credits != null
@@ -544,7 +548,7 @@ const TemplateReviewPanel: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Review Status:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>Review Status:</span>
                 <div className="mt-1 flex flex-wrap gap-2">
                   <Tag
                     value={`${selectedTemplate.review_score || 0} Punkte`}
@@ -568,8 +572,8 @@ const TemplateReviewPanel: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-gray-400 text-sm">Files:</span>
-                <div className="mt-1 text-white">{selectedTemplate.file_count} files</div>
+                <span className="text-sm" style={{ color: colors.textMuted }}>Files:</span>
+                <div className="mt-1" style={{ color: colors.textPrimary }}>{selectedTemplate.file_count} files</div>
               </div>
             </div>
           )}
@@ -583,13 +587,16 @@ const TemplateReviewPanel: React.FC = () => {
           style={{ width: '90vw', maxWidth: '1200px' }}
           maximizable
           modal
+          className="themed-dialog"
+          headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+          contentStyle={{ backgroundColor: colors.dialogContent, color: colors.textPrimary }}
         >
           {selectedTemplate && (
             <div className="space-y-4">
               {/* Template Info */}
-              <div className="bg-gray-700 p-4 rounded">
-                <h3 className="text-xl font-bold text-white mb-2">{selectedTemplate.name}</h3>
-                <p className="text-gray-400">{selectedTemplate.description || 'No description'}</p>
+              <div className="p-4 rounded" style={{ backgroundColor: colors.bgSecondary }}>
+                <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
+                <p style={{ color: colors.textMuted }}>{selectedTemplate.description || 'No description'}</p>
 
                 <div className="mt-4 flex gap-4 items-center flex-wrap">
                   <Tag value={selectedTemplate.category} severity="info" />
@@ -628,13 +635,13 @@ const TemplateReviewPanel: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <h4 className="text-lg font-semibold text-white">Template Files ({templateFiles.length})</h4>
+                  <h4 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Template Files ({templateFiles.length})</h4>
                   {templateFiles.map((file) => (
-                    <div key={file.id} className="bg-gray-700 p-4 rounded">
+                    <div key={file.id} className="p-4 rounded" style={{ backgroundColor: colors.bgSecondary }}>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <span className="text-white font-semibold">{file.file_name}</span>
-                          <span className="text-gray-400 text-sm ml-2">({file.file_type})</span>
+                          <span className="font-semibold" style={{ color: colors.textPrimary }}>{file.file_name}</span>
+                          <span className="text-sm ml-2" style={{ color: colors.textMuted }}>({file.file_type})</span>
                         </div>
                         <Button
                           icon="pi pi-download"
@@ -645,8 +652,8 @@ const TemplateReviewPanel: React.FC = () => {
                           onClick={() => handleDownloadFile(file)}
                         />
                       </div>
-                      <div className="bg-gray-800 p-3 rounded overflow-auto max-h-64">
-                        <pre className="text-sm text-gray-300">
+                      <div className="p-3 rounded overflow-auto max-h-64" style={{ backgroundColor: colors.bgTertiary }}>
+                        <pre className="text-sm" style={{ color: colors.textSecondary }}>
                           <code>{file.file_content}</code>
                         </pre>
                       </div>

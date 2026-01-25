@@ -2970,6 +2970,7 @@ export interface Translations {
   newnavigationpanel320: string;
   newnavigationpanel325: string;
   newnavigationpanel333: string;
+  newnavigationpanel357: string;
   newnavigationpanel359: string;
   newnavigationpanel364: string;
   newnavigationpanel369: string;
@@ -3354,6 +3355,11 @@ export interface Translations {
   projectpanel796: string;
   projectpanel803: string;
   projectpanel815: string;
+  projectpanelAttachments: string;
+  projectpanelKanban: string;
+  navAgileMethod: string;
+  projectExport: string;
+  projectImport: string;
   projectpanel822: string;
   projectpanel838: string;
   projectpanel850: string;
@@ -4906,10 +4912,7 @@ templatemodal480: string;
 
   //js/components/AuthModals/CreditPurchaseModal.tsx
   creditpurchasemodal72: string;
-  creditpurchasemodal87: string;
-  creditpurchasemodal95: string;
-  creditpurchasemodal98: string;
-
+  
   // resources/js/pages/PublicProjectPage.tsx
   publicProjectBy: string;
   publicProjectPoweredBy: string;

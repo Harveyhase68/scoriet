@@ -77,20 +77,9 @@ class SchemaVersion extends Model
         \DB::statement('SET SESSION interactive_timeout = 1800'); // 30 minutes
         \DB::statement('SET SESSION max_execution_time = 1800000'); // 30 minutes in ms
         \DB::reconnect(); // Ensure fresh connection
-        
-        \Log::info("🔍 createNewVersionWithCopy start", [
-            'schema_id' => $schema->id,
-            'from_version' => $fromVersionNumber,
-            'description' => $description,
-            'memory_limit' => ini_get('memory_limit'),
-            'max_execution_time' => ini_get('max_execution_time'),
-            'current_memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
-            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2)
-        ]);
-        
+
         // Create the new empty version
         $newVersion = self::createNewVersion($schema, $description);
-        \Log::info("✅ New empty version created", ['new_version_id' => $newVersion->id]);
         
         // Find the source version to copy from
         $sourceVersion = self::where('schema_id', $schema->id)
@@ -98,21 +87,13 @@ class SchemaVersion extends Model
             ->first();
             
         if (!$sourceVersion) {
-            \Log::error("❌ Source version not found", ['from_version' => $fromVersionNumber]);
             throw new \Exception("Source version {$fromVersionNumber} not found");
         }
-        
-        \Log::info("✅ Source version found", [
-            'source_version_id' => $sourceVersion->id,
-            'tables_count' => $sourceVersion->tables()->count()
-        ]);
-        
+
         // PHASE 1: Copy all tables, fields, and non-foreign-key constraints
-        \Log::info("🚀 Phase 1: Copying tables, fields and non-FK constraints");
         $tableMapping = []; // Map old table IDs to new table objects
-        
+
         foreach ($sourceVersion->tables as $sourceTable) {
-            \Log::info("📋 Copying table", ['table_name' => $sourceTable->table_name]);
 
             // Create new table for this version
             $newTable = \App\Models\SchemaTable::create([
@@ -124,19 +105,13 @@ class SchemaVersion extends Model
                 'charset' => $sourceTable->charset,
                 'collation' => $sourceTable->collation,
             ]);
-            \Log::info("✅ Table created", ['new_table_id' => $newTable->id]);
-            
+
             // Store mapping for Phase 2
             $tableMapping[$sourceTable->id] = $newTable;
-            
+
             // Copy all fields
-            $fieldsCount = $sourceTable->fields ? $sourceTable->fields->count() : 0;
-            \Log::info("📝 Copying fields", ['fields_count' => $fieldsCount]);
-            
             foreach ($sourceTable->fields as $sourceField) {
                 try {
-                    \Log::info("🔤 Copying field", ['field_name' => $sourceField->field_name]);
-                    
                     \App\Models\SchemaField::create([
                         'table_id' => $newTable->id,
                         'field_name' => $sourceField->field_name,
@@ -145,6 +120,7 @@ class SchemaVersion extends Model
                         'field_precision' => $sourceField->field_precision,
                         'field_scale' => $sourceField->field_scale,
                         'is_nullable' => $sourceField->is_nullable ?? true,
+                        'is_unsigned' => $sourceField->is_unsigned ?? false,
                         'default_value' => $sourceField->default_value,
                         'is_primary_key' => $sourceField->is_primary_key ?? false,
                         'is_unique' => $sourceField->is_unique ?? false,
@@ -152,36 +128,23 @@ class SchemaVersion extends Model
                         'field_comment' => $sourceField->field_comment,
                         'field_order' => $sourceField->field_order ?? 0,
                     ]);
-                    
-                    \Log::info("✅ Field copied successfully");
                 } catch (\Exception $e) {
-                    \Log::error("❌ Failed to copy field", [
-                        'field_name' => $sourceField->field_name,
-                        'error' => $e->getMessage()
-                    ]);
                     throw $e;
                 }
             }
-            
+
             // Copy only non-foreign-key constraints in Phase 1
             $nonFkConstraints = $sourceTable->constraints()->where('constraint_type', '!=', 'FOREIGN KEY')->get();
-            \Log::info("🔗 Phase 1: Copying non-FK constraints", ['constraints_count' => $nonFkConstraints->count()]);
-            
+
             foreach ($nonFkConstraints as $sourceConstraint) {
                 try {
-                    \Log::info("🔒 Copying constraint", [
-                        'constraint_name' => $sourceConstraint->constraint_name,
-                        'constraint_type' => $sourceConstraint->constraint_type
-                    ]);
                     $newConstraint = \App\Models\SchemaConstraint::create([
                         'table_id' => $newTable->id,
                         'constraint_name' => $sourceConstraint->constraint_name,
                         'constraint_type' => $sourceConstraint->constraint_type,
                     ]);
-                    
-                    \Log::info("✅ Constraint created", ['constraint_id' => $newConstraint->id]);
-                
-                // Copy constraint columns
+
+                    // Copy constraint columns
                 foreach ($sourceConstraint->constraintColumns as $sourceColumn) {
                     // Find the corresponding field in the new table
                     $newField = $newTable->fields()->where('field_name', $sourceColumn->field_name)->first();
@@ -205,17 +168,6 @@ class SchemaVersion extends Model
                             'constraint_id' => $newConstraint->id,
                             'referenced_table_id' => $referencedTable->id,
                         ]);
-                    } else {
-                        // Log detailed warning when referenced table is not found
-                        \Log::warning('🚨 Foreign Key SKIPPED - Referenced table not found', [
-                            'constraint_name' => $sourceConstraint->constraint_name ?? 'NULL',
-                            'constraint_type' => $sourceConstraint->constraint_type,
-                            'source_table' => $sourceTable->table_name,
-                            'referenced_table_name' => $sourceConstraint->foreignKeyReference->referencedTable->table_name,
-                            'referenced_table_id' => $sourceConstraint->foreignKeyReference->referencedTable->id,
-                            'available_tables_in_new_version' => $newVersion->tables()->pluck('table_name')->toArray(),
-                            'total_tables_in_new_version' => $newVersion->tables()->count()
-                        ]);
                     }
                     
                     // Copy reference columns
@@ -235,34 +187,18 @@ class SchemaVersion extends Model
                     }
                 }
                 } catch (\Exception $e) {
-                    \Log::error("❌ Failed to copy constraint", [
-                        'constraint_name' => $sourceConstraint->constraint_name ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ]);
                     throw $e;
                 }
             }
         }
-        
+
         // PHASE 2: Copy all foreign key constraints (now that all tables exist)
-        \Log::info("🚀 Phase 2: Processing foreign key constraints");
-        
         foreach ($sourceVersion->tables as $sourceTable) {
             $newTable = $tableMapping[$sourceTable->id];
             $fkConstraints = $sourceTable->constraints()->where('constraint_type', 'FOREIGN KEY')->get();
-            
-            \Log::info("🔑 Processing FK constraints for table", [
-                'table_name' => $sourceTable->table_name,
-                'fk_count' => $fkConstraints->count()
-            ]);
-            
+
             foreach ($fkConstraints as $sourceConstraint) {
                 try {
-                    \Log::info("🔒 Phase 2: Creating FK constraint", [
-                        'constraint_name' => $sourceConstraint->constraint_name ?? 'NULL',
-                        'source_table' => $sourceTable->table_name
-                    ]);
-                    
                     // Create the foreign key constraint
                     $newConstraint = \App\Models\SchemaConstraint::create([
                         'table_id' => $newTable->id,
@@ -270,8 +206,7 @@ class SchemaVersion extends Model
                         'constraint_type' => $sourceConstraint->constraint_type,
                         'column_names' => $sourceConstraint->column_names,
                     ]);
-                    \Log::info("✅ FK Constraint created", ['constraint_id' => $newConstraint->id]);
-                    
+
                     // Copy constraint columns
                     foreach ($sourceConstraint->constraintColumns as $sourceColumn) {
                         $newField = $newTable->fields()->where('field_name', $sourceColumn->field_name)->first();
@@ -307,27 +242,15 @@ class SchemaVersion extends Model
                                     ]);
                                 }
                             }
-                            \Log::info("✅ FK Reference created successfully");
-                        } else {
-                            \Log::error("❌ Phase 2: Referenced table still not found", [
-                                'referenced_table_name' => $referencedTableName,
-                                'constraint_name' => $sourceConstraint->constraint_name
-                            ]);
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::error("❌ Failed to copy FK constraint in Phase 2", [
-                        'constraint_name' => $sourceConstraint->constraint_name ?? 'unknown',
-                        'source_table' => $sourceTable->table_name,
-                        'error' => $e->getMessage()
-                    ]);
                     throw $e;
                 }
             }
         }
-        
+
         // Copy layout positions and sizes
-        \Log::info("📐 Copying layout data");
         try {
             // Get source layout (single row with JSON data)
             $sourceLayout = \App\Models\SchemaDesignerLayout::where('schema_id', $schema->id)
@@ -335,8 +258,6 @@ class SchemaVersion extends Model
                 ->first();
 
             if ($sourceLayout) {
-                \Log::info("📐 Found layout to copy", ['has_data' => !empty($sourceLayout->layout_data)]);
-
                 // Copy layout_data JSON to new version
                 \App\Models\SchemaDesignerLayout::updateOrCreate(
                     [
@@ -347,28 +268,12 @@ class SchemaVersion extends Model
                         'layout_data' => $sourceLayout->layout_data,
                     ]
                 );
-
-                \Log::info("📐 Layout copied successfully");
-            } else {
-                \Log::info("📐 No layout found to copy from version", ['from_version' => $fromVersionNumber]);
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Failed to copy layout", [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            \Log::error("Failed to copy layout: " . $e->getMessage());
             // Don't throw - layout copying should not fail the entire version copy
         }
-        
-        \Log::info("🎉 createNewVersionWithCopy completed successfully", [
-            'new_version_id' => $newVersion->id,
-            'final_memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
-            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
-            'execution_time_seconds' => round(microtime(true) - LARAVEL_START, 2)
-        ]);
-        
+
         return $newVersion;
     }
 

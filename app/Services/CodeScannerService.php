@@ -5,7 +5,7 @@ namespace App\Services;
 class CodeScannerService
 {
     /**
-     * 🔥 JAVASCRIPT BLOCKLIST - Only scan {code}...{codeend} blocks (runs in browser!)
+     * 🔥 JAVASCRIPT BLOCKLIST - Only scan {:code:}...{:codeend:} blocks (runs in browser!)
      * These patterns will BLOCK public visibility
      * Using \b for word boundaries to avoid false positives
      */
@@ -34,7 +34,7 @@ class CodeScannerService
     ];
 
     /**
-     * ⚠️ JAVASCRIPT WARNINGS - Only scan {code}...{codeend} blocks
+     * ⚠️ JAVASCRIPT WARNINGS - Only scan {:code:}...{:codeend:} blocks
      * These patterns will warn but not block
      */
     private static $javascriptWarnings = [
@@ -49,7 +49,7 @@ class CodeScannerService
 
     /**
      * 🔍 Scan template files for malicious code
-     * 🎯 ONLY scans {code}...{codeend} blocks (JavaScript executed in browser)
+     * 🎯 ONLY scans {:code:}...{:codeend:} blocks (JavaScript executed in browser)
      *
      * @param array $files Array of template files with file_content
      * @return array ['blocked' => bool, 'issues' => [...]]
@@ -65,7 +65,7 @@ class CodeScannerService
             $fileName = $file['file_name'] ?? $file->file_name ?? 'unknown';
             $content = $file['file_content'] ?? $file->file_content ?? '';
 
-            // 🎯 Extract ONLY {code}...{codeend} blocks
+            // 🎯 Extract ONLY {:code:}...{:codeend:} blocks
             $codeBlocks = self::extractCodeBlocks($content);
 
             // If no code blocks found, skip scanning (template is safe)
@@ -91,7 +91,7 @@ class CodeScannerService
                             'matched' => $matches[0],
                             'line' => $absoluteLineNumber,
                             'severity' => 'critical',
-                            'context' => 'JavaScript {code} block',
+                            'context' => 'JavaScript {:code:} block',
                         ];
                     }
                 }
@@ -108,7 +108,7 @@ class CodeScannerService
                             'matched' => $matches[0],
                             'line' => $absoluteLineNumber,
                             'severity' => 'warning',
-                            'context' => 'JavaScript {code} block',
+                            'context' => 'JavaScript {:code:} block',
                         ];
                     }
                 }
@@ -133,7 +133,7 @@ class CodeScannerService
     }
 
     /**
-     * 🔧 Extract {code}...{codeend} blocks from template content
+     * 🔧 Extract {:code:}...{:codeend:} blocks from template content
      *
      * @param string $content Template file content
      * @return array Array of ['content' => string, 'start_line' => int]
@@ -141,14 +141,14 @@ class CodeScannerService
     private static function extractCodeBlocks(string $content): array
     {
         $blocks = [];
-        $pattern = '/\{code\}(.*?)\{codeend\}/s';
+        $pattern = '/\{:code:\}(.*?)\{:codeend:\}/s';
 
         if (preg_match_all($pattern, $content, $matches, PREG_OFFSET_CAPTURE)) {
             foreach ($matches[1] as $match) {
                 $blockContent = $match[0];
                 $blockPosition = $match[1];
 
-                // Calculate line number where {code} block starts
+                // Calculate line number where {:code:} block starts
                 $startLine = substr_count(substr($content, 0, $blockPosition), "\n") + 1;
 
                 $blocks[] = [

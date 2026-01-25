@@ -5,6 +5,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface LoginModalProps {
   visible: boolean;
@@ -45,6 +46,9 @@ export default function LoginModal({
   const [error, setError] = useState<string>('');
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState<string>('');
+
+  // Theme sync after login
+  const { syncThemeFromUser } = useTheme();
 
   // Language state
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
@@ -148,6 +152,11 @@ export default function LoginModal({
         localStorage.setItem('user_id', userData.id.toString());
         localStorage.setItem('user_type', userData.user_type || 'free');
         localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
+
+        // Sync theme from user profile
+        if (userData.theme) {
+          syncThemeFromUser(userData.theme as ThemeMode);
+        }
       }
 
       // Show notification if other sessions were revoked (single-session enforcement)

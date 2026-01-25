@@ -5,11 +5,13 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
+import { Checkbox } from 'primereact/checkbox';
 import { FileUpload } from 'primereact/fileupload';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { ProgressBar } from 'primereact/progressbar';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -32,6 +34,8 @@ import { rust } from '@codemirror/lang-rust';
 import { markdown } from '@codemirror/lang-markdown';
 import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 import JSZip from 'jszip';
 
 // Detect language based on file extension
@@ -114,6 +118,102 @@ const getLanguageDisplayName = (fileName: string): string => {
     return displayNames[ext] || 'PHP';
 };
 
+// Light theme for CodeMirror
+const lightTheme = EditorView.theme({
+    "&": {
+        backgroundColor: "#ffffff",
+        color: "#24292e"
+    },
+    ".cm-content": {
+        caretColor: "#24292e"
+    },
+    ".cm-cursor, .cm-dropCursor": {
+        borderLeftColor: "#24292e"
+    },
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+        backgroundColor: "#0366d625"
+    },
+    ".cm-panels": {
+        backgroundColor: "#f6f8fa",
+        color: "#24292e"
+    },
+    ".cm-panels.cm-panels-top": {
+        borderBottom: "1px solid #e1e4e8"
+    },
+    ".cm-panels.cm-panels-bottom": {
+        borderTop: "1px solid #e1e4e8"
+    },
+    ".cm-searchMatch": {
+        backgroundColor: "#ffdf5d66",
+        outline: "1px solid #ffdf5d"
+    },
+    ".cm-searchMatch.cm-searchMatch-selected": {
+        backgroundColor: "#ff9632"
+    },
+    ".cm-activeLine": {
+        backgroundColor: "#f6f8fa"
+    },
+    ".cm-selectionMatch": {
+        backgroundColor: "#ffdf5d66"
+    },
+    ".cm-matchingBracket, .cm-nonmatchingBracket": {
+        backgroundColor: "#bad0f847",
+        outline: "1px solid #c8e1ff"
+    },
+    ".cm-gutters": {
+        backgroundColor: "#f6f8fa",
+        color: "#6a737d",
+        border: "none",
+        borderRight: "1px solid #e1e4e8"
+    },
+    ".cm-activeLineGutter": {
+        backgroundColor: "#e8eaed"
+    },
+    ".cm-foldPlaceholder": {
+        backgroundColor: "transparent",
+        border: "none",
+        color: "#6a737d"
+    },
+    ".cm-tooltip": {
+        border: "1px solid #e1e4e8",
+        backgroundColor: "#ffffff"
+    },
+    ".cm-tooltip .cm-tooltip-arrow:before": {
+        borderTopColor: "transparent",
+        borderBottomColor: "transparent"
+    },
+    ".cm-tooltip .cm-tooltip-arrow:after": {
+        borderTopColor: "#ffffff",
+        borderBottomColor: "#ffffff"
+    },
+    ".cm-tooltip-autocomplete": {
+        "& > ul > li[aria-selected]": {
+            backgroundColor: "#0366d625",
+            color: "#24292e"
+        }
+    }
+}, { dark: false });
+
+// Light syntax highlighting
+const lightHighlightStyle = HighlightStyle.define([
+    { tag: t.keyword, color: "#d73a49" },
+    { tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName], color: "#6f42c1" },
+    { tag: [t.function(t.variableName), t.labelName], color: "#6f42c1" },
+    { tag: [t.color, t.constant(t.name), t.standard(t.name)], color: "#005cc5" },
+    { tag: [t.definition(t.name), t.separator], color: "#24292e" },
+    { tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace], color: "#e36209" },
+    { tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)], color: "#032f62" },
+    { tag: [t.meta, t.comment], color: "#6a737d" },
+    { tag: t.strong, fontWeight: "bold" },
+    { tag: t.emphasis, fontStyle: "italic" },
+    { tag: t.strikethrough, textDecoration: "line-through" },
+    { tag: t.link, color: "#032f62", textDecoration: "underline" },
+    { tag: t.heading, fontWeight: "bold", color: "#005cc5" },
+    { tag: [t.atom, t.bool, t.special(t.variableName)], color: "#005cc5" },
+    { tag: [t.processingInstruction, t.string, t.inserted], color: "#22863a" },
+    { tag: t.invalid, color: "#cb2431" },
+]);
+
 // CodeMirror 6 Editor Component - Multi-Language Support
 const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMaximized }: {
     value: string;
@@ -124,11 +224,17 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
 }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const { colors, isDark } = useTheme();
 
     useEffect(() => {
         if (!editorRef.current) return;
 
         const languageExtension = getLanguageExtension(fileName);
+
+        // Choose theme based on current theme setting
+        const themeExtensions = isDark
+            ? [oneDark]
+            : [lightTheme, syntaxHighlighting(lightHighlightStyle)];
 
         // Create CodeMirror 6 editor
         const startState = EditorState.create({
@@ -136,7 +242,7 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
             extensions: [
                 lineNumbers(),
                 languageExtension,
-                oneDark,
+                ...themeExtensions,
                 keymap.of(defaultKeymap),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
@@ -168,7 +274,7 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
         return () => {
             view.destroy();
         };
-    }, [fileName, isMaximized]); // Recreate editor when language or size changes
+    }, [fileName, isMaximized, isDark]); // Recreate editor when language, size, or theme changes
 
     // Update editor when value changes externally
     useEffect(() => {
@@ -195,8 +301,8 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
                 position: 'absolute',
                 top: '8px',
                 right: '24px',
-                backgroundColor: '#30363d',
-                color: '#8b949e',
+                backgroundColor: colors.bgTertiary,
+                color: colors.textMuted,
                 padding: '4px 10px',
                 borderRadius: '4px',
                 fontSize: '11px',
@@ -213,7 +319,7 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
             <div
                 ref={editorRef}
                 style={{
-                    border: '1px solid #30363d',
+                    border: `1px solid ${colors.borderPrimary}`,
                     borderRadius: '4px',
                     overflow: 'hidden'
                 }}
@@ -244,6 +350,7 @@ const FileModal: React.FC<FileModalProps> = ({
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
     const toast = useToast();
     const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
         defaultValues: {
@@ -252,7 +359,8 @@ const FileModal: React.FC<FileModalProps> = ({
             file_content: '',
             file_type: 'project_file',
             file_order: 0,
-            form_window_type: 0
+            form_window_type: 0,
+            is_include_only: false
         }
     });
 
@@ -311,6 +419,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_type: editingFile.file_type,
                         file_order: editingFile.file_order,
                         form_window_type: editingFile.form_window_type || 0,
+                        is_include_only: editingFile.is_include_only || false,
                     });
                     setUploadedFile(null);
 
@@ -331,7 +440,8 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_content: '',
                         file_type: 'project_file',
                         file_order: templateFiles.length,
-                        form_window_type: 0
+                        form_window_type: 0,
+                        is_include_only: false
                     });
                     setUploadedFile(null);
                     setManagedFiles([]); // Clear managed files
@@ -568,6 +678,13 @@ const FileModal: React.FC<FileModalProps> = ({
 
     const handleSubmit = handleFormSubmit(async (values) => {
         try {
+            // Normalize output_path: ensure trailing slash for directories
+            // Allowed: "/" (root), "path/", "/path/", "../../path/"
+            // Not allowed: "path" (missing trailing slash) - auto-fix it
+            if (values.output_path && values.output_path !== '/' && !values.output_path.endsWith('/')) {
+                values.output_path = values.output_path + '/';
+            }
+
             // If ZIP mode with Archive upload
             if (contentMode === 'zip' && uploadMode === 'archive' && uploadedFile) {
                 (values as any).zip_file = uploadedFile;
@@ -799,6 +916,8 @@ const FileModal: React.FC<FileModalProps> = ({
                 onCancel();
             }}
             style={{ width: isMaximized ? '95vw' : '800px', height: isMaximized ? '95vh' : 'auto' }}
+            contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+            headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
             modal
             closable
             draggable
@@ -836,7 +955,7 @@ const FileModal: React.FC<FileModalProps> = ({
                 <div className="flex gap-4">
                     {/* File Name */}
                     <div className="flex-1">
-                        <label htmlFor="file_name" className="block text-sm font-medium mb-2">
+                        <label htmlFor="file_name" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                             Dateiname *
                         </label>
                         <Controller
@@ -859,7 +978,7 @@ const FileModal: React.FC<FileModalProps> = ({
 
                     {/* File Type */}
                     <div className="w-48">
-                        <label htmlFor="file_type" className="block text-sm font-medium mb-2">
+                        <label htmlFor="file_type" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                             Template-Typ *
                         </label>
                         <Controller
@@ -883,39 +1002,65 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 </div>
 
-                {/* Form Window Type */}
-                <div>
-                    <label htmlFor="form_window_type" className="block text-sm font-medium mb-2">
-                        Formular-Fenstertyp
-                        <span className="text-xs text-gray-400 ml-2">
-                            (für FormSet-Integration)
-                        </span>
-                    </label>
-                    <Controller
-                        name="form_window_type"
-                        control={control}
-                        render={({ field }) => (
-                            <Dropdown
-                                id="form_window_type"
-                                value={field.value}
-                                onChange={(e) => field.onChange(e.value)}
-                                options={formWindowTypeOptions}
-                                placeholder="Fenstertyp auswählen"
-                                className="w-full"
-                            />
-                        )}
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                        Wählen Sie den Fenstertyp, wenn diese Template-Datei für ein bestimmtes Formular generiert werden soll.
-                        Bei "Kein Formular" wird die Datei ohne Formular-Kontext generiert.
+                {/* Form Window Type + Include-Only */}
+                <div className="flex gap-4">
+                    {/* Form Window Type */}
+                    <div className="flex-1">
+                        <label htmlFor="form_window_type" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                            Formular-Fenstertyp
+                            <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
+                                (für FormSet-Integration)
+                            </span>
+                        </label>
+                        <Controller
+                            name="form_window_type"
+                            control={control}
+                            render={({ field }) => (
+                                <Dropdown
+                                    id="form_window_type"
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(e.value)}
+                                    options={formWindowTypeOptions}
+                                    placeholder="Fenstertyp auswählen"
+                                    className="w-full"
+                                />
+                            )}
+                        />
                     </div>
+
+                    {/* Include-Only Checkbox */}
+                    <div className="flex-shrink-0" style={{ minWidth: '200px' }}>
+                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                            Include-Only
+                        </label>
+                        <Controller
+                            name="is_include_only"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="flex items-center gap-2 h-[42px]">
+                                    <Checkbox
+                                        inputId="is_include_only"
+                                        checked={field.value || false}
+                                        onChange={(e) => field.onChange(e.checked)}
+                                    />
+                                    <label htmlFor="is_include_only" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
+                                        Nur für {'{:include:}'}
+                                    </label>
+                                </div>
+                            )}
+                        />
+                    </div>
+                </div>
+                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                    <strong>Formular-Fenstertyp:</strong> Wählen Sie den Typ, wenn diese Datei für ein Formular generiert werden soll. |
+                    <strong> Include-Only:</strong> Wenn aktiviert, wird die Datei nicht generiert, sondern nur für <code>{'{:include: pfad/datei.php:}'}</code> verwendet.
                 </div>
 
                 {/* Output Path */}
                 <div>
-                    <label htmlFor="output_path" className="block text-sm font-medium mb-2">
+                    <label htmlFor="output_path" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                         Zielverzeichnis *
-                        <span className="text-xs text-gray-400 ml-2">
+                        <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
                             (e.g., /components/, /services/, /data/)
                         </span>
                     </label>
@@ -943,7 +1088,7 @@ const FileModal: React.FC<FileModalProps> = ({
                 {/* 🆕 Upload Mode Toggle for static_directory */}
                 {currentFileType === 'static_directory' && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                             Upload-Modus:
                         </label>
                         <div className="flex gap-2">
@@ -973,7 +1118,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         {/* Show Archive file list if editing an Archive file */}
                         {editingFile && editingFile.content_type === 'zip' ? (
                             <div className="mb-4">
-                                <label className="block text-sm font-medium mb-2">
+                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                     Archiv-Inhalt ({editingFile.zip_filename || editingFile.file_name})
                                 </label>
                                 <div className="border-2 border-gray-600 bg-gray-800 rounded-lg p-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
@@ -1038,7 +1183,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         ) : (
                             // Show code editor for text files
                             <div>
-                                <label htmlFor="file_content" className="block text-sm font-medium mb-2">
+                                <label htmlFor="file_content" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                     Dateiinhalt {contentMode === 'text' && '*'}
                                 </label>
                                 <Controller
@@ -1050,24 +1195,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                             value={field.value || ''}
                                             onChange={field.onChange}
                                             fileName={fileName}
-                                            isMaximized={isMaximized}
-                                            placeholder={`Template-Code hier eingeben...
-
-Platzhalter-Beispiele:
-- {projectname} - Name des Projekts
-- {tablename} - Name der Datenbank-Tabelle
-- {item.name} - Name eines Datenbankfelds
-- {item.type} - Typ des Datenbankfelds
-- {item.typecast} - Typecast für das Feld
-
-Schleifen und Logik:
-{for {nmaxitemsnokey}}
-  {if {item.typecast}=="(int)"}
-    $p_{item.name} = {item.typecast}0;
-  {else}
-    $p_{item.name} = {item.typecast}"";
-  {endif}
-{endfor}`}
+                                            isMaximized={isMaximized}                                           
                                         />
                                     )}
                                 />
@@ -1239,12 +1367,12 @@ Schleifen und Logik:
                     </div>
                 )}
 
-                <div className="bg-gray-600 p-3 rounded mb-4 text-gray-100">
-                    <strong className="text-gray-100">Template-Typen:</strong>
-                    <ul className="mt-2 text-sm text-gray-200">
+                <div className="p-3 rounded mb-4" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
+                    <strong style={{ color: colors.textPrimary }}>Template-Typen:</strong>
+                    <ul className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
                         {fileTypes.map(type => (
                             <li key={type.value} className="mb-1">
-                                <strong className="text-gray-100">{type.label}:</strong> {type.description}
+                                <strong style={{ color: colors.textPrimary }}>{type.label}:</strong> {type.description}
                             </li>
                         ))}
                     </ul>
@@ -1266,6 +1394,39 @@ Schleifen und Logik:
                 </div>
             </form>
 
+            {/* Theme-aware styles for PrimeReact components */}
+            <style>{`
+                .p-dialog .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .p-dialog .p-inputtext:focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .p-dialog .p-inputtext::placeholder {
+                    color: var(--theme-text-muted) !important;
+                }
+                .p-dialog .p-dropdown {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .p-dialog .p-dropdown:focus,
+                .p-dialog .p-dropdown.p-focus {
+                    border-color: var(--theme-accent) !important;
+                    box-shadow: 0 0 0 1px var(--theme-accent) !important;
+                }
+                .p-dialog .p-dropdown .p-dropdown-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .p-dialog .p-inputgroup-addon {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+            `}</style>
         </Dialog>
     );
 };

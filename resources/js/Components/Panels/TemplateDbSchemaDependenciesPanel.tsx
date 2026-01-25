@@ -16,11 +16,13 @@ import { Card } from 'primereact/card';
 import { apiClient as api } from '@/lib/api';
 import { TabContentProps } from '@/types';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Global Ant Design React 19 warning suppression removed
 
 const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
     const ref = useRef<HTMLDivElement>(null);
+    const { colors } = useTheme();
     const setFocus = () => ref.current?.focus();
 
     return (
@@ -28,10 +30,15 @@ const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }
             {...rest}
             ref={ref}
             tabIndex={-1}
-            style={{ flex: 1, padding: '5px 10px', ...style }}
+            style={{
+                flex: 1,
+                padding: '5px 10px',
+                backgroundColor: colors.bgPrimary,
+                color: colors.textPrimary,
+                ...style
+            }}
             onMouseDownCapture={setFocus}
             onTouchStartCapture={setFocus}
-            className="bg-gray-800 text-gray-100"
         >
             {children}
         </div>
@@ -84,6 +91,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
     // i18n setup
     const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
     const { t } = useTranslation(currentLanguage);
+    const { colors } = useTheme();
 
     const toast = useToast();
     const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
@@ -185,7 +193,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                                     <div className="flex justify-between items-center w-full">
                                         <div>
                                             <span>{option.schema.name}</span>
-                                            <span className="text-gray-400 ml-2">
+                                            <span className="ml-2" style={{ color: colors.textMuted }}>
                                                 v{option.schema.last_version}
                                             </span>
                                         </div>
@@ -264,6 +272,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     // i18n setup
     const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
     const { t } = useTranslation(currentLanguage);
+    const { colors } = useTheme();
 
     // Using centralized CSS styles from auth-modals.css
     const toast = useToast();
@@ -485,9 +494,9 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
     return (
         <TabContent>
             <div className="space-y-4">
-                <Card className="bg-gray-700 border-gray-600">
+                <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-gray-100 flex items-center space-x-2">
+                        <h2 className="text-xl font-bold flex items-center space-x-2" style={{ color: colors.textPrimary }}>
                             <i className="pi pi-link"></i>
                             <span>Template - DB Schema Dependencies</span>
                         </h2>
@@ -525,11 +534,11 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={t.templatesSearchPlaceholder}
                                     className="w-full"
-                                    style={{ backgroundColor: '#4b5563', borderColor: '#6b7280', color: '#f3f4f6' }}
+                                    style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
                                 />
                             </div>
 
-                            <div className="bg-gray-800 rounded border border-gray-600">
+                            <div className="rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                                 <DataTable
                                     value={filteredTemplates}
                                     loading={loading}
@@ -572,7 +581,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                             </div>
 
                             {selectedTemplate ? (
-                                <div className="bg-gray-800 rounded border border-gray-600">
+                                <div className="rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                                     <DataTable
                                         value={dependencies}
                                         loading={dependenciesLoading}
@@ -601,7 +610,14 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                     </DataTable>
                                 </div>
                             ) : (
-                                <div className="bg-gray-800 rounded border border-gray-600 p-8 text-center text-gray-400">
+                                <div
+                                    className="rounded p-8 text-center"
+                                    style={{
+                                        backgroundColor: colors.bgSecondary,
+                                        border: `1px solid ${colors.borderPrimary}`,
+                                        color: colors.textMuted
+                                    }}
+                                >
                                     Select a template to view its DB schema dependencies
                                 </div>
                             )}

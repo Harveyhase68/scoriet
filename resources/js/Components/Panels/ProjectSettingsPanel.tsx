@@ -13,6 +13,7 @@ import { PickList } from 'primereact/picklist';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { ProjectProtectedFilesView } from '@/Components/ProjectProtectedFilesView';
 import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Language {
     code: string;
@@ -102,6 +103,8 @@ export default function ProjectSettingsPanel() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  // Theme
+  const { colors } = useTheme();
     const toast = useToast();
     const { selectedProject, loadProjects } = useProject();
     const [loading, setLoading] = useState(false);
@@ -138,6 +141,21 @@ export default function ProjectSettingsPanel() {
         auto_delete_branch: true,
         is_configured: false,
     });
+
+    // FTP/SSH Deployment State
+    const [ftpSettings, setFtpSettings] = useState({
+        deployment_type: '' as '' | 'ftp' | 'sftp',
+        ftp_host: '',
+        ftp_port: 21,
+        ftp_username: '',
+        ftp_password: '',
+        ftp_directory: '',
+        ftp_passive: true,
+        ftp_ssl: false,
+        has_credentials: false,
+    });
+    const [testingFtp, setTestingFtp] = useState(false);
+    const [ftpTestResult, setFtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [availableGitProviders, setAvailableGitProviders] = useState<GitProvider[]>([]);
     const [gitRepositories, setGitRepositories] = useState<GitRepository[]>([]);
     const [gitBranches, setGitBranches] = useState<GitBranch[]>([]);
@@ -303,7 +321,6 @@ export default function ProjectSettingsPanel() {
                 setLinkedTemplates(data.templates || []);
             } else {
                 // Fallback: Try loading templates directly
-                console.log('Fallback: Loading templates via project_id filter');
                 const fallbackResponse = await fetch(`/api/templates?project_id=${selectedProject.id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -321,6 +338,145 @@ export default function ProjectSettingsPanel() {
             setLinkedTemplates([]);
         }
     }, [selectedProject]);
+
+    // Load FTP/SSH Settings
+    const loadFtpSettings = useCallback(async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data) {
+                    setFtpSettings({
+                        deployment_type: data.data.deployment_type || '',
+                        ftp_host: data.data.ftp_host || '',
+                        ftp_port: data.data.ftp_port || 21,
+                        ftp_username: data.data.ftp_username || '',
+                        ftp_password: data.data.ftp_password || '',
+                        ftp_directory: data.data.ftp_directory || '',
+                        ftp_passive: data.data.ftp_passive ?? true,
+                        ftp_ssl: data.data.ftp_ssl ?? false,
+                        has_credentials: data.data.has_credentials || false,
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading FTP settings:', error);
+        }
+    }, [selectedProject]);
+
+    // Test FTP/SSH Connection
+    const testFtpConnection = async () => {
+        if (!selectedProject) return;
+
+        setTestingFtp(true);
+        setFtpTestResult(null);
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-test`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(ftpSettings),
+            });
+
+            const data = await response.json();
+            setFtpTestResult({
+                success: data.success,
+                message: data.message,
+            });
+        } catch {
+            setFtpTestResult({
+                success: false,
+                message: 'Verbindungstest fehlgeschlagen',
+            });
+        } finally {
+            setTestingFtp(false);
+        }
+    };
+
+    // Save FTP/SSH Settings
+    const saveFtpSettings = async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(ftpSettings),
+            });
+
+            if (response.ok) {
+                toast.showSuccess('FTP/SSH-Einstellungen gespeichert');
+                loadFtpSettings();
+            } else {
+                toast.showError('Fehler beim Speichern der FTP/SSH-Einstellungen');
+            }
+        } catch {
+            toast.showError('Fehler beim Speichern der FTP/SSH-Einstellungen');
+        }
+    };
+
+    // Remove FTP/SSH Settings
+    const removeFtpSettings = async () => {
+        if (!selectedProject) return;
+
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+
+            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                toast.showSuccess('FTP/SSH-Einstellungen entfernt');
+                setFtpSettings({
+                    deployment_type: '',
+                    ftp_host: '',
+                    ftp_port: 21,
+                    ftp_username: '',
+                    ftp_password: '',
+                    ftp_directory: '',
+                    ftp_passive: true,
+                    ftp_ssl: false,
+                    has_credentials: false,
+                });
+                setFtpTestResult(null);
+            } else {
+                toast.showError('Fehler beim Entfernen der FTP/SSH-Einstellungen');
+            }
+        } catch {
+            toast.showError('Fehler beim Entfernen der FTP/SSH-Einstellungen');
+        }
+    };
 
     const loadGitSettings = useCallback(async () => {
         if (!selectedProject) return;
@@ -660,8 +816,9 @@ export default function ProjectSettingsPanel() {
             loadTemplateVariables();
             loadLinkedTemplates();
             loadGitSettings();
+            loadFtpSettings();
         }
-    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates, loadGitSettings]);
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates, loadGitSettings, loadFtpSettings]);
 
     const handleSave = async () => {
         if (!selectedProject) {
@@ -852,7 +1009,7 @@ export default function ProjectSettingsPanel() {
 
     if (!selectedProject) {
         return (
-            <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
+            <div className="h-full flex items-center justify-center theme-bg-secondary theme-text-secondary">
                 <div className="text-center">
                     <i className="pi pi-info-circle text-4xl mb-4"></i>
                     <p>Bitte wählen Sie ein Projekt aus</p>
@@ -865,21 +1022,24 @@ export default function ProjectSettingsPanel() {
 
     if (loading) {
         return (
-            <div className="h-full flex items-center justify-center bg-gray-800">
+            <div className="h-full flex items-center justify-center theme-bg-secondary">
                 <ProgressSpinner />
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col bg-gray-800 text-gray-100 p-6 overflow-auto project-settings-panel">
+        <div
+            className="h-full flex flex-col p-6 overflow-auto project-settings-panel"
+            style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        >
             <div className="mb-6 flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-100">
+                    <h2 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
                         {t.newnavigationpanel142}
                     </h2>
-                    <p className="text-gray-400 mt-2">
-                        Projekt: <span className="font-semibold text-gray-200">{selectedProject.name}</span>
+                    <p className="mt-2" style={{ color: colors.textMuted }}>
+                        Projekt: <span className="font-semibold" style={{ color: colors.textSecondary }}>{selectedProject.name}</span>
                     </p>
                 </div>
                 <Button
@@ -892,11 +1052,11 @@ export default function ProjectSettingsPanel() {
                 />
             </div>
 
-            <TabView className="flex-1">
+            <TabView className="flex-1 tabview-wrap-tabs">
                 <TabPanel header={<span><i className="pi pi-cog mr-2"></i>{t.projectsettingspanel313}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel316}
                                     </label>
                                     <InputText
@@ -904,14 +1064,15 @@ export default function ProjectSettingsPanel() {
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder={t.editprojectmodal240}
                                         className="w-full font-mono"
+                                        style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                         {t.editprojectmodal569}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel331}
                                     </label>
                                     <InputTextarea
@@ -924,7 +1085,7 @@ export default function ProjectSettingsPanel() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel344}
                                     </label>
                                     <div className="p-inputgroup">
@@ -939,7 +1100,7 @@ export default function ProjectSettingsPanel() {
                                             severity="secondary"
                                         />
                                     </div>
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel359}
                                     </div>
                                 </div>
@@ -951,18 +1112,18 @@ export default function ProjectSettingsPanel() {
                                             checked={formData.is_public}
                                             onChange={(e) => setFormData({ ...formData, is_public: e.checked || false })}
                                         />
-                                        <label htmlFor="is_public" className="ml-2 text-gray-300">
+                                        <label htmlFor="is_public" className="ml-2 theme-text-secondary">
                                             {t.publicprojectspanel448}
                                         </label>
                                     </div>
-                                    <div className="text-xs text-gray-400 mt-1 ml-6">
+                                    <div className="text-xs mt-1 ml-6">
                                         {t.projectsettingspanel375}
                                     </div>
                                 </div>
 
                                 {selectedProject.is_owner && projectMembers.length > 0 && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel382}
                                         </label>
                                         <Dropdown
@@ -978,7 +1139,7 @@ export default function ProjectSettingsPanel() {
                                             className="w-full"
                                             showClear
                                         />
-                                        <div className="text-xs text-yellow-500 mt-1">
+                                        <div className="mt-3 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                                             {t.projectsettingspanel644}
                                         </div>
                                     </div>
@@ -988,7 +1149,7 @@ export default function ProjectSettingsPanel() {
                 <TabPanel header={<span><i className="pi pi-database mr-2"></i>{t.projectsettingspanel405}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel408}
                                     </label>
                                     <InputText
@@ -1000,7 +1161,7 @@ export default function ProjectSettingsPanel() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel420}
                                     </label>
                                     <Dropdown
@@ -1018,7 +1179,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             Server
                                         </label>
                                         <InputText
@@ -1030,7 +1191,7 @@ export default function ProjectSettingsPanel() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             Port
                                         </label>
                                         <InputText
@@ -1043,7 +1204,7 @@ export default function ProjectSettingsPanel() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel463}
                                     </label>
                                     <InputText
@@ -1055,7 +1216,7 @@ export default function ProjectSettingsPanel() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel475}
                                     </label>
                                     <PrimePassword
@@ -1071,14 +1232,14 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
                 <TabPanel header={<span><i className="pi pi-sitemap mr-2"></i>{t.projectsettingspanel734}</span>}>
                             <div className="space-y-4 max-w-3xl">
-                                <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                                <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                                     <i className="pi pi-info-circle mr-2"></i>
                                     {t.projectsettingspanel738}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel744}
                                         </label>
                                         <InputText
@@ -1088,11 +1249,11 @@ export default function ProjectSettingsPanel() {
                                             placeholder="20"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">{t.projectsettingspanel753}</small>
+                                        <small className="theme-text-muted">{t.projectsettingspanel753}</small>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel758}
                                         </label>
                                         <InputText
@@ -1102,11 +1263,11 @@ export default function ProjectSettingsPanel() {
                                             placeholder="280"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">{t.projectsettingspanel767}</small>
+                                        <small className="theme-text-muted">{t.projectsettingspanel767}</small>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel772}
                                         </label>
                                         <InputText
@@ -1116,11 +1277,11 @@ export default function ProjectSettingsPanel() {
                                             placeholder="450"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">{t.projectsettingspanel781}</small>
+                                        <small className="theme-text-muted">{t.projectsettingspanel781}</small>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel786}
                                         </label>
                                         <InputText
@@ -1130,11 +1291,11 @@ export default function ProjectSettingsPanel() {
                                             placeholder="600"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">{t.projectsettingspanel795}</small>
+                                        <small className="theme-text-muted">{t.projectsettingspanel795}</small>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel800}
                                         </label>
                                         <InputText
@@ -1144,13 +1305,13 @@ export default function ProjectSettingsPanel() {
                                             placeholder="700"
                                             className="w-full"
                                         />
-                                        <small className="text-gray-400">{t.projectsettingspanel809}</small>
+                                        <small className="theme-text-muted">{t.projectsettingspanel809}</small>
                                     </div>
                                 </div>
 
                                 {/* Form Designer Settings */}
-                                <div className="mt-6 pt-6 border-t border-gray-600">
-                                    <h4 className="text-md font-semibold text-gray-200 mb-4">
+                                <div className="mt-6 pt-6 border-t theme-border-secondary">
+                                    <h4 className="text-md font-semibold theme-text-primary mb-4">
                                         <i className="pi pi-window-maximize mr-2"></i>
                                         Form Designer Einstellungen
                                     </h4>
@@ -1161,12 +1322,12 @@ export default function ProjectSettingsPanel() {
                                                 checked={formData.form_designer_snap_to_grid}
                                                 onChange={(e) => setFormData({ ...formData, form_designer_snap_to_grid: e.checked ?? true })}
                                             />
-                                            <label htmlFor="form_designer_snap" className="text-sm text-gray-300 cursor-pointer">
+                                            <label htmlFor="form_designer_snap" className="text-sm theme-text-secondary cursor-pointer">
                                                 Snap to Grid (Raster)
                                             </label>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                                 Rastergröße (px)
                                             </label>
                                             <InputText
@@ -1178,14 +1339,14 @@ export default function ProjectSettingsPanel() {
                                                 min={5}
                                                 max={100}
                                             />
-                                            <small className="text-gray-400">Empfohlen: 10-30px</small>
+                                            <small className="theme-text-muted">Empfohlen: 10-30px</small>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-6 p-4 bg-gray-700 rounded">
-                                    <h4 className="font-semibold mb-2 text-gray-200">{t.projectsettingspanel814}</h4>
-                                    <div className="text-sm text-gray-300 space-y-1">
+                                <div className="mt-6 p-4 theme-bg-tertiary rounded">
+                                    <h4 className="font-semibold mb-2 theme-text-primary">{t.projectsettingspanel814}</h4>
+                                    <div className="text-sm theme-text-secondary space-y-1">
                                         <div>• {t.projectsettingspanel816} <span className="text-blue-400">{formData.diagram_max_tables_per_row}</span></div>
                                         <div>• {t.projectsettingspanel817} <span className="text-blue-400">{formData.diagram_table_width}px × {formData.diagram_table_height}px</span></div>
                                         <div>• {t.projectsettingspanel818} <span className="text-blue-400">{formData.diagram_horizontal_spacing}px {t.projectsettingspanel818a}, {formData.diagram_vertical_spacing}px {t.projectsettingspanel818b}</span></div>
@@ -1196,7 +1357,7 @@ export default function ProjectSettingsPanel() {
                 <TabPanel header={<span><i className="pi pi-file mr-2"></i>{t.projectsettingspanel489}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel492}
                                     </label>
                                     <InputText
@@ -1205,13 +1366,13 @@ export default function ProjectSettingsPanel() {
                                         placeholder="C:\Users\Public\Documents\my_project"
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel501}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel507}
                                     </label>
                                     <InputText
@@ -1220,13 +1381,13 @@ export default function ProjectSettingsPanel() {
                                         placeholder="http://localhost/my_project"
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel516}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel522}
                                     </label>
                                     <InputText
@@ -1235,13 +1396,13 @@ export default function ProjectSettingsPanel() {
                                         placeholder="index.php"
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel866}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel872}
                                     </label>
                                     <Dropdown
@@ -1256,13 +1417,13 @@ export default function ProjectSettingsPanel() {
                                         ]}
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel552}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel893}
                                     </label>
                                     <Dropdown
@@ -1275,13 +1436,13 @@ export default function ProjectSettingsPanel() {
                                         ]}
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel906}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel558}
                                     </label>
                                     <Dropdown
@@ -1295,7 +1456,7 @@ export default function ProjectSettingsPanel() {
                                         ]}
                                         className="w-full"
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel926}
                                     </div>
                                 </div>
@@ -1305,7 +1466,7 @@ export default function ProjectSettingsPanel() {
                             <div className="space-y-4 max-w-3xl">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel582}
                                         </label>
                                         <InputText
@@ -1315,13 +1476,13 @@ export default function ProjectSettingsPanel() {
                                             maxLength={1}
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             {t.projectsettingspanel946}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel598}
                                         </label>
                                         <InputText
@@ -1331,7 +1492,7 @@ export default function ProjectSettingsPanel() {
                                             maxLength={1}
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             {t.projectsettingspanel962}
                                         </div>
                                     </div>
@@ -1339,7 +1500,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel616}
                                         </label>
                                         <InputText
@@ -1348,13 +1509,13 @@ export default function ProjectSettingsPanel() {
                                             placeholder="d.m.Y"
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             {t.projectsettingspanel979}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectsettingspanel631}
                                         </label>
                                         <InputText
@@ -1363,7 +1524,7 @@ export default function ProjectSettingsPanel() {
                                             placeholder="H:i:s"
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             {t.projectsettingspanel995}
                                         </div>
                                     </div>
@@ -1371,7 +1532,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.projectpanel1263}
                                         </label>
                                         <InputText
@@ -1381,13 +1542,13 @@ export default function ProjectSettingsPanel() {
                                             maxLength={5}
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             {t.projectsettingspanel1012}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             {t.editprojectmodal613}
                                         </label>
                                         <Dropdown
@@ -1525,7 +1686,7 @@ export default function ProjectSettingsPanel() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel689}
                                     </label>
                                     <PrimePassword
@@ -1536,7 +1697,7 @@ export default function ProjectSettingsPanel() {
                                         feedback={false}
                                         toggleMask
                                     />
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs mt-1">
                                         {t.projectsettingspanel700}
                                     </div>
                                     <div className="text-xs text-blue-400 mt-1">
@@ -1549,7 +1710,7 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
                 <TabPanel header={<span><i className="pi pi-comments mr-2"></i>{t.projectsettingspanel711}</span>}>
                             <div className="max-w-4xl">
-                                <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                                <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                                     <i className="pi pi-info-circle mr-2"></i>
                                     {t.projectsettingspanel1068}
                                 </div>
@@ -1577,7 +1738,7 @@ export default function ProjectSettingsPanel() {
                                     showTargetControls={true}
                                 />
 
-                                <div className="mt-6 text-gray-300 text-sm">
+                                <div className="mt-3 p-3 rounded text-sm" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                                     <p>
                                         <strong>Ausgewählte Sprachen:</strong>{' '}
                                         {selectedLanguages.length > 0
@@ -1591,7 +1752,7 @@ export default function ProjectSettingsPanel() {
                 {/* Template Variables Tab */}
                 <TabPanel header={<span><i className="pi pi-code mr-2"></i>{t.projectsettingspanel1108}</span>}>
                     <div className="max-w-6xl">
-                        <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                        <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             <i className="pi pi-info-circle mr-2"></i>
                             {t.projectsettingspanel1111}
                         </div>
@@ -1601,7 +1762,7 @@ export default function ProjectSettingsPanel() {
                                 <ProgressSpinner />
                             </div>
                         ) : templatesWithVariables.length === 0 ? (
-                            <div className="p-4 bg-gray-800 border border-gray-700 rounded text-gray-300 text-center">
+                            <div className="p-4 theme-bg-secondary theme-border-primary border rounded theme-text-secondary text-center">
                                 <i className="pi pi-info-circle mr-2"></i>
                                 {t.projectsettingspanel1122}
                             </div>
@@ -1609,7 +1770,7 @@ export default function ProjectSettingsPanel() {
                             <>
                                 {/* Language Selector */}
                                 <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         <i className="pi pi-globe mr-2"></i>{t.projectsettingspanel1129}
                                     </label>
                                     <Dropdown
@@ -1628,13 +1789,13 @@ export default function ProjectSettingsPanel() {
 
                                 {/* Templates with Variables */}
                                 {templatesWithVariables.map((template) => (
-                                    <div key={template.id} className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded">
-                                        <h3 className="text-lg font-semibold text-blue-400 mb-1">
+                                    <div key={template.id} className="mb-6 p-4 theme-bg-secondary theme-border-primary border rounded">
+                                        <h3 className="text-lg font-semibold theme-accent mb-1">
                                             <i className="pi pi-file-code mr-2"></i>
                                             {template.name}
                                         </h3>
                                         {template.description && (
-                                            <p className="text-sm text-gray-400 mb-4">{template.description}</p>
+                                            <p className="text-sm theme-text-muted mb-4">{template.description}</p>
                                         )}
 
                                         <div className="space-y-3">
@@ -1643,11 +1804,11 @@ export default function ProjectSettingsPanel() {
                                                 const currentValue = variableValues[key]?.[selectedVariableLanguage] || '';
 
                                                 return (
-                                                    <div key={variable.id} className="p-3 bg-gray-900 border border-gray-600 rounded">
+                                                    <div key={variable.id} className="p-3 theme-bg-tertiary theme-border-secondary border rounded">
                                                         <div className="flex items-start gap-3">
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2 mb-2">
-                                                                    <span className="font-mono text-green-400 font-semibold">
+                                                                    <span className="font-mono theme-accent font-semibold">
                                                                         {`{${variable.variable_name}}`}
                                                                     </span>
                                                                     {variable.is_required && (
@@ -1658,13 +1819,13 @@ export default function ProjectSettingsPanel() {
                                                                 </div>
 
                                                                 {variable.description && (
-                                                                    <p className="text-sm text-gray-400 mb-2">
+                                                                    <p className="text-sm theme-text-muted mb-2">
                                                                         {variable.description}
                                                                     </p>
                                                                 )}
 
                                                                 {variable.default_value && (
-                                                                    <p className="text-xs text-gray-500 mb-2">
+                                                                    <p className="text-xs theme-text-muted mb-2">
                                                                         Standard: <span className="text-blue-300">{variable.default_value}</span>
                                                                     </p>
                                                                 )}
@@ -1690,7 +1851,7 @@ export default function ProjectSettingsPanel() {
                                 ))}
 
                                 {/* Info: Variables are saved by main "Save All" button */}
-                                <div className="mt-6 p-3 bg-green-900 border border-green-700 rounded text-green-100 text-sm">
+                               <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                                     <i className="pi pi-info-circle mr-2"></i>
                                     Template-Variablen werden automatisch mit dem Button "Alle Änderungen speichern" oben gespeichert.
                                 </div>
@@ -1719,7 +1880,7 @@ export default function ProjectSettingsPanel() {
                             onInstallScriptChange={setProjectInstallScript}
                             onUpdateScriptChange={setProjectUpdateScript}
                         />
-                        <div className="mt-6 p-3 bg-green-900 border border-green-700 rounded text-green-100 text-sm">
+                        <div className="mt-3 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                             <i className="pi pi-info-circle mr-2"></i>
                             Deployment scripts will be saved automatically with the "Save All" button above.
                         </div>
@@ -1729,7 +1890,7 @@ export default function ProjectSettingsPanel() {
                 {/* Git Integration Tab */}
                 <TabPanel header={<span><i className="pi pi-github mr-2"></i>Git Integration</span>}>
                     <div className="space-y-6 max-w-3xl p-4">
-                        <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+                        <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             <i className="pi pi-info-circle mr-2"></i>
                             Verbinden Sie ein Git-Repository, um generierten Code direkt zu pushen.
                         </div>
@@ -1747,7 +1908,7 @@ export default function ProjectSettingsPanel() {
                             <>
                                 {/* Git Provider Selection */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         <i className="pi pi-cloud mr-2"></i>Git Provider
                                     </label>
                                     <Dropdown
@@ -1767,7 +1928,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Repository Selection */}
                                 {gitSettings.provider_id && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             <i className="pi pi-folder mr-2"></i>Repository
                                         </label>
                                         <Dropdown
@@ -1785,7 +1946,7 @@ export default function ProjectSettingsPanel() {
                                             showClear
                                         />
                                         {loadingGitRepos && (
-                                            <div className="text-xs text-gray-400 mt-1">
+                                            <div className="text-xs mt-1">
                                                 <i className="pi pi-spin pi-spinner mr-1"></i>Repositories werden geladen...
                                             </div>
                                         )}
@@ -1796,7 +1957,7 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.repository && (
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                                 <i className="pi pi-code-branch mr-2"></i>Push-Branch
                                             </label>
                                             <Dropdown
@@ -1811,12 +1972,12 @@ export default function ProjectSettingsPanel() {
                                                 disabled={loadingGitBranches}
                                                 editable
                                             />
-                                            <div className="text-xs text-gray-400 mt-1">
+                                            <div className="text-xs mt-1">
                                                 Branch für Code-Pushes (z.B. feature/scoriet-generated)
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                                 <i className="pi pi-code-branch mr-2"></i>Main-Branch
                                             </label>
                                             <Dropdown
@@ -1830,7 +1991,7 @@ export default function ProjectSettingsPanel() {
                                                 className="w-full"
                                                 disabled={loadingGitBranches}
                                             />
-                                            <div className="text-xs text-gray-400 mt-1">
+                                            <div className="text-xs mt-1">
                                                 Ziel-Branch für Pull Requests (z.B. main, master)
                                             </div>
                                         </div>
@@ -1840,7 +2001,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Target Directory */}
                                 {gitSettings.repository && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             <i className="pi pi-folder-open mr-2"></i>Zielverzeichnis (optional)
                                         </label>
                                         <InputText
@@ -1849,7 +2010,7 @@ export default function ProjectSettingsPanel() {
                                             placeholder="z.B. src/generated oder leer für Root"
                                             className="w-full"
                                         />
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs mt-1">
                                             Unterverzeichnis im Repository für generierten Code
                                         </div>
                                     </div>
@@ -1858,7 +2019,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Workflow Selection */}
                                 {gitSettings.repository && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                             <i className="pi pi-sitemap mr-2"></i>Workflow
                                         </label>
                                         <Dropdown
@@ -1884,7 +2045,7 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.repository && gitSettings.workflow !== 'push_only' && (
                                     <>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                                 <i className="pi pi-file-edit mr-2"></i>PR Titel-Template
                                             </label>
                                             <InputText
@@ -1895,7 +2056,7 @@ export default function ProjectSettingsPanel() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                                 <i className="pi pi-align-left mr-2"></i>PR Beschreibung-Template
                                             </label>
                                             <InputTextarea
@@ -1912,7 +2073,7 @@ export default function ProjectSettingsPanel() {
                                                 checked={gitSettings.auto_delete_branch}
                                                 onChange={(e) => setGitSettings(prev => ({ ...prev, auto_delete_branch: e.checked ?? true }))}
                                             />
-                                            <label htmlFor="git_auto_delete_branch" className="text-sm text-gray-300 cursor-pointer">
+                                            <label htmlFor="git_auto_delete_branch" className="text-sm theme-text-secondary cursor-pointer">
                                                 Branch nach Merge automatisch löschen
                                             </label>
                                         </div>
@@ -1920,7 +2081,7 @@ export default function ProjectSettingsPanel() {
                                 )}
 
                                 {/* Save/Remove Buttons */}
-                                <div className="flex gap-3 pt-4 border-t border-gray-600">
+                                <div className="flex gap-3 pt-4 border-t theme-border-secondary">
                                     <Button
                                         icon="pi pi-save"
                                         label="Git-Einstellungen speichern"
@@ -1941,16 +2102,16 @@ export default function ProjectSettingsPanel() {
 
                                 {/* Current Configuration Summary */}
                                 {gitSettings.is_configured && (
-                                    <div className="mt-4 p-4 bg-green-900 border border-green-700 rounded">
-                                        <h4 className="font-semibold text-green-200 mb-2">
-                                            <i className="pi pi-check-circle mr-2"></i>Aktive Git-Konfiguration
+                                    <div className="mt-3 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
+                                        <h4 className="font-semibold theme-text-primary mb-2">
+                                            <i className="pi pi-check-circle mr-2"></i><span style={{color: colors.successText }}>Aktive Git-Konfiguration</span>
                                         </h4>
                                         <div className="text-sm text-green-100 space-y-1">
-                                            <div>• Provider: <span className="text-white">{gitSettings.provider}</span></div>
-                                            <div>• Repository: <span className="text-white">{gitSettings.repository}</span></div>
-                                            <div>• Push-Branch: <span className="text-white">{gitSettings.default_branch}</span></div>
-                                            <div>• Main-Branch: <span className="text-white">{gitSettings.main_branch}</span></div>
-                                            <div>• Workflow: <span className="text-white">{
+                                            <div style={{color: colors.successText }}>• Provider: <span style={{color: colors.successText }}>{gitSettings.provider}</span></div>
+                                            <div style={{color: colors.successText }}>• Repository: <span  style={{color: colors.successText }}>{gitSettings.repository}</span></div>
+                                            <div style={{color: colors.successText }}>• Push-Branch: <span  style={{color: colors.successText }}>{gitSettings.default_branch}</span></div>
+                                            <div style={{color: colors.successText }}>• Main-Branch: <span style={{color: colors.successText }}>{gitSettings.main_branch}</span></div>
+                                            <div style={{color: colors.successText }}>• Workflow: <span style={{color: colors.successText }}>{
                                                 gitSettings.workflow === 'push_only' ? 'Nur Push' :
                                                 gitSettings.workflow === 'push_and_pr' ? 'Push + PR' :
                                                 'Push + PR + Auto-Merge'
@@ -1959,6 +2120,225 @@ export default function ProjectSettingsPanel() {
                                     </div>
                                 )}
                             </>
+                        )}
+                    </div>
+                </TabPanel>
+
+                {/* FTP/SSH Deployment Tab */}
+                <TabPanel header={<span><i className="pi pi-upload mr-2"></i>FTP/SSH Deployment</span>}>
+                    <div className="space-y-6 max-w-3xl p-4">
+                        <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
+                            <i className="pi pi-info-circle mr-2"></i>
+                            Konfigurieren Sie FTP oder SFTP-Zugangsdaten, um generierten Code direkt auf Ihren Server hochzuladen.
+                        </div>
+
+                        {/* Deployment Type Selection */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                <i className="pi pi-server mr-2"></i>Deployment Typ
+                            </label>
+                            <Dropdown
+                                value={ftpSettings.deployment_type}
+                                onChange={(e) => {
+                                    const newType = e.value;
+                                    setFtpSettings(prev => ({
+                                        ...prev,
+                                        deployment_type: newType,
+                                        ftp_port: newType === 'sftp' ? 22 : 21,
+                                    }));
+                                    setFtpTestResult(null);
+                                }}
+                                options={[
+                                    { label: 'Keine (deaktiviert)', value: '' },
+                                    { label: 'FTP', value: 'ftp' },
+                                    { label: 'SFTP (SSH)', value: 'sftp' },
+                                ]}
+                                placeholder="Deployment Typ auswählen..."
+                                className="w-full"
+                            />
+                        </div>
+
+                        {/* FTP/SSH Settings (only shown when type is selected) */}
+                        {ftpSettings.deployment_type && (
+                            <>
+                                {/* Host */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        <i className="pi pi-globe mr-2"></i>Host
+                                    </label>
+                                    <InputText
+                                        value={ftpSettings.ftp_host}
+                                        onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_host: e.target.value }))}
+                                        placeholder="ftp.example.com"
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                {/* Port */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        <i className="pi pi-hashtag mr-2"></i>Port
+                                    </label>
+                                    <InputText
+                                        value={ftpSettings.ftp_port.toString()}
+                                        onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_port: parseInt(e.target.value) || 21 }))}
+                                        placeholder={ftpSettings.deployment_type === 'sftp' ? '22' : '21'}
+                                        className="w-32"
+                                        keyfilter="int"
+                                    />
+                                    <span className="text-xs theme-text-muted ml-2">
+                                        Standard: {ftpSettings.deployment_type === 'sftp' ? '22' : '21'}
+                                    </span>
+                                </div>
+
+                                {/* Username */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        <i className="pi pi-user mr-2"></i>Benutzername
+                                    </label>
+                                    <InputText
+                                        value={ftpSettings.ftp_username}
+                                        onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_username: e.target.value }))}
+                                        placeholder="username"
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                {/* Password */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        <i className="pi pi-lock mr-2"></i>Passwort
+                                    </label>
+                                    <PrimePassword
+                                        value={ftpSettings.ftp_password}
+                                        onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_password: e.target.value }))}
+                                        placeholder="********"
+                                        className="w-full"
+                                        feedback={false}
+                                        toggleMask
+                                    />
+                                    {ftpSettings.has_credentials && ftpSettings.ftp_password === '********' && (
+                                        <span className="text-xs mt-1 block">
+                                            <i className="pi pi-info-circle mr-1"></i>
+                                            Passwort ist gespeichert. Leer lassen, um beizubehalten.
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Remote Directory */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        <i className="pi pi-folder mr-2"></i>Remote-Verzeichnis
+                                    </label>
+                                    <InputText
+                                        value={ftpSettings.ftp_directory}
+                                        onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_directory: e.target.value }))}
+                                        placeholder="/public_html/ oder /var/www/html/"
+                                        className="w-full"
+                                    />
+                                    <span className="text-xs mt-1 block">
+                                        Zielverzeichnis auf dem Server. Leer lassen für Root-Verzeichnis.
+                                    </span>
+                                </div>
+
+                                {/* FTP-specific options */}
+                                {ftpSettings.deployment_type === 'ftp' && (
+                                    <div className="space-y-3 p-3 theme-bg-secondary rounded border theme-border-primary">
+                                        <div className="block text-sm font-medium mb-2 theme-text-secondary">FTP-Optionen</div>
+                                        <div className="flex items-center">
+                                            <Checkbox
+                                                inputId="ftp_passive"
+                                                checked={ftpSettings.ftp_passive}
+                                                onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_passive: e.checked ?? true }))}
+                                            />
+                                            <label htmlFor="ftp_passive" className="ml-2 text-sm theme-text-secondary cursor-pointer">
+                                                Passiver Modus (empfohlen)
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <Checkbox
+                                                inputId="ftp_ssl"
+                                                checked={ftpSettings.ftp_ssl}
+                                                onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_ssl: e.checked ?? false }))}
+                                            />
+                                            <label htmlFor="ftp_ssl" className="ml-2 text-sm theme-text-secondary cursor-pointer">
+                                                SSL/TLS verwenden (FTPS)
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Test Connection */}
+                                <div className="pt-4 border-t theme-border-primary">
+                                    <Button
+                                        label={testingFtp ? 'Teste Verbindung...' : 'Verbindung testen'}
+                                        icon={testingFtp ? 'pi pi-spin pi-spinner' : 'pi pi-wifi'}
+                                        onClick={testFtpConnection}
+                                        disabled={testingFtp || !ftpSettings.ftp_host || !ftpSettings.ftp_username}
+                                        className="p-button-outlined"
+                                    />
+
+                                    {/* Test Result */}
+                                    {ftpTestResult && (
+                                        <div className={`mt-3 p-3 rounded text-sm ${
+                                            ftpTestResult.success
+                                                ? 'bg-green-900 border border-green-700 text-green-100'
+                                                : 'bg-red-900 border border-red-700 text-red-100'
+                                        }`}>
+                                            <i className={`pi ${ftpTestResult.success ? 'pi-check-circle' : 'pi-times-circle'} mr-2`}></i>
+                                            {ftpTestResult.message}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Save / Remove Buttons */}
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        label="FTP/SSH-Einstellungen speichern"
+                                        icon="pi pi-save"
+                                        onClick={saveFtpSettings}
+                                        disabled={!ftpSettings.ftp_host || !ftpSettings.ftp_username}
+                                        className="p-button-success"
+                                    />
+                                    {ftpSettings.has_credentials && (
+                                        <Button
+                                            label="Einstellungen entfernen"
+                                            icon="pi pi-trash"
+                                            onClick={removeFtpSettings}
+                                            className="p-button-danger p-button-outlined"
+                                        />
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Active Configuration Info */}
+                        {ftpSettings.has_credentials && !ftpSettings.deployment_type && (
+                            <div className="p-3 bg-green-900 border border-green-700 rounded">
+                                <h4 className="font-medium text-green-300 mb-2">
+                                    <i className="pi pi-check-circle mr-2"></i>Aktive FTP/SSH-Konfiguration
+                                </h4>
+                                <p className="text-sm text-green-100">
+                                    Sie haben eine FTP/SSH-Konfiguration gespeichert. Wählen Sie einen Deployment-Typ, um die Einstellungen zu bearbeiten.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Saved Configuration Summary */}
+                        {ftpSettings.has_credentials && ftpSettings.deployment_type && (
+                            <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded">
+                                <h4 className="font-medium text-green-300 mb-2">
+                                    <i className="pi pi-check-circle mr-2"></i>Aktive Konfiguration
+                                </h4>
+                                <div className="text-sm text-green-100 space-y-1">
+                                    <div>• Typ: <span className="text-white">{ftpSettings.deployment_type.toUpperCase()}</span></div>
+                                    <div>• Host: <span className="text-white">{ftpSettings.ftp_host}:{ftpSettings.ftp_port}</span></div>
+                                    <div>• Benutzer: <span className="text-white">{ftpSettings.ftp_username}</span></div>
+                                    {ftpSettings.ftp_directory && (
+                                        <div>• Verzeichnis: <span className="text-white">{ftpSettings.ftp_directory}</span></div>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
                 </TabPanel>

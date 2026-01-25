@@ -22,9 +22,15 @@ class TemplateVariableController extends Controller
     public function index(int $templateId): JsonResponse
     {
         $template = Template::findOrFail($templateId);
+        $user = auth()->user();
 
-        // Check permission (only template creator can view)
-        if (!$template->canBeEditedBy(auth()->user())) {
+        // Check permission using canBeViewedBy which includes:
+        // - System templates (always viewable)
+        // - Template creator
+        // - Project members (if template belongs to a project)
+        // - Projects linked via project_template_usage
+        // - Public templates
+        if (!$template->canBeViewedBy($user)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

@@ -11,6 +11,7 @@ import { Message } from 'primereact/message';
 import { Divider } from 'primereact/divider';
 import { apiClient as api } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SellerPayout {
   user_id: number;
@@ -42,6 +43,7 @@ interface PayoutSummary {
 
 export default function PayoutAdminPanel() {
   const toast = useToast();
+  const { colors } = useTheme();
 
   // Date range state
   const [dateFrom, setDateFrom] = useState<Date | null>(() => {
@@ -264,7 +266,7 @@ export default function PayoutAdminPanel() {
   // Amount template for DataTable
   const amountTemplate = (rowData: SellerPayout, field: keyof SellerPayout) => {
     const value = rowData[field] as number;
-    return <span className="font-semibold">{formatCurrency(value)}</span>;
+    return <span className="font-semibold" style={{ color: colors.textPrimary }}>{formatCurrency(value)}</span>;
   };
 
   // Action template for DataTable
@@ -286,31 +288,31 @@ export default function PayoutAdminPanel() {
     if (rowData.payout_method === 'paypal') {
       return (
         <div className="flex items-center gap-2">
-          <i className="pi pi-paypal text-blue-400"></i>
-          <span>{rowData.payout_destination}</span>
+          <i className="pi pi-paypal" style={{ color: colors.infoText }}></i>
+          <span style={{ color: colors.textPrimary }}>{rowData.payout_destination}</span>
         </div>
       );
     }
     return (
       <div className="flex items-center gap-2">
-        <i className="pi pi-building text-green-400"></i>
-        <span className="font-mono text-sm">{rowData.payout_destination}</span>
+        <i className="pi pi-building" style={{ color: colors.successText }}></i>
+        <span className="font-mono text-sm" style={{ color: colors.textPrimary }}>{rowData.payout_destination}</span>
       </div>
     );
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-        <i className="pi pi-wallet text-green-400"></i>
+    <div className="p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
+        <i className="pi pi-wallet" style={{ color: colors.successText }}></i>
         Auszahlungen verwalten
       </h1>
 
       {/* Date Range Filter */}
-      <Card className="mb-4">
+      <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-2">Von</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Von</label>
             <Calendar
               value={dateFrom}
               onChange={(e) => handleDateFromChange(e.value as Date)}
@@ -320,7 +322,7 @@ export default function PayoutAdminPanel() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Bis</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Bis</label>
             <Calendar
               value={dateTo}
               onChange={(e) => setDateTo(e.value as Date)}
@@ -341,28 +343,28 @@ export default function PayoutAdminPanel() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <Card className="bg-blue-900/30 border border-blue-700">
+          <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-gray-400 text-sm">Brutto-Umsatz</p>
-              <p className="text-2xl font-bold text-blue-400">{formatCurrency(summary.total_gross)}</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>Brutto-Umsatz</p>
+              <p className="text-2xl font-bold" style={{ color: colors.infoText }}>{formatCurrency(summary.total_gross)}</p>
             </div>
           </Card>
-          <Card className="bg-purple-900/30 border border-purple-700">
+          <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-gray-400 text-sm">Platform Fee (20%)</p>
-              <p className="text-2xl font-bold text-purple-400">{formatCurrency(summary.total_platform_fee)}</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>Platform Fee (20%)</p>
+              <p className="text-2xl font-bold" style={{ color: colors.accent }}>{formatCurrency(summary.total_platform_fee)}</p>
             </div>
           </Card>
-          <Card className="bg-yellow-900/30 border border-yellow-700">
+          <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-gray-400 text-sm">MwSt abgezogen</p>
-              <p className="text-2xl font-bold text-yellow-400">{formatCurrency(summary.total_vat)}</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>MwSt abgezogen</p>
+              <p className="text-2xl font-bold" style={{ color: colors.warningText }}>{formatCurrency(summary.total_vat)}</p>
             </div>
           </Card>
-          <Card className="bg-green-900/30 border border-green-700">
+          <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-gray-400 text-sm">Auszuzahlen</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(summary.total_net)}</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>Auszuzahlen</p>
+              <p className="text-2xl font-bold" style={{ color: colors.successText }}>{formatCurrency(summary.total_net)}</p>
             </div>
           </Card>
         </div>
@@ -391,10 +393,11 @@ export default function PayoutAdminPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Bank Transfer Section */}
           <Card
+            style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
             title={
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" style={{ color: colors.textPrimary }}>
                 <span className="flex items-center gap-2">
-                  <i className="pi pi-building text-green-400"></i>
+                  <i className="pi pi-building" style={{ color: colors.successText }}></i>
                   Banküberweisung ({bankTransferSellers.length})
                 </span>
                 <Tag
@@ -405,7 +408,7 @@ export default function PayoutAdminPanel() {
             }
           >
             {bankTransferSellers.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">Keine Überweisungs-Kunden</p>
+              <p className="text-center py-4" style={{ color: colors.textSecondary }}>Keine Überweisungs-Kunden</p>
             ) : (
               <>
                 <DataTable
@@ -437,7 +440,7 @@ export default function PayoutAdminPanel() {
                 </DataTable>
 
                 {/* Export Buttons */}
-                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-700">
+                <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                   <Button
                     icon="pi pi-file-excel"
                     label="SEPA XML"
@@ -461,10 +464,11 @@ export default function PayoutAdminPanel() {
 
           {/* PayPal Section */}
           <Card
+            style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
             title={
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" style={{ color: colors.textPrimary }}>
                 <span className="flex items-center gap-2">
-                  <i className="pi pi-paypal text-blue-400"></i>
+                  <i className="pi pi-paypal" style={{ color: colors.infoText }}></i>
                   PayPal ({paypalSellers.length})
                 </span>
                 <Tag
@@ -487,7 +491,7 @@ export default function PayoutAdminPanel() {
               </div>
             )}
             {paypalSellers.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">Keine PayPal-Kunden</p>
+              <p className="text-center py-4" style={{ color: colors.textSecondary }}>Keine PayPal-Kunden</p>
             ) : (
               <DataTable
                 value={paypalSellers}
@@ -526,6 +530,9 @@ export default function PayoutAdminPanel() {
         visible={confirmDialog.visible}
         onHide={() => setConfirmDialog({ visible: false, type: 'single' })}
         style={{ width: '450px' }}
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -552,39 +559,39 @@ export default function PayoutAdminPanel() {
       >
         {confirmDialog.type === 'single' && confirmDialog.seller && (
           <div className="space-y-4">
-            <p>Möchten Sie die Auszahlung an <strong>{confirmDialog.seller.name}</strong> durchführen?</p>
-            <div className="bg-gray-800 p-4 rounded-lg">
+            <p style={{ color: colors.textPrimary }}>Möchten Sie die Auszahlung an <strong>{confirmDialog.seller.name}</strong> durchführen?</p>
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-gray-400">Methode:</span>
-                <span>{confirmDialog.seller.payout_method === 'paypal' ? 'PayPal' : 'Überweisung'}</span>
-                <span className="text-gray-400">Ziel:</span>
-                <span className="font-mono">{confirmDialog.seller.payout_destination}</span>
-                <span className="text-gray-400">Brutto:</span>
-                <span>{formatCurrency(confirmDialog.seller.gross_amount)}</span>
-                <span className="text-gray-400">Platform Fee:</span>
-                <span>{formatCurrency(confirmDialog.seller.platform_fee)}</span>
+                <span style={{ color: colors.textSecondary }}>Methode:</span>
+                <span style={{ color: colors.textPrimary }}>{confirmDialog.seller.payout_method === 'paypal' ? 'PayPal' : 'Überweisung'}</span>
+                <span style={{ color: colors.textSecondary }}>Ziel:</span>
+                <span className="font-mono" style={{ color: colors.textPrimary }}>{confirmDialog.seller.payout_destination}</span>
+                <span style={{ color: colors.textSecondary }}>Brutto:</span>
+                <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.gross_amount)}</span>
+                <span style={{ color: colors.textSecondary }}>Platform Fee:</span>
+                <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.platform_fee)}</span>
                 {confirmDialog.seller.vat_amount > 0 && (
                   <>
-                    <span className="text-gray-400">MwSt:</span>
-                    <span>{formatCurrency(confirmDialog.seller.vat_amount)}</span>
+                    <span style={{ color: colors.textSecondary }}>MwSt:</span>
+                    <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.vat_amount)}</span>
                   </>
                 )}
                 <Divider className="col-span-2 my-2" />
-                <span className="text-gray-400 font-bold">Auszahlung:</span>
-                <span className="font-bold text-green-400">{formatCurrency(confirmDialog.seller.net_amount)}</span>
+                <span className="font-bold" style={{ color: colors.textSecondary }}>Auszahlung:</span>
+                <span className="font-bold" style={{ color: colors.successText }}>{formatCurrency(confirmDialog.seller.net_amount)}</span>
               </div>
             </div>
           </div>
         )}
         {confirmDialog.type === 'all_paypal' && (
           <div className="space-y-4">
-            <p>Möchten Sie <strong>alle {paypalSellers.length} PayPal-Auszahlungen</strong> durchführen?</p>
-            <div className="bg-gray-800 p-4 rounded-lg">
+            <p style={{ color: colors.textPrimary }}>Möchten Sie <strong>alle {paypalSellers.length} PayPal-Auszahlungen</strong> durchführen?</p>
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-gray-400">Anzahl Empfänger:</span>
-                <span>{paypalSellers.length}</span>
-                <span className="text-gray-400">Gesamtbetrag:</span>
-                <span className="font-bold text-green-400">{formatCurrency(summary?.paypal_total || 0)}</span>
+                <span style={{ color: colors.textSecondary }}>Anzahl Empfänger:</span>
+                <span style={{ color: colors.textPrimary }}>{paypalSellers.length}</span>
+                <span style={{ color: colors.textSecondary }}>Gesamtbetrag:</span>
+                <span className="font-bold" style={{ color: colors.successText }}>{formatCurrency(summary?.paypal_total || 0)}</span>
               </div>
             </div>
             <Message

@@ -8,6 +8,7 @@ import { Badge } from 'primereact/badge';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TeamMember {
   id: number;
@@ -75,6 +76,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
@@ -83,92 +85,6 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   const [assigning, setAssigning] = useState(false);
 
   const toast = useRef<Toast>(null);
-
-  // Dark theme modal styles
-  useEffect(() => {
-    if (visible) {
-      const style = document.createElement('style');
-      style.id = 'member-modal-dark-theme';
-      style.textContent = `
-        .p-dialog .p-dialog-header {
-          background: #1f2937 !important;
-          border-bottom: 1px solid #374151 !important;
-        }
-        .p-dialog .p-dialog-content {
-          background: #1f2937 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-dialog .p-dialog-footer {
-          background: #1f2937 !important;
-          border-top: 1px solid #374151 !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-title {
-          color: #f3f4f6 !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-header-icon {
-          color: #9ca3af !important;
-        }
-        .p-dialog .p-dialog-header .p-dialog-header-icon:hover {
-          color: #f3f4f6 !important;
-          background: #374151 !important;
-        }
-        .p-inputtext, .p-dropdown {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-inputtext:focus, .p-dropdown:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2) !important;
-        }
-        .p-dropdown-label {
-          color: #f3f4f6 !important;
-        }
-        .p-dropdown-panel {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-        }
-        .p-dropdown-item {
-          color: #f3f4f6 !important;
-        }
-        .p-dropdown-item:hover {
-          background: #4b5563 !important;
-        }
-        .p-datatable .p-datatable-header {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-datatable .p-datatable-tbody > tr {
-          background: #374151 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-datatable .p-datatable-tbody > tr:nth-child(even) {
-          background: #4b5563 !important;
-        }
-        .p-datatable .p-datatable-tbody > tr:hover {
-          background: #6b7280 !important;
-        }
-        .p-datatable .p-datatable-thead > tr > th {
-          background: #4b5563 !important;
-          border: 1px solid #6b7280 !important;
-          color: #f3f4f6 !important;
-        }
-        .p-toolbar {
-          background: #374151 !important;
-          border: 1px solid #4b5563 !important;
-        }
-      `;
-      document.head.appendChild(style);
-
-      return () => {
-        const existingStyle = document.getElementById('member-modal-dark-theme');
-        if (existingStyle) {
-          existingStyle.remove();
-        }
-      };
-    }
-  }, [visible]);
 
   const loadData = useCallback(async () => {
     if (!team) return;
@@ -481,10 +397,10 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   const memberBodyTemplate = (member: TeamMember) => {
     return (
       <div className="flex flex-col">
-        <span className="font-medium">{member.user.name}</span>
-        <span className="text-sm text-gray-400">{member.user.email}</span>
+        <span className="font-medium" style={{ color: colors.textPrimary }}>{member.user.name}</span>
+        <span className="text-sm" style={{ color: colors.textMuted }}>{member.user.email}</span>
         {member.user.username && (
-          <span className="text-sm text-gray-500">@{member.user.username}</span>
+          <span className="text-sm" style={{ color: colors.textMuted }}>@{member.user.username}</span>
         )}
       </div>
     );
@@ -542,7 +458,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     // Owner cannot be removed
     if (member.role === 'owner') {
-      return <span className="text-gray-400 text-xs">Owner</span>;
+      return <span className="text-xs" style={{ color: colors.textMuted }}>Owner</span>;
     }
 
     // If member is in team, show Remove button
@@ -583,19 +499,21 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
         visible={visible}
         onHide={onHide}
         style={{ width: '800px', height: '600px' }}
+        contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
         modal
         maximizable
-        className="p-fluid"
+        className="member-modal p-fluid"
       >
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
           {error && (
-            <div className="p-3 bg-red-900 border border-red-700 rounded text-red-100 text-sm mb-4">
+            <div className="p-3 rounded text-sm mb-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
               {error}
             </div>
           )}
 
           {/* Info message */}
-          <div className="mb-4 p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
+          <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
             <i className="pi pi-info-circle mr-2"></i>
             Team-Mitglieder können an diesem Projekt zusammenarbeiten. Projekt-Mitglieder mit Status {t.membermodal479} können zum Team hinzugefügt werden.
           </div>
@@ -638,7 +556,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
             </DataTable>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-600 mt-4">
+          <div className="flex justify-end gap-2 pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
             <Button
               label={t.authmodalsesetpasswordmodal162}
               icon="pi pi-times"
@@ -647,6 +565,103 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
             />
           </div>
         </div>
+
+        {/* Theme-aware styles for PrimeReact components */}
+        <style>{`
+          .member-modal .p-datatable {
+            background-color: var(--theme-bg-primary);
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-datatable .p-datatable-header {
+            background-color: var(--theme-bg-secondary);
+            color: var(--theme-text-primary);
+            border-color: var(--theme-border-primary);
+          }
+          .member-modal .p-datatable .p-datatable-thead > tr > th {
+            background-color: var(--theme-bg-secondary);
+            color: var(--theme-text-primary);
+            border-color: var(--theme-border-primary);
+          }
+          .member-modal .p-datatable .p-datatable-tbody > tr {
+            background-color: var(--theme-bg-primary);
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-datatable .p-datatable-tbody > tr > td {
+            border-color: var(--theme-border-primary);
+          }
+          .member-modal .p-datatable .p-datatable-tbody > tr:hover {
+            background-color: var(--theme-bg-tertiary);
+          }
+          .member-modal .p-datatable .p-datatable-tbody > tr.p-highlight {
+            background-color: var(--theme-accent);
+            color: white;
+          }
+          .member-modal .p-datatable .p-datatable-emptymessage td {
+            background-color: var(--theme-bg-primary);
+            color: var(--theme-text-muted);
+          }
+          .member-modal .p-dropdown {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-dropdown:hover {
+            border-color: var(--theme-accent);
+          }
+          .member-modal .p-dropdown .p-dropdown-label {
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-dropdown .p-dropdown-trigger {
+            color: var(--theme-text-muted);
+          }
+          .member-modal .p-dropdown-panel {
+            background-color: var(--theme-bg-secondary);
+            border-color: var(--theme-border-primary);
+          }
+          .member-modal .p-dropdown-panel .p-dropdown-items {
+            background-color: var(--theme-bg-secondary);
+          }
+          .member-modal .p-dropdown-panel .p-dropdown-item {
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-dropdown-panel .p-dropdown-item:hover {
+            background-color: var(--theme-bg-tertiary);
+          }
+          .member-modal .p-dropdown-panel .p-dropdown-item.p-highlight {
+            background-color: var(--theme-accent);
+            color: white;
+          }
+          .member-modal .p-button-text {
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-button-text:hover {
+            background-color: var(--theme-bg-tertiary);
+          }
+          .member-modal .p-button-success.p-button-text {
+            color: #22c55e;
+          }
+          .member-modal .p-button-danger.p-button-text {
+            color: #ef4444;
+          }
+          .member-modal .p-confirmdialog {
+            background-color: var(--theme-bg-primary);
+          }
+          .member-modal .p-confirmdialog .p-dialog-header {
+            background-color: var(--theme-dialog-header);
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-confirmdialog .p-dialog-content {
+            background-color: var(--theme-bg-primary);
+            color: var(--theme-text-primary);
+          }
+          .member-modal .p-confirmdialog .p-dialog-footer {
+            background-color: var(--theme-bg-primary);
+            border-color: var(--theme-border-primary);
+          }
+          .member-modal .p-badge {
+            font-size: 0.75rem;
+          }
+        `}</style>
       </Dialog>
 
     </>

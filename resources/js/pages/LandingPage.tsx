@@ -20,6 +20,7 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 import { pricingUtils } from '@/lib/api';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface UserData {
   id?: number;
@@ -34,7 +35,8 @@ export default function LandingPage() {
     return getStoredLanguage() as SupportedLanguage || 'de';
   });
   const { t } = useTranslation(currentLanguage);
-  
+  const { colors } = useTheme();
+
   // Toast ref
   const toast = useRef<Toast>(null);
   
@@ -187,7 +189,8 @@ export default function LandingPage() {
         "1 Datenbank",
         "50 kostenlose Credits",
         "Öffentliche Templates",
-        "Community Support"
+        "Community Support",
+        "Funktionen nach Bedarf mit Credits freischalten"
       ],
       buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
@@ -204,7 +207,7 @@ export default function LandingPage() {
         "Private Templates",
         "5 Credits pro Generierung",
         "Credits nach Bedarf kaufen",
-        "5 kostenlose Support-Tickets/Monat"
+        "5 kostenlose Support-Tickets/Jahr"
       ],
       buttonText: "Patron Annual wählen",
       buttonClass: "p-button-primary",
@@ -310,10 +313,10 @@ export default function LandingPage() {
         style={{ zIndex: 9999 }}
       />
 
-      <div className="min-h-screen bg-gray-900 text-white overflow-y-auto max-h-screen">
+      <div className="min-h-screen overflow-y-auto max-h-screen" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         {/* Settings Panel (only shown in tab view) */}
         {isAuthenticated && (window.location.pathname === '/app' || window.location.pathname === '/demo-login') && (
-          <div className="bg-gray-800 border-b border-gray-700 p-3">
+          <div className="p-3" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderSecondary}` }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -324,12 +327,12 @@ export default function LandingPage() {
                       checked={openHomeOnStart}
                       onChange={(e) => handleOpenHomeOnStartChange(e.checked!)}
                     />
-                    <label htmlFor="openHomeOnStart" className="text-gray-300 text-sm cursor-pointer">
+                    <label htmlFor="openHomeOnStart" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
                       {t.landingpage311}
                     </label>
                   </div>
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs" style={{ color: colors.textMuted }}>
                   {t.landingpage316}
                 </div>
               </div>
@@ -338,7 +341,7 @@ export default function LandingPage() {
         )}
 
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700">
+        <header style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderSecondary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
@@ -359,20 +362,21 @@ export default function LandingPage() {
                   onLanguageChange={handleLanguageChange}
                   variant="compact"
                   size="small"
+                  className="landing-lang-selector"
                 />
 
                 {!isAuthenticated ? (
                   <>
                     <Button
                       label={t.login}
-                      className="p-button-text"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => handleOpenModal('login')}
                     />
                     {!isDemoMode && (
                       <Button
                         label={t.register}
-                        className="p-button-outlined"
+                        className="p-button-outlined p-button-info"
                         style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                         onClick={() => handleOpenModal('register')}
                       />
@@ -383,7 +387,7 @@ export default function LandingPage() {
                     <Button
                       label={t.profile}
                       icon="pi pi-user"
-                      className="p-button-text"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={() => setActiveModal('profile')}
                     />
@@ -397,7 +401,7 @@ export default function LandingPage() {
                     <Button
                       label={t.logout}
                       icon="pi pi-sign-out"
-                      className="p-button-outlined"
+                      className="p-button-outlined p-button-info"
                       style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                       onClick={handleLogout}
                     />
@@ -407,7 +411,7 @@ export default function LandingPage() {
                 <Button
                   label={t.gotoApp}
                   icon="pi pi-arrow-right"
-                  className="p-button-primary"
+                  className="landing-goto-app-btn"
                   style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
                   onClick={handleGotoApp}
                 />
@@ -417,12 +421,12 @@ export default function LandingPage() {
         </header>
 
         {/* Hero Section */}
-        <section className="py-20 bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900">
+        <section className="py-20" style={{ background: `linear-gradient(to bottom right, ${colors.bgPrimary}, ${colors.bgSecondary}, ${colors.accent}40)` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl font-bold mb-6">
-              <span className="text-blue-400">{t.title}</span>
+              <span style={{ color: colors.accent }}>{t.title}</span>
             </h1>
-            <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl mb-8 max-w-3xl mx-auto" style={{ color: colors.textSecondary }}>
               {t.subtitle}
             </p>
 
@@ -455,19 +459,23 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 bg-gray-800">
+        <section className="py-20" style={{ backgroundColor: colors.bgSecondary }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-12">
+            <h2 className="text-3xl font-bold text-center mb-12" style={{ color: colors.textPrimary }}>
               {t.featuresTitle}
             </h2>
-            
+
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, index) => (
-                <Card key={index} className="bg-gray-700 border-gray-600 text-center">
+                <Card
+                  key={index}
+                  className="text-center landing-feature-card"
+                  style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}
+                >
                   <div className="flex flex-col items-center p-6">
                     <div className="mb-4">{feature.icon}</div>
-                    <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
-                    <p className="text-gray-300">{feature.description}</p>
+                    <h3 className="text-xl font-semibold mb-3" style={{ color: colors.textPrimary }}>{feature.title}</h3>
+                    <p style={{ color: colors.textSecondary }}>{feature.description}</p>
                   </div>
                 </Card>
               ))}
@@ -477,12 +485,12 @@ export default function LandingPage() {
 
         {/* Pricing Section - Only for non-authenticated users */}
         {!isAuthenticated && (
-          <section className="py-20 bg-gray-900">
+          <section className="py-20" style={{ backgroundColor: colors.bgPrimary }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <h2 className="text-3xl font-bold text-center mb-4">
+              <h2 className="text-3xl font-bold text-center mb-4" style={{ color: colors.textPrimary }}>
                 {t.pricingTitle}
               </h2>
-              <p className="text-gray-400 text-center mb-12">
+              <p className="text-center mb-12" style={{ color: colors.textMuted }}>
                 {t.pricingSubtitle}
               </p>
 
@@ -490,7 +498,11 @@ export default function LandingPage() {
                 {pricingTiers.map((tier, index) => (
                   <Card
                     key={index}
-                    className={`relative ${tier.popular ? 'border-2 border-blue-500 bg-gray-750' : 'bg-gray-800 border-gray-600'}`}
+                    className="relative landing-pricing-card"
+                    style={{
+                      backgroundColor: colors.bgSecondary,
+                      border: tier.popular ? `2px solid ${colors.accent}` : `1px solid ${colors.borderSecondary}`
+                    }}
                   >
                     {tier.popular && (
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -499,27 +511,27 @@ export default function LandingPage() {
                     )}
 
                     <div className="p-6 text-center">
-                      <h3 className="text-2xl font-bold mb-2 text-white flex items-center justify-center">
+                      <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                         {tier.name}
                         {(tier.name === "Patron Annual" || tier.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                       </h3>
 
                       <div className="mb-4">
-                        <span className="text-4xl font-bold text-white">{tier.price}</span>
-                        <span className="text-gray-400">{tier.period}</span>
+                        <span className="text-4xl font-bold" style={{ color: colors.textPrimary }}>{tier.price}</span>
+                        <span style={{ color: colors.textMuted }}>{tier.period}</span>
                         {tier.yearlyPrice && (
-                          <div className="text-sm text-green-400 mt-1">
+                          <div className="text-sm mt-1" style={{ color: colors.successText }}>
                             Save 17%: {tier.yearlyPrice}
                           </div>
                         )}
                       </div>
 
-                      <p className="text-gray-400 mb-6">{tier.description}</p>
+                      <p className="mb-6" style={{ color: colors.textMuted }}>{tier.description}</p>
 
                       <ul className="space-y-3 mb-8">
                         {tier.features.map((feature, i) => (
-                          <li key={i} className="flex items-center text-gray-300">
-                            <CheckIcon className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                          <li key={i} className="flex items-center" style={{ color: colors.textSecondary }}>
+                            <CheckIcon className="w-5 h-5 mr-2 flex-shrink-0" style={{ color: colors.successText }} />
                             {feature}
                           </li>
                         ))}
@@ -558,21 +570,24 @@ export default function LandingPage() {
               {isAuthenticated ? (
                 <Button
                   label={t.goToApp || 'Zur App'}
-                  className="p-button-secondary"
+                  icon="pi pi-arrow-right"
+                  className="landing-cta-btn"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => window.location.href = '/app'}
                 />
               ) : !isDemoMode ? (
                 <Button
                   label={t.startFreeTrial}
-                  className="p-button-secondary"
+                  icon="pi pi-flag"
+                  className="landing-cta-btn"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('register')}
                 />
               ) : (
                 <Button
                   label={t.tryDemoNow}
-                  className="p-button-secondary"
+                  icon="pi pi-play"
+                  className="landing-cta-btn"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('login')}
                 />
@@ -588,50 +603,54 @@ export default function LandingPage() {
 
         {/* Current Plan Section - Only for Authenticated Users */}
         {isAuthenticated && (
-          <section className="py-16 bg-gray-800 border-y border-gray-700">
+          <section className="py-16" style={{ backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderSecondary}`, borderBottom: `1px solid ${colors.borderSecondary}` }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-white mb-4">
+                <h2 className="text-3xl font-bold mb-4" style={{ color: colors.textPrimary }}>
                   {t.landingpage573} {userData?.name || 'User'}! 👋
                 </h2>
-                <p className="text-xl text-gray-300 mb-4">
-                  {t.currentPlan} <span className="text-blue-400 font-semibold">{t.freeLabel} Plan</span>
+                <p className="text-xl mb-4" style={{ color: colors.textSecondary }}>
+                  {t.currentPlan} <span style={{ color: colors.accent }} className="font-semibold">{t.freeLabel} Plan</span>
                 </p>
                 <Badge value={t.freeTier} severity="info" className="text-lg px-4 py-2" />
               </div>
-              
+
               <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
                 {pricingTiers.map((plan, index) => (
-                  <Card 
+                  <Card
                     key={index}
-                    className={`p-6 text-center ${plan.popular ? 'ring-2 ring-blue-500 bg-gray-700' : 'bg-gray-700'} border border-gray-600`}
+                    className="p-6 text-center landing-pricing-card"
+                    style={{
+                      backgroundColor: colors.bgTertiary,
+                      border: plan.popular ? `2px solid ${colors.accent}` : `1px solid ${colors.borderSecondary}`
+                    }}
                   >
                     <div className="mb-4">
                       {plan.popular && (
                         <Badge value={t.landingpage589} severity="info" className="mb-4" />
                       )}
-                  <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center">
-                    {plan.name}
-                    {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
-                  </h3>
-                      <div className="text-3xl font-bold text-blue-400 mb-2">
+                      <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
+                        {plan.name}
+                        {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                      </h3>
+                      <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                         {plan.price}
                         {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && (
-                          <span className="text-lg text-gray-400">{plan.period}</span>
+                          <span className="text-lg" style={{ color: colors.textMuted }}>{plan.period}</span>
                         )}
                       </div>
-                      <p className="text-gray-300 mb-6">{plan.description}</p>
+                      <p className="mb-6" style={{ color: colors.textSecondary }}>{plan.description}</p>
                     </div>
-                    
-                    <ul className="text-left text-gray-300 mb-8 space-y-2">
+
+                    <ul className="text-left mb-8 space-y-2" style={{ color: colors.textSecondary }}>
                       {plan.features.map((feature, fIndex) => (
                         <li key={fIndex} className="flex items-center">
-                          <CheckIcon className="w-5 h-5 text-green-400 mr-2 flex-shrink-0" />
+                          <CheckIcon className="w-5 h-5 mr-2 flex-shrink-0" style={{ color: colors.successText }} />
                           {feature}
                         </li>
                       ))}
                     </ul>
-                    
+
                     <Button
                       label={plan.name === t.freeLabel ? t.currentPlanButton : `${t.upgradeTo} ${plan.name}`}
                       className={plan.name === t.freeLabel ? 'p-button-secondary' : plan.buttonClass}
@@ -647,59 +666,68 @@ export default function LandingPage() {
         )}
 
         {/* Footer */}
-        <footer className="bg-gray-800 border-t border-gray-700 py-12">
+        <footer className="py-12" style={{ backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderSecondary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-4 gap-8">
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-white">Scoriet</h3>
-                <p className="text-gray-400 mb-4">
+                <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Scoriet</h3>
+                <p className="mb-4" style={{ color: colors.textMuted }}>
                   {t.landingpage630}
                 </p>
                 <div className="flex space-x-4 gap-3">
-                  <Button icon="pi pi-github" className="p-button-text p-button-rounded" />
-                  <Button icon="pi pi-twitter" className="p-button-text p-button-rounded" />
-                  <Button icon="pi pi-discord" className="p-button-text p-button-rounded" />
+                  <Button
+                    icon="pi pi-github"
+                    className="p-button-rounded landing-social-btn"
+                  />
+                  <Button
+                    icon="pi pi-twitter"
+                    className="p-button-rounded landing-social-btn"
+                  />
+                  <Button
+                    icon="pi pi-discord"
+                    className="p-button-rounded landing-social-btn"
+                  />
                 </div>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold mb-4 text-white">{t.productLabel}</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">{t.featuresLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.pricingLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.templatesLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.examplesLink}</a></li>
+                <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.productLabel}</h4>
+                <ul className="space-y-2" style={{ color: colors.textMuted }}>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.featuresLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.pricingLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.templatesLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.examplesLink}</a></li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-4 text-white">{t.resourcesLabel}</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-white">{t.documentationLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.apiReferenceLink}</a></li>
-                  <li><a href="#" className="hover:text-white">{t.tutorialsLink}</a></li>
-                  <li><a href={`/${currentLanguage}/downloads`} className="hover:text-white">{t.downloadsLink}</a></li>
+                <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.resourcesLabel}</h4>
+                <ul className="space-y-2" style={{ color: colors.textMuted }}>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.documentationLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.apiReferenceLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.tutorialsLink}</a></li>
+                  <li><a href={`/${currentLanguage}/downloads`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.downloadsLink}</a></li>
                 </ul>
               </div>
 
               <div>
-                  <h4 className="font-semibold mb-4 text-white">{t.supportLabel}</h4>
-                  <ul className="space-y-2 text-gray-400">
-                      <li><a href={`/${currentLanguage}/help`} className="hover:text-white">{t.helpCenterLink}</a></li>
-                      <li><a href={`/${currentLanguage}/impressum`} className="hover:text-white">Impressum</a></li>
-                      <li><a href="#" className="hover:text-white">{t.contactUsLink}</a></li>
-                      <li><a href="#" className="hover:text-white">{t.communityLink}</a></li>
-                  </ul>
+                <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.supportLabel}</h4>
+                <ul className="space-y-2" style={{ color: colors.textMuted }}>
+                  <li><a href={`/${currentLanguage}/help`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.helpCenterLink}</a></li>
+                  <li><a href={`/${currentLanguage}/impressum`} className="hover:opacity-80" style={{ color: colors.textMuted }}>Impressum</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.contactUsLink}</a></li>
+                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.communityLink}</a></li>
+                </ul>
               </div>
             </div>
-            
-            <Divider />
-            
-            <div className="flex justify-between items-center text-gray-400">
+
+            <Divider style={{ borderColor: colors.borderSecondary }} />
+
+            <div className="flex justify-between items-center" style={{ color: colors.textMuted }}>
               <p>{t.allRightsReserved}.</p>
               <div className="flex space-x-6">
-                <a href="#" className="hover:text-white">{t.privacyPolicy}</a>
-                <a href="#" className="hover:text-white">{t.termsOfService}</a>
+                <a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
+                <a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
               </div>
             </div>
           </div>

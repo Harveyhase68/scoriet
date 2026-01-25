@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Button } from 'primereact/button';
 
 interface DeploymentLog {
   id: number;
@@ -11,11 +13,12 @@ interface DeploymentLog {
 }
 
 export default function DeploymentLogPanel() {
+  const { colors } = useTheme();
   const { selectedProjectId } = useProject();
   const [logs, setLogs] = useState<DeploymentLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  //const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
+  const [, setActiveTaskId] = useState<number | null>(null);
   const [polling, setPolling] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -220,25 +223,25 @@ export default function DeploymentLogPanel() {
   const getLogColor = (type: string) => {
     switch (type) {
       case 'success':
-        return 'text-green-400';
+        return colors.successText;
       case 'error':
-        return 'text-red-400';
+        return colors.errorText;
       case 'warning':
-        return 'text-yellow-400';
+        return colors.warningText;
       case 'info':
       default:
-        return 'text-blue-400';
+        return colors.infoText;
     }
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between p-4" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">📋 Deployment Log</h2>
           {polling && (
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-900 text-blue-200 rounded-full text-sm">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm" style={{ backgroundColor: colors.infoBg, color: colors.infoText }}>
               <span className="inline-block animate-spin">🔄</span>
               Monitoring...
             </span>
@@ -246,26 +249,28 @@ export default function DeploymentLogPanel() {
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
+            label={loading ? 'Loading...' : 'Refresh'}
+            icon="pi pi-refresh"
             onClick={loadLogs}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
-          >
-            {loading ? '🔄 Loading...' : '🔄 Refresh'}
-          </button>
-          <button
+            severity="info"
+            size="small"
+          />
+          <Button
+            label="Clear Logs"
+            icon="pi pi-trash"
             onClick={clearLogs}
             disabled={loading || logs.length === 0}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
-          >
-            🗑️ Clear Logs
-          </button>
+            severity="danger"
+            size="small"
+          />
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="p-4 bg-red-900 border-b border-red-700 text-red-200">
+        <div className="p-4" style={{ backgroundColor: colors.errorBg, borderBottom: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
           <strong>Error:</strong> {error}
         </div>
       )}
@@ -273,12 +278,12 @@ export default function DeploymentLogPanel() {
       {/* Logs Display */}
       <div className="flex-1 overflow-y-auto p-4 font-mono text-sm">
         {loading && logs.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center py-8" style={{ color: colors.textMuted }}>
             <div className="inline-block animate-spin text-2xl mb-2">🔄</div>
             <p>Loading logs...</p>
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center py-8" style={{ color: colors.textMuted }}>
             <p className="text-2xl mb-2">📋</p>
             <p>No deployment logs yet</p>
             <p className="text-sm mt-2">Logs will appear here when you deploy projects</p>
@@ -288,18 +293,21 @@ export default function DeploymentLogPanel() {
             {logs.map((log) => (
               <div
                 key={log.id}
-                className={`flex items-start gap-2 p-2 rounded hover:bg-gray-800 ${getLogColor(log.type)}`}
+                className="flex items-start gap-2 p-2 rounded transition-colors"
+                style={{ color: getLogColor(log.type) }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <span className="flex-shrink-0">{getLogIcon(log.type)}</span>
                 <div className="flex-1">
                   <span>{log.message}</span>
                   {log.metadata && (
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                       {JSON.stringify(log.metadata)}
                     </div>
                   )}
                 </div>
-                <span className="flex-shrink-0 text-xs text-gray-500">
+                <span className="flex-shrink-0 text-xs" style={{ color: colors.textMuted }}>
                   {new Date(log.created_at).toLocaleTimeString()}
                 </span>
               </div>

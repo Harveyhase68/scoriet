@@ -127,11 +127,11 @@ class StepByStepTemplateEngine
     private function hasComplexTemplateConstructs(string $line): bool
     {
         $complexPatterns = [
-            '{for {nmaxsearchkeys}}',
-            '{for {nmaxitems}}',
-            '{if ',
-            '{endif}',
-            '{endfor}'
+            '{:for nmaxsearchkeys:}',
+            '{:for nmaxitems:}',
+            '{:if ',
+            '{:endif:}',
+            '{:endfor:}'
         ];
 
         foreach ($complexPatterns as $pattern) {
@@ -157,10 +157,10 @@ class StepByStepTemplateEngine
         $result = [];
         $currentLine = $line;
 
-        // Beispiel: $sql = 'SELECT count(*) AS count FROM {filename} WHERE ({for {nmaxsearchkeys}}{item.name} LIKE \'%' . $search . '%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {endif}{endfor})' . $order_by;
+        // Beispiel: $sql = 'SELECT count(*) AS count FROM {filename} WHERE ({:for nmaxsearchkeys:}{item.name} LIKE \'%' . $search . '%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {:endif:}{:endfor:})' . $order_by;
 
         // SCHRITT 1: Text vor {for} extrahieren
-        if (preg_match('/^(.*?)\{for\s+\{([^}]+)\}\}(.*)$/', $currentLine, $matches)) {
+        if (preg_match('/^(.*?)\{:for\s+\{:([^:]+):\}:\}(.*)$/', $currentLine, $matches)) {
             $beforeFor = $matches[1];
             $forVariable = $matches[2];
             $afterFor = $matches[3];
@@ -172,7 +172,7 @@ class StepByStepTemplateEngine
             }
 
             // {for} als eigene Zeile
-            $result[] = '{for {' . $forVariable . '}}';
+            $result[] = '{:for {:' . $forVariable . ':}:}';
 
             // Rest der Zeile weiter verarbeiten
             if (trim($afterFor) !== '') {
@@ -196,7 +196,7 @@ class StepByStepTemplateEngine
         $currentLine = $line;
 
         // Extrahiere Content zwischen {for} und {if}
-        if (preg_match('/^(.*?)\{if\s+([^}]+)\}(.*)$/', $currentLine, $matches)) {
+        if (preg_match('/^(.*?)\{:if\s+([^:]+):\}(.*)$/', $currentLine, $matches)) {
             $beforeIf = $matches[1];
             $ifCondition = $matches[2];
             $afterIf = $matches[3];
@@ -208,7 +208,7 @@ class StepByStepTemplateEngine
             }
 
             // {if} als eigene Zeile
-            $result[] = '{if ' . $ifCondition . '}';
+            $result[] = '{:if ' . $ifCondition . ':}';
 
             // Rest weiter verarbeiten
             if (trim($afterIf) !== '') {
@@ -231,22 +231,22 @@ class StepByStepTemplateEngine
     {
         $result = [];
 
-        // Extrahiere {endif} und {endfor}
-        if (preg_match('/^(.*?)\{endif\}(.*)$/', $line, $matches)) {
+        // Extrahiere {:endif:} und {:endfor:}
+        if (preg_match('/^(.*?)\{:endif:\}(.*)$/', $line, $matches)) {
             $beforeEndif = $matches[1];
             $afterEndif = $matches[2];
 
-            // Content vor {endif}
+            // Content vor {:endif:}
             if (trim($beforeEndif) !== '') {
                 $result[] = '§CONTINUE_STRING§';
                 $result[] = trim($beforeEndif);
             }
 
-            $result[] = '{endif}';
+            $result[] = '{:endif:}';
 
-            // Nach {endif} - sollte {endfor} und Rest enthalten
+            // Nach {:endif:} - sollte {:endfor:} und Rest enthalten
             if (trim($afterEndif) !== '') {
-                if (preg_match('/^(.*?)\{endfor\}(.*)$/', $afterEndif, $endforMatches)) {
+                if (preg_match('/^(.*?)\{:endfor:\}(.*)$/', $afterEndif, $endforMatches)) {
                     $beforeEndfor = $endforMatches[1];
                     $afterEndfor = $endforMatches[2];
 
@@ -255,9 +255,9 @@ class StepByStepTemplateEngine
                         $result[] = trim($beforeEndfor);
                     }
 
-                    $result[] = '{endfor}';
+                    $result[] = '{:endfor:}';
 
-                    // Rest nach {endfor}
+                    // Rest nach {:endfor:}
                     if (trim($afterEndfor) !== '') {
                         $result[] = '§CONTINUE_STRING§';
                         $result[] = trim($afterEndfor);
@@ -274,28 +274,28 @@ class StepByStepTemplateEngine
      */
     private function isLoopStart(string $line): bool
     {
-        return strpos($line, '{for {nmaxitems}}') !== false
-            || strpos($line, '{for {nmaxsearchkeys}}') !== false;
+        return strpos($line, '{:for nmaxitems:}') !== false
+            || strpos($line, '{:for nmaxsearchkeys:}') !== false;
     }
 
     private function isLoopEnd(string $line): bool
     {
-        return strpos($line, '{endfor}') !== false;
+        return strpos($line, '{:endfor:}') !== false;
     }
 
     private function isConditionalStart(string $line): bool
     {
-        return strpos($line, '{if ') !== false;
+        return strpos($line, '{:if ') !== false;
     }
 
     private function isConditionalEnd(string $line): bool
     {
-        return strpos($line, '{endif}') !== false;
+        return strpos($line, '{:endif:}') !== false;
     }
 
     private function extractCondition(string $line): string
     {
-        if (preg_match('/\{if\s+([^}]+)\}/', $line, $matches)) {
+        if (preg_match('/\{:if\s+([^:]+):\}/', $line, $matches)) {
             return $matches[1];
         }
         return '';
@@ -305,7 +305,7 @@ class StepByStepTemplateEngine
     {
         // Einfache Condition-Verarbeitung
         $condition = str_replace('nCountSearchkeys', 'i', $condition);
-        $condition = str_replace('{nmaxsearchkeys}', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxitems", $condition);
+        $condition = str_replace('{:nmaxsearchkeys:}', "gtree[0].project[0].tables[{$this->currentTableIndex}].nmaxitems", $condition);
         return $condition;
     }
 
@@ -317,21 +317,21 @@ class StepByStepTemplateEngine
         $processedLine = $line;
 
         // Project variables
-        $processedLine = str_replace('{projectname}', $this->gtree[0]['project'][0]['projectname'] ?? 'Unknown', $processedLine);
-        $processedLine = str_replace('{projectdatabase}', $this->gtree[0]['project'][0]['projectdatabase'] ?? 'Unknown', $processedLine);
+        $processedLine = str_replace('{:projectname:}', $this->gtree[0]['project'][0]['projectname'] ?? 'Unknown', $processedLine);
+        $processedLine = str_replace('{:projectdatabase:}', $this->gtree[0]['project'][0]['projectdatabase'] ?? 'Unknown', $processedLine);
 
         // Table variables
         if (isset($this->gtree[0]['project'][0]['tables'][$this->currentTableIndex])) {
             $table = $this->gtree[0]['project'][0]['tables'][$this->currentTableIndex];
-            $processedLine = str_replace('{tablename}', $table['tablename'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{filename}', $table['tablename'] ?? 'Unknown', $processedLine);
-            $processedLine = str_replace('{filekeyname}', $table['primarykeyfield'] ?? 'id', $processedLine);
+            $processedLine = str_replace('{:tablename:}', $table['tablename'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:filename:}', $table['tablename'] ?? 'Unknown', $processedLine);
+            $processedLine = str_replace('{:filekeyname:}', $table['primarykeyfield'] ?? 'id', $processedLine);
         }
 
         // Item variables (nur im Loop)
         if ($insideLoop) {
-            $processedLine = str_replace('{item.name}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '", $processedLine);
-            $processedLine = str_replace('{item.type}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '", $processedLine);
+            $processedLine = str_replace('{:item.name:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].name + '", $processedLine);
+            $processedLine = str_replace('{:item.type:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].items[i].type + '", $processedLine);
         }
 
         return $processedLine;
@@ -358,7 +358,7 @@ class StepByStepTemplateEngine
      */
     public static function solveSqlProblemStepByStep(): array
     {
-        $originalTemplate = '$sql = \'SELECT count(*) AS count FROM {filename} WHERE ({for {nmaxsearchkeys}}{item.name} LIKE \'%\' . $search . \'%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {endif}{endfor})\' . $order_by;';
+        $originalTemplate = '$sql = \'SELECT count(*) AS count FROM {filename} WHERE ({:for nmaxsearchkeys:}{item.name} LIKE \'%\' . $search . \'%\'{if nCountSearchkeys<{nmaxsearchkeys}} OR {:endif:}{:endfor:})\' . $order_by;';
 
         $demoGtree = [
             [

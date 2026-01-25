@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -11,6 +10,7 @@ import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Toast } from 'primereact/toast';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/lib/api';
 
 interface TabPanelProps {
@@ -72,6 +72,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage); // Future use for i18n
+  const { colors } = useTheme();
   const toast = useRef<Toast>(null);
 
   // Schema Migration Access State (Premium Feature)
@@ -96,6 +97,15 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState<string>('');
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
+  const [selectedDialect, setSelectedDialect] = useState<string>('mysql');
+
+  // Database dialect options
+  const dialectOptions = [
+    { label: 'MySQL', value: 'mysql' },
+    { label: 'PostgreSQL', value: 'pgsql' },
+    { label: 'SQLite', value: 'sqlite' },
+    { label: 'SQL Server', value: 'sqlsrv' },
+  ];
 
   // API helpers
   const getAuthHeaders = useCallback(() => {
@@ -242,6 +252,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       const response = await api.post('/schema-diff/compare', {
         from_version_id: fromVersion.id,
         to_version_id: toVersion.id,
+        dialect: selectedDialect,
       });
 
       if (response.success) {
@@ -335,7 +346,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   // ========== LOADING STATE ==========
   if (loadingAccess) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-900">
+      <div className="h-full flex items-center justify-center" style={{ backgroundColor: colors.bgPrimary }}>
         <ProgressSpinner />
       </div>
     );
@@ -344,34 +355,34 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   // ========== NO ACCESS - SHOW PREMIUM BANNER ==========
   if (!schemaMigrationAccess?.has_access) {
     return (
-      <div className="h-full flex flex-col bg-gray-900 text-white">
+      <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         <Toast ref={toast} />
 
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-gray-700">
+        <div className="flex items-center justify-between p-3" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="flex items-center gap-2">
-            <i className="pi pi-database text-xl text-blue-400" />
-            <h2 className="text-lg font-semibold">Schema Migration</h2>
+            <i className="pi pi-database text-xl" style={{ color: colors.accent }} />
+            <h2 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Schema Migration</h2>
           </div>
         </div>
 
         {/* Premium Banner */}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="max-w-md w-full">
-            <div className="bg-purple-900/30 border-2 border-purple-700 rounded-lg p-6 text-center">
+            <div className="rounded-lg p-6 text-center" style={{ backgroundColor: colors.warningBg, border: `2px solid ${colors.warningText}` }}>
               <div className="text-4xl mb-4">🔒</div>
-              <h3 className="text-xl font-semibold text-purple-200 mb-2">
+              <h3 className="text-xl font-semibold mb-2" style={{ color: colors.warningText }}>
                 Schema Migration ist ein Premium-Feature
               </h3>
-              <p className="text-gray-400 mb-4">
+              <p className="mb-4" style={{ color: colors.textMuted }}>
                 Mit Schema Migration können Sie Datenbankversionen vergleichen und automatisch SQL-Migrationsskripte generieren.
               </p>
 
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
-                <div className="text-2xl font-bold text-purple-300 mb-1">
+              <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgTertiary }}>
+                <div className="text-2xl font-bold mb-1" style={{ color: colors.warningText }}>
                   {schemaMigrationAccess?.unlock_cost || 50} Credits / Jahr
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm" style={{ color: colors.textMuted }}>
                   Einmalige Freischaltung für 12 Monate
                 </div>
               </div>
@@ -389,19 +400,19 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
                 loading={unlocking}
               />
 
-              <div className="mt-4 text-sm text-gray-500">
-                <p className="mb-2 font-medium text-gray-400">Enthaltene Funktionen:</p>
+              <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
+                <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                 <ul className="text-left space-y-1">
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
                     <span>🔄</span> Versionsvergleich
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
                     <span>📝</span> SQL-Migration Generierung
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
                     <span>📊</span> Detaillierte Änderungsübersicht
                   </li>
-                  <li className="flex items-center gap-2 text-gray-400 opacity-60">
+                  <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
                     <span>⬇️</span> SQL-Export & Download
                   </li>
                 </ul>
@@ -415,12 +426,12 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
   // ========== MAIN RENDER (WITH ACCESS) ==========
   return (
-    <div className="p-4 h-full overflow-auto bg-gray-900">
+    <div className="query-builder-panel p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary }}>
       <Toast ref={toast} />
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold text-white">
-            <i className="pi pi-database mr-2"></i>
+          <h2 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
+            <i className="pi pi-database mr-2" style={{ color: colors.accent }}></i>
             Schema Migration
           </h2>
           {/* Access Status Badge */}
@@ -430,7 +441,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
             <Tag value={`${schemaMigrationAccess.days_remaining} Tage`} severity="info" />
           ) : null}
         </div>
-        <p className="text-gray-400">
+        <p style={{ color: colors.textMuted }}>
           Compare two schema versions and generate SQL migration scripts
         </p>
       </div>
@@ -440,11 +451,11 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       )}
 
       {/* Schema & Version Selection */}
-      <Card className="mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-4 p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Schema Selection */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               Select Schema
             </label>
             <Dropdown
@@ -461,7 +472,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
           {/* FROM Version */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               FROM Version (Old)
             </label>
             <Dropdown
@@ -477,7 +488,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
           {/* TO Version */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
               TO Version (New)
             </label>
             <Dropdown
@@ -488,6 +499,21 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
               placeholder="Select TO version..."
               className="w-full"
               disabled={!selectedSchema || loading}
+            />
+          </div>
+
+          {/* Database Dialect */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+              Target Database
+            </label>
+            <Dropdown
+              value={selectedDialect}
+              options={dialectOptions}
+              onChange={(e) => setSelectedDialect(e.value)}
+              placeholder="Select dialect..."
+              className="w-full"
+              disabled={loading || comparing}
             />
           </div>
         </div>
@@ -521,7 +547,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
             </>
           )}
         </div>
-      </Card>
+      </div>
 
       {/* Results */}
       {comparing && (
@@ -533,88 +559,88 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       {diffResult && !comparing && (
         <>
           {/* Summary */}
-          <Card className="mb-4">
-            <h3 className="text-xl font-bold text-white mb-4">
-              <i className="pi pi-chart-bar mr-2"></i>
+          <div className="mb-4 p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>
+              <i className="pi pi-chart-bar mr-2" style={{ color: colors.accent }}></i>
               Migration Summary
             </h3>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              <div className="bg-blue-900 p-3 rounded">
-                <div className="text-3xl font-bold text-white">{diffResult.summary.total_changes}</div>
-                <div className="text-sm text-blue-200">Total Changes</div>
+              <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
+                <div className="text-3xl font-bold" style={{ color: colors.infoText }}>{diffResult.summary.total_changes}</div>
+                <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>Total Changes</div>
               </div>
 
               {diffResult.summary.tables_created > 0 && (
-                <div className="bg-green-900 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.tables_created}</div>
-                  <div className="text-sm text-green-200">Tables Created</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.successText }}>{diffResult.summary.tables_created}</div>
+                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>Tables Created</div>
                 </div>
               )}
 
               {diffResult.summary.tables_dropped > 0 && (
-                <div className="bg-red-900 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.tables_dropped}</div>
-                  <div className="text-sm text-red-200">Tables Dropped</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.tables_dropped}</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>Tables Dropped</div>
                 </div>
               )}
 
               {diffResult.summary.columns_added > 0 && (
-                <div className="bg-green-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.columns_added}</div>
-                  <div className="text-sm text-green-200">Columns Added</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.successText }}>{diffResult.summary.columns_added}</div>
+                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>Columns Added</div>
                 </div>
               )}
 
               {diffResult.summary.columns_dropped > 0 && (
-                <div className="bg-red-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.columns_dropped}</div>
-                  <div className="text-sm text-red-200">Columns Dropped</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.columns_dropped}</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>Columns Dropped</div>
                 </div>
               )}
 
               {diffResult.summary.columns_modified > 0 && (
-                <div className="bg-yellow-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.columns_modified}</div>
-                  <div className="text-sm text-yellow-200">Columns Modified</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.warningText }}>{diffResult.summary.columns_modified}</div>
+                  <div className="text-sm" style={{ color: colors.warningText, opacity: 0.8 }}>Columns Modified</div>
                 </div>
               )}
 
               {diffResult.summary.primary_keys_changed > 0 && (
-                <div className="bg-purple-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.primary_keys_changed}</div>
-                  <div className="text-sm text-purple-200">PKs Changed</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.accent}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.accent }}>{diffResult.summary.primary_keys_changed}</div>
+                  <div className="text-sm" style={{ color: colors.accent, opacity: 0.8 }}>PKs Changed</div>
                 </div>
               )}
 
               {diffResult.summary.foreign_keys_added > 0 && (
-                <div className="bg-indigo-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.foreign_keys_added}</div>
-                  <div className="text-sm text-indigo-200">FKs Added</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.infoText }}>{diffResult.summary.foreign_keys_added}</div>
+                  <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>FKs Added</div>
                 </div>
               )}
 
               {diffResult.summary.foreign_keys_dropped > 0 && (
-                <div className="bg-pink-800 p-3 rounded">
-                  <div className="text-3xl font-bold text-white">{diffResult.summary.foreign_keys_dropped}</div>
-                  <div className="text-sm text-pink-200">FKs Dropped</div>
+                <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
+                  <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.foreign_keys_dropped}</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>FKs Dropped</div>
                 </div>
               )}
             </div>
 
-            <div className="mt-4 text-sm text-gray-400">
+            <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
               <div>
-                <strong>From:</strong> {diffResult.from_version.schema_name} - Version {diffResult.from_version.version_number}
+                <strong style={{ color: colors.textSecondary }}>From:</strong> {diffResult.from_version.schema_name} - Version {diffResult.from_version.version_number}
               </div>
               <div>
-                <strong>To:</strong> {diffResult.to_version.schema_name} - Version {diffResult.to_version.version_number}
+                <strong style={{ color: colors.textSecondary }}>To:</strong> {diffResult.to_version.schema_name} - Version {diffResult.to_version.version_number}
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* Changes List */}
           {diffResult.changes.length > 0 && (
-            <Panel header="Detected Changes" toggleable className="mb-4">
+            <Panel header="Detected Changes" toggleable className="mb-4 query-builder-panel-section">
               <DataTable
                 value={diffResult.changes}
                 paginator
@@ -644,7 +670,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           )}
 
           {/* SQL Script */}
-          <Panel header="Generated Migration SQL Script" toggleable collapsed={false}>
+          <Panel header="Generated Migration SQL Script" toggleable collapsed={false} className="query-builder-panel-section">
             <div className="mb-2 flex gap-2">
               <Button
                 label="Copy SQL"
@@ -668,10 +694,10 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
               rows={20}
               className="w-full font-mono text-sm"
               readOnly
-              style={{ fontFamily: 'monospace' }}
+              style={{ fontFamily: 'monospace', backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
             />
 
-            <div className="mt-2 text-xs text-gray-400">
+            <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
               💡 Tip: Review the SQL carefully before executing it on your database!
             </div>
           </Panel>
@@ -686,6 +712,79 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           )}
         </>
       )}
+
+      {/* Theme-aware CSS for PrimeReact components */}
+      <style>{`
+        .query-builder-panel .p-dropdown,
+        .query-builder-panel .p-inputtextarea {
+          background: ${colors.bgTertiary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel .p-dropdown-label {
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel .p-dropdown-trigger {
+          color: ${colors.textMuted} !important;
+        }
+        .query-builder-panel .p-dropdown-panel {
+          background: ${colors.bgSecondary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+        }
+        .query-builder-panel .p-dropdown-items {
+          background: ${colors.bgSecondary} !important;
+        }
+        .query-builder-panel .p-dropdown-item {
+          color: ${colors.textPrimary} !important;
+          background: transparent !important;
+        }
+        .query-builder-panel .p-dropdown-item:hover {
+          background: ${colors.bgTertiary} !important;
+        }
+        .query-builder-panel .p-dropdown-item.p-highlight {
+          background: ${colors.accent} !important;
+          color: white !important;
+        }
+        .query-builder-panel .p-dropdown-filter {
+          background: ${colors.bgTertiary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel-section .p-panel-header {
+          background: ${colors.bgSecondary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel-section .p-panel-content {
+          background: ${colors.bgSecondary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+          border-top: none !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel .p-datatable .p-datatable-header,
+        .query-builder-panel .p-datatable .p-datatable-thead > tr > th {
+          background: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .query-builder-panel .p-datatable .p-datatable-tbody > tr {
+          background: ${colors.bgSecondary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+        .query-builder-panel .p-datatable .p-datatable-tbody > tr > td {
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .query-builder-panel .p-datatable .p-datatable-tbody > tr:hover {
+          background: ${colors.bgTertiary} !important;
+        }
+        .query-builder-panel .p-paginator {
+          background: ${colors.bgSecondary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .query-builder-panel .p-paginator .p-paginator-element {
+          color: ${colors.textPrimary} !important;
+        }
+      `}</style>
     </div>
   );
 }

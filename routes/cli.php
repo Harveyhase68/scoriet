@@ -204,51 +204,68 @@ Route::middleware('auth:api')->group(function () {
         });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Service Routes (scoriet-svc)
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('svc')->group(function () {
-        // Get next task from queue
-        Route::get('/queue', [SvcController::class, 'getQueue']);
+});
 
-        // Mark task as completed
-        Route::post('/tasks/{id}/complete', [SvcController::class, 'completeTask']);
+/*
+|--------------------------------------------------------------------------
+| Service Routes (scoriet-svc) - NO AUTH REQUIRED
+| These routes are called by the internal scoriet-svc service
+| Security: Only allow requests from localhost/local network
+|--------------------------------------------------------------------------
+*/
+Route::prefix('svc')->group(function () {
+    // =====================================================
+    // SERVICE-ONLY ROUTES (called by Rust service, no auth)
+    // =====================================================
 
-        // Mark task as failed
-        Route::post('/tasks/{id}/fail', [SvcController::class, 'failTask']);
+    // Get next task from queue
+    Route::get('/queue', [SvcController::class, 'getQueue']);
 
+    // Mark task as completed
+    Route::post('/tasks/{id}/complete', [SvcController::class, 'completeTask']);
+
+    // Mark task as failed
+    Route::post('/tasks/{id}/fail', [SvcController::class, 'failTask']);
+
+    // Append log to task (for live logging)
+    Route::post('/tasks/{id}/log', [SvcController::class, 'appendLog']);
+
+    // Import schema data from service
+    Route::post('/schema-import', [SvcController::class, 'importSchema']);
+
+    // Template upload from service
+    Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
+
+    // File edit via service (service callbacks)
+    Route::post('/file-edit/{sessionId}/status', [SvcController::class, 'updateFileEditStatus']);
+    Route::post('/file-edit/{sessionId}/content', [SvcController::class, 'uploadFileContent']);
+    Route::get('/file-edit/{sessionId}/should-stop', [SvcController::class, 'checkFileEditShouldStop']);
+
+    // =====================================================
+    // USER ROUTES (called from GUI, requires authentication)
+    // =====================================================
+    Route::middleware('auth:api')->group(function () {
         // Get active task for current user (BEFORE {id} route!)
         Route::get('/tasks/active', [SvcController::class, 'getActiveTask']);
 
-        // Get task status
+        // Get task status (authenticated users only)
         Route::get('/tasks/{id}', [SvcController::class, 'getTaskStatus']);
 
         // Cancel task
         Route::post('/tasks/{id}/cancel', [SvcController::class, 'cancelTask']);
 
-        // Append log to task (for live logging)
-        Route::post('/tasks/{id}/log', [SvcController::class, 'appendLog']);
-
-        // Import schema data from service
-        Route::post('/schema-import', [SvcController::class, 'importSchema']);
-
         // Task creation routes (called from GUI)
         Route::post('/tasks/connection-test', [SvcController::class, 'createConnectionTestTask']);
         Route::post('/tasks/database-import', [SvcController::class, 'createDatabaseImportTask']);
+        Route::post('/tasks/database-export', [SvcController::class, 'createDatabaseExportTask']);
         Route::post('/tasks/project-download', [SvcController::class, 'createProjectDownloadTask']);
         Route::post('/tasks/template-upload', [SvcController::class, 'createTemplateUploadTask']);
         Route::post('/tasks/file-edit', [SvcController::class, 'createFileEditTask']);
 
-        // Template upload from service
-        Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
+        // Template upload status (user polling)
         Route::get('/template-upload/{sessionId}/status', [SvcController::class, 'getTemplateUploadStatus']);
 
-        // File edit via service
-        Route::post('/file-edit/{sessionId}/status', [SvcController::class, 'updateFileEditStatus']);
-        Route::post('/file-edit/{sessionId}/content', [SvcController::class, 'uploadFileContent']);
-        Route::get('/file-edit/{sessionId}/should-stop', [SvcController::class, 'checkFileEditShouldStop']);
+        // File edit status/stop (user polling/control)
         Route::get('/file-edit/{sessionId}/status', [SvcController::class, 'getFileEditStatus']);
         Route::post('/file-edit/{sessionId}/stop', [SvcController::class, 'stopFileEdit']);
     });

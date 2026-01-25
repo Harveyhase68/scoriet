@@ -15,18 +15,34 @@ use Illuminate\Support\Facades\Log;
  * - CREATE TABLE / DROP TABLE
  * - ADD COLUMN / DROP COLUMN / MODIFY COLUMN
  * - ADD/DROP PRIMARY KEY, UNIQUE KEY, INDEX, FOREIGN KEY
+ * - Multi-Dialect: MySQL, PostgreSQL, SQLite, SQL Server
  */
 class SchemaDiffService
 {
+    private MigrationSqlGenerator $sqlGenerator;
+
+    public function __construct()
+    {
+        $this->sqlGenerator = new MigrationSqlGenerator();
+    }
+
+    /**
+     * Current dialect for comparison (affects which properties are compared)
+     */
+    private string $currentDialect = 'mysql';
+
     /**
      * Vergleiche zwei Schema-Versionen und generiere Migration Script
      *
      * @param int $fromVersionId Source Version (alt)
      * @param int $toVersionId Target Version (neu)
+     * @param string $dialect Database dialect: mysql, pgsql, sqlite, sqlsrv
      * @return array ['sql' => string, 'changes' => array, 'summary' => array]
      */
-    public function compareVersions(int $fromVersionId, int $toVersionId): array
+    public function compareVersions(int $fromVersionId, int $toVersionId, string $dialect = 'mysql'): array
     {
+        // Store dialect for field comparison
+        $this->currentDialect = $dialect;
         // Load Schema Versions with all relationships
         $fromVersion = SchemaVersion::with([
             'tables.fields',
@@ -45,6 +61,7 @@ class SchemaDiffService
         Log::info("🔍 Schema Diff: Comparing versions", [
             'from' => $fromVersion->id,
             'to' => $toVersion->id,
+            'dialect' => $dialect,
         ]);
 
         // Collect all changes
@@ -62,8 +79,13 @@ class SchemaDiffService
         $constraintChanges = $this->compareConstraints($fromVersion, $toVersion);
         $changes = array_merge($changes, $constraintChanges);
 
-        // 4. Generate SQL Migration Script in correct order
-        $sql = $this->generateMigrationSQL($changes);
+        // 4. Generate SQL Migration Script using the multi-dialect generator
+        $sql = $this->sqlGenerator->generateScript(
+            $changes,
+            $dialect,
+            $fromVersion->version_number,
+            $toVersion->version_number
+        );
 
         // 5. Generate Summary
         $summary = $this->generateSummary($changes);
@@ -72,6 +94,7 @@ class SchemaDiffService
             'sql' => $sql,
             'changes' => $changes,
             'summary' => $summary,
+            'dialect' => $dialect,
             'from_version' => [
                 'id' => $fromVersion->id,
                 'version_number' => $fromVersion->version_number,
@@ -192,15 +215,13 @@ class SchemaDiffService
 
     /**
      * Check if field definition was modified
+     * Takes into account the target dialect - some properties are ignored for certain databases
      */
     private function isFieldModified($fromField, $toField): bool
     {
         // Normalize boolean values to handle NULL, 0, false, 1, true consistently
         $fromNullable = !empty($fromField->is_nullable);
         $toNullable = !empty($toField->is_nullable);
-
-        $fromUnsigned = !empty($fromField->is_unsigned);
-        $toUnsigned = !empty($toField->is_unsigned);
 
         $fromAutoInc = !empty($fromField->is_auto_increment);
         $toAutoInc = !empty($toField->is_auto_increment);
@@ -210,46 +231,81 @@ class SchemaDiffService
         $toDefault = $this->normalizeDefaultValue($toField);
 
         // Normalize numeric fields (NULL or 0 should be treated as same)
-        $fromLength = $fromField->field_length ?? 0;
-        $toLength = $toField->field_length ?? 0;
+        $fromLength = (int) ($fromField->field_length ?? 0);
+        $toLength = (int) ($toField->field_length ?? 0);
 
-        $fromPrecision = $fromField->field_precision ?? 0;
-        $toPrecision = $toField->field_precision ?? 0;
+        $fromPrecision = (int) ($fromField->field_precision ?? 0);
+        $toPrecision = (int) ($toField->field_precision ?? 0);
 
-        $fromScale = $fromField->field_scale ?? 0;
-        $toScale = $toField->field_scale ?? 0;
+        $fromScale = (int) ($fromField->field_scale ?? 0);
+        $toScale = (int) ($toField->field_scale ?? 0);
+
+        // Normalize field types for comparison (case-insensitive)
+        $fromType = strtoupper(trim($fromField->field_type ?? ''));
+        $toType = strtoupper(trim($toField->field_type ?? ''));
 
         // Compare field properties
-        $typeChanged = $fromField->field_type !== $toField->field_type;
-        $lengthChanged = $fromLength !== $toLength;
-        $precisionChanged = $fromPrecision !== $toPrecision;
-        $scaleChanged = $fromScale !== $toScale;
+        $typeChanged = $fromType !== $toType;
         $nullableChanged = $fromNullable !== $toNullable;
-        $unsignedChanged = $fromUnsigned !== $toUnsigned;
         $defaultChanged = $fromDefault !== $toDefault;
         $autoIncChanged = $fromAutoInc !== $toAutoInc;
 
-        // Debug logging for false positives
-        if ($typeChanged || $lengthChanged || $precisionChanged || $scaleChanged ||
-            $nullableChanged || $unsignedChanged || $defaultChanged || $autoIncChanged) {
+        // Length comparison: Only compare if both have explicit lengths
+        // For types like INT, the display width (11) is often just cosmetic
+        $lengthChanged = false;
+        if ($fromLength > 0 && $toLength > 0 && $fromLength !== $toLength) {
+            // For integer types, display width differences are often cosmetic (INT(10) vs INT(11))
+            // Only consider it changed for string types (VARCHAR, CHAR) or significant differences
+            $integerTypes = ['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'INTEGER', 'BIGINT'];
+            if (!in_array($fromType, $integerTypes)) {
+                $lengthChanged = true;
+            }
+        } elseif (($fromLength > 0) !== ($toLength > 0)) {
+            // One has length, one doesn't - only consider changed for non-integer types
+            $integerTypes = ['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'INTEGER', 'BIGINT'];
+            if (!in_array($fromType, $integerTypes)) {
+                $lengthChanged = true;
+            }
+        }
 
+        $precisionChanged = $fromPrecision !== $toPrecision;
+        $scaleChanged = $fromScale !== $toScale;
+
+        // UNSIGNED: Only relevant for MySQL and MariaDB
+        // PostgreSQL, SQLite, and SQL Server don't support UNSIGNED
+        $unsignedChanged = false;
+        if ($this->currentDialect === 'mysql') {
+            $fromUnsigned = !empty($fromField->is_unsigned);
+            $toUnsigned = !empty($toField->is_unsigned);
+            $unsignedChanged = $fromUnsigned !== $toUnsigned;
+        }
+
+        // Debug logging for changes that will be reported
+        $hasChanges = $typeChanged || $lengthChanged || $precisionChanged || $scaleChanged ||
+                      $nullableChanged || $unsignedChanged || $defaultChanged || $autoIncChanged;
+
+        if ($hasChanges) {
             $changedProperties = [];
-            if ($typeChanged) $changedProperties[] = "type: {$fromField->field_type} -> {$toField->field_type}";
-            if ($lengthChanged) $changedProperties[] = "length: {$fromField->field_length} -> {$toField->field_length}";
-            if ($precisionChanged) $changedProperties[] = "precision: {$fromField->field_precision} -> {$toField->field_precision}";
-            if ($scaleChanged) $changedProperties[] = "scale: {$fromField->field_scale} -> {$toField->field_scale}";
+            if ($typeChanged) $changedProperties[] = "type: {$fromType} -> {$toType}";
+            if ($lengthChanged) $changedProperties[] = "length: {$fromLength} -> {$toLength}";
+            if ($precisionChanged) $changedProperties[] = "precision: {$fromPrecision} -> {$toPrecision}";
+            if ($scaleChanged) $changedProperties[] = "scale: {$fromScale} -> {$toScale}";
             if ($nullableChanged) $changedProperties[] = "nullable: " . ($fromNullable ? 'YES' : 'NO') . " -> " . ($toNullable ? 'YES' : 'NO');
-            if ($unsignedChanged) $changedProperties[] = "unsigned: " . ($fromUnsigned ? 'YES' : 'NO') . " -> " . ($toUnsigned ? 'YES' : 'NO');
+            if ($unsignedChanged) {
+                $fromUnsigned = !empty($fromField->is_unsigned);
+                $toUnsigned = !empty($toField->is_unsigned);
+                $changedProperties[] = "unsigned: " . ($fromUnsigned ? 'YES' : 'NO') . " -> " . ($toUnsigned ? 'YES' : 'NO');
+            }
             if ($defaultChanged) $changedProperties[] = "default: '{$fromDefault}' -> '{$toDefault}'";
             if ($autoIncChanged) $changedProperties[] = "auto_increment: " . ($fromAutoInc ? 'YES' : 'NO') . " -> " . ($toAutoInc ? 'YES' : 'NO');
 
             Log::debug("Field modified: {$fromField->field_name}", [
+                'dialect' => $this->currentDialect,
                 'changes' => $changedProperties
             ]);
         }
 
-        return $typeChanged || $lengthChanged || $precisionChanged || $scaleChanged ||
-               $nullableChanged || $unsignedChanged || $defaultChanged || $autoIncChanged;
+        return $hasChanges;
     }
 
     /**

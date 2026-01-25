@@ -119,7 +119,22 @@
       "Bash(cmd.exe /c \"php -l C:\\\\wamp\\\\www\\\\scoriet\\\\app\\\\Models\\\\Template.php\")",
       "Bash(del C:/wamp/www/scoriet/debug_template.php)",
       "Bash(cmd.exe /c \"php -l C:\\\\wamp\\\\www\\\\scoriet\\\\app\\\\Http\\\\Controllers\\\\Api\\\\ProjectController.php\")",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(npx vite-bundle-visualizer:*)",
+      "Bash(npm ls:*)",
+      "Bash(more:*)",
+      "Bash(Get-Content \"c:\\\\wamp\\\\www\\\\scoriet\\\\storage\\\\logs\\\\laravel.log\" -Tail 100)",
+      "Bash(Get-Content \"c:\\\\wamp\\\\www\\\\scoriet\\\\storage\\\\logs\\\\laravel.log\" -Tail 200)",
+      "Bash(Select-String -Pattern \"Field modified\" -Context 0,2)",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\NavigationPanel.tsx.backup\")",
+      "Bash(cmd /c \"del /f \"\"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\NavigationPanel.tsx.backup\"\"\")",
+      "Bash(cmd /c \"findstr /s /n /c:\"console.log\" c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\*.tsx c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\*.ts 2>nul | find /c \":\"\")",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\TemplateManagementPanel.tsx.backup\")",
+      "Bash(node -e:*)",
+      "Bash(npm view:*)",
+      "Bash(npm update:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\TeamsPanel.tsx\")"
     ],
     "deny": [],
     "ask": []

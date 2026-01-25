@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useToast } from '@/contexts/ToastContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
@@ -11,7 +12,7 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
-import { InputSwitch } from 'primereact/inputswitch';
+import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { api } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -51,6 +52,7 @@ export default function LanguageManagementPanel() {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const toast = useToast();
+  const { colors } = useTheme();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -287,15 +289,15 @@ export default function LanguageManagementPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-800 text-gray-100">
+    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <ConfirmDialog />
-      <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
+      <div className="flex-shrink-0 p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}>
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
               Language Management
             </h3>
-            <p className="text-sm text-gray-300">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
               Manage languages for content translation (System Admin Only)
             </p>
           </div>
@@ -309,8 +311,8 @@ export default function LanguageManagementPanel() {
         </div>
       </div>
 
-      <div className="flex-1 p-4 overflow-auto bg-gray-800">
-        <div className="rounded-lg shadow-sm overflow-hidden bg-gray-700">
+      <div className="flex-1 p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary }}>
+        <div className="rounded-lg shadow-sm overflow-hidden" style={{ backgroundColor: colors.bgSecondary }}>
           <DataTable
             value={languages}
             dataKey="id"
@@ -349,13 +351,17 @@ export default function LanguageManagementPanel() {
           closable
           draggable
           resizable
+          className="themed-dialog"
+          contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+          headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
           footer={
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 label={t.applicationsmodal432}
                 icon="pi pi-times"
-                severity="secondary"
+                severity="info"
+                outlined
                 onClick={() => setModalVisible(false)}
               />
               <Button
@@ -372,7 +378,7 @@ export default function LanguageManagementPanel() {
             <div className="grid grid-cols-2 gap-4">
               {/* Language Code */}
               <div>
-                <label htmlFor="code" className="block text-sm font-medium mb-2">
+                <label htmlFor="code" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                   Language Code *
                 </label>
                 <Controller
@@ -393,13 +399,13 @@ export default function LanguageManagementPanel() {
                   )}
                 />
                 {errors.code && (
-                  <small className="text-red-400 mt-1 block">{errors.code.message}</small>
+                  <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.code.message}</small>
                 )}
               </div>
 
               {/* Flag */}
               <div>
-                <label htmlFor="flag" className="block text-sm font-medium mb-2">
+                <label htmlFor="flag" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                   Flag
                 </label>
                 <Controller
@@ -424,7 +430,7 @@ export default function LanguageManagementPanel() {
             <div className="grid grid-cols-2 gap-4">
               {/* English Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-2">
+                <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                   English Name *
                 </label>
                 <Controller
@@ -444,13 +450,13 @@ export default function LanguageManagementPanel() {
                   )}
                 />
                 {errors.name && (
-                  <small className="text-red-400 mt-1 block">{errors.name.message}</small>
+                  <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.name.message}</small>
                 )}
               </div>
 
               {/* Native Name */}
               <div>
-                <label htmlFor="native_name" className="block text-sm font-medium mb-2">
+                <label htmlFor="native_name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                   Native Name *
                 </label>
                 <Controller
@@ -470,14 +476,14 @@ export default function LanguageManagementPanel() {
                   )}
                 />
                 {errors.native_name && (
-                  <small className="text-red-400 mt-1 block">{errors.native_name.message}</small>
+                  <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.native_name.message}</small>
                 )}
               </div>
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium mb-2">
+              <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 Description
               </label>
               <Controller
@@ -497,14 +503,14 @@ export default function LanguageManagementPanel() {
                 )}
               />
               {errors.description && (
-                <small className="text-red-400 mt-1 block">{errors.description.message}</small>
+                <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.description.message}</small>
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              {/* Sort Order */}
-              <div>
-                <label htmlFor="sort_order" className="block text-sm font-medium mb-2">
+            {/* Sort Order, Active, Default - on one row */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '40px' }}>
+              <div style={{ minWidth: '100px' }}>
+                <label htmlFor="sort_order" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                   Sort Order *
                 </label>
                 <Controller
@@ -520,49 +526,46 @@ export default function LanguageManagementPanel() {
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
                       min={0}
-                      className="w-full"
+                      inputStyle={{ width: '80px' }}
+                      pt={{ root: { style: { width: '80px' } } }}
                     />
                   )}
                 />
                 {errors.sort_order && (
-                  <small className="text-red-400 mt-1 block">{errors.sort_order.message}</small>
+                  <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.sort_order.message}</small>
                 )}
               </div>
-
-              {/* Active */}
-              <div>
-                <label htmlFor="is_active" className="block text-sm font-medium mb-2">
-                  Active
-                </label>
+              <div className="flex items-center gap-2 pb-2">
                 <Controller
                   name="is_active"
                   control={control}
                   render={({ field }) => (
-                    <InputSwitch
-                      id="is_active"
+                    <Checkbox
+                      inputId="is_active"
                       checked={field.value}
-                      onChange={(e) => field.onChange(e.value)}
+                      onChange={(e) => field.onChange(e.checked)}
                     />
                   )}
                 />
-              </div>
-
-              {/* Default Language */}
-              <div>
-                <label htmlFor="is_default" className="block text-sm font-medium mb-2">
-                  Default Language
+                <label htmlFor="is_active" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
+                  Active
                 </label>
+              </div>
+              <div className="flex items-center gap-2 pb-2">
                 <Controller
                   name="is_default"
                   control={control}
                   render={({ field }) => (
-                    <InputSwitch
-                      id="is_default"
+                    <Checkbox
+                      inputId="is_default"
                       checked={field.value}
-                      onChange={(e) => field.onChange(e.value)}
+                      onChange={(e) => field.onChange(e.checked)}
                     />
                   )}
                 />
+                <label htmlFor="is_default" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
+                  Default Language
+                </label>
               </div>
             </div>
           </form>

@@ -17,6 +17,7 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-markup';
 import 'prismjs/themes/prism-tomorrow.css';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Page {
   id: number;
@@ -45,6 +46,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const localeOptions = [
     { label: t.editprojectmodal484, value: 'en' },
@@ -263,8 +265,16 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
   };
 
   const statusBodyTemplate = (rowData: Page) => {
+    // Use darker green (#059669) for better contrast with white text in dark mode
+    const activeColor = '#059669';
     return (
-      <span className={`px-2 py-1 rounded text-xs ${rowData.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+      <span
+        className="px-2 py-1 rounded text-xs"
+        style={{
+          backgroundColor: rowData.is_active ? activeColor : colors.textMuted,
+          color: '#ffffff'
+        }}
+      >
         {rowData.is_active ? t.templatesStatusActive : t.manageteammodal328}
       </span>
     );
@@ -272,24 +282,24 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
   if (loading && pages.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-800">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <ProgressSpinner />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-800 text-gray-100 overflow-auto">
+    <div className="h-full flex flex-col overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <ConfirmDialog />
 
       {/* Header */}
-      <div className="flex-shrink-0 p-6 border-b border-gray-700">
+      <div className="flex-shrink-0 p-6" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="text-2xl font-semibold text-white mb-2">
+            <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
               📝 CMS Page Management
             </h3>
-            <p className="text-sm text-gray-300">
+            <p className="text-sm" style={{ color: colors.textSecondary }}>
               Manage static content pages (Help, Impressum, etc.)
             </p>
           </div>
@@ -342,6 +352,9 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
         maximizable
         blockScroll
         onHide={() => setShowDialog(false)}
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -364,7 +377,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
         <div className="flex flex-col gap-4">
           {/* Slug */}
           <div className="field">
-            <label htmlFor="slug" className="block text-sm font-medium mb-2">
+            <label htmlFor="slug" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Slug *
             </label>
             <InputText
@@ -375,14 +388,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               className="w-full"
               disabled={!!editingPage}
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               URL-friendly identifier (cannot be changed after creation)
             </small>
           </div>
 
           {/* Language */}
           <div className="field">
-            <label htmlFor="locale" className="block text-sm font-medium mb-2">
+            <label htmlFor="locale" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Language *
             </label>
             <Dropdown
@@ -394,14 +407,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               className="w-full"
               disabled={!!editingPage}
             />
-            <small className="text-gray-400">
+            <small style={{ color: colors.textMuted }}>
               Cannot be changed after creation
             </small>
           </div>
 
           {/* Title */}
           <div className="field">
-            <label htmlFor="title" className="block text-sm font-medium mb-2">
+            <label htmlFor="title" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Title *
             </label>
             <InputText
@@ -415,16 +428,16 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
           {/* Content Editor with Tabs */}
           <div className="field">
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Content *
             </label>
             <TabView
               activeIndex={activeTabIndex}
               onTabChange={(e: any) => setActiveTabIndex(e.index)}
-              className="w-full"
+              className="w-full themed-tabview"
             >
               {/* Tab 1: WYSIWYG Editor */}
-              <TabPanel header="WYSIWYG Editor" className="text-gray-100 p-0">
+              <TabPanel header="WYSIWYG Editor" className="p-0">
                 <PrimeEditor
                   value={formData.content}
                   onTextChange={(e: any) => setFormData({ ...formData, content: e.htmlValue || '' })}
@@ -433,10 +446,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               </TabPanel>
 
               {/* Tab 2: HTML Source Editor with Syntax Highlighting */}
-              <TabPanel header={t.cmsadminpanel360} className="text-gray-100 p-0">
-                <div className="h-full bg-gray-900 border border-gray-600 rounded">
-                  <div className="flex justify-between items-center p-2 border-b border-gray-600 bg-gray-800">
-                    <span className="text-sm text-gray-400">HTML Quellcode mit Syntax-Highlighting</span>
+              <TabPanel header={t.cmsadminpanel360} className="p-0">
+                <div className="h-full rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
+                  <div className="flex justify-between items-center p-2" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                    <span className="text-sm" style={{ color: colors.textSecondary }}>HTML Quellcode mit Syntax-Highlighting</span>
                     <Button
                       label={t.cmsadminpanel365}
                       icon="pi pi-refresh"
@@ -466,13 +479,15 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                       }}
                       padding={10}
                       style={{
-                        fontFamily: 't.debugmanualgeneratorpanel51, "Consolas", "Monaco", "Courier New", monospace',
+                        fontFamily: '"Consolas", "Monaco", "Courier New", monospace',
                         fontSize: 14,
-                        backgroundColor: '#1a1a1a',
-                        color: '#d4d4d4',
+                        backgroundColor: colors.bgPrimary,
+                        color: colors.textPrimary,
                         minHeight: '350px',
                         height: 'auto',
                         overflow: 'visible',
+                        border: `1px solid ${colors.borderPrimary}`,
+                        borderRadius: '4px',
                       }}
                       className="html-editor"
                       placeholder={t.cmsadminpanel402}
@@ -486,7 +501,8 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           {/* Active Status */}
           <div className="field">
             <div
-              className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg border border-gray-600 cursor-pointer hover:bg-gray-600 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors"
+              style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}
               onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
             >
               <Checkbox
@@ -494,11 +510,11 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: !!e.checked })}
               />
-              <div className="text-sm font-medium text-gray-100 select-none">
+              <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
                 {formData.is_active ? '✅' : '⬜'} Active (visible to visitors)
               </div>
             </div>
-            <small className="text-gray-400 mt-2 block">
+            <small className="mt-2 block" style={{ color: colors.textMuted }}>
               When checked, this page will be visible to all visitors
             </small>
           </div>

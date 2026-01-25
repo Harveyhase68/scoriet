@@ -35,7 +35,7 @@ class TestObservers extends Command
         $projectId = $this->argument('project_id');
         
         $this->info('🧪 Testing Observer Functionality');
-        $this->info('================================');
+        $this->info('---------------------------------');
 
         // Check queue status before
         $jobsBefore = DB::table('jobs')->count();

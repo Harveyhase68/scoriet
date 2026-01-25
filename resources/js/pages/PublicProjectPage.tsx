@@ -15,6 +15,7 @@ import {
   CurrencyDollarIcon,
   MapPinIcon,
   LinkIcon,
+  PaperClipIcon,
 } from '@heroicons/react/24/outline';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
@@ -46,6 +47,14 @@ interface ProjectData {
   teams: Array<{ id: number; name: string; description: string | null }>;
   templates: Array<{ id: number; name: string; description: string | null; is_system_template: boolean }>;
   schemas: Array<{ id: number; name: string; description: string | null }>;
+  attachments: Array<{
+    id: number;
+    original_filename: string;
+    mime_type: string;
+    category_label: string;
+    formatted_size: string;
+    is_pinned: boolean;
+  }>;
 }
 
 interface Props {
@@ -342,6 +351,44 @@ export default function PublicProjectPage({ project, username: _username, projec
                         {schema.description && (
                           <p className="text-gray-400 text-sm mt-1">{schema.description}</p>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Attachments */}
+              {project.attachments && project.attachments.length > 0 && (
+                <Card className="bg-gray-800/50 border border-gray-700" title={
+                  <div className="flex items-center gap-2 text-white">
+                    <PaperClipIcon className="w-5 h-5" />
+                    <span>{t.projectpanelAttachments || 'Attachments'}</span>
+                    <Tag value={project.attachments.length.toString()} severity="warning" />
+                  </div>
+                }>
+                  <div className="space-y-3">
+                    {project.attachments.map(attachment => (
+                      <div key={attachment.id} className="p-3 bg-gray-700/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <i className={`text-lg ${
+                            attachment.mime_type?.startsWith('image/') ? 'pi pi-image text-blue-400' :
+                            attachment.mime_type === 'application/pdf' ? 'pi pi-file-pdf text-red-400' :
+                            attachment.mime_type?.includes('word') ? 'pi pi-file-word text-blue-400' :
+                            attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet') ? 'pi pi-file-excel text-green-400' :
+                            'pi pi-file text-gray-400'
+                          }`}></i>
+                          <div className="flex-1">
+                            <p className="text-white font-medium flex items-center gap-2">
+                              {attachment.original_filename}
+                              {attachment.is_pinned && (
+                                <i className="pi pi-bookmark-fill text-yellow-400 text-sm"></i>
+                              )}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              {attachment.category_label} • {attachment.formatted_size}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

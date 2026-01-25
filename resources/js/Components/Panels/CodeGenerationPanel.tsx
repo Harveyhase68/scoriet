@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { Dropdown } from 'primereact/dropdown';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import ProfileModal from '@/Components/AuthModals/ProfileModal';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Project {
   id: number;
@@ -22,6 +23,13 @@ interface Project {
     provider: 'github' | 'gitlab';
     username: string;
   };
+  // FTP/SSH deployment fields
+  deployment_type?: 'ftp' | 'sftp' | null;
+  ftp_host?: string;
+  ftp_port?: number;
+  ftp_username?: string;
+  ftp_directory?: string;
+  has_ftp_deployment?: boolean;
 }
 
 interface Template {
@@ -128,6 +136,9 @@ export default function CodeGenerationPanel() {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t: _t } = useTranslation(currentLanguage); // Prefixed with _ to indicate intentionally unused
 
+  // Theme
+  const { colors } = useTheme();
+
   // State
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -182,6 +193,9 @@ export default function CodeGenerationPanel() {
   const [unlockingGitIntegration, setUnlockingGitIntegration] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileModalDefaultTab, setProfileModalDefaultTab] = useState(0);
+
+  // 📡 FTP/SSH Upload State
+  const [ftpUploading, setFtpUploading] = useState(false);
 
   // 🔧 Code Adjustments Access
   const [codeAdjustmentsAccess, setCodeAdjustmentsAccess] = useState<{
@@ -374,7 +388,6 @@ export default function CodeGenerationPanel() {
   // 🔗 Load repositories when provider is selected (wait for providers to be fully loaded)
   useEffect(() => {
     if (selectedGitProvider && gitProvidersLoaded) {
-      console.log('[GIT DEBUG] Loading repositories for provider:', selectedGitProvider.provider);
       loadGitRepositories(selectedGitProvider.provider);
     } else if (!selectedGitProvider) {
       setGitRepositories([]);
@@ -415,14 +428,12 @@ export default function CodeGenerationPanel() {
       if (selectedProject?.git_provider_id) {
         const matchingProvider = gitProviders.find(p => p.id === selectedProject.git_provider_id);
         if (matchingProvider) {
-          console.log('[GIT DEBUG] Auto-selecting project provider:', matchingProvider.provider);
           setSelectedGitProvider(matchingProvider);
           return;
         }
       }
       // Second priority: Auto-select if only one provider exists
       if (gitProviders.length === 1) {
-        console.log('[GIT DEBUG] Auto-selecting single provider:', gitProviders[0].provider);
         setSelectedGitProvider(gitProviders[0]);
       }
     }
@@ -445,21 +456,16 @@ export default function CodeGenerationPanel() {
       const projectBranch = selectedProject?.git_default_branch;
       const repoBranch = selectedRepository.default_branch;
 
-      console.log('[GIT DEBUG] Branches loaded:', gitBranches.length, 'Project branch:', projectBranch, 'Repo branch:', repoBranch);
-
       // Use project branch if available and exists
       if (projectBranch) {
         const matchingBranch = gitBranches.find(b => b.name === projectBranch);
-        console.log('[GIT DEBUG] Looking for project branch:', projectBranch, 'Found:', !!matchingBranch);
         if (matchingBranch) {
           // Branch exists - select it and use existing branch mode
           setSelectedBranch(projectBranch);
           setUseNewBranch(false);
-          console.log('[GIT DEBUG] Set branch to project branch:', projectBranch);
           return;
         } else {
           // Branch doesn't exist - switch to "new branch" mode and pre-fill the name
-          console.log('[GIT DEBUG] Project branch not found, switching to new branch mode:', projectBranch);
           setUseNewBranch(true);
           setNewBranchName(projectBranch);
           // Also select main/default branch as base
@@ -472,7 +478,6 @@ export default function CodeGenerationPanel() {
 
       // Fallback to repository default branch
       if (repoBranch) {
-        console.log('[GIT DEBUG] Fallback to repo default branch:', repoBranch);
         setSelectedBranch(repoBranch);
         setUseNewBranch(false);
       }
@@ -505,7 +510,6 @@ export default function CodeGenerationPanel() {
         if (data.git_integration_access) {
           setGitIntegrationAccess(data.git_integration_access);
         }
-        console.log('[GIT DEBUG] Loaded providers:', providers.length, 'Access:', data.git_integration_access?.has_access);
         // Note: Auto-selection is handled separately in useEffect to avoid timing issues
       }
     } catch (err) {
@@ -838,17 +842,6 @@ export default function CodeGenerationPanel() {
       const projectData = await projectRes.json();
       const project = projectData.data || projectData;
 
-      // Debug: Log Git settings from project
-      console.log('[GIT DEBUG] Project loaded:', {
-        id: project.id,
-        name: project.name,
-        git_provider_id: project.git_provider_id,
-        git_repository: project.git_repository,
-        git_default_branch: project.git_default_branch,
-        git_main_branch: project.git_main_branch,
-        git_provider: project.git_provider,
-      });
-
       // Load templates via template-usages, schemas, and languages in parallel
       const [templatesRes, schemasRes, allLanguagesRes] = await Promise.all([
         fetch(`/api/projects/${selectedProjectId}/template-usages`, {
@@ -953,12 +946,6 @@ export default function CodeGenerationPanel() {
         setAutoMerge(false);
         setDeleteBranchAfterMerge(false);
       }
-
-      console.log('[GIT DEBUG] Project workflow settings:', {
-        workflow,
-        pr_title_template: project.git_pr_title_template,
-        auto_delete_branch: project.git_auto_delete_branch,
-      });
 
     } catch (err: any) {
       setError(err.message || 'Failed to load project data');
@@ -1314,14 +1301,11 @@ export default function CodeGenerationPanel() {
       return { code, appliedCount: 0, appliedAdjustments: [] };
     }
 
-    console.log(`[CODE-ADJUSTMENTS] Found ${matchingAdjustments.length} matching adjustment(s) for ${filePath}`);
-
     for (const adjustment of matchingAdjustments) {
       // Sort insertions by order
       const sortedInsertions = [...adjustment.insertions].sort((a, b) => a.insertion_order - b.insertion_order);
 
       for (const insertion of sortedInsertions) {
-        const beforeLength = modifiedCode.length;
 
         if (insertion.insertion_type === 'beginning') {
           // Insert at the very beginning
@@ -1341,13 +1325,8 @@ export default function CodeGenerationPanel() {
               '\n' + insertion.insertion_content +
               modifiedCode.slice(insertPosition);
             appliedCount++;
-          } else {
-            console.warn(`[CODE-ADJUSTMENTS] Anchor text not found for insertion in ${adjustment.name}: "${insertion.anchor_text.substring(0, 50)}..."`);
           }
-        }
-
-        if (modifiedCode.length !== beforeLength) {
-          console.log(`[CODE-ADJUSTMENTS] Applied ${insertion.insertion_type} insertion from "${adjustment.name}"`);
+          // Note: If anchor text not found, insertion is silently skipped
         }
       }
 
@@ -1391,11 +1370,6 @@ export default function CodeGenerationPanel() {
           currentTask: 'Lade Code Anpassungen...'
         });
         codeAdjustments = await fetchCodeAdjustments(selectedProjectId, token);
-        if (codeAdjustments.length > 0) {
-          console.log(`[CODE-ADJUSTMENTS] Loaded ${codeAdjustments.length} active adjustment(s) for project ${selectedProjectId}`);
-        }
-      } else if (selectedProjectId && !codeAdjustmentsAccess?.has_access) {
-        console.log('[CODE-ADJUSTMENTS] Skipping - user does not have code adjustments subscription');
       }
 
       // ==========================================================================
@@ -1465,7 +1439,7 @@ export default function CodeGenerationPanel() {
 
       // 🎯 Track operation timestamps for accurate ETA (using MEDIAN to eliminate outliers)
       const operationTimestamps: number[] = [];
-      const generationStartTime = Date.now(); // Track start time for debug logging
+      //const generationStartTime = Date.now(); // Track start time for debug logging
       const MAX_SAMPLES = 15; // Use last 15 operations for stable ETA calculation
       // 🎯 Fixed warmup: Skip first operation only (ETA appears at operation 2)
       const WARMUP_OPERATIONS = 1;
@@ -1532,14 +1506,6 @@ export default function CodeGenerationPanel() {
           eta: etaText,
           currentTask: taskDescription
         });
-
-        // 🎯 DEBUG: Console output for ETA calibration
-        const elapsedSeconds = Math.floor((now - generationStartTime) / 1000);
-        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-        const elapsedSecondsRemainder = elapsedSeconds % 60;
-        const elapsedFormatted = `${elapsedMinutes}:${elapsedSecondsRemainder.toString().padStart(2, '0')}`;
-
-        console.log(`[Progress] ${percentage}% | Op ${completedOperations}/${totalOperations} | Elapsed: ${elapsedFormatted} | ETA: ${etaText} | Median/Op: ${Math.round(medianTimePerOp/1000)}s | Capped/Op: ${Math.round(cappedTimePerOp/1000)}s | Factor: ${ETA_PESSIMISM_FACTOR}x`);
 
         // 🎯 Allow React to re-render the progress bar
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -1787,12 +1753,6 @@ export default function CodeGenerationPanel() {
               });
             }
 
-            // Log performance
-            const perf = data.performance;
-            if (perf) {
-              console.log(`⚡ [BATCH] ${perf.tables_count} tables in ${perf.execution_time_ms}ms (avg: ${perf.avg_time_per_table_ms}ms/table)`);
-            }
-
           } catch (error: any) {
             errors.push({
               file: 'Batch Template compilation',
@@ -1917,7 +1877,6 @@ export default function CodeGenerationPanel() {
               const adjustmentResult = applyCodeAdjustments(generatedCode, fullPath, codeAdjustments);
               if (adjustmentResult.appliedCount > 0) {
                 finalCode = adjustmentResult.code;
-                console.log(`[CODE-ADJUSTMENTS] Applied ${adjustmentResult.appliedCount} insertion(s) to ${fullPath} from: ${adjustmentResult.appliedAdjustments.join(', ')}`);
               }
             }
 
@@ -2262,7 +2221,6 @@ export default function CodeGenerationPanel() {
   // 🆕 Separated generation logic so it can be called after conflict confirmation
   const executeGeneration = async () => {
     try {
-      console.log('[DOWNLOAD] Starting executeGeneration');
       setGenerating(true);
       setError(null);
       setShowConflictDialog(false);
@@ -2278,8 +2236,6 @@ export default function CodeGenerationPanel() {
 
       // Perform generation with download callback
       await performGeneration(async (zipBlob, zip) => {
-        console.log('[DOWNLOAD] Download callback called, zipBlob size:', zipBlob.size);
-
         // Download the ZIP to user
         const url = window.URL.createObjectURL(zipBlob);
         const link = document.createElement('a');
@@ -2290,11 +2246,9 @@ export default function CodeGenerationPanel() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        console.log('[DOWNLOAD] Download triggered');
 
         // 🔗 Git Push if enabled
         if (pushToGit && selectedGitProvider && selectedRepository) {
-          console.log('[GIT] Starting Git push...');
           setDeploymentLogs(['🔗 Git Push gestartet...']);
 
           // Extract files from ZIP for Git push
@@ -2348,14 +2302,8 @@ export default function CodeGenerationPanel() {
               'Accept': 'application/json'
             },
             body: uploadFormData
-          }).then(response => {
-            if (response.ok) {
-              console.log('[DOWNLOAD] Generation recorded to server');
-            } else {
-              console.warn('[DOWNLOAD] Failed to record generation:', response.statusText);
-            }
-          }).catch(err => {
-            console.warn('[DOWNLOAD] Error recording generation:', err);
+          }).catch(() => {
+            // Silent fail - generation record is not critical
           });
         }
       });
@@ -2390,6 +2338,181 @@ export default function CodeGenerationPanel() {
 
     // Execute the same generation as executeGeneration(), but upload instead of download
     await executeGenerationForDeploy();
+  };
+
+  /**
+   * Generate project and upload via FTP/SSH
+   */
+  const handleFtpUpload = async () => {
+    if (!canGenerate()) {
+      setError('Please select at least one template');
+      return;
+    }
+
+    if (!selectedProject?.has_ftp_deployment) {
+      setError('Keine FTP/SSH-Verbindung konfiguriert. Bitte konfigurieren Sie die FTP/SSH-Einstellungen in den Projekteinstellungen.');
+      return;
+    }
+
+    // Check for conflicts first
+    const conflicts = await checkFileConflicts();
+    if (conflicts.length > 0) {
+      setFileConflicts(conflicts);
+      setShowConflictDialog(true);
+      return;
+    }
+
+    await executeGenerationForFtp();
+  };
+
+  /**
+   * Execute generation and upload via FTP/SSH
+   */
+  const executeGenerationForFtp = async () => {
+    try {
+      setGenerating(true);
+      setFtpUploading(true);
+      setError(null);
+      setShowConflictDialog(false);
+      setGenerationProgress(null);
+      setDeploymentLogs([]);
+
+      // 💰 Charge credits before generation
+      const chargeResult = await chargeCreditsForGeneration();
+      if (!chargeResult.success) {
+        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setGenerating(false);
+        setFtpUploading(false);
+        return;
+      }
+
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const projectName = selectedProject?.name || 'project';
+      const ftpType = selectedProject?.deployment_type?.toUpperCase() || 'FTP';
+      const ftpHost = selectedProject?.ftp_host || '';
+      const ftpDir = selectedProject?.ftp_directory || '/';
+
+      // Add initial log entry
+      setDeploymentLogs([
+        `📡 Starting ${ftpType} Upload...`,
+        `📦 Project: ${projectName}`,
+        `🌐 Server: ${ftpHost}`,
+        `📂 Directory: ${ftpDir}`,
+        ''
+      ]);
+
+      // Perform generation with FTP upload callback (force ZIP format)
+      await performGeneration(async (zipBlob) => {
+        // Add log: Generation complete
+        setDeploymentLogs(prev => [
+          ...prev,
+          '✅ Code generation completed',
+          `📊 Archive size: ${(zipBlob.size / 1024).toFixed(2)} KB`,
+          ''
+        ]);
+
+        // Upload ZIP to server first (for FTP upload)
+        setGenerationProgress({
+          current: 0,
+          total: 100,
+          percentage: 85,
+          eta: 'Fast fertig...',
+          currentTask: 'Lade Archiv zum Server hoch...'
+        });
+
+        setDeploymentLogs(prev => [...prev, '📤 Uploading archive to server...']);
+
+        const formData = new FormData();
+        formData.append('project_id', selectedProjectId!.toString());
+        formData.append('archive', zipBlob, `${projectName}.zip`);
+
+        const uploadResponse = await fetch('/api/generated-projects/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Failed to upload archive: ${errorText}`);
+        }
+
+        const uploadResult = await uploadResponse.json();
+        const filename = uploadResult.filename;
+
+        setDeploymentLogs(prev => [
+          ...prev,
+          '✅ Archive uploaded to server',
+          ''
+        ]);
+
+        // Now trigger FTP upload
+        setGenerationProgress({
+          current: 0,
+          total: 100,
+          percentage: 90,
+          eta: 'Fast fertig...',
+          currentTask: `Uploading via ${ftpType}...`
+        });
+
+        setDeploymentLogs(prev => [
+          ...prev,
+          `📡 Connecting to ${ftpType} server...`
+        ]);
+
+        const ftpResponse = await fetch(`/api/projects/${selectedProjectId}/ftp-upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ filename })
+        });
+
+        const ftpResult = await ftpResponse.json();
+
+        // Add FTP logs
+        if (ftpResult.logs && Array.isArray(ftpResult.logs)) {
+          setDeploymentLogs(prev => [...prev, '', ...ftpResult.logs]);
+        }
+
+        if (!ftpResult.success) {
+          throw new Error(ftpResult.message || `${ftpType} upload failed`);
+        }
+
+        setDeploymentLogs(prev => [
+          ...prev,
+          '',
+          `✅ ${ftpType} Upload erfolgreich!`,
+          `📁 ${ftpResult.files_uploaded || 0} Dateien übertragen`
+        ]);
+
+        setGenerationProgress({
+          current: 100,
+          total: 100,
+          percentage: 100,
+          eta: 'Fertig!',
+          currentTask: `${ftpType} Upload abgeschlossen`
+        });
+
+      }, true); // Force ZIP format for FTP upload
+
+    } catch (err: any) {
+      console.error('FTP Upload error:', err);
+      setError(err.message || 'FTP/SSH Upload failed');
+      setDeploymentLogs(prev => [...prev, '', `❌ Error: ${err.message}`]);
+    } finally {
+      setGenerating(false);
+      setFtpUploading(false);
+    }
   };
 
   /**
@@ -2486,7 +2609,6 @@ export default function CodeGenerationPanel() {
    */
   const executeGenerationForDeploy = async () => {
     try {
-      console.log('[DEPLOY] Starting executeGenerationForDeploy');
       setGenerating(true);
       setError(null);
       setShowConflictDialog(false);
@@ -2513,17 +2635,13 @@ export default function CodeGenerationPanel() {
       // Add initial log entry
       setDeploymentLogs(['🚀 Starting deployment...', `📦 Project: ${projectName}`, '']);
 
-      console.log('[DEPLOY] Calling performGeneration with upload callback');
       // Perform generation with upload callback (force ZIP format for deployment)
       await performGeneration(async (zipBlob, zip) => {
-        console.log('[DEPLOY] Upload callback called, zipBlob size:', zipBlob.size);
-
         // Add log: Generation complete
         setDeploymentLogs(prev => [...prev, '✅ Code generation completed', `📊 Archive size: ${(zipBlob.size / 1024).toFixed(2)} KB`, '']);
 
         // 🔗 Git Push if enabled
         if (pushToGit && selectedGitProvider && selectedRepository) {
-          console.log('[GIT] Starting Git push from deploy...');
           setDeploymentLogs(prev => [...prev, '🔗 Git Push gestartet...']);
 
           // Extract files from ZIP for Git push
@@ -2664,10 +2782,10 @@ export default function CodeGenerationPanel() {
   };
 
   return (
-    <div className="h-full bg-gray-800 text-gray-100 p-4 overflow-auto">
+    <div className="h-full p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="bg-gray-700 rounded-lg p-6 border border-gray-600">
-          <h2 className="text-2xl font-bold text-white mb-6">Code Generation</h2>
+        <div className="rounded-lg p-6" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
+          <h2 className="text-2xl font-bold mb-6" style={{ color: colors.textPrimary }}>Code Generation</h2>
 
           {/* Error Message */}
           {error && (
@@ -2704,7 +2822,7 @@ export default function CodeGenerationPanel() {
 
           {/* Project Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
               Select Project *
             </label>
             <Dropdown
@@ -2749,7 +2867,7 @@ export default function CodeGenerationPanel() {
           </div>
 
           {loading && (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-8" style={{ color: colors.textMuted }}>
               Loading project data...
             </div>
           )}
@@ -2759,7 +2877,7 @@ export default function CodeGenerationPanel() {
               {/* Templates Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-white">
+                  <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
                     Templates * (at least 1 required)
                   </label>
                   <button
@@ -2769,9 +2887,9 @@ export default function CodeGenerationPanel() {
                     {selectedTemplateIds.size === templates.filter(t => !t.is_soft_locked).length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {templates.length === 0 ? (
-                    <div className="text-gray-400 text-sm">No templates available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>No templates available</div>
                   ) : (
                     <div className="space-y-2">
                       {templates.map(template => {
@@ -2782,8 +2900,11 @@ export default function CodeGenerationPanel() {
                             className={`flex items-start space-x-2 p-2 rounded ${
                               isLocked
                                 ? 'cursor-not-allowed opacity-60'
-                                : 'cursor-pointer hover:bg-gray-700'
+                                : 'cursor-pointer'
                             }`}
+                            style={{ color: colors.textPrimary }}
+                            onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = colors.bgHover)}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             title={isLocked ? 'Template-Abo abgelaufen - bitte im Template Manager entsperren' : undefined}
                           >
                             <input
@@ -2796,11 +2917,11 @@ export default function CodeGenerationPanel() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 {isLocked && <i className="pi pi-lock text-red-500" />}
-                                <span className={isLocked ? 'text-red-400' : 'text-white'}>{template.name}</span>
+                                <span style={{ color: isLocked ? '#f87171' : colors.textPrimary }}>{template.name}</span>
                                 {isLocked && <span className="text-xs text-red-400">Gesperrt</span>}
                               </div>
                               {template.description && (
-                                <div className="text-xs text-gray-400">{template.description}</div>
+                                <div className="text-xs" style={{ color: colors.textMuted }}>{template.description}</div>
                               )}
                             </div>
                           </label>
@@ -2809,7 +2930,7 @@ export default function CodeGenerationPanel() {
                     </div>
                   )}
                 </div>
-                <div className="mt-1 text-xs text-gray-400">
+                <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
                   {selectedTemplateIds.size} of {templates.length} selected
                 </div>
               </div>
@@ -2817,7 +2938,7 @@ export default function CodeGenerationPanel() {
               {/* Schemas/Databases Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-white">
+                  <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
                     Databases (optional)
                   </label>
                   <button
@@ -2827,9 +2948,9 @@ export default function CodeGenerationPanel() {
                     {selectedSchemaIds.size === schemas.filter(s => !s.is_soft_locked).length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {schemas.length === 0 ? (
-                    <div className="text-gray-400 text-sm">No databases available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>No databases available</div>
                   ) : (
                     <div className="space-y-2">
                       {schemas.map(schema => {
@@ -2840,8 +2961,11 @@ export default function CodeGenerationPanel() {
                             className={`flex items-center space-x-2 p-2 rounded ${
                               isLocked
                                 ? 'cursor-not-allowed opacity-60'
-                                : 'cursor-pointer hover:bg-gray-700'
+                                : 'cursor-pointer'
                             }`}
+                            style={{ color: colors.textPrimary }}
+                            onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = colors.bgHover)}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             title={isLocked ? 'Datenbank-Abo abgelaufen - bitte im Database Manager entsperren' : undefined}
                           >
                             <input
@@ -2854,7 +2978,7 @@ export default function CodeGenerationPanel() {
                             {isLocked && (
                               <i className="pi pi-lock text-red-500" />
                             )}
-                            <span className={isLocked ? 'text-red-400' : 'text-white'}>
+                            <span style={{ color: isLocked ? '#f87171' : colors.textPrimary }}>
                               {schema.name}
                             </span>
                             {isLocked && (
@@ -2866,7 +2990,7 @@ export default function CodeGenerationPanel() {
                     </div>
                   )}
                 </div>
-                <div className="mt-1 text-xs text-gray-400">
+                <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
                   {selectedSchemaIds.size} of {schemas.length} selected
                 </div>
               </div>
@@ -2874,7 +2998,7 @@ export default function CodeGenerationPanel() {
               {/* Migration Version Section - Only visible when schemas are selected */}
               {selectedSchemaIds.size > 0 && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                     📊 Optional: Migration von Version
                   </label>
                   {migrationVersionOptions.length > 0 ? (
@@ -2882,7 +3006,8 @@ export default function CodeGenerationPanel() {
                       <select
                         value={migrationFromVersion ?? ''}
                         onChange={(e) => setMigrationFromVersion(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                       >
                         <option value="">Keine Migration (nur aktuelle Version)</option>
                         {migrationVersionOptions.map(opt => (
@@ -2891,14 +3016,14 @@ export default function CodeGenerationPanel() {
                           </option>
                         ))}
                       </select>
-                      <div className="mt-1 text-xs text-gray-400">
+                      <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
                         {migrationFromVersion
                           ? `Migration von v${migrationFromVersion} zur aktuellen Version`
                           : 'Wähle eine vorherige Version für Schema-Migrations-SQL'}
                       </div>
                     </>
                   ) : (
-                    <div className="text-gray-500 text-sm bg-gray-800 border border-gray-700 rounded-lg p-3">
+                    <div className="text-sm rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textMuted }}>
                       Keine Migration verfügbar - Schema hat nur Version 1
                     </div>
                   )}
@@ -2908,7 +3033,7 @@ export default function CodeGenerationPanel() {
               {/* Languages Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-white">
+                  <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
                     Languages (optional)
                   </label>
                   <button
@@ -2918,28 +3043,31 @@ export default function CodeGenerationPanel() {
                     {selectedLanguageCodes.size === languages.length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-h-60 overflow-y-auto">
+                <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {languages.length === 0 ? (
-                    <div className="text-gray-400 text-sm">No languages available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>No languages available</div>
                   ) : (
                     <div className="space-y-2">
                       {languages.map(language => (
                         <label
                           key={language.code}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-700 p-2 rounded"
+                          className="flex items-center space-x-2 cursor-pointer p-2 rounded"
+                          style={{ color: colors.textPrimary }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                           <input
                             type="checkbox"
                             checked={selectedLanguageCodes.has(language.code)}
                             onChange={() => toggleLanguage(language.code)}
                           />
-                          <span className="text-white">{language.name}</span>
+                          <span>{language.name}</span>
                         </label>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="mt-1 text-xs text-gray-400">
+                <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
                   {selectedLanguageCodes.size} of {languages.length} selected
                 </div>
               </div>
@@ -2979,25 +3107,25 @@ export default function CodeGenerationPanel() {
                   </div>
 
                   {/* Scrollable Error List */}
-                  <div className="max-h-96 overflow-y-auto bg-gray-900 bg-opacity-50 rounded p-3 space-y-2">
+                  <div className="max-h-96 overflow-y-auto rounded p-3 space-y-2" style={{ backgroundColor: colors.bgSecondary }}>
                     {generationErrors.map((err, index) => (
-                      <div key={index} className="p-3 bg-gray-800 border border-red-800 rounded text-sm">
+                      <div key={index} className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.errorBorder }}>
                         <div className="flex items-start space-x-2">
-                          <span className="text-red-500 font-bold">#{index + 1}</span>
+                          <span className="font-bold" style={{ color: colors.errorText }}>#{index + 1}</span>
                           <div className="flex-1 space-y-1">
-                            <div className="font-medium text-red-300">{err.file}</div>
-                            <div className="text-xs text-gray-400">
-                              Template: <span className="text-gray-300">{err.template}</span>
-                              {err.table && <> | Table: <span className="text-gray-300">{err.table}</span></>}
-                              {err.language && <> | Language: <span className="text-gray-300">{err.language}</span></>}
+                            <div className="font-medium" style={{ color: colors.errorText }}>{err.file}</div>
+                            <div className="text-xs" style={{ color: colors.textMuted }}>
+                              Template: <span style={{ color: colors.textSecondary }}>{err.template}</span>
+                              {err.table && <> | Table: <span style={{ color: colors.textSecondary }}>{err.table}</span></>}
+                              {err.language && <> | Language: <span style={{ color: colors.textSecondary }}>{err.language}</span></>}
                             </div>
-                            <div className="text-red-400 mt-1">{err.error}</div>
+                            <div className="mt-1" style={{ color: colors.errorText }}>{err.error}</div>
                           </div>
                         </div>
                       </div>
                     ))}
                     {generationStats.errors > generationErrors.length && (
-                      <div className="p-3 bg-gray-800 border border-yellow-800 rounded text-sm text-yellow-400">
+                      <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.warningBorder, color: colors.warningText }}>
                         ⚠️ {generationStats.errors - generationErrors.length} more error(s) - see ERRORS.txt in the ZIP file
                       </div>
                     )}
@@ -3025,19 +3153,19 @@ export default function CodeGenerationPanel() {
                       </span>
                       <div className="text-sm">
                         {currentUser.patron_type === 'monthly' ? (
-                          <span className="text-green-300">
+                          <span style={{ color: colors.successText }}>
                             <strong>Patron Monthly</strong> - Generierung kostenlos
                           </span>
                         ) : (
-                          <span className="text-yellow-300">
+                          <span style={{ color: colors.warningText }}>
                             Generierung kostet <strong>5 Credits</strong>
                           </span>
                         )}
                       </div>
                     </div>
                     {currentUser.patron_type !== 'monthly' && (
-                      <div className="text-sm text-gray-300 flex items-center gap-3">
-                        <span>Ihre Credits: <strong className="text-white">{currentUser.credits || 0}</strong></span>
+                      <div className="text-sm flex items-center gap-3" style={{ color: colors.textSecondary }}>
+                        <span>Ihre Credits: <strong style={{ color: colors.textPrimary }}>{currentUser.credits || 0}</strong></span>
                         {(currentUser.credits || 0) < 5 && (
                           <button
                             type="button"
@@ -3052,12 +3180,13 @@ export default function CodeGenerationPanel() {
                   </div>
                   {/* Patron Monthly upgrade hint when low on credits */}
                   {currentUser.patron_type !== 'monthly' && (currentUser.credits || 0) < 5 && (
-                    <p className="text-xs text-gray-400 text-center mt-2">
+                    <p className="text-xs text-center mt-2" style={{ color: colors.textMuted }}>
                       Oder upgrade zu{' '}
                       <button
                         type="button"
                         onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
-                        className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
+                        className="underline font-semibold"
+                        style={{ color: colors.warningText }}
                       >
                         Patron Monthly
                       </button>
@@ -3068,7 +3197,7 @@ export default function CodeGenerationPanel() {
               )}
 
               {/* 🔗 Git Push Option */}
-              <div className="mb-4 p-4 bg-gray-800 border border-gray-600 rounded-lg">
+              <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                 <div className="flex items-center justify-between">
                   <label className={`flex items-center gap-3 ${gitIntegrationAccess?.has_access !== false ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                     <input
@@ -3076,12 +3205,13 @@ export default function CodeGenerationPanel() {
                       checked={pushToGit}
                       onChange={(e) => handlePushToGitChange(e.target.checked)}
                       disabled={gitIntegrationAccess?.has_access === false}
-                      className="w-5 h-5 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                      className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                      style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}
                     />
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🔗</span>
-                      <span className="font-medium text-white">Push to Git</span>
-                      <span className="text-xs text-gray-400">(automatisch nach Generierung)</span>
+                      <span className="font-medium" style={{ color: colors.textPrimary }}>Push to Git</span>
+                      <span className="text-xs" style={{ color: colors.textMuted }}>(automatisch nach Generierung)</span>
                       {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
                         <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Patron</span>
                       )}
@@ -3095,29 +3225,30 @@ export default function CodeGenerationPanel() {
 
                   {/* Merken Checkbox */}
                   {gitIntegrationAccess?.has_access !== false && (
-                    <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-gray-300">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: colors.textMuted }}>
                       <input
                         type="checkbox"
                         checked={rememberPushToGit}
                         onChange={(e) => handleRememberChange(e.target.checked)}
-                        className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-green-600 focus:ring-green-500"
+                        className="w-4 h-4 rounded text-green-600 focus:ring-green-500"
+                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                       />
                       <span>Merken</span>
-                      {rememberPushToGit && <span className="text-green-400">✓</span>}
+                      {rememberPushToGit && <span style={{ color: colors.successText }}>✓</span>}
                     </label>
                   )}
                 </div>
 
                 {/* Subscription Required Message */}
                 {gitIntegrationAccess?.has_access === false && (
-                  <div className="mt-3 p-3 bg-purple-900/30 border border-purple-700 rounded">
+                  <div className="mt-3 p-3 rounded" style={{ backgroundColor: colors.infoBg, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.accent }}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-purple-300">
+                      <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
                         <span>🔒</span>
                         <span className="text-sm">Git Integration ist ein Premium-Feature</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-purple-200">
+                        <span className="text-sm font-medium" style={{ color: colors.textSecondary }}>
                           {gitIntegrationAccess.unlock_cost} Credits / Jahr
                         </span>
                         <button
@@ -3130,7 +3261,7 @@ export default function CodeGenerationPanel() {
                         </button>
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-gray-400">
+                    <p className="mt-2 text-xs" style={{ color: colors.textMuted }}>
                       Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
                     </p>
                   </div>
@@ -3138,10 +3269,10 @@ export default function CodeGenerationPanel() {
 
                 {/* Git Configuration - appears when checkbox is checked */}
                 {pushToGit && gitIntegrationAccess?.has_access !== false && (
-                  <div className="mt-4 space-y-4 pl-8 border-l-2 border-gray-600">
+                  <div className="mt-4 space-y-4 pl-8" style={{ borderLeftWidth: '2px', borderLeftStyle: 'solid', borderLeftColor: colors.borderPrimary }}>
                     {/* No providers connected message */}
                     {gitProviders.length === 0 && !loadingGitData && (
-                      <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-sm">
+                      <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.warningBorder, color: colors.warningText }}>
                         <div className="flex items-center gap-2">
                           <span>⚠️</span>
                           <span>Kein Git-Provider verbunden. Bitte verbinden Sie GitHub oder GitLab in den Profileinstellungen.</span>
@@ -3154,7 +3285,7 @@ export default function CodeGenerationPanel() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Provider Dropdown */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                          <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                             Provider
                           </label>
                           <select
@@ -3164,7 +3295,8 @@ export default function CodeGenerationPanel() {
                               setSelectedGitProvider(provider || null);
                               setSelectedRepository(null);
                             }}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500"
+                            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           >
                             <option value="">Provider wählen...</option>
                             {gitProviders.map(provider => (
@@ -3177,7 +3309,7 @@ export default function CodeGenerationPanel() {
 
                         {/* Repository Dropdown */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                          <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                             Repository
                           </label>
                           <select
@@ -3187,7 +3319,8 @@ export default function CodeGenerationPanel() {
                               setSelectedRepository(repo || null);
                             }}
                             disabled={!selectedGitProvider || loadingGitData}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            className="w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           >
                             <option value="">
                               {loadingGitData ? 'Lade Repositories...' : 'Repository wählen...'}
@@ -3206,11 +3339,11 @@ export default function CodeGenerationPanel() {
                     {selectedRepository && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                          <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                             Branch
                           </label>
                           <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-2 text-sm text-gray-400">
+                            <label className="flex items-center gap-2 text-sm" style={{ color: colors.textMuted }}>
                               <input
                                 type="radio"
                                 checked={!useNewBranch}
@@ -3219,7 +3352,7 @@ export default function CodeGenerationPanel() {
                               />
                               Existierend
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-400">
+                            <label className="flex items-center gap-2 text-sm" style={{ color: colors.textMuted }}>
                               <input
                                 type="radio"
                                 checked={useNewBranch}
@@ -3234,7 +3367,8 @@ export default function CodeGenerationPanel() {
                               value={selectedBranch}
                               onChange={(e) => setSelectedBranch(e.target.value)}
                               disabled={loadingGitData}
-                              className="mt-2 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                              className="mt-2 w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                             >
                               <option value="">
                                 {loadingGitData ? 'Lade Branches...' : 'Branch wählen...'}
@@ -3251,14 +3385,15 @@ export default function CodeGenerationPanel() {
                               value={newBranchName}
                               onChange={(e) => setNewBranchName(e.target.value)}
                               placeholder="z.B. feature/generated-code"
-                              className="mt-2 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                              className="mt-2 w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
+                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                             />
                           )}
                         </div>
 
                         {/* Commit Message */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                          <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                             Commit Message
                           </label>
                           <input
@@ -3266,14 +3401,15 @@ export default function CodeGenerationPanel() {
                             value={commitMessage}
                             onChange={(e) => setCommitMessage(e.target.value)}
                             placeholder="Commit message..."
-                            className="mt-6 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                            className="mt-6 w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
+                            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           />
                         </div>
 
                         {/* PR and Merge Options */}
-                        <div className="pt-3 border-t border-gray-600 space-y-3">
+                        <div className="pt-3 space-y-3" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: colors.borderPrimary }}>
                           {/* Create PR Checkbox */}
-                          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: colors.textSecondary }}>
                             <input
                               type="checkbox"
                               checked={createPullRequest}
@@ -3284,7 +3420,8 @@ export default function CodeGenerationPanel() {
                                   setDeleteBranchAfterMerge(false);
                                 }
                               }}
-                              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                             />
                             <span>🔀 {selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} erstellen</span>
                           </label>
@@ -3293,7 +3430,7 @@ export default function CodeGenerationPanel() {
                           {createPullRequest && (
                             <>
                               <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                   {selectedGitProvider?.provider === 'gitlab' ? 'MR' : 'PR'} Titel
                                 </label>
                                 <input
@@ -3301,29 +3438,32 @@ export default function CodeGenerationPanel() {
                                   value={prTitle}
                                   onChange={(e) => setPrTitle(e.target.value)}
                                   placeholder={`${selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} Titel...`}
-                                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
+                                  style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                                 />
                               </div>
 
                               {/* Auto-Merge Checkbox */}
-                              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 ml-6">
+                              <label className="flex items-center gap-2 cursor-pointer text-sm ml-6" style={{ color: colors.textSecondary }}>
                                 <input
                                   type="checkbox"
                                   checked={autoMerge}
                                   onChange={(e) => setAutoMerge(e.target.checked)}
-                                  className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                                  style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                                 />
                                 <span>⚡ Auto-Merge nach Erstellung</span>
                               </label>
 
                               {/* Delete Branch After Merge (shown when auto-merge is enabled) */}
                               {autoMerge && (
-                                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 ml-12">
+                                <label className="flex items-center gap-2 cursor-pointer text-sm ml-12" style={{ color: colors.textSecondary }}>
                                   <input
                                     type="checkbox"
                                     checked={deleteBranchAfterMerge}
                                     onChange={(e) => setDeleteBranchAfterMerge(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
+                                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
+                                    style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                                   />
                                   <span>🗑️ Branch nach Merge löschen</span>
                                 </label>
@@ -3336,18 +3476,19 @@ export default function CodeGenerationPanel() {
 
                     {/* Remember Settings Checkbox */}
                     {selectedRepository && (
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-600">
-                        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+                      <div className="flex items-center justify-between pt-2" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: colors.borderPrimary }}>
+                        <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: colors.textSecondary }}>
                           <input
                             type="checkbox"
                             checked={rememberGitSettings}
                             onChange={(e) => setRememberGitSettings(e.target.checked)}
-                            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                            style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                           />
                           <span>💾 Einstellungen im Projekt speichern</span>
                         </label>
                         {rememberGitSettings && (
-                          <span className="text-xs text-green-400">
+                          <span className="text-xs" style={{ color: colors.successText }}>
                             Wird beim Generieren gespeichert
                           </span>
                         )}
@@ -3356,11 +3497,15 @@ export default function CodeGenerationPanel() {
 
                     {/* Git Push Status */}
                     {gitPushStatus !== 'idle' && (
-                      <div className={`p-2 rounded text-sm ${
-                        gitPushStatus === 'pushing' ? 'bg-blue-900/30 text-blue-300' :
-                        gitPushStatus === 'success' ? 'bg-green-900/30 text-green-300' :
-                        'bg-red-900/30 text-red-300'
-                      }`}>
+                      <div
+                        className="p-2 rounded text-sm"
+                        style={{
+                          backgroundColor: gitPushStatus === 'pushing' ? colors.infoBg :
+                                          gitPushStatus === 'success' ? colors.successBg : colors.errorBg,
+                          color: gitPushStatus === 'pushing' ? colors.infoText :
+                                 gitPushStatus === 'success' ? colors.successText : colors.errorText
+                        }}
+                      >
                         {gitPushStatus === 'pushing' && (
                           <span className="flex items-center gap-2">
                             <span className="animate-spin">⚙️</span> Pushing to Git...
@@ -3394,11 +3539,22 @@ export default function CodeGenerationPanel() {
                 <button
                   onClick={handleGenerateProject}
                   disabled={!canGenerate() || generating}
-                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                    canGenerate() && !generating
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  }`}
+                  className="px-6 py-3 rounded-lg font-medium transition-colors"
+                  style={{
+                    backgroundColor: canGenerate() && !generating ? colors.buttonSuccess : colors.bgTertiary,
+                    color: canGenerate() && !generating ? colors.textInverse : colors.textMuted,
+                    cursor: canGenerate() && !generating ? 'pointer' : 'not-allowed',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (canGenerate() && !generating) {
+                      e.currentTarget.style.backgroundColor = colors.buttonSuccessHover;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (canGenerate() && !generating) {
+                      e.currentTarget.style.backgroundColor = colors.buttonSuccess;
+                    }
+                  }}
                 >
                   {generating ? (
                     <>
@@ -3415,11 +3571,22 @@ export default function CodeGenerationPanel() {
                 <button
                   onClick={handleGenerateAndDeploy}
                   disabled={!canGenerate() || generating}
-                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                    canGenerate() && !generating
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  }`}
+                  className="px-6 py-3 rounded-lg font-medium transition-colors"
+                  style={{
+                    backgroundColor: canGenerate() && !generating ? colors.buttonPrimary : colors.bgTertiary,
+                    color: canGenerate() && !generating ? colors.textInverse : colors.textMuted,
+                    cursor: canGenerate() && !generating ? 'pointer' : 'not-allowed',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (canGenerate() && !generating) {
+                      e.currentTarget.style.backgroundColor = colors.buttonPrimaryHover;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (canGenerate() && !generating) {
+                      e.currentTarget.style.backgroundColor = colors.buttonPrimary;
+                    }
+                  }}
                 >
                   {generating ? (
                     <>
@@ -3432,22 +3599,58 @@ export default function CodeGenerationPanel() {
                       : '📦 Generate & Deploy (5 Credits)'
                   )}
                 </button>
+
+                {/* FTP/SSH Upload Button - only show if configured */}
+                {selectedProject?.has_ftp_deployment && (
+                  <button
+                    onClick={handleFtpUpload}
+                    disabled={!canGenerate() || generating || ftpUploading}
+                    className="px-6 py-3 rounded-lg font-medium transition-colors"
+                    style={{
+                      backgroundColor: canGenerate() && !generating && !ftpUploading ? '#9333ea' : colors.bgTertiary,
+                      color: canGenerate() && !generating && !ftpUploading ? colors.textInverse : colors.textMuted,
+                      cursor: canGenerate() && !generating && !ftpUploading ? 'pointer' : 'not-allowed',
+                    }}
+                    title={`Upload via ${selectedProject.deployment_type?.toUpperCase()} to ${selectedProject.ftp_host}`}
+                    onMouseEnter={(e) => {
+                      if (canGenerate() && !generating && !ftpUploading) {
+                        e.currentTarget.style.backgroundColor = '#7c3aed';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (canGenerate() && !generating && !ftpUploading) {
+                        e.currentTarget.style.backgroundColor = '#9333ea';
+                      }
+                    }}
+                  >
+                    {ftpUploading ? (
+                      <>
+                        <span className="inline-block animate-spin mr-2">⚙️</span>
+                        Uploading...
+                      </>
+                    ) : (
+                      currentUser?.patron_type === 'monthly'
+                        ? `📡 ${selectedProject.deployment_type?.toUpperCase()} Upload`
+                        : `📡 ${selectedProject.deployment_type?.toUpperCase()} Upload (5 Credits)`
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* 🎯 Progress Bar */}
               {generationProgress && (
-                <div className="mt-6 bg-gray-800 border border-gray-600 rounded-lg p-4">
+                <div className="mt-6 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium" style={{ color: colors.textPrimary }}>
                       {generationProgress.currentTask}
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm" style={{ color: colors.textMuted }}>
                       {generationProgress.percentage}%
                     </div>
                   </div>
 
                   {/* Progress bar */}
-                  <div className="w-full bg-gray-700 rounded-full h-4 mb-2 overflow-hidden">
+                  <div className="w-full rounded-full h-4 mb-2 overflow-hidden" style={{ backgroundColor: colors.bgSecondary }}>
                     <div
                       className="bg-gradient-to-r from-green-500 to-blue-500 h-4 rounded-full transition-all duration-300 ease-out flex items-center justify-end px-2"
                       style={{ width: `${generationProgress.percentage}%` }}
@@ -3461,11 +3664,11 @@ export default function CodeGenerationPanel() {
                   </div>
 
                   {/* ETA and progress info */}
-                  <div className="flex items-center justify-between text-xs text-gray-400">
+                  <div className="flex items-center justify-between text-xs" style={{ color: colors.textMuted }}>
                     <div>
                       {generationProgress.current} / {generationProgress.total} Operationen
                     </div>
-                    <div className="font-medium text-blue-400">
+                    <div className="font-medium" style={{ color: colors.accent }}>
                       {generationProgress.eta}
                     </div>
                   </div>
@@ -3474,10 +3677,10 @@ export default function CodeGenerationPanel() {
 
               {/* 📋 Deployment Log */}
               {deploymentLogs.length > 0 && (
-                <div className="mt-6 bg-gray-900 border border-gray-600 rounded-lg overflow-hidden">
-                  <div className="bg-gray-800 px-4 py-3 border-b border-gray-600 flex items-center justify-between">
+                <div className="mt-6 rounded-lg overflow-hidden" style={{ backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
+                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: colors.bgTertiary, borderBottomColor: colors.borderPrimary, borderBottomWidth: '1px', borderBottomStyle: 'solid' }}>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-white">📋 Deployment Log</h3>
+                      <h3 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>📋 Deployment Log</h3>
                       {deploymentPolling && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-900 text-blue-200 rounded text-xs">
                           <span className="inline-block animate-spin">🔄</span>
@@ -3485,12 +3688,15 @@ export default function CodeGenerationPanel() {
                         </span>
                       )}
                       {deploymentTaskId && (
-                        <span className="text-xs text-gray-400">Task #{deploymentTaskId}</span>
+                        <span className="text-xs" style={{ color: colors.textMuted }}>Task #{deploymentTaskId}</span>
                       )}
                     </div>
                     <button
                       onClick={() => setDeploymentLogs([])}
-                      className="text-xs text-gray-400 hover:text-white transition-colors"
+                      className="text-xs transition-colors"
+                      style={{ color: colors.textMuted }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = colors.textPrimary; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = colors.textMuted; }}
                     >
                       Clear
                     </button>
@@ -3529,42 +3735,42 @@ export default function CodeGenerationPanel() {
       {/* 🆕 File Conflict Warning Dialog */}
       {showConflictDialog && fileConflicts.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="rounded-lg shadow-2xl p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto" style={{ backgroundColor: colors.bgSecondary }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="text-4xl">⚠️</div>
               <div>
                 <h2 className="text-2xl font-bold text-yellow-400">ACHTUNG: Datei-Konflikte erkannt!</h2>
-                <p className="text-gray-300 text-sm mt-1">
+                <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                   Die folgenden Dateien werden von mehreren Templates generiert und überschreiben sich gegenseitig:
                 </p>
               </div>
             </div>
 
-            <div className="bg-gray-900 rounded-lg p-4 mb-6 max-h-96 overflow-y-auto">
+            <div className="rounded-lg p-4 mb-6 max-h-96 overflow-y-auto" style={{ backgroundColor: colors.bgPrimary }}>
               {fileConflicts.map((conflict, index) => (
-                <div key={index} className="mb-4 pb-4 border-b border-gray-700 last:border-0">
+                <div key={index} className="mb-4 pb-4 last:border-0" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>
                   <div className="flex items-start gap-2">
-                    <span className="text-red-400 font-bold text-lg">❌</span>
+                    <span className="font-bold text-lg" style={{ color: colors.errorText }}>❌</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="font-mono text-yellow-300 font-semibold">
+                        <div className="font-mono font-semibold" style={{ color: colors.warningText }}>
                           {conflict.filePath}
                         </div>
                         {conflict.type === 'intra-template' && (
-                          <span className="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">
+                          <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: colors.errorBg, color: colors.errorText }}>
                             DUPLIKAT IM TEMPLATE
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-400 ml-4">
+                      <div className="text-sm ml-4" style={{ color: colors.textMuted }}>
                         {conflict.type === 'intra-template' ? (
                           <>
-                            <strong className="text-red-300">⚠️ Achtung:</strong> Diese Datei existiert <strong>mehrfach im gleichen Template</strong>:
+                            <strong style={{ color: colors.errorText }}>⚠️ Achtung:</strong> Diese Datei existiert <strong>mehrfach im gleichen Template</strong>:
                             <ul className="mt-1 space-y-1">
                               <li className="flex items-center gap-2">
-                                <span className="text-red-400">•</span>
-                                <span className="text-gray-200">{conflict.templates[0].name}</span>
-                                <span className="text-red-300 text-xs">(enthält {conflict.filePath} mehrfach)</span>
+                                <span style={{ color: colors.errorText }}>•</span>
+                                <span style={{ color: colors.textSecondary }}>{conflict.templates[0].name}</span>
+                                <span className="text-xs" style={{ color: colors.errorText }}>(enthält {conflict.filePath} mehrfach)</span>
                               </li>
                             </ul>
                           </>
@@ -3574,8 +3780,8 @@ export default function CodeGenerationPanel() {
                             <ul className="mt-1 space-y-1">
                               {conflict.templates.map((template, tIdx) => (
                                 <li key={tIdx} className="flex items-center gap-2">
-                                  <span className="text-blue-400">•</span>
-                                  <span className="text-gray-200">{template.name}</span>
+                                  <span style={{ color: colors.accent }}>•</span>
+                                  <span style={{ color: colors.textSecondary }}>{template.name}</span>
                                 </li>
                               ))}
                             </ul>
@@ -3604,7 +3810,8 @@ export default function CodeGenerationPanel() {
                   setShowConflictDialog(false);
                   setFileConflicts([]);
                 }}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+                className="px-6 py-3 rounded-lg font-medium transition-colors"
+                style={{ backgroundColor: colors.buttonSecondary, color: colors.textPrimary }}
               >
                 Abbrechen
               </button>

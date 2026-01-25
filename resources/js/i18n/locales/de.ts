@@ -1562,7 +1562,7 @@ export const de: Translations = {
   applicationsmodal412: 'Ablehnungsgrund',
   applicationsmodal420: 'Heißen Sie sie im Projekt willkommen ...',
   applicationsmodal421: 'Teilen Sie ihnen mit, warum ihre Bewerbung abgelehnt wurde ...',
-  applicationsmodal432: 'Stornieren',
+  applicationsmodal432: 'Abbrechen',
   applicationsmodal439: 'Verarbeitung...',
 
   // resources/js/Components/Modals/CreateTableModal.tsx
@@ -1615,7 +1615,7 @@ export const de: Translations = {
   createtablemodal557: 'Bestellfeld',
   createtablemodal564: '-- Bestellfeld --',
   createtablemodal573: 'Richtung',
-  createtablemodal603: 'Stornieren',
+  createtablemodal603: 'Abbrechen',
   createtablemodal614: 'Erstellen...',
   createtablemodal619: 'Tabelle erstellen',
 
@@ -1634,7 +1634,7 @@ export const de: Translations = {
   // resources/js/Components/Modals/CreateTeamModal.tsx
   createteammodal117: 'Projekte',
   createteammodal136: 'Wählen Sie ein oder mehrere Projekte für dieses Team aus. Halten Sie Strg/Cmd gedrückt, um mehrere auszuwählen.',
-  createteammodal153: 'Stornieren',
+  createteammodal153: 'Abbrechen',
 
   // resources/js\Components\Modals\CreateTeamModal.tsx
   createteammodal164: 'Erstellen...',
@@ -1777,7 +1777,7 @@ export const de: Translations = {
   editprojectmodal652: 'API-Schlüssel für automatische Übersetzungen via Google Translate',
 
   // resources/js\Components\Modals\EditProjectModal.tsx
-  editprojectmodal689: 'Stornieren',
+  editprojectmodal689: 'Abbrechen',
   editprojectmodal696: 'Änderungen speichern',
 
   // resources/js/Components/Modals/EditTableModal.tsx
@@ -1906,7 +1906,7 @@ export const de: Translations = {
   edittablemodal710: 'Richtung',
 
   // resources/js/Components/Modals/EditTableModal.tsx
-  edittablemodal739: 'Stornieren',
+  edittablemodal739: 'Abbrechen',
   edittablemodal750: 'Aktualisierung...',
 
   // resources/js\Components\Modals\EditTableModal.tsx
@@ -1959,7 +1959,7 @@ export const de: Translations = {
   joincodemodal247: 'Teams',
   joincodemodal261: 'Sagen Sie dem Projektbesitzer, warum Sie an diesem Projekt teilnehmen möchten ...',
   joincodemodal277: 'Bewerbung abgeschickt!',
-  joincodemodal288: 'Stornieren',
+  joincodemodal288: 'Abbrechen',
   joincodemodal299: 'Zurück',
   joincodemodal306: 'Senden...',
   joincodemodal316: 'Erledigt',
@@ -2203,7 +2203,7 @@ export const de: Translations = {
   teammodal222: 'Team ist aktiv',
 
   // resources/js\Components\Modals\TeamModal.tsx
-  teammodal232: 'Stornieren',
+  teammodal232: 'Abbrechen',
   teammodal240: 'Erstellen',
 
   // resources/js\Components\Panels\AuthPanel.tsx
@@ -2243,7 +2243,7 @@ export const de: Translations = {
   cmsadminpanel250: 'Zuletzt aktualisiert',
   cmsadminpanel256: 'Aktionen',
   cmsadminpanel265: 'Neue Seite erstellen',
-  cmsadminpanel272: 'Stornieren',
+  cmsadminpanel272: 'Abbrechen',
   cmsadminpanel279: 'Speichern',
 
   // resources/js/Components/Panels/CMSAdminPanel.tsx
@@ -2380,13 +2380,13 @@ export const de: Translations = {
   databasemanagementpanel923: 'Schemanamen eingeben',
   databasemanagementpanel937: 'Schemabeschreibung eingeben (optional)',
   databasemanagementpanel952: 'Sichtbarkeit auswählen',
-  databasemanagementpanel963: 'Stornieren',
+  databasemanagementpanel963: 'Abbrechen',
   databasemanagementpanel970: 'Schema erstellen',
   databasemanagementpanel981: 'Datenbankschema bearbeiten',
   databasemanagementpanel999: 'Schemanamen eingeben',
   databasemanagementpanel1013: 'Schemabeschreibung eingeben (optional)',
   databasemanagementpanel1028: 'Sichtbarkeit auswählen',
-  databasemanagementpanel1036: 'Stornieren',
+  databasemanagementpanel1036: 'Abbrechen',
   databasemanagementpanel1043: 'Schema aktualisieren',
   databasemanagementpanel1054: 'Schema mit Projekt verknüpfen',
   databasemanagementpanel1070: 'Keine Beschreibung',
@@ -2403,14 +2403,14 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\DatabaseManagementPanel.tsx
   databasemanagementpanel1123: 'Benutzerdefinierter Name für dieses Schema im Projekt',
-  databasemanagementpanel1131: 'Stornieren',
+  databasemanagementpanel1131: 'Abbrechen',
   databasemanagementpanel1138: 'Link-Schema',
   databasemanagementpanel1163: 'Warnung vor dauerhafter Löschung',
   databasemanagementpanel1166: 'ALLE',
   databasemanagementpanel1174: '🎨 Alle Datenbank-Designer-Layouts',
   databasemanagementpanel1175: '⚙️ Alle Einschränkungen und Beziehungen',
   databasemanagementpanel1180: 'kann nicht rückgängig gemacht werden',
-  databasemanagementpanel1210: 'Stornieren',
+  databasemanagementpanel1210: 'Abbrechen',
   databasemanagementpanel1217: 'Für immer löschen',
   databasemanagementpanel1229: 'Übersetzungen nach Excel exportieren',
 
@@ -2420,7 +2420,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\DatabaseManagementPanel.tsx
   databasemanagementpanel1257: 'Wählen Sie die zu exportierenden Sprachen aus',
-  databasemanagementpanel1273: 'Stornieren',
+  databasemanagementpanel1273: 'Abbrechen',
   databasemanagementpanel1280: 'Export nach Excel',
   databasemanagementpanel1292: 'Übersetzungen aus Excel importieren',
 
@@ -2430,7 +2430,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\DatabaseManagementPanel.tsx
   databasemanagementpanel1324: 'Excel-Datei auswählen',
-  databasemanagementpanel1338: 'Stornieren',
+  databasemanagementpanel1338: 'Abbrechen',
   databasemanagementpanel1350: 'Datenbankschema kopieren',
 
   // resources/js/Components/Panels/DatabaseManagementPanel.tsx
@@ -2439,7 +2439,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\DatabaseManagementPanel.tsx
   databasemanagementpanel1377: 'Geben Sie den Namen für das kopierte Schema ein',
-  databasemanagementpanel1395: 'Stornieren',
+  databasemanagementpanel1395: 'Abbrechen',
   databasemanagementpanel1402: 'Datenbank kopieren',
 
   // resources/js\Components\Panels\DebugManualGeneratorPanel.tsx
@@ -2611,7 +2611,7 @@ export const de: Translations = {
   panelsewnavigationpanel233: 'Datenbankdesigner 💰',
   panelsewnavigationpanel238: 'Schemaübersetzung',
   panelsewnavigationpanel246: 'Schema importieren',
-  panelsewnavigationpanel251: 'SQL exportieren',
+  panelsewnavigationpanel251: 'Schema exportieren',
   panelsewnavigationpanel258: 'Generator',
   panelsewnavigationpanel263: 'Debug Manual Generator',
   panelsewnavigationpanel268: 'Codegenerierung',
@@ -2648,8 +2648,8 @@ export const de: Translations = {
   panelsewnavigationpanel540: 'Datenbanken verwalten',
   panelsewnavigationpanel544: 'Datenbankdesigner 💰',
   panelsewnavigationpanel548: 'Schemaübersetzung',
-  panelsewnavigationpanel553: 'SQL importieren',
-  panelsewnavigationpanel557: 'SQL exportieren',
+  panelsewnavigationpanel553: 'Schema importieren',
+  panelsewnavigationpanel557: 'Schema exportieren',
   panelsewnavigationpanel565: 'Generator',
   panelsewnavigationpanel572: 'Debug Manual Generator',
   panelsewnavigationpanel576: 'Codegenerierung',
@@ -2709,7 +2709,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\FileModal.tsx
   filemodal307: 'Entfernen',
-  filemodal334: 'Stornieren',
+  filemodal334: 'Abbrechen',
   filemodal340: 'Hinzufügen',
 
   // resources/js\Components\Panels\ForgotPasswordPanel.tsx
@@ -2828,7 +2828,7 @@ export const de: Translations = {
   languagemanagementpanel333: 'Beschreibung',
   languagemanagementpanel334: 'Aktionen',
   languagemanagementpanel340: 'Neue Sprache hinzufügen',
-  languagemanagementpanel352: 'Stornieren',
+  languagemanagementpanel352: 'Abbrechen',
   languagemanagementpanel359: 'Erstellen',
 
   // resources/js/Components/Panels/LanguageManagementPanel.tsx
@@ -2941,8 +2941,8 @@ export const de: Translations = {
   newnavigationpanel228: 'Datenbanken verwalten',
   newnavigationpanel233: 'Datenbankdesigner',
   newnavigationpanel238: 'Schemaübersetzung',
-  newnavigationpanel246: 'SQL importieren',
-  newnavigationpanel251: 'SQL exportieren',
+  newnavigationpanel246: 'Schema importieren',
+  newnavigationpanel251: 'Schema exportieren',
   newnavigationpanel258: 'Generator',
   newnavigationpanel263: 'Debug Manual Generator',
   newnavigationpanel268: 'Codegenerierung',
@@ -2955,6 +2955,7 @@ export const de: Translations = {
   newnavigationpanel320: 'Plan ändern',
   newnavigationpanel325: 'Zurück zur Lobby',
   newnavigationpanel333: 'Ausloggen',
+  newnavigationpanel357: 'Kanban Board 💰',
   newnavigationpanel359: 'Konto',
   newnavigationpanel364: 'Login',
   newnavigationpanel369: 'Registrieren',
@@ -2979,8 +2980,8 @@ export const de: Translations = {
   newnavigationpanel540: 'Datenbanken verwalten',
   newnavigationpanel544: 'Datenbankdesigner',
   newnavigationpanel548: 'Schemaübersetzung',
-  newnavigationpanel553: 'SQL importieren',
-  newnavigationpanel557: 'SQL exportieren',
+  newnavigationpanel553: 'Schema importieren',
+  newnavigationpanel557: 'Schema exportieren',
   newnavigationpanel565: 'Generator',
   newnavigationpanel572: 'Debug Manual Generator',
   newnavigationpanel576: 'Codegenerierung',
@@ -3339,6 +3340,11 @@ export const de: Translations = {
   projectpanel796: 'Projektmitglieder',
   projectpanel803: 'Teamverwaltung',
   projectpanel815: 'Einladungen',
+  projectpanelAttachments: 'Anhänge',
+  projectpanelKanban: 'Kanban Board',
+  navAgileMethod: 'Agile Methoden',
+  projectExport: 'Export',
+  projectImport: 'Import',
   projectpanel822: 'Template',
   projectpanel838: 'Datenbank',
   projectpanel850: 'Alle Projekte',
@@ -3435,7 +3441,7 @@ export const de: Translations = {
   projectpanel1303: 'Standard-Zeitzone für Projekt',
 
   // resources/js\Components\Panels\ProjectPanel.tsx
-  projectpanel1325: 'Stornieren',
+  projectpanel1325: 'Abbrechen',
   projectpanel1332: 'Projekt erstellen',
   projectpanel1342: 'Projekt löschen',
 
@@ -3444,7 +3450,7 @@ export const de: Translations = {
   projectpanel1362: 'Durch diese Aktion wird das Projekt und alle zugehörigen Daten ENDGÜLTIG gelöscht. Dies kann nicht rückgängig gemacht werden! Die mit diesem Projekt verknüpften Teams, Templates und Datenbanken bleiben erhalten.',
 
   // resources/js\Components\Panels\ProjectPanel.tsx
-  projectpanel1371: 'Stornieren',
+  projectpanel1371: 'Abbrechen',
   projectpanel1378: 'Projekt löschen',
 
   // resources/js/Components/Panels/ProjectPanel.tsx
@@ -3723,7 +3729,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\PublicProjectsPanel.tsx
   publicprojectspanel463: 'Ursprüngliches Projekt:',
-  publicprojectspanel474: 'Stornieren',
+  publicprojectspanel474: 'Abbrechen',
   publicprojectspanel481: 'Projekt klonen',
 
   // resources/js\Components\Panels\RegisterPanel.tsx
@@ -3811,7 +3817,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\SchemaTranslationPanel.tsx
   schematranslationpanel938: 'Wählen Sie die zu exportierenden Sprachen aus',
-  schematranslationpanel950: 'Stornieren',
+  schematranslationpanel950: 'Abbrechen',
   schematranslationpanel957: 'Export nach Excel',
   schematranslationpanel969: 'Übersetzungen aus Excel importieren',
   schematranslationpanel986: 'Import für {selectedProject?.name}',
@@ -3828,7 +3834,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\SchemaTranslationPanel.tsx
   schematranslationpanel1022: 'Wählen Sie die zu importierenden Sprachen aus',
-  schematranslationpanel1034: 'Stornieren',
+  schematranslationpanel1034: 'Abbrechen',
   schematranslationpanel1044: 'Übersetzungen importieren',
   schematranslationpanel1056: 'Automatische Übersetzung mit Google Übersetzer',
   schematranslationpanel1074: 'Automatische Übersetzung',
@@ -3843,7 +3849,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\SchemaTranslationPanel.tsx
   schematranslationpanel1148: 'Zielsprachen auswählen',
-  schematranslationpanel1195: 'Stornieren',
+  schematranslationpanel1195: 'Abbrechen',
   schematranslationpanel1205: 'Jetzt übersetzen',
 
   // resources/js\Components\Panels\SystemSettingsPanel.tsx
@@ -4020,7 +4026,7 @@ export const de: Translations = {
 
   // resources/js\Components\Panels\TemplateDbSchemaDependenciesPanel.tsx
   templatedbschemadependenciespanel231: 'Geben Sie einen Alias für dieses DB-Schema in dem Template ein',
-  templatedbschemadependenciespanel242: 'Stornieren',
+  templatedbschemadependenciespanel242: 'Abbrechen',
   templatedbschemadependenciespanel248: 'Abhängigkeit hinzufügen',
   templatedbschemadependenciespanel324: 'Das Laden der Templates ist fehlgeschlagen',
   templatedbschemadependenciespanel346: 'Das Laden der Templateabhängigkeiten ist fehlgeschlagen',
@@ -4340,7 +4346,7 @@ export const de: Translations = {
 
   // resources/js/Components/SqlImportModal.tsx
   sqlimportmodal369: 'Unterstützt .sql- und .txt-Dateien',
-  sqlimportmodal405: 'Stornieren',
+  sqlimportmodal405: 'Abbrechen',
 
   // resources/js\Components\SqlImportModal.tsx
   sqlimportmodal423: '📥 Schema importieren',
@@ -4743,7 +4749,7 @@ export const de: Translations = {
   projectinvitationresponse458: 'Geben Sie Ihr Passwort ein',
   projectinvitationresponse466: 'Passwort bestätigen *',
   projectinvitationresponse471: 'Bestätigen Sie Ihr Passwort',
-  projectinvitationresponse480: 'Stornieren',
+  projectinvitationresponse480: 'Abbrechen',
   projectinvitationresponse487: 'Benutzerkonto erstellen',
 
   // resources/views\admin\pages\create.blade.php

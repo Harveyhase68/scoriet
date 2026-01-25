@@ -52,10 +52,6 @@ class CacheInvalidationObserver
                 $schemaCacheKey = "schema_data:{$projectId}";
                 if (Cache::has($schemaCacheKey)) {
                     Cache::forget($schemaCacheKey);
-                    \Log::info("🗑️ [CACHE INVALIDATED] Schema cache for project #{$projectId} ({$action})", [
-                        'model' => class_basename($model),
-                        'cache_key' => $schemaCacheKey,
-                    ]);
                 }
 
                 // 2. Delete Gtree Cache for all templates
@@ -64,10 +60,6 @@ class CacheInvalidationObserver
                     $gtreeCacheKey = "gtree:{$projectId}:{$template->id}";
                     if (Cache::has($gtreeCacheKey)) {
                         Cache::forget($gtreeCacheKey);
-                        \Log::info("🗑️ [CACHE INVALIDATED] Gtree cache for project #{$projectId} template #{$template->id} ({$action})", [
-                            'model' => class_basename($model),
-                            'cache_key' => $gtreeCacheKey,
-                        ]);
                     }
                 }
             }

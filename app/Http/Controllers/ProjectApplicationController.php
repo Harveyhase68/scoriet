@@ -169,7 +169,7 @@ class ProjectApplicationController extends Controller
             'user_id_type' => gettype($user->id),
             'owner_id_string' => (string)$application->project->owner_id,
             'user_id_string' => (string)$user->id,
-            'are_equal_strict' => $application->project->owner_id === $user->id,
+            'are_equal_strict' => (string)$application->project->owner_id === (string)$user->id,
             'are_equal_loose' => $application->project->owner_id == $user->id,
             'are_equal_string' => (string)$application->project->owner_id === (string)$user->id,
         ]);
