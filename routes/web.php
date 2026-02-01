@@ -160,6 +160,10 @@ Route::get('/{locale}/impressum', [App\Http\Controllers\PageController::class, '
     ->where('locale', 'en|de|fr|es|it')
     ->name('pages.impressum');
 
+Route::get('/{locale}/contact', [App\Http\Controllers\PageController::class, 'contact'])
+    ->where('locale', 'en|de|fr|es|it')
+    ->name('pages.contact');
+
 // Localized static pages (only for known locales)
 Route::middleware(['web'])->group(function () {
     Route::get('/{locale}/{slug}', [App\Http\Controllers\PageController::class, 'show'])

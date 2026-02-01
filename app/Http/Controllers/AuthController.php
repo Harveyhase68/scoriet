@@ -191,6 +191,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
+            'device_id' => 'nullable|string', // For 2FA trusted device check
         ]);
 
         if ($validator->fails()) {
@@ -218,6 +219,119 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Check if 2FA is enabled
+        if ($user->hasTwoFactorEnabled()) {
+            $deviceId = $request->input('device_id');
+            $deviceTrusted = $deviceId && $user->isDeviceTrusted($deviceId);
+            $needsReverification = $user->needsTwoFactorReVerification();
+
+            // If device is not trusted or needs re-verification, require 2FA
+            if (!$deviceTrusted || $needsReverification) {
+                // Create a temporary login token that's only valid for 2FA verification
+                // This token is stored in session/cache, not as a real access token
+                $twoFactorToken = bin2hex(random_bytes(32));
+                \Cache::put('2fa_pending_' . $twoFactorToken, [
+                    'user_id' => $user->id,
+                    'device_id' => $deviceId,
+                    'created_at' => now()->toISOString(),
+                ], now()->addMinutes(10)); // Token valid for 10 minutes
+
+                return response()->json([
+                    'message' => '2FA-Verifizierung erforderlich',
+                    'two_factor_required' => true,
+                    'two_factor_token' => $twoFactorToken,
+                    'needs_reverification' => $needsReverification,
+                ], 200);
+            }
+
+            // Device is trusted and doesn't need re-verification - continue with login
+        }
+
+        // Complete login (no 2FA or device trusted)
+        return $this->completeLogin($user, $request);
+    }
+
+    /**
+     * Complete login after 2FA verification
+     */
+    public function loginWith2FA(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'two_factor_token' => 'required|string',
+            'code' => 'required|string',
+            'trust_device' => 'nullable|boolean',
+            'device_id' => 'nullable|string',
+            'browser' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validierungsfehler',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Retrieve pending 2FA data
+        $pendingData = \Cache::get('2fa_pending_' . $request->two_factor_token);
+
+        if (!$pendingData) {
+            return response()->json([
+                'message' => '2FA-Session abgelaufen. Bitte erneut einloggen.',
+            ], 401);
+        }
+
+        $user = User::find($pendingData['user_id']);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Benutzer nicht gefunden.',
+            ], 401);
+        }
+
+        // Verify the 2FA code
+        $code = $request->code;
+        $isRecoveryCode = strlen($code) === 10;
+        $verified = false;
+
+        if ($isRecoveryCode) {
+            $verified = $user->verifyRecoveryCode($code);
+        } else {
+            $google2fa = new \PragmaRX\Google2FA\Google2FA();
+            $verified = $google2fa->verifyKey($user->two_factor_secret, $code);
+
+            if ($verified) {
+                $user->updateTwoFactorVerificationTime();
+            }
+        }
+
+        if (!$verified) {
+            return response()->json([
+                'message' => 'Ungültiger 2FA-Code.',
+            ], 422);
+        }
+
+        // Delete the pending token
+        \Cache::forget('2fa_pending_' . $request->two_factor_token);
+
+        // Trust device if requested
+        if ($request->boolean('trust_device') && $request->device_id) {
+            $user->trustDevice(
+                $request->device_id,
+                $request->browser ?? 'Unknown Browser',
+                $request->ip()
+            );
+        }
+
+        // Complete login with remember_me from pending data
+        $rememberMe = $pendingData['remember_me'] ?? false;
+        return $this->completeLogin($user, $request, $isRecoveryCode, $rememberMe);
+    }
+
+    /**
+     * Complete the login process and return token
+     */
+    private function completeLogin(User $user, Request $request, bool $recoveryCodeUsed = false, bool $rememberMe = false)
+    {
         // Check if user should have a pending invitation and doesn't already have one
         if (!$user->hasPendingInvitation()) {
             $invitation = \App\Models\ProjectInvitation::where('invited_email', $user->email)
@@ -230,27 +344,48 @@ class AuthController extends Controller
             }
         }
 
+        // Record login and reset inactivity warnings
+        $user->recordLogin();
+        // Also try to claim monthly credits (if eligible)
+        $creditsAwarded = $user->claimMonthlyCredits();
+
         // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
         // This prevents account sharing and ensures only one active session per user
         $existingTokenCount = $user->tokens()->where('revoked', false)->count();
         $user->tokens()->update(['revoked' => true]);
 
-        // Create a personal access token instead of OAuth token
-        $tokenResult = $user->createToken('Personal Access Token');
-        $token = $tokenResult->accessToken;
+        // Create a personal access token
+        $tokenResult = $user->createToken($rememberMe ? 'RememberMe Token' : 'Personal Access Token');
+        $tokenModel = $tokenResult->token;
+
+        // Set extended expiry for remember_me (30 days)
+        if ($rememberMe) {
+            $tokenModel->expires_at = now()->addDays(30);
+            $tokenModel->save();
+        }
 
         // Refresh user to get updated pending invitation
         $user->refresh();
 
-        return response()->json([
+        $response = [
             'message' => 'Login erfolgreich',
             'user' => $user,
-            'access_token' => $token,
+            'access_token' => $tokenResult->accessToken,
+            'refresh_token' => null, // Not implemented for custom tokens
             'token_type' => 'Bearer',
+            'expires_in' => $rememberMe ? (30 * 24 * 60 * 60) : (1 * 24 * 60 * 60), // 30 days or 1 day
             'has_pending_invitation' => $user->hasPendingInvitation(),
             'other_sessions_revoked' => $existingTokenCount > 0,
             'revoked_session_count' => $existingTokenCount,
-        ]);
+            'monthly_credits_awarded' => $creditsAwarded ?? false,
+        ];
+
+        if ($recoveryCodeUsed) {
+            $response['recovery_code_used'] = true;
+            $response['recovery_codes_remaining'] = $user->getRecoveryCodesCount();
+        }
+
+        return response()->json($response);
     }
 
     /**

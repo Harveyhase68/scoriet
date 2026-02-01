@@ -20,7 +20,7 @@ class FtpSshUploadController extends Controller
     }
 
     /**
-     * Check if user has access to the project
+     * Check if user has access to the project (view settings)
      */
     private function userCanAccessProject(Project $project, $user): bool
     {
@@ -28,34 +28,35 @@ class FtpSshUploadController extends Controller
             return false;
         }
 
-        // Check if user is owner
-        if ((int) $project->owner_id === (int) $user->id) {
-            return true;
-        }
-
-        // Check if user is a direct member
-        if ($project->members()->where('user_id', $user->id)->exists()) {
-            return true;
-        }
-
-        // Check if user is a team member of a project team
-        $teamMember = $project->teams()
-            ->whereHas('members', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->where(function ($q) {
-                $q->whereDoesntHave('subscription')
-                  ->orWhereHas('subscription', function ($sq) {
-                      $sq->where('is_soft_locked', false);
-                  });
-            })
-            ->exists();
-
-        return $teamMember;
+        return $project->userCanAccess($user);
     }
 
     /**
-     * Get FTP/SSH settings for a project
+     * Check if user can deploy to project (requires deploy permission)
+     */
+    private function userCanDeployToProject(Project $project, $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return $project->userCanDeploy($user);
+    }
+
+    /**
+     * Check if user can edit project settings (includes FTP settings)
+     */
+    private function userCanEditProjectSettings(Project $project, $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return $project->userCanEditProject($user);
+    }
+
+    /**
+     * Get FTP/SSH settings for a project (password masked for web UI)
      */
     public function getSettings(Project $project): JsonResponse
     {
@@ -72,7 +73,44 @@ class FtpSshUploadController extends Controller
                 'ftp_host' => $project->ftp_host,
                 'ftp_port' => $project->ftp_port ?? ($project->deployment_type === 'sftp' ? 22 : 21),
                 'ftp_username' => $project->ftp_username,
-                'ftp_password' => $project->ftp_password ? '********' : null, // Mask password
+                'ftp_password' => $project->ftp_password ? '********' : null, // Mask password for web UI
+                'ftp_directory' => $project->ftp_directory,
+                'ftp_passive' => $project->ftp_passive ?? true,
+                'ftp_ssl' => $project->ftp_ssl ?? false,
+                'has_credentials' => $project->hasFtpDeployment(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get FTP/SSH settings for CLI (includes actual password for direct upload)
+     * This endpoint is only available via CLI routes (auth:api middleware)
+     * Accepts either Project model (via route model binding) or int $id
+     */
+    public function getSettingsForCli($id): JsonResponse
+    {
+        // Handle both model binding and raw ID
+        $project = $id instanceof Project ? $id : Project::find($id);
+
+        if (!$project) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        $user = Auth::user();
+
+        if (!$this->userCanAccessProject($project, $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // For CLI, we return the actual password so it can perform direct FTP upload
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'deployment_type' => $project->deployment_type,
+                'ftp_host' => $project->ftp_host,
+                'ftp_port' => $project->ftp_port ?? ($project->deployment_type === 'sftp' ? 22 : 21),
+                'ftp_username' => $project->ftp_username,
+                'ftp_password' => $project->ftp_password, // Actual password for CLI direct upload
                 'ftp_directory' => $project->ftp_directory,
                 'ftp_passive' => $project->ftp_passive ?? true,
                 'ftp_ssl' => $project->ftp_ssl ?? false,
@@ -88,8 +126,8 @@ class FtpSshUploadController extends Controller
     {
         $user = Auth::user();
 
-        if (!$this->userCanAccessProject($project, $user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$this->userCanEditProjectSettings($project, $user)) {
+            return response()->json(['message' => 'Unauthorized - project.edit permission required'], 403);
         }
 
         $validated = $request->validate([
@@ -183,8 +221,8 @@ class FtpSshUploadController extends Controller
     {
         $user = Auth::user();
 
-        if (!$this->userCanAccessProject($project, $user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$this->userCanDeployToProject($project, $user)) {
+            return response()->json(['message' => 'Unauthorized - generation.deploy permission required'], 403);
         }
 
         if (!$project->hasFtpDeployment()) {
@@ -236,8 +274,8 @@ class FtpSshUploadController extends Controller
     {
         $user = Auth::user();
 
-        if (!$this->userCanAccessProject($project, $user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$this->userCanEditProjectSettings($project, $user)) {
+            return response()->json(['message' => 'Unauthorized - project.edit permission required'], 403);
         }
 
         $project->update([

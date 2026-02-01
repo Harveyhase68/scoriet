@@ -2160,3 +2160,101 @@ button.landing-lang-selector .p-button-label {
 
 /* Also apply to inline success badges/spans that use successText color */
 /* These are custom status badges in the code */
+
+/* ============================================================
+   Themed Accordion Styling
+   Uses CSS variables passed from React component
+   ============================================================ */
+.themed-accordion .p-accordion-header .p-accordion-header-link {
+  background: var(--accordion-header-bg, var(--theme-bg-tertiary)) !important;
+  color: var(--accordion-text, var(--theme-text-primary)) !important;
+  border-color: var(--accordion-border, var(--theme-border-primary)) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.themed-accordion .p-accordion-header:not(.p-disabled).p-highlight .p-accordion-header-link {
+  background: var(--accordion-header-bg, var(--theme-bg-tertiary)) !important;
+  color: var(--accordion-text, var(--theme-text-primary)) !important;
+}
+
+.themed-accordion .p-accordion-header:not(.p-disabled) .p-accordion-header-link:hover {
+  background: var(--accordion-header-bg, var(--theme-bg-tertiary)) !important;
+  filter: brightness(1.1);
+}
+
+.themed-accordion .p-accordion-content {
+  background: var(--accordion-content-bg, var(--theme-bg-secondary)) !important;
+  color: var(--accordion-text, var(--theme-text-primary)) !important;
+  border-color: var(--accordion-border, var(--theme-border-primary)) !important;
+  padding: 1rem !important;
+}
+
+.themed-accordion .p-accordion-tab {
+  border-color: var(--accordion-border, var(--theme-border-primary)) !important;
+}
+
+/* Accordion icon */
+.themed-accordion .p-accordion-header-link .p-accordion-toggle-icon {
+  color: var(--accordion-text, var(--theme-text-primary)) !important;
+}
+
+/* Dialog Theming for Role Modal */
+.p-dialog .p-dialog-header {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+  border-bottom: 1px solid var(--theme-border-primary) !important;
+}
+
+.p-dialog .p-dialog-content {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-dialog .p-dialog-footer {
+  background: var(--theme-bg-tertiary) !important;
+  border-top: 1px solid var(--theme-border-primary) !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-header-icon {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-header-icon:hover {
+  color: var(--theme-text-primary) !important;
+  background: var(--theme-bg-secondary) !important;
+}
+
+/* ============================================================
+   Panel Scrollbar Styling - More Visible Scrollbars for Panels
+   ============================================================ */
+.panel-scrollable {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-accent, #3b82f6) var(--theme-bg-tertiary, #2d2d2d);
+}
+
+.panel-scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel-scrollable::-webkit-scrollbar-track {
+  background: var(--theme-bg-tertiary, #2d2d2d);
+  border-radius: 4px;
+}
+
+.panel-scrollable::-webkit-scrollbar-thumb {
+  background: var(--theme-border-secondary, #4a4a4a);
+  border-radius: 4px;
+  border: 1px solid var(--theme-bg-tertiary, #2d2d2d);
+}
+
+.panel-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-accent, #3b82f6);
+}
+
+/* Scrollbar corner for dual scrollbars */
+.panel-scrollable::-webkit-scrollbar-corner {
+  background: var(--theme-bg-tertiary, #2d2d2d);
+}
+

@@ -1276,7 +1276,12 @@ class UltimateTemplateController extends Controller
                 $tables = $gtree[0]['project'][0]['tables'];
 
                 foreach ($tables as $index => $tableData) {
-                    if (isset($tableData['filename']) && $tableData['filename'] === $tableName) {
+                    // Check both 'filename' and 'tablename' fields since gtree structure may vary
+                    $tableFilename = $tableData['filename'] ?? null;
+                    $tableTablename = $tableData['tablename'] ?? null;
+
+                    if (($tableFilename && $tableFilename === $tableName) ||
+                        ($tableTablename && $tableTablename === $tableName)) {
                         $tableIndex = $index;
                         $actualTableName = $tableName;
                         error_log("🔧 Backend Debug: Found table at index $index: " . $tableName);
@@ -1290,11 +1295,12 @@ class UltimateTemplateController extends Controller
             error_log("🔧 Backend Debug: No tableName parameter provided");
         }
 
-        // Replace %1-%9 placeholders in filename
+        // Replace %1-%9 placeholders in filename AND output path
         $processedFileName = $this->replaceFilenamePlaceholders($file->file_name, $gtreeData, $actualTableName, $languageCode, $file);
+        $processedOutputPath = $this->replaceFilenamePlaceholders($file->output_path ?? '/', $gtreeData, $actualTableName, $languageCode, $file);
 
         // 🎯 INJECT TEMPLATE FILE VARIABLES into gtreeData for this file
-        $outputPath = $file->output_path ?? '/';
+        $outputPath = $processedOutputPath;
         $templateFolder = dirname($outputPath); // Extract folder from output path
         $templateFolder = ($templateFolder === '.' || $templateFolder === '/') ? '' : $templateFolder;
 
@@ -1355,7 +1361,7 @@ class UltimateTemplateController extends Controller
             'original_content' => $content,
             'compiled_content' => $compiledContent,
             'is_compiled' => $compile,
-            'output_path' => $file->output_path ?? '/',
+            'output_path' => $processedOutputPath,
             'file_size' => strlen($compiledContent),
             'generation_type' => $generationType,
             'generated_from_template' => $file->file_name,
@@ -2445,25 +2451,143 @@ JS;
                 \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution in generateForCli", $includeErrors);
             }
 
+            // 🎯 Extract tables and languages from gtree for per-table/per-language generation
+            $tablesFromGtree = $gtreeData['gtree'][0]['project'][0]['tables'] ?? [];
+            $languagesFromGtree = $gtreeData['gtree'][0]['project'][0]['lang'] ?? [];
+            $languageCodes = !empty($languagesFromGtree)
+                ? array_column($languagesFromGtree, 'code')
+                : ['en'];
+
             foreach ($resolvedFiles as $templateFile) {
                 // Convert back to object if needed for compatibility
                 $templateFile = (object) $templateFile;
 
                 try {
-                    // Process template for each file
-                    // The engine already has gtree in constructor, processTemplate uses it internally
-                    $renderedContent = $engine->processTemplate(
-                        $templateFile->file_content,
-                        'generate', // function name
-                        null, // tableIndex (null = all tables)
-                        false // includeSource
-                    );
+                    // 🎯 Skip ZIP files - they are handled client-side
+                    if (($templateFile->content_type ?? null) === 'zip') {
+                        continue;
+                    }
 
-                    $generatedFiles[] = [
-                        'path' => $templateFile->file_path,
-                        'filename' => $templateFile->file_name,
-                        'content' => $renderedContent,
-                    ];
+                    $fileType = $templateFile->file_type ?? 'project_file';
+
+                    // 🔥 FIX: Handle db_table_file - generate one file per table
+                    if ($fileType === 'db_table_file' || $fileType === 'db_table_file_languages') {
+                        // Generate for each table
+                        if (empty($tablesFromGtree)) {
+                            \Log::warning("⚠️ [CLI] Skipping db_table_file because no tables available", [
+                                'file' => $templateFile->file_name
+                            ]);
+                            continue;
+                        }
+
+                        foreach ($tablesFromGtree as $tableData) {
+                            $tableName = $tableData['filename'] ?? $tableData['tablename'] ?? null;
+                            if (!$tableName) continue;
+
+                            $languagesToProcess = ($fileType === 'db_table_file_languages') ? $languageCodes : ['en'];
+
+                            foreach ($languagesToProcess as $languageCode) {
+                                $result = $this->processTemplateFile(
+                                    $engine,
+                                    $templateFile,
+                                    $gtreeData,
+                                    true, // compile
+                                    $tableName,
+                                    $languageCode,
+                                    false // includeSource
+                                );
+
+                                if (!$result['has_syntax_errors']) {
+                                    // 🎯 Execute JavaScript to get actual output
+                                    $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
+
+                                    // Build full file path (path key must include filename for ZIP)
+                                    $fullPath = trim($result['output_path'] ?? '', '/');
+                                    $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
+
+                                    $generatedFiles[] = [
+                                        'path' => $fullPath,
+                                        'filepath' => $fullPath,
+                                        'filename' => $result['filename'],
+                                        'content' => $output,
+                                        'table' => $tableName,
+                                        'language' => $languageCode,
+                                    ];
+                                } else {
+                                    \Log::warning("⚠️ [CLI] Syntax errors in file", [
+                                        'file' => $result['filename'],
+                                        'table' => $tableName,
+                                        'errors' => $result['syntax_errors'],
+                                    ]);
+                                }
+                            }
+                        }
+                    } elseif ($fileType === 'project_file_languages') {
+                        // Generate for each language (no table iteration)
+                        foreach ($languageCodes as $languageCode) {
+                            $result = $this->processTemplateFile(
+                                $engine,
+                                $templateFile,
+                                $gtreeData,
+                                true, // compile
+                                null,
+                                $languageCode,
+                                false // includeSource
+                            );
+
+                            if (!$result['has_syntax_errors']) {
+                                $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
+
+                                // Build full file path (path key must include filename for ZIP)
+                                $fullPath = trim($result['output_path'] ?? '', '/');
+                                $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
+
+                                $generatedFiles[] = [
+                                    'path' => $fullPath,
+                                    'filepath' => $fullPath,
+                                    'filename' => $result['filename'],
+                                    'content' => $output,
+                                    'language' => $languageCode,
+                                ];
+                            } else {
+                                \Log::warning("⚠️ [CLI] Syntax errors in file", [
+                                    'file' => $result['filename'],
+                                    'errors' => $result['syntax_errors'],
+                                ]);
+                            }
+                        }
+                    } else {
+                        // project_file or static_file - generate once
+                        $result = $this->processTemplateFile(
+                            $engine,
+                            $templateFile,
+                            $gtreeData,
+                            true, // compile
+                            null,
+                            'en',
+                            false // includeSource
+                        );
+
+                        if (!$result['has_syntax_errors']) {
+                            $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, 'en');
+
+                            // Build full file path (path key must include filename for ZIP)
+                            $fullPath = trim($result['output_path'] ?? '', '/');
+                            $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
+
+                            $generatedFiles[] = [
+                                'path' => $fullPath,
+                                'filepath' => $fullPath,
+                                'filename' => $result['filename'],
+                                'content' => $output,
+                            ];
+                        } else {
+                            \Log::warning("⚠️ [CLI] Syntax errors in file", [
+                                'file' => $result['filename'],
+                                'errors' => $result['syntax_errors'],
+                            ]);
+                        }
+                    }
                 } catch (\Exception $e) {
                     // Log error but continue with other files
                     \Log::error("CLI Generation failed for file {$templateFile->file_name}: " . $e->getMessage());

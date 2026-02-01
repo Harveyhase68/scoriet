@@ -298,6 +298,18 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     setMemberModalVisible(true);
   };
 
+  const handleManageRoles = (team: Team) => {
+    const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+    const isTeamOwner = team.project_owner_id === currentUserId;
+    window.dispatchEvent(new CustomEvent('openTeamRolesPanel', {
+      detail: {
+        teamId: team.id,
+        teamName: team.name,
+        isOwner: isTeamOwner,
+      }
+    }));
+  };
+
   const onTeamSaved = () => {
     setTeamModalVisible(false);
     loadTeams();
@@ -742,6 +754,15 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             tooltip="Mitglieder anzeigen"
             onClick={() => handleManageMembers(team)}
           />
+          {/* Roles button - view only for locked teams */}
+          {isOwner && (
+            <Button
+              icon="pi pi-shield"
+              className="p-button-rounded p-button-text p-button-info p-button-sm"
+              tooltip="Rollen anzeigen"
+              onClick={() => handleManageRoles(team)}
+            />
+          )}
           {/* Transfer button - Owner can pass the locked team to someone else */}
           {isOwner && (
             <Button
@@ -789,6 +810,15 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           tooltip={t.teammanagementpanel386}
           onClick={() => handleManageMembers(team)}
         />
+        {/* Roles button - Owner and Admin */}
+        {canManageTeam && (
+          <Button
+            icon="pi pi-shield"
+            className="p-button-rounded p-button-text p-button-info p-button-sm"
+            tooltip="Rollen verwalten"
+            onClick={() => handleManageRoles(team)}
+          />
+        )}
         {/* Transfer button - only Owner */}
         {isOwner && (
           <Button

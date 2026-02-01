@@ -48,6 +48,12 @@ class SQLTokenizer
             'DECIMAL', 'NUMERIC', 'CHAR', 'VARCHAR', 'VARBINARY', 'LONGBLOB',
             // Index algorithm specifiers
             'USING', 'BTREE', 'HASH',
+            // Index column sort order (MySQL 8.0+)
+            'ASC', 'DESC',
+            // Navicat export specifics
+            'CHARACTER', 'INT',
+            // Inline constraint keyword
+            'CONSTRAINT',
         ];
     }
 

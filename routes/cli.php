@@ -35,7 +35,7 @@ Route::middleware('auth:api')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | CLI Auth Info Routes
+    | CLI Auth Info Routes (NO CLI access check - needed for status & unlock)
     |--------------------------------------------------------------------------
     */
     Route::prefix('auth')->group(function () {
@@ -48,16 +48,22 @@ Route::middleware('auth:api')->group(function () {
         // Logout / revoke token
         Route::post('/logout', [AuthController::class, 'logout']);
 
+        // CLI/Service access check and purchase
+        Route::get('/cli-access', [AuthController::class, 'cliAccess']);
+        Route::post('/unlock-cli', [AuthController::class, 'unlockCli']);
+        Route::post('/unlock-service', [AuthController::class, 'unlockService']);
+        Route::post('/unlock-bundle', [AuthController::class, 'unlockBundle']);
+
         // Verify token validity
         Route::get('/verify', [AuthController::class, 'verify']);
     });
 
     /*
     |--------------------------------------------------------------------------
-    | CLI Project Routes
+    | CLI Project Routes (requires CLI access)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('projects')->group(function () {
+    Route::prefix('projects')->middleware('cli.access')->group(function () {
         // List all projects user has access to
         Route::get('/', [ProjectController::class, 'list']);
 
@@ -78,14 +84,21 @@ Route::middleware('auth:api')->group(function () {
 
         // Get deployment settings (protected files + install/update scripts)
         Route::get('/{id}/deployment-settings', [ProjectController::class, 'deploymentSettings']);
+
+        // FTP/SSH Deployment Routes (CLI uses getSettingsForCli which returns actual password)
+        // Note: Using {id} for consistency with other routes, controller finds the Project
+        Route::get('/{id}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'getSettingsForCli']);
+        Route::put('/{id}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'updateSettings']);
+        Route::post('/{id}/ftp-test', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'testConnection']);
+        Route::post('/{id}/ftp-upload', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'upload']);
     });
 
     /*
     |--------------------------------------------------------------------------
-    | CLI Database Routes
+    | CLI Database Routes (requires CLI access)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('database')->group(function () {
+    Route::prefix('database')->middleware('cli.access')->group(function () {
         // List databases/schemas for a project
         Route::get('/list', [DatabaseController::class, 'list']);
 
@@ -119,10 +132,10 @@ Route::middleware('auth:api')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | CLI Template Routes
+    | CLI Template Routes (requires CLI access)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('templates')->group(function () {
+    Route::prefix('templates')->middleware('cli.access')->group(function () {
         // List all available templates
         Route::get('/', [TemplateController::class, 'list']);
 
@@ -163,10 +176,10 @@ Route::middleware('auth:api')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | CLI Code Generation Routes
+    | CLI Code Generation Routes (requires CLI access)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('generate')->group(function () {
+    Route::prefix('generate')->middleware('cli.access')->group(function () {
         // Generate code (returns job ID for progress tracking)
         Route::post('/', [GenerateController::class, 'generate']);
 
@@ -208,43 +221,44 @@ Route::middleware('auth:api')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Service Routes (scoriet-svc) - NO AUTH REQUIRED
-| These routes are called by the internal scoriet-svc service
-| Security: Only allow requests from localhost/local network
+| Service Routes (scoriet-svc)
+| These routes are called by the internal scoriet-svc service and GUI
+| Security: Service routes require Service access, GUI routes require CLI access
 |--------------------------------------------------------------------------
 */
 Route::prefix('svc')->group(function () {
     // =====================================================
-    // SERVICE-ONLY ROUTES (called by Rust service, no auth)
+    // SERVICE-ONLY ROUTES (called by Rust service, requires Service access)
     // =====================================================
+    Route::middleware(['auth:api', 'service.access'])->group(function () {
+        // Get next task from queue
+        Route::get('/queue', [SvcController::class, 'getQueue']);
 
-    // Get next task from queue
-    Route::get('/queue', [SvcController::class, 'getQueue']);
+        // Mark task as completed
+        Route::post('/tasks/{id}/complete', [SvcController::class, 'completeTask']);
 
-    // Mark task as completed
-    Route::post('/tasks/{id}/complete', [SvcController::class, 'completeTask']);
+        // Mark task as failed
+        Route::post('/tasks/{id}/fail', [SvcController::class, 'failTask']);
 
-    // Mark task as failed
-    Route::post('/tasks/{id}/fail', [SvcController::class, 'failTask']);
+        // Append log to task (for live logging)
+        Route::post('/tasks/{id}/log', [SvcController::class, 'appendLog']);
 
-    // Append log to task (for live logging)
-    Route::post('/tasks/{id}/log', [SvcController::class, 'appendLog']);
+        // Import schema data from service
+        Route::post('/schema-import', [SvcController::class, 'importSchema']);
 
-    // Import schema data from service
-    Route::post('/schema-import', [SvcController::class, 'importSchema']);
+        // Template upload from service
+        Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
 
-    // Template upload from service
-    Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
-
-    // File edit via service (service callbacks)
-    Route::post('/file-edit/{sessionId}/status', [SvcController::class, 'updateFileEditStatus']);
-    Route::post('/file-edit/{sessionId}/content', [SvcController::class, 'uploadFileContent']);
-    Route::get('/file-edit/{sessionId}/should-stop', [SvcController::class, 'checkFileEditShouldStop']);
+        // File edit via service (service callbacks)
+        Route::post('/file-edit/{sessionId}/status', [SvcController::class, 'updateFileEditStatus']);
+        Route::post('/file-edit/{sessionId}/content', [SvcController::class, 'uploadFileContent']);
+        Route::get('/file-edit/{sessionId}/should-stop', [SvcController::class, 'checkFileEditShouldStop']);
+    });
 
     // =====================================================
-    // USER ROUTES (called from GUI, requires authentication)
+    // USER ROUTES (called from GUI, requires CLI access)
     // =====================================================
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(['auth:api', 'cli.access'])->group(function () {
         // Get active task for current user (BEFORE {id} route!)
         Route::get('/tasks/active', [SvcController::class, 'getActiveTask']);
 

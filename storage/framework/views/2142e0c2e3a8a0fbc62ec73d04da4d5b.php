@@ -1,0 +1,1 @@
+laravel-exceptions-renderer::components.trace-and-editor<?php /**PATH C:\wamp\www\scoriet\storage\framework\views/fb39173555fb5c047fcdb2b098cf57f2.blade.php ENDPATH**/ ?>

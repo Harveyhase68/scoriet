@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\CheckCliAccess;
+use App\Http\Middleware\CheckServiceAccess;
+use App\Http\Middleware\CheckTeamPermission;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -60,6 +63,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register middleware aliases
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'team.permission' => CheckTeamPermission::class,
+            'cli.access' => CheckCliAccess::class,
+            'service.access' => CheckServiceAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

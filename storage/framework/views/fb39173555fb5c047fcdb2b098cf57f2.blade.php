@@ -1,0 +1,1 @@
+laravel-exceptions-renderer::components.trace-and-editor

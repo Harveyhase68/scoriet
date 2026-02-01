@@ -34,11 +34,15 @@ class PageController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'slug' => 'required|string|max:255',
+            'slug' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/'],
             'locale' => 'required|string|size:2|in:en,de,fr,es,it',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'is_active' => 'boolean',
+            'popup_on_landingpage' => 'boolean',
+            'popup_on_app' => 'boolean',
+            'popup_priority' => 'integer|min:1|max:999',
+            'popup_version' => 'integer|min:1',
         ]);
 
         // Check if slug + locale combination already exists
@@ -72,6 +76,10 @@ class PageController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'is_active' => 'boolean',
+            'popup_on_landingpage' => 'boolean',
+            'popup_on_app' => 'boolean',
+            'popup_priority' => 'integer|min:1|max:999',
+            'popup_version' => 'integer|min:1',
         ]);
 
         $page->update($validated);

@@ -47,6 +47,9 @@ class Subscription extends Model
     public const DATABASE_DESIGNER_UNLOCK_COST = 50;
     public const SCHEMA_MIGRATION_UNLOCK_COST = 50;
     public const MESSAGE_ATTACHMENTS_UNLOCK_COST = 50;
+    public const CLI_UNLOCK_COST = 50;           // CLI tool only
+    public const SERVICE_UNLOCK_COST = 50;       // Windows Service only
+    public const BUNDLE_UNLOCK_COST = 90;        // CLI + Service bundle (saves 10 credits)
 
     // Notification timing constants (in days)
     public const EXPIRY_WARNING_DAYS = 14;    // First warning: 14 days before expiry
@@ -1532,6 +1535,382 @@ class Subscription extends Model
             'is_expired' => $subscription->isExpired(),
             'can_renew' => !$subscription->is_free_tier,
             'user_credits' => $userCredits,
+        ];
+    }
+
+    // ========================================
+    // CLI / Service / Bundle Specific Methods
+    // ========================================
+
+    /**
+     * Check if user has CLI access
+     */
+    public static function hasCliAccess(int $userId): bool
+    {
+        // System/Admin users always have access
+        $user = User::find($userId);
+        if ($user && $user->isAdmin()) {
+            return true;
+        }
+
+        // Patrons always have access
+        if ($user && $user->isPatron()) {
+            return true;
+        }
+
+        // Check for CLI or Bundle subscription
+        return static::where('user_id', $userId)
+            ->whereIn('subscription_type', [self::TYPE_CLI, self::TYPE_BUNDLE])
+            ->where('is_active', true)
+            ->notExpired()
+            ->exists();
+    }
+
+    /**
+     * Check if user has Service access
+     */
+    public static function hasServiceAccess(int $userId): bool
+    {
+        // System/Admin users always have access
+        $user = User::find($userId);
+        if ($user && $user->isAdmin()) {
+            return true;
+        }
+
+        // Patrons always have access
+        if ($user && $user->isPatron()) {
+            return true;
+        }
+
+        // Check for Service or Bundle subscription
+        return static::where('user_id', $userId)
+            ->whereIn('subscription_type', [self::TYPE_SERVICE, self::TYPE_BUNDLE])
+            ->where('is_active', true)
+            ->notExpired()
+            ->exists();
+    }
+
+    /**
+     * Check if user has Bundle access (both CLI and Service)
+     */
+    public static function hasBundleAccess(int $userId): bool
+    {
+        return static::hasCliAccess($userId) && static::hasServiceAccess($userId);
+    }
+
+    /**
+     * Unlock CLI with credits (1 year subscription)
+     */
+    public static function unlockCliWithCredits(int $userId): ?self
+    {
+        $user = User::find($userId);
+        if (!$user || $user->credits < self::CLI_UNLOCK_COST) {
+            return null;
+        }
+
+        // Check if user already has bundle - don't downgrade
+        if (static::hasActiveSubscription($userId, self::TYPE_BUNDLE)) {
+            return static::where('user_id', $userId)
+                ->where('subscription_type', self::TYPE_BUNDLE)
+                ->first();
+        }
+
+        // Deduct credits
+        $user->decrement('credits', self::CLI_UNLOCK_COST);
+
+        // Log credit transaction
+        CreditTransaction::create([
+            'user_id' => $userId,
+            'amount' => -self::CLI_UNLOCK_COST,
+            'type' => 'cli_unlock',
+            'description' => 'CLI Tool unlock (1 year)',
+            'reference_type' => 'subscription',
+            'reference_id' => null,
+        ]);
+
+        // Check for existing subscription to extend
+        $existing = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_CLI)
+            ->first();
+
+        if ($existing) {
+            $baseDate = $existing->expires_at && $existing->expires_at->isFuture()
+                ? $existing->expires_at
+                : Carbon::now();
+            $existing->update([
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => $baseDate->copy()->addYear(),
+            ]);
+            return $existing;
+        }
+
+        return static::create([
+            'user_id' => $userId,
+            'subscription_type' => self::TYPE_CLI,
+            'entity_id' => null,
+            'is_free_tier' => false,
+            'is_active' => true,
+            'is_soft_locked' => false,
+            'expires_at' => Carbon::now()->addYear(),
+        ]);
+    }
+
+    /**
+     * Unlock Service with credits (1 year subscription)
+     */
+    public static function unlockServiceWithCredits(int $userId): ?self
+    {
+        $user = User::find($userId);
+        if (!$user || $user->credits < self::SERVICE_UNLOCK_COST) {
+            return null;
+        }
+
+        // Check if user already has bundle - don't downgrade
+        if (static::hasActiveSubscription($userId, self::TYPE_BUNDLE)) {
+            return static::where('user_id', $userId)
+                ->where('subscription_type', self::TYPE_BUNDLE)
+                ->first();
+        }
+
+        // Deduct credits
+        $user->decrement('credits', self::SERVICE_UNLOCK_COST);
+
+        // Log credit transaction
+        CreditTransaction::create([
+            'user_id' => $userId,
+            'amount' => -self::SERVICE_UNLOCK_COST,
+            'type' => 'service_unlock',
+            'description' => 'Windows Service unlock (1 year)',
+            'reference_type' => 'subscription',
+            'reference_id' => null,
+        ]);
+
+        // Check for existing subscription to extend
+        $existing = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_SERVICE)
+            ->first();
+
+        if ($existing) {
+            $baseDate = $existing->expires_at && $existing->expires_at->isFuture()
+                ? $existing->expires_at
+                : Carbon::now();
+            $existing->update([
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => $baseDate->copy()->addYear(),
+            ]);
+            return $existing;
+        }
+
+        return static::create([
+            'user_id' => $userId,
+            'subscription_type' => self::TYPE_SERVICE,
+            'entity_id' => null,
+            'is_free_tier' => false,
+            'is_active' => true,
+            'is_soft_locked' => false,
+            'expires_at' => Carbon::now()->addYear(),
+        ]);
+    }
+
+    /**
+     * Unlock Bundle (CLI + Service) with credits (1 year subscription)
+     */
+    public static function unlockBundleWithCredits(int $userId): ?self
+    {
+        $user = User::find($userId);
+        if (!$user || $user->credits < self::BUNDLE_UNLOCK_COST) {
+            return null;
+        }
+
+        // Deduct credits
+        $user->decrement('credits', self::BUNDLE_UNLOCK_COST);
+
+        // Log credit transaction
+        CreditTransaction::create([
+            'user_id' => $userId,
+            'amount' => -self::BUNDLE_UNLOCK_COST,
+            'type' => 'bundle_unlock',
+            'description' => 'CLI + Service Bundle unlock (1 year)',
+            'reference_type' => 'subscription',
+            'reference_id' => null,
+        ]);
+
+        // Deactivate any existing CLI or Service only subscriptions
+        static::where('user_id', $userId)
+            ->whereIn('subscription_type', [self::TYPE_CLI, self::TYPE_SERVICE])
+            ->update(['is_active' => false]);
+
+        // Check for existing bundle subscription to extend
+        $existing = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_BUNDLE)
+            ->first();
+
+        if ($existing) {
+            $baseDate = $existing->expires_at && $existing->expires_at->isFuture()
+                ? $existing->expires_at
+                : Carbon::now();
+            $existing->update([
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => $baseDate->copy()->addYear(),
+            ]);
+            return $existing;
+        }
+
+        return static::create([
+            'user_id' => $userId,
+            'subscription_type' => self::TYPE_BUNDLE,
+            'entity_id' => null,
+            'is_free_tier' => false,
+            'is_active' => true,
+            'is_soft_locked' => false,
+            'expires_at' => Carbon::now()->addYear(),
+        ]);
+    }
+
+    /**
+     * Unlock CLI/Service via Patron subscription
+     */
+    public static function unlockCliServiceWithPatron(int $userId): self
+    {
+        // Patrons get the bundle for free
+        return static::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'subscription_type' => self::TYPE_BUNDLE,
+            ],
+            [
+                'entity_id' => null,
+                'is_free_tier' => true,
+                'is_active' => true,
+                'is_soft_locked' => false,
+                'expires_at' => null, // Permanent for Patrons
+            ]
+        );
+    }
+
+    /**
+     * Get CLI access status for user
+     */
+    public static function getCliAccessStatus(int $userId): array
+    {
+        $user = User::find($userId);
+        $userCredits = $user ? $user->credits : 0;
+
+        // System/Admin users always have access
+        if ($user && $user->isAdmin()) {
+            return [
+                'has_cli_access' => true,
+                'has_service_access' => true,
+                'access_type' => 'system',
+                'is_system' => true,
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $userCredits,
+                'cli_cost' => self::CLI_UNLOCK_COST,
+                'service_cost' => self::SERVICE_UNLOCK_COST,
+                'bundle_cost' => self::BUNDLE_UNLOCK_COST,
+            ];
+        }
+
+        // Patrons always have access
+        if ($user && $user->isPatron()) {
+            return [
+                'has_cli_access' => true,
+                'has_service_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $user->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $userCredits,
+                'cli_cost' => self::CLI_UNLOCK_COST,
+                'service_cost' => self::SERVICE_UNLOCK_COST,
+                'bundle_cost' => self::BUNDLE_UNLOCK_COST,
+            ];
+        }
+
+        // Check for bundle subscription first
+        $bundleSub = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_BUNDLE)
+            ->first();
+
+        if ($bundleSub && $bundleSub->isValid()) {
+            $daysRemaining = $bundleSub->getDaysUntilExpiry();
+            return [
+                'has_cli_access' => true,
+                'has_service_access' => true,
+                'access_type' => 'bundle',
+                'subscription_type' => 'bundle',
+                'granted_at' => $bundleSub->created_at?->toISOString(),
+                'expires_at' => $bundleSub->expires_at?->toISOString(),
+                'days_remaining' => $daysRemaining,
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => true,
+                'user_credits' => $userCredits,
+                'cli_cost' => self::CLI_UNLOCK_COST,
+                'service_cost' => self::SERVICE_UNLOCK_COST,
+                'bundle_cost' => self::BUNDLE_UNLOCK_COST,
+            ];
+        }
+
+        // Check for individual subscriptions
+        $cliSub = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_CLI)
+            ->where('is_active', true)
+            ->first();
+
+        $serviceSub = static::where('user_id', $userId)
+            ->where('subscription_type', self::TYPE_SERVICE)
+            ->where('is_active', true)
+            ->first();
+
+        $hasCliAccess = $cliSub && $cliSub->isValid();
+        $hasServiceAccess = $serviceSub && $serviceSub->isValid();
+
+        // Determine what they still need
+        $needsCli = !$hasCliAccess;
+        $needsService = !$hasServiceAccess;
+
+        // Calculate best upgrade option
+        $upgradeOption = null;
+        $upgradeCost = null;
+        if ($needsCli && $needsService) {
+            $upgradeOption = 'bundle';
+            $upgradeCost = self::BUNDLE_UNLOCK_COST;
+        } elseif ($needsCli) {
+            $upgradeOption = 'cli';
+            $upgradeCost = self::CLI_UNLOCK_COST;
+        } elseif ($needsService) {
+            $upgradeOption = 'service';
+            $upgradeCost = self::SERVICE_UNLOCK_COST;
+        }
+
+        return [
+            'has_cli_access' => $hasCliAccess,
+            'has_service_access' => $hasServiceAccess,
+            'cli_subscription' => $cliSub ? [
+                'expires_at' => $cliSub->expires_at?->toISOString(),
+                'days_remaining' => $cliSub->getDaysUntilExpiry(),
+                'is_expired' => $cliSub->isExpired(),
+            ] : null,
+            'service_subscription' => $serviceSub ? [
+                'expires_at' => $serviceSub->expires_at?->toISOString(),
+                'days_remaining' => $serviceSub->getDaysUntilExpiry(),
+                'is_expired' => $serviceSub->isExpired(),
+            ] : null,
+            'access_type' => ($hasCliAccess || $hasServiceAccess) ? 'credits' : null,
+            'is_patron' => false,
+            'upgrade_option' => $upgradeOption,
+            'upgrade_cost' => $upgradeCost,
+            'user_credits' => $userCredits,
+            'cli_cost' => self::CLI_UNLOCK_COST,
+            'service_cost' => self::SERVICE_UNLOCK_COST,
+            'bundle_cost' => self::BUNDLE_UNLOCK_COST,
         ];
     }
 }

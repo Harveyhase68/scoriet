@@ -229,6 +229,13 @@ class SQLParser
                 $constraints[] = $this->parseKeyConstraint();
             } elseif ($this->currentTokenMatches('KEYWORD', 'UNIQUE')) {
                 $constraints[] = $this->parseUniqueConstraint();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'CONSTRAINT')) {
+                $constraints[] = $this->parseInlineConstraint();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'FOREIGN')) {
+                $constraints[] = $this->parseInlineForeignKey();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'SPATIAL') ||
+                      $this->currentTokenMatches('KEYWORD', 'FULLTEXT')) {
+                $constraints[] = $this->parseSpatialOrFulltextIndex();
             } else {
                 $fields[] = $this->parseFieldDefinition();
             }
@@ -361,6 +368,12 @@ class SQLParser
                 $columns[] = $col_token->value;
             }
 
+            // Skip ASC/DESC after column name (MySQL 8.0+, Navicat exports)
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
             if ($this->currentTokenMatches('COMMA')) {
                 $this->consumeToken('COMMA');
             } else {
@@ -369,6 +382,12 @@ class SQLParser
         }
 
         $this->consumeToken('RPAREN');
+
+        // Optional USING BTREE/HASH (Navicat exports)
+        if ($this->currentTokenMatches('KEYWORD', 'USING')) {
+            $this->consumeToken('KEYWORD', 'USING');
+            $this->consumeToken(); // BTREE or HASH
+        }
 
         return [
             'type' => 'PRIMARY KEY',
@@ -397,6 +416,12 @@ class SQLParser
             $col_token = $this->consumeToken();
             if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
                 $columns[] = $col_token->value;
+            }
+
+            // Skip ASC/DESC after column name (MySQL 8.0+, Navicat exports)
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
             }
 
             if ($this->currentTokenMatches('COMMA')) {
@@ -449,6 +474,12 @@ class SQLParser
                 $columns[] = $col_token->value;
             }
 
+            // Skip ASC/DESC after column name (MySQL 8.0+, Navicat exports)
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
             if ($this->currentTokenMatches('COMMA')) {
                 $this->consumeToken('COMMA');
             } else {
@@ -466,6 +497,198 @@ class SQLParser
 
         return [
             'type' => 'UNIQUE',
+            'name' => $key_name,
+            'columns' => $columns,
+        ];
+    }
+
+    /**
+     * Parse inline CONSTRAINT definitions (Navicat exports)
+     * e.g.: CONSTRAINT `fk_name` FOREIGN KEY (`col`) REFERENCES `table` (`col`) ON DELETE RESTRICT
+     * e.g.: CONSTRAINT `pk_name` PRIMARY KEY (`id`)
+     * e.g.: CONSTRAINT `uq_name` UNIQUE (`email`)
+     */
+    private function parseInlineConstraint()
+    {
+        $this->consumeToken('KEYWORD', 'CONSTRAINT');
+
+        // Constraint name
+        $constraint_name_token = $this->consumeToken();
+        $constraint_name = $constraint_name_token->value;
+
+        // Determine constraint type
+        if ($this->currentTokenMatches('KEYWORD', 'PRIMARY')) {
+            $result = $this->parsePrimaryKey();
+            $result['name'] = $constraint_name;
+            return $result;
+        } elseif ($this->currentTokenMatches('KEYWORD', 'UNIQUE')) {
+            $result = $this->parseUniqueConstraint();
+            $result['name'] = $constraint_name;
+            return $result;
+        } elseif ($this->currentTokenMatches('KEYWORD', 'FOREIGN')) {
+            return $this->parseInlineForeignKey($constraint_name);
+        }
+
+        // Unknown constraint type - skip to next comma or closing paren
+        while ($this->currentToken() &&
+               !$this->currentTokenMatches('COMMA') &&
+               !$this->currentTokenMatches('RPAREN')) {
+            $this->consumeToken();
+        }
+
+        return [
+            'type' => 'KEY',
+            'name' => $constraint_name,
+            'columns' => [],
+        ];
+    }
+
+    /**
+     * Parse inline FOREIGN KEY constraint
+     * e.g.: FOREIGN KEY (`col`) REFERENCES `table` (`col`) ON DELETE RESTRICT ON UPDATE RESTRICT
+     */
+    private function parseInlineForeignKey($constraint_name = null)
+    {
+        $this->consumeToken('KEYWORD', 'FOREIGN');
+        $this->consumeToken('KEYWORD', 'KEY');
+
+        // Source columns
+        $this->consumeToken('LPAREN');
+        $source_cols = [];
+        while (!$this->currentTokenMatches('RPAREN')) {
+            $col_token = $this->consumeToken();
+            if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                $source_cols[] = $col_token->value;
+            }
+
+            // Skip ASC/DESC
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
+            if ($this->currentTokenMatches('COMMA')) {
+                $this->consumeToken('COMMA');
+            } else {
+                break;
+            }
+        }
+        $this->consumeToken('RPAREN');
+
+        $this->consumeToken('KEYWORD', 'REFERENCES');
+
+        // Reference table
+        $ref_table_token = $this->consumeToken();
+        $ref_table = $ref_table_token->value;
+
+        // Reference columns
+        $this->consumeToken('LPAREN');
+        $ref_cols = [];
+        while (!$this->currentTokenMatches('RPAREN')) {
+            $col_token = $this->consumeToken();
+            if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                $ref_cols[] = $col_token->value;
+            }
+
+            // Skip ASC/DESC
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
+            if ($this->currentTokenMatches('COMMA')) {
+                $this->consumeToken('COMMA');
+            } else {
+                break;
+            }
+        }
+        $this->consumeToken('RPAREN');
+
+        // Parse ON DELETE and ON UPDATE actions
+        $on_delete = 'NO ACTION';
+        $on_update = 'NO ACTION';
+
+        while ($this->currentTokenMatches('KEYWORD', 'ON')) {
+            $this->consumeToken('KEYWORD', 'ON');
+
+            if ($this->currentTokenMatches('KEYWORD', 'DELETE')) {
+                $this->consumeToken('KEYWORD', 'DELETE');
+                $on_delete = $this->parseReferentialAction();
+            } elseif ($this->currentTokenMatches('KEYWORD', 'UPDATE')) {
+                $this->consumeToken('KEYWORD', 'UPDATE');
+                $on_update = $this->parseReferentialAction();
+            }
+        }
+
+        return [
+            'type' => 'FOREIGN KEY',
+            'name' => $constraint_name ?? ('fk_' . implode('_', $source_cols)),
+            'columns' => $source_cols,
+            'references' => [
+                'table' => $ref_table,
+                'columns' => $ref_cols,
+            ],
+            'on_delete' => $on_delete,
+            'on_update' => $on_update,
+        ];
+    }
+
+    /**
+     * Parse SPATIAL INDEX or FULLTEXT INDEX
+     * e.g.: SPATIAL INDEX `idx_geo`(`location`)
+     * e.g.: FULLTEXT INDEX `idx_ft`(`content`)
+     */
+    private function parseSpatialOrFulltextIndex()
+    {
+        $index_type = $this->consumeToken('KEYWORD')->value; // SPATIAL or FULLTEXT
+
+        // Optional KEY or INDEX keyword
+        if ($this->currentTokenMatches('KEYWORD', 'KEY') ||
+            $this->currentTokenMatches('KEYWORD', 'INDEX')) {
+            $this->consumeToken();
+        }
+
+        // Index name (optional)
+        $key_name = null;
+        if (!$this->currentTokenMatches('LPAREN')) {
+            $name_token = $this->consumeToken();
+            if (in_array($name_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                $key_name = $name_token->value;
+            }
+        }
+
+        $this->consumeToken('LPAREN');
+
+        $columns = [];
+        while (!$this->currentTokenMatches('RPAREN')) {
+            $col_token = $this->consumeToken();
+            if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER'])) {
+                $columns[] = $col_token->value;
+            }
+
+            // Skip ASC/DESC
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
+            if ($this->currentTokenMatches('COMMA')) {
+                $this->consumeToken('COMMA');
+            } else {
+                break;
+            }
+        }
+
+        $this->consumeToken('RPAREN');
+
+        // Optional USING BTREE/HASH
+        if ($this->currentTokenMatches('KEYWORD', 'USING')) {
+            $this->consumeToken('KEYWORD', 'USING');
+            $this->consumeToken(); // BTREE or HASH
+        }
+
+        return [
+            'type' => 'KEY',
             'name' => $key_name,
             'columns' => $columns,
         ];

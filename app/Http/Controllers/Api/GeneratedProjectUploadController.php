@@ -48,6 +48,14 @@ class GeneratedProjectUploadController extends Controller
             return response()->json(['success' => false, 'message' => 'Project not found'], 404);
         }
 
+        // Check if user has generation permission
+        if (!$project->userCanGenerate($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized - generation.run permission required'
+            ], 403);
+        }
+
         // Create permanent storage directory
         $storagePath = storage_path('app/generated-projects');
         if (!file_exists($storagePath)) {

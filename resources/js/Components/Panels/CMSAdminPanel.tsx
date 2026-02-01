@@ -5,6 +5,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Editor as PrimeEditor } from 'primereact/editor';
 import { Checkbox } from 'primereact/checkbox';
@@ -26,6 +27,10 @@ interface Page {
   title: string;
   content: string;
   is_active: boolean;
+  popup_on_landingpage: boolean;
+  popup_on_app: boolean;
+  popup_priority: number;
+  popup_version: number;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +41,10 @@ interface PageFormData {
   title: string;
   content: string;
   is_active: boolean;
+  popup_on_landingpage: boolean;
+  popup_on_app: boolean;
+  popup_priority: number;
+  popup_version: number;
 }
 
 interface CMSAdminPanelProps {
@@ -66,6 +75,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
     title: '',
     content: '',
     is_active: true,
+    popup_on_landingpage: false,
+    popup_on_app: false,
+    popup_priority: 99,
+    popup_version: 1,
   });
   const [saving, setSaving] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -104,6 +117,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
         title: pageToEdit.title,
         content: pageToEdit.content,
         is_active: pageToEdit.is_active,
+        popup_on_landingpage: pageToEdit.popup_on_landingpage || false,
+        popup_on_app: pageToEdit.popup_on_app || false,
+        popup_priority: pageToEdit.popup_priority || 99,
+        popup_version: pageToEdit.popup_version || 1,
       });
       setShowDialog(true);
       return true;
@@ -136,6 +153,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
             title: pageToEdit.title,
             content: pageToEdit.content,
             is_active: pageToEdit.is_active,
+            popup_on_landingpage: pageToEdit.popup_on_landingpage || false,
+            popup_on_app: pageToEdit.popup_on_app || false,
+            popup_priority: pageToEdit.popup_priority || 99,
+            popup_version: pageToEdit.popup_version || 1,
           });
           setShowDialog(true);
         }
@@ -159,6 +180,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
       title: '',
       content: '',
       is_active: true,
+      popup_on_landingpage: false,
+      popup_on_app: false,
+      popup_priority: 99,
+      popup_version: 1,
     });
     setShowDialog(true);
   };
@@ -171,6 +196,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
       title: page.title,
       content: page.content,
       is_active: page.is_active,
+      popup_on_landingpage: page.popup_on_landingpage || false,
+      popup_on_app: page.popup_on_app || false,
+      popup_priority: page.popup_priority || 99,
+      popup_version: page.popup_version || 1,
     });
     setShowDialog(true);
   };
@@ -192,6 +221,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
             title: formData.title,
             content: formData.content,
             is_active: formData.is_active,
+            popup_on_landingpage: formData.popup_on_landingpage,
+            popup_on_app: formData.popup_on_app,
+            popup_priority: formData.popup_priority,
+            popup_version: formData.popup_version,
           }),
         });
         toast.showSuccess(t.cmsadminpanel122);
@@ -280,6 +313,40 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
     );
   };
 
+  const popupBodyTemplate = (rowData: Page) => {
+    const hasPopup = rowData.popup_on_landingpage || rowData.popup_on_app;
+    if (!hasPopup) return null;
+
+    return (
+      <div className="flex gap-1 flex-wrap">
+        {rowData.popup_on_landingpage && (
+          <span
+            className="px-2 py-1 rounded text-xs"
+            style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}
+          >
+            Lobby
+          </span>
+        )}
+        {rowData.popup_on_app && (
+          <span
+            className="px-2 py-1 rounded text-xs"
+            style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}
+          >
+            App
+          </span>
+        )}
+        {hasPopup && (
+          <span
+            className="px-2 py-1 rounded text-xs"
+            style={{ backgroundColor: colors.textMuted, color: '#ffffff' }}
+          >
+            P{rowData.popup_priority}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   if (loading && pages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
@@ -328,6 +395,11 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           <Column field="locale" header={t.cmsadminpanel245} sortable style={{ width: '100px' }} />
           <Column field="title" header={t.cmsadminpanel246} sortable />
           <Column field="is_active" header={t.applicationsmodal335} body={statusBodyTemplate} sortable style={{ width: '100px' }} />
+          <Column
+            header="Popup"
+            body={popupBodyTemplate}
+            style={{ width: '180px' }}
+          />
           <Column
             field="updated_at"
             header={t.cmsadminpanel250}
@@ -383,13 +455,20 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
             <InputText
               id="slug"
               value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+              onChange={(e) => {
+                // Transform: lowercase, replace spaces with underscores, remove invalid characters
+                const transformed = e.target.value
+                  .toLowerCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^a-z0-9_]/g, '');
+                setFormData({ ...formData, slug: transformed });
+              }}
               placeholder={t.cmsadminpanel298}
               className="w-full"
               disabled={!!editingPage}
             />
             <small style={{ color: colors.textMuted }}>
-              URL-friendly identifier (cannot be changed after creation)
+              Only lowercase letters, numbers and underscores (e.g. welcome_popup)
             </small>
           </div>
 
@@ -518,6 +597,92 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               When checked, this page will be visible to all visitors
             </small>
           </div>
+
+          {/* Popup Settings Section */}
+          <div className="field mt-4">
+            <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
+              Popup Settings
+            </label>
+            <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
+              {/* Popup on Landingpage */}
+              <div
+                className="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors hover:opacity-80 mb-3"
+                onClick={() => setFormData({ ...formData, popup_on_landingpage: !formData.popup_on_landingpage })}
+              >
+                <Checkbox
+                  inputId="popup_on_landingpage"
+                  checked={formData.popup_on_landingpage}
+                  onChange={(e) => setFormData({ ...formData, popup_on_landingpage: !!e.checked })}
+                />
+                <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
+                  {formData.popup_on_landingpage ? '🏠' : '⬜'} Show as Popup on Lobby (Landing Page)
+                </div>
+                {formData.popup_on_landingpage && (
+                  <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}>
+                    Lobby
+                  </span>
+                )}
+              </div>
+
+              {/* Popup on App */}
+              <div
+                className="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors hover:opacity-80 mb-4"
+                onClick={() => setFormData({ ...formData, popup_on_app: !formData.popup_on_app })}
+              >
+                <Checkbox
+                  inputId="popup_on_app"
+                  checked={formData.popup_on_app}
+                  onChange={(e) => setFormData({ ...formData, popup_on_app: !!e.checked })}
+                />
+                <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
+                  {formData.popup_on_app ? '📱' : '⬜'} Show as Popup in App
+                </div>
+                {formData.popup_on_app && (
+                  <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}>
+                    App
+                  </span>
+                )}
+              </div>
+
+              {/* Priority and Version (only show if popup is enabled) */}
+              {(formData.popup_on_landingpage || formData.popup_on_app) && (
+                <div className="grid grid-cols-2 gap-4 pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                  {/* Priority */}
+                  <div>
+                    <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>
+                      Priority (1 = highest)
+                    </label>
+                    <InputNumber
+                      value={formData.popup_priority}
+                      onValueChange={(e) => setFormData({ ...formData, popup_priority: e.value || 99 })}
+                      min={1}
+                      max={999}
+                      className="w-full"
+                    />
+                    <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                      1 = Cookie/Privacy (always first), 2 = Welcome, etc.
+                    </small>
+                  </div>
+
+                  {/* Version */}
+                  <div>
+                    <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>
+                      Version (for "Update" badge)
+                    </label>
+                    <InputNumber
+                      value={formData.popup_version}
+                      onValueChange={(e) => setFormData({ ...formData, popup_version: e.value || 1 })}
+                      min={1}
+                      className="w-full"
+                    />
+                    <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                      Increase to show popup again with "Update" badge
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </Dialog>
       
@@ -528,6 +693,17 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           height: auto !important;
           overflow-y: hidden !important;
           resize: none !important;
+          background: transparent !important;
+          color: transparent !important;
+          caret-color: ${colors.textPrimary} !important;
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .html-editor textarea:focus {
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
         }
         .html-editor pre {
           min-height: 350px !important;
@@ -536,6 +712,11 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
         }
         .html-editor {
           overflow: hidden !important;
+          background: ${colors.bgPrimary} !important;
+        }
+        .html-editor > textarea,
+        .html-editor > pre {
+          background: transparent !important;
         }
       `}</style>
     </div>

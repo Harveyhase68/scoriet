@@ -199,17 +199,50 @@ class FloatingSchema extends Model
         if ((string)$this->owner_id === (string)$user->id) {
             return true;
         }
-        
+
         // If schema has no owner, first user (admin) can edit it
         if (empty($this->owner_id) && $user->id === 1) {
             return true;
         }
-        
+
         // For development: if user is the first user and schema owner is also first user
         if ($user->id === 1 && $this->owner_id <= 3) {
             return true;
         }
-        
+
+        // Check if user has schema.edit permission via team membership
+        $linkedProjectIds = \DB::table('project_schemas')
+            ->where('schema_id', $this->id)
+            ->pluck('project_id');
+
+        if ($linkedProjectIds->isNotEmpty()) {
+            foreach ($linkedProjectIds as $projectId) {
+                $project = \App\Models\Project::find($projectId);
+                if (!$project || !$project->team_id) {
+                    continue;
+                }
+
+                $team = \App\Models\Team::find($project->team_id);
+                if (!$team) {
+                    continue;
+                }
+
+                // Team owner can always edit
+                if ($team->project_owner_id === $user->id) {
+                    return true;
+                }
+
+                // Check team member permission
+                $member = \App\Models\TeamMember::where('team_id', $team->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if ($member && $member->hasPermission('schema.edit')) {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 

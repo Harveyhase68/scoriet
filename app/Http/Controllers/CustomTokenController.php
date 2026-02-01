@@ -67,6 +67,40 @@ class CustomTokenController extends AccessTokenController
                         \Log::info("User reactivated on login", ['user_id' => $user->id, 'email' => $user->email]);
                     }
 
+                    // Check password before 2FA check
+                    if ($user && !Hash::check($requestData['password'] ?? '', $user->password)) {
+                        return response()->json([
+                            'error' => 'invalid_credentials',
+                            'message' => 'The provided credentials are incorrect.'
+                        ], 401);
+                    }
+
+                    // Check if 2FA is enabled
+                    if ($user && $user->hasTwoFactorEnabled()) {
+                        $deviceId = $requestData['device_id'] ?? null;
+                        $deviceTrusted = $deviceId && $user->isDeviceTrusted($deviceId);
+                        $needsReverification = $user->needsTwoFactorReVerification();
+
+                        // If device is not trusted or needs re-verification, require 2FA
+                        if (!$deviceTrusted || $needsReverification) {
+                            // Create a temporary login token that's only valid for 2FA verification
+                            $twoFactorToken = bin2hex(random_bytes(32));
+                            \Cache::put('2fa_pending_' . $twoFactorToken, [
+                                'user_id' => $user->id,
+                                'device_id' => $deviceId,
+                                'remember_me' => $requestData['remember_me'] ?? false,
+                                'created_at' => now()->toISOString(),
+                            ], now()->addMinutes(10)); // Token valid for 10 minutes
+
+                            return response()->json([
+                                'message' => '2FA-Verifizierung erforderlich',
+                                'two_factor_required' => true,
+                                'two_factor_token' => $twoFactorToken,
+                                'needs_reverification' => $needsReverification,
+                            ], 200);
+                        }
+                    }
+
                     // Record login and reset inactivity warnings
                     if ($user) {
                         $user->recordLogin();

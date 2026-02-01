@@ -83,6 +83,17 @@
       0 => 'Pest\\Laravel\\PestServiceProvider',
     ),
   ),
+  'pragmarx/google2fa-laravel' => 
+  array (
+    'aliases' => 
+    array (
+      'Google2FA' => 'PragmaRX\\Google2FALaravel\\Facade',
+    ),
+    'providers' => 
+    array (
+      0 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
+    ),
+  ),
   'srmklive/paypal' => 
   array (
     'aliases' => 
