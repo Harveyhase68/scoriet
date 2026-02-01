@@ -65,6 +65,9 @@ export default function LoginModal({
                      window.location.hostname === 'demo.scoriet.local' ||
                      import.meta.env.VITE_SCORIET_DEMO === 'true';
 
+  // Check if demo users section should be shown (can be disabled via .env)
+  const showDemoUsers = import.meta.env.VITE_SHOW_DEMO_USERS !== 'false';
+
   // Listen for language changes
   useEffect(() => {
     const handleLanguageChange = (event: CustomEvent) => {
@@ -397,43 +400,45 @@ export default function LoginModal({
           </div>
         )}
 
-        {/* Demo Section */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
-          <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
-            <i className="pi pi-info-circle mr-2"></i>
-            {t.LoginDemoTextHeader}
-          </h3>
-          <p className="text-blue-700 text-sm mb-3">
-            {t.LoginDemoDescription}
-          </p>
-          <div className="space-y-2">
-            <button
-              type="button"
-              className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-              onClick={() => window.location.href = getDemoUrl('demo-admin')}
-              disabled={loading}
-            >
-              <strong className="text-blue-800">demo-admin</strong>
-              <span className="text-blue-600 text-sm ml-2">
-             {t. LoginDemoAdmin}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-              onClick={() => window.location.href = getDemoUrl('demo-user')}
-              disabled={loading}
-            >
-              <strong className="text-blue-800">demo-user</strong>
-              <span className="text-blue-600 text-sm ml-2">
-              {t.LoginDemoUser}
-              </span>
-            </button>
+        {/* Demo Section - can be disabled via VITE_SHOW_DEMO_USERS=false in .env */}
+        {showDemoUsers && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+            <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
+              <i className="pi pi-info-circle mr-2"></i>
+              {t.LoginDemoTextHeader}
+            </h3>
+            <p className="text-blue-700 text-sm mb-3">
+              {t.LoginDemoDescription}
+            </p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
+                onClick={() => window.location.href = getDemoUrl('demo-admin')}
+                disabled={loading}
+              >
+                <strong className="text-blue-800">demo-admin</strong>
+                <span className="text-blue-600 text-sm ml-2">
+               {t. LoginDemoAdmin}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
+                onClick={() => window.location.href = getDemoUrl('demo-user')}
+                disabled={loading}
+              >
+                <strong className="text-blue-800">demo-user</strong>
+                <span className="text-blue-600 text-sm ml-2">
+                {t.LoginDemoUser}
+                </span>
+              </button>
+            </div>
+            <p className="text-blue-600 text-xs mt-2">
+              {t.LoginToolTip}
+            </p>
           </div>
-          <p className="text-blue-600 text-xs mt-2">
-            {t.LoginToolTip}
-          </p>
-        </div>
+        )}
 
         {/* Normal login fields - only show if NOT in demo mode */}
         {!isDemoMode && (
