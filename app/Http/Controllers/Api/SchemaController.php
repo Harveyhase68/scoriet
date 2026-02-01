@@ -32,11 +32,29 @@ class SchemaController extends Controller
         $user = Auth::user();
         $projectId = $request->get('project_id');
 
-        // Get schemas owned by the user or public schemas they can access
+        // Get schemas visible to the user:
+        // 1. Schemas owned by the user
+        // 2. Public schemas
+        // 3. Private schemas linked to projects the user has access to (via ownership, direct membership, or team membership)
         $query = FloatingSchema::with(['owner', 'projects'])
             ->where(function ($query) use ($user) {
                 $query->where('owner_id', $user->id)
-                      ->orWhere('visibility', 'public');
+                      ->orWhere('visibility', 'public')
+                      // Also include private schemas linked to projects the user has access to
+                      ->orWhereHas('projects', function($projectQuery) use ($user) {
+                          $projectQuery->where(function($pq) use ($user) {
+                              // User is project owner
+                              $pq->where('owner_id', $user->id)
+                                 // User is direct project member
+                                 ->orWhereHas('members', function($memberQuery) use ($user) {
+                                     $memberQuery->where('user_id', $user->id);
+                                 })
+                                 // User is team member of a team that has access to the project
+                                 ->orWhereHas('teams.members', function($teamQuery) use ($user) {
+                                     $teamQuery->where('user_id', $user->id);
+                                 });
+                          });
+                      });
             });
 
         // Filter by project if specified
@@ -1216,7 +1234,7 @@ class SchemaController extends Controller
     public function deleteTable(SchemaVersion $version, \App\Models\SchemaTable $table): JsonResponse
     {
         $user = Auth::user();
-        
+
         // Check if this schema version has a schema and user can edit it
         if ($version->hasSchema()) {
             $schema = $version->schema;
@@ -1231,10 +1249,18 @@ class SchemaController extends Controller
         }
 
         try {
+            // Delete FK constraints that reference this table from other tables
+            $deletedFKs = $this->deleteOrphanedForeignKeyReferences($table);
+
             // Delete the table and all its related data (fields, constraints, etc.)
             $table->delete();
 
-            return response()->json(['success' => true, 'message' => 'Table deleted successfully']);
+            $message = 'Table deleted successfully';
+            if ($deletedFKs > 0) {
+                $message .= " ({$deletedFKs} FK-Constraint(s) die auf diese Tabelle zeigten wurden ebenfalls gelöscht)";
+            }
+
+            return response()->json(['success' => true, 'message' => $message, 'deleted_fks' => $deletedFKs]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
@@ -1277,14 +1303,23 @@ class SchemaController extends Controller
                 throw new \Exception("Table '{$table->table_name}' not found in new version {$newVersion->version_number}");
             }
 
+            // Delete FK constraints that reference this table from other tables
+            $deletedFKs = $this->deleteOrphanedForeignKeyReferences($tableToDelete);
+
             // Delete the table from the NEW version only
             $tableToDelete->delete();
 
+            $message = 'New version created and table deleted';
+            if ($deletedFKs > 0) {
+                $message .= " ({$deletedFKs} FK-Constraint(s) die auf diese Tabelle zeigten wurden ebenfalls gelöscht)";
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'New version created and table deleted',
+                'message' => $message,
                 'new_version' => $newVersion,
-                'new_version_number' => $newVersion->version_number
+                'new_version_number' => $newVersion->version_number,
+                'deleted_fks' => $deletedFKs
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
@@ -1799,6 +1834,57 @@ class SchemaController extends Controller
                 return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
             }
 
+            // Get source and target fields for validation
+            $sourceField = \App\Models\SchemaField::find($validated['source_field_id']);
+            $targetField = \App\Models\SchemaField::find($validated['target_field_id']);
+
+            if (!$sourceField || !$targetField) {
+                return response()->json(['message' => 'Source or target field not found'], 404);
+            }
+
+            // Validate data type compatibility
+            $typeValidation = $this->validateForeignKeyCompatibility($sourceField, $targetField);
+            if (!$typeValidation['valid']) {
+                return response()->json([
+                    'message' => $typeValidation['message'],
+                    'error_type' => 'incompatible_types',
+                ], 422);
+            }
+
+            // Validate field requirements (PK/Index) - can now return errors too
+            $fieldValidation = $this->validateForeignKeyFieldRequirements($sourceField, $targetField);
+            if (!$fieldValidation['valid']) {
+                return response()->json([
+                    'message' => $fieldValidation['message'],
+                    'error_type' => 'invalid_field_requirements',
+                ], 422);
+            }
+
+            // Validate SET NULL actions - cannot use SET NULL if source field is NOT NULL
+            $onDelete = $validated['on_delete'] ?? 'RESTRICT';
+            $onUpdate = $validated['on_update'] ?? 'RESTRICT';
+
+            if (!$sourceField->is_nullable) {
+                if (strtoupper($onDelete) === 'SET NULL') {
+                    return response()->json([
+                        'message' => "SET NULL bei ON DELETE nicht möglich: Das Quellfeld '{$sourceField->field_name}' ist NOT NULL. MySQL kann keine NULL-Werte in eine NOT NULL Spalte schreiben.",
+                        'error_type' => 'set_null_on_not_null',
+                    ], 422);
+                }
+                if (strtoupper($onUpdate) === 'SET NULL') {
+                    return response()->json([
+                        'message' => "SET NULL bei ON UPDATE nicht möglich: Das Quellfeld '{$sourceField->field_name}' ist NOT NULL. MySQL kann keine NULL-Werte in eine NOT NULL Spalte schreiben.",
+                        'error_type' => 'set_null_on_not_null',
+                    ], 422);
+                }
+            }
+
+            // Collect all warnings (only index recommendations now)
+            $warnings = [];
+            if (!empty($fieldValidation['warnings'])) {
+                $warnings = array_merge($warnings, $fieldValidation['warnings']);
+            }
+
             // Check if this is the latest version
             $isLatestVersion = $version->version_number === $schema->last_version;
 
@@ -1819,22 +1905,30 @@ class SchemaController extends Controller
                 // Create the constraint in the new version
                 $this->createConstraintData($newTable, $validated);
 
-                return response()->json([
+                $response = [
                     'success' => true,
                     'message' => 'New version created and foreign key created',
                     'new_version' => [
                         'id' => $newVersion->id,
                         'version_number' => $newVersion->version_number,
                     ]
-                ]);
+                ];
+                if (!empty($warnings)) {
+                    $response['warnings'] = $warnings;
+                }
+                return response()->json($response);
             } else {
                 // Latest version - create directly
                 $this->createConstraintData($table, $validated);
 
-                return response()->json([
+                $response = [
                     'success' => true,
                     'message' => 'Foreign key created successfully',
-                ]);
+                ];
+                if (!empty($warnings)) {
+                    $response['warnings'] = $warnings;
+                }
+                return response()->json($response);
             }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1967,6 +2061,687 @@ class SchemaController extends Controller
             'reference_id' => $fkReference->id,
             'referenced_field_id' => $targetField->id,
         ]);
+    }
+
+    /**
+     * Delete FK constraints from other tables that reference this table
+     * This is called when a table is being deleted to clean up orphaned references
+     * Returns the number of deleted FK constraints
+     */
+    private function deleteOrphanedForeignKeyReferences(\App\Models\SchemaTable $table): int
+    {
+        $deletedCount = 0;
+
+        // Get the schema version ID of the table being deleted
+        $schemaVersionId = $table->schema_version_id;
+
+        // Find all FK references that point to this table within the SAME schema version
+        // We need to join through constraints and tables to filter by schema version
+        $fkReferences = \App\Models\SchemaForeignKeyReference::where('referenced_table_id', $table->id)
+            ->whereHas('constraint.table', function ($query) use ($schemaVersionId) {
+                $query->where('schema_version_id', $schemaVersionId);
+            })
+            ->get();
+
+        \Log::info("Looking for FK references to table", [
+            'table_id' => $table->id,
+            'table_name' => $table->table_name,
+            'schema_version_id' => $schemaVersionId,
+            'found_references' => $fkReferences->count(),
+        ]);
+
+        foreach ($fkReferences as $fkReference) {
+            // Get the parent constraint
+            $constraint = $fkReference->constraint;
+            if ($constraint) {
+                // Delete the constraint (this will cascade delete the reference and columns)
+                $constraint->delete();
+                $deletedCount++;
+
+                \Log::info("Deleted orphaned FK constraint", [
+                    'constraint_name' => $constraint->constraint_name,
+                    'source_table_id' => $constraint->table_id,
+                    'referenced_table_id' => $table->id,
+                    'referenced_table_name' => $table->table_name,
+                ]);
+            }
+        }
+
+        return $deletedCount;
+    }
+
+    /**
+     * Validate FK data type compatibility between source and target fields
+     * Returns array with 'valid' boolean and 'message' string
+     */
+    private function validateForeignKeyCompatibility(\App\Models\SchemaField $sourceField, \App\Models\SchemaField $targetField): array
+    {
+        $sourceType = strtoupper($sourceField->field_type);
+        $targetType = strtoupper($targetField->field_type);
+
+        // Extract base type (without size) for comparison
+        $sourceBaseType = $this->extractBaseType($sourceType);
+        $targetBaseType = $this->extractBaseType($targetType);
+
+        // Define compatible type groups
+        $integerTypes = ['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'INTEGER', 'BIGINT'];
+        $stringTypes = ['CHAR', 'VARCHAR', 'TEXT', 'TINYTEXT', 'MEDIUMTEXT', 'LONGTEXT'];
+        $binaryTypes = ['BINARY', 'VARBINARY', 'BLOB', 'TINYBLOB', 'MEDIUMBLOB', 'LONGBLOB'];
+        $decimalTypes = ['DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL'];
+        $dateTypes = ['DATE', 'DATETIME', 'TIMESTAMP', 'TIME', 'YEAR'];
+
+        // Check if both types are in the same compatible group
+        $typeGroups = [
+            'integer' => $integerTypes,
+            'string' => $stringTypes,
+            'binary' => $binaryTypes,
+            'decimal' => $decimalTypes,
+            'date' => $dateTypes,
+        ];
+
+        $sourceGroup = null;
+        $targetGroup = null;
+
+        foreach ($typeGroups as $groupName => $types) {
+            if (in_array($sourceBaseType, $types)) {
+                $sourceGroup = $groupName;
+            }
+            if (in_array($targetBaseType, $types)) {
+                $targetGroup = $groupName;
+            }
+        }
+
+        // If both fields are in the same type group, check for exact compatibility
+        if ($sourceGroup !== null && $sourceGroup === $targetGroup) {
+            // Strict check for integer types: size AND unsigned must match exactly
+            if ($sourceGroup === 'integer') {
+                $sourceSize = $this->getIntegerSize($sourceBaseType);
+                $targetSize = $this->getIntegerSize($targetBaseType);
+
+                // Integer size must match exactly (MySQL requirement)
+                if ($sourceSize !== $targetSize) {
+                    return [
+                        'valid' => false,
+                        'message' => "Inkompatible Integer-Größen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) müssen den gleichen Datentyp haben. MySQL erlaubt keine Foreign Keys zwischen unterschiedlichen Integer-Größen.",
+                    ];
+                }
+
+                // UNSIGNED attribute must match exactly (MySQL requirement)
+                if ($sourceField->is_unsigned !== $targetField->is_unsigned) {
+                    $sourceUnsigned = $sourceField->is_unsigned ? 'UNSIGNED' : 'SIGNED';
+                    $targetUnsigned = $targetField->is_unsigned ? 'UNSIGNED' : 'SIGNED';
+                    return [
+                        'valid' => false,
+                        'message' => "UNSIGNED-Attribut stimmt nicht überein: {$sourceField->field_name} ist {$sourceUnsigned}, aber {$targetField->field_name} ist {$targetUnsigned}. Beide Felder müssen das gleiche UNSIGNED-Attribut haben.",
+                    ];
+                }
+            }
+
+            // Strict check for string types: length must be compatible
+            if ($sourceGroup === 'string') {
+                $sourceLength = $this->extractTypeLength($sourceType);
+                $targetLength = $this->extractTypeLength($targetType);
+
+                // For CHAR/VARCHAR, lengths should match or source should be smaller/equal
+                if ($sourceLength !== null && $targetLength !== null && $sourceLength > $targetLength) {
+                    return [
+                        'valid' => false,
+                        'message' => "Inkompatible String-Längen: {$sourceField->field_name} ({$sourceType}) ist größer als {$targetField->field_name} ({$targetType}). Das Quellfeld darf nicht größer sein als das Zielfeld.",
+                    ];
+                }
+
+                // Base types should match (CHAR with CHAR, VARCHAR with VARCHAR)
+                if ($sourceBaseType !== $targetBaseType &&
+                    !($sourceBaseType === 'CHAR' && $targetBaseType === 'VARCHAR') &&
+                    !($sourceBaseType === 'VARCHAR' && $targetBaseType === 'CHAR')) {
+                    return [
+                        'valid' => false,
+                        'message' => "Inkompatible String-Typen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) sind nicht kompatibel.",
+                    ];
+                }
+            }
+
+            // Strict check for decimal types: precision must match
+            if ($sourceGroup === 'decimal') {
+                if ($sourceBaseType !== $targetBaseType) {
+                    return [
+                        'valid' => false,
+                        'message' => "Inkompatible Dezimal-Typen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) müssen den gleichen Typ haben.",
+                    ];
+                }
+            }
+
+            // Build result with optional warnings
+            $result = ['valid' => true];
+
+            // NULL/NOT NULL compatibility warning (not an error, but informative)
+            $sourceNullable = $sourceField->is_nullable ? 'NULL' : 'NOT NULL';
+            $targetNullable = $targetField->is_nullable ? 'NULL' : 'NOT NULL';
+
+            if (!$sourceField->is_nullable && $targetField->is_nullable) {
+                // Source is NOT NULL, target is NULL - this is usually fine, just informative
+                $result['warning'] = "Hinweis: Quellfeld '{$sourceField->field_name}' ist NOT NULL, Zielfeld '{$targetField->field_name}' erlaubt NULL. SET NULL Aktionen sind nicht verfügbar.";
+            }
+
+            return $result;
+        }
+
+        // Types are incompatible
+        return [
+            'valid' => false,
+            'message' => "Inkompatible Datentypen: {$sourceField->field_name} ({$sourceType}) kann nicht mit {$targetField->field_name} ({$targetType}) verknüpft werden. Foreign Keys erfordern kompatible Datentypen.",
+        ];
+    }
+
+    /**
+     * Extract base type from field type (e.g., VARCHAR(255) -> VARCHAR)
+     */
+    private function extractBaseType(string $fieldType): string
+    {
+        // Remove size/precision info: VARCHAR(255) -> VARCHAR, DECIMAL(10,2) -> DECIMAL
+        $baseType = preg_replace('/\(.*\)/', '', $fieldType);
+        // Remove UNSIGNED, ZEROFILL etc.
+        $baseType = preg_replace('/\s+(UNSIGNED|ZEROFILL|SIGNED).*$/i', '', $baseType);
+        return trim(strtoupper($baseType));
+    }
+
+    /**
+     * Extract length from type (e.g., VARCHAR(255) -> 255)
+     */
+    private function extractTypeLength(string $fieldType): ?int
+    {
+        if (preg_match('/\((\d+)/', $fieldType, $matches)) {
+            return (int) $matches[1];
+        }
+        return null;
+    }
+
+    /**
+     * Get integer type size for comparison (larger = more bytes)
+     */
+    private function getIntegerSize(string $baseType): int
+    {
+        $sizes = [
+            'TINYINT' => 1,
+            'SMALLINT' => 2,
+            'MEDIUMINT' => 3,
+            'INT' => 4,
+            'INTEGER' => 4,
+            'BIGINT' => 8,
+        ];
+        return $sizes[$baseType] ?? 4;
+    }
+
+    /**
+     * Validate FK field requirements (PK/Index checks)
+     * Returns array with 'valid' boolean, 'message' for errors, optional 'warnings' array
+     */
+    private function validateForeignKeyFieldRequirements(\App\Models\SchemaField $sourceField, \App\Models\SchemaField $targetField): array
+    {
+        $warnings = [];
+
+        // CRITICAL: Source field should NOT be a primary key (FK direction is probably wrong)
+        if ($sourceField->is_primary_key) {
+            return [
+                'valid' => false,
+                'message' => "Ungültige FK-Richtung: Das Quellfeld '{$sourceField->field_name}' ist ein PRIMARY KEY. " .
+                            "Primary Keys sollten das ZIEL eines Foreign Keys sein, nicht die QUELLE. " .
+                            "Bitte tauschen Sie Quelle und Ziel, oder entfernen Sie den Primary Key vom Quellfeld.",
+            ];
+        }
+
+        // CRITICAL: Target field MUST have a unique constraint (PK or UNIQUE) - MySQL requirement
+        if (!$targetField->is_primary_key && !$targetField->is_unique) {
+            return [
+                'valid' => false,
+                'message' => "MySQL-Fehler: Das Zielfeld '{$targetField->field_name}' muss einen PRIMARY KEY oder UNIQUE-Index haben. " .
+                            "Foreign Keys können nur auf eindeutig indizierte Felder verweisen. " .
+                            "Bitte fügen Sie einen PRIMARY KEY oder UNIQUE-Index zum Zielfeld hinzu.",
+            ];
+        }
+
+        // Source field should have an index for performance (warning only)
+        if (!$sourceField->is_index && !$sourceField->is_unique) {
+            $warnings[] = "Empfehlung: Das Quellfeld '{$sourceField->field_name}' sollte einen Index haben für bessere Query-Performance bei JOINs.";
+        }
+
+        return [
+            'valid' => true,
+            'warnings' => $warnings,
+        ];
+    }
+
+    /**
+     * Get FK suggestions for a schema version
+     * Analyzes field names and types to suggest potential foreign key relationships
+     */
+    public function getForeignKeySuggestions($versionId): JsonResponse
+    {
+        $user = Auth::user();
+
+        try {
+            $version = \App\Models\SchemaVersion::with(['tables.fields', 'tables.constraints.constraintColumns', 'tables.constraints.foreignKeyReference'])
+                ->findOrFail($versionId);
+
+            if (!$version->hasSchema()) {
+                return response()->json(['message' => 'Schema not found'], 404);
+            }
+
+            $schema = $version->schema;
+
+            // Check permissions
+            if (!$schema->canBeAccessedBy($user)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $suggestions = [];
+            $existingFKs = [];
+
+            // Collect existing FK relationships to avoid suggesting duplicates
+            foreach ($version->tables as $table) {
+                foreach ($table->constraints as $constraint) {
+                    if ($constraint->constraint_type === 'FOREIGN KEY' && $constraint->foreignKeyReference) {
+                        $sourceFieldIds = $constraint->constraintColumns->pluck('field_id')->toArray();
+                        foreach ($sourceFieldIds as $sourceFieldId) {
+                            $existingFKs[] = $sourceFieldId;
+                        }
+                    }
+                }
+            }
+
+            // Find all primary key fields (potential FK targets)
+            $primaryKeyFields = [];
+            foreach ($version->tables as $table) {
+                foreach ($table->fields as $field) {
+                    if ($field->is_primary_key) {
+                        $primaryKeyFields[] = [
+                            'table' => $table,
+                            'field' => $field,
+                        ];
+                    }
+                }
+            }
+
+            // Analyze each table for potential FK source fields
+            foreach ($version->tables as $sourceTable) {
+                foreach ($sourceTable->fields as $sourceField) {
+                    // Skip if already has FK
+                    if (in_array($sourceField->id, $existingFKs)) {
+                        continue;
+                    }
+
+                    // Skip primary keys (they're usually targets, not sources)
+                    if ($sourceField->is_primary_key) {
+                        continue;
+                    }
+
+                    // Look for matching PK fields in other tables
+                    foreach ($primaryKeyFields as $pkData) {
+                        $targetTable = $pkData['table'];
+                        $targetField = $pkData['field'];
+
+                        // Skip same table
+                        if ($sourceTable->id === $targetTable->id) {
+                            continue;
+                        }
+
+                        // Check for name pattern match
+                        $matchScore = $this->calculateFKMatchScore(
+                            $sourceField,
+                            $targetField,
+                            $sourceTable,
+                            $targetTable
+                        );
+
+                        if ($matchScore > 0) {
+                            // Verify data type compatibility
+                            $typeValidation = $this->validateForeignKeyCompatibility($sourceField, $targetField);
+
+                            $suggestions[] = [
+                                'source_table_id' => $sourceTable->id,
+                                'source_table_name' => $sourceTable->table_name,
+                                'source_field_id' => $sourceField->id,
+                                'source_field_name' => $sourceField->field_name,
+                                'source_field_type' => $sourceField->field_type,
+                                'target_table_id' => $targetTable->id,
+                                'target_table_name' => $targetTable->table_name,
+                                'target_field_id' => $targetField->id,
+                                'target_field_name' => $targetField->field_name,
+                                'target_field_type' => $targetField->field_type,
+                                'match_score' => $matchScore,
+                                'is_compatible' => $typeValidation['valid'],
+                                'compatibility_warning' => $typeValidation['warning'] ?? null,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Sort by match score (highest first)
+            usort($suggestions, function ($a, $b) {
+                return $b['match_score'] <=> $a['match_score'];
+            });
+
+            return response()->json([
+                'success' => true,
+                'suggestions' => $suggestions,
+                'total' => count($suggestions),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('FK Suggestions Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to get FK suggestions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate match score for potential FK relationship
+     * Higher score = more likely to be a valid FK
+     */
+    private function calculateFKMatchScore(
+        \App\Models\SchemaField $sourceField,
+        \App\Models\SchemaField $targetField,
+        \App\Models\SchemaTable $sourceTable,
+        \App\Models\SchemaTable $targetTable
+    ): int {
+        $score = 0;
+        $sourceFieldName = strtolower($sourceField->field_name);
+        $targetFieldName = strtolower($targetField->field_name);
+        $targetTableName = strtolower($targetTable->table_name);
+
+        // Pattern 1: source field is "{table}_id" or "{table}id" matching target table
+        // e.g., user_id -> users.id (score: 100)
+        $singularTableName = rtrim($targetTableName, 's'); // Simple singular (users -> user)
+        if ($sourceFieldName === $singularTableName . '_id' ||
+            $sourceFieldName === $singularTableName . 'id' ||
+            $sourceFieldName === $targetTableName . '_id' ||
+            $sourceFieldName === $targetTableName . 'id') {
+            $score += 100;
+        }
+
+        // Pattern 2: source field contains target table name
+        // e.g., customer_user_id -> users.id (score: 50)
+        elseif (str_contains($sourceFieldName, $singularTableName) ||
+                str_contains($sourceFieldName, $targetTableName)) {
+            $score += 50;
+        }
+
+        // Pattern 3: field names match exactly
+        // e.g., orders.user_id -> users.user_id (score: 30)
+        elseif ($sourceFieldName === $targetFieldName) {
+            $score += 30;
+        }
+
+        // Pattern 4: source field ends with _id and has index
+        // General FK candidate (score: 20)
+        elseif ((str_ends_with($sourceFieldName, '_id') || str_ends_with($sourceFieldName, 'id')) &&
+                ($sourceField->is_index || $sourceField->is_unique)) {
+            $score += 20;
+        }
+
+        // Bonus: Data types match exactly
+        if (strtoupper($sourceField->field_type) === strtoupper($targetField->field_type)) {
+            $score += 10;
+        }
+
+        // Bonus: Source field has index
+        if ($sourceField->is_index || $sourceField->is_unique) {
+            $score += 5;
+        }
+
+        return $score;
+    }
+
+    /**
+     * Get FK dependencies for a field
+     * Returns all FK relationships where this field is involved (as source or target)
+     */
+    public function getFieldFKDependencies($versionId, $fieldId): JsonResponse
+    {
+        $user = Auth::user();
+
+        try {
+            $field = \App\Models\SchemaField::with('table')->findOrFail($fieldId);
+            $version = \App\Models\SchemaVersion::findOrFail($versionId);
+
+            // Check authorization
+            if ($version->hasSchema()) {
+                $schema = $version->schema;
+                if (!$schema->canBeAccessedBy($user)) {
+                    return response()->json(['message' => 'Unauthorized'], 403);
+                }
+            }
+
+            $dependencies = [
+                'as_source' => [], // FK constraints where this field is the source (child)
+                'as_target' => [], // FK constraints where this field is the target (parent)
+            ];
+
+            // Find FKs where this field is the SOURCE (child field pointing to parent)
+            $sourceConstraintColumns = \App\Models\SchemaConstraintColumn::where('field_id', $field->id)
+                ->with(['constraint.table', 'constraint.foreignKeyReference.referencedTable', 'constraint.foreignKeyReference.referenceColumns.field'])
+                ->get();
+
+            foreach ($sourceConstraintColumns as $column) {
+                $constraint = $column->constraint;
+                if ($constraint && $constraint->constraint_type === 'FOREIGN KEY' && $constraint->foreignKeyReference) {
+                    $fkRef = $constraint->foreignKeyReference;
+                    $refTable = $fkRef->referencedTable;
+                    $refFields = $fkRef->referenceColumns->map(fn($c) => $c->field)->filter();
+
+                    $dependencies['as_source'][] = [
+                        'constraint_id' => $constraint->id,
+                        'constraint_name' => $constraint->constraint_name,
+                        'source_table' => $field->table->table_name,
+                        'source_field' => $field->field_name,
+                        'source_field_type' => $field->field_type,
+                        'source_is_unsigned' => $field->is_unsigned,
+                        'target_table' => $refTable ? $refTable->table_name : null,
+                        'target_table_id' => $refTable ? $refTable->id : null,
+                        'target_fields' => $refFields->map(fn($f) => [
+                            'id' => $f->id,
+                            'name' => $f->field_name,
+                            'type' => $f->field_type,
+                            'is_unsigned' => $f->is_unsigned,
+                        ])->values()->toArray(),
+                    ];
+                }
+            }
+
+            // Find FKs where this field is the TARGET (parent field being referenced)
+            $targetRefColumns = \App\Models\SchemaForeignKeyReferenceColumn::where('field_id', $field->id)
+                ->with(['reference.constraint.table', 'reference.constraint.constraintColumns.field'])
+                ->get();
+
+            foreach ($targetRefColumns as $refColumn) {
+                $reference = $refColumn->reference;
+                if ($reference && $reference->constraint) {
+                    $constraint = $reference->constraint;
+                    $sourceTable = $constraint->table;
+                    $sourceFields = $constraint->constraintColumns->map(fn($c) => $c->field)->filter();
+
+                    $dependencies['as_target'][] = [
+                        'constraint_id' => $constraint->id,
+                        'constraint_name' => $constraint->constraint_name,
+                        'source_table' => $sourceTable ? $sourceTable->table_name : null,
+                        'source_table_id' => $sourceTable ? $sourceTable->id : null,
+                        'source_fields' => $sourceFields->map(fn($f) => [
+                            'id' => $f->id,
+                            'name' => $f->field_name,
+                            'type' => $f->field_type,
+                            'is_unsigned' => $f->is_unsigned,
+                        ])->values()->toArray(),
+                        'target_table' => $field->table->table_name,
+                        'target_field' => $field->field_name,
+                        'target_field_type' => $field->field_type,
+                        'target_is_unsigned' => $field->is_unsigned,
+                    ];
+                }
+            }
+
+            $hasDependencies = !empty($dependencies['as_source']) || !empty($dependencies['as_target']);
+
+            return response()->json([
+                'success' => true,
+                'field' => [
+                    'id' => $field->id,
+                    'name' => $field->field_name,
+                    'type' => $field->field_type,
+                    'is_unsigned' => $field->is_unsigned,
+                    'table_name' => $field->table->table_name,
+                ],
+                'has_dependencies' => $hasDependencies,
+                'dependencies' => $dependencies,
+                'total_as_source' => count($dependencies['as_source']),
+                'total_as_target' => count($dependencies['as_target']),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Get Field FK Dependencies Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to get FK dependencies',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Apply cascading field changes to all FK-related fields
+     * When a primary key field changes (type, unsigned), propagate to all FK source fields
+     */
+    public function applyCascadingFieldChanges(Request $request, $versionId, $fieldId): JsonResponse
+    {
+        $user = Auth::user();
+
+        try {
+            $validated = $request->validate([
+                'new_type' => 'nullable|string',
+                'new_unsigned' => 'nullable|boolean',
+                'cascade_to_source_fields' => 'required|boolean', // Update child FK fields
+            ]);
+
+            $field = \App\Models\SchemaField::with('table')->findOrFail($fieldId);
+            $version = \App\Models\SchemaVersion::findOrFail($versionId);
+
+            // Check authorization
+            if ($version->hasSchema()) {
+                $schema = $version->schema;
+                if (!$schema->canBeEditedBy($user)) {
+                    return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                }
+            }
+
+            $updatedFields = [];
+            $errors = [];
+
+            // Only cascade if this field is a target (parent) and cascade is requested
+            if ($validated['cascade_to_source_fields']) {
+                // Find all FK constraints where this field is the TARGET (parent)
+                $targetRefColumns = \App\Models\SchemaForeignKeyReferenceColumn::where('field_id', $field->id)
+                    ->with(['reference.constraint.constraintColumns.field'])
+                    ->get();
+
+                foreach ($targetRefColumns as $refColumn) {
+                    $reference = $refColumn->reference;
+                    if (!$reference || !$reference->constraint) continue;
+
+                    $constraint = $reference->constraint;
+
+                    // Get all source fields of this FK constraint
+                    foreach ($constraint->constraintColumns as $sourceColumn) {
+                        $sourceField = $sourceColumn->field;
+                        if (!$sourceField) continue;
+
+                        $updates = [];
+
+                        // Update type if specified
+                        if (isset($validated['new_type']) && $validated['new_type'] !== null) {
+                            $updates['field_type'] = $validated['new_type'];
+                        }
+
+                        // Update unsigned if specified
+                        if (isset($validated['new_unsigned']) && $validated['new_unsigned'] !== null) {
+                            $updates['is_unsigned'] = $validated['new_unsigned'];
+                        }
+
+                        if (!empty($updates)) {
+                            try {
+                                $sourceField->update($updates);
+                                $updatedFields[] = [
+                                    'id' => $sourceField->id,
+                                    'table_name' => $sourceField->table->table_name ?? 'Unknown',
+                                    'field_name' => $sourceField->field_name,
+                                    'old_type' => $sourceField->getOriginal('field_type'),
+                                    'new_type' => $updates['field_type'] ?? $sourceField->field_type,
+                                    'old_unsigned' => $sourceField->getOriginal('is_unsigned'),
+                                    'new_unsigned' => $updates['is_unsigned'] ?? $sourceField->is_unsigned,
+                                ];
+                            } catch (\Exception $e) {
+                                $errors[] = [
+                                    'field_id' => $sourceField->id,
+                                    'field_name' => $sourceField->field_name,
+                                    'error' => $e->getMessage(),
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update the original field itself
+            $originalUpdates = [];
+            if (isset($validated['new_type']) && $validated['new_type'] !== null) {
+                $originalUpdates['field_type'] = $validated['new_type'];
+            }
+            if (isset($validated['new_unsigned']) && $validated['new_unsigned'] !== null) {
+                $originalUpdates['is_unsigned'] = $validated['new_unsigned'];
+            }
+
+            if (!empty($originalUpdates)) {
+                $field->update($originalUpdates);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cascading changes applied successfully',
+                'updated_field' => [
+                    'id' => $field->id,
+                    'name' => $field->field_name,
+                    'type' => $field->field_type,
+                    'is_unsigned' => $field->is_unsigned,
+                ],
+                'cascaded_fields' => $updatedFields,
+                'cascaded_count' => count($updatedFields),
+                'errors' => $errors,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Apply Cascading Field Changes Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to apply cascading changes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

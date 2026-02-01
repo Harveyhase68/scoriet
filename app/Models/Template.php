@@ -313,7 +313,48 @@ class Template extends Model
      */
     public function canBeAccessedBy($user): bool
     {
-        return $this->visibility === 'public' || $this->owner_id == (string)$user->id;
+        // Public templates are accessible to everyone
+        if ($this->visibility === 'public') {
+            return true;
+        }
+
+        // Owner can always access
+        if ($this->owner_id == (string)$user->id || $this->creator_user_id == (string)$user->id) {
+            return true;
+        }
+
+        // Project templates - check project access and permissions
+        if ($this->project_id && $this->project) {
+            // Project owner can always access
+            if ((string)$this->project->owner_id === (string)$user->id) {
+                return true;
+            }
+
+            // Check team permissions if project has a team
+            if ($this->project->team_id) {
+                $team = \App\Models\Team::find($this->project->team_id);
+                if ($team) {
+                    // Team owner can always access
+                    if ($team->project_owner_id === $user->id) {
+                        return true;
+                    }
+
+                    // Check team member's template.view permission
+                    $member = \App\Models\TeamMember::where('team_id', $team->id)
+                        ->where('user_id', $user->id)
+                        ->first();
+
+                    if ($member && $member->hasPermission('template.view')) {
+                        return true;
+                    }
+                }
+            }
+
+            // Fallback to basic project access for non-team projects
+            return $this->project->userCanAccess($user);
+        }
+
+        return false;
     }
 
     /**
@@ -326,13 +367,43 @@ class Template extends Model
             return $user->user_type === 'system' && $this->creator_user_id == (string)$user->id;
         }
 
-        // Project templates can only be edited by project members
-        if ($this->project_id) {
-            return $this->project && $this->project->userCanAccess($user);
+        // Creator can always edit
+        if ($this->creator_user_id == $user->id) {
+            return true;
         }
 
-        // Fallback to creator check
-        return $this->creator_user_id == $user->id;
+        // Project templates - check project access and permissions
+        if ($this->project_id && $this->project) {
+            // Project owner can always edit
+            if ((string)$this->project->owner_id === (string)$user->id) {
+                return true;
+            }
+
+            // Check team permissions if project has a team
+            if ($this->project->team_id) {
+                $team = \App\Models\Team::find($this->project->team_id);
+                if ($team) {
+                    // Team owner can always edit
+                    if ($team->project_owner_id === $user->id) {
+                        return true;
+                    }
+
+                    // Check team member's template.edit permission
+                    $member = \App\Models\TeamMember::where('team_id', $team->id)
+                        ->where('user_id', $user->id)
+                        ->first();
+
+                    if ($member && $member->hasPermission('template.edit')) {
+                        return true;
+                    }
+                }
+            }
+
+            // Fallback to basic project access for non-team projects
+            return $this->project->userCanAccess($user);
+        }
+
+        return false;
     }
 
     /**

@@ -11,7 +11,8 @@ import { InputNumber } from 'primereact/inputnumber';
 // ColorPicker, TabView, TabPanel - reserved for future use
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import ReactFlow, {
+import {
+  ReactFlow,
   MiniMap,
   Controls,
   Background,
@@ -21,9 +22,8 @@ import ReactFlow, {
   Edge,
   BackgroundVariant,
   NodeResizer,
-  NodeProps,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -200,9 +200,10 @@ interface FormElementNodeData {
   isReadOnly: boolean;
   defaultButtonColor?: string;
   defaultButtonTextColor?: string;
+  [key: string]: unknown; // Index signature for xyflow v12 compatibility
 }
 
-const FormElementNode: React.FC<NodeProps<FormElementNodeData>> = ({ data, selected }) => {
+const FormElementNode = ({ data, selected }: { data: FormElementNodeData; selected?: boolean }) => {
   const element = data.element;
   const bgColor = getElementColor(element.element_type);
   const icon = element.button_icon || DEFAULT_ICONS[element.element_type] || 'pi-box';
@@ -377,9 +378,10 @@ interface WindowFrameNodeData {
   minHeight: number;
   windowColor: string;
   textColor: string;
+  [key: string]: unknown; // Index signature for xyflow v12 compatibility
 }
 
-const WindowFrameNode: React.FC<NodeProps<WindowFrameNodeData>> = ({ data }) => {
+const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
   return (
     <div
       className="pointer-events-none"
@@ -726,16 +728,18 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       setSaving(true);
 
       // Convert nodes back to elements (exclude window-frame node)
-      // NodeResizer stores dimensions in node.width/height, fallback to style, then to original element
+      // In xyflow v12, measured dimensions are in node.measured, fallback to node.width/height, style, then original element
       const elementNodes = nodes.filter(node => node.type === 'formElement');
       const elements: FormElement[] = elementNodes.map((node, index) => {
-        // Get width: first from node (resized), then from style, then from original element
-        const width = node.width
+        // Get width: first from measured (after resize), then from node, then from style, then from original element
+        const width = node.measured?.width
+          ?? node.width
           ?? (node.style?.width ? parseInt(String(node.style.width)) : null)
           ?? node.data.element.width;
 
-        // Get height: first from node (resized), then from style, then from original element
-        const height = node.height
+        // Get height: first from measured (after resize), then from node, then from style, then from original element
+        const height = node.measured?.height
+          ?? node.height
           ?? (node.style?.height ? parseInt(String(node.style.height)) : null)
           ?? node.data.element.height;
 
@@ -1260,8 +1264,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     return {
       x: Math.round(node.position.x),
       y: Math.round(node.position.y),
-      width: parseSize(node.width ?? node.style?.width, selectedElement?.width ?? 100),
-      height: parseSize(node.height ?? node.style?.height, selectedElement?.height ?? 40),
+      width: parseSize(node.measured?.width ?? node.width ?? node.style?.width, selectedElement?.width ?? 100),
+      height: parseSize(node.measured?.height ?? node.height ?? node.style?.height, selectedElement?.height ?? 40),
     };
   }, [selectedNodeId, nodes, selectedElement?.width, selectedElement?.height]);
 

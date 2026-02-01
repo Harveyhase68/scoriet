@@ -648,6 +648,12 @@ class PostgreSQLParser
                 $columns[] = $col_token->value;
             }
 
+            // Skip ASC/DESC after column name
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
+            }
+
             if ($this->currentTokenMatches('COMMA')) {
                 $this->consumeToken('COMMA');
             } else {
@@ -684,6 +690,11 @@ class PostgreSQLParser
                 if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER', 'KEYWORD'])) {
                     $columns[] = $col_token->value;
                 }
+                // Skip ASC/DESC
+                if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                    $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                    $this->consumeToken();
+                }
                 if ($this->currentTokenMatches('COMMA')) {
                     $this->consumeToken('COMMA');
                 } else {
@@ -706,6 +717,11 @@ class PostgreSQLParser
                 $col_token = $this->consumeToken();
                 if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER', 'KEYWORD'])) {
                     $columns[] = $col_token->value;
+                }
+                // Skip ASC/DESC
+                if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                    $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                    $this->consumeToken();
                 }
                 if ($this->currentTokenMatches('COMMA')) {
                     $this->consumeToken('COMMA');
@@ -921,6 +937,12 @@ class PostgreSQLParser
             $col_token = $this->consumeToken();
             if (in_array($col_token->type, ['QUOTED_STRING', 'IDENTIFIER', 'KEYWORD'])) {
                 $columns[] = $col_token->value;
+            }
+
+            // Skip ASC/DESC
+            if ($this->currentTokenMatches('KEYWORD', 'ASC') ||
+                $this->currentTokenMatches('KEYWORD', 'DESC')) {
+                $this->consumeToken();
             }
 
             if ($this->currentTokenMatches('COMMA')) {

@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\CliSubscriptionController;
 use App\Http\Controllers\Api\FormDesignerController;
 use App\Http\Controllers\Api\StripeController;
 use App\Http\Controllers\Api\PayPalController;
+use App\Http\Controllers\TwoFactorController;
 use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,10 @@ Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook'])->name
 
 // PayPal Webhook (public - called by PayPal servers)
 Route::post('/paypal/webhook', [PayPalController::class, 'handleWebhook'])->name('api.paypal.webhook');
+
+// CMS Popups (public - for landing page and app)
+Route::get('/popups/landingpage', [\App\Http\Controllers\PageController::class, 'getLandingPagePopups'])->name('api.popups.landingpage');
+Route::get('/popups/app', [\App\Http\Controllers\PageController::class, 'getAppPopups'])->name('api.popups.app');
 
 // Template Media - Serve blob images (public access for display, no auth required)
 Route::get('/media/{media}/serve', [\App\Http\Controllers\Api\TemplateMediaController::class, 'serve'])->name('api.template-media.serve.public');
@@ -80,6 +85,7 @@ Route::get('/test/observer', function () {
 // Authentication Routes (public)
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login-2fa', [AuthController::class, 'loginWith2FA']); // 2FA verification step
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -181,6 +187,21 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile/theme', [AuthController::class, 'updateTheme']);
     Route::put('/profile/seller', [AuthController::class, 'updateSellerProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
+
+    // Two-Factor Authentication
+    Route::prefix('two-factor')->group(function () {
+        Route::get('/status', [TwoFactorController::class, 'status']);
+        Route::post('/enable', [TwoFactorController::class, 'enable']);
+        Route::post('/confirm', [TwoFactorController::class, 'confirm']);
+        Route::post('/verify', [TwoFactorController::class, 'verify']);
+        Route::post('/check-device', [TwoFactorController::class, 'checkDevice']);
+        Route::post('/disable', [TwoFactorController::class, 'disable']);
+        Route::post('/cancel-setup', [TwoFactorController::class, 'cancelSetup']);
+        Route::post('/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes']);
+        Route::get('/trusted-devices', [TwoFactorController::class, 'trustedDevices']);
+        Route::delete('/trusted-devices/{deviceId}', [TwoFactorController::class, 'removeTrustedDevice']);
+        Route::delete('/trusted-devices', [TwoFactorController::class, 'removeAllTrustedDevices']);
+    });
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Git Provider Integration
@@ -579,7 +600,18 @@ Route::middleware('auth:api')->group(function () {
 
     // Team unlock (for slot-based system)
     Route::post('/teams/{team}/unlock', [TeamController::class, 'unlockTeam']);
-    
+
+    // Team Roles & Permissions
+    Route::get('/team-roles/permissions', [App\Http\Controllers\Api\TeamRoleController::class, 'getPermissions']);
+    Route::get('/team-roles/system-roles', [App\Http\Controllers\Api\TeamRoleController::class, 'getSystemRoles']);
+    Route::get('/teams/{team}/roles', [App\Http\Controllers\Api\TeamRoleController::class, 'getTeamRoles']);
+    Route::post('/teams/{team}/roles', [App\Http\Controllers\Api\TeamRoleController::class, 'createRole']);
+    Route::put('/teams/{team}/roles/{role}', [App\Http\Controllers\Api\TeamRoleController::class, 'updateRole']);
+    Route::delete('/teams/{team}/roles/{role}', [App\Http\Controllers\Api\TeamRoleController::class, 'deleteRole']);
+    Route::post('/teams/{team}/roles/{role}/copy', [App\Http\Controllers\Api\TeamRoleController::class, 'copyRoleToTeam']);
+    Route::get('/teams/{team}/members-with-roles', [App\Http\Controllers\Api\TeamRoleController::class, 'getMembersWithRoles']);
+    Route::put('/teams/{team}/members/{member}/team-role', [App\Http\Controllers\Api\TeamRoleController::class, 'assignRoleToMember']);
+
     // Project Schema Management
     Route::post('/projects/{project}/schemas', [ProjectController::class, 'associateSchema']);
     Route::delete('/projects/{project}/schemas/{schema}', [ProjectController::class, 'dissociateSchema']);
@@ -608,6 +640,11 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/constraints/{constraint}/foreign-key', [SchemaController::class, 'deleteForeignKey']);
     Route::put('/constraints/{constraint}/foreign-key', [SchemaController::class, 'updateForeignKey']);
     Route::post('/tables/{table}/foreign-key', [SchemaController::class, 'createForeignKey']);
+    Route::get('/schema-versions/{version}/fk-suggestions', [SchemaController::class, 'getForeignKeySuggestions']);
+
+    // FK Field Dependencies & Cascading Changes
+    Route::get('/schema-versions/{version}/fields/{field}/fk-dependencies', [SchemaController::class, 'getFieldFKDependencies']);
+    Route::post('/schema-versions/{version}/fields/{field}/cascade-changes', [SchemaController::class, 'applyCascadingFieldChanges']);
 
     // Schema Designer Layout Management
     Route::post('/floating-schemas/{schema}/layouts/{versionNumber}', [SchemaController::class, 'saveLayout']);

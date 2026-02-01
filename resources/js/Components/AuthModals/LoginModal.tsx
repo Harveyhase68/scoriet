@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
+import TwoFactorVerifyDialog, { generateDeviceId } from './TwoFactorVerifyDialog';
 
 interface LoginModalProps {
   visible: boolean;
@@ -46,6 +47,11 @@ export default function LoginModal({
   const [error, setError] = useState<string>('');
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState<string>('');
+
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFactorToken, setTwoFactorToken] = useState<string>('');
+  const [needs2FAReverification, setNeeds2FAReverification] = useState(false);
 
   // Theme sync after login
   const { syncThemeFromUser } = useTheme();
@@ -89,7 +95,7 @@ export default function LoginModal({
     }
 
     try {
-      // Laravel Passport OAuth Token Request
+      // Laravel Passport OAuth Token Request with device_id for 2FA
       const tokenResponse = await fetch('/api/oauth/token', {
         method: 'POST',
         headers: {
@@ -103,23 +109,33 @@ export default function LoginModal({
           username: formData.email,
           password: formData.password,
           remember_me: formData.rememberMe,
+          device_id: generateDeviceId(), // For 2FA trusted device check
         }),
       });
 
+      const responseData = await tokenResponse.json();
+
+      // Check if 2FA is required
+      if (responseData.two_factor_required) {
+        setTwoFactorToken(responseData.two_factor_token);
+        setNeeds2FAReverification(responseData.needs_reverification || false);
+        setShow2FA(true);
+        setLoading(false);
+        return;
+      }
+
       if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.json();
-        
         // Check if this is an email verification error
-        if (tokenResponse.status === 403 && errorData.email_verification_required) {
+        if (tokenResponse.status === 403 && responseData.email_verification_required) {
           setError(t.loginmodal88);
           setShowResendVerification(true);
           return;
         }
-        
-        throw new Error(errorData.message || t.authcontroller156);
+
+        throw new Error(responseData.message || t.authcontroller156);
       }
 
-      const tokenData = await tokenResponse.json();
+      const tokenData = responseData;
 
       // Save token - depending on 'Remember Me' option
       if (formData.rememberMe) {
@@ -249,10 +265,95 @@ export default function LoginModal({
     setLoading(false);
     setShowResendVerification(false);
     setVerificationMessage('');
+    // Reset 2FA state
+    setShow2FA(false);
+    setTwoFactorToken('');
+    setNeeds2FAReverification(false);
     onHide();
   };
 
+  // Handle successful 2FA verification
+  const handle2FASuccess = async (tokenData: any) => {
+    setShow2FA(false);
+
+    // Save token - depending on 'Remember Me' option
+    if (formData.rememberMe) {
+      localStorage.setItem('access_token', tokenData.access_token);
+      if (tokenData.refresh_token) {
+        localStorage.setItem('refresh_token', tokenData.refresh_token);
+      }
+      localStorage.setItem('remember_me', 'true');
+    } else {
+      sessionStorage.setItem('access_token', tokenData.access_token);
+      if (tokenData.refresh_token) {
+        sessionStorage.setItem('refresh_token', tokenData.refresh_token);
+      }
+      localStorage.setItem('remember_me', 'false');
+    }
+
+    // Fetch and store user data
+    const accessToken = formData.rememberMe
+      ? localStorage.getItem('access_token')
+      : sessionStorage.getItem('access_token');
+
+    try {
+      const userResponse = await fetch('/api/user', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        localStorage.setItem('user_id', userData.id.toString());
+        localStorage.setItem('user_type', userData.user_type || 'free');
+        localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
+
+        // Sync theme from user profile
+        if (userData.theme) {
+          syncThemeFromUser(userData.theme as ThemeMode);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch user data after 2FA:', err);
+    }
+
+    // Show notification if recovery code was used
+    if (tokenData.recovery_code_used) {
+      window.dispatchEvent(
+        new CustomEvent('showToast', {
+          detail: {
+            severity: 'warn',
+            summary: 'Backup-Code verwendet',
+            detail: `Sie haben noch ${tokenData.recovery_codes_remaining} Backup-Codes übrig.`,
+          },
+        })
+      );
+    }
+
+    // Show notification if other sessions were revoked
+    if (tokenData.other_sessions_revoked && tokenData.revoked_session_count > 0) {
+      window.dispatchEvent(
+        new CustomEvent('sessionRevoked', {
+          detail: {
+            count: tokenData.revoked_session_count,
+            message:
+              currentLanguage === 'de'
+                ? 'Sie wurden auf anderen Geräten abgemeldet.'
+                : 'You have been logged out from other devices.',
+          },
+        })
+      );
+    }
+
+    // Success - close modal
+    onLoginSuccess?.();
+    handleHide();
+  };
+
   return (
+    <>
     <Dialog
       header={t.loginmodal212}
       visible={visible}
@@ -428,5 +529,19 @@ export default function LoginModal({
         )}
       </form>
     </Dialog>
+
+    {/* 2FA Verification Dialog */}
+    <TwoFactorVerifyDialog
+      visible={show2FA}
+      onHide={() => {
+        setShow2FA(false);
+        setTwoFactorToken('');
+      }}
+      twoFactorToken={twoFactorToken}
+      needsReverification={needs2FAReverification}
+      rememberMe={formData.rememberMe}
+      onSuccess={handle2FASuccess}
+    />
+  </>
   );
 }

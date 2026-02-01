@@ -54,6 +54,7 @@ const TemplateManagementPanel = lazy(() => import('@/Components/Panels/TemplateM
 const TemplateStorePanel = lazy(() => import('@/Components/Panels/TemplateStorePanel'));
 const TemplateReviewPanel = lazy(() => import('@/Components/Panels/TemplateReviewPanel'));
 const TeamManagementPanel = lazy(() => import('@/Components/Panels/TeamManagementPanel'));
+const TeamRolesPanel = lazy(() => import('@/Components/Panels/TeamRolesPanel'));
 const MessagingPanel = lazy(() => import('@/Components/Panels/MessagingPanel'));
 const DatabaseManagementPanel = lazy(() => import('@/Components/Panels/DatabaseManagementPanel'));
 const TemplateDbSchemaDependenciesPanel = lazy(() => import('@/Components/Panels/TemplateDbSchemaDependenciesPanel'));
@@ -82,6 +83,9 @@ import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthMod
 
 // Pending Invitation Modal
 const PendingInvitationModal = lazy(() => import('@/Components/Modals/PendingInvitationModal'));
+
+// CMS Popup Modal
+import CMSPopupModal from '@/Components/Modals/CMSPopupModal';
 
 // SQL Import Modal
 const SqlImportModal = lazy(() => import('@/Components/SqlImportModal'));
@@ -734,6 +738,41 @@ const loadTab = (
       };
     }
 
+    case 'team-roles': {
+      const teamRolesTabKey = id;
+      if (!window._tabData) window._tabData = {};
+      if (data.teamId !== undefined) {
+        window._tabData[teamRolesTabKey] = {
+          teamId: data.teamId,
+          teamName: data.teamName,
+          isOwner: data.isOwner,
+          updateTitleCallback: updateTitleCallback
+        };
+      }
+      const teamRolesStoredData = window._tabData[teamRolesTabKey] || {};
+      const teamRolesTeamId = teamRolesStoredData.teamId as number;
+      const teamRolesTeamName = teamRolesStoredData.teamName as string;
+      const teamRolesIsOwner = teamRolesStoredData.isOwner as boolean;
+      const teamRolesUpdateTitleCallback = teamRolesStoredData.updateTitleCallback || updateTitleCallback;
+
+      return {
+        id,
+        title: data.title || `Rollen: ${teamRolesTeamName || 'Team'}`,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <TeamRolesPanel
+              teamId={teamRolesTeamId}
+              teamName={teamRolesTeamName || 'Team'}
+              isOwner={teamRolesIsOwner}
+              updateTabTitle={teamRolesUpdateTitleCallback}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+    }
+
     case 'messaging':
       return {
         id,
@@ -1198,6 +1237,16 @@ export default function Index(props: IndexProps = {}) {
   // Forced logout message state (for single-session enforcement)
   const [forcedLogoutMessage, setForcedLogoutMessage] = useState<string | null>(null);
 
+  // CMS Popups state for App
+  const [cmsAppPopups, setCmsAppPopups] = useState<Array<{
+    id: number;
+    title: string;
+    content: string;
+    popup_priority: number;
+    popup_version: number;
+    slug: string;
+  }>>([]);
+
   // Helper function to update layout and save to localStorage
   const updateLayout = useCallback((newLayout: any) => {
     setLayout(newLayout);
@@ -1354,6 +1403,27 @@ export default function Index(props: IndexProps = {}) {
   // Profile Modal default tab (for URL actions like renew-subscription)
   const [profileDefaultTab, setProfileDefaultTab] = useState<number>(0);
 
+  // Load CMS popups for App when authenticated
+  useEffect(() => {
+    const loadAppPopups = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await fetch(`/api/popups/app?locale=${currentLanguage}`, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        if (response.ok) {
+          const popups = await response.json();
+          setCmsAppPopups(popups);
+        }
+      } catch {
+        // Silently fail - popups are not critical
+      }
+    };
+    loadAppPopups();
+  }, [isAuthenticated, currentLanguage]);
 
   // Modal management functions - defined early to ensure they're available
 
@@ -2093,6 +2163,22 @@ export default function Index(props: IndexProps = {}) {
     };
   }, [openPanel]);
 
+  // Listen for team roles panel open event
+  useEffect(() => {
+    const handleOpenTeamRoles = (event: CustomEvent) => {
+      const { teamId, teamName, isOwner } = event.detail || {};
+      if (teamId) {
+        openPanel('team-roles', { teamId, teamName, isOwner });
+      }
+    };
+
+    window.addEventListener('openTeamRolesPanel', handleOpenTeamRoles as EventListener);
+
+    return () => {
+      window.removeEventListener('openTeamRolesPanel', handleOpenTeamRoles as EventListener);
+    };
+  }, [openPanel]);
+
   // Helper function to clean layout for export
   const cleanLayoutForExport = (layout: any) => {
     const cleanLayout = JSON.parse(JSON.stringify(layout));
@@ -2572,6 +2658,15 @@ useHotkeys('alt+m', () => {
             }}
           />
         </Suspense>
+      )}
+
+      {/* CMS POPUPS FOR APP */}
+      {isAuthenticated && cmsAppPopups.length > 0 && (
+        <CMSPopupModal
+          popups={cmsAppPopups}
+          storageKeyPrefix="cms_popup_app_"
+          userId={localStorage.getItem('user_id')}
+        />
       )}
     </>
   );

@@ -49,8 +49,9 @@ class PostgreSQLTokenizer
             'ARRAY', 'RANGE', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'TSRANGE',
             'TSTZRANGE', 'DATERANGE',
 
-            // PostgreSQL index types
+            // PostgreSQL index types and sort order
             'BTREE', 'HASH', 'GIST', 'SPGIST', 'GIN', 'BRIN', 'CONCURRENTLY',
+            'ASC', 'DESC',
 
             // PostgreSQL constraints
             'DEFERRABLE', 'INITIALLY', 'DEFERRED', 'IMMEDIATE', 'MATCH',

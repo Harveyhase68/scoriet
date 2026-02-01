@@ -2,6 +2,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
 
 // TypeScript declaration for window timeout
 declare global {
@@ -9,7 +10,8 @@ declare global {
     layoutSaveTimeout?: NodeJS.Timeout;
   }
 }
-import ReactFlow, {
+import {
+  ReactFlow,
   MiniMap,
   Controls,
   Background,
@@ -23,8 +25,9 @@ import ReactFlow, {
   Handle,
   Position,
   NodeResizer,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+  type ReactFlowInstance,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { TabContentProps } from '@/types';
 import { SchemaTable } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
@@ -79,7 +82,11 @@ interface DatabaseNodeData {
   onCopy?: (table: SchemaTable) => void;
   isLatestVersion?: boolean;
   isReadOnly?: boolean;
+  [key: string]: unknown; // Index signature for xyflow v12 compatibility
 }
+
+// Custom node type for xyflow v12
+type DatabaseNode = Node<DatabaseNodeData, 'database'>;
 
 interface DatabaseNodeProps {
   data: DatabaseNodeData;
@@ -249,7 +256,7 @@ const nodeTypes = {
 };
 
 // Helper functions
-const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, onCopyTable?: (table: SchemaTable) => void, isLatestVersion?: boolean, isReadOnly?: boolean): Node[] => {
+const convertSchemaToNodes = (tables: SchemaTable[], savedLayouts: Record<string, any> = {}, onDeleteTable?: (table: SchemaTable) => void, onEditTable?: (table: SchemaTable) => void, onCopyTable?: (table: SchemaTable) => void, isLatestVersion?: boolean, isReadOnly?: boolean): DatabaseNode[] => {
   return tables.map((table, index) => {
     // Primary Keys finden
     const primaryKeyFields = table.constraints
@@ -409,6 +416,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
 
+  // Toast ref for success/info messages
+  const toast = useRef<Toast>(null);
+
+  // ReactFlow instance ref for programmatic control (fitView after sort, etc.)
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+
   // Database Designer Access State (Premium Feature)
   const [databaseDesignerAccess, setDatabaseDesignerAccess] = useState<{
     has_access: boolean;
@@ -472,6 +485,24 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const [createFKName, setCreateFKName] = useState('');
   const [createFKOnDelete, setCreateFKOnDelete] = useState('NO ACTION');
   const [createFKOnUpdate, setCreateFKOnUpdate] = useState('NO ACTION');
+  // FK Suggestions
+  const [showFKSuggestionsModal, setShowFKSuggestionsModal] = useState(false);
+  const [fkSuggestions, setFkSuggestions] = useState<Array<{
+    source_table_id: number;
+    source_table_name: string;
+    source_field_id: number;
+    source_field_name: string;
+    source_field_type: string;
+    target_table_id: number;
+    target_table_name: string;
+    target_field_id: number;
+    target_field_name: string;
+    target_field_type: string;
+    match_score: number;
+    is_compatible: boolean;
+    compatibility_warning: string | null;
+  }>>([]);
+  const [loadingFKSuggestions, setLoadingFKSuggestions] = useState(false);
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteTableName, setPasteTableName] = useState('');
   const [pasteTableData, setPasteTableData] = useState<any>(null);
@@ -577,8 +608,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       table_name: node.data.tableName,
       x_position: node.position.x,
       y_position: node.position.y,
-      width: node.width || null,
-      height: node.height || null
+      width: node.measured?.width ?? node.width ?? null,
+      height: node.measured?.height ?? node.height ?? null
     }));
 
     try {
@@ -1443,6 +1474,27 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         throw new Error(t.panelt21001);
       }
 
+      const result = await response.json();
+      console.log('Delete table response:', result);
+
+      // Show info message if FK constraints were deleted
+      if (result.deleted_fks && result.deleted_fks > 0) {
+        toast.current?.show({
+          severity: 'info',
+          summary: 'FK-Constraints bereinigt',
+          detail: `${result.deleted_fks} Foreign Key(s) die auf die gelöschte Tabelle "${table.table_name}" verwiesen haben, wurden ebenfalls gelöscht.`,
+          life: 5000,
+        });
+      } else {
+        // Success message for normal deletion
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Tabelle gelöscht',
+          detail: `Die Tabelle "${table.table_name}" wurde erfolgreich gelöscht.`,
+          life: 3000,
+        });
+      }
+
       // Reload the schema version to reflect changes
       if (selectedSchema && selectedVersion) {
         loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
@@ -1497,8 +1549,27 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         }
 
         const result = await response.json();
+        console.log('Delete table with new version response:', result);
 
         if (result.success && result.new_version_number) {
+          // Show info message if FK constraints were deleted
+          if (result.deleted_fks && result.deleted_fks > 0) {
+            toast.current?.show({
+              severity: 'info',
+              summary: 'FK-Constraints bereinigt',
+              detail: `${result.deleted_fks} Foreign Key(s) die auf die gelöschte Tabelle "${pendingDeleteTable.table_name}" verwiesen haben, wurden ebenfalls gelöscht.`,
+              life: 5000,
+            });
+          } else {
+            // Success message for normal deletion
+            toast.current?.show({
+              severity: 'success',
+              summary: 'Tabelle gelöscht',
+              detail: `Die Tabelle "${pendingDeleteTable.table_name}" wurde in der neuen Version erfolgreich gelöscht.`,
+              life: 3000,
+            });
+          }
+
           // Reload floating schemas to update last_version
           await loadFloatingSchemas();
 
@@ -1891,7 +1962,20 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const result = await response.json();
 
       if (!response.ok) {
+        // Show more specific error for incompatible types or SET NULL on NOT NULL
+        if (result.error_type === 'incompatible_types' || result.error_type === 'set_null_on_not_null') {
+          throw new Error(result.message);
+        }
         throw new Error(result.message || result.error || 'Failed to create foreign key');
+      }
+
+      // Show warnings if any (after successful creation)
+      if (result.warnings && result.warnings.length > 0) {
+        // Show index/performance recommendations after successful creation
+        const warningText = result.warnings.join('\n\n');
+        setTimeout(() => {
+          alert('✅ Foreign Key erfolgreich erstellt!\n\n📋 Empfehlungen zur Optimierung:\n\n' + warningText);
+        }, 100);
       }
 
       // Close modal and reset state
@@ -1937,6 +2021,54 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     }
     setShowCreateFKModal(true);
   };
+
+  // Load and show FK suggestions
+  const handleShowFKSuggestions = useCallback(async () => {
+    if (!selectedVersion) return;
+
+    try {
+      setLoadingFKSuggestions(true);
+      setError(null);
+
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) {
+        throw new Error(t.applicationsmodal66);
+      }
+
+      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/fk-suggestions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to load FK suggestions');
+      }
+
+      setFkSuggestions(result.suggestions || []);
+      setShowFKSuggestionsModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load FK suggestions');
+    } finally {
+      setLoadingFKSuggestions(false);
+    }
+  }, [selectedVersion, t.applicationsmodal66]);
+
+  // Create FK from suggestion
+  const handleCreateFKFromSuggestion = useCallback((suggestion: typeof fkSuggestions[0]) => {
+    setCreateFKSourceTableId(suggestion.source_table_id);
+    setCreateFKSourceFieldId(suggestion.source_field_id);
+    setCreateFKTargetTableId(suggestion.target_table_id);
+    setCreateFKTargetFieldId(suggestion.target_field_id);
+    setCreateFKName('');
+    setCreateFKOnDelete('NO ACTION');
+    setCreateFKOnUpdate('NO ACTION');
+    setShowFKSuggestionsModal(false);
+    setShowCreateFKModal(true);
+  }, []);
 
   const handleClipboardPaste = async () => {
 
@@ -2097,6 +2229,17 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         // Diagramm komplett aus DB neu laden (wie Refresh-Button)
         // Dadurch werden die gespeicherten Positionen korrekt angezeigt
         await loadSchemaVersionWithSchema(selectedSchema!, selectedVersion);
+
+        // Nach dem Neuladen: Viewport auf die sortierten Nodes zentrieren
+        // Kleine Verzögerung damit React die Nodes rendern kann
+        setTimeout(() => {
+          if (reactFlowInstance.current) {
+            reactFlowInstance.current.fitView({
+              padding: 0.2,
+              duration: 300, // Sanfte Animation
+            });
+          }
+        }, 100);
       } else if (layoutData && layoutData.error) {
         // Fehler vom Backend anzeigen
         setError(layoutData.error);
@@ -2205,6 +2348,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   // ========== MAIN RENDER (WITH ACCESS) ==========
   return (
     <TabContent style={{}}>
+      <Toast ref={toast} />
       <div className="h-full flex flex-col" style={{ height: '100%' }}>
         {/* Header */}
         <div className="flex justify-between items-center p-4 flex-shrink-0" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
@@ -2338,6 +2482,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             </button>
 
             <button
+              onClick={handleShowFKSuggestions}
+              disabled={loading || loadingFKSuggestions || !selectedSchema || !selectedVersion}
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: colors.textPrimary }}
+              title="FK Vorschläge anzeigen"
+            >
+              {loadingFKSuggestions ? <i className="pi pi-spin pi-spinner"></i> : <i className="pi pi-lightbulb"></i>}
+            </button>
+
+            <button
               onClick={handleClipboardPaste}
               disabled={loading || !selectedSchema || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2403,6 +2557,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              onInit={(instance) => {
+                reactFlowInstance.current = instance;
+              }}
               onNodesChange={(changes) => {
                 // Block position/dimension changes in read-only mode
                 if (effectiveReadOnly) {
@@ -2421,7 +2578,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
                 // Check if we have position or dimension changes
                 const relevantChanges = changes.filter(change =>
-                  (change.type === 'position' && change.positionAbsolute) ||
+                  (change.type === 'position' && change.position) ||
                   (change.type === 'dimensions' && change.dimensions)
                 );
 
@@ -2443,10 +2600,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
                         if (
                           positionChange &&
-                          t.panelt21439 in positionChange &&
-                          'positionAbsolute' in positionChange
+                          'position' in positionChange &&
+                          positionChange.position
                         ) {
-                          updatedNode.position = (positionChange as any).positionAbsolute;
+                          updatedNode.position = positionChange.position;
                         }
 
                         if (dimensionChange && 'dimensions' in dimensionChange && dimensionChange.dimensions) {
@@ -2900,6 +3057,125 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         </div>
       )}
 
+      {/* FK Suggestions Modal */}
+      {showFKSuggestionsModal && (
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-lightbulb mr-2" style={{ color: colors.warningText }}></i>
+                FK Vorschläge ({fkSuggestions.length})
+              </h3>
+              <button
+                onClick={() => setShowFKSuggestionsModal(false)}
+                className="p-2 rounded hover:opacity-80"
+                style={{ color: colors.textSecondary }}
+              >
+                <i className="pi pi-times"></i>
+              </button>
+            </div>
+
+            {fkSuggestions.length === 0 ? (
+              <div className="text-center py-8" style={{ color: colors.textMuted }}>
+                <i className="pi pi-check-circle text-4xl mb-4" style={{ color: colors.successText }}></i>
+                <p>Keine FK-Vorschläge gefunden.</p>
+                <p className="text-sm mt-2">Alle möglichen Foreign Key Beziehungen scheinen bereits definiert zu sein.</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ backgroundColor: colors.bgTertiary }}>
+                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>Quelle</th>
+                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}></th>
+                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>Ziel</th>
+                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>Score</th>
+                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fkSuggestions.map((suggestion, index) => (
+                      <tr
+                        key={index}
+                        className="border-b hover:opacity-90"
+                        style={{
+                          borderColor: colors.borderPrimary,
+                          backgroundColor: index % 2 === 0 ? 'transparent' : colors.bgTertiary,
+                          opacity: suggestion.is_compatible ? 1 : 0.6,
+                        }}
+                      >
+                        <td className="px-3 py-2">
+                          <div style={{ color: colors.textPrimary }}>
+                            <span className="font-medium">{suggestion.source_table_name}</span>
+                            <span style={{ color: colors.textMuted }}>.{suggestion.source_field_name}</span>
+                          </div>
+                          <div className="text-xs" style={{ color: colors.textMuted }}>
+                            {suggestion.source_field_type}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <i className="pi pi-arrow-right" style={{ color: colors.accent }}></i>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div style={{ color: colors.textPrimary }}>
+                            <span className="font-medium">{suggestion.target_table_name}</span>
+                            <span style={{ color: colors.textMuted }}>.{suggestion.target_field_name}</span>
+                          </div>
+                          <div className="text-xs" style={{ color: colors.textMuted }}>
+                            {suggestion.target_field_type}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span
+                            className="px-2 py-1 rounded text-xs font-medium"
+                            style={{
+                              backgroundColor: suggestion.match_score >= 80 ? colors.successBg :
+                                             suggestion.match_score >= 50 ? colors.warningBg : colors.bgTertiary,
+                              color: suggestion.match_score >= 80 ? colors.successText :
+                                     suggestion.match_score >= 50 ? colors.warningText : colors.textSecondary,
+                            }}
+                          >
+                            {suggestion.match_score}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {suggestion.is_compatible ? (
+                            <button
+                              onClick={() => handleCreateFKFromSuggestion(suggestion)}
+                              className="px-3 py-1 rounded text-xs font-medium hover:opacity-80"
+                              style={{ backgroundColor: colors.accent, color: '#fff' }}
+                              title={suggestion.compatibility_warning || 'FK erstellen'}
+                            >
+                              <i className="pi pi-plus mr-1"></i>
+                              Erstellen
+                            </button>
+                          ) : (
+                            <span className="text-xs" style={{ color: colors.errorText }}>
+                              <i className="pi pi-times-circle mr-1"></i>
+                              Inkompatibel
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-4 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+              <button
+                onClick={() => setShowFKSuggestionsModal(false)}
+                className="px-4 py-2 rounded hover:opacity-80"
+                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create FK Modal */}
       {showCreateFKModal && (() => {
         // Extract tables from nodes
@@ -2916,6 +3192,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         const targetTableFields = createFKTargetTableId
           ? availableTables.find(t => t.id === createFKTargetTableId)?.fields || []
           : [];
+
+        // Check if source field is NOT NULL - if so, SET NULL is not allowed
+        const selectedSourceField = createFKSourceFieldId
+          ? sourceTableFields.find(f => f.id === createFKSourceFieldId)
+          : null;
+        const sourceFieldIsNotNull = selectedSourceField && !selectedSourceField.is_nullable;
 
         return (
           <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
@@ -2952,7 +3234,18 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     </label>
                     <select
                       value={createFKSourceFieldId || ''}
-                      onChange={(e) => setCreateFKSourceFieldId(e.target.value ? parseInt(e.target.value) : null)}
+                      onChange={(e) => {
+                        const newFieldId = e.target.value ? parseInt(e.target.value) : null;
+                        setCreateFKSourceFieldId(newFieldId);
+                        // Reset SET NULL actions if new field is NOT NULL
+                        if (newFieldId) {
+                          const newField = sourceTableFields.find(f => f.id === newFieldId);
+                          if (newField && !newField.is_nullable) {
+                            if (createFKOnDelete === 'SET NULL') setCreateFKOnDelete('NO ACTION');
+                            if (createFKOnUpdate === 'SET NULL') setCreateFKOnUpdate('NO ACTION');
+                          }
+                        }
+                      }}
                       disabled={loading || !createFKSourceTableId}
                       className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
@@ -2960,7 +3253,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       <option value="">Select field...</option>
                       {sourceTableFields.map(field => (
                         <option key={field.id} value={field.id}>
-                          {field.field_name} ({field.field_type})
+                          {field.field_name} ({field.field_type}) {!field.is_nullable ? '[NOT NULL]' : ''}
                         </option>
                       ))}
                     </select>
@@ -3043,7 +3336,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       <option value="NO ACTION">NO ACTION</option>
                       <option value="CASCADE">CASCADE</option>
                       <option value="RESTRICT">RESTRICT</option>
-                      <option value="SET NULL">SET NULL</option>
+                      <option value="SET NULL" disabled={sourceFieldIsNotNull}>
+                        SET NULL {sourceFieldIsNotNull ? '(Quellfeld ist NOT NULL)' : ''}
+                      </option>
                       <option value="SET DEFAULT">SET DEFAULT</option>
                     </select>
                   </div>
@@ -3062,11 +3357,20 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       <option value="NO ACTION">NO ACTION</option>
                       <option value="CASCADE">CASCADE</option>
                       <option value="RESTRICT">RESTRICT</option>
-                      <option value="SET NULL">SET NULL</option>
+                      <option value="SET NULL" disabled={sourceFieldIsNotNull}>
+                        SET NULL {sourceFieldIsNotNull ? '(Quellfeld ist NOT NULL)' : ''}
+                      </option>
                       <option value="SET DEFAULT">SET DEFAULT</option>
                     </select>
                   </div>
                 </div>
+
+                {/* Warning if source field is NOT NULL */}
+                {sourceFieldIsNotNull && (
+                  <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
+                    ℹ️ Das Quellfeld "{selectedSourceField?.field_name}" ist NOT NULL. SET NULL Aktionen sind daher nicht verfügbar.
+                  </div>
+                )}
 
                 {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
                   <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>

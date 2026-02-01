@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-sql';
-import 'prismjs/themes/prism-tomorrow.css';
+// Note: We don't import a Prism theme - we use our own theme-aware styles instead
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface DatabaseExportModalProps {
@@ -706,7 +706,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             }))}
             onChange={(e) => setSelectedSchemaId(e.value)}
             placeholder={t.databaseexportmodal338}
-            className="w-full custom-dropdown"
+            className="w-full"
             panelClassName="custom-dropdown-panel"
           />
         ) : (
@@ -731,7 +731,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             options={getVersionOptions()}
             onChange={(e) => setSelectedVersion(e.value)}
             placeholder={t.databaseexportmodal363}
-            className="w-full custom-dropdown"
+            className="w-full"
             panelClassName="custom-dropdown-panel"
           />
         ) : (
@@ -1224,27 +1224,44 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
           color: ${colors.textMuted} !important;
           opacity: 0.7;
         }
-        .database-export-modal .custom-dropdown .p-dropdown {
-          background: ${colors.bgTertiary} !important;
+        /* Native select styling */
+        .database-export-modal select {
+          background-color: ${colors.bgTertiary} !important;
           border: 1px solid ${colors.borderPrimary} !important;
           color: ${colors.textPrimary} !important;
+          border-radius: 0.5rem !important;
+          appearance: auto !important;
         }
-        .database-export-modal .custom-dropdown .p-dropdown-label {
+        .database-export-modal select option {
+          background-color: ${colors.bgSecondary} !important;
           color: ${colors.textPrimary} !important;
         }
-        .database-export-modal .custom-dropdown .p-dropdown-trigger {
+        /* PrimeReact Dropdown styles - theme colors only, no layout changes */
+        .database-export-modal .p-dropdown {
+          background: ${colors.bgTertiary} !important;
+          border: 1px solid ${colors.borderPrimary} !important;
+        }
+        .database-export-modal .p-dropdown .p-dropdown-label {
+          color: ${colors.textPrimary} !important;
+        }
+        .database-export-modal .p-dropdown .p-dropdown-label.p-placeholder {
+          color: ${colors.textMuted} !important;
+        }
+        .database-export-modal .p-dropdown .p-dropdown-trigger {
           color: ${colors.textMuted} !important;
         }
         .custom-dropdown-panel {
           background: ${colors.bgSecondary} !important;
           border: 1px solid ${colors.borderPrimary} !important;
         }
+        .custom-dropdown-panel .p-dropdown-items-wrapper {
+          background: ${colors.bgSecondary} !important;
+        }
         .custom-dropdown-panel .p-dropdown-items {
           background: ${colors.bgSecondary} !important;
         }
         .custom-dropdown-panel .p-dropdown-item {
           color: ${colors.textPrimary} !important;
-          background: transparent !important;
         }
         .custom-dropdown-panel .p-dropdown-item:hover {
           background: ${colors.bgTertiary} !important;
@@ -1252,6 +1269,67 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         .custom-dropdown-panel .p-dropdown-item.p-highlight {
           background: ${colors.accent} !important;
           color: white !important;
+        }
+        /* Prism.js base styles - theme-aware (no external theme imported) */
+        .database-export-modal code[class*="language-"],
+        .database-export-modal pre[class*="language-"] {
+          color: ${colors.textPrimary} !important;
+          background: none !important;
+          text-shadow: none !important;
+          font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
+          font-size: 0.875rem !important;
+          text-align: left !important;
+          white-space: pre-wrap !important;
+          word-spacing: normal !important;
+          word-break: normal !important;
+          word-wrap: normal !important;
+          line-height: 1.5 !important;
+          tab-size: 4 !important;
+          hyphens: none !important;
+        }
+        /* Token styles - theme-aware */
+        .database-export-modal .token {
+          color: ${colors.textPrimary} !important;
+        }
+        .database-export-modal .token.keyword {
+          color: ${colors.accent} !important;
+          font-weight: 600 !important;
+        }
+        .database-export-modal .token.string,
+        .database-export-modal .token.char {
+          color: ${colors.successText} !important;
+        }
+        .database-export-modal .token.number,
+        .database-export-modal .token.boolean {
+          color: ${colors.warningText} !important;
+        }
+        .database-export-modal .token.comment {
+          color: ${colors.textMuted} !important;
+          font-style: italic !important;
+        }
+        .database-export-modal .token.operator,
+        .database-export-modal .token.punctuation {
+          color: ${colors.textSecondary} !important;
+        }
+        .database-export-modal .token.function {
+          color: ${colors.accent} !important;
+        }
+        .database-export-modal .token.class-name,
+        .database-export-modal .token.constant {
+          color: ${colors.warningText} !important;
+        }
+        /* react-simple-code-editor specific styles - override inline -webkit-text-fill-color */
+        .database-export-modal .npm__react-simple-code-editor__textarea {
+          -webkit-text-fill-color: ${colors.textPrimary} !important;
+          color: ${colors.textPrimary} !important;
+          caret-color: ${colors.textPrimary} !important;
+        }
+        .database-export-modal pre {
+          color: ${colors.textPrimary} !important;
+          -webkit-text-fill-color: ${colors.textPrimary} !important;
+        }
+        .database-export-modal pre * {
+          -webkit-text-fill-color: inherit !important;
         }
       `}</style>
     </Dialog>

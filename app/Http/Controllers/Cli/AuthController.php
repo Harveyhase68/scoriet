@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cli;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -219,6 +220,195 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'email' => $user->email,
             ],
+        ], 200);
+    }
+
+    /**
+     * Get CLI/Service access status
+     *
+     * GET /cli/auth/cli-access
+     *
+     * Returns access status for CLI tool and Windows Service
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function cliAccess(Request $request)
+    {
+        $user = $request->user();
+        $accessStatus = $user->getCliAccessStatus();
+
+        return response()->json([
+            'success' => true,
+            ...$accessStatus,
+        ], 200);
+    }
+
+    /**
+     * Purchase CLI access with credits
+     *
+     * POST /cli/auth/unlock-cli
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unlockCli(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if already has access
+        if ($user->hasCliAccess()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'You already have CLI access',
+                'already_unlocked' => true,
+                ...$user->getCliAccessStatus(),
+            ], 200);
+        }
+
+        // Check credits
+        if ($user->credits < Subscription::CLI_UNLOCK_COST) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not enough credits',
+                'required_credits' => Subscription::CLI_UNLOCK_COST,
+                'user_credits' => $user->credits,
+                'purchase_url' => 'https://scoriet.dev/credits',
+            ], 402); // Payment Required
+        }
+
+        // Unlock CLI
+        $subscription = Subscription::unlockCliWithCredits($user->id);
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unlock CLI access',
+            ], 500);
+        }
+
+        // Refresh user
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'CLI access unlocked successfully for 1 year',
+            'credits_spent' => Subscription::CLI_UNLOCK_COST,
+            'credits_remaining' => $user->credits,
+            'expires_at' => $subscription->expires_at->toIso8601String(),
+            ...$user->getCliAccessStatus(),
+        ], 200);
+    }
+
+    /**
+     * Purchase Service access with credits
+     *
+     * POST /cli/auth/unlock-service
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unlockService(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if already has access
+        if ($user->hasServiceAccess()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'You already have Service access',
+                'already_unlocked' => true,
+                ...$user->getCliAccessStatus(),
+            ], 200);
+        }
+
+        // Check credits
+        if ($user->credits < Subscription::SERVICE_UNLOCK_COST) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not enough credits',
+                'required_credits' => Subscription::SERVICE_UNLOCK_COST,
+                'user_credits' => $user->credits,
+                'purchase_url' => 'https://scoriet.dev/credits',
+            ], 402);
+        }
+
+        // Unlock Service
+        $subscription = Subscription::unlockServiceWithCredits($user->id);
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unlock Service access',
+            ], 500);
+        }
+
+        // Refresh user
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Windows Service access unlocked successfully for 1 year',
+            'credits_spent' => Subscription::SERVICE_UNLOCK_COST,
+            'credits_remaining' => $user->credits,
+            'expires_at' => $subscription->expires_at->toIso8601String(),
+            ...$user->getCliAccessStatus(),
+        ], 200);
+    }
+
+    /**
+     * Purchase Bundle (CLI + Service) access with credits
+     *
+     * POST /cli/auth/unlock-bundle
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unlockBundle(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if already has full access
+        if ($user->hasCliAccess() && $user->hasServiceAccess()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'You already have CLI and Service access',
+                'already_unlocked' => true,
+                ...$user->getCliAccessStatus(),
+            ], 200);
+        }
+
+        // Check credits
+        if ($user->credits < Subscription::BUNDLE_UNLOCK_COST) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not enough credits',
+                'required_credits' => Subscription::BUNDLE_UNLOCK_COST,
+                'user_credits' => $user->credits,
+                'purchase_url' => 'https://scoriet.dev/credits',
+            ], 402);
+        }
+
+        // Unlock Bundle
+        $subscription = Subscription::unlockBundleWithCredits($user->id);
+
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unlock Bundle access',
+            ], 500);
+        }
+
+        // Refresh user
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'CLI + Service Bundle unlocked successfully for 1 year',
+            'credits_spent' => Subscription::BUNDLE_UNLOCK_COST,
+            'credits_remaining' => $user->credits,
+            'expires_at' => $subscription->expires_at->toIso8601String(),
+            ...$user->getCliAccessStatus(),
         ], 200);
     }
 }

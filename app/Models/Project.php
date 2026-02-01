@@ -732,4 +732,142 @@ class Project extends Model
 
         return $subscription->is_soft_locked;
     }
+
+    /**
+     * Check if user has a specific permission for this project via team membership
+     *
+     * @param User $user
+     * @param string $permission Permission name (e.g., 'schema.edit', 'template.view')
+     * @return bool
+     */
+    public function userHasPermission(User $user, string $permission): bool
+    {
+        // Project owner has all permissions
+        if ((string)$this->owner_id === (string)$user->id) {
+            return true;
+        }
+
+        // Check team membership if project has a team
+        if ($this->team_id) {
+            $team = Team::find($this->team_id);
+            if ($team) {
+                // Team owner has all permissions
+                if ($team->project_owner_id === $user->id) {
+                    return true;
+                }
+
+                // Check team member's permission
+                $member = TeamMember::where('team_id', $team->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if ($member) {
+                    return $member->hasPermission($permission);
+                }
+            }
+        }
+
+        // Direct project member - check legacy role (admin has all permissions)
+        $directMembership = $this->getMembership($user);
+        if ($directMembership) {
+            // Legacy: admin has all permissions, member has view permissions
+            if ($directMembership->isAdmin()) {
+                return true;
+            }
+            // Basic members can view
+            if (str_contains($permission, '.view')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can view schemas in this project
+     */
+    public function userCanViewSchemas(User $user): bool
+    {
+        return $this->userHasPermission($user, 'schema.view');
+    }
+
+    /**
+     * Check if user can edit schemas in this project
+     */
+    public function userCanEditSchemas(User $user): bool
+    {
+        return $this->userHasPermission($user, 'schema.edit');
+    }
+
+    /**
+     * Check if user can view templates in this project
+     */
+    public function userCanViewTemplates(User $user): bool
+    {
+        return $this->userHasPermission($user, 'template.view');
+    }
+
+    /**
+     * Check if user can edit templates in this project
+     */
+    public function userCanEditTemplates(User $user): bool
+    {
+        return $this->userHasPermission($user, 'template.edit');
+    }
+
+    /**
+     * Check if user can run code generation in this project
+     */
+    public function userCanGenerate(User $user): bool
+    {
+        return $this->userHasPermission($user, 'generation.run');
+    }
+
+    /**
+     * Check if user can deploy from this project
+     */
+    public function userCanDeploy(User $user): bool
+    {
+        return $this->userHasPermission($user, 'generation.deploy');
+    }
+
+    /**
+     * Check if user can manage forms in this project
+     */
+    public function userCanManageForms(User $user): bool
+    {
+        return $this->userHasPermission($user, 'forms.manage');
+    }
+
+    /**
+     * Check if user can use kanban in this project
+     */
+    public function userCanUseKanban(User $user): bool
+    {
+        return $this->userHasPermission($user, 'kanban.use');
+    }
+
+    /**
+     * Check if user can send messages in this project
+     */
+    public function userCanSendMessages(User $user): bool
+    {
+        return $this->userHasPermission($user, 'messaging.send');
+    }
+
+    /**
+     * Check if user can edit this project settings
+     */
+    public function userCanEditProject(User $user): bool
+    {
+        return $this->userHasPermission($user, 'project.edit');
+    }
+
+    /**
+     * Check if user can delete this project
+     */
+    public function userCanDeleteProject(User $user): bool
+    {
+        return $this->userHasPermission($user, 'project.delete');
+    }
 }

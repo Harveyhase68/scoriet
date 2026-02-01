@@ -18,6 +18,7 @@ import {
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import LanguageSelector from '@/Components/LanguageSelector';
+import CMSPopupModal from '@/Components/Modals/CMSPopupModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 import { pricingUtils } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -27,6 +28,15 @@ interface UserData {
   name: string;
   email: string;
   email_verified_at?: string;
+}
+
+interface CMSPopup {
+  id: number;
+  title: string;
+  content: string;
+  popup_priority: number;
+  popup_version: number;
+  slug: string;
 }
 
 export default function LandingPage() {
@@ -77,6 +87,29 @@ export default function LandingPage() {
     const setting = localStorage.getItem('open_home_on_start');
     return setting === null || setting === 'true';
   });
+
+  // CMS Popups state
+  const [cmsPopups, setCmsPopups] = useState<CMSPopup[]>([]);
+
+  // Load CMS popups for landing page
+  useEffect(() => {
+    const loadPopups = async () => {
+      try {
+        const response = await fetch(`/api/popups/landingpage?locale=${currentLanguage}`, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        if (response.ok) {
+          const popups = await response.json();
+          setCmsPopups(popups);
+        }
+      } catch {
+        // Silently fail - popups are not critical
+      }
+    };
+    loadPopups();
+  }, [currentLanguage]);
 
   // Language change handler
   const handleLanguageChange = (language: SupportedLanguage) => {
@@ -459,7 +492,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20" style={{ backgroundColor: colors.bgSecondary }}>
+        <section id="features" className="py-20" style={{ backgroundColor: colors.bgSecondary }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center mb-12" style={{ color: colors.textPrimary }}>
               {t.featuresTitle}
@@ -485,7 +518,7 @@ export default function LandingPage() {
 
         {/* Pricing Section - Only for non-authenticated users */}
         {!isAuthenticated && (
-          <section className="py-20" style={{ backgroundColor: colors.bgPrimary }}>
+          <section id="pricing" className="py-20" style={{ backgroundColor: colors.bgPrimary }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <h2 className="text-3xl font-bold text-center mb-4" style={{ color: colors.textPrimary }}>
                 {t.pricingTitle}
@@ -693,19 +726,16 @@ export default function LandingPage() {
               <div>
                 <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.productLabel}</h4>
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.featuresLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.pricingLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.templatesLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.examplesLink}</a></li>
+                  <li><a href="#features" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.featuresLink}</a></li>
+                  <li><a href="#pricing" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.pricingLink}</a></li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.resourcesLabel}</h4>
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.documentationLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.apiReferenceLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.tutorialsLink}</a></li>
+                  <li><a href="https://scoriet.com/docs/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.documentationLink}</a></li>
+                  <li><a href="https://www.youtube.com/@Harveyhase68a" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.tutorialsLink}</a></li>
                   <li><a href={`/${currentLanguage}/downloads`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.downloadsLink}</a></li>
                 </ul>
               </div>
@@ -713,10 +743,8 @@ export default function LandingPage() {
               <div>
                 <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.supportLabel}</h4>
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
-                  <li><a href={`/${currentLanguage}/help`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.helpCenterLink}</a></li>
-                  <li><a href={`/${currentLanguage}/impressum`} className="hover:opacity-80" style={{ color: colors.textMuted }}>Impressum</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.contactUsLink}</a></li>
-                  <li><a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.communityLink}</a></li>
+                  <li><a href={`/${currentLanguage}/contact`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.contactUsLink}</a></li>
+                  <li><a href="https://scoriet.com/forum/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.communityLink}</a></li>
                 </ul>
               </div>
             </div>
@@ -726,8 +754,9 @@ export default function LandingPage() {
             <div className="flex justify-between items-center" style={{ color: colors.textMuted }}>
               <p>{t.allRightsReserved}.</p>
               <div className="flex space-x-6">
-                <a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
-                <a href="#" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
+                <a href="https://scoriet.com/pages/datenschutz.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
+                <a href="https://scoriet.com/pages/agb.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
+                <a href="https://scoriet.com/pages/impressum.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>Impressum</a>
               </div>
             </div>
           </div>
@@ -792,6 +821,15 @@ export default function LandingPage() {
         }}
         currentLanguage={currentLanguage}
       />
+
+      {/* CMS Popups */}
+      {cmsPopups.length > 0 && (
+        <CMSPopupModal
+          popups={cmsPopups}
+          storageKeyPrefix="cms_popup_lobby_"
+          userId={userData?.id}
+        />
+      )}
     </>
   );
 }

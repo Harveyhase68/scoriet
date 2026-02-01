@@ -393,8 +393,10 @@ class UltimateTemplateEngine
         }
 
         // 🎯 Set current table info on project level (tablename, tableindex)
+        // Also define tableIdx as a constant for templates that use {:table.xxx:} placeholders
         if ($tableIndex !== null) {
             $jsFunction .= "  // Current table context\n";
+            $jsFunction .= "  const tableIdx = {$tableIndex}; // Fixed table index for db_table_file\n";
             $jsFunction .= "  gtree[0].project[0].tableindex = {$tableIndex};\n";
             $jsFunction .= "  gtree[0].project[0].tablename = gtree[0].project[0].tables[{$tableIndex}]?.filename || '';\n";
         }

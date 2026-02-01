@@ -46,9 +46,9 @@ export default defineConfig({
                         if (id.includes('@codemirror') || id.includes('codemirror')) {
                             return 'codemirror';
                         }
-                        // ReactFlow - diagram library (~400KB)
-                        if (id.includes('reactflow') || id.includes('@reactflow')) {
-                            return 'reactflow';
+                        // xyflow (formerly ReactFlow) - diagram library (~400KB)
+                        if (id.includes('@xyflow')) {
+                            return 'xyflow';
                         }
                         // JSZip
                         if (id.includes('jszip')) {

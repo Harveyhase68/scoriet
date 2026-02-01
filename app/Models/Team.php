@@ -20,6 +20,46 @@ class Team extends Model
         'is_active' => 'boolean'
     ];
 
+    /**
+     * Boot the model
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Automatically copy default roles when a team is created
+        static::created(function (Team $team) {
+            $team->copyDefaultRoles();
+        });
+    }
+
+    /**
+     * Get roles for this team
+     */
+    public function roles(): HasMany
+    {
+        return $this->hasMany(TeamRole::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Copy default system roles to this team
+     */
+    public function copyDefaultRoles(): void
+    {
+        $systemRoles = TeamRole::getSystemRoles();
+
+        foreach ($systemRoles as $systemRole) {
+            // Check if role with this slug already exists for this team
+            $exists = TeamRole::where('team_id', $this->id)
+                ->where('slug', $systemRole->slug)
+                ->exists();
+
+            if (!$exists) {
+                TeamRole::copyToTeam($systemRole, $this->id);
+            }
+        }
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'project_owner_id');

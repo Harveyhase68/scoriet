@@ -35,6 +35,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Theme System**: Dark/Light mode with dynamic color switching via `useTheme()` hook
 - ✅ **Modern UI/UX**: Professional theme-aware interface with dockable panels
 - ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
+- ✅ **2FA with TOTP Authenticator App**: User optional activated 2FA authtetifiaction with an authenticator app
 - ✅ **Internationalization (i18n)**: 5 languages with automatic browser detection
 - ✅ **CSS Flag Icons**: Beautiful country flags using pure CSS gradients
 - ✅ **Language Selector**: Elegant dropdown with flag icons and smooth UX
@@ -56,6 +57,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **Excel Translation Import**: Bulk import translations from Excel files
 - ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
+- ✅ **MySQL & MariaDB Import**: Full support for MySQL and MariaDB SQL dumps and schema import
 - ✅ **PostgreSQL Import**: Full support for PostgreSQL SQL dumps and schema import
 - ✅ **Schema Versioning**: Automatic version tracking for database changes
 - ✅ **Schema Diff & Migration**: Compare schema versions and generate SQL migration scripts
@@ -68,19 +70,22 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Full Code Generation**: Generate complete projects from multiple templates
 - ✅ **Multi-Template Support**: Stack multiple templates for complex applications
 - ✅ **Multi-Language Generation**: Generate code in multiple languages simultaneously
-- ✅ **ZIP Template Upload**: Upload complete template structures as ZIP files
+- ✅ **ZIP/tar Template Upload**: Upload complete template structures as ZIP or tar files
 - ✅ **File Path Organization**: Automatic directory structure for generated code
 - ✅ **Template Variables**: Custom project-level variables with multi-language support
 - ✅ **Error Reporting**: Comprehensive syntax error detection and reporting in ERRORS.txt
 - ✅ **Progress Tracking**: Real-time generation progress with file counters
-- ✅ **ZIP Download**: Package generated code with all files and error reports
+- ✅ **ZIP/tar Download**: Package generated code with all files and error reports
 - ✅ **Form Designer**: Visual form design with database field integration
 - ✅ **Code Adjustments**: Post-generation code customization system
+- ✅ **Template Marketplace**: Share and download community templates
+- ✅ **FTP/SSH Upload**: Direct deployment via FTP or SFTP to remote servers
 
 #### 👥 **Project & Team Management**
 - ✅ **Project Management**: Teams, projects, and collaboration tools
 - ✅ **Public Projects Gallery**: Clone and share projects with credit system
 - ✅ **Team Collaboration**: Invite members, assign roles, manage permissions
+- ✅ **Advanced Team Permissions**: Enhanced role-based access control
 - ✅ **Project Settings**: Comprehensive project configuration and variable management
 - ✅ **Kanban Board**: Visual project task management with drag-and-drop cards
 - ✅ **Project Import/Export**: ZIP-based project backup and restore
@@ -106,20 +111,23 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **VSCode Extension**: Template syntax highlighting and snippets for VSCode
 - ✅ **Query Builder**: Visual SQL query builder for database operations
 
-### 🚧 **In Progress** (Coming Soon)
-- 🚧 **FTP/SSH Upload**: Direct deployment via FTP or SFTP to remote servers
-- 🚧 **Payment Integration**: PayPal and Stripe subscription handling
-- 🚧 **AI Integration**: Claude API for enhanced code generation
-- 🚧 **GitHub Integration**: Direct push to GitHub repositories
-- 🚧 **Advanced Team Permissions**: Enhanced role-based access control
+#### Payment for Patron and credit system
+- ✅ **Payment Integration**: PayPal and Stripe subscription handling
+
+#### GitHub and GitLab Integration
+- ✅ **GitHub Integration**: Direct push to GitHub repositories
+
+#### API, CLI and local Service
+- ✅ **API Ecosystem**: Public API for third-party integrations
+- ✅ **CLI command line tool**: Access Scoriet from bash, cmd or Powershell
+- ✅ **CLI local Service**: A service for accessing your local database, deploy generated projects and upload directorys for code adjustments
+- ✅ **CLI upload via FTP/SSH**: The service can upload/delploy the generated sources to your server
 
 ### 📅 **Planned Features** (Roadmap)
-- 📅 **Multi-Database Support**: SQLite, SQL Server support (PostgreSQL already supported)
-- 📅 **Advanced Code Analysis**: Static analysis and code quality metrics
-- 📅 **Template Marketplace**: Share and download community templates
-- 📅 **API Ecosystem**: Public API for third-party integrations
+- 📅 **AI Integration**: Claude API for enhanced code generation
+- 📅 **Multi-Database Support**: SQLite, SQL Server support (MySQL & PostgreSQL already supported)
 - 📅 **Plugin System**: Extensible architecture for custom generators
-- 📅 **Cloud Deployment**: One-click deployment to major cloud providers
+- 📅 **Cloud Deployment**: One-click deployment to major cloud providers (cPanel integration???)
 
 ### 🧪 **Try It Now**
 - **Live Demo**: [demo.scoriet.dev](https://demo.scoriet.dev) - Full featured demo environment
@@ -1187,6 +1195,7 @@ scoriet/
 - **[TypeScript](https://www.typescriptlang.org)** - Type safety
 - **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS
 - **[RC Dock](https://github.com/ticlo/rc-dock)** - Docking layout system
+- **[RC Flow](https://github.com/xyflow/xyflow)** - Visual schema editor & Kanban board
 - **[Vite](https://vitejs.dev)** - Build tool and dev server
 - **[Pest PHP](https://pestphp.com)** - Testing framework
 
@@ -1221,7 +1230,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with the assistance of Claude, ChatGPT, Gemini, and Builder.io AI
+- Built with the assistance of Claude AI
 - Inspired by the original WinDev implementation
 - Thanks to the Laravel and React communities
 

@@ -87,15 +87,15 @@ class KanbanController extends Controller
     {
         $user = auth()->user();
 
-        // Check project access - use the Project model's userCanAccess method
+        // Check project access - use the Project model's permission methods
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Access denied to this project'], 403);
+        if (!$project->userCanUseKanban($user)) {
+            return response()->json(['message' => 'Access denied - kanban.use permission required'], 403);
         }
 
         // Get or create board
@@ -1051,7 +1051,7 @@ class KanbanController extends Controller
     }
 
     /**
-     * Helper: Check if user has access to board
+     * Helper: Check if user has access to board (requires kanban.use permission)
      */
     private function hasAccessToBoard(int $boardId): bool
     {
@@ -1067,7 +1067,7 @@ class KanbanController extends Controller
             return false;
         }
 
-        // Use the Project model's userCanAccess method for consistent access control
-        return $project->userCanAccess($user);
+        // Check if user has kanban.use permission for this project
+        return $project->userCanUseKanban($user);
     }
 }

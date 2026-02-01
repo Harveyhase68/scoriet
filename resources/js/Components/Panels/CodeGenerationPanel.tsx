@@ -3630,8 +3630,8 @@ export default function CodeGenerationPanel() {
                       </>
                     ) : (
                       currentUser?.patron_type === 'monthly'
-                        ? `📡 ${selectedProject.deployment_type?.toUpperCase()} Upload`
-                        : `📡 ${selectedProject.deployment_type?.toUpperCase()} Upload (5 Credits)`
+                        ? `📡 Generate & ${selectedProject.deployment_type?.toUpperCase()} Upload`
+                        : `📡 Generate & ${selectedProject.deployment_type?.toUpperCase()} Upload (5 Credits)`
                     )}
                   </button>
                 )}

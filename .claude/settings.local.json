@@ -134,7 +134,8 @@
       "Bash(npm view:*)",
       "Bash(npm update:*)",
       "Bash(composer dump-autoload:*)",
-      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\TeamsPanel.tsx\")"
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\TeamsPanel.tsx\")",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

@@ -13,12 +13,13 @@ import { Message } from 'primereact/message';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import TwoFactorSection from '@/Components/AuthModals/TwoFactorSection';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface ProfileModalProps {
   visible: boolean;
   onHide: () => void;
-  defaultTab?: number; // Tab index to open by default (0=Profile, 1=Password, 2=Subscriptions, 3=Plans, 4=Verkäufer, 5=Delete)
+  defaultTab?: number; // Tab index to open by default (0=Profile, 1=Password, 2=Security, 3=Subscriptions, 4=Plans, 5=Verkäufer, 6=Git, 7=Delete)
 }
 
 interface UserData {
@@ -1598,6 +1599,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               disabled={loadingPassword}
             />
           </form>
+        </TabPanel>
+
+        <TabPanel header="Security" leftIcon="pi pi-shield">
+          <TwoFactorSection />
         </TabPanel>
 
         <TabPanel header="Subscriptions" leftIcon="pi pi-unlock">

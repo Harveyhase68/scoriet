@@ -63,6 +63,13 @@ class User extends Authenticatable implements MustVerifyEmail
         // Email notification preferences
         'email_system_notifications',
         'email_user_notifications',
+        // Two-Factor Authentication
+        'two_factor_secret',
+        'two_factor_enabled',
+        'two_factor_confirmed_at',
+        'two_factor_recovery_codes',
+        'two_factor_trusted_devices',
+        'two_factor_last_verified_at',
     ];
 
     /**
@@ -73,6 +80,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -98,6 +107,12 @@ class User extends Authenticatable implements MustVerifyEmail
             'total_earnings' => 'decimal:2',
             'email_system_notifications' => 'boolean',
             'email_user_notifications' => 'boolean',
+            // Two-Factor Authentication
+            'two_factor_enabled' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_trusted_devices' => 'encrypted:array',
+            'two_factor_last_verified_at' => 'datetime',
         ];
     }
 
@@ -557,6 +572,57 @@ class User extends Authenticatable implements MustVerifyEmail
             Subscription::TYPE_SERVICE,
             Subscription::TYPE_BUNDLE,
         ]);
+    }
+
+    /**
+     * Check if user has CLI Tool access
+     */
+    public function hasCliAccess(): bool
+    {
+        // Patrons and admins always have access
+        if ($this->isPatron() || $this->isAdmin()) {
+            return true;
+        }
+
+        return Subscription::hasCliAccess($this->id);
+    }
+
+    /**
+     * Check if user has Windows Service access
+     */
+    public function hasServiceAccess(): bool
+    {
+        // Patrons and admins always have access
+        if ($this->isPatron() || $this->isAdmin()) {
+            return true;
+        }
+
+        return Subscription::hasServiceAccess($this->id);
+    }
+
+    /**
+     * Get CLI access status (for API response)
+     */
+    public function getCliAccessStatus(): array
+    {
+        // Patrons always have full access
+        if ($this->isPatron()) {
+            return [
+                'has_cli_access' => true,
+                'has_service_access' => true,
+                'access_type' => 'patron',
+                'patron_level' => $this->patron_type,
+                'is_patron' => true,
+                'is_expired' => false,
+                'can_renew' => false,
+                'user_credits' => $this->credits,
+                'cli_cost' => Subscription::CLI_UNLOCK_COST,
+                'service_cost' => Subscription::SERVICE_UNLOCK_COST,
+                'bundle_cost' => Subscription::BUNDLE_UNLOCK_COST,
+            ];
+        }
+
+        return Subscription::getCliAccessStatus($this->id);
     }
 
     public function tickets(): HasMany
@@ -1022,6 +1088,236 @@ class User extends Authenticatable implements MustVerifyEmail
             'color' => $this->getKanbanColor(),
             'has_custom_initials' => !empty($this->kanban_initials),
             'has_custom_color' => !empty($this->kanban_color),
+        ];
+    }
+
+    // ==================== TWO-FACTOR AUTHENTICATION ====================
+
+    /**
+     * Check if 2FA is enabled and confirmed for this user
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_enabled && $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Check if 2FA is in setup state (secret generated but not confirmed)
+     */
+    public function isTwoFactorPending(): bool
+    {
+        return $this->two_factor_secret !== null && !$this->two_factor_enabled;
+    }
+
+    /**
+     * Generate new recovery codes (8 codes, 10 characters each)
+     */
+    public function generateTwoFactorRecoveryCodes(): array
+    {
+        $codes = [];
+        for ($i = 0; $i < 8; $i++) {
+            $codes[] = strtoupper(bin2hex(random_bytes(5))); // 10 hex characters
+        }
+
+        $this->two_factor_recovery_codes = $codes;
+        $this->save();
+
+        return $codes;
+    }
+
+    /**
+     * Get remaining recovery codes count
+     */
+    public function getRecoveryCodesCount(): int
+    {
+        $codes = $this->two_factor_recovery_codes;
+        return is_array($codes) ? count($codes) : 0;
+    }
+
+    /**
+     * Verify and consume a recovery code
+     */
+    public function verifyRecoveryCode(string $code): bool
+    {
+        $codes = $this->two_factor_recovery_codes;
+
+        if (!is_array($codes)) {
+            return false;
+        }
+
+        $normalizedCode = strtoupper(trim($code));
+        $index = array_search($normalizedCode, $codes, true);
+
+        if ($index !== false) {
+            // Remove used code
+            unset($codes[$index]);
+            $this->two_factor_recovery_codes = array_values($codes);
+            $this->two_factor_last_verified_at = now();
+            $this->save();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Enable 2FA after successful verification
+     */
+    public function enableTwoFactor(): void
+    {
+        $this->two_factor_enabled = true;
+        $this->two_factor_confirmed_at = now();
+        $this->two_factor_last_verified_at = now();
+        $this->save();
+    }
+
+    /**
+     * Disable 2FA and clear all related data
+     */
+    public function disableTwoFactor(): void
+    {
+        $this->two_factor_secret = null;
+        $this->two_factor_enabled = false;
+        $this->two_factor_confirmed_at = null;
+        $this->two_factor_recovery_codes = null;
+        $this->two_factor_trusted_devices = null;
+        $this->two_factor_last_verified_at = null;
+        $this->save();
+    }
+
+    /**
+     * Check if device is trusted
+     */
+    public function isDeviceTrusted(string $deviceId): bool
+    {
+        $devices = $this->two_factor_trusted_devices;
+
+        if (!is_array($devices)) {
+            return false;
+        }
+
+        foreach ($devices as $device) {
+            if ($device['device_id'] === $deviceId) {
+                // Check if trust period hasn't expired (30 days)
+                $trustedUntil = \Carbon\Carbon::parse($device['trusted_until']);
+                if ($trustedUntil->isFuture()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Add device to trusted list
+     */
+    public function trustDevice(string $deviceId, string $browser, string $ip): void
+    {
+        $devices = $this->two_factor_trusted_devices ?? [];
+
+        // Remove existing entry for this device if exists
+        $devices = array_filter($devices, fn($d) => $d['device_id'] !== $deviceId);
+
+        // Add new trusted device (valid for 30 days)
+        $devices[] = [
+            'device_id' => $deviceId,
+            'browser' => $browser,
+            'ip' => $ip,
+            'trusted_until' => now()->addDays(30)->toISOString(),
+            'created_at' => now()->toISOString(),
+        ];
+
+        // Keep only last 10 trusted devices
+        $devices = array_slice($devices, -10);
+
+        $this->two_factor_trusted_devices = array_values($devices);
+        $this->save();
+    }
+
+    /**
+     * Remove a trusted device
+     */
+    public function removeTrustedDevice(string $deviceId): void
+    {
+        $devices = $this->two_factor_trusted_devices ?? [];
+        $devices = array_filter($devices, fn($d) => $d['device_id'] !== $deviceId);
+
+        $this->two_factor_trusted_devices = array_values($devices);
+        $this->save();
+    }
+
+    /**
+     * Remove all trusted devices
+     */
+    public function removeAllTrustedDevices(): void
+    {
+        $this->two_factor_trusted_devices = [];
+        $this->save();
+    }
+
+    /**
+     * Get list of trusted devices
+     */
+    public function getTrustedDevices(): array
+    {
+        $devices = $this->two_factor_trusted_devices ?? [];
+
+        // Filter out expired devices
+        $validDevices = array_filter($devices, function ($device) {
+            $trustedUntil = \Carbon\Carbon::parse($device['trusted_until']);
+            return $trustedUntil->isFuture();
+        });
+
+        // Update if any were removed
+        if (count($validDevices) !== count($devices)) {
+            $this->two_factor_trusted_devices = array_values($validDevices);
+            $this->save();
+        }
+
+        return $validDevices;
+    }
+
+    /**
+     * Check if user needs to re-verify 2FA (monthly requirement)
+     */
+    public function needsTwoFactorReVerification(): bool
+    {
+        if (!$this->hasTwoFactorEnabled()) {
+            return false;
+        }
+
+        if (!$this->two_factor_last_verified_at) {
+            return true;
+        }
+
+        // Re-verify every 30 days
+        return $this->two_factor_last_verified_at->addDays(30)->isPast();
+    }
+
+    /**
+     * Update last 2FA verification time
+     */
+    public function updateTwoFactorVerificationTime(): void
+    {
+        $this->two_factor_last_verified_at = now();
+        $this->save();
+    }
+
+    /**
+     * Get 2FA status for API response
+     */
+    public function getTwoFactorStatus(): array
+    {
+        return [
+            'enabled' => $this->hasTwoFactorEnabled(),
+            'pending' => $this->isTwoFactorPending(),
+            'recovery_codes_count' => $this->getRecoveryCodesCount(),
+            'trusted_devices_count' => count($this->getTrustedDevices()),
+            'needs_reverification' => $this->needsTwoFactorReVerification(),
+            'confirmed_at' => $this->two_factor_confirmed_at?->toISOString(),
+            'last_verified_at' => $this->two_factor_last_verified_at?->toISOString(),
         ];
     }
 }
