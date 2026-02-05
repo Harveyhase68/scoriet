@@ -2434,3 +2434,23 @@ Route::middleware('auth:api')->prefix('kanban')->group(function () {
     Route::delete('/board/{boardId}/roles/{userId}', [App\Http\Controllers\Api\KanbanController::class, 'removeUserRole']);
 });
 
+// ============================================================================
+// Registration Invites (Public Routes)
+// ============================================================================
+Route::prefix('registration')->group(function () {
+    // Check if registration is open (public)
+    Route::get('/status', [App\Http\Controllers\RegistrationInviteController::class, 'getStatus']);
+    // Validate invite token (public)
+    Route::post('/validate-token', [App\Http\Controllers\RegistrationInviteController::class, 'validateToken']);
+});
+
+// ============================================================================
+// Registration Invites Management (Admin Only - requires auth)
+// ============================================================================
+Route::prefix('invites')->middleware('auth:api')->group(function () {
+    Route::get('/', [App\Http\Controllers\RegistrationInviteController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\RegistrationInviteController::class, 'store']);
+    Route::post('/{invite}/resend', [App\Http\Controllers\RegistrationInviteController::class, 'resend']);
+    Route::delete('/{invite}', [App\Http\Controllers\RegistrationInviteController::class, 'destroy']);
+});
+

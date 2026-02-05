@@ -246,7 +246,7 @@ class CheckSubscriptionExpiry extends Command
         // Create appropriate subject line
         $subject = $this->getEmailSubject($urgencyLevel, $totalCount);
 
-        $this->info("  Sending bundled email to {$user->email} ({$totalCount} subscriptions: " .
+        $this->info(" Sending bundled email to {$user->email} ({$totalCount} subscriptions: " .
             count($warningItems) . " warning, " .
             count($finalItems) . " final, " .
             count($expiredItems) . " expired)");

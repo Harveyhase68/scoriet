@@ -66,6 +66,7 @@ const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTran
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const PayoutAdminPanel = lazy(() => import('@/Components/Panels/PayoutAdminPanel'));
 const PerformanceMetricsPanel = lazy(() => import('@/Components/Panels/PerformanceMetricsPanel'));
+const InviteManagementPanel = lazy(() => import('@/Components/Panels/InviteManagementPanel'));
 const ProjectSettingsPanel = lazy(() => import('@/Components/Panels/ProjectSettingsPanel'));
 const ProjectAttachmentsPanel = lazy(() => import('@/Components/Panels/ProjectAttachmentsPanel'));
 const ProjectImportPanel = lazy(() => import('@/Components/Panels/ProjectImportPanel'));
@@ -351,7 +352,7 @@ const loadTab = (
 
     return {
       id,
-      title: data.title || templateStoredData.title || 'Template Verwaltung',
+      title: data.title || templateStoredData.title || 'A Template Verwaltung',
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TemplateManagementPanel
@@ -629,7 +630,7 @@ const loadTab = (
 
       return {
         id,
-        title: data.title || 'Template Verwaltung',
+        title: data.title || t.index590,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateManagementPanel filterByProject={shouldShowProjectFilter} updateTabTitle={actualUpdateTitleCallback} />
@@ -906,6 +907,19 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PerformanceMetricsPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'invite-management':
+      return {
+        id,
+        title: data.title || 'Registration Invites',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <InviteManagementPanel />
           </Suspense>
         ),
         closable: true,

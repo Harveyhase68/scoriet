@@ -215,7 +215,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Enter the project join code provided by the project owner.
+                {t.joincodemodal206}
               </p>
             </div>
           </>

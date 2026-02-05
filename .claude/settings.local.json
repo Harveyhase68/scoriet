@@ -135,7 +135,11 @@
       "Bash(npm update:*)",
       "Bash(composer dump-autoload:*)",
       "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\Components\\\\Panels\\\\TeamsPanel.tsx\")",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\de.json\")",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\en.json\")",
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\fr.json\")",
+      "Bash(node scripts/generate-pwa-icons.mjs:*)"
     ],
     "deny": [],
     "ask": []

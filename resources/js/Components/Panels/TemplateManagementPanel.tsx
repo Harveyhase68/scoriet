@@ -468,7 +468,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
         // Validate confirmation text
         if (deleteConfirmText !== 'DELETE') {
-            toast.showError('You must type DELETE to confirm deletion');
+            toast.showError('You must type "DELETE" to confirm deletion');
             return;
         }
 
@@ -2508,7 +2508,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                 />
                                 <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                                    Du musst exakt DELETE (Großbuchstaben) eingeben
+                                    Du musst exakt "DELETE" (Großbuchstaben) eingeben
                                 </small>
                             </div>
                         </div>
@@ -2963,8 +2963,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 <div className="aspect-video w-full rounded overflow-hidden">
                                                     <iframe
                                                         src={getVideoEmbedUrl(video.video_url)}
-                                                        className="w-full h-full"
-                                                        frameBorder="0"
+                                                        className="w-full h-full border-none"
                                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                         allowFullScreen
                                                     ></iframe>

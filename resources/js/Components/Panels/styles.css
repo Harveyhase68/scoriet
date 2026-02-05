@@ -1130,8 +1130,8 @@
   border-color: var(--theme-warning-text) !important;
 }
 
-.p-dialog .text-yellow-300,
-.p-dialog .text-yellow-400 {
+.p-dialog .text-yellow-700,
+.p-dialog .text-yellow-600 {
   color: var(--theme-warning-text) !important;
 }
 
@@ -1300,7 +1300,7 @@ button.p-button.p-button-text.p-button-rounded .p-button-icon,
 .p-button.p-button-danger {
   background: var(--theme-error-text) !important;
   border-color: var(--theme-error-text) !important;
-  color: white !important;
+  color: rgb(255, 255, 255) !important;
 }
 
 .p-button.p-button-danger:hover {
@@ -1330,7 +1330,7 @@ button.p-button.p-button-text.p-button-rounded .p-button-icon,
 .p-button.p-button-warning {
   background: var(--theme-warning-text) !important;
   border-color: var(--theme-warning-text) !important;
-  color: white !important;
+  color: rgb(255, 255, 255) !important;
 }
 
 .p-button.p-button-warning:hover {

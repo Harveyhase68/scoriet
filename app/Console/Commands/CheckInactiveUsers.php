@@ -267,7 +267,7 @@ class CheckInactiveUsers extends Command
                 'warning_level' => $warningLevel,
             ]);
         } catch (\Exception $e) {
-            $this->error("  Failed to send email: {$e->getMessage()}");
+            $this->error(" Failed to send email: {$e->getMessage()}");
             Log::error('Failed to send inactivity warning email', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -292,7 +292,7 @@ class CheckInactiveUsers extends Command
 
             Log::info('Account deactivation email sent', ['user_id' => $user->id]);
         } catch (\Exception $e) {
-            $this->error("  Failed to send deactivation email: {$e->getMessage()}");
+            $this->error(" Failed to send deactivation email: {$e->getMessage()}");
             Log::error('Failed to send deactivation email', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

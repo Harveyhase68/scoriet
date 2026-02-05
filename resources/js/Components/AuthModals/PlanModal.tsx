@@ -320,51 +320,51 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   
   const pricingTiers = [
     {
-      name: "Free",
+      name: t.freeLabel || "Free",
       price: `${pricingData.currency} 0`,
-      period: "forever",
-      description: "Perfect for trying out Scoriet",
+      period: t.forever || "forever",
+      description: t.planmodal326 || "Perfect for trying out Scoriet",
       features: [
-        "50 credits to start (10 generations)",
-        "1 project included",
-        "1 database included",
-        "Public templates only",
-        "Community support"
+        t.planmodal328 || "50 credits to start (10 generations)",
+        t.planmodal329 || "1 project included",
+        t.planmodal330 || "1 database included",
+        t.planmodal331 || "Public templates only",
+        t.planmodal332 || "Community support"
       ],
-      buttonText: "Current Plan",
+      buttonText: t.planmodal334 || "Current Plan",
       buttonClass: "p-button-secondary",
       popular: false
     },
     {
       name: "Patron Annual",
       price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: "/year",
-      description: "Best value for committed developers",
+      period: t.perYear || "/year",
+      description: t.planmodal342 || "Best value for committed developers",
       features: [
-        "Teams unlocked",
-        "Private templates enabled",
-        "Uses credits for generation (5 credits/gen)",
-        "Buy credits as needed",
-        "Priority support (5 tickets/month included)"
+        t.planmodal344 || "Teams unlocked",
+        t.planmodal345 || "Private templates enabled",
+        t.planmodal346 || "Uses credits for generation (5 credits/gen)",
+        t.planmodal347 || "Buy credits as needed",
+        t.planmodal348 || "Priority support (5 tickets/month included)"
       ],
-      buttonText: "Upgrade to Annual",
+      buttonText: t.planmodal350 || "Upgrade to Annual",
       buttonClass: "p-button-primary",
       popular: true
     },
     {
       name: "Patron Monthly",
       price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      period: "/month",
-      description: "Ultimate flexibility with unlimited access",
+      period: t.perMonth || "/month",
+      description: t.planmodal358 || "Ultimate flexibility with unlimited access",
       features: [
-        "Everything unlimited",
-        "No credits needed for generation",
-        "Unlimited private projects",
-        "Unlimited databases",
-        "Teams unlocked",
-        "Priority support (5 tickets/month included)"
+        t.planmodal360 || "Everything unlimited",
+        t.planmodal361 || "No credits needed for generation",
+        t.planmodal362 || "Unlimited private projects",
+        t.planmodal363 || "Unlimited databases",
+        t.planmodal364 || "Teams unlocked",
+        t.planmodal365 || "Priority support (5 tickets/month included)"
       ],
-      buttonText: "Upgrade to Monthly",
+      buttonText: t.planmodal367 || "Upgrade to Monthly",
       buttonClass: "p-button-help",
       popular: false
     }
@@ -422,7 +422,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         }}
       >
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Current Plan</h3>
+          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.currentPlan || 'Current Plan'}</h3>
           <Badge
             value={getCurrentPlanName()}
             severity={userStatus.user_type === 'patron' ? 'success' : 'info'}
@@ -430,9 +430,9 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         </div>
         <p style={{ color: colors.textSecondary }}>
           {userStatus.user_type === 'patron' ? (
-            <>You're currently on the <strong style={{ color: colors.successText }}>{getCurrentPlanName()}</strong> plan. Thank you for being a Patron!</>
+            <>{t.planmodal433 || "You're currently on the"} <strong style={{ color: colors.successText }}>{getCurrentPlanName()}</strong> {t.planmodal433_2 || "plan. Thank you for being a Patron!"}</>
           ) : (
-            <>You're currently on the <strong style={{ color: colors.accent }}>Free plan</strong>. Upgrade to unlock more features or buy credits on demand!</>
+            <>{t.planmodal435 || "You're currently on the"} <strong style={{ color: colors.accent }}>{t.freeLabel || "Free"}</strong> {t.planmodal435_2 || "plan. Upgrade to unlock more features or buy credits on demand!"}</>
           )}
         </p>
       </div>
@@ -447,7 +447,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm" style={{ color: colors.textSecondary }}>
-                Subscribe for unlimited access or credit-based usage with teams
+                {t.planmodal450 || 'Subscribe for unlimited access or credit-based usage with teams'}
               </p>
             </div>
 
@@ -473,10 +473,10 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
                       {plan.price}
                       {plan.name === "Patron Monthly" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg" style={{ color: colors.textMuted }}>/Monthly</span>
+                        <span className="text-lg" style={{ color: colors.textMuted }}>{t.planmodal476 || '/Monthly'}</span>
                       )}
                       {plan.name === "Patron Annual" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg" style={{ color: colors.textMuted }}>/Annually</span>
+                        <span className="text-lg" style={{ color: colors.textMuted }}>{t.planmodal479 || '/Annually'}</span>
                       )}
                     </div>
                     <p className="mb-6" style={{ color: colors.textSecondary }}>{plan.description}</p>
@@ -493,7 +493,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     {plan.name === "Free" && userStatus.user_type === 'free' ? (
                       /* User is free, Free is current plan */
                       <Button
-                        label="Current Plan"
+                        label={t.planmodal496 || "Current Plan"}
                         className="p-button-secondary w-full"
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
                         disabled={true}
@@ -502,7 +502,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     ) : plan.name === "Free" && userStatus.user_type === 'patron' ? (
                       /* User is patron, Free plan is not selectable */
                       <Button
-                        label="Cancel subscription to downgrade"
+                        label={t.planmodal505 || "Cancel subscription to downgrade"}
                         className="p-button-secondary w-full"
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px', fontSize: '0.85rem' }}
                         disabled={true}
@@ -510,7 +510,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     ) : isCurrentPlan(plan.name) ? (
                       /* Current patron plan - show cancel button */
                       <Button
-                        label={loading === 'cancel' ? 'Wird gekündigt...' : 'Cancel Subscription'}
+                        label={loading === 'cancel' ? (t.planmodal513 || 'Wird gekündigt...') : (t.planmodal513_2 || 'Cancel Subscription')}
                         className="p-button-danger w-full"
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
                         icon={loading === 'cancel' ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
@@ -520,7 +520,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     ) : userStatus.user_type === 'patron' ? (
                       /* User is patron but on different plan - disabled */
                       <Button
-                        label="Cancel current subscription first"
+                        label={t.planmodal523 || "Cancel current subscription first"}
                         className="p-button-secondary w-full"
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px', fontSize: '0.85rem' }}
                         disabled={true}
@@ -529,7 +529,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                       /* User is free - show upgrade buttons */
                       <div className="flex flex-col gap-2">
                         <Button
-                          label={loading === (plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly') ? 'Wird geladen...' : `${plan.buttonText} (Stripe)`}
+                          label={loading === (plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly') ? (t.planmodal546 || 'Wird geladen...') : `${plan.buttonText} (Stripe)`}
                           icon={loading === (plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly') ? 'pi pi-spinner pi-spin' : 'pi pi-credit-card'}
                           className={`${plan.buttonClass} w-full`}
                           style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
@@ -543,7 +543,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                           }}
                         />
                         <Button
-                          label={loading === `paypal_${plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly'}` ? 'Wird geladen...' : 'PayPal'}
+                          label={loading === `paypal_${plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly'}` ? (t.planmodal546 || 'Wird geladen...') : 'PayPal'}
                           icon={loading === `paypal_${plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly'}` ? 'pi pi-spinner pi-spin' : 'pi pi-paypal'}
                           className="p-button-outlined w-full"
                           style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: '#ffc439', borderColor: '#ffc439', color: '#003087' }}
@@ -565,7 +565,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
 
             {/* Footer Note */}
             <div className="text-center text-sm mt-6" style={{ color: colors.textMuted }}>
-              <p>You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee.</p>
+              <p>{t.planmodal568 || "You can change or cancel your plan at any time. All plans include a 30-day money-back guarantee."}</p>
             </div>
           </div>
         </TabPanel>
@@ -575,10 +575,10 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
           <div className="space-y-4">
             <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderSecondary}` }}>
               <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-                <strong style={{ color: colors.accent }}>Pay as you go!</strong> Stay on the Free plan and buy credits when you need them.
+                <strong style={{ color: colors.accent }}>{t.planmodal578 || "Pay as you go!"}</strong> {t.planmodal578_2 || "Stay on the Free plan and buy credits when you need them."}
               </p>
               <p className="text-xs" style={{ color: colors.textMuted }}>
-                Each code generation costs 5 credits. Credits never expire.
+                {t.planmodal581 || "Each code generation costs 5 credits. Credits never expire."}
               </p>
             </div>
 
@@ -595,10 +595,10 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                 >
                   <div className="p-6">
                     {pkg.popular && (
-                      <Badge value="Most Popular" severity="info" className="mb-4" />
+                      <Badge value={t.planmodal598 || "Most Popular"} severity="info" className="mb-4" />
                     )}
                     {pkg.bestValue && (
-                      <Badge value="💎 Best Value" severity="success" className="mb-4" />
+                      <Badge value={t.planmodal601 || "💎 Best Value"} severity="success" className="mb-4" />
                     )}
 
                     <div className="mb-4">
@@ -606,7 +606,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                       <h3 className="text-3xl font-bold mb-1" style={{ color: colors.textPrimary }}>
                         {pkg.credits}
                       </h3>
-                      <p className="text-sm" style={{ color: colors.textMuted }}>Credits</p>
+                      <p className="text-sm" style={{ color: colors.textMuted }}>{t.planmodal609 || "Credits"}</p>
                     </div>
 
                     <div className="text-4xl font-bold mb-2" style={{ color: colors.accent }}>
@@ -614,19 +614,19 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     </div>
 
                     <div className="rounded p-3 mb-6" style={{ backgroundColor: colors.bgSecondary }}>
-                      <p className="text-xs" style={{ color: colors.textMuted }}>Price per credit</p>
+                      <p className="text-xs" style={{ color: colors.textMuted }}>{t.planmodal617 || "Price per credit"}</p>
                       <p className="text-lg font-semibold" style={{ color: colors.successText }}>
                         €{pkg.pricePerCredit}
                       </p>
                     </div>
 
                     <div className="text-sm mb-6" style={{ color: colors.textSecondary }}>
-                      <p>≈ {Math.floor(pkg.credits / 5)} code generations</p>
+                      <p>≈ {Math.floor(pkg.credits / 5)} {t.planmodal624 || "code generations"}</p>
                     </div>
 
                     <div className="flex flex-col gap-2">
                       <Button
-                        label={loading === pkg.packageKey ? 'Wird geladen...' : 'Stripe'}
+                        label={loading === pkg.packageKey ? (t.planmodal629 || 'Wird geladen...') : 'Stripe'}
                         icon={loading === pkg.packageKey ? 'pi pi-spinner pi-spin' : 'pi pi-credit-card'}
                         className={pkg.bestValue ? 'p-button-success w-full' : pkg.popular ? 'p-button-primary w-full' : 'p-button-outlined w-full'}
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
@@ -634,7 +634,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                         onClick={() => handleBuyCredits(pkg.packageKey)}
                       />
                       <Button
-                        label={loading === `paypal_${pkg.packageKey}` ? 'Wird geladen...' : 'PayPal'}
+                        label={loading === `paypal_${pkg.packageKey}` ? (t.planmodal637 || 'Wird geladen...') : 'PayPal'}
                         icon={loading === `paypal_${pkg.packageKey}` ? 'pi pi-spinner pi-spin' : 'pi pi-paypal'}
                         className="p-button-outlined w-full"
                         style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: '#ffc439', borderColor: '#ffc439', color: '#003087' }}
@@ -649,7 +649,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
 
             {/* Info Note */}
             <div className="text-center text-sm mt-6" style={{ color: colors.textMuted }}>
-              <p>💡 Credits are added to your account immediately and never expire.</p>
+              <p>{t.planmodal652 || "💡 Credits are added to your account immediately and never expire."}</p>
             </div>
           </div>
         </TabPanel>
