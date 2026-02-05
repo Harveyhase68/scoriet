@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "generate-pwa-icons": "node scripts/generate-pwa-icons.mjs",
         "build:demo": "dotenv -e .env.demo -- vite build",
         "build:prod": "dotenv -e .env.production -- vite build",
         "build:ssr": "vite build && vite build --ssr",
@@ -28,9 +29,11 @@
         "prettier-plugin-tailwindcss": "^0.6.11",
         "sass": "^1.93.0",
         "sass-embedded": "^1.89.2",
+        "sharp": "^0.34.5",
         "ts-loader": "^9.5.2",
         "typescript": "^5.8.3",
-        "typescript-eslint": "^8.23.0"
+        "typescript-eslint": "^8.23.0",
+        "vite-plugin-pwa": "^1.2.0"
     },
     "dependencies": {
         "@codemirror/commands": "^6.10.0",

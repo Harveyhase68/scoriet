@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
@@ -13,7 +13,8 @@ import {
   DocumentTextIcon as TemplateIcon,
   SparklesIcon,
   CheckIcon,
-  HeartIcon
+  HeartIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import PlanModal from '@/Components/AuthModals/PlanModal';
@@ -39,7 +40,15 @@ interface CMSPopup {
   slug: string;
 }
 
+interface PageProps {
+  openRegister?: boolean;
+  inviteToken?: string | null;
+}
+
 export default function LandingPage() {
+  // Get Inertia page props (for /register route with invite token)
+  const { props } = usePage<{ openRegister?: boolean; inviteToken?: string | null }>();
+  const { openRegister, inviteToken } = props as PageProps;
   // Translation hooks
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => {
     return getStoredLanguage() as SupportedLanguage || 'de';
@@ -83,6 +92,14 @@ export default function LandingPage() {
       window.removeEventListener('auth-change', checkDemoMode);
     };
   }, []);
+
+  // Auto-open register modal if openRegister prop is true (from /register route)
+  useEffect(() => {
+    if (openRegister) {
+      setActiveModal('register');
+    }
+  }, [openRegister]);
+
   const [openHomeOnStart, setOpenHomeOnStart] = useState<boolean>(() => {
     const setting = localStorage.getItem('open_home_on_start');
     return setting === null || setting === 'true';
@@ -90,6 +107,14 @@ export default function LandingPage() {
 
   // CMS Popups state
   const [cmsPopups, setCmsPopups] = useState<CMSPopup[]>([]);
+
+  // PWA Install prompt state
+  interface BeforeInstallPromptEvent extends Event {
+    prompt(): Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  }
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState<boolean>(false);
 
   // Load CMS popups for landing page
   useEffect(() => {
@@ -110,6 +135,35 @@ export default function LandingPage() {
     };
     loadPopups();
   }, [currentLanguage]);
+
+  // PWA Install prompt handler
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Store the event for later use
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      // Clear the deferred prompt
+      setDeferredPrompt(null);
+      setIsAppInstalled(true);
+    };
+
+    // Check if app is already installed (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   // Language change handler
   const handleLanguageChange = (language: SupportedLanguage) => {
@@ -210,7 +264,20 @@ export default function LandingPage() {
   // Get pricing data
   const pricingData = getPricingData();
 
-  const pricingTiers = [
+  interface PricingTier {
+    name: string;
+    plan: string;
+    price: string;
+    period: string;
+    yearlyPrice?: string;
+    description: string;
+    features: string[];
+    buttonText: string;
+    buttonClass: string;
+    popular: boolean;
+  }
+
+  const pricingTiers: PricingTier[] = [
     {
       name: t.freeLabel,
       plan: "free",
@@ -218,12 +285,12 @@ export default function LandingPage() {
       period: t.landingpage151,
       description: t.landingpage152,
       features: [
-        "1 Projekt",
-        "1 Datenbank",
-        "50 kostenlose Credits",
-        "Öffentliche Templates",
-        "Community Support",
-        "Funktionen nach Bedarf mit Credits freischalten"
+        t.landingpage221 || "1 Projekt",
+        t.landingpage222 || "1 Datenbank",
+        t.landingpage223 || "50 kostenlose Credits",
+        t.landingpage224 || "Öffentliche Templates",
+        t.landingpage225 || "Community Support",
+        t.landingpage226 || "Funktionen nach Bedarf mit Credits freischalten"
       ],
       buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
@@ -233,16 +300,16 @@ export default function LandingPage() {
       name: "Patron Annual",
       plan: "patron_annual",
       price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: "/Jahr",
-      description: "Teams + Credit-basierte Generierung",
+      period: t.landingpage236 || "/Jahr",
+      description: t.landingpage237 || "Teams + Credit-basierte Generierung",
       features: [
-        "Teams freigeschaltet",
-        "Private Templates",
-        "5 Credits pro Generierung",
-        "Credits nach Bedarf kaufen",
-        "5 kostenlose Support-Tickets/Jahr"
+        t.landingpage239 || "Teams freigeschaltet",
+        t.landingpage240 || "Private Templates",
+        t.landingpage241 || "5 Credits pro Generierung",
+        t.landingpage242 || "Credits nach Bedarf kaufen",
+        t.landingpage243 || "5 kostenlose Support-Tickets/Jahr"
       ],
-      buttonText: "Patron Annual wählen",
+      buttonText: t.landingpage245 || "Patron Annual wählen",
       buttonClass: "p-button-primary",
       popular: true
     },
@@ -250,17 +317,17 @@ export default function LandingPage() {
       name: "Patron Monthly",
       plan: "patron_monthly",
       price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      //price: `€ ${pricingData.patron_monthly.toFixed(2)}`,
-      period: "/Monat",
-      description: "Alles unbegrenzt",
+      period: t.landingpage254 || "/Monat",
+      yearlyPrice: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}${t.landingpage236 || "/Jahr"}`,
+      description: t.landingpage255 || "Alles unbegrenzt",
       features: [
-        "Unbegrenzt alles",
-        "Keine Credits benötigt",
-        "Unbegrenzte Projekte",
-        "Unbegrenzte Datenbanken",
-        "5 kostenlose Support-Tickets/Monat"
+        t.landingpage257 || "Unbegrenzt alles",
+        t.landingpage258 || "Keine Credits benötigt",
+        t.landingpage259 || "Unbegrenzte Projekte",
+        t.landingpage260 || "Unbegrenzte Datenbanken",
+        t.landingpage261 || "5 kostenlose Support-Tickets/Monat"
       ],
-      buttonText: "Patron Monthly wählen",
+      buttonText: t.landingpage263 || "Patron Monthly wählen",
       buttonClass: "p-button-help",
       popular: false
     }
@@ -334,6 +401,30 @@ export default function LandingPage() {
   const handleCloseVideoModal = () => {
     setShowVideoModal(false);
   };
+
+  // PWA Install handler
+  const handleInstallClick = useCallback(async () => {
+    if (!deferredPrompt) return;
+
+    // Show the install prompt
+    await deferredPrompt.prompt();
+
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      // User accepted the install prompt
+      toast.current?.show({
+        severity: 'success',
+        summary: t.installSuccess || 'Installation gestartet',
+        detail: t.installSuccessDetail || 'Scoriet wird installiert...',
+        life: 5000,
+      });
+    }
+
+    // Clear the deferred prompt - it can only be used once
+    setDeferredPrompt(null);
+  }, [deferredPrompt, t]);
 
   return (
     <>
@@ -487,6 +578,17 @@ export default function LandingPage() {
                 style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                 onClick={handleOpenVideoModal}
               />
+              {/* PWA Install Button - only shown when install prompt is available */}
+              {deferredPrompt && !isAppInstalled && (
+                <Button
+                  className="p-button-outlined p-button-success"
+                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                  onClick={handleInstallClick}
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
+                  {t.installApp || 'App installieren'}
+                </Button>
+              )}
             </div>
           </div>
         </section>
@@ -820,6 +922,7 @@ export default function LandingPage() {
           }, 300); // 300ms delay for modal closing animation
         }}
         currentLanguage={currentLanguage}
+        inviteToken={inviteToken}
       />
 
       {/* CMS Popups */}

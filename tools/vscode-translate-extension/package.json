@@ -1,0 +1,38 @@
+{
+  "name": "scoriet-translate",
+  "displayName": "Scoriet Translate Helper",
+  "description": "Send selected text to WinDev translation tool",
+  "version": "1.0.0",
+  "publisher": "scoriet",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:scoriet-translate.translateSelection"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "scoriet-translate.translateSelection",
+        "title": "Scoriet: Translate Selection"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "scoriet-translate.translateSelection",
+        "key": "ctrl+m",
+        "when": "editorTextFocus && editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "Scoriet Translate",
+      "properties": {
+        "scorietTranslate.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:7777/i18n",
+          "description": "URL of the WinDev translation REST API"
+        }
+      }
+    }
+  }
+}

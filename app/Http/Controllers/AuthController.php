@@ -118,6 +118,46 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // ============================================================================
+        // Invite-Only Registration Check
+        // ============================================================================
+        $registrationOpen = config('app.registration_open', false);
+        $registrationInvite = null;
+
+        // Check for invite token in request
+        $inviteToken = $request->input('invite_token');
+        if ($inviteToken) {
+            $registrationInvite = \App\Models\RegistrationInvite::where('token', $inviteToken)
+                ->whereNull('used_at')
+                ->where('expires_at', '>', now())
+                ->first();
+
+            // If token provided but invalid
+            if (!$registrationInvite) {
+                return response()->json([
+                    'message' => 'Invalid or expired invitation token.',
+                    'registration_closed' => !$registrationOpen,
+                ], 403);
+            }
+
+            // If token is for different email, reject
+            if ($registrationInvite->email !== $request->email) {
+                return response()->json([
+                    'message' => 'This invitation is for a different email address.',
+                    'expected_email' => $registrationInvite->email,
+                    'registration_closed' => !$registrationOpen,
+                ], 403);
+            }
+        }
+
+        // If registration is closed and no valid invite, reject
+        if (!$registrationOpen && !$registrationInvite) {
+            return response()->json([
+                'message' => 'Registration is currently by invitation only. Please request an invite or contact support.',
+                'registration_closed' => true,
+            ], 403);
+        }
+
         // Check if there's a pending invitation for this email
         $pendingInvitationId = null;
         $invitation = null;
@@ -163,6 +203,16 @@ class AuthController extends Controller
             'last_monthly_credits_at' => now(), // Set to now so user doesn't get double credits on first login
         ]);
 
+        // Mark registration invite as used (if any)
+        if ($registrationInvite) {
+            $registrationInvite->markAsUsed($user->id);
+            \Log::info('Registration invite marked as used', [
+                'invite_id' => $registrationInvite->id,
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ]);
+        }
+
         // Trigger the email verification
         event(new Registered($user));
 
@@ -196,7 +246,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp199'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -205,7 +255,7 @@ class AuthController extends Controller
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
-                'message' => 'Login fehlgeschlagen'
+                'message' => __('authcontrollerphp208')
             ], 401);
         }
 
@@ -214,7 +264,7 @@ class AuthController extends Controller
         // Check if email is verified
         if (!$user->hasVerifiedEmail()) {
             return response()->json([
-                'message' => 'E-Mail-Adresse muss vor dem Login bestätigt werden',
+                'message' => __('authcontrollerphp217'),
                 'email_verification_required' => true
             ], 403);
         }
@@ -237,7 +287,7 @@ class AuthController extends Controller
                 ], now()->addMinutes(10)); // Token valid for 10 minutes
 
                 return response()->json([
-                    'message' => '2FA-Verifizierung erforderlich',
+                    'message' => __('authcontrollerphp240'),
                     'two_factor_required' => true,
                     'two_factor_token' => $twoFactorToken,
                     'needs_reverification' => $needsReverification,
@@ -266,7 +316,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp269'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -276,7 +326,7 @@ class AuthController extends Controller
 
         if (!$pendingData) {
             return response()->json([
-                'message' => '2FA-Session abgelaufen. Bitte erneut einloggen.',
+                'message' => __('authcontrollerphp279'),
             ], 401);
         }
 
@@ -284,7 +334,7 @@ class AuthController extends Controller
 
         if (!$user) {
             return response()->json([
-                'message' => 'Benutzer nicht gefunden.',
+                'message' => __('authcontrollerphp287'),
             ], 401);
         }
 
@@ -306,7 +356,7 @@ class AuthController extends Controller
 
         if (!$verified) {
             return response()->json([
-                'message' => 'Ungültiger 2FA-Code.',
+                'message' => __('authcontrollerphp309'),
             ], 422);
         }
 
@@ -368,7 +418,7 @@ class AuthController extends Controller
         $user->refresh();
 
         $response = [
-            'message' => 'Login erfolgreich',
+            'message' => __('authcontrollerphp371'),
             'user' => $user,
             'access_token' => $tokenResult->accessToken,
             'refresh_token' => null, // Not implemented for custom tokens
@@ -399,7 +449,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'E-Mail-Adresse nicht gefunden',
+                'message' => __('authcontrollerphp402'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -410,12 +460,12 @@ class AuthController extends Controller
 
         if ($status === Password::RESET_LINK_SENT) {
             return response()->json([
-                'message' => 'Reset-Link wurde gesendet'
+                'message' => __('authcontrollerphp413')
             ]);
         }
 
         return response()->json([
-            'message' => 'Fehler beim Senden des Reset-Links'
+            'message' => __('authcontrollerphp418')
         ], 500);
     }
 
@@ -432,7 +482,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp435'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -450,12 +500,12 @@ class AuthController extends Controller
 
         if ($status === Password::PASSWORD_RESET) {
             return response()->json([
-                'message' => 'Passwort erfolgreich zurückgesetzt'
+                'message' => __('authcontrollerphp453')
             ]);
         }
 
         return response()->json([
-            'message' => 'Fehler beim Zurücksetzen des Passworts'
+            'message' => __('authcontrollerphp458')
         ], 500);
     }
 
@@ -486,7 +536,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp489'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -520,7 +570,7 @@ class AuthController extends Controller
         $user->update($updateData);
 
         return response()->json([
-            'message' => 'Profil erfolgreich aktualisiert',
+            'message' => __('authcontrollerphp523'),
             'user' => $user->fresh() // Reload user data to get updated language
         ]);
     }
@@ -539,7 +589,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp542'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -547,7 +597,7 @@ class AuthController extends Controller
         // Check current password
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
-                'message' => 'Das aktuelle Passwort ist nicht korrekt'
+                'message' => __('authcontrollerphp550')
             ], 422);
         }
 
@@ -556,7 +606,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Passwort erfolgreich geändert'
+            'message' => __('authcontrollerphp559')
         ]);
     }
 
@@ -584,7 +634,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp587'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -594,29 +644,29 @@ class AuthController extends Controller
             $errors = [];
 
             if (empty($request->company_name)) {
-                $errors['company_name'] = ['Firmenname ist erforderlich'];
+                $errors['company_name'] = [__('authcontrollerphp597')];
             }
             if (empty($request->company_country)) {
-                $errors['company_country'] = ['Land ist erforderlich'];
+                $errors['company_country'] = [__('authcontrollerphp600')];
             }
             if (empty($request->payout_method)) {
-                $errors['payout_method'] = ['Auszahlungsmethode ist erforderlich'];
+                $errors['payout_method'] = [__('authcontrollerphp603')];
             }
             if ($request->payout_method === 'paypal' && empty($request->paypal_payout_email)) {
-                $errors['paypal_payout_email'] = ['PayPal E-Mail ist erforderlich'];
+                $errors['paypal_payout_email'] = [__('authcontrollerphp606')];
             }
             if ($request->payout_method === 'bank_transfer') {
                 if (empty($request->bank_iban)) {
-                    $errors['bank_iban'] = ['IBAN ist erforderlich'];
+                    $errors['bank_iban'] = [__('authcontrollerphp610')];
                 }
                 if (empty($request->bank_account_holder)) {
-                    $errors['bank_account_holder'] = ['Kontoinhaber ist erforderlich'];
+                    $errors['bank_account_holder'] = [__('authcontrollerphp613')];
                 }
             }
 
             if (!empty($errors)) {
                 return response()->json([
-                    'message' => 'Bitte füllen Sie alle erforderlichen Felder aus',
+                    'message' => __('authcontrollerphp619'),
                     'errors' => $errors
                 ], 422);
             }
@@ -644,7 +694,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'Verkäufer-Profil erfolgreich aktualisiert',
+            'message' => __('authcontrollerphp647'),
             'user' => $user->fresh()
         ]);
     }
@@ -658,7 +708,7 @@ class AuthController extends Controller
             $user = User::findOrFail($request->route('id'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'message' => 'Ungültiger Bestätigungslink. Der Benutzer existiert nicht oder wurde gelöscht.',
+                'message' => __('authcontrollerphp661'),
                 'invalid_link' => true
             ], 404);
         }
@@ -666,7 +716,7 @@ class AuthController extends Controller
         // Check if the hash matches
         if (!hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
             return response()->json([
-                'message' => 'Ungültiger Bestätigungslink. Der Link ist abgelaufen oder wurde manipuliert.',
+                'message' => __('authcontrollerphp669'),
                 'invalid_link' => true
             ], 400);
         }
@@ -677,7 +727,7 @@ class AuthController extends Controller
             $token = $tokenResult->accessToken;
 
             return response()->json([
-                'message' => 'E-Mail-Adresse bereits bestätigt',
+                'message' => __('authcontrollerphp680'),
                 'already_verified' => true,
                 'user' => $user,
                 'access_token' => $token,
@@ -700,7 +750,7 @@ class AuthController extends Controller
             if ($user->hasPendingInvitation()) {
                 $invitation = $user->pendingProjectInvitation;
                 if ($invitation && $invitation->isPending()) {
-                    \Log::info('Auto-accepting invitation after email verification', [
+                    \Log::info(__('authcontrollerphp703'), [
                         'user_id' => $user->id,
                         'invitation_id' => $invitation->id,
                         'project_id' => $invitation->project_id,
@@ -711,13 +761,13 @@ class AuthController extends Controller
                         $invitationAccepted = true;
                         $projectName = $invitation->project->name;
                         $user->clearPendingInvitation();
-                        \Log::info('Invitation auto-accepted successfully', ['project' => $projectName]);
+                        \Log::info(__('authcontrollerphp714'), ['project' => $projectName]);
                     }
                 }
             }
 
             return response()->json([
-                'message' => 'Email address successfully confirmed',
+                'message' => __('authcontrollerphp720'),
                 'user' => $user,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
@@ -728,7 +778,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'Email confirmation error'
+            'message' => __('authcontrollerphp731')
         ], 500);
     }
 
@@ -741,14 +791,14 @@ class AuthController extends Controller
 
         if ($user->hasVerifiedEmail()) {
             return response()->json([
-                'message' => 'E-Mail-Adresse bereits bestätigt'
+                'message' => __('authcontrollerphp744')
             ], 400);
         }
 
         $user->sendEmailVerificationNotification();
 
         return response()->json([
-            'message' => 'Bestätigungs-E-Mail wurde erneut gesendet'
+            'message' => __('authcontrollerphp751')
         ]);
     }
 
@@ -765,7 +815,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('authcontrollerphp768'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -773,7 +823,7 @@ class AuthController extends Controller
         // Check current password
         if (!Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Das eingegebene Passwort ist nicht korrekt'
+                'message' => __('authcontrollerphp776')
             ], 422);
         }
 
@@ -782,16 +832,16 @@ class AuthController extends Controller
             $user->tokens->each(function ($token) {
                 $token->revoke();
             });
-            
+
             // Delete user account
             $user->delete();
 
             return response()->json([
-                'message' => 'Ihr Account wurde erfolgreich gelöscht'
+                'message' => __('authcontrollerphp790')
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Fehler beim Löschen des Accounts'
+                'message' => __('authcontrollerphp794')
             ], 500);
         }
     }
@@ -805,7 +855,7 @@ class AuthController extends Controller
         $token->revoke();
 
         return response()->json([
-            'message' => 'Erfolgreich abgemeldet'
+            'message' => __('authcontrollerphp808')
         ]);
     }
 
@@ -815,12 +865,12 @@ class AuthController extends Controller
     public function updateLanguage(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'language' => 'required|string|in:en,de,fr'
+            'language' => 'required|string|in:en,de,fr,es,it'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Invalid language selection',
+                'message' => __('authcontrollerphp823'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -831,12 +881,12 @@ class AuthController extends Controller
             $user->save();
 
             return response()->json([
-                'message' => 'Language preference updated successfully',
+                'message' => __('authcontrollerphp834'),
                 'language' => $user->language
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to update language preference'
+                'message' => __('authcontrollerphp839')
             ], 500);
         }
     }
@@ -852,7 +902,7 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Invalid theme selection',
+                'message' => __('authcontrollerphp855'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -863,12 +913,12 @@ class AuthController extends Controller
             $user->save();
 
             return response()->json([
-                'message' => 'Theme preference updated successfully',
+                'message' => __('authcontrollerphp866'),
                 'theme' => $user->theme
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to update theme preference'
+                'message' => __('authcontrollerphp871')
             ], 500);
         }
     }

@@ -383,11 +383,12 @@ const CacheDebugPanel: React.FC = () => {
                 severity="help"
               />
               <Button
-                label="Clear Template Cache"
+                label="A Clear Template Cache"
                 icon="pi pi-trash"
                 onClick={() => clearCache('template')}
                 disabled={loading}
                 severity="warning"
+                //className={`p-button-text p-button-sm topbar-icon-btn`}
               />
               <Button
                 label="Clear All Cache"

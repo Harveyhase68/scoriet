@@ -14,6 +14,7 @@
 /.vscode
 /.zed
 /auth.json
+/bootstrap/cache/*.php
 /bootstrap/ssr
 /database/dumps/barcodes.sql
 /database/dumps/branches_station_test.sql

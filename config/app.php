@@ -43,6 +43,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Registration Open
+    |--------------------------------------------------------------------------
+    |
+    | When set to false, only users with valid invite tokens can register.
+    | When set to true, anyone can register without an invite.
+    |
+    */
+
+    'registration_open' => (bool) env('REGISTRATION_OPEN', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

@@ -19,6 +19,7 @@ interface AuthModalManagerProps {
   isLoginClosable?: boolean;
   currentLanguage?: SupportedLanguage;
   profileDefaultTab?: number; // Tab index to open in ProfileModal (0=Profile, 1=Password, 2=Subscriptions, etc.)
+  inviteToken?: string | null; // Registration invite token
 }
 
 export default function AuthModalManager({
@@ -30,7 +31,8 @@ export default function AuthModalManager({
   resetPasswordEmail,
   isLoginClosable = true,
   currentLanguage: propLanguage,
-  profileDefaultTab = 0
+  profileDefaultTab = 0,
+  inviteToken
 }: AuthModalManagerProps) {
   // Use prop language or fallback to stored language
   const currentLanguage = propLanguage || getStoredLanguage();
@@ -81,6 +83,7 @@ export default function AuthModalManager({
         onSwitchToForgotPassword={() => handleSwitchModal('forgot')}
         onLoginSuccess={onLoginSuccess}
         closable={isLoginClosable}
+        currentLanguage={currentLanguage}
       />
 
       <RegisterModal
@@ -89,6 +92,7 @@ export default function AuthModalManager({
         onSwitchToLogin={() => handleSwitchModal('login')}
         onRegistrationSuccess={onRegistrationSuccess}
         currentLanguage={currentLanguage}
+        inviteToken={inviteToken}
       />
 
       <ForgotPasswordModal

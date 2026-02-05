@@ -15,6 +15,7 @@ interface LoginModalProps {
   onSwitchToForgotPassword: () => void;
   onLoginSuccess?: () => void;
   closable?: boolean;
+  currentLanguage?: SupportedLanguage;
 }
 
 export default function LoginModal({
@@ -23,7 +24,8 @@ export default function LoginModal({
   onSwitchToRegister,
   onSwitchToForgotPassword,
   onLoginSuccess,
-  closable = true
+  closable = true,
+  currentLanguage: propLanguage
 }: LoginModalProps) {
   const [formData, setFormData] = useState({
     email: '',
@@ -56,9 +58,16 @@ export default function LoginModal({
   // Theme sync after login
   const { syncThemeFromUser } = useTheme();
 
-  // Language state
-  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
+  // Language state - use prop if provided, otherwise use stored language
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => propLanguage || getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+
+  // Update language when prop changes
+  useEffect(() => {
+    if (propLanguage) {
+      setCurrentLanguage(propLanguage);
+    }
+  }, [propLanguage]);
 
   // Check if we're on demo subdomain
   const isDemoMode = window.location.hostname === 'demo.scoriet.dev' ||

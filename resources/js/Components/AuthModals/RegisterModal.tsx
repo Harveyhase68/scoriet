@@ -14,6 +14,15 @@ interface RegisterModalProps {
   onSwitchToLogin: () => void;
   onRegistrationSuccess?: (message: string) => void;
   currentLanguage?: SupportedLanguage;
+  inviteToken?: string | null;
+}
+
+interface InviteInfo {
+  valid: boolean;
+  email?: string;
+  name?: string;
+  expires_at?: string;
+  error?: string;
 }
 
 export default function RegisterModal({
@@ -21,7 +30,8 @@ export default function RegisterModal({
   onHide,
   onSwitchToLogin,
   onRegistrationSuccess,
-  currentLanguage
+  currentLanguage,
+  inviteToken
 }: RegisterModalProps) {
 
   const [formData, setFormData] = useState({
@@ -36,6 +46,11 @@ export default function RegisterModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+
+  // Registration status and invite validation
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   // Language state
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => getStoredLanguage());
@@ -58,6 +73,56 @@ export default function RegisterModal({
       setSelectedLanguage(currentLanguage);
     }
   }, [currentLanguage, visible]);
+
+  // Check registration status and validate invite token when modal opens
+  React.useEffect(() => {
+    if (visible) {
+      const checkRegistration = async () => {
+        setCheckingStatus(true);
+        try {
+          // Check registration status
+          const statusResponse = await fetch('/api/registration/status', {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            setRegistrationOpen(statusData.registration_open ?? true);
+          }
+
+          // Validate invite token if provided
+          const tokenToCheck = inviteToken || new URLSearchParams(window.location.search).get('invite');
+          if (tokenToCheck) {
+            const tokenResponse = await fetch('/api/registration/validate-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({ token: tokenToCheck })
+            });
+            const tokenData = await tokenResponse.json();
+            setInviteInfo(tokenData);
+
+            // Pre-fill email and name if valid
+            if (tokenData.valid) {
+              setFormData(prev => ({
+                ...prev,
+                email: tokenData.email || prev.email,
+                name: tokenData.name || prev.name
+              }));
+            }
+          }
+        } catch {
+          // On error, assume registration is open
+          setRegistrationOpen(true);
+        } finally {
+          setCheckingStatus(false);
+        }
+      };
+
+      checkRegistration();
+    }
+  }, [visible, inviteToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +149,9 @@ export default function RegisterModal({
     }
 
     try {
+      // Get invite token from prop or URL
+      const tokenToUse = inviteToken || new URLSearchParams(window.location.search).get('invite');
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -98,6 +166,7 @@ export default function RegisterModal({
           password_confirmation: formData.password_confirmation,
           language: formData.language,
           math_check: honeypotValue, // Send to backend for double-check
+          invite_token: tokenToUse, // Include invite token if present
         }),
       });
 
@@ -156,6 +225,9 @@ export default function RegisterModal({
     setError('');
     setSuccess('');
     setLoading(false);
+    setInviteInfo(null); // Reset invite info
+    setRegistrationOpen(null); // Reset registration status
+    setCheckingStatus(false);
     onHide();
   };
 
@@ -235,19 +307,67 @@ export default function RegisterModal({
         resizable={true}
         className="p-dialog-custom"
       >
+      {/* Loading state while checking registration status */}
+      {checkingStatus && (
+        <div className="flex items-center justify-center py-8">
+          <i className="pi pi-spinner pi-spin text-2xl mr-3"></i>
+          <span>Checking registration status...</span>
+        </div>
+      )}
+
+      {/* Registration closed message (no valid invite) */}
+      {!checkingStatus && registrationOpen === false && (!inviteInfo || !inviteInfo.valid) && (
+        <div className="space-y-4">
+          <Message
+            severity="warn"
+            text="Registration is currently by invitation only. Please contact an administrator to request an invite."
+            className="w-full"
+          />
+          {inviteInfo && inviteInfo.error && (
+            <Message
+              severity="error"
+              text={inviteInfo.error}
+              className="w-full"
+            />
+          )}
+          <div className="text-center pt-4">
+            <Button
+              type="button"
+              label={t.authmodalsegistermodal388}
+              className="p-button-link p-button-sm"
+              onClick={() => {
+                handleHide();
+                onSwitchToLogin();
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Registration form (open registration OR valid invite) */}
+      {!checkingStatus && (registrationOpen === true || (inviteInfo && inviteInfo.valid)) && (
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Valid invite banner */}
+        {inviteInfo && inviteInfo.valid && (
+          <Message
+            severity="success"
+            text={`You have been invited to join! Your invite expires on ${new Date(inviteInfo.expires_at!).toLocaleDateString()}.`}
+            className="w-full"
+          />
+        )}
+
         {error && (
-          <Message 
-            severity="error" 
-            text={error} 
+          <Message
+            severity="error"
+            text={error}
             className="w-full"
           />
         )}
 
         {success && (
-          <Message 
-            severity="success" 
-            text={success} 
+          <Message
+            severity="success"
+            text={success}
             className="w-full"
           />
         )}
@@ -292,7 +412,7 @@ export default function RegisterModal({
 
         <div className="field">
           <label htmlFor="register-email" className="block text-sm font-medium mb-2">
-            E-Mail
+            E-Mail {inviteInfo?.valid && <span className="text-gray-500">(from invite)</span>}
           </label>
           <InputText
             id="register-email"
@@ -301,10 +421,13 @@ export default function RegisterModal({
             onChange={(e) => handleInputChange('email', e.target.value)}
             placeholder={t.forgotpasswordmodal113}
             className="w-full"
-            disabled={loading}
+            disabled={loading || (inviteInfo?.valid && !!inviteInfo.email)}
             required
             autoComplete="email"
           />
+          {inviteInfo?.valid && inviteInfo.email && (
+            <small className="text-gray-500">Email is locked to the invite address.</small>
+          )}
         </div>
 
         <div className="field">
@@ -446,6 +569,7 @@ export default function RegisterModal({
           />
         </div>
       </form>
+      )}
     </Dialog>
     </>
   );

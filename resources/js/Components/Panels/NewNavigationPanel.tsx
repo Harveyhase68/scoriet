@@ -53,6 +53,9 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   // 🎯 DEMO MODE DETECTION
   const isDemoMode = sessionStorage.getItem('demo_mode') === 'true';
 
+  // Registration status (for showing/hiding invite management)
+  const [registrationOpen, setRegistrationOpen] = useState<boolean>(true);
+
   // Helper function to update auth status
   const updateAuthStatus = async () => {
     const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -255,6 +258,28 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       window.removeEventListener('creditsChanged', handleCreditsChanged);
       clearInterval(tokenCheckInterval);
     };
+  }, []);
+
+  // Fetch registration status (for showing/hiding invite management menu)
+  React.useEffect(() => {
+    const fetchRegistrationStatus = async () => {
+      try {
+        const response = await fetch('/api/registration/status', {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setRegistrationOpen(data.registration_open ?? true);
+        }
+      } catch {
+        // If fetch fails, assume registration is open (hide invite management)
+        setRegistrationOpen(true);
+      }
+    };
+
+    fetchRegistrationStatus();
   }, []);
 
   // Auto-open wizard for users - runs on mount AND when isLoggedIn changes
@@ -523,6 +548,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             icon: 'pi pi-chart-line',
             command: () => onOpenPanel('performance-metrics')
           },
+          // Show Invite Management only for system user when registration is closed
+          ...(userType === 'system' && !registrationOpen ? [{
+            label: 'Registration Invites',
+            icon: 'pi pi-user-plus',
+            command: () => onOpenPanel('invite-management')
+          }] : []),
           {
             separator: true
           },
@@ -917,6 +948,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <i className="pi pi-chart-line"></i>
                       <span>Performance</span>
                     </button>
+                    {/* Show Invite Management only for system user when registration is closed */}
+                    {userType === 'system' && !registrationOpen && (
+                      <button onClick={() => onOpenPanel('invite-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                        <i className="pi pi-user-plus"></i>
+                        <span>Registration Invites</span>
+                      </button>
+                    )}
                     <div className="border-t nav-separator my-2"></div>
                     <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-file-edit"></i>

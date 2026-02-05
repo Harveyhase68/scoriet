@@ -12,8 +12,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
+    // Registration page with optional invite token - renders LandingPage with register modal
+    Route::get('register', function () {
+        return Inertia::render('LandingPage', [
+            'openRegister' => true,
+            'inviteToken' => request('invite'),
+        ]);
+    })->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
