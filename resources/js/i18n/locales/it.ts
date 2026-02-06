@@ -1740,7 +1740,7 @@ export const it: Translations = {
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal568: 'd.m.Y',
-  editprojectmodal573: 'per il 31.12.2024 o',
+  editprojectmodal573: 'per il 31.12.2026 o',
 
   // resources/js/Components/Modals/EditProjectModal.tsx
   editprojectmodal578: 'Formato ora',
@@ -3674,7 +3674,7 @@ export const it: Translations = {
   projectsettingspanel926:  'Lunghezza dei nomi di file brevi in Database Designer (ad esempio, "us" per gli utenti)',
   projectsettingspanel946:  'ad esempio "," per 1,23 o "." per 1,23',
   projectsettingspanel962:  'ad esempio "." per 1,234 o "," per 1.234',
-  projectsettingspanel979:  'Formato PHP (ad esempio "d.m.Y" per 31.12.2024)',
+  projectsettingspanel979:  'Formato PHP (ad esempio "d.m.Y" per 31.12.2026)',
   projectsettingspanel995:  'Formato PHP (ad esempio "H:i:s" per 14:30:00)',
   projectsettingspanel1012: 'ad esempio "€", "$", "£", "CHF"',
   projectsettingspanel1058: 'Google Cloud Console - Crea chiave API',
@@ -5215,10 +5215,10 @@ export const it: Translations = {
 	projectpanel445_2: 'è stato sbloccato con successo! (',
 	projectpanel445_3: '(Giorni bonus ricevuti)',
 	projectpanel447: 'Errore durante lo sblocco',
-	projectpanel463: 'I nomi dei progetti possono contenere solo lettere minuscole (a-z), numeri (0-9) e caratteri di sottolineatura (_) come separatori. Esempio: my_project_2024',
+	projectpanel463: 'I nomi dei progetti possono contenere solo lettere minuscole (a-z), numeri (0-9) e caratteri di sottolineatura (_) come separatori. Esempio: my_project_2026',
 	projectpanel488: 'Non hai abbastanza crediti! Hai bisogno',
 	projectpanel488_2: 'Crediti, ma solo',
-	projectpanel503: 'I nomi dei progetti possono contenere solo lettere minuscole (a-z), numeri (0-9) e caratteri di sottolineatura (_) come separatori. Esempio: my_project_2024',
+	projectpanel503: 'I nomi dei progetti possono contenere solo lettere minuscole (a-z), numeri (0-9) e caratteri di sottolineatura (_) come separatori. Esempio: my_project_2026',
 	projectpanel631: 'Devi digitare',
 	projectpanel631_2: 'per confermare l\'eliminazione',
 	projectpanel804: 'Impossibile caricare i modelli:',
@@ -5272,7 +5272,7 @@ export const it: Translations = {
 	projectpanel1724: 'Separatore di migliaia',
 	projectpanel1736: 'Separatore delle migliaia (ad esempio 1.000 o 1.000)',
 	projectpanel1744: 'Formato data',
-	projectpanel1755: 'Formato data (g.m.A = 31.12.2024)',
+	projectpanel1755: 'Formato data (g.m.A = 31.12.2026)',
 	projectpanel1761: 'Formato ora',
 	projectpanel1772: 'Formato ora (H:i:s = 23:59:59)',
 	projectpanel1780: 'Simbolo di valuta',
@@ -5309,6 +5309,8 @@ export const it: Translations = {
 	projectpanel2356: 'Schemi:',
 	projectpanel2360: 'Modelli:',
 	projectpanel2364: 'Modifiche al codice:',
+  projectpanel2265: 'No grazie',
+  projectpanel2271: 'Sì, selezionalo',
 	projectpanel2368: 'Formulare:',
 	projectpanel2383: 'Il tavolo,',
 	projectpanel2377: 'Schemi:',

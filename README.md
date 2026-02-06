@@ -130,8 +130,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - 📅 **Cloud Deployment**: One-click deployment to major cloud providers (cPanel integration???)
 
 ### 🧪 **Try It Now**
-- **Live Demo**: [demo.scoriet.dev](https://demo.scoriet.dev) - Full featured demo environment
 - **Alpha Preview**: [scoriet.dev](https://scoriet.dev) - Latest development build
+- **Closed beta**: [Alexander Predl](mailto:office@predl.cc) - Please send me a email, for invitation?!
 
 ### ✨ Key Features
 

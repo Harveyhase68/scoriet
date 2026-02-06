@@ -149,7 +149,7 @@ const VariableModal: React.FC<VariableModalProps> = ({
                             <InputText
                                 id="default_value"
                                 {...field}
-                                placeholder="Z.B. '© 2024 My Company'"
+                                placeholder="Z.B. '© 2026 My Company'"
                                 className="w-full"
                             />
                         )}

@@ -1740,7 +1740,7 @@ export const es: Translations = {
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal568: 'd.m.Y',
-  editprojectmodal573: 'para el 31.12.2024 o',
+  editprojectmodal573: 'para el 31.12.2026 o',
 
   // resources/js/Components/Modals/EditProjectModal.tsx
   editprojectmodal578: 'Formato de hora',
@@ -3674,7 +3674,7 @@ export const es: Translations = {
   projectsettingspanel926:  'Longitud de nombres de archivos cortos en el Diseñador de bases de datos (por ejemplo, "us" para usuarios)',
   projectsettingspanel946:  'p. ej. "," para 1.23 o "." para 1.23',
   projectsettingspanel962:  'p. ej. "." para 1.234 o "," para 1,234',
-  projectsettingspanel979:  'Formato PHP (p. ej., "d.m.Y" para 31.12.2024)',
+  projectsettingspanel979:  'Formato PHP (p. ej., "d.m.Y" para 31.12.2026)',
   projectsettingspanel995:  'Formato PHP (por ejemplo, "H:i:s" para 14:30:00)',
   projectsettingspanel1012: 'Por ejemplo, "€", "$", "£", "CHF"',
   projectsettingspanel1058: 'Google Cloud Console - Crear clave de API',
@@ -5215,10 +5215,10 @@ export const es: Translations = {
 	projectpanel445_2: '¡Se desbloqueó exitosamente! (',
 	projectpanel445_3: '(Días de bonificación recibidos)',
 	projectpanel447: 'Error al desbloqueo',
-	projectpanel463: 'Los nombres de proyecto solo pueden contener letras minúsculas (a-z), números (0-9) y guiones bajos (_) como separadores. Ejemplo: mi_proyecto_2024',
+	projectpanel463: 'Los nombres de proyecto solo pueden contener letras minúsculas (a-z), números (0-9) y guiones bajos (_) como separadores. Ejemplo: mi_proyecto_2026',
 	projectpanel488: '¡No hay suficientes créditos! Necesitas',
 	projectpanel488_2: 'Créditos, pero sólo',
-	projectpanel503: 'Los nombres de proyecto solo pueden contener letras minúsculas (a-z), números (0-9) y guiones bajos (_) como separadores. Ejemplo: mi_proyecto_2024',
+	projectpanel503: 'Los nombres de proyecto solo pueden contener letras minúsculas (a-z), números (0-9) y guiones bajos (_) como separadores. Ejemplo: mi_proyecto_2026',
 	projectpanel631: 'Debes escribir',
 	projectpanel631_2: 'para confirmar la eliminación',
 	projectpanel804: 'Error al cargar las plantillas:',
@@ -5272,7 +5272,7 @@ export const es: Translations = {
 	projectpanel1724: 'Separador de miles',
 	projectpanel1736: 'Separador de miles (p. ej. 1000 o 1000)',
 	projectpanel1744: 'Formato de fecha',
-	projectpanel1755: 'Formato de fecha (d.m.Y = 31.12.2024)',
+	projectpanel1755: 'Formato de fecha (d.m.Y = 31.12.2026)',
 	projectpanel1761: 'Formato de hora',
 	projectpanel1772: 'Formato de hora (H:i:s = 23:59:59)',
 	projectpanel1780: 'Símbolo de moneda',
@@ -5309,6 +5309,8 @@ export const es: Translations = {
 	projectpanel2356: 'Esquemas:',
 	projectpanel2360: 'Plantillas:',
 	projectpanel2364: 'Ajustes de código:',
+  projectpanel2265: 'No, gracias',
+  projectpanel2271: 'Sí, seleccione',
 	projectpanel2368: 'Para formular:',
 	projectpanel2383: 'La mesa,',
 	projectpanel2377: 'Esquemas:',

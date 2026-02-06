@@ -139,7 +139,9 @@
       "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\de.json\")",
       "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\en.json\")",
       "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\i18n\\\\locales\\\\fr.json\")",
-      "Bash(node scripts/generate-pwa-icons.mjs:*)"
+      "Bash(node scripts/generate-pwa-icons.mjs:*)",
+      "Bash(composer outdated:*)",
+      "Bash(composer update:*)"
     ],
     "deny": [],
     "ask": []

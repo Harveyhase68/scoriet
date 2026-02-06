@@ -1740,7 +1740,7 @@ export const fr: Translations = {
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal568: 'd.m.Y',
-  editprojectmodal573: 'pour le 31.12.2024 ou',
+  editprojectmodal573: 'pour le 31.12.2026 ou',
 
   // resources/js/Components/Modals/EditProjectModal.tsx
   editprojectmodal578: 'Format de l\'heure',
@@ -3674,7 +3674,7 @@ export const fr: Translations = {
   projectsettingspanel926:  'Longueur des noms de fichiers courts dans le concepteur de base de données (par exemple, "us" pour les utilisateurs)',
   projectsettingspanel946:  'par exemple, "," pour 1,23 ou "." pour 1,23',
   projectsettingspanel962:  'Par exemple, "." pour 1,234 ou "," pour 1,234',
-  projectsettingspanel979:  'Format PHP (par exemple, "j.m.A" pour 31.12.2024)',
+  projectsettingspanel979:  'Format PHP (par exemple, "j.m.A" pour 31.12.2026)',
   projectsettingspanel995:  'Format PHP (par exemple, "H:i:s" pour 14:30:00)',
   projectsettingspanel1012: 'par exemple "€", "$", "£", "CHF"',
   projectsettingspanel1058: 'Console Google Cloud - Créer une clé API',
@@ -5216,10 +5216,10 @@ export const fr: Translations = {
 	projectpanel445_2: 'a été déverrouillé avec succès ! (',
 	projectpanel445_3: '(Jours bonus reçus)',
 	projectpanel447: 'Erreur de déverrouillage',
-	projectpanel463: 'Les noms de projet ne peuvent contenir que des lettres minuscules (a-z), des chiffres (0-9) et des tirets bas (_) comme séparateurs. Exemple : mon_projet_2024',
+	projectpanel463: 'Les noms de projet ne peuvent contenir que des lettres minuscules (a-z), des chiffres (0-9) et des tirets bas (_) comme séparateurs. Exemple : mon_projet_2026',
 	projectpanel488: 'Pas assez de crédits ! Il vous faut',
 	projectpanel488_2: 'Crédits, mais seulement',
-	projectpanel503: 'Les noms de projet ne peuvent contenir que des lettres minuscules (a-z), des chiffres (0-9) et des tirets bas (_) comme séparateurs. Exemple : mon_projet_2024',
+	projectpanel503: 'Les noms de projet ne peuvent contenir que des lettres minuscules (a-z), des chiffres (0-9) et des tirets bas (_) comme séparateurs. Exemple : mon_projet_2026',
 	projectpanel631: 'Vous devez saisir du texte',
 	projectpanel631_2: 'pour confirmer la suppression',
 	projectpanel804: 'Échec du chargement des modèles :',
@@ -5273,7 +5273,7 @@ export const fr: Translations = {
 	projectpanel1724: 'Séparateur de milliers',
 	projectpanel1736: 'Séparateur de milliers (ex. 1 000 ou 1 000)',
 	projectpanel1744: 'Format de date',
-	projectpanel1755: 'Format de date (j.m.A = 31.12.2024)',
+	projectpanel1755: 'Format de date (j.m.A = 31.12.2026)',
 	projectpanel1761: 'Format de l\'heure',
 	projectpanel1772: 'Format de l\'heure (H:i:s = 23:59:59)',
 	projectpanel1780: 'Symbole monétaire',
@@ -5309,6 +5309,8 @@ export const fr: Translations = {
 	projectpanel2352: 'Taille du fichier :',
 	projectpanel2356: 'Schémas :',
 	projectpanel2360: 'Modèles :',
+  projectpanel2265: 'No, gracias',
+  projectpanel2271: 'Sí, seleccione',
 	projectpanel2364: 'Ajustements du code :',
 	projectpanel2368: 'Pour formuler :',
 	projectpanel2383: 'La table,',

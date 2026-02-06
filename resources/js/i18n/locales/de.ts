@@ -1740,7 +1740,7 @@ export const de: Translations = {
 
   // resources/js\Components\Modals\EditProjectModal.tsx
   editprojectmodal568: 'd.m.Y',
-  editprojectmodal573: 'für 31.12.2024 oder',
+  editprojectmodal573: 'für 31.12.2026 oder',
 
   // resources/js/Components/Modals/EditProjectModal.tsx
   editprojectmodal578: 'Zeitformat',
@@ -3674,7 +3674,7 @@ export const de: Translations = {
   projectsettingspanel926:  'Länge der kurzen Dateinamen im Datenbankdesigner (z.B. "us" für users)',
   projectsettingspanel946:  'z.B. "," für 1,23 oder "." für 1.23',
   projectsettingspanel962:  'z.B. "." für 1.234 oder "," für 1,234',
-  projectsettingspanel979:  'PHP Format (z.B. "d.m.Y" für 31.12.2024)',
+  projectsettingspanel979:  'PHP Format (z.B. "d.m.Y" für 31.12.2026)',
   projectsettingspanel995:  'PHP Format (z.B. "H:i:s" für 14:30:00)',
   projectsettingspanel1012: 'z.B. "€", "$", "£", "CHF"',
   projectsettingspanel1058: 'Google Cloud Console - API-Schlüssel erstellen',
@@ -5222,10 +5222,10 @@ export const de: Translations = {
   projectpanel445_2: ' wurde erfolgreich entsperrt! (',
   projectpanel445_3: ' Bonus-Tage erhalten)',
   projectpanel447: 'Fehler beim Entsperren',
-  projectpanel463: 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024',
+  projectpanel463: 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2026',
   projectpanel488: 'Nicht genug Credits! Sie benötigen ',
   projectpanel488_2: ' Credits, haben aber nur ',
-  projectpanel503: 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024',
+  projectpanel503: 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2026',
   projectpanel631: 'Sie müssen tippen',
   projectpanel631_2: 'um die Löschung zu bestätigen',
   projectpanel804: 'Vorlagen konnten nicht geladen werden:',
@@ -5279,7 +5279,7 @@ export const de: Translations = {
   projectpanel1724: 'Tausendertrennzeichen',
   projectpanel1736: 'Tausendertrennzeichen (z.B. 1.000 oder 1,000)',
   projectpanel1744: 'Datumsformat',
-  projectpanel1755: 'Datumsformat (t.m.Y = 31.12.2024)',
+  projectpanel1755: 'Datumsformat (t.m.Y = 31.12.2026)',
   projectpanel1761: 'Zeitformat',
   projectpanel1772: 'Zeitformat (H:i:s = 23:59:59)',
   projectpanel1780: 'Währungssymbol',
