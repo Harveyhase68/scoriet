@@ -575,7 +575,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  PHP Datumsformat (z.B. "d.m.Y" für 31.12.2024 oder "m/d/Y" für 12/31/2024)
+                  PHP Datumsformat (z.B. "d.m.Y" für 31.12.2026 oder "m/d/Y" für 12/31/2026)
                 </div>
               </div>
 

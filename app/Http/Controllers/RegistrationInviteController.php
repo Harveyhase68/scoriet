@@ -328,7 +328,7 @@ class RegistrationInviteController extends Controller
 
     <div style="text-align: center; margin-top: 20px; color: #888; font-size: 12px;">
         <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-        <p>&copy; 2024 {$appName}. All rights reserved.</p>
+        <p>&copy; 2026 {$appName}. All rights reserved.</p>
     </div>
 </body>
 </html>

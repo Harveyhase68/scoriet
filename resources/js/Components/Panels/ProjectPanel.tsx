@@ -459,7 +459,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     // Frontend validation first
     const namePattern = /^[a-z0-9]+(_[a-z0-9]+)*$/;
     if (!namePattern.test(createForm.name)) {
-      setError(t.projectpanel463 || 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024');
+      setError(t.projectpanel463 || 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2026');
       setCreating(false);
       return;
     }
@@ -500,7 +500,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           // Check if it's a regex validation error and provide better message
           const backendError = errorData.errors.name[0];
           if (backendError.includes('regex') || backendError.includes('format')) {
-            throw new Error(t.projectpanel503 || 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2024');
+            throw new Error(t.projectpanel503 || 'Projektnamen dürfen nur Kleinbuchstaben (a-z), Zahlen (0-9) und Unterstriche (_) als Trennzeichen enthalten. Beispiel: mein_projekt_2026');
           }
           throw new Error(backendError);
         }
@@ -1752,7 +1752,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     disabled={creating}
                   />
                   <div className="text-xs text-gray-400 mt-1">
-                    {t.projectpanel1755 || "Datumsformat (d.m.Y = 31.12.2024)"}
+                    {t.projectpanel1755 || "Datumsformat (d.m.Y = 31.12.2026)"}
                   </div>
                 </div>
 
