@@ -23,6 +23,7 @@
 /database/dumps/small.sql
 /database/dumps/test_import.sql
 /del_nul.bat
+/database/migrations/*_create_oauth_*
 /node_modules
 /public/build
 /public/hot
