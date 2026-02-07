@@ -136,3 +136,31 @@ export function useTranslation(language: SupportedLanguage) {
 export function preloadLanguage(language: SupportedLanguage): Promise<void> {
   return loadTranslations(language).then(() => undefined);
 }
+
+/**
+ * Template function for translated strings with placeholders.
+ * Replaces {key} placeholders with values from the params object.
+ *
+ * Usage:
+ *   tpl(t.payoutadminpanel378, { gross: formatCurrency(100), net: formatCurrency(80) })
+ *
+ * Translation string:
+ *   "Brutto {gross} - Netto {net}"
+ *
+ * Result:
+ *   "Brutto €100.00 - Netto €80.00"
+ */
+export function tpl(template: string, params: Record<string, string | number>): string {
+  if (!template) return '';
+  let result = template;
+  const keys = Object.keys(params);
+  for (let i = 0; i < keys.length; i++) {
+    const placeholder = '{' + keys[i] + '}';
+    const value = String(params[keys[i]]);
+    // Replace all occurrences of this placeholder
+    while (result.indexOf(placeholder) !== -1) {
+      result = result.replace(placeholder, value);
+    }
+  }
+  return result;
+}

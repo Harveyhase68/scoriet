@@ -11,6 +11,7 @@ import { Card } from 'primereact/card';
 import { MultiSelect } from 'primereact/multiselect';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
 
 interface FormSet {
     id: number;
@@ -48,6 +49,8 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const { selectedProject } = useProject();
     const toast = useToast();
     const { colors } = useTheme();
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
 
     // Get current user ID for permission checks
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
@@ -357,7 +360,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const windowsBodyTemplate = (formSet: FormSet) => {
         return (
             <span className="px-2 py-1 bg-purple-500 text-white rounded text-xs">
-                {formSet.windows_count || 0} Fenster
+                {formSet.windows_count || 0} {t.formsetmanagementpanel363}
             </span>
         );
     };
@@ -415,17 +418,17 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     rowsPerPageOptions={[10, 25, 50]}
                     sortMode="multiple"
                     className="p-datatable-sm"
-                    emptyMessage="Keine FormSets gefunden"
+                    emptyMessage={t.formsetmanagementpanel421} //Keine FormSets gefunden
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     currentPageReportTemplate="{first} bis {last} von {totalRecords} FormSets"
                 >
-                    <Column field="name" header="Name" sortable />
-                    <Column field="description" header="Beschreibung" style={{ maxWidth: '300px' }} />
-                    <Column header="Sichtbarkeit" body={visibilityBodyTemplate} />
-                    <Column header="Fenster" body={windowsBodyTemplate} />
-                    <Column header="Erstellt" body={dateBodyTemplate} sortable field="created_at" />
+                    <Column field={t.formsetmanagementpanel425} header="Name" sortable />
+                    <Column field={t.formsetmanagementpanel426} header="Beschreibung" style={{ maxWidth: '300px' }} />
+                    <Column header={t.formsetmanagementpanel427} body={visibilityBodyTemplate} />
+                    <Column header={t.formsetmanagementpanel428} body={windowsBodyTemplate} />
+                    <Column header={t.formsetmanagementpanel429} body={dateBodyTemplate} sortable field="created_at" />
                     <Column
-                        header="Aktionen"
+                        header={t.formsetmanagementpanel431}
                         body={(formSet: FormSet) => {
                             const isOwner = formSet.creator_user_id === currentUserId;
                             return (
@@ -434,7 +437,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                         icon="pi pi-link"
                                         className="p-button-text p-button-success p-button-sm"
                                         onClick={() => handleOpenLinkModal(formSet)}
-                                        tooltip="Mit Projekten verknüpfen"
+                                        tooltip={t.formsetmanagementpanel440}
                                     />
                                     {isOwner && (
                                         <>
@@ -442,13 +445,13 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                                 icon="pi pi-pencil"
                                                 className="p-button-text p-button-info p-button-sm"
                                                 onClick={() => handleEdit(formSet)}
-                                                tooltip="Im Form Designer bearbeiten"
+                                                tooltip={t.formsetmanagementpanel448}
                                             />
                                             <Button
                                                 icon="pi pi-trash"
                                                 className="p-button-text p-button-danger p-button-sm"
                                                 onClick={() => handleDelete(formSet)}
-                                                tooltip="FormSet löschen"
+                                                tooltip={t.formsetmanagementpanel454}
                                             />
                                         </>
                                     )}
@@ -460,19 +463,19 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             </Card>
 
             {/* PUBLIC FORMSETS TABLE */}
-            <Card title="System & Öffentliche FormSets" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <Card title={t.formsetmanagementpanel466} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                         <InputText
                             value={publicSearchTerm}
                             onChange={(e) => setPublicSearchTerm(e.target.value)}
-                            placeholder="Suchen..."
+                            placeholder={t.formsetmanagementpanel472}
                             className="w-64"
                         />
                     </div>
                     {selectedProject && (
                         <Tag
-                            value={`Aktuelles Projekt: ${selectedProject.name}`}
+                            value={`${t.formsetmanagementpanel478}${selectedProject.name}`}
                             severity="info"
                             className="text-sm"
                         />
@@ -487,15 +490,15 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     rowsPerPageOptions={[10, 25, 50]}
                     sortMode="multiple"
                     className="p-datatable-sm"
-                    emptyMessage="Keine öffentlichen FormSets gefunden"
+                    emptyMessage={t.formsetmanagementpanel493}
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     currentPageReportTemplate="{first} bis {last} von {totalRecords} FormSets"
                 >
-                    <Column field="name" header="Name" sortable />
-                    <Column field="description" header="Beschreibung" style={{ maxWidth: '300px' }} />
-                    <Column header="Ersteller" body={creatorBodyTemplate} />
-                    <Column header="Fenster" body={windowsBodyTemplate} />
-                    <Column header="Erstellt" body={dateBodyTemplate} sortable field="created_at" />
+                    <Column field="name" header={t.formsetmanagementpanel497} sortable />
+                    <Column field="description" header={t.formsetmanagementpanel498} style={{ maxWidth: '300px' }} />
+                    <Column header={t.formsetmanagementpanel499} body={creatorBodyTemplate} />
+                    <Column header={t.formsetmanagementpanel500} body={windowsBodyTemplate} />
+                    <Column header={t.formsetmanagementpanel501} body={dateBodyTemplate} sortable field="created_at" />
                     <Column
                         header="Aktionen"
                         body={(formSet: FormSet) => (
@@ -504,7 +507,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                     icon="pi pi-link"
                                     className="p-button-text p-button-success p-button-sm"
                                     onClick={() => handleQuickLink(formSet)}
-                                    tooltip={selectedProject ? `Mit "${selectedProject.name}" verknüpfen` : 'Projekt auswählen'}
+                                    tooltip={selectedProject ? tpl(t.formsetmanagementpanel510, { name: selectedProject.name }) : t.formsetmanagementpanel510_2}
                                     disabled={!selectedProject}
                                 />
                             </div>
@@ -526,31 +529,31 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             >
                 <div className="space-y-4">
                     <p className="text-sm" style={{ color: colors.textMuted }}>
-                        Wählen Sie die Projekte aus, mit denen dieses FormSet verknüpft werden soll.
+                        t.formsetmanagementpanel532
                     </p>
 
                     <MultiSelect
                         value={linkedProjectIds}
                         options={(Array.isArray(allProjects) ? allProjects : []).map(p => ({ label: p.name, value: p.id }))}
                         onChange={(e) => setLinkedProjectIds(e.value || [])}
-                        placeholder="Projekte auswählen..."
+                        placeholder={t.formsetmanagementpanel539}
                         className="w-full"
                         display="chip"
                         loading={loadingProjects}
                         filter
-                        filterPlaceholder="Suchen..."
-                        emptyMessage="Keine Projekte gefunden"
+                        filterPlaceholder={t.formsetmanagementpanel544}
+                        emptyMessage={t.formsetmanagementpanel545}
                         panelClassName="formset-multiselect-panel"
                     />
 
                     <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <Button
-                            label="Abbrechen"
+                            label={t.formsetmanagementpanel551}
                             className="p-button-secondary"
                             onClick={() => setLinkModalVisible(false)}
                         />
                         <Button
-                            label="Verknüpfen"
+                            label={t.formsetmanagementpanel556}
                             icon="pi pi-link"
                             className="p-button-success"
                             onClick={handleSaveLinks}
@@ -565,7 +568,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             <Dialog
                 visible={deleteModalVisible}
                 onHide={handleDeleteModalHide}
-                header="FormSet löschen"
+                header={t.formsetmanagementpanel571}
                 style={{ width: '450px' }}
                 modal
                 closable={!deleting}
@@ -579,9 +582,9 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         <div className="flex items-start gap-3">
                             <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.errorText }}></i>
                             <div>
-                                <h4 className="font-semibold" style={{ color: colors.errorText }}>Warnung: Permanentes Löschen</h4>
+                                <h4 className="font-semibold" style={{ color: colors.errorText }}>{t.formsetmanagementpanel585}</h4>
                                 <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                                    Das FormSet <strong style={{ color: colors.textPrimary }}>"{formSetToDelete?.name}"</strong> wird unwiderruflich gelöscht.
+                                    {t.formsetmanagementpanel587}<strong style={{ color: colors.textPrimary }}>"{formSetToDelete?.name}"</strong>{t.formsetmanagementpanel587_2}
                                 </p>
                             </div>
                         </div>
@@ -589,19 +592,19 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
                     {/* What will be deleted */}
                     <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                        <p className="mb-2" style={{ color: colors.textSecondary }}>Folgendes wird gelöscht:</p>
+                        <p className="mb-2" style={{ color: colors.textSecondary }}>{t.formsetmanagementpanel595_2}</p>
                         <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
-                            <li>Das FormSet und alle Einstellungen</li>
-                            <li>Alle Fenster ({formSetToDelete?.windows_count || 0} Fenster)</li>
-                            <li>Alle Formular-Elemente</li>
-                            <li>Alle Projekt-Verknüpfungen</li>
+                            <li>{t.formsetmanagementpanel597}</li>
+                            <li>{t.formsetmanagementpanel598}({formSetToDelete?.windows_count || 0} {t.formsetmanagementpanel598_2})</li>
+                            <li>{t.formsetmanagementpanel599}</li>
+                            <li>{t.formsetmanagementpanel600}</li>
                         </ul>
                     </div>
 
                     {/* Confirmation Input */}
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Geben Sie <strong style={{ color: colors.errorText }}>DELETE</strong> ein um zu bestätigen
+                            {t.formsetmanagementpanel607}<strong style={{ color: colors.errorText }}>DELETE</strong>{t.formsetmanagementpanel607_2}
                         </label>
                         <InputText
                             value={deleteConfirmText}
@@ -611,21 +614,21 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             disabled={deleting}
                         />
                         <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                            Sie müssen exakt DELETE (Großbuchstaben) eingeben
+                            {t.formsetmanagementpanel617}
                         </small>
                     </div>
 
                     {/* Buttons */}
                     <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <Button
-                            label="Abbrechen"
+                            label={t.formsetmanagementpanel624}
                             icon="pi pi-times"
                             className="p-button-secondary"
                             onClick={handleDeleteModalHide}
                             disabled={deleting}
                         />
                         <Button
-                            label={deleting ? 'Lösche...' : 'FormSet löschen'}
+                            label={deleting ? t.formsetmanagementpanel631 : t.formsetmanagementpanel631_2}
                             icon={deleting ? 'pi pi-spinner pi-spin' : 'pi pi-trash'}
                             className="p-button-danger"
                             onClick={executeDelete}

@@ -48,7 +48,7 @@ class CustomTokenController extends AccessTokenController
                             // User not found with username
                             return response()->json([
                                 'error' => 'invalid_credentials',
-                                'message' => 'The provided credentials are incorrect.'
+                                'message' => __('customtokencontrollerphp51')
                             ], 401);
                         }
                     }
@@ -158,6 +158,12 @@ class CustomTokenController extends AccessTokenController
             // Continue with normal token issuance for non-remember-me logins
             return parent::issueToken($psrRequest, $psrResponse);
             
+        } catch (\League\OAuth2\Server\Exception\OAuthServerException $e) {
+            \Log::error('OAuth token error: ' . $e->getMessage());
+            return response()->json([
+                'error' => $e->getErrorType(),
+                'message' => $e->getMessage(),
+            ], $e->getHttpStatusCode());
         } catch (\Exception $e) {
             \Log::error('OAuth token error: ' . $e->getMessage());
             return response()->json([

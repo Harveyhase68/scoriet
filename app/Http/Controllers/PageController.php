@@ -22,7 +22,7 @@ class PageController extends Controller
             abort(404);
         }
 
-        return Inertia::render('CMSPage', [
+        return Inertia::render('LandingPage', [
             'title' => $page->title,
             'content' => $page->content,
             'pageId' => $page->id,
@@ -49,7 +49,7 @@ class PageController extends Controller
             abort(404, "Help page not found for locale: {$locale}");
         }
 
-        return Inertia::render('CMSPage', [
+        return Inertia::render('LandingPage', [
             'title' => $page->title,
             'content' => $page->content,
             'pageId' => $page->id,
@@ -76,7 +76,7 @@ class PageController extends Controller
             abort(404, "Impressum page not found for locale: {$locale}");
         }
 
-        return Inertia::render('CMSPage', [
+        return Inertia::render('LandingPage', [
             'title' => $page->title,
             'content' => $page->content,
             'pageId' => $page->id,
@@ -103,7 +103,7 @@ class PageController extends Controller
             abort(404, "Contact page not found for locale: {$locale}");
         }
 
-        return Inertia::render('CMSPage', [
+        return Inertia::render('LandingPage', [
             'title' => $page->title,
             'content' => $page->content,
             'pageId' => $page->id,

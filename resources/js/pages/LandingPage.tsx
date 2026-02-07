@@ -29,6 +29,7 @@ interface UserData {
   name: string;
   email: string;
   email_verified_at?: string;
+  user_type?: string;
 }
 
 interface CMSPopup {
@@ -41,14 +42,24 @@ interface CMSPopup {
 }
 
 interface PageProps {
+  [key: string]: unknown;
   openRegister?: boolean;
   inviteToken?: string | null;
+  // CMS page props (when present, shows CMS content instead of landing sections)
+  title?: string;
+  content?: string;
+  pageId?: number;
+  slug?: string;
+  locale?: string;
 }
 
 export default function LandingPage() {
-  // Get Inertia page props (for /register route with invite token)
-  const { props } = usePage<{ openRegister?: boolean; inviteToken?: string | null }>();
-  const { openRegister, inviteToken } = props as PageProps;
+  // Get Inertia page props
+  const { props } = usePage<PageProps>();
+  const { openRegister, inviteToken, title: cmsTitle, content: cmsContent, pageId: cmsPageId, slug: cmsSlug } = props;
+
+  // Determine if we're rendering a CMS page or the normal landing page
+  const isCMSPage = !!cmsContent;
   // Translation hooks
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => {
     return getStoredLanguage() as SupportedLanguage || 'de';
@@ -169,6 +180,18 @@ export default function LandingPage() {
   const handleLanguageChange = (language: SupportedLanguage) => {
     setCurrentLanguage(language);
     setStoredLanguage(language);
+
+    // For CMS pages, redirect to the same slug with the new locale
+    if (isCMSPage && cmsSlug) {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/' || currentPath === '') return;
+      const pathSegments = currentPath.split('/').filter(segment => segment !== '');
+      const supportedLangCodes = ['de', 'en', 'es', 'fr', 'it'];
+      if (pathSegments.length > 0 && supportedLangCodes.includes(pathSegments[0])) {
+        pathSegments[0] = language;
+        window.location.href = '/' + pathSegments.join('/');
+      }
+    }
   };
 
   // Get pricing data from localStorage
@@ -428,7 +451,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <Head title="Scoriet - Enterprise Code Generator" />
+      <Head title={isCMSPage ? `${cmsTitle} - Scoriet` : 'Scoriet - Enterprise Code Generator'} />
 
       {/* Toast Notification Component */}
       <Toast
@@ -480,6 +503,17 @@ export default function LandingPage() {
               </div>
               
               <div className="flex items-center gap-2">
+                {/* Home Button - only shown on CMS pages */}
+                {isCMSPage && (
+                  <Button
+                    label="Home"
+                    icon="pi pi-home"
+                    className="p-button-outlined p-button-info"
+                    style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+                    onClick={() => window.location.href = '/'}
+                  />
+                )}
+
                 {/* Language Selector */}
                 <LanguageSelector
                   currentLanguage={currentLanguage}
@@ -544,6 +578,106 @@ export default function LandingPage() {
           </div>
         </header>
 
+        {/* Main Content: CMS Page or Landing Page sections */}
+        {isCMSPage ? (
+          /* CMS Content Section */
+          <section className="py-20" style={{ backgroundColor: colors.bgPrimary }}>
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              {/* Edit Button for System Users */}
+              {userData?.user_type === 'system' && cmsPageId && (
+                <div className="flex justify-end mb-4">
+                  <Button
+                    label={'Bearbeiten'}
+                    icon="pi pi-pencil"
+                    className="p-button-warning p-button-sm"
+                    style={{ borderRadius: '8px' }}
+                    onClick={() => {
+                      window.location.href = `/app?panel=cms&pageId=${cmsPageId}`;
+                    }}
+                  />
+                </div>
+              )}
+
+              <h1 className="text-4xl font-bold text-center mb-8" style={{ color: colors.accent }}>
+                {cmsTitle}
+              </h1>
+
+              <div className="rounded-lg shadow-lg p-8" style={{ backgroundColor: colors.bgSecondary }}>
+                <div
+                  className="cms-content"
+                  dangerouslySetInnerHTML={{ __html: cmsContent }}
+                />
+              </div>
+
+              {/* CMS Content Styles */}
+              <style>{`
+                .cms-content {
+                  max-width: none;
+                  color: var(--theme-text-secondary);
+                }
+                .cms-content h1 {
+                  font-size: 2.25rem;
+                  font-weight: 700;
+                  margin-top: 1.5rem;
+                  margin-bottom: 1rem;
+                  line-height: 1.2;
+                  color: var(--theme-text-primary);
+                }
+                .cms-content h2 {
+                  font-size: 1.5rem;
+                  font-weight: 600;
+                  margin-top: 1.5rem;
+                  margin-bottom: 1rem;
+                  line-height: 1.3;
+                  color: var(--theme-text-primary);
+                }
+                .cms-content h3 {
+                  font-size: 1.25rem;
+                  font-weight: 600;
+                  margin-top: 1.25rem;
+                  margin-bottom: 0.75rem;
+                  line-height: 1.3;
+                  color: var(--theme-text-primary);
+                }
+                .cms-content p {
+                  margin-bottom: 1rem;
+                  line-height: 1.6;
+                }
+                .cms-content ul, .cms-content ol {
+                  margin-left: 1.5rem;
+                  margin-bottom: 1.5rem;
+                }
+                .cms-content ul {
+                  list-style-type: disc;
+                }
+                .cms-content ol {
+                  list-style-type: decimal;
+                }
+                .cms-content li {
+                  margin-bottom: 0.5rem;
+                  line-height: 1.6;
+                }
+                .cms-content strong, .cms-content b {
+                  font-weight: 700;
+                }
+                .cms-content a {
+                  color: var(--theme-accent);
+                  text-decoration: underline;
+                }
+                .cms-content a:hover {
+                  color: var(--theme-accent-hover);
+                }
+                .cms-content br {
+                  display: block;
+                  content: "";
+                  margin-top: 0.5rem;
+                }
+              `}</style>
+            </div>
+          </section>
+        ) : (
+          /* Normal Landing Page Sections */
+          <>
         {/* Hero Section */}
         <section className="py-20" style={{ background: `linear-gradient(to bottom right, ${colors.bgPrimary}, ${colors.bgSecondary}, ${colors.accent}40)` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -798,6 +932,8 @@ export default function LandingPage() {
               </div>
             </div>
           </section>
+        )}
+          </>
         )}
 
         {/* Footer */}

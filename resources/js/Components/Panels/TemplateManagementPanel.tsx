@@ -1155,14 +1155,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             const data = await response.json();
 
             if (response.ok && data.success) {
-                toast.showSuccess(data.message || 'Template erfolgreich aus Archiv importiert');
+                toast.showSuccess(data.message || t.templatemanagementpanel1158);
                 loadMyTemplates();
                 loadCommunityTemplates();
             } else if (response.status === 409) {
                 // Template already exists - ask for overwrite
                 confirmDialog({
-                    message: 'Ein Template mit diesem Namen existiert bereits. Möchten Sie es überschreiben?',
-                    header: 'Template existiert bereits',
+                    message: t.templatemanagementpanel1164,
+                    header: t.templatemanagementpanel1165,
                     icon: 'pi pi-exclamation-triangle',
                     accept: async () => {
                         try {
@@ -1181,14 +1181,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             const dataOverwrite = await responseOverwrite.json();
 
                             if (responseOverwrite.ok && dataOverwrite.success) {
-                                toast.showSuccess(dataOverwrite.message || 'Template erfolgreich überschrieben');
+                                toast.showSuccess(dataOverwrite.message || t.templatemanagementpanel1184);
                                 loadMyTemplates();
                                 loadCommunityTemplates();
                             } else {
-                                toast.showError(dataOverwrite.error || 'Fehler beim Überschreiben des Templates');
+                                toast.showError(dataOverwrite.error || t.templatemanagementpanel1188);
                             }
                         } catch (error: any) {
-                            toast.showError('Fehler beim Überschreiben des Templates: ' + error.message);
+                            toast.showError(t.templatemanagementpanel1191 + error.message);
                         }
                     },
                     acceptLabel: 'Ja, überschreiben',
@@ -1196,10 +1196,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     acceptClassName: 'p-button-danger'
                 });
             } else {
-                toast.showError(data.error || 'Fehler beim Importieren des Archivs');
+                toast.showError(data.error || t.templatemanagementpanel1199);
             }
         } catch (error: any) {
-            toast.showError('Fehler beim Importieren des Archivs: ' + error.message);
+            toast.showError(t.templatemanagementpanel1202 + error.message);
         }
     };
 
@@ -1346,7 +1346,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 fileContent = await base64Promise;
                 contentType = 'zip';
                 zipFilename = values.zip_file.name;
-            } catch (error) {
+            } catch (error: any) {
                 toast.showError('Fehler beim Verarbeiten der ZIP-Datei: ' + error.message);
                 return;
             }
@@ -1552,7 +1552,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         <Button
                             icon="pi pi-box"
-                            label="Archiv importieren"
+                            label={t.templatemanagementpanel1555}
                             onClick={() => setImportWizardVisible(true)}
                             className="p-button-success"
                             tooltip="Import aus .zip, .tar.gz, .tar.xz Archiv"
@@ -1586,7 +1586,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 <div className="px-4 pb-4">
 
                 {/* MY TEMPLATES TABLE */}
-                <Card title="Meine Templates" className="mb-4">
+                <Card title={t.templatemanagementpanel1589} className="mb-4">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex gap-2">
                             {/* Type Filter - show 'system' option only for system/admin/inner_core users */}
@@ -1613,7 +1613,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             />
                             <Dropdown
                                 value={myLanguageFilter}
-                                options={[{ label: 'Alle Sprachen', value: 'all' }, ...uniqueMyLanguages.map(l => ({ label: l, value: l }))]}
+                                options={[{ label: t.templatemanagementpanel1616, value: 'all' }, ...uniqueMyLanguages.map(l => ({ label: l, value: l }))]}
                                 onChange={(e) => setMyLanguageFilter(e.value)}
                                 placeholder="Sprache"
                                 className="w-40"
@@ -1644,7 +1644,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         className="p-datatable-sm"
                         emptyMessage={t.templatesNoTemplatesFound}
                         paginatorTemplate={t.languagemanagementpanel317}
-                        currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                        currentPageReportTemplate={t.templatemanagementpanel1647}
                     >
                         <Column
                             field="name"
@@ -1721,7 +1721,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         <Column
                             header="Projekte"
-                            body={(template) => {
+                            body={(template: Template) => {
                                 const count = template.linked_project_ids?.length || 0;
                                 const activeProjects = template.linked_projects?.filter(p => p.is_active) || [];
                                 const inactiveProjects = template.linked_projects?.filter(p => !p.is_active) || [];
@@ -1926,7 +1926,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 </Card>
 
                 {/* COMMUNITY TEMPLATES TABLE */}
-                <Card title="System, Öffentliche & Store Templates" className="mb-4">
+                <Card title={t.templatemanagementpanel1929} className="mb-4">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex gap-2">
                             <Dropdown
@@ -1943,7 +1943,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             />
                             <Dropdown
                                 value={communityLanguageFilter}
-                                options={[{ label: 'Alle Sprachen', value: 'all' }, ...uniqueCommunityLanguages.map(l => ({ label: l, value: l }))]}
+                                options={[{ label: t.templatemanagementpanel1946, value: 'all' }, ...uniqueCommunityLanguages.map(l => ({ label: l, value: l }))]}
                                 onChange={(e) => setCommunityLanguageFilter(e.value)}
                                 placeholder="Sprache"
                                 className="w-40"
@@ -1974,7 +1974,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         className="p-datatable-sm"
                         emptyMessage={t.templatesNoTemplatesFound}
                         paginatorTemplate={t.languagemanagementpanel317}
-                        currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                        currentPageReportTemplate={t.templatemanagementpanel1977}
                     >
                         <Column field="name" header={t.registermodal236} sortable />
                         <Column
@@ -2033,8 +2033,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             body={(template) => `${template.file_count} Dateien`}
                         />
                         <Column
-                            header="Projekte"
-                            body={(template) => {
+                            header={t.templatemanagementpanel2036}
+                            body={(template: Template) => {
                                 const count = template.linked_project_ids?.length || 0;
                                 const activeProjects = template.linked_projects?.filter(p => p.is_active) || [];
                                 const inactiveProjects = template.linked_projects?.filter(p => !p.is_active) || [];
@@ -2168,7 +2168,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         title={
                             <div className="flex items-center gap-2">
                                 <i className="pi pi-shopping-cart text-purple-500"></i>
-                                <span>Gekaufte Templates</span>
+                                <span>{t.templatemanagementpanel2171}</span>
                                 <Tag value={purchasedTemplates.length.toString()} severity="info" className="ml-2" />
                             </div>
                         }
@@ -2182,9 +2182,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             rowsPerPageOptions={[10, 25, 50]}
                             sortMode="multiple"
                             className="p-datatable-sm"
-                            emptyMessage="Keine gekauften Templates gefunden"
+                            emptyMessage={t.templatemanagementpanel2185}
                             paginatorTemplate={t.languagemanagementpanel317}
-                            currentPageReportTemplate="{first} bis {last} von {totalRecords} Templates"
+                            currentPageReportTemplate={t.templatemanagementpanel2187}
                         >
                             <Column field="name" header={t.registermodal236} sortable />
                             <Column
@@ -2220,26 +2220,26 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 )}
                             />
                             <Column
-                                header={t.usercontroller56}
+                                header={t.templatemanagementpanel747}
                                 body={(template) => (
                                     <div className="flex gap-1">
                                         <Button
                                             icon="pi pi-eye"
                                             className="p-button-text p-button-sm"
                                             onClick={() => handleView(template)}
-                                            tooltip="Ansehen"
+                                            tooltip={t.templatemanagementpanel2230}
                                         />
                                         <Button
                                             icon="pi pi-link"
                                             className="p-button-text p-button-sm p-button-success"
                                             onClick={() => handleOpenLinkModal(template)}
-                                            tooltip="Projekt verknüpfen"
+                                            tooltip={t.templatemanagementpanel2236}
                                         />
                                         <Button
                                             icon="pi pi-copy"
                                             className="p-button-text p-button-sm p-button-info"
                                             onClick={() => handleClone(template)}
-                                            tooltip="Clone & Anpassen"
+                                            tooltip={t.templatemanagementpanel2242}
                                         />
                                     </div>
                                 )}
@@ -2992,7 +2992,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={importWizardVisible}
                 onClose={() => setImportWizardVisible(false)}
                 onSuccess={(template) => {
-                    toast.showSuccess('Template erfolgreich erstellt', `Template "${template.name}" wurde importiert.`);
+                    toast.showSuccess(`Template "${template.name}" wurde importiert.`);
                     loadMyTemplates();
                 }}
             />

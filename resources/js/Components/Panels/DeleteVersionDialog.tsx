@@ -4,6 +4,7 @@ import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface SchemaVersion {
     id: number;
@@ -32,6 +33,8 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
     const { colors } = useTheme();
     const [advancedMode, setAdvancedMode] = useState(false);
     const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
 
     // Get latest version
     const latestVersion = versions.length > 0
@@ -75,13 +78,13 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
     const footer = (
         <div>
             <Button
-                label="Abbrechen"
+                label={t.deleteversiondialog81}
                 icon="pi pi-times"
                 onClick={handleHide}
                 className="p-button-text"
             />
             <Button
-                label="Version löschen"
+                label={t.deleteversiondialog87}
                 icon="pi pi-trash"
                 onClick={handleConfirm}
                 className="p-button-danger"
@@ -92,7 +95,7 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
 
     return (
         <Dialog
-            header="Schema Version löschen"
+            header={t.deleteversiondialog98}
             visible={visible}
             style={{ width: '500px' }}
             footer={footer}
@@ -107,9 +110,9 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                     <div className="flex items-start gap-2">
                         <i className="pi pi-exclamation-triangle mt-1" style={{ color: colors.errorText }}></i>
                         <div>
-                            <div className="font-semibold" style={{ color: colors.errorText }}>Warnung: Permanentes Löschen</div>
+                            <div className="font-semibold" style={{ color: colors.errorText }}>{t.deleteversiondialog110}</div>
                             <div className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                                Diese Aktion kann nicht rückgängig gemacht werden. Alle Tabellen, Felder und Beziehungen dieser Version werden gelöscht.
+                                {t.deleteversiondialog115}
                             </div>
                         </div>
                     </div>
@@ -117,10 +120,10 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
 
                 {/* Schema Info */}
                 <div className="rounded p-3" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                    <div className="text-sm" style={{ color: colors.textMuted }}>Schema</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>{t.deleteversiondialog123}</div>
                     <div className="font-semibold" style={{ color: colors.textPrimary }}>{schemaName}</div>
                     <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                        {versions.length} {versions.length === 1 ? 'Version' : 'Versionen'} vorhanden
+                        {versions.length} {versions.length === 1 ? t.deleteversiondialog126 : t.deleteversiondialog126_2} vorhanden
                     </div>
                 </div>
 
@@ -129,7 +132,7 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                         <div className="flex items-start gap-2">
                             <i className="pi pi-info-circle mt-1" style={{ color: colors.warningText }}></i>
                             <div className="text-sm" style={{ color: colors.textSecondary }}>
-                                Das Schema muss mindestens eine Version behalten. Lösche das gesamte Schema, wenn du alle Versionen entfernen möchtest.
+                                {t.deleteversiondialog135}
                             </div>
                         </div>
                     </div>
@@ -140,14 +143,14 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                         {/* Default Mode - Delete Latest Version */}
                         {!advancedMode && latestVersion && (
                             <div className="rounded p-3" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
-                                <div className="text-sm mb-2" style={{ color: colors.textMuted }}>Zu löschende Version (neueste):</div>
+                                <div className="text-sm mb-2" style={{ color: colors.textMuted }}>{t.deleteversiondialog146}</div>
                                 <div className="font-semibold" style={{ color: colors.textPrimary }}>
-                                    Version {latestVersion.version_number}
+                                    {t.deleteversiondialog148}{latestVersion.version_number}
                                 </div>
                                 <div className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                                    {latestVersion.tables_count || 0} Tabellen
+                                    {latestVersion.tables_count || 0}{t.deleteversiondialog151}
                                     {latestVersion.imported_at && (
-                                        <> · Importiert: {new Date(latestVersion.imported_at).toLocaleDateString('de-DE', {
+                                        <> · {t.deleteversiondialog153}{new Date(latestVersion.imported_at).toLocaleDateString('de-DE', {
                                             day: '2-digit',
                                             month: '2-digit',
                                             year: 'numeric',
@@ -166,20 +169,20 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                                     <div className="flex items-start gap-2">
                                         <i className="pi pi-exclamation-circle mt-1" style={{ color: colors.warningText }}></i>
                                         <div className="text-sm" style={{ color: colors.textSecondary }}>
-                                            <strong>Achtung:</strong> Das Löschen einer älteren Version kann zu Lücken in der Versions-Historie führen (z.B. v1, v2, v4 statt v1, v2, v3, v4).
+                                            <strong>{t.deleteversiondialog172}</strong>{t.deleteversiondialog172_2}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                        Version auswählen:
+                                        {t.deleteversiondialog179}
                                     </label>
                                     <Dropdown
                                         value={selectedVersionId}
                                         options={versionOptions}
                                         onChange={(e) => setSelectedVersionId(e.value)}
-                                        placeholder="Version zum Löschen auswählen"
+                                        placeholder={t.deleteversiondialog185}
                                         className="w-full"
                                         panelClassName="delete-version-dropdown-panel"
                                     />
@@ -203,12 +206,12 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                                     className="text-sm cursor-pointer"
                                     style={{ color: colors.textSecondary }}
                                 >
-                                    <strong>Bestimmte Version löschen</strong> (Ich weiß was ich mache)
+                                    <strong>{t.deleteversiondialog209}</strong>{t.deleteversiondialog209_2}
                                 </label>
                             </div>
                             {advancedMode && (
                                 <div className="text-xs mt-2 ml-6" style={{ color: colors.textMuted }}>
-                                    Im erweiterten Modus kannst du jede beliebige Version löschen. Sei vorsichtig bei der Auswahl!
+                                    {t.deleteversiondialog214}
                                 </div>
                             )}
                         </div>
