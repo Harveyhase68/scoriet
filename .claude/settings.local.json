@@ -142,7 +142,10 @@
       "Bash(node scripts/generate-pwa-icons.mjs:*)",
       "Bash(composer outdated:*)",
       "Bash(composer update:*)",
-      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\pages\\\\CMSPage.tsx\")"
+      "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\pages\\\\CMSPage.tsx\")",
+      "WebFetch(domain:github.com)",
+      "Bash(del:*)",
+      "Bash(cmd /c del:*)"
     ],
     "deny": [],
     "ask": []

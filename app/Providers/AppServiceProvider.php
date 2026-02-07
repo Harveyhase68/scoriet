@@ -32,7 +32,7 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
      */
     public function register(): void
     {
-        Passport::ignoreMigrations();
+        //
     }
 
     /**
