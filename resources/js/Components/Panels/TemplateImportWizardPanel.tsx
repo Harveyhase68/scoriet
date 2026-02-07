@@ -19,6 +19,7 @@ import { TreeNode } from 'primereact/treenode';
 import { usePage } from '@inertiajs/react';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
 
 interface FileInfo {
     path: string;
@@ -132,6 +133,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const templateCategories = props.templateCategories || [];
     const templateLanguages = props.templateLanguages || [];
     const { colors } = useTheme();
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
 
     // Wizard state
     const [currentStep, setCurrentStep] = useState(0);
@@ -197,11 +200,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
     // Steps configuration
     const steps = [
-        { label: 'Archiv hochladen' },
-        { label: 'Template-Dateien' },
-        { label: 'Statische Dateien' },
-        { label: 'Static Directory' },
-        { label: 'Template erstellen' }
+        { label: t.templateimportwizardpanel200 },
+        { label: t.templateimportwizardpanel204 },
+        { label: t.templateimportwizardpanel205 },
+        { label: t.templateimportwizardpanel206 },
+        { label: t.templateimportwizardpanel207 }
     ];
 
     // Calculate files available for Step 2 (Static files) - exclude files already selected in Step 1
@@ -412,7 +415,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 }
             }
         } catch (err) {
-            console.error('Error checking private template subscription:', err);
+            console.error(t.templateimportwizardpanel418, err);
         } finally {
             setCheckingSubscription(false);
         }
@@ -436,7 +439,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 setCurrentUser(userData);
             }
         } catch (err) {
-            console.error('Error refreshing credits:', err);
+            console.error(t.templateimportwizardpanel442, err);
         }
     }, []);
 
@@ -539,7 +542,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Upload fehlgeschlagen');
+                throw new Error(data.message || t.templateimportwizardpanel545);
             }
 
             setSessionId(data.session_id);
@@ -558,7 +561,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
             setCurrentStep(1);
         } catch (err: any) {
-            setError(err.message || 'Fehler beim Hochladen');
+            setError(err.message || t.templateimportwizardpanel564);
         } finally {
             setLoading(false);
             fileUploadRef.current?.clear();
@@ -568,7 +571,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     // Service import - create task and start polling
     const handleServiceImport = async () => {
         if (!serviceDirectoryPath.trim()) {
-            setError('Bitte geben Sie einen Verzeichnispfad ein');
+            setError(t.templateimportwizardpanel574);
             return;
         }
 
@@ -593,17 +596,17 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Task-Erstellung fehlgeschlagen');
+                throw new Error(data.message || t.templateimportwizardpanel599);
             }
 
             setServiceTaskId(data.task_id);
             setSessionId(data.session_id);
-            setServiceStatus('Warte auf Service...');
+            setServiceStatus(t.templateimportwizardpanel604);
 
             // Start polling for status
             startPolling(data.session_id);
         } catch (err: any) {
-            setError(err.message || 'Fehler beim Service-Import');
+            setError(err.message || t.templateimportwizardpanel609);
             setLoading(false);
         }
     };
@@ -624,7 +627,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 if (!response.ok) {
                     if (data.status === 'not_found') {
-                        setError('Session nicht gefunden');
+                        setError(t.templateimportwizardpanel630);
                         stopPolling();
                         setLoading(false);
                     }
@@ -641,7 +644,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     // Files are ready!
                     stopPolling();
                     setAllFiles(data.all_files || []);
-                    setOriginalName(data.directory_path || 'Lokales Verzeichnis');
+                    setOriginalName(data.directory_path || t.templateimportwizardpanel647);
 
                     // Initialize as deselected
                     setSelectedTemplateFiles({});
@@ -657,14 +660,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     setCurrentStep(1);
                 } else if (data.task_status === 'failed') {
                     stopPolling();
-                    setError(data.error || 'Service-Task fehlgeschlagen');
+                    setError(data.error || t.templateimportwizardpanel663);
                     setLoading(false);
                 } else {
                     // Still pending/processing
-                    setServiceStatus(data.task_status === 'processing' ? 'Service verarbeitet...' : 'Warte auf Service...');
+                    setServiceStatus(data.task_status === 'processing' ? t.templateimportwizardpanel667 : t.templateimportwizardpanel667_2);
                 }
             } catch (err: any) {
-                console.error('Polling error:', err);
+                console.error(t.templateimportwizardpanel670, err);
                 // Don't stop polling on transient errors
             }
         }, 2000); // Poll every 2 seconds
@@ -710,19 +713,19 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
         // Validate
         if (!templateName) {
-            setError('Template-Name ist erforderlich');
+            setError(t.templateimportwizardpanel716);
             return;
         }
         if (!templateCategory) {
-            setError('Kategorie ist erforderlich');
+            setError(t.templateimportwizardpanel720);
             return;
         }
         if (!templateLanguage) {
-            setError('Sprache ist erforderlich');
+            setError(t.templateimportwizardpanel724);
             return;
         }
         if (templateFilePaths.length === 0) {
-            setError('Mindestens eine Template-Datei muss ausgewählt werden');
+            setError(t.templateimportwizardpanel728);
             return;
         }
 
@@ -755,13 +758,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Erstellung fehlgeschlagen');
+                throw new Error(data.message || t.templateimportwizardpanel761);
             }
 
             onSuccess?.(data.template);
             handleClose();
         } catch (err: any) {
-            setError(err.message || 'Fehler beim Erstellen des Templates');
+            setError(err.message || t.templateimportwizardpanel767);
         } finally {
             setLoading(false);
         }
@@ -958,7 +961,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         return (
             <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-medium" style={{ color: colors.textSecondary }}>Dateiendungen-Filter</h4>
+                    <h4 className="font-medium" style={{ color: colors.textSecondary }}>{t.templateimportwizardpanel964}</h4>
                     <Button
                         icon="pi pi-times"
                         size="small"
@@ -969,7 +972,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 {/* Preset selection */}
                 <div className="mb-3">
-                    <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Preset auswählen</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>{t.templateimportwizardpanel975}</label>
                     <div className="flex gap-2 flex-wrap">
                         {presets.map(preset => (
                             <div key={preset.name} className="flex items-center">
@@ -986,7 +989,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         setHasModifiedPreset(false);
                                     }}
                                     className="mr-1"
-                                    tooltip={preset.excludeDirs?.length ? `Ausschluss: ${preset.excludeDirs.join(', ')}` : undefined}
+                                    tooltip={preset.excludeDirs?.length ? tpl(t.templateimportwizardpanel992, { excludedirs: preset.excludeDirs.join(', ')}) : undefined}
                                     tooltipOptions={{ position: 'top' }}
                                 />
                                 {!DEFAULT_PRESETS.some(p => p.name === preset.name) && (
@@ -996,7 +999,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         text
                                         severity="danger"
                                         onClick={() => handleDeletePreset(preset.name)}
-                                        tooltip="Preset löschen"
+                                        tooltip={t.templateimportwizardpanel1002}
                                     />
                                 )}
                             </div>
@@ -1011,12 +1014,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         {hasCustomPresets && (
                             <Button
                                 icon="pi pi-refresh"
-                                label="Zurücksetzen"
+                                label={t.templateimportwizardpanel1017}
                                 size="small"
                                 text
                                 severity="secondary"
                                 onClick={handleResetPresets}
-                                tooltip="Alle benutzerdefinierten Presets löschen und Standard-Presets wiederherstellen"
+                                tooltip={t.templateimportwizardpanel1022}
                                 tooltipOptions={{ position: 'top' }}
                             />
                         )}
@@ -1030,7 +1033,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             <InputText
                                 value={newPresetName}
                                 onChange={(e) => setNewPresetName(e.target.value)}
-                                placeholder="Preset-Name"
+                                placeholder={t.templateimportwizardpanel1036}
                                 className="flex-1"
                             />
                             <Button
@@ -1038,7 +1041,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 size="small"
                                 onClick={handleSavePreset}
                                 disabled={!newPresetName.trim() || customExtensions.length === 0}
-                                tooltip="Speichern"
+                                tooltip={t.templateimportwizardpanel1044}
                             />
                             <Button
                                 icon="pi pi-times"
@@ -1056,7 +1059,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 {/* Extension chips */}
                 <div className="mb-3">
                     <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                        Dateiendungen (z.B. php, tsx, js)
+                        {t.templateimportwizardpanel1062}
                     </label>
                     <Chips
                         value={customExtensions}
@@ -1065,7 +1068,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             setSelectedPreset(null);
                             setHasModifiedPreset(true);
                         }}
-                        placeholder="Endung eingeben und Enter drücken"
+                        placeholder={t.templateimportwizardpanel1071}
                         className="w-full"
                         itemTemplate={(item) => <span>*.{item}</span>}
                         pt={{
@@ -1079,7 +1082,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 <div className="mb-3">
                     <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                         <i className="pi pi-ban text-red-500 mr-1" />
-                        Ausschluss-Verzeichnisse (z.B. vendor, node_modules)
+                        {t.templateimportwizardpanel1085}
                     </label>
                     <Chips
                         value={customExcludeDirs}
@@ -1088,7 +1091,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             setSelectedPreset(null);
                             setHasModifiedPreset(true);
                         }}
-                        placeholder="Verzeichnis eingeben und Enter drücken"
+                        placeholder={t.templateimportwizardpanel1094}
                         className="w-full"
                         itemTemplate={(item) => <span className="text-red-600"><i className="pi pi-folder mr-1" />{item}/</span>}
                         pt={{
@@ -1097,7 +1100,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         }}
                     />
                     <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                        Dateien in diesen Verzeichnissen werden nicht ausgewählt. Wildcards erlaubt (z.B. cmake-build-*)
+                        {t.templateimportwizardpanel1103}
                     </p>
                 </div>
 
@@ -1111,8 +1114,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 <div className={`text-sm ${isDefaultPreset ? 'text-yellow-700' : 'text-blue-700'}`}>
                                     <i className={`pi ${isDefaultPreset ? 'pi-exclamation-triangle' : 'pi-pencil'} mr-2`} />
                                     {isDefaultPreset
-                                        ? `Änderungen an "${lastSelectedPreset}" (Standard-Preset)`
-                                        : `Änderungen an "${lastSelectedPreset}"`
+                                        ? tpl(t.templateimportwizardpanel1117, { lastselectedpreset: lastSelectedPreset })
+                                        : tpl(t.templateimportwizardpanel1118, { lastselectedpreset: lastSelectedPreset })
                                     }
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
@@ -1149,7 +1152,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         /* Custom preset: Update in place */
                                         <Button
                                             icon="pi pi-save"
-                                            label="Änderungen speichern"
+                                            label={t.templateimportwizardpanel1155}
                                             size="small"
                                             severity="info"
                                             onClick={() => {
@@ -1185,7 +1188,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             }
                                             setHasModifiedPreset(false);
                                         }}
-                                        tooltip="Änderungen verwerfen"
+                                        tooltip={t.templateimportwizardpanel1191}
                                     />
                                 </div>
                             </div>
@@ -1279,13 +1282,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             />
                         )}
                         <Button
-                            label="Alle auswählen"
+                            label={t.templateimportwizardpanel1285}
                             size="small"
                             outlined
                             onClick={() => selectAll(filesOnly, setSelection)}
                         />
                         <Button
-                            label="Alle abwählen"
+                            label={t.templateimportwizardpanel1291}
                             size="small"
                             outlined
                             severity="secondary"
@@ -1302,7 +1305,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 <Message
                     severity="info"
                     className="mb-4"
-                    text={`${selectedCount} von ${filesOnly.length} Dateien ausgewählt`}
+                    text={tpl(t.templateimportwizardpanel1308,{ count: selectedCount, filesonly: filesOnly.length})}
                 />
 
                 <DataTable
@@ -1320,14 +1323,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} />
                     <Column
                         field="path"
-                        header="Pfad"
+                        header={t.templateimportwizardpanel1326}
                         body={(row: FileInfo) => (
                             <span className="font-mono text-xs">{row.path}</span>
                         )}
                     />
                     <Column
                         field="extension"
-                        header="Ext"
+                        header={t.templateimportwizardpanel1333}
                         body={(row: FileInfo) => (
                             <Tag value={getExtension(row.path) || '-'} severity="secondary" />
                         )}
@@ -1335,13 +1338,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     />
                     <Column
                         field="file_type"
-                        header="Typ"
+                        header={t.templateimportwizardpanel1341}
                         body={(row: FileInfo) => fileTypeBadge(row.file_type)}
                         style={{ width: '100px' }}
                     />
                     <Column
                         field="size"
-                        header="Größe"
+                        header={t.templateimportwizardpanel1347}
                         body={(row: FileInfo) => formatSize(row.size)}
                         style={{ width: '100px' }}
                     />
@@ -1382,7 +1385,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         disabled={loading}
                                     >
                                         <i className="pi pi-cloud-upload mr-2" />
-                                        Archiv hochladen
+                                        {t.templateimportwizardpanel1388}
                                     </button>
                                     <button
                                         className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
@@ -1395,7 +1398,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         disabled={loading}
                                     >
                                         <i className="pi pi-desktop mr-2" />
-                                        Lokaler Import (Service)
+                                        {t.templateimportwizardpanel1401}
                                     </button>
                                 </div>
                             </div>
@@ -1403,10 +1406,10 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {importMode === 'upload' ? (
                                 <>
                                     <h3 className="text-lg font-medium mb-4 text-center" style={{ color: colors.textPrimary }}>
-                                        Archiv hochladen
+                                        {t.templateimportwizardpanel1409}
                                     </h3>
                                     <p className="text-sm mb-6 text-center" style={{ color: colors.textMuted }}>
-                                        Laden Sie ein .zip, .tar.gz oder .tar.xz Archiv mit Ihren Template-Dateien hoch. Wenn Sie viele Dateien in ein Template umwandeln möchten, wäre es einfacher, zuerst das Archiv lokal zu entpacken, dann mit einem gewohnten Editor wie VS Code zu bearbeiten. Dann wieder packen und hochladen!
+                                        {t.templateimportwizardpanel1412}
                                     </p>
 
                                     <FileUpload
@@ -1417,14 +1420,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         customUpload
                                         uploadHandler={handleUpload}
                                         auto
-                                        chooseLabel="Datei wählen"
+                                        chooseLabel={t.templateimportwizardpanel1423}
                                         className="w-full"
                                         disabled={loading}
                                         emptyTemplate={
                                             <div className="flex flex-col items-center py-8">
                                                 <i className="pi pi-cloud-upload text-4xl mb-4" style={{ color: colors.textMuted }} />
                                                 <p style={{ color: colors.textMuted }}>
-                                                    Datei hier ablegen oder klicken zum Auswählen
+                                                    {t.templateimportwizardpanel1430}
                                                 </p>
                                                 <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
                                                     .zip, .tar.gz, .tar.xz (max 100MB)
@@ -1437,7 +1440,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         <div className="mt-4">
                                             <ProgressBar mode="indeterminate" style={{ height: '6px' }} />
                                             <p className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
-                                                Archiv wird extrahiert...
+                                                {t.templateimportwizardpanel1443}
                                             </p>
                                         </div>
                                     )}
@@ -1445,32 +1448,32 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             ) : (
                                 <>
                                     <h3 className="text-lg font-medium mb-4 text-center" style={{ color: colors.textPrimary }}>
-                                        Lokaler Import (Service)
+                                        {t.templateimportwizardpanel1451}
                                     </h3>
                                     <p className="text-sm mb-6 text-center" style={{ color: colors.textMuted }}>
-                                        Geben Sie den Pfad zu einem lokalen Verzeichnis ein. Der Scoriet Service liest alle Dateien und lädt sie automatisch hoch.
+                                        {t.templateimportwizardpanel1454}
                                     </p>
 
                                     <Message
                                         severity="info"
                                         className="mb-4"
-                                        text="Voraussetzung: Der Scoriet Service (scoriet-svc) muss auf Ihrem Computer installiert und gestartet sein."
+                                        text={t.templateimportwizardpanel1460}
                                     />
 
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                                Verzeichnispfad
+                                                {t.templateimportwizardpanel1466}
                                             </label>
                                             <InputText
                                                 value={serviceDirectoryPath}
                                                 onChange={(e) => setServiceDirectoryPath(e.target.value)}
                                                 className="w-full"
-                                                placeholder="C:\Projekte\MeinTemplate"
+                                                placeholder={t.templateimportwizardpanel1472}
                                                 disabled={loading}
                                             />
                                             <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                                Vollständiger Pfad zum Verzeichnis auf Ihrem lokalen Computer
+                                                {t.templateimportwizardpanel1476}
                                             </p>
                                         </div>
 
@@ -1508,8 +1511,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     allFiles,
                     selectedTemplateFiles,
                     setSelectedTemplateFiles,
-                    'Template-Dateien auswählen',
-                    'Wählen Sie die Dateien aus, die als Code-Templates mit Variablen-Ersetzung verarbeitet werden sollen.',
+                    t.templateimportwizardpanel1514,
+                    t.templateimportwizardpanel1515,
                     true,
                     'template-files'
                 );
@@ -1519,8 +1522,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     filesForStaticSelection,
                     selectedStaticFiles,
                     setSelectedStaticFiles,
-                    'Statische Dateien auswählen',
-                    `Wählen Sie die Dateien aus, die unverändert kopiert werden sollen (Bilder, Fonts, etc.). ${countSelected(selectedTemplateFiles) > 0 ? `(${countSelected(selectedTemplateFiles)} Dateien bereits als Templates ausgewählt)` : ''}`,
+                    t.templateimportwizardpanel1525,
+                    t.templateimportwizardpanel1526 + (countSelected(selectedTemplateFiles) > 0 ? ' ' + tpl(t.templateimportwizardpanel1526_2, { count: countSelected(selectedTemplateFiles) }) : ''),
                     false,
                     'static-files'
                 );
@@ -1533,11 +1536,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     <div className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-medium">
-                                Verbleibende Dateien (Static Directory)
+                                {t.templateimportwizardpanel1539}
                             </h3>
                             <div className="flex gap-2">
                                 <Button
-                                    label="Alle auswählen"
+                                    label={t.templateimportwizardpanel1543}
                                     size="small"
                                     outlined
                                     onClick={() => {
@@ -1556,7 +1559,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     }}
                                 />
                                 <Button
-                                    label="Alle abwählen"
+                                    label={t.templateimportwizardpanel1562}
                                     size="small"
                                     outlined
                                     severity="secondary"
@@ -1565,14 +1568,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             </div>
                         </div>
                         <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                            Diese Dateien wurden in Schritt 2 und 3 nicht ausgewählt. Sie können hier einzelne Dateien oder ganze Verzeichnisse als ZIP-Archiv bündeln.
+                            {t.templateimportwizardpanel1571}
                         </p>
 
                         {remainingFilesTree.length > 0 ? (
                             <>
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                        Archiv-Name (für ausgewählte Dateien)
+                                        {t.templateimportwizardpanel1578}
                                     </label>
                                     <InputText
                                         value={staticDirectoryName}
@@ -1585,7 +1588,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 <Message
                                     severity="info"
                                     className="mb-4"
-                                    text={`${selectedTreeFileCount} von ${remainingFileCount} Dateien ausgewählt`}
+                                    text={tpl(t.templateimportwizardpanel1591, { filecount: selectedTreeFileCount, remaining: remainingFileCount})}
                                 />
 
                                 <TreeTable
@@ -1599,7 +1602,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 >
                                     <Column
                                         field="name"
-                                        header="Name"
+                                        header={t.templateimportwizardpanel1605}
                                         expander
                                         body={(node) => (
                                             <div className="flex items-center gap-2">
@@ -1610,13 +1613,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     />
                                     <Column
                                         field="path"
-                                        header="Pfad"
+                                        header={t.templateimportwizardpanel1616}
                                         body={(node) => (
                                             <span className="font-mono text-xs" style={{ color: colors.textMuted }}>{node.data.path}</span>
                                         )}
                                     />
                                     <Column
-                                        header="Typ"
+                                        header={t.templateimportwizardpanel1622}
                                         body={(node) => {
                                             if (node.data.is_dir) {
                                                 return <Tag value="Ordner" severity="warning" />;
@@ -1626,14 +1629,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         style={{ width: '100px' }}
                                     />
                                     <Column
-                                        header="Größe"
+                                        header={t.templateimportwizardpanel1632}
                                         body={(node) => formatSize(node.data.size)}
                                         style={{ width: '100px' }}
                                     />
                                 </TreeTable>
                             </>
                         ) : (
-                            <Message severity="success" text="Alle Dateien wurden bereits in Schritt 2 oder 3 zugeordnet." />
+                            <Message severity="success" text={t.templateimportwizardpanel1639} />
                         )}
                     </div>
                 );
@@ -1647,7 +1650,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 return (
                     <div className="p-4">
                         <h3 className="text-lg font-medium mb-4">
-                            Template erstellen
+                            {t.templateimportwizardpanel1653}
                         </h3>
 
                         {/* Summary */}
@@ -1663,7 +1666,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Name *
+                                    {t.templateimportwizardpanel1669}
                                 </label>
                                 <InputText
                                     value={templateName}
@@ -1672,27 +1675,27 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     placeholder="mein_template"
                                 />
                                 <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                    Nur Kleinbuchstaben, Zahlen und Unterstriche erlaubt
+                                    {t.templateimportwizardpanel1678}
                                 </p>
                             </div>
 
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Beschreibung
+                                    {t.templateimportwizardpanel1684}
                                 </label>
                                 <InputTextarea
                                     value={templateDescription}
                                     onChange={(e) => setTemplateDescription(e.target.value)}
                                     className="w-full"
                                     rows={3}
-                                    placeholder="Beschreiben Sie Ihr Template..."
+                                    placeholder={t.templateimportwizardpanel1691}
                                 />
                             </div>
 
                             {/* Category with dropdown and manual input */}
                             <div>
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Kategorie *
+                                    {t.templateimportwizardpanel1698}
                                 </label>
                                 <AutoComplete
                                     value={templateCategory}
@@ -1701,7 +1704,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     onChange={(e) => setTemplateCategory(e.value)}
                                     className="w-full"
                                     inputClassName="w-full"
-                                    placeholder="z.B. CRUD, API, Frontend"
+                                    placeholder={t.templateimportwizardpanel1707}
                                     dropdown
                                     forceSelection={false}
                                 />
@@ -1713,7 +1716,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {/* Language with dropdown and manual input */}
                             <div>
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Sprache *
+                                    {t.templateimportwizardpanel1719}
                                 </label>
                                 <AutoComplete
                                     value={templateLanguage}
@@ -1722,7 +1725,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     onChange={(e) => setTemplateLanguage(e.value)}
                                     className="w-full"
                                     inputClassName="w-full"
-                                    placeholder="z.B. PHP, JavaScript, Python"
+                                    placeholder={t.templateimportwizardpanel1728}
                                     dropdown
                                     forceSelection={false}
                                 />
@@ -1734,12 +1737,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {/* Tags */}
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Tags
+                                    {t.templateimportwizardpanel1740}
                                 </label>
                                 <Chips
                                     value={templateTags}
                                     onChange={(e) => setTemplateTags(e.value || [])}
-                                    placeholder="Tag eingeben und Enter drücken"
+                                    placeholder={t.templateimportwizardpanel1745}
                                     className="w-full"
                                     separator=","
                                     pt={{
@@ -1748,21 +1751,21 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     }}
                                 />
                                 <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                    Mit Enter oder Komma neue Tags hinzufügen
+                                    {t.templateimportwizardpanel1754}
                                 </p>
                             </div>
 
                             {/* Visibility */}
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                    Sichtbarkeit
+                                    {t.templateimportwizardpanel1761}
                                 </label>
                                 <Dropdown
                                     value={templateVisibility}
                                     options={[
-                                        { label: 'Öffentlich (FREE)', value: 'public' },
-                                        { label: 'Privat (50 Credits/Jahr)', value: 'private' },
-                                        { label: 'Store (Approval required)', value: 'store' }
+                                        { label: t.templateimportwizardpanel1766, value: 'public' },
+                                        { label: t.templateimportwizardpanel1767, value: 'private' },
+                                        { label: t.templateimportwizardpanel1768, value: 'store' }
                                     ]}
                                     onChange={(e) => {
                                         setTemplateVisibility(e.value);
@@ -1790,10 +1793,10 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         />
                                         <label htmlFor="isSystemTemplate" className="text-sm font-medium text-purple-700 cursor-pointer">
                                             <i className="pi pi-star-fill mr-2 text-purple-500" />
-                                            System-Template
+                                            {t.templateimportwizardpanel1796}
                                         </label>
                                         <span className="text-xs text-purple-500 ml-2">
-                                            (Wird allen Benutzern als Vorlage angezeigt)
+                                            {t.templateimportwizardpanel1799}
                                         </span>
                                     </div>
                                 </div>
@@ -1812,25 +1815,25 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
                                                 <p className="text-yellow-300 text-sm mb-1">
                                                     <i className="pi pi-lock mr-2"></i>
-                                                    <strong>Private Template - Premium Feature</strong>
+                                                    <strong>{t.templateimportwizardpanel1818}</strong>
                                                 </p>
                                                 <p className="text-xs" style={{ color: colors.textSecondary }}>
-                                                    Private Templates kosten <strong>50 Credits pro Jahr</strong>. Öffentliche Templates sind kostenlos!
+                                                    {t.templateimportwizardpanel1821}<strong>{t.templateimportwizardpanel1821_2}</strong>{t.templateimportwizardpanel1821_3}
                                                 </p>
                                             </div>
 
                                             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                                                 <div className="flex justify-between items-center text-sm mb-1">
-                                                    <span style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                                                    <span style={{ color: colors.textSecondary }}>{t.templateimportwizardpanel1827}</span>
                                                     <span className="font-bold" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm mb-1">
-                                                    <span style={{ color: colors.textSecondary }}>Benötigt:</span>
+                                                    <span style={{ color: colors.textSecondary }}>{t.templateimportwizardpanel1831}</span>
                                                     <span className="text-yellow-400 font-bold">50</span>
                                                 </div>
                                                 <hr className="my-1" style={{ borderColor: colors.borderPrimary }} />
                                                 <div className="flex justify-between items-center text-sm">
-                                                    <span style={{ color: colors.textSecondary }}>Danach:</span>
+                                                    <span style={{ color: colors.textSecondary }}>{t.templateimportwizardpanel1836}</span>
                                                     <span className={`font-bold ${(currentUser?.credits || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                                                         {(currentUser?.credits || 0) >= 50 ? (currentUser?.credits || 0) - 50 : `${50 - (currentUser?.credits || 0)} fehlen`}
                                                     </span>
@@ -1854,7 +1857,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                                         severity="success"
                                                         size="small"
                                                         icon="pi pi-unlock"
-                                                        label="Freischalten (50 Credits)"
+                                                        label={t.templateimportwizardpanel1860}
                                                     />
                                                 ) : (
                                                     <Button
@@ -1864,7 +1867,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                                         severity="warning"
                                                         size="small"
                                                         icon="pi pi-shopping-cart"
-                                                        label="Credits kaufen"
+                                                        label={t.templateimportwizardpanel1870}
                                                     />
                                                 )}
                                                 <Button
@@ -1877,7 +1880,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                                     severity="secondary"
                                                     size="small"
                                                     icon="pi pi-globe"
-                                                    label="Öffentlich"
+                                                    label={t.templateimportwizardpanel1883}
                                                 />
                                             </div>
                                         </>
@@ -1885,17 +1888,17 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
                                             <p className="text-green-300 text-sm flex items-center gap-2">
                                                 <i className="pi pi-check-circle"></i>
-                                                <strong>Freigeschaltet!</strong> 50 Credits werden beim Erstellen abgezogen.
+                                                <strong>{t.templateimportwizardpanel1891}</strong>{t.templateimportwizardpanel1891_2}
                                             </p>
                                         </div>
                                     ) : hasCheckedSubscription && availableSlots > 0 ? (
                                         <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
                                             <p className="text-green-300 text-sm flex items-center gap-2">
                                                 <i className="pi pi-check-circle"></i>
-                                                <strong>Slot verfügbar!</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
+                                                <strong>{t.templateimportwizardpanel1898}</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
                                             </p>
                                             <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                                Keine zusätzlichen Credits erforderlich.
+                                                {t.templateimportwizardpanel1901}
                                             </p>
                                         </div>
                                     ) : null}
@@ -1908,14 +1911,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-3">
                                         <p className="text-purple-300 text-sm mb-2">
                                             <i className="pi pi-shopping-cart mr-2"></i>
-                                            <strong>Store Template - Verkaufe dein Template!</strong>
+                                            <strong>{t.templateimportwizardpanel1914}</strong>
                                         </p>
                                         <p className="text-xs mb-2" style={{ color: colors.textSecondary }}>
-                                            Dein Template wird im Store angezeigt, sobald es von einem Admin freigegeben wurde oder 5+ positive Reviews hat.
+                                            {t.templateimportwizardpanel1917}
                                         </p>
                                         <p className="text-xs" style={{ color: colors.textMuted }}>
                                             <i className="pi pi-info-circle mr-1"></i>
-                                            Preiseinstellung und Media-Upload sind nach dem Erstellen im Template Management verfügbar.
+                                            {t.templateimportwizardpanel1921}
                                         </p>
                                     </div>
                                 </div>
@@ -1936,7 +1939,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             <div>
                 {currentStep > 0 && (
                     <Button
-                        label="Zurück"
+                        label={t.templateimportwizardpanel1942}
                         icon="pi pi-arrow-left"
                         outlined
                         onClick={() => setCurrentStep(currentStep - 1)}
@@ -1946,7 +1949,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             </div>
             <div className="flex gap-2">
                 <Button
-                    label="Abbrechen"
+                    label={t.templateimportwizardpanel1952}
                     severity="secondary"
                     text
                     onClick={handleClose}
@@ -1954,7 +1957,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 />
                 {currentStep < 4 ? (
                     <Button
-                        label="Weiter"
+                        label={t.templateimportwizardpanel1960}
                         icon="pi pi-arrow-right"
                         iconPos="right"
                         onClick={() => setCurrentStep(currentStep + 1)}
@@ -1962,13 +1965,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     />
                 ) : (
                     <Button
-                        label="Template erstellen"
+                        label={t.templateimportwizardpanel1968}
                         icon="pi pi-check"
                         onClick={handleCreateTemplate}
                         loading={loading}
                         disabled={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed}
                         tooltip={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed
-                            ? 'Bitte erst "Freischalten" klicken oder Öffentlich wählen'
+                            ? t.templateimportwizardpanel1974
                             : undefined}
                         tooltipOptions={{ position: 'top' }}
                     />
@@ -1984,7 +1987,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 onHide={handleClose}
                 header={
                     <div>
-                        <span>Template importieren</span>
+                        <span>{t.templateimportwizardpanel1990}</span>
                         {originalName && (
                             <span className="text-sm ml-2" style={{ color: colors.textMuted }}>— {originalName}</span>
                         )}
@@ -2029,7 +2032,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         <i className="pi pi-spin pi-spinner text-2xl" />
                     </div>
                 ) : previewFile?.is_binary ? (
-                    <Message severity="warn" text="Binärdatei - Vorschau nicht verfügbar" />
+                    <Message severity="warn" text={t.templateimportwizardpanel2035} />
                 ) : (
                     <pre className="p-4 rounded overflow-auto max-h-[60vh] text-sm font-mono whitespace-pre-wrap" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
                         {previewFile?.content}
@@ -2046,6 +2049,27 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
             {/* Theme-aware styles for PrimeReact components */}
             <style>{`
+                .template-import-wizard .p-treetable .p-treetable-scrollable-header, .p-treetable .p-treetable-scrollable-footer {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-treetable {
+                    background-color: var(--theme-bg-secondary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-thead > tr > th {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr > td {
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-treetable .p-treetable-tbody > tr:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
                 .template-import-wizard .p-steps .p-steps-item .p-menuitem-link {
                     background-color: transparent !important;
                 }
@@ -2082,24 +2106,6 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     border-color: var(--theme-border-primary) !important;
                 }
                 .template-import-wizard .p-datatable .p-datatable-tbody > tr:hover {
-                    background-color: var(--theme-bg-hover) !important;
-                }
-                .template-import-wizard .p-treetable {
-                    background-color: var(--theme-bg-secondary) !important;
-                }
-                .template-import-wizard .p-treetable .p-treetable-thead > tr > th {
-                    background-color: var(--theme-bg-tertiary) !important;
-                    color: var(--theme-text-primary) !important;
-                    border-color: var(--theme-border-primary) !important;
-                }
-                .template-import-wizard .p-treetable .p-treetable-tbody > tr {
-                    background-color: var(--theme-bg-secondary) !important;
-                    color: var(--theme-text-primary) !important;
-                }
-                .template-import-wizard .p-treetable .p-treetable-tbody > tr > td {
-                    border-color: var(--theme-border-primary) !important;
-                }
-                .template-import-wizard .p-treetable .p-treetable-tbody > tr:hover {
                     background-color: var(--theme-bg-hover) !important;
                 }
                 .template-import-wizard .p-inputtext {

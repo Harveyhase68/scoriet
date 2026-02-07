@@ -213,7 +213,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           setCurrentUser(userData);
         }
       } catch (error) {
-        console.error('Failed to load user data:', error);
+        console.error(t.projectpanel216, error);
       }
     };
 
@@ -362,7 +362,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           }
         }
       } catch (err) {
-        console.error('Error checking subscription info:', err);
+        console.error(t.projectpanel365, err);
         // Continue anyway - backend will validate
       }
     }
@@ -2247,7 +2247,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           <div className="flex items-center gap-3 bg-green-900/30 border border-green-700 rounded-lg p-4">
             <i className="pi pi-check-circle text-green-400 text-3xl"></i>
             <div>
-              <div className="text-lg font-semibold text-white">
+              <div className="text-lg font-semibold">
                 {newlyCreatedProject?.name}
               </div>
               <div className="text-sm text-gray-300">
@@ -2303,7 +2303,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         header={
           <div className="flex items-center gap-2">
             <i className="pi pi-download text-blue-400"></i>
-            <span>Projekt exportieren</span>
+            <span>{t.projectpanel2306}</span>
           </div>
         }
         style={{ width: '550px' }}
@@ -2312,14 +2312,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Abbrechen"
+              label={t.projectpanel2315}
               icon="pi pi-times"
               className="p-button-text"
               onClick={() => setShowExportDialog(false)}
               disabled={exportLoading}
             />
             <Button
-              label="Exportieren"
+              label={t.projectpanel2322}
               icon="pi pi-download"
               onClick={executeExport}
               loading={exportLoading}
@@ -2345,27 +2345,27 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               <h4 className="text-sm font-semibold mb-3 text-gray-300">Enthaltene Daten:</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Anhänge:</span>
+                  <span className="text-gray-400">{t.projectpanel2348}</span>
                   <span className="font-medium">{exportPreview.counts?.attachments || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Dateigröße:</span>
+                  <span className="text-gray-400">{t.projectpanel2352}</span>
                   <span className="font-medium">{exportPreview.attachment_size_formatted || '0 B'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Schemas:</span>
+                  <span className="text-gray-400">{t.projectpanel2356}</span>
                   <span className="font-medium">{exportPreview.counts?.schemas || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Templates:</span>
+                  <span className="text-gray-400">{t.projectpanel2360}</span>
                   <span className="font-medium">{exportPreview.counts?.templates || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Code Anpassungen:</span>
+                  <span className="text-gray-400">{t.projectpanel2364}</span>
                   <span className="font-medium">{exportPreview.counts?.code_adjustments || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Formulare:</span>
+                  <span className="text-gray-400">{t.projectpanel2368}</span>
                   <span className="font-medium">{exportPreview.counts?.form_sets || 0}</span>
                 </div>
               </div>
@@ -2374,7 +2374,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             {/* Schema Details */}
             {exportPreview.schema_details && exportPreview.schema_details.length > 0 && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">Schemas:</h4>
+                <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2377}</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {exportPreview.schema_details.map((schema: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
@@ -2391,7 +2391,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             {/* Template Details */}
             {exportPreview.template_details && exportPreview.template_details.length > 0 && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">Templates:</h4>
+                <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2394}</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {exportPreview.template_details.map((template: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
@@ -2407,7 +2407,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Format Selection */}
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-sm font-semibold mb-3 text-gray-300">Export-Format:</h4>
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2410}</h4>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -2449,13 +2449,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-3">
               <p className="text-sm text-blue-300">
                 <i className="pi pi-info-circle mr-2"></i>
-                Team-Zuordnungen und User-Berechtigungen werden nicht exportiert und müssen nach dem Import neu angelegt werden.
+                {t.projectpanel2452}
               </p>
             </div>
           </div>
         ) : (
           <div className="text-center p-8 text-gray-400">
-            Export-Vorschau konnte nicht geladen werden.
+            {t.projectpanel2458}
           </div>
         )}
       </Dialog>
