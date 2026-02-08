@@ -302,7 +302,7 @@ export default function LandingPage() {
 
   const pricingTiers: PricingTier[] = [
     {
-      name: t.freeLabel,
+      name: "Free",
       plan: "free",
       price: `${pricingData.currency} 0.00`,
       period: t.landingpage151,

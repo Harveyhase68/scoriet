@@ -64,6 +64,35 @@ interface DailyDataOperation {
   cache_hits: number;
 }
 
+interface VisitorSummary {
+  today: number;
+  yesterday: number;
+  this_week: number;
+  this_month: number;
+  overall: number;
+  today_authenticated: number;
+  today_anonymous: number;
+}
+
+interface VisitorChartDay {
+  date: string;
+  label: string;
+  total: number;
+  authenticated: number;
+  anonymous: number;
+}
+
+interface VisitorReferrer {
+  referrer: string;
+  count: number;
+}
+
+interface VisitorStats {
+  summary: VisitorSummary;
+  chart: VisitorChartDay[];
+  top_referrers: VisitorReferrer[];
+}
+
 interface DailyData {
   date: string;
   generation?: DailyDataOperation;
@@ -105,6 +134,8 @@ export default function PerformanceMetricsPanel() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [slowOperations, setSlowOperations] = useState<SlowOperation[]>([]);
+  const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
+  const [loadingVisitors, setLoadingVisitors] = useState(false);
 
   const formatDateForApi = (date: Date | null): string => {
     if (!date) return '';
@@ -164,11 +195,25 @@ export default function PerformanceMetricsPanel() {
     }
   }, [dateFrom, dateTo, toast]);
 
+  const loadVisitorStats = useCallback(async () => {
+    setLoadingVisitors(true);
+    try {
+      const response = await api.request('/admin/visitors/stats');
+      setVisitorStats(response);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      toast.showError('Fehler beim Laden der Besucherstatistiken: ' + errorMessage);
+    } finally {
+      setLoadingVisitors(false);
+    }
+  }, [toast]);
+
   const loadAllData = useCallback(() => {
     loadOverview();
     loadDailyStats();
     loadSlowOperations();
-  }, [loadOverview, loadDailyStats, loadSlowOperations]);
+    loadVisitorStats();
+  }, [loadOverview, loadDailyStats, loadSlowOperations, loadVisitorStats]);
 
   useEffect(() => {
     loadAllData();
@@ -438,6 +483,149 @@ export default function PerformanceMetricsPanel() {
                 style={{ width: '150px' }}
               />
             </DataTable>
+          </TabPanel>
+
+          <TabPanel header="Besucher" leftIcon="pi pi-users mr-2">
+            {loadingVisitors ? (
+              <div className="flex justify-center p-8">
+                <ProgressSpinner />
+              </div>
+            ) : visitorStats ? (
+              <div>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Heute</p>
+                      <p className="text-3xl font-bold" style={{ color: colors.infoText }}>{visitorStats.summary.today}</p>
+                      <div className="flex justify-center gap-2 mt-1">
+                        <span className="text-xs" style={{ color: colors.successText }}>{visitorStats.summary.today_authenticated} angemeldet</span>
+                        <span className="text-xs" style={{ color: colors.textMuted }}>{visitorStats.summary.today_anonymous} anonym</span>
+                      </div>
+                    </div>
+                  </Card>
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Gestern</p>
+                      <p className="text-3xl font-bold" style={{ color: colors.textPrimary }}>{visitorStats.summary.yesterday}</p>
+                    </div>
+                  </Card>
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Diese Woche</p>
+                      <p className="text-3xl font-bold" style={{ color: colors.accent }}>{visitorStats.summary.this_week}</p>
+                    </div>
+                  </Card>
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Dieser Monat</p>
+                      <p className="text-3xl font-bold" style={{ color: colors.warningText }}>{visitorStats.summary.this_month}</p>
+                    </div>
+                  </Card>
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Gesamt</p>
+                      <p className="text-3xl font-bold" style={{ color: colors.successText }}>{visitorStats.summary.overall.toLocaleString()}</p>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Visitor Chart - Last 30 Days */}
+                {visitorStats.chart.length > 0 && (
+                  <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Besucher der letzten 30 Tage</h3>
+                    <div style={{ height: '350px' }}>
+                      <Chart
+                        type="bar"
+                        data={{
+                          labels: visitorStats.chart.map(d => d.label),
+                          datasets: [
+                            {
+                              label: 'Angemeldet',
+                              data: visitorStats.chart.map(d => d.authenticated),
+                              backgroundColor: '#34d399',
+                              borderRadius: 3,
+                              stack: 'visitors',
+                            },
+                            {
+                              label: 'Anonym',
+                              data: visitorStats.chart.map(d => d.anonymous),
+                              backgroundColor: '#60a5fa',
+                              borderRadius: 3,
+                              stack: 'visitors',
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'bottom' as const,
+                              labels: { color: colors.textSecondary },
+                            },
+                            tooltip: {
+                              callbacks: {
+                                footer: (items: any[]) => {
+                                  const dayIndex = items[0]?.dataIndex;
+                                  if (dayIndex !== undefined && visitorStats.chart[dayIndex]) {
+                                    return 'Gesamt: ' + visitorStats.chart[dayIndex].total;
+                                  }
+                                  return '';
+                                },
+                              },
+                            },
+                          },
+                          scales: {
+                            x: {
+                              stacked: true,
+                              ticks: { color: colors.textSecondary },
+                              grid: { color: colors.borderPrimary },
+                            },
+                            y: {
+                              stacked: true,
+                              ticks: { color: colors.textSecondary, stepSize: 1 },
+                              grid: { color: colors.borderPrimary },
+                              beginAtZero: true,
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  </Card>
+                )}
+
+                {/* Top Referrers */}
+                {visitorStats.top_referrers.length > 0 && (
+                  <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Top Referrer (letzte 30 Tage)</h3>
+                    <DataTable
+                      value={visitorStats.top_referrers}
+                      size="small"
+                      stripedRows
+                    >
+                      <Column
+                        field="referrer"
+                        header="Referrer"
+                        body={(row: VisitorReferrer) => (
+                          <span className="text-sm" style={{ color: colors.infoText, wordBreak: 'break-all' }}>{row.referrer}</span>
+                        )}
+                      />
+                      <Column
+                        field="count"
+                        header="Besuche"
+                        style={{ width: '100px', textAlign: 'right' }}
+                        body={(row: VisitorReferrer) => (
+                          <span className="font-bold" style={{ color: colors.textPrimary }}>{row.count}</span>
+                        )}
+                      />
+                    </DataTable>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <p style={{ color: colors.textSecondary }}>Keine Besucherdaten vorhanden.</p>
+            )}
           </TabPanel>
 
           <TabPanel header="Details" leftIcon="pi pi-list mr-2">
