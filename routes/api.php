@@ -742,6 +742,9 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/performance/hourly', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'hourly']);
         Route::get('/performance/by-subscription', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'bySubscription']);
         Route::post('/performance/cleanup', [\App\Http\Controllers\Api\PerformanceMetricsController::class, 'cleanup']);
+
+        // Visitor Analytics
+        Route::get('/visitors/stats', [\App\Http\Controllers\Api\VisitorController::class, 'stats']);
     });
 });
 

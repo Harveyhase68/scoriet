@@ -18,7 +18,7 @@ import FileModal from './FileModal';
 import TemplateModal from './TemplateModal';
 import VariableModal from './VariableModal';
 import TemplateImportWizardPanel from './TemplateImportWizardPanel';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage, tpl} from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface TemplateSubscription {
@@ -195,12 +195,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const categories = [t.templatecontroller22, t.panelt3296, t.panelt3297, t.panelt3298, t.panelt3299, t.panelsewnavigationpanel223];
     const fileTypes = [
-        { label: t.templatemanagementpanel115, value: 'static_file', description: 'Single static file (e.g. config.json)' },
-        { label: 'Static Directory (Archive)', value: 'static_directory', description: t.templatemanagementpanel116 },
-        { label: 'Project File', value: 'project_file', description: t.templatemanagementpanel117 },
-        { label: t.templatemanagementpanel118, value: 'db_table_file', description: 'File per database table (model, controller, etc.)' },
-        { label: 'Project File (Languages)', value: 'project_file_languages', description: t.templatemanagementpanel119 },
-        { label: 'DB Table File (Languages)', value: 'db_table_file_languages', description: t.templatemanagementpanel120 }
+        { label: t.templatemanagementpanel115, value: 'static_file', description: t.templatemanagementpanel198 },
+        { label: t.templatemanagementpanel199, value: 'static_directory', description: t.templatemanagementpanel116 },
+        { label: t.templatemanagementpanel200, value: 'project_file', description: t.templatemanagementpanel117 },
+        { label: t.templatemanagementpanel118, value: 'db_table_file', description: t.templatemanagementpanel201 },
+        { label: t.templatemanagementpanel202, value: 'project_file_languages', description: t.templatemanagementpanel119 },
+        { label: t.templatemanagementpanel203, value: 'db_table_file_languages', description: t.templatemanagementpanel120 }
     ];
 
     useEffect(() => {
@@ -222,7 +222,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
     useEffect(() => {
         if (filterByProject && updateTabTitle && forceProjectName) {
-            updateTabTitle(`Template Management: ${forceProjectName}`);
+            updateTabTitle(tpl(t.templatemanagementpanel225, { name: forceProjectName }));
         }
     }, [filterByProject, updateTabTitle, forceProjectName]);
 
@@ -300,7 +300,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             setMyTemplates(filtered);
         } catch (error) {
-            console.error('Error loading my templates:', error);
+            console.error(t.templatemanagementpanel303, error);
             setMyTemplates([]);
         } finally {
             setMyTemplatesLoading(false);
@@ -369,7 +369,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             setCommunityTemplates(filtered);
         } catch (error) {
-            console.error('Error loading community templates:', error);
+            console.error(t.templatemanagementpanel372, error);
             setCommunityTemplates([]);
         } finally {
             setCommunityLoading(false);
@@ -394,7 +394,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             setPurchasedTemplates(templates);
         } catch (error) {
-            console.error('Error loading purchased templates:', error);
+            console.error(t.templatemanagementpanel397, error);
             setPurchasedTemplates([]);
         } finally {
             setPurchasedLoading(false);
@@ -468,7 +468,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
         // Validate confirmation text
         if (deleteConfirmText !== 'DELETE') {
-            toast.showError('You must type "DELETE" to confirm deletion');
+            toast.showError(t.templatemanagementpanel471+"\"DELETE\""+t.templatemanagementpanel471_2);
             return;
         }
 
@@ -477,7 +477,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         try {
             const response = await api.hardDeleteTemplate(templateToDelete.id);
             if (response.success) {
-                toast.showSuccess('Template endgültig gelöscht');
+                toast.showSuccess(t.templatemanagementpanel480);
                 await loadMyTemplates();
                 await loadCommunityTemplates();
                 setShowDeleteModal(false);
@@ -531,20 +531,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 });
             }
 
-            toast.showSuccess('Verknüpfungen erfolgreich aktualisiert');
+            toast.showSuccess(t.templatemanagementpanel534);
             setToggleActiveModalVisible(false);
             loadMyTemplates();
             loadCommunityTemplates();
         } catch (error: any) {
-            console.error('Error updating activations:', error);
-            toast.showError('Fehler beim Aktualisieren der Verknüpfungen');
+            console.error(t.templatemanagementpanel539, error);
+            toast.showError(t.templatemanagementpanel540);
         }
     };
 
     // Unlock an expired template subscription (renew for 50 credits or make public)
     const handleUnlockExpiredTemplate = async (template: Template, makePublic: boolean = false) => {
         if (!template.subscription_data?.id && !makePublic) {
-            toast.showError('Keine Subscription gefunden für dieses Template');
+            toast.showError(t.templatemanagementpanel547);
             return;
         }
 
@@ -554,7 +554,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
-                throw new Error('Nicht authentifiziert');
+                throw new Error(t.templatemanagementpanel557);
             }
 
             if (makePublic) {
@@ -571,10 +571,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 if (!response.ok) {
                     const data = await response.json();
-                    throw new Error(data.error || data.message || 'Fehler beim Ändern der Sichtbarkeit');
+                    throw new Error(data.error || data.message || t.templatemanagementpanel574);
                 }
 
-                toast.showSuccess(`Template "${template.name}" ist jetzt öffentlich!`);
+                toast.showSuccess(tpl(t.templatemanagementpanel577,{ name: template.name}));
             } else {
                 // Renew subscription for 50 credits
                 const response = await fetch(`/api/subscriptions/${template.subscription_data!.id}/renew`, {
@@ -592,12 +592,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     if (data.required_credits) {
                         toast.showError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
                     } else {
-                        throw new Error(data.error || data.message || 'Fehler beim Entsperren des Templates');
+                        throw new Error(data.error || data.message || t.templatemanagementpanel595);
                     }
                     return;
                 }
 
-                toast.showSuccess(`Template "${template.name}" wurde entsperrt! (${data.bonus_days || 0} Bonus-Tage erhalten)`);
+                toast.showSuccess(tpl(t.templatemanagementpanel600,{name: template.name})+" "+tpl(t.templatemanagementpanel600_2,{tage: data.bonus_days || 0}));
             }
 
             // Dispatch credits changed event
@@ -606,7 +606,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             // Reload templates
             loadMyTemplates();
         } catch (error) {
-            toast.showError(error instanceof Error ? error.message : 'Fehler beim Entsperren');
+            toast.showError(error instanceof Error ? error.message : t.templatemanagementpanel609);
         } finally {
             setUnlockingTemplate(false);
             setTemplateToUnlock(null);
@@ -693,8 +693,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             // Use linked_project_ids from template object (already loaded)
             setLinkedProjectIds(template.linked_project_ids || []);
         } catch (error) {
-            console.error('Error loading projects:', error);
-            toast.showError('Fehler beim Laden der Projekte');
+            console.error(t.templatemanagementpanel696, error);
+            toast.showError(t.templatemanagementpanel697);
             setAllProjects([]);
             setLinkedProjectIds([]);
         } finally {
@@ -716,12 +716,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         try {
             // Apply the links
             await api.updateTemplateProjectLinks(templateToLink.id, linkedProjectIds);
-            toast.showSuccess('Template-Verknüpfungen erfolgreich aktualisiert');
+            toast.showSuccess(t.templatemanagementpanel719);
             setLinkModalVisible(false);
             loadMyTemplates();
             loadCommunityTemplates();
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Fehler beim Aktualisieren der Verknüpfungen';
+            const errorMessage = error.response?.data?.message || t.templatemanagementpanel724;
             toast.showError(errorMessage);
         }
     };
@@ -746,11 +746,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
         // Validate
         if (storePriceType === 'credits' && storePriceCredits < 50) {
-            toast.showError('Minimum 50 Credits erforderlich');
+            toast.showError(t.templatemanagementpanel749);
             return;
         }
         if (storePriceType === 'euros' && storePriceEuros < 1.00) {
-            toast.showError('Minimum 1.00 EUR erforderlich');
+            toast.showError(t.templatemanagementpanel753);
             return;
         }
 
@@ -764,11 +764,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     price_euros: storePriceType === 'euros' ? storePriceEuros : null,
                 }),
             });
-            toast.showSuccess('Store-Einstellungen gespeichert');
+            toast.showSuccess(t.templatemanagementpanel767);
             setStoreSettingsModalVisible(false);
             loadMyTemplates();
         } catch (error: any) {
-            toast.showError(error.message || 'Fehler beim Speichern');
+            toast.showError(error.message || t.templatemanagementpanel771);
         } finally {
             setSavingStoreSettings(false);
         }
@@ -785,7 +785,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 videos: response.videos || [],
             });
         } catch (error) {
-            console.error('Error loading media:', error);
+            console.error(t.templatemanagementpanel788, error);
             setTemplateMedia({ logo: null, images: [], videos: [] });
         }
     };
@@ -795,12 +795,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
         const file = event.target.files[0];
         if (!file.type.startsWith('image/')) {
-            toast.showError('Bitte nur Bilddateien hochladen');
+            toast.showError(t.templatemanagementpanel798);
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-            toast.showError('Logo darf maximal 2MB groß sein');
+            toast.showError(t.templatemanagementpanel803);
             return;
         }
 
@@ -811,11 +811,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             const response = await api.uploadFile(`/templates/${templateForStoreSettings.id}/media/logo`, formData);
             if (response.success) {
-                toast.showSuccess('Logo hochgeladen');
+                toast.showSuccess(t.templatemanagementpanel814);
                 await loadTemplateMedia(templateForStoreSettings.id);
             }
         } catch (error: any) {
-            toast.showError(error.message || 'Fehler beim Hochladen');
+            toast.showError(error.message || t.templatemanagementpanel818);
         } finally {
             setUploadingLogo(false);
             if (logoInputRef.current) logoInputRef.current.value = '';
@@ -828,13 +828,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         const files = Array.from(event.target.files);
         const invalidFiles = files.filter(f => !f.type.startsWith('image/'));
         if (invalidFiles.length > 0) {
-            toast.showError('Bitte nur Bilddateien hochladen');
+            toast.showError(t.templatemanagementpanel831);
             return;
         }
 
         const oversizedFiles = files.filter(f => f.size > 5 * 1024 * 1024);
         if (oversizedFiles.length > 0) {
-            toast.showError('Bilder dürfen maximal 5MB groß sein');
+            toast.showError(t.templatemanagementpanel837);
             return;
         }
 
@@ -847,11 +847,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             const response = await api.uploadFile(`/templates/${templateForStoreSettings.id}/media/images`, formData);
             if (response.success) {
-                toast.showSuccess(`${files.length} Bild(er) hochgeladen`);
+                toast.showSuccess(tpl(t.templatemanagementpanel850,{count: files.length}));
                 await loadTemplateMedia(templateForStoreSettings.id);
             }
         } catch (error: any) {
-            toast.showError(error.message || 'Fehler beim Hochladen');
+            toast.showError(error.message || t.templatemanagementpanel854);
         } finally {
             setUploadingImages(false);
             if (imagesInputRef.current) imagesInputRef.current.value = '';
@@ -860,7 +860,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const handleAddVideo = async () => {
         if (!templateForStoreSettings || !newVideoUrl.trim()) {
-            toast.showError('Bitte eine Video-URL eingeben');
+            toast.showError(t.templatemanagementpanel863);
             return;
         }
 
@@ -869,7 +869,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         const vimeoPattern = /^(https?:\/\/)?(www\.)?vimeo\.com\//;
 
         if (!youtubePattern.test(newVideoUrl) && !vimeoPattern.test(newVideoUrl)) {
-            toast.showError('Bitte eine gültige YouTube oder Vimeo URL eingeben');
+            toast.showError(t.templatemanagementpanel872);
             return;
         }
 
@@ -883,13 +883,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 }),
             });
             if (response.success) {
-                toast.showSuccess('Video hinzugefügt');
+                toast.showSuccess(t.templatemanagementpanel886);
                 setNewVideoUrl('');
                 setNewVideoTitle('');
                 await loadTemplateMedia(templateForStoreSettings.id);
             }
         } catch (error: any) {
-            toast.showError(error.message || 'Fehler beim Hinzufügen');
+            toast.showError(error.message || t.templatemanagementpanel892);
         } finally {
             setAddingVideo(false);
         }
@@ -899,7 +899,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         if (!templateForStoreSettings) return;
 
         confirmDialog({
-            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? 'Bild' : 'Video'} wirklich löschen?`,
+            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? 'Bild' : 'Video'}$({t.templatemanagementpanel902})`,
             header: 'Löschen bestätigen',
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
@@ -908,10 +908,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     await api.request(`/templates/${templateForStoreSettings.id}/media/${mediaId}`, {
                         method: 'DELETE',
                     });
-                    toast.showSuccess('Gelöscht');
+                    toast.showSuccess(t.templatemanagementpanel911);
                     await loadTemplateMedia(templateForStoreSettings.id);
                 } catch (error: any) {
-                    toast.showError(error.message || 'Fehler beim Löschen');
+                    toast.showError(error.message || t.templatemanagementpanel914);
                 }
             },
         });
@@ -963,12 +963,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
 
             if (response.success) {
-                toast.showSuccess(`Template erfolgreich ${editingTemplate ? 'aktualisiert' : 'erstellt'}`);
+                toast.showSuccess(`${t.templatemanagementpanel966}${editingTemplate ? t.templatemanagementpanel966_2 : t.templatemanagementpanel966_3}`);
 
                 // 🛡️ Check for security scanner warning
                 if (response.template?.auto_set_to_private) {
                     setTimeout(() => {
-                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        let warningMessage = response.template.warning || t.templatemanagementpanel971;
                         if (response.template.detected_issues) {
                             warningMessage += '\n\nDetected: ' + response.template.detected_issues;
                         }
@@ -985,7 +985,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch (error: any) {
             // Template submission error
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || `Fehler beim ${editingTemplate ? t.applicationsmodal313 : t.teammodal240} des Templates`;
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || `${t.templatemanagementpanel988}${editingTemplate ? t.applicationsmodal313 : t.teammodal240}${t.templatemanagementpanel988_2}`;
             toast.showError(errorMessage);
         }
     };
@@ -1017,9 +1017,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 // 🛡️ Check for security scanner warning
                 if (response.template?.auto_set_to_private) {
                     setTimeout(() => {
-                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        let warningMessage = response.template.warning || t.templatemanagementpanel1020;
                         if (response.template.detected_issues) {
-                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                            warningMessage += '\n\n' + t.templatemanagementpanel1022 + response.template.detected_issues;
                         }
                         toast.showWarn(warningMessage);
                     }, 800); // 800ms delay
@@ -1122,7 +1122,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 toast.showError(t.templatemanagementpanel433);
                             }
                         },
-                        acceptLabel: 'Ja, überschreiben',
+                        acceptLabel: t.templatemanagementpanel1125,
                         rejectLabel: t.templatefilemanager361,
                         acceptClassName: 'p-button-danger'
                     });
@@ -1191,8 +1191,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             toast.showError(t.templatemanagementpanel1191 + error.message);
                         }
                     },
-                    acceptLabel: 'Ja, überschreiben',
-                    rejectLabel: 'Abbrechen',
+                    acceptLabel: t.templatemanagementpanel1194,
+                    rejectLabel: t.templatemanagementpanel1195,
                     acceptClassName: 'p-button-danger'
                 });
             } else {
@@ -1217,7 +1217,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to download ${format.toUpperCase()}`);
+                    throw new Error(`${t.templatemanagementpanel1220}${format.toUpperCase()}`);
                 }
 
                 const blob = await response.blob();
@@ -1229,7 +1229,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                toast.showSuccess(`Template als ${format.toUpperCase()} heruntergeladen`);
+                toast.showSuccess(`${t.templatemanagementpanel1232}${format.toUpperCase()}${t.templatemanagementpanel1232_2}`);
             } else {
                 // Export as JSON (original logic)
                 const response = await api.exportTemplate(template.id);
@@ -1296,14 +1296,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             if (response.success) {
                 // Update local state
                 setTemplateFiles(newFiles);
-                toast.showSuccess(`Datei "${fileToDelete.file_name}" erfolgreich gelöscht`);
+                toast.showSuccess(`${t.templatemanagementpanel1299}"${fileToDelete.file_name}"${t.templatemanagementpanel1299_2}`);
 
                 // 🛡️ Check for security scanner warning
                 if (response.template?.auto_set_to_private) {
                     setTimeout(() => {
-                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        let warningMessage = response.template.warning || t.templatemanagementpanel1304;
                         if (response.template.detected_issues) {
-                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                            warningMessage += '\n\n'+t.templatemanagementpanel1306 + response.template.detected_issues;
                         }
                         toast.showWarn(warningMessage);
                     }, 800); // 800ms delay
@@ -1313,7 +1313,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch (error: any) {
             // File delete error
-            toast.showError('Fehler beim Löschen der Datei: ' + (error.response?.data?.message || error.message));
+            toast.showError(t.templatemanagementpanel1316 + (error.response?.data?.message || error.message));
         }
     };
 
@@ -1347,7 +1347,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 contentType = 'zip';
                 zipFilename = values.zip_file.name;
             } catch (error: any) {
-                toast.showError('Fehler beim Verarbeiten der ZIP-Datei: ' + error.message);
+                toast.showError(t.templatemanagementpanel1350 + error.message);
                 return;
             }
         } else if (values.managed_files && values.managed_files.length > 0) {
@@ -1420,14 +1420,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     setTemplateFiles(filesWithOutputPath);
                 }
 
-                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : t.templatemanagementpanel595}`);
+                toast.showSuccess(`${t.templatemanagementpanel1423}${editingFile ? t.templatemanagementpanel1423_2 : t.templatemanagementpanel595}`);
 
                 // 🛡️ Check for security scanner warning
                 if (response.template?.auto_set_to_private) {
                     setTimeout(() => {
-                        let warningMessage = response.template.warning || 'Template unusual content detected, switching back to private.';
+                        let warningMessage = response.template.warning || t.templatemanagementpanel1428;
                         if (response.template.detected_issues) {
-                            warningMessage += '\n\nDetected: ' + response.template.detected_issues;
+                            warningMessage += '\n\n'+t.templatemanagementpanel1430 + response.template.detected_issues;
                         }
                         toast.showWarn(warningMessage);
                     }, 800); // 800ms delay
@@ -1437,7 +1437,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             }
         } catch (error: any) {
             // File save error
-            toast.showError('Fehler beim Speichern der Datei: ' + (error.response?.data?.message || error.message));
+            toast.showError(t.templatemanagementpanel1440 + (error.response?.data?.message || error.message));
         }
 
         // Close modal and reset state
@@ -1458,11 +1458,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 setTemplateVariables(response.variables || []);
             } else {
                 // Don't show error toast for permission denied
-                console.error('Error loading variables:', response.error);
+                console.error(t.templatemanagementpanel1461, response.error);
                 setTemplateVariables([]);
             }
         } catch (error: any) {
-            console.error('Error loading variables:', error);
+            console.error(t.templatemanagementpanel1465, error);
             setTemplateVariables([]);
         }
     };
@@ -1479,26 +1479,26 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
     const handleDeleteVariable = async (variableId: number) => {
         if (!editingTemplate?.id) {
-            toast.showError('Kein Template ausgewählt');
+            toast.showError(t.templatemanagementpanel1482);
             return;
         }
 
         try {
             const response = await api.deleteTemplateVariable(editingTemplate.id, variableId);
             if (response.success) {
-                toast.showSuccess('Variable erfolgreich gelöscht');
+                toast.showSuccess(t.templatemanagementpanel1489);
                 loadTemplateVariables();
             } else {
-                toast.showError(response.error || 'Fehler beim Löschen der Variable');
+                toast.showError(response.error || t.templatemanagementpanel1492);
             }
         } catch (_error: any) {
-            toast.showError('Fehler beim Löschen der Variable');
+            toast.showError(t.templatemanagementpanel1495);
         }
     };
 
     const handleVariableSubmit = async (values: any) => {
         if (!editingTemplate?.id) {
-            toast.showError('Kein Template ausgewählt');
+            toast.showError(t.templatemanagementpanel1501);
             return;
         }
 
@@ -1508,18 +1508,18 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 // Update existing variable
                 response = await api.updateTemplateVariable(editingTemplate.id, editingVariable.id, values);
                 if (response.success) {
-                    toast.showSuccess('Variable erfolgreich aktualisiert');
+                    toast.showSuccess(t.templatemanagementpanel1511);
                 } else {
-                    toast.showError(response.error || 'Fehler beim Aktualisieren der Variable');
+                    toast.showError(response.error || t.templatemanagementpanel1513);
                     return;
                 }
             } else {
                 // Create new variable
                 response = await api.createTemplateVariable(editingTemplate.id, values);
                 if (response.success) {
-                    toast.showSuccess('Variable erfolgreich erstellt');
+                    toast.showSuccess(t.templatemanagementpanel1520);
                 } else {
-                    toast.showError(response.error || 'Fehler beim Erstellen der Variable');
+                    toast.showError(response.error || t.templatemanagementpanel1522);
                     return;
                 }
             }
@@ -1528,7 +1528,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             setEditingVariable(null);
             loadTemplateVariables();
         } catch (_error: any) {
-            toast.showError('Fehler beim Speichern der Variable');
+            toast.showError(t.templatemanagementpanel1531);
         }
     };
 
@@ -1555,7 +1555,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             label={t.templatemanagementpanel1555}
                             onClick={() => setImportWizardVisible(true)}
                             className="p-button-success"
-                            tooltip="Import aus .zip, .tar.gz, .tar.xz Archiv"
+                            tooltip={t.templatemanagementpanel1558}
                             tooltipOptions={{ position: 'bottom' }}
                         />
                         <Button
@@ -1595,16 +1595,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 options={
                                     userType === 'system' || userType === 'admin' || isInnerCore
                                         ? [
-                                            { label: 'Alle', value: 'all' },
-                                            { label: 'Privat', value: 'private' },
-                                            { label: 'Öffentlich', value: 'public' },
-                                            { label: 'System', value: 'system' }
+                                            { label: t.templatemanagementpanel1598, value: 'all' },
+                                            { label: t.templatemanagementpanel1599, value: 'private' },
+                                            { label: t.templatemanagementpanel1600, value: 'public' },
+                                            { label: t.templatemanagementpanel1601, value: 'system' }
                                         ]
                                         : [
-                                            { label: 'Alle', value: 'all' },
-                                            { label: 'Privat', value: 'private' },
-                                            { label: 'Öffentlich', value: 'public' },
-                                            { label: 'Store', value: 'store' }
+                                            { label: t.templatemanagementpanel1604, value: 'all' },
+                                            { label: t.templatemanagementpanel1605, value: 'private' },
+                                            { label: t.templatemanagementpanel1606, value: 'public' },
+                                            { label: t.templatemanagementpanel1607, value: 'store' }
                                         ]
                                 }
                                 onChange={(e) => setMyTypeFilter(e.value)}
@@ -1694,7 +1694,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 if (template.is_system_template) {
                                     return (
                                         <span className="px-2 py-1 bg-purple-500 text-white rounded text-xs">
-                                            System
+                                            {t.templatemanagementpanel1697}
                                         </span>
                                     );
                                 }
@@ -1708,7 +1708,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     <span className={`px-2 py-1 rounded text-xs ${config.bg} text-white`}>
                                         {config.label}
                                         {template.visibility === 'store' && !template.is_store_approved && (
-                                            <i className="pi pi-clock ml-1 text-xs" title="Warten auf Freigabe"></i>
+                                            <i className="pi pi-clock ml-1 text-xs" title={t.templatemanagementpanel1711}></i>
                                         )}
                                     </span>
                                 );
@@ -1717,10 +1717,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             field="file_count"
                             header={t.templatemanagementpanel706}
-                            body={(template) => `${template.file_count} Dateien`}
+                            body={(template) => `${template.file_count}${t.templatemanagementpanel1720}`}
                         />
                         <Column
-                            header="Projekte"
+                            header={t.templatemanagementpanel1723}
                             body={(template: Template) => {
                                 const count = template.linked_project_ids?.length || 0;
                                 const activeProjects = template.linked_projects?.filter(p => p.is_active) || [];
@@ -1728,13 +1728,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                                 let tooltipText = '';
                                 if (activeProjects.length > 0) {
-                                    tooltipText += 'Aktiv: ' + activeProjects.map(p => p.name).join(', ');
+                                    tooltipText += t.templatemanagementpanel1731 + activeProjects.map(p => p.name).join(', ');
                                 }
                                 if (inactiveProjects.length > 0) {
                                     if (tooltipText) tooltipText += '\n';
-                                    tooltipText += 'Inaktiv: ' + inactiveProjects.map(p => p.name).join(', ');
+                                    tooltipText += t.templatemanagementpanel1735 + inactiveProjects.map(p => p.name).join(', ');
                                 }
-                                if (!tooltipText) tooltipText = 'Keine Projekte verknüpft';
+                                if (!tooltipText) tooltipText = t.templatemanagementpanel1737;
 
                                 return (
                                     <span
@@ -1766,7 +1766,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     return (
                                         <div className="flex items-center gap-1">
                                             <i className="pi pi-exclamation-triangle text-yellow-500" />
-                                            <Tag value={`${template.subscription_data.days_remaining} Tage`} severity="warning" />
+                                            <Tag value={`${template.subscription_data.days_remaining}${t.templatemanagementpanel1769}`} severity="warning" />
                                         </div>
                                     );
                                 }
@@ -1804,7 +1804,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 label="50 Credits"
                                                 className="p-button-rounded p-button-sm"
                                                 style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
-                                                tooltip="Template entsperren (50 Credits)"
+                                                tooltip={t.templatemanagementpanel1807}
                                                 onClick={() => handleUnlockExpiredTemplate(template, false)}
                                                 disabled={unlockingTemplate}
                                             />
@@ -1812,7 +1812,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 icon="pi pi-globe"
                                                 className="p-button-rounded p-button-sm"
                                                 style={{ backgroundColor: '#059669', borderColor: '#059669', color: 'white' }}
-                                                tooltip="Öffentlich machen (kostenlos)"
+                                                tooltip={t.templatemanagementpanel1815}
                                                 onClick={() => handleUnlockExpiredTemplate(template, true)}
                                                 disabled={unlockingTemplate}
                                             />
@@ -1826,7 +1826,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             icon="pi pi-link"
                                             className="p-button-text p-button-success p-button-sm"
                                             onClick={() => handleOpenLinkModal(template)}
-                                            tooltip="Mit Projekten verknüpfen"
+                                            tooltip={t.templatemanagementpanel1829}
                                         />
                                         <Button
                                             icon="pi pi-eye"
@@ -1853,10 +1853,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 menu.style.left = `${e.clientX}px`;
                                                 menu.innerHTML = `
                                                     <div class="py-1">
-                                                        <button class="export-json w-full px-4 py-2 text-left hover:bg-gray-600 text-white">JSON exportieren</button>
-                                                        <button class="export-zip w-full px-4 py-2 text-left hover:bg-gray-600 text-white">ZIP exportieren</button>
-                                                        <button class="export-tar-gz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">TAR.GZ exportieren</button>
-                                                        <button class="export-tar-xz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">TAR.XZ exportieren</button>
+                                                        <button class="export-json w-full px-4 py-2 text-left hover:bg-gray-600 text-white">${t.templatemanagementpanel1856}</button>
+                                                        <button class="export-zip w-full px-4 py-2 text-left hover:bg-gray-600 text-white">${t.templatemanagementpanel1857}</button>
+                                                        <button class="export-tar-gz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">${t.templatemanagementpanel1858}</button>
+                                                        <button class="export-tar-xz w-full px-4 py-2 text-left hover:bg-gray-600 text-white">${t.templatemanagementpanel1859}</button>
                                                     </div>
                                                 `;
                                                 document.body.appendChild(menu);
@@ -1891,7 +1891,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                     });
                                                 }, 100);
                                             }}
-                                            tooltip="Template exportieren (JSON/ZIP)"
+                                            tooltip={t.templatemanagementpanel1894}
                                         />
                                         <Button
                                             icon="pi pi-copy"
@@ -1905,7 +1905,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 icon="pi pi-shopping-cart"
                                                 className="p-button-text p-button-warning p-button-sm"
                                                 onClick={() => openStoreSettings(template)}
-                                                tooltip="Store-Einstellungen (Preis & Media)"
+                                                tooltip={t.templatemanagementpanel1908}
                                             />
                                         )}
                                         {isOwner && (
@@ -1932,10 +1932,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <Dropdown
                                 value={communityTypeFilter}
                                 options={[
-                                    { label: 'Alle', value: 'all' },
-                                    { label: 'System', value: 'system' },
-                                    { label: 'Öffentlich', value: 'public' },
-                                    { label: 'Store', value: 'store' }
+                                    { label: t.templatemanagementpanel1935, value: 'all' },
+                                    { label: t.templatemanagementpanel1936, value: 'system' },
+                                    { label: t.templatemanagementpanel1937_2, value: 'public' },
+                                    { label: t.templatemanagementpanel1938, value: 'store' }
                                 ]}
                                 onChange={(e) => setCommunityTypeFilter(e.value)}
                                 placeholder="Typ"
@@ -2206,7 +2206,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 )}
                             />
                             <Column
-                                header="Verkäufer"
+                                header={t.templatemanagementpanel2209}
                                 body={(template) => (
                                     <span className="text-sm" style={{ color: colors.textSecondary }}>
                                         {template.seller_username || template.creator?.username || 'Unknown'}
@@ -2214,7 +2214,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 )}
                             />
                             <Column
-                                header="Status"
+                                header={t.templatemanagementpanel2217}
                                 body={() => (
                                     <Tag value="Gekauft" severity="success" icon="pi pi-check" />
                                 )}
@@ -2293,7 +2293,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onHide={() => setViewModalVisible(false)}
                 footer={
                     <Button onClick={() => setViewModalVisible(false)}>
-                        Schließen
+                        {t.templatemanagementpanel2296}
                     </Button>
                 }
                 style={{ width: '800px' }}
@@ -2321,7 +2321,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <strong>Sprache:</strong> <Tag value={viewingTemplate.language} severity="success" />
                         </div>
                         <div>
-                            <strong>Tags:</strong>
+                            <strong>{t.templatemanagementpanel2324}</strong>
                             <div className="flex flex-wrap gap-2 ml-2">
                                 {viewingTemplate.tags?.map((tag, index) => (
                                     <Tag key={index} value={tag} severity="warning" />
@@ -2361,7 +2361,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 footer={
                     <>
                         <Button onClick={() => setCloneModalVisible(false)}>
-                            Abbrechen
+                            {t.templatemanagementpanel2364}
                         </Button>
                         <Button
                             onClick={handleCloneSubmit}
@@ -2374,7 +2374,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 opacity: (nameExists || !cloneName.trim() || nameCheckLoading) ? 0.7 : 1
                             }}
                         >
-                            Jetzt klonen
+                            {t.templatemanagementpanel2377}
                         </Button>
                     </>
                 }
@@ -2389,7 +2389,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Neuer Template-Name
+                            {t.templatemanagementpanel2392}
                         </label>
                         <InputText
                             value={cloneName}
@@ -2400,17 +2400,17 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         />
                         {nameCheckLoading && (
                             <div className="text-sm mt-1" style={{ color: colors.accent }}>
-                                🔍 Prüfe Verfügbarkeit...
+                                {t.templatemanagementpanel2403}
                             </div>
                         )}
                         {nameExists && (
                             <div className="text-sm mt-1" style={{ color: colors.errorText }}>
-                                ❌ Name darf nicht doppelt vergeben werden
+                                {t.templatemanagementpanel2408}
                             </div>
                         )}
                         {!nameExists && cloneName.trim() && !nameCheckLoading && (
                             <div className="text-sm mt-1" style={{ color: colors.successText }}>
-                                ✅ Name ist verfügbar
+                                {t.templatemanagementpanel2413}
                             </div>
                         )}
                     </div>
@@ -2419,7 +2419,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     {!((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
                         <div>
                             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                Sichtbarkeit
+                                {t.templatemanagementpanel2422}
                             </label>
                             <select
                                 value={cloneVisibility}
@@ -2427,8 +2427,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 className="w-full p-2 border rounded"
                                 style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                             >
-                                <option value="public">Public (für alle sichtbar)</option>
-                                <option value="private">Private (nur für Sie)</option>
+                                <option value="public">{t.templatemanagementpanel2430}</option>
+                                <option value="private">{t.templatemanagementpanel2431}</option>
                             </select>
                         </div>
                     )}
@@ -2439,7 +2439,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <div className="flex items-center gap-2" style={{ color: colors.accent }}>
                                 <i className="pi pi-info-circle"></i>
                                 <span className="text-sm">
-                                    Gekaufte Templates werden als <strong>Private</strong> geklont.
+                                    {t.templatemanagementpanel2442}<strong>Private</strong>{t.templatemanagementpanel2442_2}
                                 </span>
                             </div>
                         </div>
@@ -2465,7 +2465,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             {/* Delete Template Confirmation Modal */}
             <Dialog
-                header="Template löschen"
+                header={t.templatemanagementpanel2468}
                 visible={showDeleteModal}
                 onHide={handleDeleteModalHide}
                 style={{ width: '450px' }}
@@ -2482,22 +2482,22 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <i className="pi pi-exclamation-triangle text-2xl mt-1" style={{ color: colors.warningText }}></i>
                         <div>
                             <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>
-                                Permanentes Löschen
+                                {t.templatemanagementpanel2485}
                             </h3>
                             <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
                                 {templateToDelete && (
                                     <>
-                                        Das Template <strong style={{ color: colors.textPrimary }}>{templateToDelete.name}</strong> wird permanent gelöscht.
+                                        {t.templatemanagementpanel2490}<strong style={{ color: colors.textPrimary }}>{templateToDelete.name}</strong>{t.templatemanagementpanel2490_2}
                                     </>
                                 )}
                             </p>
                             <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
-                                Alle Dateien, Variablen und Konfigurationen werden unwiderruflich entfernt.
+                                {t.templatemanagementpanel2495}
                             </p>
 
                             <div>
                                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                    Gib <strong style={{ color: colors.textPrimary }}>DELETE</strong> ein, um zu bestätigen:
+                                    {t.templatemanagementpanel2500}<strong style={{ color: colors.textPrimary }}>DELETE</strong>{t.templatemanagementpanel2500_2}
                                 </label>
                                 <InputText
                                     value={deleteConfirmText}
@@ -2508,7 +2508,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                 />
                                 <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                                    Du musst exakt "DELETE" (Großbuchstaben) eingeben
+                                    {t.templatemanagementpanel2511}"DELETE"{t.templatemanagementpanel2511_2}
                                 </small>
                             </div>
                         </div>
@@ -2516,14 +2516,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                     <div className="flex justify-end space-x-2 pt-4 gap-2">
                         <Button
-                            label="Abbrechen"
+                            label={t.templatemanagementpanel2519}
                             icon="pi pi-times"
                             onClick={handleDeleteModalHide}
                             className="p-button-text"
                             disabled={deleting}
                         />
                         <Button
-                            label={deleting ? 'Lösche...' : 'Template löschen'}
+                            label={deleting ? t.templatemanagementpanel2526 : t.templatemanagementpanel2526_2}
                             icon={deleting ? "pi pi-spinner pi-spin" : "pi pi-trash"}
                             onClick={handleDeleteTemplate}
                             className="p-button-danger"
@@ -2535,7 +2535,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             {/* Link Template to Projects Modal */}
             <Dialog
-                header={`Template verknüpfen: ${templateToLink?.name}`}
+                header={`${t.templatemanagementpanel2538}${templateToLink?.name}`}
                 visible={linkModalVisible}
                 onHide={() => setLinkModalVisible(false)}
                 footer={
@@ -2544,14 +2544,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             onClick={() => setLinkModalVisible(false)}
                             className="p-button-secondary"
                         >
-                            Abbrechen
+                            {t.templatemanagementpanel2547}
                         </Button>
                         <Button
                             onClick={handleApplyProjectLinks}
                             className="p-button-primary"
                             disabled={loadingProjects}
                         >
-                            Anwenden
+                            {t.templatemanagementpanel2554}
                         </Button>
                     </>
                 }
@@ -2571,7 +2571,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     <div className="space-y-2">
                         {allProjects.length === 0 ? (
                             <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                                Keine Projekte gefunden
+                                {t.templatemanagementpanel2574}
                             </div>
                         ) : (
                             allProjects.map((project) => (
@@ -2614,13 +2614,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             onClick={() => setToggleActiveModalVisible(false)}
                             className="p-button-secondary"
                         >
-                            Abbrechen
+                           {t.templatemanagementpanel2617}
                         </Button>
                         <Button
                             onClick={handleApplyActivationChanges}
                             className="p-button-primary"
                         >
-                            Speichern
+                            {t.templatemanagementpanel2623}
                         </Button>
                     </>
                 }
@@ -2635,7 +2635,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 <div className="space-y-2">
                     {(templateToToggle?.linked_projects?.length || 0) === 0 ? (
                         <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                            Keine Projekte verknüpft
+                            {t.templatemanagementpanel2638}
                         </div>
                     ) : (
                         templateToToggle?.linked_projects?.map((project) => (
@@ -2656,7 +2656,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     <div>
                                         <div className="font-semibold" style={{ color: colors.textPrimary }}>{project.name}</div>
                                         <div className="text-sm" style={{ color: colors.textMuted }}>
-                                            {projectActivationStates[project.id] ? 'Aktiv' : 'Inaktiv'}
+                                            {projectActivationStates[project.id] ? t.templatemanagementpanel2659 : t.templatemanagementpanel2659_2}
                                         </div>
                                     </div>
                                 </div>
@@ -2668,7 +2668,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
             {/* Store Settings Modal */}
             <Dialog
-                header={`Store-Einstellungen: ${templateForStoreSettings?.name}`}
+                header={`${t.templatemanagementpanel2671}${templateForStoreSettings?.name}`}
                 visible={storeSettingsModalVisible}
                 onHide={() => setStoreSettingsModalVisible(false)}
                 style={{ width: '700px' }}
@@ -2685,8 +2685,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <i className={`pi ${templateForStoreSettings?.is_store_approved ? 'pi-check-circle' : 'pi-clock'}`}></i>
                         <span>
                             {templateForStoreSettings?.is_store_approved
-                                ? 'Freigegeben - Dein Template ist im Store sichtbar'
-                                : 'Warten auf Freigabe - Sichtbar nach Admin-Approval oder 5+ Reviews'}
+                                ? t.templatemanagementpanel2688
+                                : t.templatemanagementpanel2689}
                         </span>
                     </div>
                 </div>
@@ -2696,25 +2696,25 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     <div className="grid grid-cols-2 gap-4 p-3 rounded mb-4" style={{ backgroundColor: colors.bgSecondary }}>
                         <div className="text-center">
                             <div className="text-2xl font-bold text-green-400">{templateForStoreSettings.sales_count}</div>
-                            <div className="text-sm" style={{ color: colors.textMuted }}>Verkäufe</div>
+                            <div className="text-sm" style={{ color: colors.textMuted }}>{t.templatemanagementpanel2699}</div>
                         </div>
                         <div className="text-center">
                             <div className="text-2xl font-bold text-yellow-400">
                                 {Number(templateForStoreSettings.total_revenue || 0).toFixed(2)}
                             </div>
-                            <div className="text-sm" style={{ color: colors.textMuted }}>Einnahmen (Gesamt)</div>
+                            <div className="text-sm" style={{ color: colors.textMuted }}>{t.templatemanagementpanel2705}</div>
                         </div>
                     </div>
                 )}
 
                 <TabView activeIndex={storeSettingsTab} onTabChange={(e) => setStoreSettingsTab(e.index)}>
                     {/* Tab 1: Price Settings */}
-                    <TabPanel header="Preis" leftIcon="pi pi-money-bill mr-2">
+                    <TabPanel header={t.templatemanagementpanel2712} leftIcon="pi pi-money-bill mr-2">
                         <div className="space-y-4">
                             {/* Price Type Selection */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Zahlungsart
+                                    {t.templatemanagementpanel2717}
                                 </label>
                                 <div className="flex gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
@@ -2735,7 +2735,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             onChange={() => setStorePriceType('euros')}
                                             className="w-4 h-4"
                                         />
-                                        <span>EUR (via Stripe/PayPal)</span>
+                                        <span>{t.templatemanagementpanel2738}</span>
                                     </label>
                                 </div>
                             </div>
@@ -2744,7 +2744,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             {storePriceType === 'credits' ? (
                                 <div>
                                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                        Preis in Credits (Minimum: 50)
+                                        {t.templatemanagementpanel2747}
                                     </label>
                                     <InputText
                                         type="number"
@@ -2755,13 +2755,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
                                     <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                                        Du erhältst 80%: {Math.floor(storePriceCredits * 0.8)} Credits pro Verkauf
+                                        {t.templatemanagementpanel2758}{Math.floor(storePriceCredits * 0.8)}{t.templatemanagementpanel2758_2}
                                     </small>
                                 </div>
                             ) : (
                                 <div>
                                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                        Preis in EUR (Minimum: 1.00)
+                                        {t.templatemanagementpanel2764}
                                     </label>
                                     <InputText
                                         type="number"
@@ -2773,7 +2773,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
                                     <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                                        Du erhältst 80%: {(storePriceEuros * 0.8).toFixed(2)} EUR pro Verkauf
+                                        {t.templatemanagementpanel2776}{(storePriceEuros * 0.8).toFixed(2)}{t.templatemanagementpanel2776_2}
                                     </small>
                                 </div>
                             )}
@@ -2781,19 +2781,19 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             {/* Revenue Split Info */}
                             <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary }}>
                                 <i className="pi pi-info-circle mr-2"></i>
-                                <strong>Erlösverteilung:</strong> 80% an dich, 20% Plattformgebühr
+                                <strong>{t.templatemanagementpanel2784}</strong>{t.templatemanagementpanel2784_2}
                             </div>
 
                             {/* Action Buttons */}
                             <div className="flex justify-end gap-2 pt-4">
                                 <Button
-                                    label="Abbrechen"
+                                    label={t.templatemanagementpanel2790}
                                     icon="pi pi-times"
                                     onClick={() => setStoreSettingsModalVisible(false)}
                                     className="p-button-text"
                                 />
                                 <Button
-                                    label={savingStoreSettings ? 'Speichere...' : 'Speichern'}
+                                    label={savingStoreSettings ? t.templatemanagementpanel2796 : t.templatemanagementpanel2796_2}
                                     icon={savingStoreSettings ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
                                     onClick={handleSaveStoreSettings}
                                     className="p-button-success"
@@ -2810,7 +2810,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <div>
                                 <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                     <i className="pi pi-image text-blue-400"></i>
-                                    Logo
+                                    {t.templatemanagementpanel2813}
                                 </h4>
                                 <div className="flex items-start gap-4">
                                     {/* Logo Preview */}
@@ -2827,7 +2827,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         ) : (
                                             <div className="text-center" style={{ color: colors.textMuted }}>
                                                 <i className="pi pi-image text-3xl mb-1"></i>
-                                                <div className="text-xs">Kein Logo</div>
+                                                <div className="text-xs">{t.templatemanagementpanel2830}</div>
                                             </div>
                                         )}
                                     </div>
@@ -2841,7 +2841,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             className="hidden"
                                         />
                                         <Button
-                                            label={uploadingLogo ? 'Hochladen...' : 'Logo hochladen'}
+                                            label={uploadingLogo ? t.templatemanagementpanel2844 : t.templatemanagementpanel2844_2}
                                             icon={uploadingLogo ? 'pi pi-spinner pi-spin' : 'pi pi-upload'}
                                             onClick={() => logoInputRef.current?.click()}
                                             className="p-button-sm"
@@ -2849,13 +2849,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         />
                                         {templateMedia.logo && (
                                             <Button
-                                                label="Löschen"
+                                                label={t.templatemanagementpanel2852}
                                                 icon="pi pi-trash"
                                                 onClick={() => handleDeleteMedia(templateMedia.logo.id, 'logo')}
                                                 className="p-button-sm p-button-danger p-button-outlined"
                                             />
                                         )}
-                                        <small style={{ color: colors.textMuted }}>Max. 2MB, wird auf 256x256 skaliert</small>
+                                        <small style={{ color: colors.textMuted }}>{t.templatemanagementpanel2858}</small>
                                     </div>
                                 </div>
                             </div>
@@ -2864,7 +2864,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <div>
                                 <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                     <i className="pi pi-images text-green-400"></i>
-                                    Screenshots / Bilder
+                                    {t.templatemanagementpanel2867}
                                 </h4>
                                 <input
                                     ref={imagesInputRef}
@@ -2875,13 +2875,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     className="hidden"
                                 />
                                 <Button
-                                    label={uploadingImages ? 'Hochladen...' : 'Bilder hochladen'}
+                                    label={uploadingImages ? t.templatemanagementpanel2878 : t.templatemanagementpanel2878_2}
                                     icon={uploadingImages ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
                                     onClick={() => imagesInputRef.current?.click()}
                                     className="p-button-sm mb-3"
                                     disabled={uploadingImages}
                                 />
-                                <small className="ml-2" style={{ color: colors.textMuted }}>Max. 5MB pro Bild, mehrere möglich</small>
+                                <small className="ml-2" style={{ color: colors.textMuted }}>{t.templatemanagementpanel2884}</small>
 
                                 {/* Images Gallery */}
                                 {templateMedia.images.length > 0 ? (
@@ -2906,7 +2906,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 ) : (
                                     <div className="p-4 text-center border-2 border-dashed rounded-lg" style={{ borderColor: colors.borderPrimary, color: colors.textMuted }}>
                                         <i className="pi pi-images text-2xl mb-2"></i>
-                                        <div className="text-sm">Noch keine Bilder hochgeladen</div>
+                                        <div className="text-sm">{t.templatemanagementpanel2909}</div>
                                     </div>
                                 )}
                             </div>
@@ -2923,12 +2923,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     <InputText
                                         value={newVideoUrl}
                                         onChange={(e) => setNewVideoUrl(e.target.value)}
-                                        placeholder="https://youtube.com/watch?v=... oder https://vimeo.com/..."
+                                        placeholder="t.templatemanagementpanel2926"
                                         className="flex-1"
                                         style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
                                     <Button
-                                        label={addingVideo ? '...' : 'Hinzufügen'}
+                                        label={addingVideo ? '...' : t.templatemanagementpanel2931}
                                         icon={addingVideo ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
                                         onClick={handleAddVideo}
                                         className="p-button-sm"
@@ -2938,7 +2938,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 <InputText
                                     value={newVideoTitle}
                                     onChange={(e) => setNewVideoTitle(e.target.value)}
-                                    placeholder="Video-Titel (optional)"
+                                    placeholder={t.templatemanagementpanel2941}
                                     className="w-full mb-3"
                                     style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                 />
@@ -2974,8 +2974,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 ) : (
                                     <div className="p-4 text-center border-2 border-dashed rounded-lg" style={{ borderColor: colors.borderPrimary, color: colors.textMuted }}>
                                         <i className="pi pi-video text-2xl mb-2"></i>
-                                        <div className="text-sm">Noch keine Videos hinzugefügt</div>
-                                        <div className="text-xs mt-1">YouTube und Vimeo Links werden als eingebettete Videos angezeigt</div>
+                                        <div className="text-sm">{t.templatemanagementpanel2977}</div>
+                                        <div className="text-xs mt-1">{t.templatemanagementpanel2978}</div>
                                     </div>
                                 )}
                             </div>
@@ -2992,7 +2992,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 visible={importWizardVisible}
                 onClose={() => setImportWizardVisible(false)}
                 onSuccess={(template) => {
-                    toast.showSuccess(`Template "${template.name}" wurde importiert.`);
+                    toast.showSuccess(t.templatemanagementpanel2995+template.name+t.templatemanagementpanel2995_2);
                     loadMyTemplates();
                 }}
             />

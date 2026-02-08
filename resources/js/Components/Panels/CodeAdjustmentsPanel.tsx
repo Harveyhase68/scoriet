@@ -18,8 +18,8 @@ import { InputSwitch } from 'primereact/inputswitch';
 import { Tag } from 'primereact/tag';
 import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
-import { useTranslation, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
 
 // ========== INTERFACES ==========
 
@@ -89,6 +89,8 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
   const { selectedProject } = useProject();
   const _t = useTranslation(getStoredLanguage());
   const { colors } = useTheme();
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   // Code Adjustments Access State (Premium Feature)
   const [codeAdjustmentsAccess, setCodeAdjustmentsAccess] = useState<{
@@ -1481,7 +1483,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             icon={exporting ? 'pi pi-spin pi-spinner' : 'pi pi-download'}
             size="small"
             text
-            tooltip="Exportieren"
+            tooltip={t.codeadjustmentspanel1484}
             tooltipOptions={{ position: 'bottom' }}
             onClick={exportAdjustments}
             disabled={exporting || adjustments.length === 0}
@@ -1490,12 +1492,12 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             icon="pi pi-upload"
             size="small"
             text
-            tooltip="Importieren"
+            tooltip={t.codeadjustmentspanel1493}
             tooltipOptions={{ position: 'bottom' }}
             onClick={() => setShowImportDialog(true)}
           />
           <Button
-            label="Neue Anpassung"
+            label={t.codeadjustmentspanel1498}
             icon="pi pi-plus"
             size="small"
             onClick={() => {
@@ -1529,7 +1531,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         }}
       >
         {/* Tab 1: Management */}
-        <TabPanel header="Verwaltung" leftIcon="pi pi-list mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={t.codeadjustmentspanel1532} leftIcon="pi pi-list mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           {loading ? (
             <div className="flex items-center justify-center h-64" style={{ backgroundColor: colors.bgPrimary }}>
               <ProgressSpinner />
@@ -1556,7 +1558,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     onSelectionChange={(e) => setSelectedAdjustment(e.value as CodeAdjustment)}
                     scrollable
                     scrollHeight="flex"
-                    emptyMessage="Keine Anpassungen vorhanden"
+                    emptyMessage={t.codeadjustmentspanel1559}
                     size="small"
                     paginator
                     rows={10}
@@ -1859,7 +1861,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     icon="pi pi-upload"
                     size="small"
                     text
-                    tooltip="Datei hochladen"
+                    tooltip={t.codeadjustmentspanel1864}
                     tooltipOptions={{ position: 'top' }}
                     onClick={() => templateFileInputRef.current?.click()}
                   />
@@ -1869,17 +1871,17 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   onChange={(e) => setTemplateContent(e.target.value)}
                   rows={10}
                   className="w-full font-mono text-sm"
-                  placeholder="Original generierten Code hier einfügen oder Datei hochladen..."
+                  placeholder={t.codeadjustmentspanel1874}
                 />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium">Modifiziert (Ihre Änderungen)</label>
+                  <label className="text-sm font-medium">{t.codeadjustmentspanel1879}</label>
                   <Button
                     icon="pi pi-upload"
                     size="small"
                     text
-                    tooltip="Datei hochladen"
+                    tooltip={t.codeadjustmentspanel1884}
                     tooltipOptions={{ position: 'top' }}
                     onClick={() => modifiedFileInputRef.current?.click()}
                   />
@@ -1889,7 +1891,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   onChange={(e) => setModifiedContent(e.target.value)}
                   rows={10}
                   className="w-full font-mono text-sm"
-                  placeholder="Modifizierten Code hier einfügen oder Datei hochladen..."
+                  placeholder={t.codeadjustmentspanel1894}
                 />
               </div>
             </div>
@@ -1898,14 +1900,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             {analysisResult && (
               <div className="rounded p-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold">Analyse-Ergebnis</h4>
+                  <h4 className="font-semibold">{t.codeadjustmentspanel1903}</h4>
                   <div className="flex items-center gap-4">
                     <Tag
                       value={`${Math.round(analysisResult.confidence * 100)}% Confidence`}
                       severity={analysisResult.confidence >= 0.8 ? 'success' : 'warning'}
                     />
                     <Button
-                      label="Anpassung erstellen..."
+                      label={t.codeadjustmentspanel1910}
                       icon="pi pi-plus"
                       size="small"
                       onClick={openCreateFromAnalysisDialog}
@@ -1916,23 +1918,23 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
                 <div className="grid grid-cols-5 gap-2 mb-4 text-sm">
                   <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
-                    <div style={{ color: colors.textMuted }}>Template</div>
+                    <div style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1921}</div>
                     <div className="text-lg">{analysisResult.analysis.template_lines}</div>
                   </div>
                   <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
-                    <div style={{ color: colors.textMuted }}>Modified</div>
+                    <div style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1925}</div>
                     <div className="text-lg">{analysisResult.analysis.modified_lines}</div>
                   </div>
                   <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
-                    <div style={{ color: colors.textMuted }}>Common</div>
+                    <div style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1929}</div>
                     <div className="text-lg" style={{ color: colors.successText }}>{analysisResult.analysis.common_lines}</div>
                   </div>
                   <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
-                    <div style={{ color: colors.textMuted }}>Added</div>
+                    <div style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1933}</div>
                     <div className="text-lg" style={{ color: colors.accent }}>{analysisResult.analysis.added_lines}</div>
                   </div>
                   <div className="p-2 rounded text-center" style={{ backgroundColor: colors.bgTertiary }}>
-                    <div style={{ color: colors.textMuted }}>Removed</div>
+                    <div style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1937}</div>
                     <div className="text-lg" style={{ color: colors.errorText }}>{analysisResult.analysis.removed_lines}</div>
                   </div>
                 </div>
@@ -1953,13 +1955,13 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   >
                     <Column
                       field="insertion_type"
-                      header="Typ"
+                      header={t.codeadjustmentspanel1958}
                       body={(row) => getInsertionTypeTag(row.insertion_type)}
                       style={{ width: '100px' }}
                     />
                     <Column
                       field="anchor_text"
-                      header="Anker-Text"
+                      header={t.codeadjustmentspanel1964}
                       body={(row) => (
                         <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                           {row.anchor_text.substring(0, 80)}
@@ -1969,7 +1971,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                     />
                     <Column
                       field="insertion_content"
-                      header="Einzufügender Code"
+                      header={t.codeadjustmentspanel1974}
                       body={(row) => (
                         <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                           {row.insertion_content.substring(0, 100)}
@@ -1981,7 +1983,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   </DataTable>
                 ) : (
                   <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                    Keine Änderungen erkannt
+                    {t.codeadjustmentspanel1986}
                   </div>
                 )}
               </div>
@@ -2006,7 +2008,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <i className="pi pi-database" style={{ color: colors.accent }} />
-                  <span className="text-sm font-medium">Referenz-Generierung (Original)</span>
+                  <span className="text-sm font-medium">{t.codeadjustmentspanel2011}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Dropdown
@@ -2016,7 +2018,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       value: g.id,
                     }))}
                     onChange={(e) => setSelectedGenerationForCompare(e.value)}
-                    placeholder={generations.length > 0 ? 'Generierung wählen...' : 'Keine Generierungen'}
+                    placeholder={generations.length > 0 ? t.codeadjustmentspanel2021 : t.codeadjustmentspanel2021_2}
                     className="w-80 text-sm"
                     loading={loadingGenerations}
                     disabled={generations.length === 0}
@@ -2024,7 +2026,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   {generations.length === 0 && !loadingGenerations && (
                     <span className="text-xs text-yellow-400">
                       <i className="pi pi-info-circle mr-1" />
-                      Generieren Sie zuerst ein Projekt
+                      {t.codeadjustmentspanel2029}
                     </span>
                   )}
                 </div>
@@ -2033,7 +2035,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             {/* Source Selection */}
             <div className="rounded p-4 mb-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
-              <h5 className="font-semibold mb-3">Quelle für modifizierte Dateien</h5>
+              <h5 className="font-semibold mb-3">{t.codeadjustmentspanel2038}</h5>
               <div className="flex gap-4">
                 <div
                   className="flex-1 p-4 rounded border-2 cursor-pointer transition-all"
@@ -2045,7 +2047,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <i className="pi pi-upload text-xl" style={{ color: colors.accent }} />
-                    <span className="font-medium">Archiv hochladen</span>
+                    <span className="font-medium">{t.codeadjustmentspanel2050}</span>
                   </div>
                   <p className="text-sm" style={{ color: colors.textMuted }}>
                     ZIP, tar.gz oder tar.xz
@@ -2082,7 +2084,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   {directorySource === 'service' && (
                     <div className="mt-3 text-xs text-yellow-700">
                       <i className="pi pi-info-circle mr-1" />
-                      Bitte starten Sie das lokale Service dafür
+                      {t.codeadjustmentspanel2087}
                     </div>
                   )}
                 </div>
@@ -2102,22 +2104,22 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <i className="pi pi-github text-xl" style={{ color: '#a855f7' }} />
-                    <span className="font-medium">GitHub/GitLab</span>
+                    <span className="font-medium">{t.codeadjustmentspanel2107}</span>
                   </div>
                   <p className="text-sm" style={{ color: colors.textMuted }}>
-                    Aus Git-Repository
+                    {t.codeadjustmentspanel2110}
                   </p>
                   {directorySource === 'git' && (
                     <div className="mt-3 space-y-2">
                       {loadingGitProviders ? (
                         <div className="flex items-center gap-2 text-xs" style={{ color: colors.textMuted }}>
                           <ProgressSpinner style={{ width: '16px', height: '16px' }} />
-                          Lade Provider...
+                          {t.codeadjustmentspanel2117}
                         </div>
                       ) : gitProviders.length === 0 ? (
                         <div className="text-xs text-yellow-400">
                           <i className="pi pi-info-circle mr-1" />
-                          Kein Git-Provider verbunden
+                          {t.codeadjustmentspanel2122}
                         </div>
                       ) : (
                         <>
@@ -2131,7 +2133,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                               setSelectedGitProvider(e.value);
                               loadGitRepositories(e.value);
                             }}
-                            placeholder="Provider..."
+                            placeholder={t.codeadjustmentspanel2136}
                             className="w-full text-xs p-inputtext-sm"
                           />
                           {selectedGitProvider && (
@@ -2145,7 +2147,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                                 setSelectedRepository(e.value);
                                 loadGitBranches(selectedGitProvider, e.value);
                               }}
-                              placeholder="Repository..."
+                              placeholder={t.codeadjustmentspanel2150}
                               className="w-full text-xs p-inputtext-sm"
                               loading={loadingRepositories}
                               disabled={loadingRepositories}
@@ -2160,7 +2162,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                                 value: b.name
                               }))}
                               onChange={(e) => setSelectedBranch(e.value)}
-                              placeholder="Branch..."
+                              placeholder={t.codeadjustmentspanel2165}
                               className="w-full text-xs p-inputtext-sm"
                               loading={loadingBranches}
                               disabled={loadingBranches}
@@ -2171,7 +2173,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                             <InputText
                               value={gitDirectory}
                               onChange={(e) => setGitDirectory(e.target.value)}
-                              placeholder="Verzeichnis (optional)"
+                              placeholder={t.codeadjustmentspanel2176}
                               className="w-full text-xs"
                             />
                           )}
@@ -2184,7 +2186,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
               <div className="mt-4 flex justify-end">
                 <Button
-                  label="Vergleich starten"
+                  label={t.codeadjustmentspanel2189}
                   icon={comparingDirectory ? 'pi pi-spin pi-spinner' : 'pi pi-play'}
                   onClick={startDirectoryComparison}
                   disabled={
@@ -2201,12 +2203,12 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             {directoryCompareResult && (
               <div className="rounded p-4" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center justify-between mb-4">
-                  <h5 className="font-semibold">Vergleichsergebnis</h5>
+                  <h5 className="font-semibold">{t.codeadjustmentspanel2206}</h5>
                   <div className="flex gap-3 text-sm">
-                    <Tag value={`${directoryCompareResult.summary.added} Neu`} severity="success" />
-                    <Tag value={`${directoryCompareResult.summary.modified} Geändert`} severity="warning" />
-                    <Tag value={`${directoryCompareResult.summary.deleted} Gelöscht`} severity="danger" />
-                    <Tag value={`${directoryCompareResult.summary.unchanged} Unverändert`} severity="info" />
+                    <Tag value={`${directoryCompareResult.summary.added}${t.codeadjustmentspanel2208}`} severity="success" />
+                    <Tag value={`${directoryCompareResult.summary.modified}${t.codeadjustmentspanel2209}`} severity="warning" />
+                    <Tag value={`${directoryCompareResult.summary.deleted}${t.codeadjustmentspanel2210}`} severity="danger" />
+                    <Tag value={`${directoryCompareResult.summary.unchanged}${t.codeadjustmentspanel2211}`} severity="info" />
                   </div>
                 </div>
 
@@ -2234,14 +2236,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       header="Status"
                       body={(row) => {
                         const severity = row.status === 'added' ? 'success' : row.status === 'modified' ? 'warning' : 'danger';
-                        const label = row.status === 'added' ? 'Neu' : row.status === 'modified' ? 'Geändert' : 'Gelöscht';
+                        const label = row.status === 'added' ? 'Neu' : row.status === 'modified' ? t.codeadjustmentspanel2239 : t.codeadjustmentspanel2239_2;
                         return <Tag value={label} severity={severity} />;
                       }}
                       style={{ width: '100px' }}
                     />
                     <Column
                       field="path"
-                      header="Dateipfad"
+                      header={t.codeadjustmentspanel2246}
                       body={(row) => (
                         <span className="font-mono text-sm">{row.path}</span>
                       )}
@@ -2253,7 +2255,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                           icon="pi pi-search"
                           size="small"
                           text
-                          tooltip="In Einzelcode Vergleich öffnen"
+                          tooltip={t.codeadjustmentspanel2258}
                           tooltipOptions={{ position: 'left' }}
                           onClick={() => loadFileForSingleComparison(row.path)}
                           disabled={row.status === 'deleted' || !row.template_content || !row.modified_content}
@@ -2265,7 +2267,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 ) : (
                   <div className="text-center py-8" style={{ color: colors.textMuted }}>
                     <i className="pi pi-check-circle text-4xl mb-2" style={{ color: colors.successText }} />
-                    <p>Keine Änderungen gefunden - alle Dateien sind identisch</p>
+                    <p>{t.codeadjustmentspanel2270}</p>
                   </div>
                 )}
 
@@ -2276,16 +2278,16 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                       {batchProgress ? (
                         <span className="flex items-center gap-2">
                           <i className="pi pi-spin pi-spinner" />
-                          Verarbeite {batchProgress.current}/{batchProgress.total}: {batchProgress.currentFile}
+                          {t.codeadjustmentspanel2281}{batchProgress.current}/{batchProgress.total}: {batchProgress.currentFile}
                         </span>
                       ) : (
                         <span>
-                          {directoryCompareResult.files.filter(f => f.status === 'modified').length} geänderte Datei(en) können als Anpassungen erstellt werden
+                          {directoryCompareResult.files.filter(f => f.status === 'modified').length}{t.codeadjustmentspanel2285}
                         </span>
                       )}
                     </div>
                     <Button
-                      label="Code Anpassungen erstellen"
+                      label={t.codeadjustmentspanel2290}
                       icon={creatingBatchAdjustments ? 'pi pi-spin pi-spinner' : 'pi pi-plus-circle'}
                       severity="success"
                       onClick={createBatchAdjustments}
@@ -2300,9 +2302,9 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             {!directoryCompareResult && !comparingDirectory && (
               <div className="text-center py-8 rounded" style={{ color: colors.textMuted, borderWidth: '1px', borderStyle: 'dashed', borderColor: colors.borderPrimary }}>
                 <i className="pi pi-folder-open text-4xl mb-3" />
-                <p className="mb-2">Vergleichen Sie ein ganzes Projekt-Verzeichnis</p>
+                <p className="mb-2">{t.codeadjustmentspanel2305}</p>
                 <p className="text-sm">
-                  Wählen Sie eine Quelle oben und klicken Sie auf "Vergleich starten"
+                  {t.codeadjustmentspanel2307}
                 </p>
               </div>
             )}
@@ -2312,14 +2314,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
       {/* Adjustment Dialog */}
       <Dialog
-        header={editingAdjustment.id ? 'Anpassung bearbeiten' : 'Neue Anpassung'}
+        header={editingAdjustment.id ? t.codeadjustmentspanel2317 : t.codeadjustmentspanel2317_2}
         visible={showAdjustmentDialog}
         onHide={() => setShowAdjustmentDialog(false)}
         style={{ width: '500px' }}
         footer={
           <div className="flex justify-end gap-2">
-            <Button label="Abbrechen" text onClick={() => setShowAdjustmentDialog(false)} />
-            <Button label="Speichern" onClick={saveAdjustment} />
+            <Button label={t.codeadjustmentspanel2323} text onClick={() => setShowAdjustmentDialog(false)} />
+            <Button label={t.codeadjustmentspanel2324} onClick={saveAdjustment} />
           </div>
         }
       >
@@ -2336,7 +2338,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               className="w-full"
             />
             <small className="mt-1 block" style={{ color: colors.textMuted }}>
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.codeadjustmentspanel2341}
             </small>
           </div>
           <div>
@@ -2348,11 +2350,11 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               value={editingAdjustment.file_pattern || ''}
               onChange={(e) => setEditingAdjustment({ ...editingAdjustment, file_pattern: e.target.value })}
               className="w-full font-mono"
-              placeholder="z.B. table_%1.php oder index.php"
+              placeholder={t.codeadjustmentspanel2353}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2357}</label>
             <InputTextarea
               value={editingAdjustment.description || ''}
               onChange={(e) => setEditingAdjustment({ ...editingAdjustment, description: e.target.value })}
@@ -2362,7 +2364,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Min. Confidence</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2367}</label>
               <InputNumber
                 value={editingAdjustment.min_confidence || 0.8}
                 onValueChange={(e) => setEditingAdjustment({ ...editingAdjustment, min_confidence: e.value || 0.8 })}
@@ -2375,7 +2377,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Reihenfolge</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2380}</label>
               <InputNumber
                 value={editingAdjustment.execution_order || 0}
                 onValueChange={(e) => setEditingAdjustment({ ...editingAdjustment, execution_order: e.value || 0 })}
@@ -2389,14 +2391,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
       {/* Insertion Dialog */}
       <Dialog
-        header={editingInsertion.id ? 'Insertion bearbeiten' : 'Neue Insertion'}
+        header={editingInsertion.id ? t.codeadjustmentspanel2394 : t.codeadjustmentspanel2394_2}
         visible={showInsertionDialog}
         onHide={() => setShowInsertionDialog(false)}
         style={{ width: '700px' }}
         footer={
           <div className="flex justify-end gap-2">
-            <Button label="Abbrechen" text onClick={() => setShowInsertionDialog(false)} />
-            <Button label="Speichern" onClick={saveInsertion} />
+            <Button label={t.codeadjustmentspanel2400} text onClick={() => setShowInsertionDialog(false)} />
+            <Button label={t.codeadjustmentspanel2401} onClick={saveInsertion} />
           </div>
         }
       >
@@ -2436,11 +2438,11 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Anker-Text
+              {t.codeadjustmentspanel2441}
               <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
                 {editingInsertion.insertion_type === 'beginning'
-                  ? '(optional - wird am Dateianfang eingefügt)'
-                  : '(Code zum Finden der Position)'}
+                  ? t.codeadjustmentspanel2444
+                  : t.codeadjustmentspanel2445}
               </span>
             </label>
             <InputTextarea
@@ -2449,14 +2451,14 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               rows={4}
               className="w-full font-mono text-sm"
               placeholder={editingInsertion.insertion_type === 'beginning'
-                ? 'Optional - leer lassen für Dateianfang'
-                : 'Der Code, nach dem eingefugt werden soll...'}
+                ? t.codeadjustmentspanel2454
+                : t.codeadjustmentspanel2455}
               disabled={editingInsertion.insertion_type === 'beginning'}
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Einzufugender Code
+              {t.codeadjustmentspanel2461}
               <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
                 (Variablen: {Object.keys(availableVariables).join(', ')})
               </span>
@@ -2466,11 +2468,11 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               onChange={(e) => setEditingInsertion({ ...editingInsertion, insertion_content: e.target.value })}
               rows={6}
               className="w-full font-mono text-sm"
-              placeholder="Der Code, der eingefugt werden soll..."
+              placeholder={t.codeadjustmentspanel2471}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2475}</label>
             <InputText
               value={editingInsertion.description || ''}
               onChange={(e) => setEditingInsertion({ ...editingInsertion, description: e.target.value })}
@@ -2482,16 +2484,16 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
       {/* Create from Analysis Dialog - Full editor for adjustment + insertions */}
       <Dialog
-        header="Anpassung aus Analyse erstellen"
+        header={t.codeadjustmentspanel2487}
         visible={showCreateFromAnalysisDialog}
         onHide={() => setShowCreateFromAnalysisDialog(false)}
         style={{ width: '900px' }}
         maximizable
         footer={
           <div className="flex justify-end gap-2">
-            <Button label="Abbrechen" text onClick={() => setShowCreateFromAnalysisDialog(false)} />
+            <Button label={t.codeadjustmentspanel2494} text onClick={() => setShowCreateFromAnalysisDialog(false)} />
             <Button
-              label="Anpassung erstellen"
+              label={t.codeadjustmentspanel2496}
               icon="pi pi-check"
               onClick={saveFromAnalysis}
               disabled={editableInsertions.length === 0 || !newAdjustmentData.name.trim()}
@@ -2512,15 +2514,15 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   setNewAdjustmentData({ ...newAdjustmentData, name: sanitized });
                 }}
                 className="w-full"
-                placeholder="z.B. user_function_in_table_user"
+                placeholder={t.codeadjustmentspanel2517}
               />
               <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                Only lowercase letters (a-z), numbers (0-9), underscores (_)
+                {t.codeadjustmentspanel2520}
               </small>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">
-                Datei-Pattern
+                {t.codeadjustmentspanel2525}
                 <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname)</span>
               </label>
               <InputText
@@ -2545,10 +2547,10 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           <div className="rounded p-3" style={{ borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-semibold">
-                Einfügungen ({editableInsertions.length})
+                {t.codeadjustmentspanel2550}({editableInsertions.length})
               </h5>
               <Button
-                label="Neue Einfügung"
+                label={t.codeadjustmentspanel2553}
                 icon="pi pi-plus"
                 size="small"
                 text
@@ -2572,13 +2574,13 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               >
                 <Column
                   field="insertion_type"
-                  header="Typ"
+                  header={t.codeadjustmentspanel2577}
                   body={(row) => getInsertionTypeTag(row.insertion_type)}
                   style={{ width: '100px' }}
                 />
                 <Column
                   field="anchor_text"
-                  header="Anker-Text"
+                  header={t.codeadjustmentspanel2583}
                   body={(row) => (
                     <pre className="text-xs p-1 rounded max-h-10 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                       {row.anchor_text.substring(0, 60)}
@@ -2588,7 +2590,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 />
                 <Column
                   field="insertion_content"
-                  header="Einzufügender Code"
+                  header={t.codeadjustmentspanel2593}
                   body={(row) => (
                     <pre className="text-xs p-1 rounded max-h-10 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                       {row.insertion_content.substring(0, 80)}
@@ -2604,7 +2606,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                         icon="pi pi-pencil"
                         size="small"
                         text
-                        tooltip="Bearbeiten"
+                        tooltip={t.codeadjustmentspanel2609}
                         onClick={() => startEditAnalysisInsertion(options.rowIndex)}
                       />
                       <Button
@@ -2612,7 +2614,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                         size="small"
                         text
                         severity="danger"
-                        tooltip="Löschen"
+                        tooltip={t.codeadjustmentspanel2617}
                         onClick={() => deleteAnalysisInsertion(options.rowIndex)}
                       />
                     </div>
@@ -2622,7 +2624,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               </DataTable>
             ) : (
               <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                Keine Einfügungen. Klicken Sie auf "Neue Einfügung" um eine hinzuzufügen.
+                {t.codeadjustmentspanel2627}
               </div>
             )}
           </div>
@@ -2631,7 +2633,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
       {/* Edit Analysis Insertion Dialog */}
       <Dialog
-        header={editingAnalysisInsertionIndex !== null ? `Einfügung ${editingAnalysisInsertionIndex + 1} bearbeiten` : 'Neue Einfügung'}
+        header={editingAnalysisInsertionIndex !== null ? `${t.codeadjustmentspanel2636}${editingAnalysisInsertionIndex + 1}${t.codeadjustmentspanel2636_2}` : t.codeadjustmentspanel2636_3}
         visible={showAnalysisInsertionDialog}
         onHide={() => {
           setShowAnalysisInsertionDialog(false);
@@ -2642,7 +2644,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Abbrechen"
+              label={t.codeadjustmentspanel2647}
               text
               onClick={() => {
                 setShowAnalysisInsertionDialog(false);
@@ -2650,7 +2652,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 setEditingAnalysisInsertionIndex(null);
               }}
             />
-            <Button label="Speichern" icon="pi pi-check" onClick={saveAnalysisInsertion} />
+            <Button label={t.codeadjustmentspanel2655} icon="pi pi-check" onClick={saveAnalysisInsertion} />
           </div>
         }
       >
@@ -2658,7 +2660,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Einfüge-Typ *</label>
+                <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2663}</label>
                 <Dropdown
                   value={editingAnalysisInsertion.insertion_type}
                   options={insertionTypeOptions}
@@ -2667,7 +2669,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Zeilen-Offset</label>
+                <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2672}</label>
                 <InputNumber
                   value={editingAnalysisInsertion.line_offset}
                   onValueChange={(e) => setEditingAnalysisInsertion({ ...editingAnalysisInsertion, line_offset: e.value || 0 })}
@@ -2678,7 +2680,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Anker-Text *
+                {t.codeadjustmentspanel2683}
                 <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(Code zum Finden der Position)</span>
               </label>
               <InputTextarea
@@ -2686,15 +2688,15 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 onChange={(e) => setEditingAnalysisInsertion({ ...editingAnalysisInsertion, anchor_text: e.target.value })}
                 rows={4}
                 className="w-full font-mono text-sm"
-                placeholder="Der Code, nach dem eingefügt werden soll..."
+                placeholder={t.codeadjustmentspanel2691}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Einzufügender Code *
+                {t.codeadjustmentspanel2697}
                 <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                  (Variablen: {Object.keys(availableVariables).join(', ')})
+                  ({t.codeadjustmentspanel2699}{Object.keys(availableVariables).join(', ')})
                 </span>
               </label>
               <InputTextarea
@@ -2702,17 +2704,17 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                 onChange={(e) => setEditingAnalysisInsertion({ ...editingAnalysisInsertion, insertion_content: e.target.value })}
                 rows={6}
                 className="w-full font-mono text-sm"
-                placeholder="Der Code, der eingefügt werden soll..."
+                placeholder={t.codeadjustmentspanel2707}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Beschreibung (optional)</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2712}</label>
               <InputText
                 value={editingAnalysisInsertion.description || ''}
                 onChange={(e) => setEditingAnalysisInsertion({ ...editingAnalysisInsertion, description: e.target.value })}
                 className="w-full"
-                placeholder="z.B. Fügt Custom-Funktion nach Klassen-Definition ein"
+                placeholder={t.codeadjustmentspanel2717_2}
               />
             </div>
           </div>
@@ -2721,7 +2723,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
 
       {/* Import Dialog */}
       <Dialog
-        header="Code Anpassungen importieren"
+        header={t.codeadjustmentspanel2726}
         visible={showImportDialog}
         onHide={() => {
           setShowImportDialog(false);
@@ -2731,7 +2733,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Abbrechen"
+              label={t.codeadjustmentspanel2736}
               text
               onClick={() => {
                 setShowImportDialog(false);
@@ -2739,7 +2741,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               }}
             />
             <Button
-              label={importing ? 'Importiere...' : 'Importieren'}
+              label={importing ? t.codeadjustmentspanel2744 : t.codeadjustmentspanel2744_2}
               icon={importing ? 'pi pi-spin pi-spinner' : 'pi pi-upload'}
               onClick={importAdjustments}
               disabled={!importFile || importing}
@@ -2762,7 +2764,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <label className="block text-sm font-medium mb-2">JSON-Datei auswählen</label>
             <div className="flex items-center gap-2">
               <Button
-                label={importFile ? importFile.name : 'Datei wählen...'}
+                label={importFile ? importFile.name : t.codeadjustmentspanel2767}
                 icon="pi pi-file"
                 onClick={() => importFileInputRef.current?.click()}
                 className="flex-1"
@@ -2796,7 +2798,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
                   <span className="font-medium">Zusammenführen (Merge)</span>
                 </div>
                 <p className="text-sm mt-1 ml-6" style={{ color: colors.textMuted }}>
-                  Fügt nur neue Anpassungen hinzu. Bestehende werden übersprungen.
+                  {t.codeadjustmentspanel2801}
                 </p>
               </div>
 
@@ -2810,10 +2812,10 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
               >
                 <div className="flex items-center gap-2">
                   <i className={`pi ${importMode === 'replace' ? 'pi-check-circle' : 'pi-circle'}`} style={{ color: importMode === 'replace' ? colors.warningText : colors.textMuted }} />
-                  <span className="font-medium">Ersetzen (Replace)</span>
+                  <span className="font-medium">{t.codeadjustmentspanel2815}</span>
                 </div>
                 <p className="text-sm mt-1 ml-6" style={{ color: colors.textMuted }}>
-                  <span style={{ color: colors.warningText }}>Achtung:</span> Löscht alle bestehenden Anpassungen und ersetzt sie durch die importierten.
+                  <span style={{ color: colors.warningText }}>{t.codeadjustmentspanel2818_2}</span>{t.codeadjustmentspanel2818}
                 </p>
               </div>
             </div>
@@ -2824,8 +2826,8 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
             <div className="flex items-start gap-2">
               <i className="pi pi-info-circle mt-0.5" style={{ color: colors.accent }} />
               <div>
-                <p>Importierte Anpassungen werden dem aktuellen Projekt zugeordnet.</p>
-                <p className="mt-1">Sie können Anpassungen zwischen Projekten teilen, indem Sie sie exportieren und in einem anderen Projekt importieren.</p>
+                <p>{t.codeadjustmentspanel2829}</p>
+                <p className="mt-1">{t.codeadjustmentspanel2830}</p>
               </div>
             </div>
           </div>

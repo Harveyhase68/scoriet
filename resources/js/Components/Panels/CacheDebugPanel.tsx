@@ -12,6 +12,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import axios from 'axios';
+import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
 
 const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, style = {}, colors, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -77,6 +78,8 @@ interface TestGenerationResult {
 
 const CacheDebugPanel: React.FC = () => {
   const { colors } = useTheme();
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   // Check if user is system admin (only system users can see this panel)
   const userType = localStorage.getItem('user_type') || 'free';
@@ -403,7 +406,7 @@ const CacheDebugPanel: React.FC = () => {
                 onClick={cleanupCache}
                 disabled={loading}
                 severity="secondary"
-                tooltip="Remove expired/dead keys from Redis"
+                tooltip={t.cachedebugpanel406}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -643,7 +646,7 @@ const CacheDebugPanel: React.FC = () => {
                       size="small"
                       onClick={() => viewKeyContent(row.raw_key)}
                       severity="info"
-                      tooltip="View key content"
+                      tooltip={t.cachedebugpanel646}
                     />
                   )}
                 />

@@ -320,7 +320,7 @@ export default function RegisterModal({
         <div className="space-y-4">
           <Message
             severity="warn"
-            text="Registration is currently by invitation only. Please contact an administrator to request an invite."
+            text={t.registermodal323}
             className="w-full"
           />
           {inviteInfo && inviteInfo.error && (
@@ -330,7 +330,18 @@ export default function RegisterModal({
               className="w-full"
             />
           )}
-          <div className="text-center pt-4">
+          <div className="text-center pt-4 space-y-3">
+            <div>
+              <a
+                href="mailto:admin@scoriet.dev?subject=Account Request for Scoriet"
+                style={{ color: '#60a5fa', textDecoration: 'none' }}
+                onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                <i className="pi pi-envelope mr-2"></i>
+                {t.registermodal_request_access || 'Request access via Email'}
+              </a>
+            </div>
             <Button
               type="button"
               label={t.authmodalsegistermodal388}
@@ -351,7 +362,7 @@ export default function RegisterModal({
         {inviteInfo && inviteInfo.valid && (
           <Message
             severity="success"
-            text={`You have been invited to join! Your invite expires on ${new Date(inviteInfo.expires_at!).toLocaleDateString()}.`}
+            text={`${t.registermodal365}${new Date(inviteInfo.expires_at!).toLocaleDateString()}.`}
             className="w-full"
           />
         )}
@@ -374,7 +385,7 @@ export default function RegisterModal({
 
         <div className="field">
           <label htmlFor="register-name" className="block text-sm font-medium mb-2">
-            Name
+            {t.registermodal388}
           </label>
           <InputText
             id="register-name"
@@ -391,7 +402,7 @@ export default function RegisterModal({
 
         <div className="field">
           <label htmlFor="register-username" className="block text-sm font-medium mb-2">
-            Username (Nickname)
+            {t.registermodal405}
           </label>
           <InputText
             id="register-username"
@@ -406,13 +417,13 @@ export default function RegisterModal({
             autoComplete="username"
           />
           <small className="text-gray-500">
-            Only lowercase letters, numbers, underscores, and hyphens. Cannot be changed later.
+            {t.registermodal420}
           </small>
         </div>
 
         <div className="field">
           <label htmlFor="register-email" className="block text-sm font-medium mb-2">
-            E-Mail {inviteInfo?.valid && <span className="text-gray-500">(from invite)</span>}
+            {t.registermodal426}{inviteInfo?.valid && <span className="text-gray-500">{t.registermodal426_2}</span>}
           </label>
           <InputText
             id="register-email"
@@ -426,13 +437,13 @@ export default function RegisterModal({
             autoComplete="email"
           />
           {inviteInfo?.valid && inviteInfo.email && (
-            <small className="text-gray-500">Email is locked to the invite address.</small>
+            <small className="text-gray-500">{t.registermodal440}</small>
           )}
         </div>
 
         <div className="field">
           <label htmlFor="register-password" className="block text-sm font-medium mb-2">
-            Passwort
+            {t.registermodal446}
           </label>
           <Password
             id="register-password"
@@ -451,7 +462,7 @@ export default function RegisterModal({
 
         <div className="field">
           <label htmlFor="register-password-confirmation" className="block text-sm font-medium mb-2">
-            Confirm password
+            {t.registermodal465}
           </label>
           <Password
             id="register-password-confirmation"
@@ -481,7 +492,7 @@ export default function RegisterModal({
           aria-hidden="true"
         >
           <label htmlFor="register-math-check">
-            Sicherheitsfrage: Wieviel ist {honeypotNumbers.a} + {honeypotNumbers.b}?
+            {t.registermodal495}{honeypotNumbers.a} + {honeypotNumbers.b}?
           </label>
           <InputText
             id="register-math-check"
@@ -497,7 +508,7 @@ export default function RegisterModal({
 
         <div className="field">
           <label htmlFor="register-language" className="block text-sm font-medium mb-2">
-            Preferred Language
+            {t.registermodal511}
           </label>
           <Dropdown
             id="register-language"
@@ -545,7 +556,7 @@ export default function RegisterModal({
             dropdownIcon="pi pi-chevron-down"
           />
           <small className="text-gray-500">
-            This will be your default language in the application.
+            {t.registermodal559}
           </small>
         </div>
 
