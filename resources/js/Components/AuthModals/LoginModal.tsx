@@ -16,6 +16,9 @@ interface LoginModalProps {
   onLoginSuccess?: () => void;
   closable?: boolean;
   currentLanguage?: SupportedLanguage;
+  prefillEmail?: string;
+  prefillPassword?: string;
+  demoSystemBypass?: string;
 }
 
 export default function LoginModal({
@@ -25,11 +28,14 @@ export default function LoginModal({
   onSwitchToForgotPassword,
   onLoginSuccess,
   closable = true,
-  currentLanguage: propLanguage
+  currentLanguage: propLanguage,
+  prefillEmail,
+  prefillPassword,
+  demoSystemBypass
 }: LoginModalProps) {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: prefillEmail || '',
+    password: prefillPassword || '',
     rememberMe: false
   });
 
@@ -69,6 +75,17 @@ export default function LoginModal({
       setCurrentLanguage(propLanguage);
     }
   }, [propLanguage]);
+
+  // Prefill credentials when props change (e.g. from /demo-system-access)
+  useEffect(() => {
+    if (prefillEmail || prefillPassword) {
+      setFormData(prev => ({
+        ...prev,
+        email: prefillEmail || prev.email,
+        password: prefillPassword || prev.password,
+      }));
+    }
+  }, [prefillEmail, prefillPassword]);
 
   // Check if we're on demo subdomain
   const isDemoMode = window.location.hostname === 'demo.scoriet.dev' ||
@@ -128,6 +145,7 @@ export default function LoginModal({
           password: formData.password,
           remember_me: formData.rememberMe,
           device_id: generateDeviceId(), // For 2FA trusted device check
+          ...(demoSystemBypass ? { demo_system_bypass: demoSystemBypass } : {}),
         }),
       });
 

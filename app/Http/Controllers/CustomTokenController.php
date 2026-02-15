@@ -60,12 +60,17 @@ class CustomTokenController extends AccessTokenController
                         ], 403);
                     }
 
-                    // Block system/admin user login in demo mode
+                    // Block system/admin user login in demo mode (unless bypass token is valid)
                     if ($user && config('scoriet.demo') && in_array($user->user_type, ['system', 'admin'])) {
-                        return response()->json([
-                            'error' => 'demo_restricted',
-                            'message' => 'System/Admin login is not available in demo mode.'
-                        ], 403);
+                        $bypassToken = $requestData['demo_system_bypass'] ?? null;
+                        $bypassValid = $bypassToken && \Cache::pull('demo_system_bypass_' . $bypassToken);
+
+                        if (!$bypassValid) {
+                            return response()->json([
+                                'error' => 'demo_restricted',
+                                'message' => 'System/Admin login is not available in demo mode.'
+                            ], 403);
+                        }
                     }
 
                     // Check if user account is deactivated due to inactivity

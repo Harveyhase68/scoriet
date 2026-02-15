@@ -47,28 +47,21 @@ Route::get('/demo-login', function () {
 })->name('demo.login');
 
 // Hidden system login for demo admin access (only when SCORIET_DEMO=true)
+// Opens the login modal pre-filled with system credentials + bypass token
 Route::get('/demo-system-access', function () {
     if (!config('scoriet.demo')) {
         abort(404);
     }
 
-    $user = \App\Models\User::where('username', 'scoriet-system')->first();
-    if (!$user) {
-        abort(404);
-    }
-
-    // Generate personal access token server-side (bypasses CustomTokenController restrictions)
-    $tokenResult = $user->createToken('Demo System Access');
-    $accessToken = $tokenResult->accessToken;
+    // Generate a one-time bypass token (valid 5 minutes) to skip demo restriction in CustomTokenController
+    $bypassToken = bin2hex(random_bytes(32));
+    \Cache::put('demo_system_bypass_' . $bypassToken, true, now()->addMinutes(5));
 
     return Inertia::render('Index', [
         'demoSystemLogin' => true,
-        'demoSystemToken' => $accessToken,
-        'demoSystemUser' => [
-            'id' => $user->id,
-            'user_type' => $user->user_type,
-            'is_inner_core' => $user->is_inner_core ?? false,
-        ],
+        'demoSystemEmail' => 'office@scoriet.dev',
+        'demoSystemPassword' => '#System-1234#',
+        'demoSystemBypass' => $bypassToken,
     ]);
 });
 
