@@ -1428,9 +1428,8 @@ export default function Index(props: IndexProps = {}) {
       localStorage.setItem('user_type', demoSystemUser.user_type || 'system');
       localStorage.setItem('is_inner_core', demoSystemUser.is_inner_core ? '1' : '0');
 
-      // Trigger auth change
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('auth-change'));
+      // Redirect to root so the page initializes fresh with auth state already present
+      window.location.href = '/';
     }
   }, [demoSystemLogin, demoSystemToken, demoSystemUser]);
 
@@ -1448,7 +1447,7 @@ export default function Index(props: IndexProps = {}) {
     }
 
     // 🎯 DEMO MODE: Don't show login modal, wait for auto-login
-    if (demoLogin || sessionStorage.getItem('demo_mode') === 'true') {
+    if (demoLogin || demoSystemLogin || sessionStorage.getItem('demo_mode') === 'true') {
       return null;
     }
 
