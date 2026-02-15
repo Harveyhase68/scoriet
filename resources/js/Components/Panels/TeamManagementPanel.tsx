@@ -176,9 +176,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   useEffect(() => {
     if (filterByProject && updateTabTitle) {
       if (forcedProject) {
-        updateTabTitle(`Team Management: ${forcedProject.name}`);
+        updateTabTitle(`${t.teammanagementpanel179}${forcedProject.name}`);
       } else if (selectedProject) {
-        updateTabTitle(`Team Management: ${selectedProject.name}`);
+        updateTabTitle(`${t.teammanagementpanel181}${selectedProject.name}`);
       }
     }
   }, [filterByProject, updateTabTitle, selectedProject, forcedProject]);
@@ -244,7 +244,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
   const handleDeleteTeam = (team: Team) => {
     confirmDialog({
-      message: `Are you sure you want to delete the team "${team.name}"? This action cannot be undone.`,
+      message: `${t.teammanagementpanel247}"${team.name}"?${t.teammanagementpanel247_2}`,
       header: t.teammanagementpanel200,
       icon: 'pi pi-exclamation-triangle',
       defaultFocus: 'reject',
@@ -334,8 +334,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     if (!team.subscription_data?.can_unlock) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Keine Berechtigung',
-        detail: 'Nur Team-Owner oder Admins können das Team entsperren',
+        summary: t.teammanagementpanel337,
+        detail: t.teammanagementpanel338,
         life: 3000
       });
       return;
@@ -347,7 +347,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.teammanagementpanel350);
       }
 
       // Use the new unified unlock endpoint
@@ -366,12 +366,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         if (data.required_credits) {
           toast.current?.show({
             severity: 'error',
-            summary: 'Nicht genug Credits',
-            detail: `Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`,
+            summary: t.teammanagementpanel369,
+            detail: `${t.teammanagementpanel370_2}${data.required_credits}, ${t.teammanagementpanel370}${data.current_credits}`,
             life: 5000
           });
         } else {
-          throw new Error(data.error || data.message || 'Fehler beim Entsperren des Teams');
+          throw new Error(data.error || data.message || t.teammanagementpanel374);
         }
         return;
       }
@@ -391,7 +391,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     } catch (error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: error instanceof Error ? error.message : 'Fehler beim Entsperren',
         life: 3000
       });
@@ -423,7 +423,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       setLinkedProjectIds(linkedProjects);
     } catch (error) {
       console.error('Error loading projects:', error);
-      toast.current?.show({ severity: 'error', summary: 'Fehler', detail: 'Fehler beim Laden der Projekte' });
+      toast.current?.show({ severity: 'error', summary: t.messageError, detail: 'Fehler beim Laden der Projekte' });
       setAllProjects([]);
       setLinkedProjectIds([]);
     } finally {
@@ -501,7 +501,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Fehler beim Prüfen der Übertragung',
           life: 3000,
         });
@@ -509,7 +509,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     } catch (_error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Netzwerkfehler beim Prüfen der Übertragung',
         life: 3000,
       });
@@ -545,7 +545,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         toast.current?.show({
           severity: 'success',
           summary: 'Erfolg',
-          detail: data.message || 'Team erfolgreich übertragen',
+          detail: data.message || t.teammanagementpanel548,
           life: 5000,
         });
 
@@ -557,16 +557,16 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
-          detail: data.message || 'Fehler beim Übertragen des Teams',
+          summary: t.messageError,
+          detail: data.message || t.teammanagementpanel561,
           life: 5000,
         });
       }
     } catch (_error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: 'Netzwerkfehler beim Übertragen',
+        summary: t.teammanagementpanel568,
+        detail: t.teammanagementpanel569,
         life: 3000,
       });
     } finally {
@@ -594,13 +594,13 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         throw new Error(responseData.error || responseData.message || 'Failed to update team links');
       }
 
-      toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Team-Verknüpfungen erfolgreich aktualisiert' });
+      toast.current?.show({ severity: 'success', summary: t.teammanagementpanel597, detail: t.teammanagementpanel597_2 });
       setLinkModalVisible(false);
       loadTeams();
     } catch (error: any) {
-      console.error('Error updating team links:', error);
-      const errorMsg = error.message || 'Fehler beim Aktualisieren der Verknüpfungen';
-      toast.current?.show({ severity: 'error', summary: 'Fehler', detail: errorMsg });
+      console.error(t.teammanagementpanel601, error);
+      const errorMsg = error.message || t.teammanagementpanel602;
+      toast.current?.show({ severity: 'error', summary: t.teammanagementpanel603, detail: errorMsg });
     }
   };
 
@@ -751,7 +751,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <Button
             icon="pi pi-users"
             className="p-button-rounded p-button-text p-button-sm"
-            tooltip="Mitglieder anzeigen"
+            tooltip={t.teammanagementpanel754}
             onClick={() => handleManageMembers(team)}
           />
           {/* Roles button - view only for locked teams */}
@@ -759,7 +759,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             <Button
               icon="pi pi-shield"
               className="p-button-rounded p-button-text p-button-info p-button-sm"
-              tooltip="Rollen anzeigen"
+              tooltip={t.teammanagementpanel762}
               onClick={() => handleManageRoles(team)}
             />
           )}
@@ -768,7 +768,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             <Button
               icon="pi pi-arrow-right-arrow-left"
               className="p-button-rounded p-button-text p-button-warning p-button-sm"
-              tooltip="Gesperrtes Team übertragen"
+              tooltip={t.teammanagementpanel771}
               onClick={() => handleOpenTransferModal(team)}
             />
           )}
@@ -778,14 +778,14 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
               label="50 Credits"
               className="p-button-rounded p-button-sm"
               style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
-              tooltip="Team entsperren (50 Credits)"
+              tooltip={t.teammanagementpanel781}
               onClick={() => handleUnlockExpiredTeam(team)}
               disabled={unlockingTeam}
             />
           )}
           {!canUnlock && !isOwner && (
             <span className="text-xs text-gray-400 ml-2">
-              Nur Owner kann entsperren/übertragen
+              {t.teammanagementpanel788}
             </span>
           )}
         </div>
@@ -800,7 +800,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <Button
             icon="pi pi-link"
             className="p-button-rounded p-button-text p-button-success p-button-sm"
-            tooltip="Mit Projekten verknüpfen"
+            tooltip={t.teammanagementpanel803}
             onClick={() => handleOpenLinkModal(team)}
           />
         )}
@@ -815,7 +815,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <Button
             icon="pi pi-shield"
             className="p-button-rounded p-button-text p-button-info p-button-sm"
-            tooltip="Rollen verwalten"
+            tooltip={t.teammanagementpanel818}
             onClick={() => handleManageRoles(team)}
           />
         )}
@@ -824,7 +824,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <Button
             icon="pi pi-arrow-right-arrow-left"
             className="p-button-rounded p-button-text p-button-warning p-button-sm"
-            tooltip="Team übertragen"
+            tooltip={t.teammanagementpanel827}
             onClick={() => handleOpenTransferModal(team)}
           />
         )}
@@ -974,18 +974,18 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
       {/* Link Team to Projects Modal */}
       <Dialog
-        header={`Team verknüpfen: ${teamToLink?.name}`}
+        header={`${t.teammanagementpanel977}${teamToLink?.name}`}
         visible={linkModalVisible}
         onHide={() => setLinkModalVisible(false)}
         footer={
           <>
             <Button
-              label="Abbrechen"
+              label={t.teammanagementpanel983}
               onClick={() => setLinkModalVisible(false)}
               className="p-button-secondary"
             />
             <Button
-              label="Anwenden"
+              label={t.teammanagementpanel988}
               onClick={handleApplyProjectLinks}
               className="p-button-primary"
               disabled={loadingProjects}
@@ -1006,7 +1006,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <div className="space-y-2">
             {allProjects.length === 0 ? (
               <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                Keine Projekte gefunden
+                {t.teammanagementpanel1009}
               </div>
             ) : (
               allProjects.map((project) => (
@@ -1040,22 +1040,22 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
       {/* Team Transfer Modal */}
       <Dialog
-        header={`Team übertragen: ${teamToTransfer?.name}`}
+        header={`${t.teammanagementpanel1043}${teamToTransfer?.name}`}
         visible={transferModalVisible}
         onHide={() => setTransferModalVisible(false)}
         footer={
           <>
             <Button
-              label="Abbrechen"
+              label={t.teammanagementpanel1049}
               onClick={() => setTransferModalVisible(false)}
               className="p-button-secondary"
               disabled={executingTransfer}
             />
             <Button
-              label={executingTransfer ? "Wird übertragen..." :
+              label={executingTransfer ? t.teammanagementpanel1055 :
                      (transferEligibility?.transfer_outcomes?.without_slot?.team_locked && !transferWithSlot)
-                       ? "Gesperrt übertragen"
-                       : "Team übertragen"}
+                       ? t.teammanagementpanel1057
+                       : t.teammanagementpanel1058}
               icon={executingTransfer ? "pi pi-spinner pi-spin" :
                     (transferEligibility?.transfer_outcomes?.without_slot?.team_locked && !transferWithSlot)
                       ? "pi pi-lock"
@@ -1079,19 +1079,19 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           <div className="rounded-lg p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
             <p className="text-sm flex items-center gap-2" style={{ color: colors.warningText }}>
               <i className="pi pi-exclamation-triangle"></i>
-              <strong>Achtung:</strong> Nach der Übertragung werden Sie zum Admin und können das Team nicht mehr löschen.
+              <strong>{t.teammanagementpanel1082}</strong>{t.teammanagementpanel1082_2}
             </p>
           </div>
 
           {/* Step 1: Select Recipient */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              1. Wählen Sie den neuen Owner:
+              {t.teammanagementpanel1089}
             </label>
             {teamMembersForTransfer.length === 0 ? (
               <div className="text-sm p-3 rounded" style={{ color: colors.textMuted, border: `1px solid ${colors.borderPrimary}` }}>
                 <i className="pi pi-info-circle mr-2"></i>
-                Keine Team-Mitglieder vorhanden. Fügen Sie zuerst Mitglieder zum Team hinzu.
+                {t.teammanagementpanel1094}
               </div>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -1127,7 +1127,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           {checkingTransfer && (
             <div className="flex justify-center items-center py-4">
               <i className="pi pi-spin pi-spinner text-2xl" style={{ color: colors.accent }}></i>
-              <span className="ml-2" style={{ color: colors.textMuted }}>Prüfe Übertragungsmöglichkeiten...</span>
+              <span className="ml-2" style={{ color: colors.textMuted }}>{t.teammanagementpanel1130}</span>
             </div>
           )}
 
@@ -1142,7 +1142,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 <div className="rounded p-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
                   <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    <strong>Patron-User:</strong> Kann unbegrenzt Teams besitzen. Team bleibt aktiv!
+                    <strong>{t.teammanagementpanel1145}</strong>{t.teammanagementpanel1145_2}
                   </p>
                 </div>
               )}
@@ -1152,7 +1152,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 <div className="rounded p-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
                   <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    <strong>Slot verfügbar:</strong> Der Empfänger hat freie Team-Slots. Team bleibt aktiv!
+                    <strong>{t.teammanagementpanel1155}</strong>{t.teammanagementpanel1155_2}
                   </p>
                 </div>
               )}
@@ -1164,7 +1164,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                   <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
                     <p className="text-sm" style={{ color: colors.warningText }}>
                       <i className="pi pi-exclamation-circle mr-2"></i>
-                      Der Empfänger hat keine freien Team-Slots ({transferEligibility.recipient.owned_teams}/{transferEligibility.recipient.max_teams} Teams).
+                      {t.teammanagementpanel1167}({transferEligibility.recipient.owned_teams}/{transferEligibility.recipient.max_teams} Teams).
                     </p>
                   </div>
 
@@ -1190,12 +1190,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                         <div className="flex-1">
                           <div className="font-medium flex items-center gap-2" style={{ color: colors.textPrimary }}>
                             <i className="pi pi-check-circle" style={{ color: colors.successText }}></i>
-                            Slot mitübertragen
+                            {t.teammanagementpanel1193}
                           </div>
                           <div className="text-sm" style={{ color: colors.textMuted }}>
-                            Sie geben Ihren Team-Slot an den Empfänger ab (läuft ab am{' '}
+                            {t.teammanagementpanel1196}{' '}
                             {new Date(transferEligibility.owner.slot_expiry).toLocaleDateString('de-DE')}).
-                            <span className="ml-1" style={{ color: colors.successText }}>→ Team bleibt aktiv!</span>
+                            <span className="ml-1" style={{ color: colors.successText }}>{t.teammanagementpanel1198}</span>
                           </div>
                         </div>
                       </div>
@@ -1223,11 +1223,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                       <div className="flex-1">
                         <div className="font-medium flex items-center gap-2" style={{ color: colors.textPrimary }}>
                           <i className="pi pi-lock" style={{ color: colors.warningText }}></i>
-                          Ohne Slot übertragen
+                          {t.teammanagementpanel1226}
                         </div>
                         <div className="text-sm" style={{ color: colors.textMuted }}>
-                          Das Team wird <span style={{ color: colors.warningText }}>gesperrt</span> übertragen.
-                          Der Empfänger kann es später freischalten (50 Credits) oder weitergeben.
+                          {t.teammanagementpanel1229}<span style={{ color: colors.warningText }}>{t.teammanagementpanel1229_2}</span>{t.teammanagementpanel1229_3}
+                          {t.teammanagementpanel1230}
                         </div>
                       </div>
                     </div>
@@ -1238,8 +1238,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                     <div className="rounded p-3" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                       <p className="text-sm" style={{ color: colors.infoText }}>
                         <i className="pi pi-info-circle mr-2"></i>
-                        <strong>Info:</strong> Ein gesperrtes Team kann eingesehen aber nicht bearbeitet werden.
-                        Der neue Owner kann jederzeit freischalten oder das Team weitergeben.
+                        <strong>{t.teammanagementpanel1241}</strong>{t.teammanagementpanel1241_2}
+                        {t.teammanagementpanel1242}
                       </p>
                     </div>
                   )}
@@ -1251,20 +1251,20 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 <div className="rounded-lg p-3 mt-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
                   <p className="text-sm font-medium flex items-center gap-2 mb-2" style={{ color: colors.errorText }}>
                     <i className="pi pi-exclamation-triangle"></i>
-                    {transferEligibility.project_links.unlink_count} Projekt-Verknüpfung(en) werden entfernt:
+                    {transferEligibility.project_links.unlink_count}{t.teammanagementpanel1254}
                   </p>
                   <ul className="text-sm space-y-1 ml-6" style={{ color: colors.errorText }}>
                     {transferEligibility.project_links.to_unlink.map((project: any) => (
                       <li key={project.id} className="flex items-center gap-2">
                         <i className="pi pi-times-circle" style={{ color: colors.errorText }}></i>
                         <span className="font-medium">{project.name}</span>
-                        <span className="text-xs" style={{ color: colors.errorText }}>(privat, gehört Ihnen)</span>
+                        <span className="text-xs" style={{ color: colors.errorText }}>{t.teammanagementpanel1261}</span>
                       </li>
                     ))}
                   </ul>
                   <p className="text-xs mt-2 pt-2" style={{ color: colors.errorText, borderTop: `1px solid ${colors.errorBorder}` }}>
                     <i className="pi pi-lightbulb mr-1"></i>
-                    <strong>Tipp:</strong> Sie können diese Projekte zuerst an den neuen Owner übertragen, um die Verknüpfung zu behalten.
+                    <strong>{t.teammanagementpanel1267}</strong>{t.teammanagementpanel1267_2}
                   </p>
                 </div>
               )}
@@ -1274,7 +1274,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                 <div className="rounded p-3 mt-3" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
                   <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    {transferEligibility.project_links.to_keep.length} Projekt-Verknüpfung(en) bleiben erhalten:
+                    {transferEligibility.project_links.to_keep.length}{t.teammanagementpanel1277}
                   </p>
                   <ul className="text-xs mt-1 ml-6" style={{ color: colors.successText }}>
                     {transferEligibility.project_links.to_keep.map((project: any) => (

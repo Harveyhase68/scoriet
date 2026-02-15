@@ -101,7 +101,7 @@ const darkTheme: ThemeColors = {
     errorText: '#fca5a5',
     warningBg: 'rgba(202, 138, 4, 0.2)',
     warningBorder: '#a16207',
-    warningText: '#fde047',
+    warningText: '#9c8c3a',
     infoBg: 'rgba(59, 130, 246, 0.2)',
     infoBorder: '#1d4ed8',
     infoText: '#93c5fd',

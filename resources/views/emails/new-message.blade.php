@@ -176,20 +176,20 @@
             @if($thread->is_broadcast)
                 <span class="broadcast-badge">SYSTEM-NACHRICHT</span>
             @endif
-            <h1 class="title">Neue Nachricht erhalten</h1>
+            <h1 class="title">{{__('new-messagebladephp179')}}</h1>
         </div>
 
         <p>Hallo {{ $recipient->name }},</p>
 
-        <p>Sie haben eine neue Nachricht erhalten:</p>
+        <p>{{ __('new-messagebladephp184') }}</p>
 
         <div class="sender-info">
-            <div class="sender-name">Von: {{ $sender->name ?? 'Scoriet System' }}</div>
+            <div class="sender-name">{{ __('new-messagebladephp187') }}{{ $sender->name ?? 'Scoriet System' }}</div>
             @if($sender->username)
                 <div style="color: #6b7280; font-size: 14px;">@{{ $sender->username }}</div>
             @endif
             <div class="subject" style="margin-top: 15px;">
-                <strong>Betreff:</strong> {{ $thread->subject }}
+                <strong>{{ __('new-messagebladephp192') }}</strong> {{ $thread->subject }}
             </div>
         </div>
 

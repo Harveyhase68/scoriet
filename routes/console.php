@@ -26,3 +26,13 @@ Schedule::command('users:check-inactive')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/inactive-users.log'));
+
+// Reset demo database daily at 5 AM (only runs when SCORIET_DEMO=true)
+Schedule::command('demo:reset')
+    ->dailyAt('05:00')
+    ->when(function () {
+        return config('scoriet.demo', false);
+    })
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/demo-reset.log'));

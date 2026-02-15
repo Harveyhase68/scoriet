@@ -515,7 +515,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
           {/* Info message */}
           <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
             <i className="pi pi-info-circle mr-2"></i>
-            Team-Mitglieder können an diesem Projekt zusammenarbeiten. Projekt-Mitglieder mit Status {t.membermodal479} können zum Team hinzugefügt werden.
+            {t.membermodal518_2}{t.membermodal479}{t.membermodal518_3}
           </div>
 
           {/* Members Table */}

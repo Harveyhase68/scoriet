@@ -199,7 +199,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         { label: t.templatemanagementpanel199, value: 'static_directory', description: t.templatemanagementpanel116 },
         { label: t.templatemanagementpanel200, value: 'project_file', description: t.templatemanagementpanel117 },
         { label: t.templatemanagementpanel118, value: 'db_table_file', description: t.templatemanagementpanel201 },
-        { label: t.templatemanagementpanel202, value: 'project_file_languages', description: t.templatemanagementpanel119 },
+        { label: t.templatemanagementpanel204, value: 'project_file_languages', description: t.templatemanagementpanel119 },
         { label: t.templatemanagementpanel203, value: 'db_table_file_languages', description: t.templatemanagementpanel120 }
     ];
 
@@ -1615,7 +1615,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 value={myLanguageFilter}
                                 options={[{ label: t.templatemanagementpanel1616, value: 'all' }, ...uniqueMyLanguages.map(l => ({ label: l, value: l }))]}
                                 onChange={(e) => setMyLanguageFilter(e.value)}
-                                placeholder="Sprache"
+                                placeholder={t.templatemanagementpanel1618}
                                 className="w-40"
                             />
                             <Dropdown
@@ -1945,7 +1945,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 value={communityLanguageFilter}
                                 options={[{ label: t.templatemanagementpanel1946, value: 'all' }, ...uniqueCommunityLanguages.map(l => ({ label: l, value: l }))]}
                                 onChange={(e) => setCommunityLanguageFilter(e.value)}
-                                placeholder="Sprache"
+                                placeholder={t.templatemanagementpanel1948}
                                 className="w-40"
                             />
                             <Dropdown
@@ -2010,7 +2010,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         ? `${Number(template.price_euros).toFixed(2)} €`
                                         : template.price_type === 'credits' && template.price_credits != null
                                             ? `${template.price_credits} Credits`
-                                            : 'Preis n/a';
+                                            : t.templatemanagementpanel2013;
                                     return (
                                         <div className="flex flex-col gap-0.5">
                                             <span className="px-2 py-1 bg-orange-500 text-white rounded text-xs">
@@ -2030,7 +2030,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             field="file_count"
                             header={t.templatemanagementpanel706}
-                            body={(template) => `${template.file_count} Dateien`}
+                            body={(template) => `${template.file_count}${t.templatemanagementpanel2033}`}
                         />
                         <Column
                             header={t.templatemanagementpanel2036}
@@ -2041,20 +2041,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                                 let tooltipText = '';
                                 if (activeProjects.length > 0) {
-                                    tooltipText += 'Aktiv: ' + activeProjects.map(p => p.name).join(', ');
+                                    tooltipText += t.templatemanagementpanel2044 + activeProjects.map(p => p.name).join(', ');
                                 }
                                 if (inactiveProjects.length > 0) {
                                     if (tooltipText) tooltipText += '\n';
-                                    tooltipText += 'Inaktiv: ' + inactiveProjects.map(p => p.name).join(', ');
+                                    tooltipText += t.templatemanagementpanel2048 + inactiveProjects.map(p => p.name).join(', ');
                                 }
-                                if (!tooltipText) tooltipText = 'Keine Projekte verknüpft';
+                                if (!tooltipText) tooltipText = t.templatemanagementpanel2050;
 
                                 return (
                                     <span
                                         className="px-2 py-1 bg-cyan-500 text-white rounded text-xs cursor-help"
                                         title={tooltipText}
                                     >
-                                        {count} {count === 1 ? 'Projekt' : 'Projekte'}
+                                        {count} {count === 1 ? t.templatemanagementpanel2057 : t.templatemanagementpanel2057_2}
                                     </span>
                                 );
                             }}
@@ -2066,7 +2066,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 if (template.is_system_template) {
                                     return (
                                         <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
-                                            Aktiv
+                                            {t.templatemanagementpanel2069}
                                         </span>
                                     );
                                 }
@@ -2082,7 +2082,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 if (isApproved) {
                                     return (
                                         <span className="px-2 py-1 bg-green-500 text-white rounded text-xs">
-                                            Freigegeben
+                                            {t.templatemanagementpanel2085}
                                         </span>
                                     );
                                 }
@@ -2092,7 +2092,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     return (
                                         <div className="flex flex-col gap-0.5">
                                             <span className="px-2 py-1 bg-yellow-500 text-white rounded text-xs">
-                                                Prüfung
+                                                {t.templatemanagementpanel2095}
                                             </span>
                                             <span className="text-xs" style={{ color: colors.textMuted }}>{score}/{maxScore} Punkte</span>
                                         </div>
@@ -2130,7 +2130,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 icon="pi pi-link"
                                                 className="p-button-text p-button-success p-button-sm"
                                                 onClick={() => handleOpenLinkModal(template)}
-                                                tooltip="Mit Projekten verknüpfen"
+                                                tooltip={t.templatemanagementpanel2133}
                                             />
                                         )}
                                         {/* Toggle active button - only show if template is linked */}
@@ -2139,7 +2139,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 icon="pi pi-eye-slash"
                                                 className="p-button-text p-button-warning p-button-sm"
                                                 onClick={() => handleToggleActive(template)}
-                                                tooltip="Verknüpfungen verwalten"
+                                                tooltip={t.templatemanagementpanel2142}
                                             />
                                         )}
                                         <Button
@@ -2152,7 +2152,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             icon="pi pi-copy"
                                             className={`p-button-text p-button-sm ${isAlreadyCloned ? 'p-button-secondary opacity-50' : 'p-button-info'}`}
                                             onClick={() => handleClone(template)}
-                                            tooltip={isAlreadyCloned ? "Bereits gecloned" : "Clone"}
+                                            tooltip={isAlreadyCloned ? t.templatemanagementpanel2155 : t.templatemanagementpanel2155_2}
                                             disabled={isAlreadyCloned}
                                         />
                                     </div>
@@ -2209,14 +2209,14 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 header={t.templatemanagementpanel2209}
                                 body={(template) => (
                                     <span className="text-sm" style={{ color: colors.textSecondary }}>
-                                        {template.seller_username || template.creator?.username || 'Unknown'}
+                                        {template.seller_username || template.creator?.username || t.templatemanagementpanel2212}
                                     </span>
                                 )}
                             />
                             <Column
                                 header={t.templatemanagementpanel2217}
                                 body={() => (
-                                    <Tag value="Gekauft" severity="success" icon="pi pi-check" />
+                                    <Tag value={t.templatemanagementpanel2219} severity="success" icon="pi pi-check" />
                                 )}
                             />
                             <Column
@@ -2315,10 +2315,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <strong>{t.templatemanagementpanel859}</strong> {viewingTemplate.description || t.schemaexportcontroller226}
                         </div>
                         <div>
-                            <strong>Kategorie:</strong> <Tag value={viewingTemplate.category} severity="info" />
+                            <strong>{t.templatemanagementpanel2318}</strong> <Tag value={viewingTemplate.category} severity="info" />
                         </div>
                         <div>
-                            <strong>Sprache:</strong> <Tag value={viewingTemplate.language} severity="success" />
+                            <strong>{t.templatemanagementpanel2321}</strong> <Tag value={viewingTemplate.language} severity="success" />
                         </div>
                         <div>
                             <strong>{t.templatemanagementpanel2324}</strong>
@@ -2329,7 +2329,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             </div>
                         </div>
                         <div>
-                            <strong>Dateien ({viewingTemplate.files?.length || 0}):</strong>
+                            <strong>{t.templatemanagementpanel2332}({viewingTemplate.files?.length || 0}):</strong>
                             {viewingTemplate.files && viewingTemplate.files.length > 0 ? (
                                 <div className="mt-2 space-y-2">
                                     {viewingTemplate.files.map((file) => (
@@ -2346,7 +2346,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     ))}
                                 </div>
                             ) : (
-                                <div className="mt-2" style={{ color: colors.textMuted }}>Keine Dateien vorhanden</div>
+                                <div className="mt-2" style={{ color: colors.textMuted }}>{t.templatemanagementpanel2349}</div>
                             )}
                         </div>
                     </div>

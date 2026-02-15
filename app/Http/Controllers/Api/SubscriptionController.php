@@ -67,14 +67,14 @@ class SubscriptionController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'error' => 'Subscription nicht gefunden',
+                'error' => __('subscriptioncontrollerphp70'),
             ], 404);
         }
 
         // Can't renew patron subscriptions
         if ($subscription->is_free_tier) {
             return response()->json([
-                'error' => 'Patron-Subscriptions müssen nicht verlängert werden',
+                'error' => __('subscriptioncontrollerphp77'),
             ], 400);
         }
 
@@ -82,7 +82,7 @@ class SubscriptionController extends Controller
         $renewalCost = 50;
         if ($user->credits < $renewalCost) {
             return response()->json([
-                'error' => "Nicht genügend Credits. Benötigt: {$renewalCost}, Vorhanden: {$user->credits}",
+                'error' => __('subscriptioncontrollerphp85') . "{$renewalCost}" . __('subscriptioncontrollerphp85_2') . "{$user->credits}",
                 'required_credits' => $renewalCost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -124,7 +124,7 @@ class SubscriptionController extends Controller
         // Check if already has access
         if ($user->hasCodeAdjustmentsAccess()) {
             return response()->json([
-                'message' => 'Code Anpassungen ist bereits freigeschaltet',
+                'message' => __('subscriptioncontrollerphp127'),
                 'access_status' => $user->getCodeAdjustmentsAccessStatus(),
             ]);
         }
@@ -133,7 +133,7 @@ class SubscriptionController extends Controller
         $cost = AppSubscription::CODE_ADJUSTMENTS_UNLOCK_COST;
         if ($user->credits < $cost) {
             return response()->json([
-                'message' => "Nicht genügend Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'message' => __('subscriptioncontrollerphp136') . "{$cost}" . __('subscriptioncontrollerphp136_2')  . "{$user->credits}",
                 'required_credits' => $cost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -154,7 +154,7 @@ class SubscriptionController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Code Anpassungen erfolgreich freigeschaltet!',
+            'message' => __('subscriptioncontrollerphp157'),
             'access_status' => $user->getCodeAdjustmentsAccessStatus(),
             'credits_remaining' => $user->fresh()->credits,
         ]);
@@ -188,7 +188,7 @@ class SubscriptionController extends Controller
         $cost = AppSubscription::DATABASE_DESIGNER_UNLOCK_COST;
         if ($user->credits < $cost) {
             return response()->json([
-                'message' => "Nicht genügend Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'message' => __('subscriptioncontrollerphp191') . "{$cost}" . __('subscriptioncontrollerphp191_2') . "{$user->credits}",
                 'required_credits' => $cost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -243,7 +243,7 @@ class SubscriptionController extends Controller
         $cost = AppSubscription::SCHEMA_MIGRATION_UNLOCK_COST;
         if ($user->credits < $cost) {
             return response()->json([
-                'message' => "Nicht genügend Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'message' => __('subscriptioncontrollerphp246') . "{$cost}" . __('subscriptioncontrollerphp246_2') . "{$user->credits}",
                 'required_credits' => $cost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -311,7 +311,7 @@ class SubscriptionController extends Controller
         $cost = 50;
         if ($user->credits < $cost) {
             return response()->json([
-                'message' => "Nicht genügend Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'message' => __('subscriptioncontrollerphp314') . "{$cost}" . __('subscriptioncontrollerphp314_2') . "{$user->credits}",
                 'required_credits' => $cost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -354,7 +354,7 @@ class SubscriptionController extends Controller
             [
                 'type' => 'bundle',
                 'name' => 'CLI + Service Bundle',
-                'description' => 'Beide Tools zum Vorteilspreis',
+                'description' => __('subscriptioncontrollerphp357'),
                 'icon' => 'pi-gift',
                 'iconColor' => 'text-yellow-400',
                 'cost' => 90,
@@ -364,7 +364,7 @@ class SubscriptionController extends Controller
             [
                 'type' => 'cli',
                 'name' => 'CLI Tool',
-                'description' => 'Kommandozeilen-Tool für lokale Code-Generierung',
+                'description' => __('subscriptioncontrollerphp367'),
                 'icon' => 'pi-desktop',
                 'iconColor' => 'text-blue-400',
                 'cost' => 50,
@@ -373,7 +373,7 @@ class SubscriptionController extends Controller
             [
                 'type' => 'service',
                 'name' => 'Windows Service',
-                'description' => 'Hintergrund-Service für automatische Synchronisation',
+                'description' => __('subscriptioncontrollerphp376'),
                 'icon' => 'pi-server',
                 'iconColor' => 'text-green-400',
                 'cost' => 50,
@@ -381,48 +381,48 @@ class SubscriptionController extends Controller
             ],
             [
                 'type' => 'database_designer',
-                'name' => 'Datenbank Designer',
-                'description' => 'Visueller Editor für Datenbankstrukturen',
+                'name' => __('subscriptioncontrollerphp384'),
+                'description' => __('subscriptioncontrollerphp385'),
                 'icon' => 'pi-database',
                 'iconColor' => 'text-purple-400',
                 'cost' => AppSubscription::DATABASE_DESIGNER_UNLOCK_COST,
             ],
             [
                 'type' => 'form_designer',
-                'name' => 'Formular Designer',
-                'description' => 'Visueller Editor für Formulare',
+                'name' => __('subscriptioncontrollerphp392'),
+                'description' => __('subscriptioncontrollerphp393'),
                 'icon' => 'pi-window-maximize',
                 'iconColor' => 'text-orange-400',
                 'cost' => 50, // Assume same cost
             ],
             [
                 'type' => 'git_integration',
-                'name' => 'Git Integration',
-                'description' => 'Push zu GitHub/GitLab, PRs erstellen',
+                'name' => __('subscriptioncontrollerphp400'),
+                'description' => __('subscriptioncontrollerphp401'),
                 'icon' => 'pi-github',
                 'iconColor' => 'text-gray-300',
                 'cost' => 50,
             ],
             [
                 'type' => 'code_adjustments',
-                'name' => 'Code Anpassungen',
-                'description' => 'Anpassungen am generierten Code',
+                'name' => __('subscriptioncontrollerphp408'),
+                'description' => __('subscriptioncontrollerphp409'),
                 'icon' => 'pi-code',
                 'iconColor' => 'text-cyan-400',
                 'cost' => AppSubscription::CODE_ADJUSTMENTS_UNLOCK_COST,
             ],
             [
                 'type' => 'schema_migration',
-                'name' => 'Schema Migration',
-                'description' => 'Datenbank-Migrationen generieren',
+                'name' => __('subscriptioncontrollerphp416'),
+                'description' => __('subscriptioncontrollerphp417'),
                 'icon' => 'pi-sync',
                 'iconColor' => 'text-indigo-400',
                 'cost' => AppSubscription::SCHEMA_MIGRATION_UNLOCK_COST,
             ],
             [
                 'type' => 'team',
-                'name' => 'Teams',
-                'description' => 'Unbegrenzt Teams anlegen und zusammenarbeiten',
+                'name' => __('subscriptioncontrollerphp424'),
+                'description' => __('subscriptioncontrollerphp425'),
                 'icon' => 'pi-users',
                 'iconColor' => 'text-pink-400',
                 'cost' => 50,
@@ -514,9 +514,9 @@ class SubscriptionController extends Controller
 
             $options[] = [
                 'type' => 'keep_cli',
-                'label' => 'Voller Preis (CLI läuft nach Bundle weiter)',
+                'label' => __('subscriptioncontrollerphp517'),
                 'price' => $bundlePrice,
-                'description' => "Ihre CLI-Subscription ({$daysRemaining} Tage verbleibend) bleibt bestehen und läuft nach dem Bundle weiter.",
+                'description' => __('subscriptioncontrollerphp519') . "({$daysRemaining}" . __('subscriptioncontrollerphp519_2'),
             ];
 
             $options[] = [
@@ -524,7 +524,7 @@ class SubscriptionController extends Controller
                 'label' => "Rabattierter Preis (CLI-Wert anrechnen)",
                 'price' => max(0, $bundlePrice - $cliValue),
                 'discount' => $cliValue,
-                'description' => "CLI-Restwert ({$cliValue} Credits für {$daysRemaining} Tage) wird angerechnet. CLI wird durch Bundle ersetzt.",
+                'description' => __('subscriptioncontrollerphp527_2') . "({$cliValue}" . __('subscriptioncontrollerphp527_3') . "{$daysRemaining}" . __('subscriptioncontrollerphp527'),
             ];
         }
 
@@ -539,7 +539,7 @@ class SubscriptionController extends Controller
                     'type' => 'keep_service',
                     'label' => 'Voller Preis (Service läuft nach Bundle weiter)',
                     'price' => $bundlePrice,
-                    'description' => "Ihre Service-Subscription ({$daysRemaining} Tage verbleibend) bleibt bestehen und läuft nach dem Bundle weiter.",
+                    'description' => __('subscriptioncontrollerphp542'). "({$daysRemaining}" . __('subscriptioncontrollerphp542_2'),
                 ];
 
                 $options[] = [
@@ -547,7 +547,7 @@ class SubscriptionController extends Controller
                     'label' => "Rabattierter Preis (Service-Wert anrechnen)",
                     'price' => max(0, $bundlePrice - $serviceValue),
                     'discount' => $serviceValue,
-                    'description' => "Service-Restwert ({$serviceValue} Credits für {$daysRemaining} Tage) wird angerechnet. Service wird durch Bundle ersetzt.",
+                    'description' => __('subscriptioncontrollerphp550') . "({$serviceValue}" . __('subscriptioncontrollerphp550_2'),
                 ];
             }
         }
@@ -566,20 +566,20 @@ class SubscriptionController extends Controller
             $options = [
                 [
                     'type' => 'keep_both',
-                    'label' => 'Voller Preis (Beide laufen nach Bundle weiter)',
+                    'label' => __('subscriptioncontrollerphp569'),
                     'price' => $bundlePrice,
-                    'description' => "CLI ({$cliDays} Tage) und Service ({$serviceDays} Tage) bleiben bestehen.",
+                    'description' => "CLI ({$cliDays}" . __('subscriptioncontrollerphp571') . "{$serviceDays}" . __('subscriptioncontrollerphp571_2'),
                 ],
                 [
                     'type' => 'apply_all_discount',
-                    'label' => "Maximaler Rabatt (Beide Werte anrechnen)",
+                    'label' => __('subscriptioncontrollerphp575'),
                     'price' => $discountedPrice,
                     'discount' => $totalValue,
                     'isRefund' => $discountedPrice < 0,
                     'refundAmount' => $discountedPrice < 0 ? abs($discountedPrice) : 0,
                     'description' => $discountedPrice < 0
-                        ? "Sie erhalten " . abs($discountedPrice) . " Credits gutgeschrieben! Beide werden durch Bundle ersetzt."
-                        : "Gesamtwert ({$totalValue} Credits) wird angerechnet. Beide werden durch Bundle ersetzt.",
+                        ? __('subscriptioncontrollerphp581_2') . abs($discountedPrice) . __('subscriptioncontrollerphp581')
+                        : __('subscriptioncontrollerphp582_2'). "({$totalValue}" . __('subscriptioncontrollerphp582'),
                 ],
             ];
         }
@@ -610,7 +610,7 @@ class SubscriptionController extends Controller
         if ($user->user_type !== 'patron') {
             return response()->json([
                 'success' => false,
-                'error' => 'No active subscription to cancel',
+                'error' => __('subscriptioncontrollerphp613'),
             ], 400);
         }
 
@@ -627,7 +627,7 @@ class SubscriptionController extends Controller
 
             // No subscription ID found - just mark as cancelled
             // This can happen if subscription was created before we stored IDs
-            Log::warning("User {$user->id} has no subscription ID stored, marking as free");
+            Log::warning(__('subscriptioncontrollerphp630_2') . "{$user->id}" . __('subscriptioncontrollerphp630'));
 
             $user->update([
                 'user_type' => 'free',
@@ -636,14 +636,14 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription cancelled',
+                'message' => __('subscriptioncontrollerphp639'),
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Subscription cancellation error: ' . $e->getMessage());
+            Log::error(__('subscriptioncontrollerphp643') . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to cancel subscription: ' . $e->getMessage(),
+                'error' => __('subscriptioncontrollerphp646') . $e->getMessage(),
             ], 500);
         }
     }
@@ -662,19 +662,19 @@ class SubscriptionController extends Controller
             $subscription->cancel_at_period_end = true;
             $subscription->save();
 
-            Log::info("Stripe subscription {$user->stripe_subscription_id} cancelled for user {$user->id}");
+            Log::info(__('subscriptioncontrollerphp665') . "{$user->stripe_subscription_id}" . __('subscriptioncontrollerphp665_2') . "{$user->id}");
 
             // Note: We don't change user_type here - the webhook will handle that when the subscription actually ends
             // For now, we can store that cancellation was requested
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription will be cancelled at the end of the current billing period',
+                'message' => __('subscriptioncontrollerphp672'),
                 'ends_at' => date('Y-m-d', $subscription->current_period_end),
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Stripe cancellation error: ' . $e->getMessage());
+            Log::error(__('subscriptioncontrollerphp677') . $e->getMessage());
             throw $e;
         }
     }
@@ -690,9 +690,9 @@ class SubscriptionController extends Controller
             $provider->getAccessToken();
 
             // Cancel the subscription
-            $response = $provider->cancelSubscription($user->paypal_subscription_id, 'User requested cancellation');
+            $response = $provider->cancelSubscription($user->paypal_subscription_id, __('subscriptioncontrollerphp693'));
 
-            Log::info("PayPal subscription {$user->paypal_subscription_id} cancelled for user {$user->id}", [
+            Log::info(__('subscriptioncontrollerphp695') . "{$user->paypal_subscription_id}" . __('subscriptioncontrollerphp695_2'). "{$user->id}", [
                 'response' => $response,
             ]);
 
@@ -701,11 +701,11 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription cancelled. You will remain a Patron until the end of your current billing period.',
+                'message' => __('subscriptioncontrollerphp704'),
             ]);
 
         } catch (\Exception $e) {
-            Log::error('PayPal cancellation error: ' . $e->getMessage());
+            Log::error(__('subscriptioncontrollerphp708') . $e->getMessage());
             throw $e;
         }
     }

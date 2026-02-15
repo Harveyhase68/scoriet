@@ -16,7 +16,6 @@ import { Splitter, SplitterPanel } from 'primereact/splitter';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { InputSwitch } from 'primereact/inputswitch';
 import { Tag } from 'primereact/tag';
-import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
@@ -82,7 +81,7 @@ interface NewAdjustmentFromAnalysis {
 
 // ========== COMPONENT ==========
 
-const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
+const CodeAdjustmentsPanel: React.FC = () => {
   const toast = useRef<Toast>(null);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   const modifiedFileInputRef = useRef<HTMLInputElement>(null);
@@ -254,7 +253,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
         const error = await response.json();
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: error.message || 'Freischaltung fehlgeschlagen',
         });
       }
@@ -262,7 +261,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Error unlocking code adjustments:', err);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Freischaltung fehlgeschlagen',
       });
     } finally {
@@ -461,7 +460,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Datei konnte nicht geladen werden',
         });
       }
@@ -469,7 +468,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Fetch file error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Netzwerkfehler beim Laden der Datei',
       });
     } finally {
@@ -753,7 +752,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     reader.onerror = () => {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Datei konnte nicht gelesen werden',
       });
     };
@@ -779,7 +778,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     reader.onerror = () => {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Datei konnte nicht gelesen werden',
       });
     };
@@ -917,7 +916,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Vergleich fehlgeschlagen',
         });
       }
@@ -925,7 +924,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Directory comparison error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Netzwerkfehler beim Vergleich',
       });
     } finally {
@@ -1028,7 +1027,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
     if (!newAdjustmentData.name.trim()) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Bitte einen Namen eingeben',
       });
       return;
@@ -1074,7 +1073,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Fehler beim Erstellen',
         });
       }
@@ -1082,7 +1081,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Create from analysis error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Netzwerkfehler',
       });
     }
@@ -1187,7 +1186,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else if (errorCount > 0) {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: `Keine Anpassungen erstellt, ${errorCount} Fehler`,
           life: 5000,
         });
@@ -1203,7 +1202,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Batch creation error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Batch-Verarbeitung fehlgeschlagen',
       });
     } finally {
@@ -1244,7 +1243,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Export fehlgeschlagen',
         });
       }
@@ -1252,7 +1251,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Export error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Export fehlgeschlagen',
       });
     } finally {
@@ -1332,7 +1331,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: data.message || 'Import fehlgeschlagen',
         });
       }
@@ -1340,7 +1339,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
       console.error('Import error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Import fehlgeschlagen',
       });
     } finally {
@@ -2534,7 +2533,7 @@ const CodeAdjustmentsPanel: React.FC<TabContentProps> = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2537}</label>
             <InputTextarea
               value={newAdjustmentData.description}
               onChange={(e) => setNewAdjustmentData({ ...newAdjustmentData, description: e.target.value })}

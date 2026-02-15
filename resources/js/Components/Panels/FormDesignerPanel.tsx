@@ -109,35 +109,6 @@ interface AccessStatus {
   user_credits?: number;
 }
 
-// ========== ELEMENT TYPE DEFINITIONS ==========
-
-const ELEMENT_TYPES = {
-  containers: [
-    { value: 'container', label: 'Daten-Container', icon: 'pi-table' },
-    { value: 'tab_container', label: 'Tab-Container', icon: 'pi-folder' },
-    { value: 'tab_panel', label: 'Tab-Panel', icon: 'pi-file' },
-    { value: 'menu_container', label: 'Menu-Container', icon: 'pi-bars' },
-  ],
-  navigation: [
-    { value: 'button_nav_first', label: 'Erster', icon: 'pi-angle-double-left' },
-    { value: 'button_nav_prev', label: 'Vorheriger', icon: 'pi-angle-left' },
-    { value: 'button_nav_next', label: 'Nächster', icon: 'pi-angle-right' },
-    { value: 'button_nav_last', label: 'Letzter', icon: 'pi-angle-double-right' },
-  ],
-  actions: [
-    { value: 'button_save', label: 'Speichern', icon: 'pi-save' },
-    { value: 'button_cancel', label: 'Abbrechen', icon: 'pi-times' },
-    { value: 'button_close', label: 'Schließen', icon: 'pi-times' },
-    { value: 'button_new', label: 'Neu', icon: 'pi-plus' },
-    { value: 'button_delete', label: 'Löschen', icon: 'pi-trash' },
-    { value: 'button_custom', label: 'Benutzerdefiniert', icon: 'pi-cog' },
-  ],
-  layout: [
-    { value: 'separator', label: 'Trennlinie', icon: 'pi-minus' },
-    { value: 'spacer', label: 'Abstandshalter', icon: 'pi-arrows-h' },
-  ],
-};
-
 const DEFAULT_ICONS: Record<string, string> = {
   button_nav_first: 'pi-angle-double-left',
   button_nav_prev: 'pi-angle-left',
@@ -148,14 +119,6 @@ const DEFAULT_ICONS: Record<string, string> = {
   button_close: 'pi-times',
   button_new: 'pi-plus',
   button_delete: 'pi-trash',
-};
-
-const WINDOW_TYPE_LABELS: Record<string, string> = {
-  main_menu: 'Hauptmenü',
-  create_edit: 'Formular (Erstellen/Bearbeiten)',
-  data_table: 'Datentabelle',
-  report_single: 'Einzelbericht',
-  report_list: 'Listenbericht',
 };
 
 // ========== HELPER FUNCTIONS ==========
@@ -200,6 +163,7 @@ interface FormElementNodeData {
   isReadOnly: boolean;
   defaultButtonColor?: string;
   defaultButtonTextColor?: string;
+  t: Record<string, string>; // Translation-Objekt
   [key: string]: unknown; // Index signature for xyflow v12 compatibility
 }
 
@@ -271,7 +235,7 @@ const FormElementNode = ({ data, selected }: { data: FormElementNodeData; select
             lineStyle={{ borderWidth: '2px' }}
           />
         )}
-        <span className="text-gray-500 text-xs">Spacer</span>
+        <span className="text-gray-500 text-xs">{data.t.formdesignerpanel237}</span>
       </div>
     );
   }
@@ -336,10 +300,10 @@ const FormElementNode = ({ data, selected }: { data: FormElementNodeData; select
         <div className="flex items-center gap-1">
           <i className={`pi ${icon} text-white text-xs`}></i>
           <span className="text-white text-xs font-medium">
-            {element.element_type === 'container' && 'Container'}
-            {element.element_type === 'tab_container' && 'Tab-Container'}
-            {element.element_type === 'menu_container' && 'Menü'}
-            {element.element_type === 'tab_panel' && (label || 'Tab')}
+            {element.element_type === 'container' && data.t.formdesignerpanel302}
+            {element.element_type === 'tab_container' && data.t.formdesignerpanel303}
+            {element.element_type === 'menu_container' && data.t.formdesignerpanel304}
+            {element.element_type === 'tab_panel' && (label || data.t.formdesignerpanel305)}
           </span>
           {/* Show orientation for menu_container */}
           {isMenuContainer && element.container_orientation && (
@@ -356,12 +320,12 @@ const FormElementNode = ({ data, selected }: { data: FormElementNodeData; select
       {/* Body */}
       <div className="flex-1 p-2 border-t border-gray-600 border-dashed overflow-hidden">
         <div className="text-gray-400 text-xs text-center">
-          {element.element_type === 'container' && 'Felder werden hier generiert'}
-          {element.element_type === 'tab_container' && 'Tab-Panels hier platzieren'}
+          {element.element_type === 'container' && data.t.formdesignerpanel322}
+          {element.element_type === 'tab_container' && data.t.formdesignerpanel323}
           {element.element_type === 'menu_container' && (
-            element.container_orientation === 'horizontal' ? 'Horizontales Menü' : 'Vertikales Menü'
+            element.container_orientation === 'horizontal' ? data.t.formdesignerpanel325 : data.t.formdesignerpanel325_2
           )}
-          {element.element_type === 'tab_panel' && 'Tab-Inhalt'}
+          {element.element_type === 'tab_panel' && data.t.formdesignerpanel327}
         </div>
       </div>
     </div>
@@ -372,6 +336,8 @@ const FormElementNode = ({ data, selected }: { data: FormElementNodeData; select
 interface WindowFrameNodeData {
   windowName: string;
   windowType: string;
+  windowTypeLabel: string;
+  minSizeLabel: string;
   defaultWidth: number;
   defaultHeight: number;
   minWidth: number;
@@ -405,7 +371,7 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
       >
         <span className="font-medium">
           <i className="pi pi-window-maximize mr-1"></i>
-          {data.windowName || WINDOW_TYPE_LABELS[data.windowType] || 'Fenster'}
+          {data.windowName || data.windowTypeLabel || 'Fenster'}
         </span>
         <span className="opacity-75">
           {data.defaultWidth} × {data.defaultHeight} px
@@ -422,7 +388,7 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
             border: '1px dashed rgba(255,255,255,0.3)',
             borderRadius: '4px',
           }}
-          title={`Minimalgröße: ${data.minWidth} × ${data.minHeight} px`}
+          title={`${data.minSizeLabel}${data.minWidth} × ${data.minHeight} px`}
         />
       )}
 
@@ -452,7 +418,7 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
 // Node types registry
 const nodeTypes = {
   formElement: FormElementNode,
-  windowFrame: WindowFrameNode,
+  windowFrame: WindowFrameNode
 };
 
 // ========== TAB CONTENT WRAPPER ==========
@@ -550,8 +516,43 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const snapToGrid = selectedProject?.form_designer_snap_to_grid ?? true;
   const gridSize = selectedProject?.form_designer_grid_size ?? 20;
 
-  // ========== API FUNCTIONS ==========
+  const WINDOW_TYPE_LABELS: Record<string, string> = {
+    main_menu: t.formdesignerpanel520,
+    create_edit: t.formdesignerpanel521,
+    data_table: t.formdesignerpanel522,
+    report_single: t.formdesignerpanel523,
+    report_list: t.formdesignerpanel524,
+  };
 
+  // ========== ELEMENT TYPE DEFINITIONS ==========
+  const ELEMENT_TYPES = {
+    containers: [
+      { value: 'container', label: t.formdesignerpanel116, icon: 'pi-table' },
+      { value: 'tab_container', label: 'Tab-Container', icon: 'pi-folder' },
+      { value: 'tab_panel', label: 'Tab-Panel', icon: 'pi-file' },
+      { value: 'menu_container', label: 'Menu-Container', icon: 'pi-bars' },
+    ],
+    navigation: [
+      { value: 'button_nav_first', label: t.formdesignerpanel536, icon: 'pi-angle-double-left' },
+      { value: 'button_nav_prev', label: t.formdesignerpanel537, icon: 'pi-angle-left' },
+      { value: 'button_nav_next', label: t.formdesignerpanel538, icon: 'pi-angle-right' },
+      { value: 'button_nav_last', label: t.formdesignerpanel539, icon: 'pi-angle-double-right' },
+    ],
+    actions: [
+      { value: 'button_save', label: t.formdesignerpanel542, icon: 'pi-save' },
+      { value: 'button_cancel', label: t.formdesignerpanel543, icon: 'pi-times' },
+      { value: 'button_close', label: t.formdesignerpanel544, icon: 'pi-times' },
+      { value: 'button_new', label: t.formdesignerpanel545, icon: 'pi-plus' },
+      { value: 'button_delete', label: t.formdesignerpanel546, icon: 'pi-trash' },
+      { value: 'button_custom', label: t.formdesignerpanel547, icon: 'pi-cog' },
+    ],
+    layout: [
+      { value: 'separator', label: t.formdesignerpanel550, icon: 'pi-minus' },
+      { value: 'spacer', label: t.formdesignerpanel551, icon: 'pi-arrows-h' },
+    ],
+  };
+
+  // ========== API FUNCTIONS ==========
   const showToast = useCallback((severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail?: string) => {
     toastRef.current?.show({ severity, summary, detail, life: 3000 });
   }, []);
@@ -566,11 +567,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         const data = await response.json();
         setAccessStatus(data);
       } else {
-        showToast('error', 'Fehler', t.formdesignerpanel555);
+        showToast('error', t.messageError, t.formdesignerpanel555);
       }
     } catch (error) {
-      console.error('Access check failed:', error);
-      showToast('error', 'Fehler', 'Netzwerkfehler bei Zugriffsprüfung');
+      console.error(t.formdesignerpanel573, error);
+      showToast('error', t.messageError, t.formdesignerpanel574);
     } finally {
       setCheckingAccess(false);
     }
@@ -585,14 +586,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       });
       const data = await response.json();
       if (data.success) {
-        showToast('success', 'Erfolgreich', data.message);
+        showToast('success', t.formdesignerpanel589, data.message);
         await checkAccess();
       } else {
-        showToast('error', 'Fehler', data.error || 'Freischaltung fehlgeschlagen');
+        showToast('error', t.messageError, data.error || t.formdesignerpanel592);
       }
     } catch (error) {
-      console.error('Unlock failed:', error);
-      showToast('error', 'Fehler', 'Netzwerkfehler bei Freischaltung');
+      console.error(t.formdesignerpanel595, error);
+      showToast('error', t.messageError, t.formdesignerpanel596);
     } finally {
       setUnlocking(false);
     }
@@ -638,8 +639,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         }
       }
     } catch (error) {
-      console.error('Load FormSets failed:', error);
-      showToast('error', 'Fehler', 'FormSets konnten nicht geladen werden');
+      console.error(t.formdesignerpanel642, error);
+      showToast('error', t.messageError, t.formdesignerpanel643);
     } finally {
       setLoadingFormSets(false);
     }
@@ -665,14 +666,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         }
       }
     } catch (error) {
-      console.error('Load FormSet details failed:', error);
-      showToast('error', 'Fehler', 'FormSet-Details konnten nicht geladen werden');
+      console.error(t.formdesignerpanel669, error);
+      showToast('error', t.messageError, t.formdesignerpanel670);
     }
   }, [showToast, STORAGE_KEY_FORMSET, STORAGE_KEY_WINDOW]);
 
   const createFormSet = useCallback(async () => {
     if (!newFormSetName.trim()) {
-      showToast('warn', 'Warnung', 'Name ist erforderlich');
+      showToast('warn', t.formdesignerpanel676, t.formdesignerpanel676_2);
       return;
     }
 
@@ -690,7 +691,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
       const data = await response.json();
       if (data.success) {
-        showToast('success', 'Erfolgreich', 'FormSet erstellt');
+        showToast('success', t.formdesignerpanel694, t.formdesignerpanel694_2);
         setCreateFormSetModalVisible(false);
         setNewFormSetName('');
         setNewFormSetDescription('');
@@ -711,11 +712,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         // Reload list after setting localStorage
         await loadFormSets();
       } else {
-        showToast('error', 'Fehler', data.error || 'Erstellen fehlgeschlagen');
+        showToast('error', t.messageError, data.error || t.formdesignerpanel715);
       }
     } catch (error) {
-      console.error('Create FormSet failed:', error);
-      showToast('error', 'Fehler', 'Netzwerkfehler');
+      console.error(t.formdesignerpanel718, error);
+      showToast('error', t.messageError, t.formdesignerpanel719);
     } finally {
       setSaving(false);
     }
@@ -779,7 +780,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
       const data = await response.json();
       if (data.success) {
-        showToast('success', 'Gespeichert', 'Elemente wurden gespeichert');
+        showToast('success', t.formdesignerpanel783, t.formdesignerpanel783_2);
         setHasUnsavedChanges(false);
 
         // Update window with new elements AND sync node IDs with server data
@@ -871,11 +872,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           });
         }
       } else {
-        showToast('error', 'Fehler', data.error || 'Speichern fehlgeschlagen');
+        showToast('error', t.messageError, data.error || t.formdesignerpanel875);
       }
     } catch (error) {
-      console.error('Save elements failed:', error);
-      showToast('error', 'Fehler', 'Netzwerkfehler beim Speichern');
+      console.error(t.formdesignerpanel878, error);
+      showToast('error', t.messageError, t.formdesignerpanel879);
     } finally {
       setSaving(false);
     }
@@ -946,14 +947,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
       const data = await response.json();
       if (data.success) {
-        showToast('success', 'Gespeichert', 'Fenster-Eigenschaften wurden gespeichert');
+        showToast('success', t.formdesignerpanel950, t.formdesignerpanel950_2);
         // Note: hasUnsavedChanges is handled by saveElements, we keep it for element changes
       } else {
-        showToast('error', 'Fehler', data.error || 'Speichern fehlgeschlagen');
+        showToast('error', t.messageError, data.error || t.formdesignerpanel953);
       }
     } catch (error) {
-      console.error('Save window failed:', error);
-      showToast('error', 'Fehler', 'Netzwerkfehler beim Speichern');
+      console.error(t.formdesignerpanel956, error);
+      showToast('error', t.messageError, t.formdesignerpanel957);
     } finally {
       setSaving(false);
     }
@@ -1000,6 +1001,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         isReadOnly: false,
         defaultButtonColor: selectedFormSet?.default_button_color || '#3b82f6',
         defaultButtonTextColor: selectedFormSet?.default_button_text_color || '#ffffff',
+        t,
       },
       style: {
         width: newElement.width,
@@ -1009,15 +1011,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     setNodes((prev: Node[]) => [...prev, newNode]);
     setHasUnsavedChanges(true);
-    showToast('info', 'Element hinzugefügt', `${elementType} wurde hinzugefügt`);
+    showToast('info', t.formdesignerpanel1014, `${elementType}${t.formdesignerpanel1014_2}`);
   }, [selectedWindow, selectedFormSet, nodes, setNodes, showToast]);
 
   const deleteSelectedElement = useCallback(() => {
     if (!selectedElement || !selectedNodeId) return;
 
     confirmDialog({
-      message: 'Möchten Sie dieses Element wirklich löschen?',
-      header: 'Element löschen',
+      message: t.formdesignerpanel1021,
+      header: t.formdesignerpanel1022,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: () => {
@@ -1025,7 +1027,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         setSelectedElement(null);
         setSelectedNodeId(null);
         setHasUnsavedChanges(true);
-        showToast('info', 'Gelöscht', 'Element wurde entfernt');
+        showToast('info', t.formdesignerpanel1030, t.formdesignerpanel1030_2);
       },
     });
   }, [selectedElement, selectedNodeId, setNodes, showToast]);
@@ -1053,11 +1055,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const handleFormSetChange = useCallback((newFormSet: FormSet) => {
     if (hasUnsavedChanges) {
       confirmDialog({
-        message: 'Sie haben ungespeicherte Änderungen. Was möchten Sie tun?',
-        header: 'Ungespeicherte Änderungen',
+        message: t.formdesignerpanel1058,
+        header: t.formdesignerpanel1059,
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Speichern & Wechseln',
-        rejectLabel: 'Verwerfen & Wechseln',
+        acceptLabel: t.formdesignerpanel1061,
+        rejectLabel: t.formdesignerpanel1062,
         acceptClassName: 'p-button-success',
         rejectClassName: 'p-button-danger',
         accept: async () => {
@@ -1082,11 +1084,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     if (hasUnsavedChanges) {
       confirmDialog({
-        message: 'Sie haben ungespeicherte Änderungen. Was möchten Sie tun?',
-        header: 'Ungespeicherte Änderungen',
+        message: t.formdesignerpanel1087,
+        header: t.formdesignerpanel1088,
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Speichern & Wechseln',
-        rejectLabel: 'Verwerfen & Wechseln',
+        acceptLabel: t.formdesignerpanel1090,
+        rejectLabel: t.formdesignerpanel1091,
         acceptClassName: 'p-button-success',
         rejectClassName: 'p-button-danger',
         accept: async () => {
@@ -1137,7 +1139,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           setUnlockModalVisible(true);
         }
       } catch (error) {
-        console.error('Access check failed:', error);
+        console.error(t.formdesignerpanel1142, error);
         setUnlockModalVisible(true);
       } finally {
         setCheckingAccess(false);
@@ -1147,11 +1149,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     // Check for unsaved changes first
     if (hasUnsavedChanges) {
       confirmDialog({
-        message: 'Sie haben ungespeicherte Änderungen. Was möchten Sie tun?',
-        header: 'Ungespeicherte Änderungen',
+        message: t.formdesignerpanel1152,
+        header: t.formdesignerpanel1153,
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Speichern & Fortfahren',
-        rejectLabel: 'Verwerfen & Fortfahren',
+        acceptLabel: t.formdesignerpanel1155,
+        rejectLabel: t.formdesignerpanel1156,
         acceptClassName: 'p-button-success',
         rejectClassName: 'p-button-danger',
         accept: async () => {
@@ -1202,12 +1204,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       data: {
         windowName: selectedWindow.display_name || selectedWindow.name,
         windowType: selectedWindow.window_type,
+        windowTypeLabel: WINDOW_TYPE_LABELS[selectedWindow.window_type] || 'Fenster',
+        minSizeLabel: t.formdesignerpanel389,
         defaultWidth: selectedWindow.default_width,
         defaultHeight: selectedWindow.default_height,
         minWidth: selectedWindow.min_width,
         minHeight: selectedWindow.min_height,
         windowColor: selectedWindow.window_color || selectedFormSet?.default_window_color || '#374151',
         textColor: selectedWindow.text_color || selectedFormSet?.default_text_color || '#f3f4f6',
+        t, // ganzes Translation-Objekt übergeben
       },
       style: {
         zIndex: -1, // Behind all other nodes
@@ -1228,6 +1233,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         isReadOnly: false,
         defaultButtonColor,
         defaultButtonTextColor,
+        t,
       },
       style: {
         width: element.width,
@@ -1303,23 +1309,23 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               }}
               optionLabel="name"
               dataKey="id"
-              placeholder="FormSet auswählen..."
+              placeholder={t.formdesignerpanel1312}
               className="w-64"
               panelClassName="form-designer-dropdown-panel"
               loading={loadingFormSets}
-              emptyMessage="Keine FormSets vorhanden"
+              emptyMessage={t.formdesignerpanel1316}
             />
             <Button
               icon="pi pi-plus"
               className="p-button-success p-button-sm"
-              tooltip="Neues FormSet erstellen"
+              tooltip={t.formdesignerpanel1321}
               onClick={handleCreateFormSetClick}
             />
             {selectedFormSet && (
               <Button
                 icon="pi pi-pencil"
                 className="p-button-secondary p-button-sm"
-                tooltip="FormSet bearbeiten"
+                tooltip={t.formdesignerpanel1328}
                 onClick={() => setEditFormSetModalVisible(true)}
               />
             )}
@@ -1353,31 +1359,31 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   border: `1px solid ${accessStatus.days_remaining > 30 ? colors.successBorder :
                     accessStatus.days_remaining > 7 ? colors.warningBorder : colors.errorBorder}`
                 }}
-                title={`Läuft ab am: ${accessStatus.expires_at ? new Date(accessStatus.expires_at).toLocaleDateString('de-DE') : 'Unbekannt'}`}
+                title={`${t.formdesignerpanel1362}${accessStatus.expires_at ? new Date(accessStatus.expires_at).toLocaleDateString('de-DE') : t.formdesignerpanel1362_2}`}
               >
                 <i className="pi pi-clock mr-1"></i>
-                {accessStatus.days_remaining} Tage
+                {accessStatus.days_remaining}{t.formdesignerpanel1365}
               </span>
             )}
             {accessStatus?.has_access && accessStatus.is_patron && (
               <span
                 className="text-xs px-2 py-1 rounded"
                 style={{ backgroundColor: colors.infoBg, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}
-                title="Patron Mitglied"
+                title={t.formdesignerpanel1372}
               >
                 <i className="pi pi-star mr-1"></i>
-                Patron
+                {t.formdesignerpanel1375}
               </span>
             )}
             {hasUnsavedChanges && (
               <span className="text-sm" style={{ color: colors.warningText }}>
                 <i className="pi pi-exclamation-circle mr-1"></i>
-                Ungespeicherte Änderungen
+                {t.formdesignerpanel1381}
               </span>
             )}
             <Button
               icon="pi pi-save"
-              label="Speichern"
+              label={t.formdesignerpanel1386}
               className="p-button-success p-button-sm"
               onClick={saveElements}
               loading={saving}
@@ -1386,7 +1392,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             <Button
               icon={propertiesPanelVisible ? 'pi pi-chevron-right' : 'pi pi-chevron-left'}
               className="p-button-secondary p-button-sm"
-              tooltip={propertiesPanelVisible ? 'Properties ausblenden' : 'Properties einblenden'}
+              tooltip={propertiesPanelVisible ? t.formdesignerpanel1395 : t.formdesignerpanel1395_2}
               onClick={() => setPropertiesPanelVisible(!propertiesPanelVisible)}
             />
           </div>
@@ -1549,7 +1555,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   nodeColor={(node) => {
                     // Window frame node has different data structure
                     if (node.type === 'windowFrame') return '#6366f1';
-                    return getElementColor(node.data?.element?.element_type || 'unknown');
+                    const element = (node.data as { element?: FormElement })?.element;
+                    return getElementColor(element?.element_type || 'unknown');
                   }}
                   maskColor="rgba(0,0,0,0.7)"
                 />
@@ -1558,7 +1565,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
                 <div className="text-center">
                   <i className="pi pi-window-maximize text-4xl mb-2"></i>
-                  <p>Wählen Sie ein FormSet und ein Fenster aus</p>
+                  <p>{t.formdesignerpanel1559}</p>
                 </div>
               </div>
             )}
@@ -1571,11 +1578,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 {selectedElement ? (
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Element-Eigenschaften</h4>
+                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>{t.formdesignerpanel1581}</h4>
                       <Button
                         icon="pi pi-trash"
                         className="p-button-danger p-button-sm p-button-text"
-                        tooltip="Element löschen"
+                        tooltip={t.formdesignerpanel1585}
                         onClick={deleteSelectedElement}
                       />
                     </div>
@@ -1593,7 +1600,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       {selectedElement.element_type.startsWith('button_') && (
                         <>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Label</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1603}</label>
                             <InputText
                               value={selectedElement.button_label || ''}
                               onChange={(e) => {
@@ -1670,7 +1677,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                   className="p-inputtext-sm"
                                   style={{ width: '60px' }}
                                   maxLength={7}
-                                  placeholder="Standard"
+                                  placeholder={t.formdesignerpanel1680}
                                 />
                                 {selectedElement.button_background_color && (
                                   <button
@@ -1689,7 +1696,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                     }}
                                     className="w-5 h-5 flex items-center justify-center rounded color-reset-btn"
                                     style={{ color: colors.textMuted }}
-                                    title="Auf Standard zurücksetzen"
+                                    title={t.formdesignerpanel1699}
                                   >
                                     <i className="pi pi-times text-xs"></i>
                                   </button>
@@ -1752,7 +1759,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                     }}
                                     className="w-5 h-5 flex items-center justify-center rounded color-reset-btn"
                                     style={{ color: colors.textMuted }}
-                                    title="Auf Standard zurücksetzen"
+                                    title={t.formdesignerpanel1762}
                                   >
                                     <i className="pi pi-times text-xs"></i>
                                   </button>
@@ -1791,7 +1798,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       {['container', 'menu_container', 'tab_container'].includes(selectedElement.element_type) && (
                         <>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Abstand (Gap in px)</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1801}</label>
                             <InputNumber
                               value={selectedElement.container_gap ?? 8}
                               onChange={(e) => {
@@ -1813,7 +1820,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Spalten</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1823}</label>
                             <select
                               value={selectedElement.container_columns ?? 1}
                               onChange={(e) => {
@@ -1841,7 +1848,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'menu_container' && (
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Ausrichtung</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1851}</label>
                           <select
                             value={selectedElement.container_orientation || 'vertical'}
                             onChange={(e) => {
@@ -1859,8 +1866,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             className="w-full p-2 rounded text-sm focus:outline-none"
                               style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
                           >
-                            <option value="vertical">Vertikal (↓)</option>
-                            <option value="horizontal">Horizontal (→)</option>
+                            <option value="vertical">{t.formdesignerpanel1869}</option>
+                            <option value="horizontal">{t.formdesignerpanel1870}</option>
                           </select>
                         </div>
                       )}
@@ -1940,7 +1947,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Breite</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1950}</label>
                           <InputNumber
                             value={selectedNodeData?.width ?? selectedElement.width}
                             onChange={(e) => {
@@ -1969,7 +1976,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           />
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Höhe</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1979}</label>
                           <InputNumber
                             value={selectedNodeData?.height ?? selectedElement.height}
                             onChange={(e) => {
@@ -2003,18 +2010,18 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ) : selectedWindow ? (
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Fenster-Eigenschaften</h4>
+                      <h4 className="font-semibold" style={{ color: colors.textPrimary }}>{t.formdesignerpanel2013}</h4>
                       <Button
                         icon="pi pi-save"
                         className="p-button-success p-button-sm p-button-text"
-                        tooltip="Fenster-Eigenschaften speichern"
+                        tooltip={t.formdesignerpanel2017}
                         onClick={saveWindowProperties}
                         loading={saving}
                       />
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Typ</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2024}</label>
                         <InputText
                           value={WINDOW_TYPE_LABELS[selectedWindow.window_type]}
                           disabled
@@ -2022,7 +2029,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         />
                       </div>
                       <div>
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Anzeigename</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2032}</label>
                         <InputText
                           value={selectedWindow.display_name || ''}
                           onChange={(e) => updateWindowProperty('display_name', e.target.value || null)}
@@ -2059,10 +2066,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       </div>
 
                       <div>
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Minimal-Größe</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2069}</h5>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Min. Breite</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2072}</label>
                             <InputNumber
                               value={selectedWindow.min_width}
                               onChange={(e) => updateWindowProperty('min_width', e.value ?? 400)}
@@ -2072,7 +2079,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             />
                           </div>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Min. Höhe</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2082}</label>
                             <InputNumber
                               value={selectedWindow.min_height}
                               onChange={(e) => updateWindowProperty('min_height', e.value ?? 300)}
@@ -2086,10 +2093,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {/* Window Colors */}
                       <div className="border-t pt-3 mt-3" style={{ borderColor: colors.borderPrimary }}>
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Fenster-Farben</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2096}</h5>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Hintergrund</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2099}</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2107,7 +2114,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Fensterfarbe</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2117}</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2125,7 +2132,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Textfarbe</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2135}</label>
                             <div className="flex items-center gap-2">
                               <input
                                 type="color"
@@ -2149,10 +2156,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     {/* FormSet Default Colors */}
                     {selectedFormSet && (
                       <div className="border-t border-gray-700 pt-3 mt-4">
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>FormSet Standard-Farben</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2159}</h5>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Hintergrund</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2162}</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
@@ -2162,7 +2169,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Fenster</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2172}</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
@@ -2172,7 +2179,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Text</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2182}</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
@@ -2182,7 +2189,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Button-BG</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2192}</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
@@ -2192,7 +2199,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
-                            <label className="text-xs" style={{ color: colors.textMuted }}>Button-Text</label>
+                            <label className="text-xs" style={{ color: colors.textMuted }}>{t.formdesignerpanel2202}</label>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-6 h-6 rounded border border-gray-600"
@@ -2203,7 +2210,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           </div>
                         </div>
                         <p className="text-xs mt-2 italic" style={{ color: colors.textMuted }}>
-                          Standard-Farben werden im FormSet-Bearbeiten-Dialog geändert.
+                          {t.formdesignerpanel2213}
                         </p>
                       </div>
                     )}
@@ -2211,7 +2218,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ) : (
                   <div className="text-center py-8" style={{ color: colors.textMuted }}>
                     <i className="pi pi-info-circle text-2xl mb-2"></i>
-                    <p className="text-sm">Wählen Sie ein Element aus, um dessen Eigenschaften zu bearbeiten</p>
+                    <p className="text-sm">{t.formdesignerpanel2212}</p>
                   </div>
                 )}
               </div>
@@ -2224,7 +2231,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       <Dialog
         visible={createFormSetModalVisible}
         onHide={() => setCreateFormSetModalVisible(false)}
-        header="Neues FormSet erstellen"
+        header={t.formdesignerpanel2234}
         style={{ width: '500px' }}
         modal
         className="form-designer-modal"
@@ -2233,7 +2240,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Name *</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2243}</label>
             <InputText
               value={newFormSetName}
               onChange={(e) => {
@@ -2242,30 +2249,30 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 setNewFormSetName(sanitized);
               }}
               className="w-full"
-              placeholder="z.B. laravel_primereact"
+              placeholder={t.formdesignerpanel2252}
             />
             <small className="mt-1 block" style={{ color: colors.textMuted }}>
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.formdesignerpanel2255}
             </small>
           </div>
           <div>
-            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Beschreibung</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2259}</label>
             <InputTextarea
               value={newFormSetDescription}
               onChange={(e) => setNewFormSetDescription(e.target.value)}
               className="w-full"
               rows={3}
-              placeholder="Optional: Beschreibung des FormSets"
+              placeholder={t.formdesignerpanel2265}
             />
           </div>
           <div>
-            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Sichtbarkeit</label>
+            <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2269}</label>
             <Dropdown
               value={newFormSetVisibility}
               options={[
-                { value: 'private', label: 'Privat (nur ich)' },
-                { value: 'team', label: 'Team (meine Teams)' },
-                { value: 'public', label: 'Öffentlich (alle)' },
+                { value: 'private', label: t.formdesignerpanel2273 },
+                { value: 'team', label: t.formdesignerpanel2274 },
+                { value: 'public', label: t.formdesignerpanel2275 },
               ]}
               onChange={(e) => setNewFormSetVisibility(e.value)}
               optionLabel="label"
@@ -2276,12 +2283,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button
-              label="Abbrechen"
+              label={t.formdesignerpanel2286}
               className="p-button-secondary"
               onClick={() => setCreateFormSetModalVisible(false)}
             />
             <Button
-              label="Erstellen"
+              label={t.formdesignerpanel2291}
               icon="pi pi-plus"
               className="p-button-success"
               onClick={createFormSet}
@@ -2295,7 +2302,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       <Dialog
         visible={editFormSetModalVisible}
         onHide={() => setEditFormSetModalVisible(false)}
-        header="FormSet bearbeiten"
+        header={t.formdesignerpanel2305}
         style={{ width: '600px' }}
         modal
         className="form-designer-modal"
@@ -2306,7 +2313,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Name *</label>
+                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2316}</label>
                 <InputText
                   value={selectedFormSet.name}
                   onChange={(e) => {
@@ -2317,17 +2324,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   className="w-full"
                 />
                 <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                  Only lowercase letters (a-z), numbers (0-9), underscores (_)
+                  {t.formdesignerpanel2327}
                 </small>
               </div>
               <div>
-                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Sichtbarkeit</label>
+                <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2331}</label>
                 <Dropdown
                   value={selectedFormSet.visibility}
                   options={[
-                    { value: 'private', label: 'Privat' },
-                    { value: 'team', label: 'Team' },
-                    { value: 'public', label: 'Öffentlich' },
+                    { value: 'private', label: t.formdesignerpanel2335 },
+                    { value: 'team', label: t.formdesignerpanel2336 },
+                    { value: 'public', label: t.formdesignerpanel2337 },
                   ]}
                   onChange={(e) => setSelectedFormSet({ ...selectedFormSet, visibility: e.value })}
                   optionLabel="label"
@@ -2339,7 +2346,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             </div>
 
             <div>
-              <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>Beschreibung</label>
+              <label className="block text-sm mb-1" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2349}</label>
               <InputTextarea
                 value={selectedFormSet.description || ''}
                 onChange={(e) => setSelectedFormSet({ ...selectedFormSet, description: e.target.value })}
@@ -2350,14 +2357,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
             {/* Default Colors Section */}
             <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
-              <h4 className="font-semibold mb-3" style={{ color: colors.textPrimary }}>Standard-Farben</h4>
+              <h4 className="font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.formdesignerpanel2360}</h4>
               <p className="text-xs mb-3" style={{ color: colors.textMuted }}>
-                Diese Farben werden als Standard für alle Fenster verwendet, sofern nicht überschrieben.
+                {t.formdesignerpanel2362}
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Hintergrund</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2367}</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -2370,7 +2377,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: selectedFormSet.default_background_color, borderColor: colors.borderPrimary }}
                       onClick={() => document.getElementById('formset-bg-color')?.click()}
-                      title="Farbe auswählen"
+                      title={t.formdesignerpanel2380}
                     ></div>
                     <InputText
                       value={selectedFormSet.default_background_color}
@@ -2381,7 +2388,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Fensterfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2391}</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -2394,7 +2401,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: selectedFormSet.default_window_color, borderColor: colors.borderPrimary }}
                       onClick={() => document.getElementById('formset-window-color')?.click()}
-                      title="Farbe auswählen"
+                      title={t.formdesignerpanel2404}
                     ></div>
                     <InputText
                       value={selectedFormSet.default_window_color}
@@ -2405,7 +2412,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Textfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2415}</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -2418,7 +2425,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: selectedFormSet.default_text_color, borderColor: colors.borderPrimary }}
                       onClick={() => document.getElementById('formset-text-color')?.click()}
-                      title="Farbe auswählen"
+                      title={t.formdesignerpanel2428}
                     ></div>
                     <InputText
                       value={selectedFormSet.default_text_color}
@@ -2429,7 +2436,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Button-Hintergrundfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2439}</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -2442,7 +2449,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: selectedFormSet.default_button_color, borderColor: colors.borderPrimary }}
                       onClick={() => document.getElementById('formset-button-color')?.click()}
-                      title="Farbe auswählen"
+                      title={t.formdesignerpanel2452}
                     ></div>
                     <InputText
                       value={selectedFormSet.default_button_color}
@@ -2453,7 +2460,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>Button-Textfarbe</label>
+                  <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2463}</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -2466,7 +2473,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       className="w-10 h-10 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: selectedFormSet.default_button_text_color, borderColor: colors.borderPrimary }}
                       onClick={() => document.getElementById('formset-button-text-color')?.click()}
-                      title="Farbe auswählen"
+                      title={t.formdesignerpanel2476}
                     ></div>
                     <InputText
                       value={selectedFormSet.default_button_text_color}
@@ -2481,7 +2488,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
             {/* Color Preview */}
             <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
-              <h4 className="font-semibold mb-2" style={{ color: colors.textPrimary }}>Vorschau</h4>
+              <h4 className="font-semibold mb-2" style={{ color: colors.textPrimary }}>{t.formdesignerpanel2491}</h4>
               <div
                 className="formset-color-preview rounded-lg p-4"
                 style={{
@@ -2496,13 +2503,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   style={{ backgroundColor: selectedFormSet.default_window_color }}
                 >
                   <p className="text-sm mb-2 preview-text">
-                    Beispieltext in der Fensterfarbe
+                    {t.formdesignerpanel2506}
                   </p>
                   <button
                     className="px-3 py-1 rounded text-sm preview-button"
                     style={{ backgroundColor: selectedFormSet.default_button_color }}
                   >
-                    Button-Beispiel
+                    {t.formdesignerpanel2512}
                   </button>
                 </div>
               </div>
@@ -2510,13 +2517,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
             <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: colors.borderPrimary }}>
               <Button
-                label="Löschen"
+                label={t.formdesignerpanel2520}
                 icon="pi pi-trash"
                 className="p-button-danger p-button-outlined"
                 onClick={() => {
                   confirmDialog({
-                    message: `Möchten Sie das FormSet "${selectedFormSet.name}" wirklich löschen? Alle Fenster und Elemente werden ebenfalls gelöscht.`,
-                    header: 'FormSet löschen',
+                    message: `${t.formdesignerpanel2525}"${selectedFormSet.name}"${t.formdesignerpanel2525_2}`,
+                    header: t.formdesignerpanel2526,
                     icon: 'pi pi-exclamation-triangle',
                     acceptClassName: 'p-button-danger',
                     accept: async () => {
@@ -2526,7 +2533,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           headers: getAuthHeaders(),
                         });
                         if (response.ok) {
-                          showToast('success', 'Gelöscht', 'FormSet wurde gelöscht');
+                          showToast('success', t.formdesignerpanel2536, t.formdesignerpanel2536_2);
                           setEditFormSetModalVisible(false);
                           setSelectedFormSet(null);
                           setSelectedWindow(null);
@@ -2536,7 +2543,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           loadFormSets();
                         }
                       } catch {
-                        showToast('error', 'Fehler', 'Löschen fehlgeschlagen');
+                        showToast('error', t.messageError, t.formdesignerpanel2546);
                       }
                     },
                   });
@@ -2544,12 +2551,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
               />
               <div className="flex gap-2">
                 <Button
-                  label="Abbrechen"
+                  label={t.formdesignerpanel2554}
                   className="p-button-secondary"
                   onClick={() => setEditFormSetModalVisible(false)}
                 />
                 <Button
-                  label="Speichern"
+                  label={t.formdesignerpanel2559}
                   icon="pi pi-save"
                   className="p-button-success"
                   onClick={async () => {
@@ -2571,17 +2578,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       });
                       const data = await response.json();
                       if (data.success) {
-                        showToast('success', 'Gespeichert', 'FormSet wurde aktualisiert');
+                        showToast('success', t.formdesignerpanel2581, t.formdesignerpanel2581_2);
                         setEditFormSetModalVisible(false);
                         loadFormSets();
                         if (data.data) {
                           setSelectedFormSet(data.data);
                         }
                       } else {
-                        showToast('error', 'Fehler', data.error || 'Speichern fehlgeschlagen');
+                        showToast('error', t.messageError, data.error || t.formdesignerpanel2588);
                       }
                     } catch {
-                      showToast('error', 'Fehler', 'Netzwerkfehler');
+                      showToast('error', t.messageError,t.formdesignerpanel2591);
                     } finally {
                       setSaving(false);
                     }
@@ -2609,10 +2616,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           {/* Info Section */}
           <div className="text-center">
             <i className="pi pi-lock text-5xl text-yellow-400 mb-4"></i>
-            <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>Feature freischalten</h3>
+            <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>{t.formdesignerpanel2619}</h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Der Form Designer ermöglicht es Ihnen, visuelle Formular-Vorlagen für Ihre Projekte zu erstellen.
-              Gestalten Sie Fenster, Buttons, Container und mehr per Drag & Drop.
+              {t.formdesignerpanel2621}
+              {t.formdesignerpanel2622}
             </p>
           </div>
 
@@ -2621,11 +2628,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             <div className="flex items-center justify-between mb-3">
               <span style={{ color: colors.textMuted }}>Kosten:</span>
               <span className="text-xl font-bold text-blue-400">
-                {accessStatus?.unlock_cost || 50} Credits / Jahr
+                {accessStatus?.unlock_cost || 50}{t.formdesignerpanel2631}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: colors.textMuted }}>Ihre Credits:</span>
+              <span style={{ color: colors.textMuted }}>{t.formdesignerpanel2635}</span>
               <span className={`text-xl font-bold ${(accessStatus?.user_credits || 0) >= (accessStatus?.unlock_cost || 50) ? 'text-green-400' : 'text-red-400'}`}>
                 {accessStatus?.user_credits || 0} Credits
               </span>
@@ -2648,18 +2655,18 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     });
                     const data = await response.json();
                     if (data.success) {
-                      showToast('success', 'Erfolgreich', data.message || 'Form Designer freigeschaltet!');
+                      showToast('success', t.formdesignerpanel2658_2, data.message || t.formdesignerpanel2658);
                       setUnlockModalVisible(false);
                       // Refresh access status
                       await checkAccess();
                       // Open the create modal
                       setCreateFormSetModalVisible(true);
                     } else {
-                      showToast('error', 'Fehler', data.error || 'Freischaltung fehlgeschlagen');
+                      showToast('error', t.messageError, data.error || t.formdesignerpanel2665);
                     }
                   } catch (error) {
                     console.error('Unlock failed:', error);
-                    showToast('error', 'Fehler', 'Netzwerkfehler bei Freischaltung');
+                    showToast('error', t.messageError, t.formdesignerpanel2669);
                   } finally {
                     setUnlocking(false);
                   }
@@ -2667,22 +2674,22 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 loading={unlocking}
               />
               <p className="text-xs text-center" style={{ color: colors.textMuted }}>
-                Die Freischaltung gilt für 1 Jahr und kann danach verlängert werden.
+                {t.formdesignerpanel2677}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-center">
                 <p className="text-red-400 text-sm">
-                  Sie benötigen noch <strong>{(accessStatus?.unlock_cost || 50) - (accessStatus?.user_credits || 0)} Credits</strong>.
+                  {t.formdesignerpanel2684}<strong>{(accessStatus?.unlock_cost || 50) - (accessStatus?.user_credits || 0)} Credits</strong>.
                 </p>
               </div>
 
               <div className="border-t pt-4" style={{ borderColor: colors.borderPrimary }}>
-                <p className="text-sm text-center mb-3" style={{ color: colors.textMuted }}>Credits kaufen mit:</p>
+                <p className="text-sm text-center mb-3" style={{ color: colors.textMuted }}>{t.formdesignerpanel2689}</p>
                 <div className="flex gap-3">
                   <Button
-                    label="Stripe"
+                    label={t.formdesignerpanel2692}
                     icon="pi pi-credit-card"
                     className="p-button-info flex-1"
                     onClick={() => {
@@ -2691,7 +2698,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     }}
                   />
                   <Button
-                    label="PayPal"
+                    label={t.formdesignerpanel2701}
                     icon="pi pi-paypal"
                     className="p-button-warning flex-1"
                     onClick={() => {
@@ -2708,14 +2715,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           <div className="border-t pt-4 text-center" style={{ borderColor: colors.borderPrimary }}>
             <p className="text-xs" style={{ color: colors.textMuted }}>
               <i className="pi pi-star text-yellow-400 mr-1"></i>
-              Patron Monthly-Mitglieder haben kostenlosen Zugang zu allen Features.
+              {t.formdesignerpanel2718}
             </p>
           </div>
 
           {/* Cancel Button */}
           <div className="flex justify-end">
             <Button
-              label="Abbrechen"
+              label={t.formdesignerpanel2725}
               className="p-button-secondary"
               onClick={() => setUnlockModalVisible(false)}
             />

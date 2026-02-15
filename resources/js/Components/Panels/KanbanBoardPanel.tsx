@@ -371,7 +371,7 @@ interface AccessStatus {
 
 export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps) {
     const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
-    const { t: _t } = useTranslation(currentLanguage);
+    const { t: t } = useTranslation(currentLanguage);
     const toast = useToast();
     const { selectedProject } = useProject();
     const { colors } = useTheme();
@@ -466,12 +466,11 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     }
                 }
             } else {
-                toast.showError('Error', 'Failed to load Kanban board');
+                toast.showError(t.kanbanboardpanel469);
             }
         } catch (error) {
-            console.error('Error loading board:', error);
-            toast.showError('Error');
-            toast.showError('Error', 'Failed to load Kanban board');
+            console.error(t.kanbanboardpanel472, error);
+            toast.showError(t.kanbanboardpanel473);
         } finally {
             setLoading(false);
         }
@@ -492,11 +491,11 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                 const data = await response.json();
                 setAccessStatus(data);
             } else {
-                toast.showError('Fehler', 'Zugriffsstatus konnte nicht geprüft werden');
+                toast.showError(t.kanbanboardpanel494);
             }
         } catch (error) {
-            console.error('Access check failed:', error);
-            toast.showError('Fehler', 'Netzwerkfehler bei Zugriffsabfrage');
+            console.error(t.kanbanboardpanel497, error);
+            toast.showError(t.kanbanboardpanel498);
         } finally {
             setCheckingAccess(false);
         }
@@ -517,15 +516,15 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             });
             const data = await response.json();
             if (data.success) {
-                toast.showSuccess('Erfolgreich', data.message);
+                toast.showSuccess(data.message);
                 setUnlockModalVisible(false);
                 await checkAccess();
             } else {
-                toast.showError('Fehler', data.error || 'Freischaltung fehlgeschlagen');
+                toast.showError(data.error || t.kanbanboardpanel523);
             }
         } catch (error) {
-            console.error('Unlock failed:', error);
-            toast.showError('Fehler', 'Netzwerkfehler bei Freischaltung');
+            console.error(t.kanbanboardpanel526, error);
+            toast.showError(t.kanbanboardpanel527);
         } finally {
             setUnlocking(false);
         }
@@ -629,11 +628,11 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             if (!response.ok) {
                 // Revert on error
                 loadBoard();
-                toast.showError('Error', 'Failed to move card');
+                toast.showError(t.kanbanboardpanel631);
             }
         } catch (_error) {
             loadBoard();
-            toast.showError('Error', 'Failed to move card');
+            toast.showError(t.kanbanboardpanel635);
         }
     };
 
@@ -668,7 +667,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
     const saveCard = async () => {
         if (!cardForm.title.trim()) {
-            toast.showWarn('Warning', 'Please enter a title');
+            toast.showWarn(t.kanbanboardpanel670);
             return;
         }
 
@@ -697,23 +696,23 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             });
 
             if (response.ok) {
-                toast.showSuccess('Success', editingCard ? 'Card updated' : 'Card created');
+                toast.showSuccess(editingCard ? t.kanbanboardpanel699 : t.kanbanboardpanel699_2);
                 setCardDialogVisible(false);
                 loadBoard();
             } else {
                 const data = await response.json();
-                toast.showError('Error', data.message || 'Failed to save card');
+                toast.showError(data.message || t.kanbanboardpanel704);
             }
         } catch (_error) {
-            toast.showError('Error', 'Failed to save card');
+            toast.showError(t.kanbanboardpanel707);
         }
     };
 
     const deleteCard = async (cardId: number) => {
         confirmDialog({
             group: 'kanban',
-            message: 'Are you sure you want to delete this card?',
-            header: 'Confirm Delete',
+            message: t.kanbanboardpanel714,
+            header: t.kanbanboardpanel715,
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
             accept: async () => {
@@ -728,13 +727,13 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     });
 
                     if (response.ok) {
-                        toast.showSuccess('Success', 'Card deleted');
+                        toast.showSuccess(t.kanbanboardpanel730);
                         loadBoard();
                     } else {
-                        toast.showError('Error', 'Failed to delete card');
+                        toast.showError(t.kanbanboardpanel733);
                     }
                 } catch (_error) {
-                    toast.showError('Error', 'Failed to delete card');
+                    toast.showError(t.kanbanboardpanel736);
                 }
             },
         });
@@ -787,7 +786,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
     const assignMeToCard = async (cardId: number) => {
         const userId = getCurrentUserId();
         if (!userId) {
-            toast.showError('Nicht eingeloggt');
+            toast.showError(t.kanbanboardpanel789);
             return;
         }
 
@@ -804,23 +803,23 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             const data = await response.json();
 
             if (response.ok) {
-                toast.showSuccess('Karte wurde dir zugewiesen');
+                toast.showSuccess(t.kanbanboardpanel806);
                 // Update local state with returned card data
                 if (data.card) {
                     updateCardInBoard(cardId, data.card.assignees || []);
                 }
             } else {
-                toast.showError(data.message || 'Zuweisung fehlgeschlagen');
+                toast.showError(data.message || t.kanbanboardpanel812);
             }
         } catch (_error) {
-            toast.showError('Zuweisung fehlgeschlagen');
+            toast.showError(t.kanbanboardpanel815);
         }
     };
 
     const unassignMeFromCard = async (cardId: number) => {
         const userId = getCurrentUserId();
         if (!userId) {
-            toast.showError('Nicht eingeloggt');
+            toast.showError(t.kanbanboardpanel822);
             return;
         }
 
@@ -837,16 +836,16 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             const data = await response.json();
 
             if (response.ok) {
-                toast.showSuccess('Du wurdest von der Karte entfernt');
+                toast.showSuccess(t.kanbanboardpanel839);
                 // Update local state with returned card data
                 if (data.card) {
                     updateCardInBoard(cardId, data.card.assignees || []);
                 }
             } else {
-                toast.showError(data.message || 'Entfernung fehlgeschlagen');
+                toast.showError(data.message || t.kanbanboardpanel845);
             }
         } catch (_error) {
-            toast.showError('Entfernung fehlgeschlagen');
+            toast.showError(t.kanbanboardpanel848);
         }
     };
 
@@ -1003,7 +1002,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                 printWindow.print();
             };
         } else {
-            toast.showError('Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.');
+            toast.showError(t.kanbanboardpanel1005);
         }
     };
 
@@ -1024,15 +1023,15 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             });
 
             if (response.ok) {
-                toast.showSuccess(role ? 'Rolle zugewiesen' : 'Rolle entfernt');
+                toast.showSuccess(role ? t.kanbanboardpanel1026 : t.kanbanboardpanel1026_2);
                 // Reload board to get updated roles
                 loadBoard();
             } else {
                 const data = await response.json();
-                toast.showError(data.message || 'Fehler beim Setzen der Rolle');
+                toast.showError(data.message || t.kanbanboardpanel1031);
             }
         } catch (_error) {
-            toast.showError('Fehler beim Setzen der Rolle');
+            toast.showError(t.kanbanboardpanel1034);
         }
     };
 
@@ -1064,7 +1063,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
     const saveColumn = async () => {
         if (!columnForm.name.trim()) {
-            toast.showWarn('Warning', 'Please enter a column name');
+            toast.showWarn(t.kanbanboardpanel1066);
             return;
         }
 
@@ -1085,29 +1084,29 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             });
 
             if (response.ok) {
-                toast.showSuccess('Success', editingColumn ? 'Column updated' : 'Column created');
+                toast.showSuccess(editingColumn ? t.kanbanboardpanel1087 : t.kanbanboardpanel1087_2);
                 setColumnDialogVisible(false);
                 loadBoard();
             } else {
                 const data = await response.json();
-                toast.showError('Error', data.message || 'Failed to save column');
+                toast.showError(data.message || t.kanbanboardpanel1092);
             }
         } catch (_error) {
-            toast.showError('Error', 'Failed to save column');
+            toast.showError(t.kanbanboardpanel1095);
         }
     };
 
     const deleteColumn = async (columnId: number) => {
         const column = board?.columns.find(c => c.id === columnId);
         if (column && column.cards.length > 0) {
-            toast.showWarn('Warning', 'Cannot delete column with cards. Move or delete cards first.');
+            toast.showWarn(t.kanbanboardpanel1102);
             return;
         }
 
         confirmDialog({
             group: 'kanban',
-            message: 'Are you sure you want to delete this column?',
-            header: 'Confirm Delete',
+            message: t.kanbanboardpanel1108,
+            header: t.kanbanboardpanel1109,
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
             accept: async () => {
@@ -1122,13 +1121,13 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     });
 
                     if (response.ok) {
-                        toast.showSuccess('Success', 'Column deleted');
+                        toast.showSuccess(t.kanbanboardpanel1124);
                         loadBoard();
                     } else {
-                        toast.showError('Error', 'Failed to delete column');
+                        toast.showError(t.kanbanboardpanel1127);
                     }
                 } catch (_error) {
-                    toast.showError('Error', 'Failed to delete column');
+                    toast.showError(t.kanbanboardpanel1130);
                 }
             },
         });
@@ -1149,7 +1148,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         return (
             <div className="kanban-panel-loading" style={{ color: colors.textSecondary }}>
                 <ProgressSpinner style={{ width: '50px', height: '50px' }} />
-                <p>Prüfe Zugang...</p>
+                <p>{t.kanbanboardpanel1152}</p>
             </div>
         );
     }
@@ -1163,39 +1162,39 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                         <div className="kanban-unlock-icon">
                             <i className="pi pi-lock" style={{ fontSize: '4rem', color: colors.textMuted }} />
                         </div>
-                        <h2 style={{ color: colors.textPrimary }}>Kanban Board freischalten</h2>
+                        <h2 style={{ color: colors.textPrimary }}>{t.kanbanboardpanel1166}</h2>
                         <p className="kanban-unlock-description" style={{ color: colors.textSecondary }}>
-                            Das Kanban Board hilft Ihnen, Ihre Projektaufgaben visuell zu organisieren.
-                            Erstellen Sie Spalten, Karten und verfolgen Sie den Fortschritt Ihrer Arbeit.
+                            {t.kanbanboardpanel1168}
+                            {t.kanbanboardpanel1169}
                         </p>
 
                         <div className="kanban-unlock-features">
                             <div className="kanban-feature" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-th-large" style={{ color: colors.accent }} />
-                                <span>Drag & Drop Karten</span>
+                                <span>{t.kanbanboardpanel1175}</span>
                             </div>
                             <div className="kanban-feature" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-tags" style={{ color: colors.accent }} />
-                                <span>Labels & Prioritäten</span>
+                                <span>{t.kanbanboardpanel1179}</span>
                             </div>
                             <div className="kanban-feature" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-calendar" style={{ color: colors.accent }} />
-                                <span>Fälligkeitsdaten</span>
+                                <span>{t.kanbanboardpanel1183}</span>
                             </div>
                             <div className="kanban-feature" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-users" style={{ color: colors.accent }} />
-                                <span>Zuweisung an Team</span>
+                                <span>{t.kanbanboardpanel1187}</span>
                             </div>
                         </div>
 
                         <div className="kanban-unlock-price">
                             <span className="price-amount" style={{ color: colors.accent }}>{accessStatus?.unlock_cost || 50}</span>
                             <span className="price-label" style={{ color: colors.textSecondary }}>Credits</span>
-                            <span className="price-duration" style={{ color: colors.textMuted }}>/ 1 Jahr</span>
+                            <span className="price-duration" style={{ color: colors.textMuted }}>{t.kanbanboardpanel1194}</span>
                         </div>
 
                         <div className="kanban-unlock-credits" style={{ color: colors.textSecondary }}>
-                            <span>Ihr Guthaben: </span>
+                            <span>{t.kanbanboardpanel1198}</span>
                             <strong style={{ color: colors.textPrimary }}>{accessStatus?.user_credits || 0} Credits</strong>
                         </div>
 
@@ -1210,7 +1209,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                         {(accessStatus?.user_credits || 0) < (accessStatus?.unlock_cost || 50) && (
                             <p className="kanban-unlock-notice" style={{ color: colors.warningText }}>
                                 <i className="pi pi-info-circle" />
-                                Sie benötigen mindestens {accessStatus?.unlock_cost || 50} Credits
+                                {t.kanbanboardpanel1213}{accessStatus?.unlock_cost || 50} Credits
                             </p>
                         )}
                     </div>
@@ -1291,7 +1290,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         return (
             <div className="kanban-panel-empty" style={{ backgroundColor: colors.bgPrimary, color: colors.textMuted }}>
                 <i className="pi pi-inbox" style={{ fontSize: '3rem', color: colors.textMuted }} />
-                <p>Please select a project to view its Kanban board</p>
+                <p>{t.kanbanboardpanel1294}</p>
             </div>
         );
     }
@@ -1300,7 +1299,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         return (
             <div className="kanban-panel-loading" style={{ backgroundColor: colors.bgPrimary, color: colors.textSecondary }}>
                 <ProgressSpinner style={{ width: '50px', height: '50px' }} />
-                <p>Loading Kanban board...</p>
+                <p>{t.kanbanboardpanel1303}</p>
             </div>
         );
     }
@@ -1314,14 +1313,14 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                 <div className="kanban-conflict-warning" style={{ backgroundColor: colors.warningBg, borderColor: colors.warningBorder, color: colors.warningText }}>
                     <i className="pi pi-exclamation-triangle" />
                     <span>
-                        <strong>Kürzel-Konflikt:</strong> Die folgenden Team-Mitglieder haben identische Kürzel:{' '}
+                        <strong>{t.kanbanboardpanel1317}</strong>{t.kanbanboardpanel1317_2}{' '}
                         {initialsConflicts.map((c, i) => (
                             <span key={c.initials}>
                                 {i > 0 && ', '}
                                 <strong>{c.initials}</strong> ({c.users.join(', ')})
                             </span>
                         ))}
-                        . Bitte im Profil individuelle Kürzel setzen.
+                        {t.kanbanboardpanel1324}
                     </span>
                 </div>
             )}
@@ -1335,22 +1334,22 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     {isProjectOwner() && (
                         <Button
                             icon="pi pi-users"
-                            label="Rollen"
+                            label={t.kanbanboardpanel1338}
                             className="p-button-outlined p-button-sm p-button-help"
                             onClick={() => setRolesDialogVisible(true)}
-                            tooltip="Team-Rollen verwalten"
+                            tooltip={t.kanbanboardpanel1341}
                         />
                     )}
                     <Button
                         icon="pi pi-file-pdf"
-                        label="PDF Export"
+                        label={t.kanbanboardpanel1346}
                         className="p-button-outlined p-button-sm p-button-secondary"
                         onClick={exportAsPDF}
-                        tooltip="Board als PDF exportieren"
+                        tooltip={t.kanbanboardpanel1349}
                     />
                     <Button
                         icon="pi pi-plus"
-                        label="Add Column"
+                        label={t.kanbanboardpanel1353}
                         className="p-button-outlined p-button-sm"
                         onClick={openNewColumnDialog}
                     />
@@ -1358,7 +1357,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                         icon="pi pi-refresh"
                         className="p-button-text p-button-sm"
                         onClick={loadBoard}
-                        tooltip="Refresh"
+                        tooltip={t.kanbanboardpanel1361}
                     />
                 </div>
             </div>
@@ -1382,7 +1381,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                     <span>{column.name}</span>
                                     <span className="kanban-column-count">{column.cards.length}</span>
                                     {column.wip_limit && (
-                                        <span className={`kanban-column-wip ${column.cards.length >= column.wip_limit ? 'limit-reached' : ''}`}>
+                                        <span className={`kanban-column-wip ${column.cards.length >= column.wip_limit ? t.kanbanboardpanel1385 : ''}`}>
                                             / {column.wip_limit}
                                         </span>
                                     )}
@@ -1391,21 +1390,21 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                     <button
                                         className="kanban-column-action"
                                         onClick={() => openNewCardDialog(column.id)}
-                                        title="Add Card"
+                                        title={t.kanbanboardpanel1394}
                                     >
                                         <i className="pi pi-plus" />
                                     </button>
                                     <button
                                         className="kanban-column-action"
                                         onClick={() => openEditColumnDialog(column)}
-                                        title="Edit Column"
+                                        title={t.kanbanboardpanel1401}
                                     >
                                         <i className="pi pi-cog" />
                                     </button>
                                     <button
                                         className="kanban-column-action delete"
                                         onClick={() => deleteColumn(column.id)}
-                                        title="Delete Column"
+                                        title={t.kanbanboardpanel1408}
                                     >
                                         <i className="pi pi-trash" />
                                     </button>
@@ -1433,7 +1432,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
                                 {column.cards.length === 0 && (
                                     <div className="kanban-column-empty">
-                                        Drop cards here
+                                        {t.kanbanboardpanel1436}
                                     </div>
                                 )}
                             </DroppableColumn>
@@ -1448,7 +1447,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
             {/* Card Dialog */}
             <Dialog
-                header={editingCard ? 'Edit Card' : 'New Card'}
+                header={editingCard ? t.kanbanboardpanel1451 : t.kanbanboardpanel1451_2}
                 visible={cardDialogVisible}
                 onHide={() => setCardDialogVisible(false)}
                 style={{ width: '500px' }}
@@ -1457,13 +1456,13 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                 footer={
                     <div>
                         <Button
-                            label="Cancel"
+                            label={t.kanbanboardpanel1460}
                             icon="pi pi-times"
                             className="p-button-text"
                             onClick={() => setCardDialogVisible(false)}
                         />
                         <Button
-                            label="Save"
+                            label={t.kanbanboardpanel1466}
                             icon="pi pi-check"
                             onClick={saveCard}
                         />
@@ -1477,7 +1476,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                             id="card-title"
                             value={cardForm.title}
                             onChange={(e) => setCardForm({ ...cardForm, title: e.target.value })}
-                            placeholder="Enter card title"
+                            placeholder={t.kanbanboardpanel1480}
                             autoFocus
                         />
                     </div>
@@ -1489,7 +1488,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                             value={cardForm.description}
                             onChange={(e) => setCardForm({ ...cardForm, description: e.target.value })}
                             rows={3}
-                            placeholder="Enter description"
+                            placeholder={t.kanbanboardpanel1492}
                         />
                     </div>
 
@@ -1522,7 +1521,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
                     {board?.labels && board.labels.length > 0 && (
                         <div className="field">
-                            <label>Labels</label>
+                            <label>{t.kanbanboardpanel1525}</label>
                             <div className="kanban-label-picker">
                                 {board.labels.map(label => (
                                     <button
@@ -1555,13 +1554,13 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                 footer={
                     <div>
                         <Button
-                            label="Cancel"
+                            label={t.kanbanboardpanel1558}
                             icon="pi pi-times"
                             className="p-button-text"
                             onClick={() => setColumnDialogVisible(false)}
                         />
                         <Button
-                            label="Save"
+                            label={t.kanbanboardpanel1564}
                             icon="pi pi-check"
                             onClick={saveColumn}
                         />
@@ -1575,7 +1574,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                             id="column-name"
                             value={columnForm.name}
                             onChange={(e) => setColumnForm({ ...columnForm, name: e.target.value })}
-                            placeholder="Column name"
+                            placeholder={t.kanbanboardpanel1578}
                             autoFocus
                         />
                     </div>
@@ -1599,7 +1598,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     </div>
 
                     <div className="field">
-                        <label htmlFor="column-wip">WIP Limit (optional)</label>
+                        <label htmlFor="column-wip">{t.kanbanboardpanel1602}</label>
                         <InputText
                             id="column-wip"
                             type="number"
@@ -1608,17 +1607,17 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                 ...columnForm,
                                 wip_limit: e.target.value ? parseInt(e.target.value) : null
                             })}
-                            placeholder="Max cards in column"
+                            placeholder={t.kanbanboardpanel1611}
                             min={1}
                         />
-                        <small className="p-text-muted">Leave empty for no limit</small>
+                        <small className="p-text-muted">{t.kanbanboardpanel1614}</small>
                     </div>
                 </div>
             </Dialog>
 
             {/* Roles Management Dialog */}
             <Dialog
-                header="Team-Rollen verwalten"
+                header={t.kanbanboardpanel1621}
                 visible={rolesDialogVisible}
                 onHide={() => setRolesDialogVisible(false)}
                 style={{ width: '550px' }}
@@ -1628,7 +1627,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             >
                 <div className="kanban-roles-info">
                     <p style={{ color: colors.textSecondary, marginBottom: '1rem', fontSize: '0.875rem' }}>
-                        Weisen Sie Team-Mitgliedern Kanban-Rollen zu. Rollen werden als Badge auf dem Avatar angezeigt.
+                        {t.kanbanboardpanel1631}
                     </p>
                 </div>
                 <div className="kanban-roles-list">
@@ -1653,7 +1652,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                 <Dropdown
                                     value={member.kanban_role || 'none'}
                                     options={[
-                                        { label: 'Keine Rolle', value: 'none' },
+                                        { label: t.kanbanboardpanel1656, value: 'none' },
                                         ...availableRoles.map(r => ({
                                             label: `${r.short} - ${r.label}`,
                                             value: r.value,
@@ -1666,7 +1665,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                         const roleValue = e.value === 'none' ? null : e.value;
                                         setUserRole(member.id, roleValue);
                                     }}
-                                    placeholder="Rolle wählen"
+                                    placeholder={t.kanbanboardpanel1669}
                                     style={{ width: '180px' }}
                                 />
                             </div>
@@ -1674,7 +1673,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     ))}
                 </div>
                 <div className="kanban-roles-legend" style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: `1px solid ${colors.borderPrimary}` }}>
-                    <p style={{ color: colors.textMuted, fontSize: '0.75rem', marginBottom: '0.5rem' }}>Verfügbare Rollen:</p>
+                    <p style={{ color: colors.textMuted, fontSize: '0.75rem', marginBottom: '0.5rem' }}>{t.kanbanboardpanel1677}</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                         {availableRoles.map((role) => (
                             <div

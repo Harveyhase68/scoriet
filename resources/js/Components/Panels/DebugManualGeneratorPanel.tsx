@@ -249,6 +249,7 @@ interface Template {
   id: number;
   name: string;
   description: string;
+  is_active?: boolean;
 }
 
 interface TemplateFile {
@@ -441,7 +442,7 @@ export default function DebugManualGeneratorPanel({
         }
 
         // Filter out inactive templates (is_active = false means template has schadcode or is disabled)
-        const activeTemplates = templatesArray.filter((t: Template) => t.is_active !== false);
+        const activeTemplates = templatesArray.filter((m: Template) => m.is_active !== false);
 
         setTemplates(activeTemplates);
 
@@ -896,7 +897,7 @@ export default function DebugManualGeneratorPanel({
     if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
       // Check if the template exists in the loaded templates
       // Try both number and string comparison in case of type mismatch
-      const templateExists = templates.some(t => t.id === preSelectedTemplateId || t.id == preSelectedTemplateId);
+      const templateExists = templates.some(tpl => tpl.id === preSelectedTemplateId || tpl.id == preSelectedTemplateId);
       if (templateExists) {
         setTimeout(() => {
           setSelectedTemplate(preSelectedTemplateId);
@@ -1497,7 +1498,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
   const handleUnlockEditor = () => {
     if (!editorUnlocked) {
       // Generate starter template code
-      const selectedTableData = schemaTables.find(t => t.id === selectedTable);
+      const selectedTableData = selectedTable !== null ? schemaTables[selectedTable] : undefined;
       const tableName = selectedTableData?.tablename || 'table';
       const fileName = getSelectedFileName() || 'file';
       const languageCode = selectedLanguage || 'en';
@@ -1531,9 +1532,9 @@ function ${functionName}() {
   };
 
   // Dropdown Options
-  const templateOptions = Array.isArray(templates) ? templates.map(t => ({
-    label: `${t.id}: ${t.name}`,
-    value: t.id
+  const templateOptions = Array.isArray(templates) ? templates.map(tpl => ({
+    label: `${tpl.id}: ${tpl.name}`,
+    value: tpl.id
   })) : [];
 
   const fileOptions = Array.isArray(templateFiles) ? templateFiles

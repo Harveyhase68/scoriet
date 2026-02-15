@@ -84,7 +84,7 @@ class CliSubscriptionController extends Controller
         if ($user->user_type === 'patron') {
             return response()->json([
                 'success' => false,
-                'error' => 'Als Patron haben Sie bereits unbegrenzten Zugang.',
+                'error' => __('clisubscriptioncontrollerphp87'),
             ], 400);
         }
 
@@ -169,7 +169,7 @@ class CliSubscriptionController extends Controller
         if ($actualCost > 0 && $user->credits < $actualCost) {
             return response()->json([
                 'success' => false,
-                'error' => "Nicht genug Credits. Benötigt: {$actualCost}, Vorhanden: {$user->credits}",
+                'error' => __('clisubscriptioncontrollerphp172') . "{$actualCost}" . __('clisubscriptioncontrollerphp172_2') . "{$user->credits}",
                 'required' => $actualCost,
                 'available' => $user->credits,
             ], 400);
@@ -203,9 +203,9 @@ class CliSubscriptionController extends Controller
                     'amount' => -$actualCost,
                     'type' => 'cli_unlock',
                     'description' => match ($type) {
-                        'cli' => 'CLI Tool freigeschaltet (1 Jahr)',
-                        'service' => 'Service freigeschaltet (1 Jahr)',
-                        'bundle' => 'CLI + Service Bundle freigeschaltet (1 Jahr)',
+                        'cli' => __('clisubscriptioncontrollerphp206'),
+                        'service' => __('clisubscriptioncontrollerphp207'),
+                        'bundle' => __('clisubscriptioncontrollerphp208'),
                     },
                     'reference_type' => 'Subscription',
                     'reference_id' => $subscription->id,
@@ -231,11 +231,11 @@ class CliSubscriptionController extends Controller
         });
 
         $message = match ($type) {
-            'cli' => 'CLI Tool erfolgreich freigeschaltet!',
-            'service' => 'Service erfolgreich freigeschaltet!',
+            'cli' => __('clisubscriptioncontrollerphp234'),
+            'service' => __('clisubscriptioncontrollerphp235'),
             'bundle' => $refundAmount > 0
-                ? "CLI + Service Bundle freigeschaltet! {$refundAmount} Credits wurden gutgeschrieben."
-                : 'CLI + Service Bundle erfolgreich freigeschaltet!',
+                ? __('clisubscriptioncontrollerphp237'). "{$refundAmount}" . __('clisubscriptioncontrollerphp237_2')
+                : __('clisubscriptioncontrollerphp238'),
         };
 
         return response()->json([
@@ -255,7 +255,7 @@ class CliSubscriptionController extends Controller
         if ($user->credits < $cost) {
             return response()->json([
                 'success' => false,
-                'error' => "Nicht genug Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'error' => __('clisubscriptioncontrollerphp258') . "{$cost}" . __('clisubscriptioncontrollerphp258_2') . "{$user->credits}",
                 'required' => $cost,
                 'available' => $user->credits,
             ], 400);
@@ -272,7 +272,7 @@ class CliSubscriptionController extends Controller
                 'user_id' => $user->id,
                 'amount' => -$cost,
                 'type' => 'cli_extend',
-                'description' => "{$name} um 1 Jahr verlängert",
+                'description' => "{$name}" . __('clisubscriptioncontrollerphp275'),
                 'reference_type' => 'Subscription',
                 'reference_id' => $subscription->id,
             ]);
@@ -280,7 +280,7 @@ class CliSubscriptionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "{$name} um 1 Jahr verlängert!",
+            'message' => "{$name}" . __('clisubscriptioncontrollerphp283'),
             'subscription' => $subscription->fresh(),
             'new_credits' => $user->fresh()->credits,
         ]);

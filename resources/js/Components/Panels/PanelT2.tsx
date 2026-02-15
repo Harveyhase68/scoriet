@@ -58,9 +58,11 @@ interface SchemaVersionExtended {
   version_number?: number;
   description?: string;
   imported_at?: string;
+  created_at?: string;
   display_name?: string;
   has_unsaved_changes?: boolean;
   tables_count?: number;
+  tables?: unknown[];
 }
 
 interface DatabaseNodeData {
@@ -93,14 +95,13 @@ interface DatabaseNodeProps {
   selected: boolean;
 }
 
-const TabContent: React.FC<TabContentProps> = ({ children, style = {}, ...rest }) => {
+const TabContent: React.FC<TabContentProps> = ({ children, style = {} }) => {
   const ref = useRef<HTMLDivElement>(null);
   const { colors } = useTheme();
   const setFocus = () => ref.current?.focus();
 
   return (
     <div
-      {...rest}
       ref={ref}
       tabIndex={-1}
       style={{
@@ -676,7 +677,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         throw new Error(`Failed to load schema versions: ${response.statusText}`);
       }
 
-      const versions = await response.json();
+      const versions: SchemaVersionExtended[] = await response.json();
       setSchemaVersions(versions);
 
       // Auto-select latest version or clear if no versions
@@ -903,11 +904,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     // Only handle FK edges
     if (edge.data && edge.data.constraintId) {
+      const edgeData = edge.data as { constraintId: number; constraintName: string; sourceTable: string; targetTable: string };
       setSelectedFK({
-        constraintId: edge.data.constraintId,
-        constraintName: edge.data.constraintName,
-        sourceTable: edge.data.sourceTable,
-        targetTable: edge.data.targetTable,
+        constraintId: edgeData.constraintId,
+        constraintName: edgeData.constraintName,
+        sourceTable: edgeData.sourceTable,
+        targetTable: edgeData.targetTable,
       });
       setShowFKActionMenu(true);
     }
@@ -2486,7 +2488,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || loadingFKSuggestions || !selectedSchema || !selectedVersion}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title="FK Vorschläge anzeigen"
+              title={t.panelt22489}
             >
               {loadingFKSuggestions ? <i className="pi pi-spin pi-spinner"></i> : <i className="pi pi-lightbulb"></i>}
             </button>
@@ -2525,7 +2527,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         </div>
 
         {/* Error Display */}
-        {error && (
+        {error ? (
           <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.errorBg, borderBottom: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
             <div className="flex items-center">
               <span className="mr-2">⚠️</span>
@@ -2539,7 +2541,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               </button>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Loading State */}
         {loading && (
@@ -2745,31 +2747,34 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         </div>
 
         {/* Table Info Panel */}
-        {selectedNode && selectedNode.data.tableName && (
+        {selectedNode && (selectedNode.data as { tableName?: string }).tableName ? (() => {
+          const nodeData = selectedNode.data as { tableName: string; fields?: { isPrimary: boolean }[]; constraints?: unknown[] };
+          return (
           <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.bgTertiary, borderTop: `1px solid ${colors.borderPrimary}` }}>
             <h5 className="font-medium mb-2" style={{ color: colors.accent }}>🔍 Table Details</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span style={{ color: colors.textMuted }}>Table:</span>
-                <span className="ml-2 font-mono" style={{ color: colors.textPrimary }}>{selectedNode.data.tableName}</span>
+                <span className="ml-2 font-mono" style={{ color: colors.textPrimary }}>{nodeData.tableName}</span>
               </div>
               <div>
                 <span style={{ color: colors.textMuted }}>Fields:</span>
-                <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedNode.data.fields?.length || 0}</span>
+                <span className="ml-2" style={{ color: colors.textPrimary }}>{nodeData.fields?.length || 0}</span>
               </div>
               <div>
                 <span style={{ color: colors.textMuted }}>Constraints:</span>
-                <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedNode.data.constraints?.length || 0}</span>
+                <span className="ml-2" style={{ color: colors.textPrimary }}>{nodeData.constraints?.length || 0}</span>
               </div>
               <div>
                 <span style={{ color: colors.textMuted }}>Primary Keys:</span>
                 <span className="ml-2" style={{ color: colors.warningText }}>
-                  {selectedNode.data.fields?.filter((f: { isPrimary: boolean }) => f.isPrimary).length || 0}
+                  {nodeData.fields?.filter((f) => f.isPrimary).length || 0}
                 </span>
               </div>
             </div>
           </div>
-        )}
+          );
+        })() : null}
       </div>
 
       {/* SQL Import Modal */}
@@ -3064,7 +3069,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-lightbulb mr-2" style={{ color: colors.warningText }}></i>
-                FK Vorschläge ({fkSuggestions.length})
+                {t.panelt23067}({fkSuggestions.length})
               </h3>
               <button
                 onClick={() => setShowFKSuggestionsModal(false)}
@@ -3197,7 +3202,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         const selectedSourceField = createFKSourceFieldId
           ? sourceTableFields.find(f => f.id === createFKSourceFieldId)
           : null;
-        const sourceFieldIsNotNull = selectedSourceField && !selectedSourceField.is_nullable;
+        const sourceFieldIsNotNull = !!(selectedSourceField && !selectedSourceField.is_nullable);
 
         return (
           <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>

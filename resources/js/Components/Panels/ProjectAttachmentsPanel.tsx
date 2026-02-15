@@ -86,7 +86,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
     // i18n setup
     const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-    const { t: _t } = useTranslation(currentLanguage);
+    const { t: t } = useTranslation(currentLanguage);
     const toast = useToast();
 
     // Project context
@@ -432,7 +432,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 {uploading && (
                     <div className="flex items-center gap-2" style={{ color: colors.accent }}>
                         <i className="pi pi-spin pi-spinner"></i>
-                        <span>Wird hochgeladen...</span>
+                        <span>{t.projectattachmentspanel435}</span>
                     </div>
                 )}
 
@@ -480,27 +480,27 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     loading={loading}
                     scrollable
                     scrollHeight="flex"
-                    emptyMessage="Keine Anhänge vorhanden"
+                    emptyMessage={t.projectattachmentspanel483}
                     className="p-datatable-sm"
                     rowClassName={(data) => data.is_pinned ? 'bg-yellow-900/20' : ''}
                 >
                     <Column
                         field="original_filename"
-                        header="Dateiname"
+                        header={t.projectattachmentspanel489}
                         body={filenameTemplate}
                         sortable
                         style={{ minWidth: '250px' }}
                     />
                     <Column
                         field="category"
-                        header="Kategorie"
+                        header={t.projectattachmentspanel496}
                         body={categoryTemplate}
                         sortable
                         style={{ width: '150px' }}
                     />
                     <Column
                         field="description"
-                        header="Beschreibung"
+                        header={t.projectattachmentspanel503}
                         style={{ minWidth: '200px' }}
                         body={(rowData) => (
                             <span className="text-sm" style={{ color: colors.textSecondary }}>
@@ -510,13 +510,13 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     />
                     <Column
                         field="uploader.name"
-                        header="Hochgeladen von"
+                        header={t.projectattachmentspanel513}
                         body={uploaderTemplate}
                         style={{ width: '150px' }}
                     />
                     <Column
                         field="created_at"
-                        header="Datum"
+                        header={t.projectattachmentspanel519}
                         body={dateTemplate}
                         sortable
                         style={{ width: '100px' }}

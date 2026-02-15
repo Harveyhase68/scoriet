@@ -34,7 +34,8 @@ export default function LoginModal({
   });
 
   // 🎯 Helper: Get demo URL based on environment (local vs production)
-  const getDemoUrl = (userType: 'demo-admin' | 'demo-user'): string => {
+  // Note: Only demo-user is available (no admin access in demo mode)
+  const getDemoUrl = (userType: 'demo-user'): string => {
     const hostname = window.location.hostname;
     const isLocalDev = hostname === 'localhost' ||
                        hostname === '127.0.0.1' ||
@@ -74,8 +75,10 @@ export default function LoginModal({
                      window.location.hostname === 'demo.scoriet.local' ||
                      import.meta.env.VITE_SCORIET_DEMO === 'true';
 
-  // Check if demo users section should be shown (can be disabled via .env)
-  const showDemoUsers = import.meta.env.VITE_SHOW_DEMO_USERS !== 'false';
+  // Check if demo users section should be shown
+  // In demo mode: ALWAYS show demo buttons (otherwise the form would be empty)
+  // Outside demo mode: can be disabled via VITE_SHOW_DEMO_USERS=false in .env
+  const showDemoUsers = isDemoMode || import.meta.env.VITE_SHOW_DEMO_USERS !== 'false';
 
   // Listen for language changes
   useEffect(() => {
@@ -95,14 +98,17 @@ export default function LoginModal({
     setLoading(true);
     setError('');
 
-    // Check for demo users and redirect
-    if (formData.email === 'demo-admin' || formData.email === 'demo-user') {
-      // Redirect to demo subdomain with user type
-      if (window.location.hostname === 'scoriet.local') {
-        window.location.href = `https://demo.scoriet.dev/demo-login?user=${formData.email}`;
-      } else {
-        window.location.href = `https://demo.scoriet.local/demo-login?user=${formData.email}`;
-      }
+    // Check for demo user and redirect (only demo-user allowed, no admin)
+    if (formData.email === 'demo-user') {
+      // Redirect to demo subdomain
+      const hostname = window.location.hostname;
+      const isLocalDev = hostname === 'localhost' ||
+                         hostname === '127.0.0.1' ||
+                         hostname.includes('.local') ||
+                         hostname.startsWith('10.') ||
+                         hostname.startsWith('192.168.');
+      const demoHost = isLocalDev ? 'http://demo.scoriet.local' : 'https://demo.scoriet.dev';
+      window.location.href = `${demoHost}/demo-login?user=demo-user`;
       return;
     }
 
@@ -422,18 +428,7 @@ export default function LoginModal({
             <div className="space-y-2">
               <button
                 type="button"
-                className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
-                onClick={() => window.location.href = getDemoUrl('demo-admin')}
-                disabled={loading}
-              >
-                <strong className="text-blue-800">demo-admin</strong>
-                <span className="text-blue-600 text-sm ml-2">
-               {t. LoginDemoAdmin}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="w-full bg-white p-2 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
+                className="w-full bg-white p-3 rounded border border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer text-left"
                 onClick={() => window.location.href = getDemoUrl('demo-user')}
                 disabled={loading}
               >
@@ -461,7 +456,7 @@ export default function LoginModal({
                 type="text"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? 'demo-admin or demo-user' : t.LoginEmailOrUserNameHint}
+                placeholder={formData.email === 'demo-user' ? 'demo-user' : t.LoginEmailOrUserNameHint}
                 className="w-full"
                 disabled={loading}
                 required
@@ -477,14 +472,14 @@ export default function LoginModal({
                 inputId="login-password-input"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                placeholder={formData.email === 'demo-admin' || formData.email === 'demo-user' ? t.loginmodal317 : t.LoginPassword}
+                placeholder={formData.email === 'demo-user' ? t.loginmodal317 : t.LoginPassword}
                 className="w-full"
                 inputClassName="w-full"
                 disabled={loading}
                 feedback={false}
                 toggleMask
                 autoComplete="current-password"
-                required={formData.email !== 'demo-admin' && formData.email !== 'demo-user'}
+                required={formData.email !== 'demo-user'}
               />
             </div>
 

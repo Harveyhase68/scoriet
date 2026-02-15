@@ -6,6 +6,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { ProgressBar } from 'primereact/progressbar';
 import { Message } from 'primereact/message';
 import { Checkbox } from 'primereact/checkbox';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface GitSettings {
     provider_id: number | null;
@@ -47,6 +48,8 @@ export default function GitPushModal({
     const [progress, setProgress] = useState(0);
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState('');
+    const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+    const { t: t } = useTranslation(currentLanguage);
 
     // Editable fields
     const [branchName, setBranchName] = useState('');
@@ -72,20 +75,20 @@ export default function GitPushModal({
             const defaultBranch = gitSettings.default_branch || `scoriet/${timestamp}`;
 
             setBranchName(defaultBranch);
-            setCommitMessage(`[Scoriet] Code generation - ${new Date().toLocaleString('de-DE')}`);
+            setCommitMessage(`${t.gitpushmodal78}${new Date().toLocaleString('de-DE')}`);
 
             // PR settings based on workflow
             setCreatePr(gitSettings.workflow !== 'push_only');
             setAutoMerge(gitSettings.workflow === 'push_pr_merge');
 
             // PR title and description
-            const title = (gitSettings.pr_title_template || '[Scoriet] Code-Generierung {timestamp}')
+            const title = (gitSettings.pr_title_template || `${t.gitpushmodal85}{timestamp}`)
                 .replace('{timestamp}', new Date().toLocaleString('de-DE'))
                 .replace('{project_name}', projectName);
             setPrTitle(title);
 
             const description = (gitSettings.pr_description_template ||
-                'Automatisch generierter Code von Scoriet.\n\nGeneriert am: {timestamp}\nProjekt: {project_name}')
+                `${t.gitpushmodal91}\n\n${t.gitpushmodal91_2}{timestamp}\n${t.gitpushmodal91_3}{project_name}`)
                 .replace('{timestamp}', new Date().toLocaleString('de-DE'))
                 .replace('{project_name}', projectName);
             setPrDescription(description);
@@ -100,7 +103,7 @@ export default function GitPushModal({
 
     const handlePush = async () => {
         if (!archiveBlob || !gitSettings?.provider_id) {
-            setError('Kein Archiv oder Git-Provider verfügbar');
+            setError(t.gitpushmodal106);
             return;
         }
 
@@ -111,7 +114,7 @@ export default function GitPushModal({
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
-                throw new Error('Nicht authentifiziert');
+                throw new Error(t.gitpushmodal114);
             }
 
             // Prepare form data
@@ -132,7 +135,7 @@ export default function GitPushModal({
             }
 
             setProgress(10);
-            setStatusMessage('Verbindung zum Git-Server wird hergestellt...');
+            setStatusMessage(t.gitpushmodal138);
 
             // Call push API
             const response = await fetch(`/api/git/${gitSettings.provider}/push`, {
@@ -145,16 +148,16 @@ export default function GitPushModal({
             });
 
             setProgress(50);
-            setStatusMessage('Dateien werden gepusht...');
+            setStatusMessage(t.gitpushmodal151);
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Push fehlgeschlagen');
+                throw new Error(errorData.error || t.gitpushmodal155);
             }
 
             const result = await response.json();
             setProgress(100);
-            setStatusMessage('Push erfolgreich!');
+            setStatusMessage(t.gitpushmodal160);
             setPushResult(result);
             setStep('success');
 
@@ -163,7 +166,7 @@ export default function GitPushModal({
             }
 
         } catch (err: any) {
-            setError(err.message || 'Ein unbekannter Fehler ist aufgetreten');
+            setError(err.message || t.gitpushmodal169);
             setStep('error');
         }
     };
@@ -178,17 +181,17 @@ export default function GitPushModal({
 
     const getWorkflowDescription = () => {
         if (autoMerge) {
-            return 'Push + Pull Request + Auto-Merge';
+            return t.gitpushmodal184;
         } else if (createPr) {
-            return 'Push + Pull Request erstellen';
+            return t.gitpushmodal186;
         }
-        return 'Nur Push (kein PR)';
+        return t.gitpushmodal188;
     };
 
     if (!gitSettings?.is_configured) {
         return (
             <Dialog
-                header="Git Push"
+                header={t.gitpushmodal194}
                 visible={visible}
                 onHide={handleClose}
                 style={{ width: '500px' }}
@@ -197,11 +200,11 @@ export default function GitPushModal({
             >
                 <Message
                     severity="warn"
-                    text="Git-Integration ist für dieses Projekt nicht konfiguriert. Bitte konfigurieren Sie zuerst die Git-Einstellungen in den Projekt-Einstellungen."
+                    text={t.gitpushmodal203}
                     className="w-full"
                 />
                 <div className="flex justify-end mt-4">
-                    <Button label="Schließen" icon="pi pi-times" onClick={handleClose} />
+                    <Button label={t.gitpushmodal207} icon="pi pi-times" onClick={handleClose} />
                 </div>
             </Dialog>
         );
@@ -210,10 +213,10 @@ export default function GitPushModal({
     return (
         <Dialog
             header={
-                step === 'confirm' ? 'Code zu Git pushen' :
-                step === 'pushing' ? 'Push wird ausgeführt...' :
-                step === 'success' ? 'Push erfolgreich!' :
-                'Push fehlgeschlagen'
+                step === 'confirm' ? t.gitpushmodal216 :
+                step === 'pushing' ? t.gitpushmodal217 :
+                step === 'success' ? t.gitpushmodal218 :
+                t.gitpushmodal219
             }
             visible={visible}
             onHide={handleClose}
@@ -230,12 +233,12 @@ export default function GitPushModal({
                         {/* Git Info Summary */}
                         <div className="p-3 bg-gray-800 border border-gray-700 rounded">
                             <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div className="text-gray-400">Provider:</div>
+                                <div className="text-gray-400">{t.gitpushmodal236}</div>
                                 <div className="text-white font-medium">
                                     <i className={`pi pi-${gitSettings.provider === 'github' ? 'github' : 'gitlab'} mr-2`}></i>
                                     {gitSettings.provider_username}
                                 </div>
-                                <div className="text-gray-400">Repository:</div>
+                                <div className="text-gray-400">{t.gitpushmodal241}</div>
                                 <div className="text-white font-medium">{gitSettings.repository}</div>
                             </div>
                         </div>
@@ -243,7 +246,7 @@ export default function GitPushModal({
                         {/* Branch */}
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                <i className="pi pi-code-branch mr-2"></i>Branch
+                                <i className="pi pi-code-branch mr-2"></i>{t.gitpushmodal249}
                             </label>
                             <InputText
                                 value={branchName}
@@ -256,7 +259,7 @@ export default function GitPushModal({
                         {/* Commit Message */}
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                <i className="pi pi-comment mr-2"></i>Commit-Nachricht
+                                <i className="pi pi-comment mr-2"></i>{t.gitpushmodal262}
                             </label>
                             <InputTextarea
                                 value={commitMessage}
@@ -278,7 +281,7 @@ export default function GitPushModal({
                                     }}
                                 />
                                 <label htmlFor="createPr" className="text-sm text-gray-300 cursor-pointer">
-                                    Pull Request erstellen
+                                    {t.gitpushmodal284}
                                 </label>
                             </div>
 
@@ -291,21 +294,21 @@ export default function GitPushModal({
                                             onChange={(e) => setAutoMerge(e.checked ?? false)}
                                         />
                                         <label htmlFor="autoMerge" className="text-sm text-gray-300 cursor-pointer">
-                                            Automatisch mergen (Vorsicht!)
+                                            {t.gitpushmodal297}
                                         </label>
                                     </div>
 
                                     {autoMerge && (
                                         <div className="ml-6 p-2 bg-red-900 border border-red-700 rounded text-red-100 text-sm">
                                             <i className="pi pi-exclamation-triangle mr-2"></i>
-                                            Der PR wird automatisch in <strong>{gitSettings.main_branch}</strong> gemerged!
+                                            {t.gitpushmodal304}<strong>{gitSettings.main_branch}</strong>{t.gitpushmodal304_2}
                                         </div>
                                     )}
 
                                     {/* PR Title */}
                                     <div className="ml-6">
                                         <label className="block text-sm font-medium text-gray-300 mb-1">
-                                            PR Titel
+                                            {t.gitpushmodal311}
                                         </label>
                                         <InputText
                                             value={prTitle}
@@ -317,7 +320,7 @@ export default function GitPushModal({
                                     {/* PR Description */}
                                     <div className="ml-6">
                                         <label className="block text-sm font-medium text-gray-300 mb-1">
-                                            PR Beschreibung
+                                            {t.gitpushmodal323}
                                         </label>
                                         <InputTextarea
                                             value={prDescription}
@@ -333,7 +336,7 @@ export default function GitPushModal({
                         {/* Workflow Summary */}
                         <div className="p-3 bg-blue-900 border border-blue-700 rounded text-blue-100 text-sm">
                             <i className="pi pi-info-circle mr-2"></i>
-                            Workflow: <strong>{getWorkflowDescription()}</strong>
+                            {t.gitpushmodal339}<strong>{getWorkflowDescription()}</strong>
                         </div>
                     </>
                 )}
@@ -356,24 +359,24 @@ export default function GitPushModal({
                             <i className="pi pi-check-circle text-6xl text-green-500"></i>
                         </div>
                         <h3 className="text-lg font-semibold text-green-400 text-center mb-4">
-                            Code erfolgreich gepusht!
+                            {t.gitpushmodal362}
                         </h3>
                         <div className="space-y-2 text-sm">
                             {pushResult.commit_sha && (
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Commit:</span>
+                                    <span className="text-gray-400">{t.gitpushmodal367}</span>
                                     <code className="text-white">{pushResult.commit_sha.substring(0, 8)}</code>
                                 </div>
                             )}
                             {pushResult.branch && (
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Branch:</span>
+                                    <span className="text-gray-400">{t.gitpushmodal373}</span>
                                     <span className="text-white">{pushResult.branch}</span>
                                 </div>
                             )}
                             {pushResult.pr_url && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-gray-400">Pull Request:</span>
+                                    <span className="text-gray-400">{t.gitpushmodal379}</span>
                                     <a
                                         href={pushResult.pr_url}
                                         target="_blank"
@@ -387,7 +390,7 @@ export default function GitPushModal({
                             {pushResult.merged && (
                                 <div className="p-2 bg-green-900 border border-green-700 rounded text-green-100 text-center">
                                     <i className="pi pi-check mr-2"></i>
-                                    PR wurde automatisch gemerged
+                                    {t.gitpushmodal393}
                                 </div>
                             )}
                         </div>
@@ -401,7 +404,7 @@ export default function GitPushModal({
                             <i className="pi pi-times-circle text-6xl text-red-500"></i>
                         </div>
                         <h3 className="text-lg font-semibold text-red-400 text-center mb-2">
-                            Push fehlgeschlagen
+                            {t.gitpushmodal407}
                         </h3>
                         <Message severity="error" text={error} className="w-full" />
                     </div>
@@ -412,13 +415,13 @@ export default function GitPushModal({
                     {step === 'confirm' && (
                         <>
                             <Button
-                                label="Abbrechen"
+                                label={t.gitpushmodal418}
                                 icon="pi pi-times"
                                 onClick={handleClose}
                                 className="p-button-text"
                             />
                             <Button
-                                label="Push starten"
+                                label={t.gitpushmodal424}
                                 icon="pi pi-cloud-upload"
                                 onClick={handlePush}
                                 disabled={!branchName || !commitMessage}
@@ -429,7 +432,7 @@ export default function GitPushModal({
 
                     {step === 'success' && (
                         <Button
-                            label="Schließen"
+                            label={t.gitpushmodal435}
                             icon="pi pi-check"
                             onClick={handleClose}
                         />
@@ -438,13 +441,13 @@ export default function GitPushModal({
                     {step === 'error' && (
                         <>
                             <Button
-                                label="Erneut versuchen"
+                                label={t.gitpushmodal444}
                                 icon="pi pi-refresh"
                                 onClick={() => setStep('confirm')}
                                 className="p-button-text"
                             />
                             <Button
-                                label="Schließen"
+                                label={t.gitpushmodal450}
                                 icon="pi pi-times"
                                 onClick={handleClose}
                             />

@@ -124,7 +124,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         }
       }
     } catch (err) {
-      console.error('Error checking subscription:', err);
+      console.error(t.publicprojectspanel127_2, err);
     }
   }, [currentUser]);
 
@@ -186,7 +186,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
     setProjectToClone(project);
     setCloneForm({
       name: suggestedName,
-      description: `Cloned from "${project.name}" by ${project.owner.name}`,
+      description: `${t.publicprojectspanel189}"${project.name}" by ${project.owner.name}`,
       is_public: false
     });
     setShowCloneModal(true);
@@ -241,13 +241,13 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
           window.dispatchEvent(new CustomEvent('creditsChanged'));
         }
 
-        alert(`Project "${cloneForm.name}" cloned successfully! You can find it in your Projects tab.`);
+        alert(`Project "${cloneForm.name}"${t.publicprojectspanel244}`);
       } else {
         const errorData = await response.json();
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-          setCloneError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setCloneError(`${t.publicprojectspanel250}${errorData.required_credits}${t.publicprojectspanel250_2}${errorData.current_credits}.`);
           setNeedsCredits(true);
         } else {
           setCloneError(errorData.message || t.publicprojectspanel183);
@@ -444,7 +444,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold" style={{ color: colors.accent }}>{projects.length}</div>
-            <div className="text-sm" style={{ color: colors.textMuted }}>Total Projects</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>{t.publicprojectspanel447}</div>
           </div>
           <div>
             <div className="text-2xl font-bold" style={{ color: colors.successText }}>
@@ -471,8 +471,8 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         onApplicationSent={(projectName, ownerName) => {
           toast.current?.show({
             severity: 'success',
-            summary: t.joincodemodal117 || 'Bewerbung gesendet',
-            detail: `${t.joincodemodal_toast_detail || 'Bitte warten Sie, bis'} ${ownerName} ${t.joincodemodal_toast_detail2 || 'die Bewerbung bearbeitet hat.'}`,
+            summary: t.joincodemodal117,
+            detail: `${t.joincodemodal_toast_detail} ${ownerName} ${t.joincodemodal_toast_detail2}`,
             life: 6000,
           });
         }}
@@ -538,19 +538,19 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 disabled={cloning !== null}
               />
               <label htmlFor="clone-is-public" className="text-sm font-medium" style={{ color: colors.textPrimary }}>
-                Public Project
+                {t.publicprojectspanel541}
               </label>
             </div>
             <p className="text-xs" style={{ color: colors.textSecondary }}>
-              Public projects are visible to all users and can be discovered in the project gallery.
-              Private projects are only visible to you and your team members.
+              {t.publicprojectspanel545}
+              {t.publicprojectspanel546}
             </p>
           </div>
 
           {projectToClone && (
             <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="text-sm">
-                <div className="font-medium mb-1" style={{ color: colors.textSecondary }}>Original Project:</div>
+                <div className="font-medium mb-1" style={{ color: colors.textSecondary }}>{t.publicprojectspanel553}</div>
                 <div style={{ color: colors.textPrimary }}>{projectToClone.name}</div>
                 <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                   by {projectToClone.owner.name}
@@ -558,11 +558,11 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 <div className="flex gap-4 mt-2 text-xs">
                   <span style={{ color: colors.accent }}>
                     <i className="pi pi-database mr-1"></i>
-                    {projectToClone.schemas_count || 0} Schemas
+                    {projectToClone.schemas_count || 0}{t.publicprojectspanel561}
                   </span>
                   <span style={{ color: colors.successText }}>
                     <i className="pi pi-file mr-1"></i>
-                    {projectToClone.templates_count || 0} Templates
+                    {projectToClone.templates_count || 0}{t.publicprojectspanel565}
                   </span>
                 </div>
               </div>
@@ -575,16 +575,16 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
               <div className="text-sm">
                 <div className="font-medium mb-1" style={{ color: colors.warningText }}>
                   <i className="pi pi-exclamation-triangle mr-2"></i>
-                  50 Credits erforderlich
+                  {t.publicprojectspanel578}
                 </div>
                 <p className="text-xs mb-2" style={{ color: colors.textSecondary }}>
-                  Sie haben Ihr kostenloses Projekt-Limit erreicht. Das Clonen dieses Projekts kostet 50 Credits (1 Jahr gültig).
+                  {t.publicprojectspanel581}
                 </p>
                 <div className="flex justify-between items-center text-xs">
-                  <span style={{ color: colors.textMuted }}>Ihre Credits: <strong style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</strong></span>
+                  <span style={{ color: colors.textMuted }}>{t.publicprojectspanel584}<strong style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</strong></span>
                   {(currentUser?.credits || 0) < 50 && (
                     <Button
-                      label="Credits kaufen"
+                      label={t.publicprojectspanel587}
                       icon="pi pi-shopping-cart"
                       className="p-button-sm p-button-warning"
                       onClick={() => setShowPlanModal(true)}
@@ -606,9 +606,9 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
             <Button
               label={
                 cloning !== null
-                  ? "Cloning..."
+                  ? t.publicprojectspanel609_2
                   : needsCredits
-                    ? `Clone (50 Credits)`
+                    ? t.publicprojectspanel611
                     : t.publicprojectspanel346
               }
               icon={cloning !== null ? "pi pi-spinner pi-spin" : "pi pi-copy"}

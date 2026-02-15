@@ -7,6 +7,7 @@ import { Dialog } from 'primereact/dialog';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Divider } from 'primereact/divider';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 // Note: Currently hardcoded in German. Add translations later if needed.
 
 interface TwoFactorStatus {
@@ -29,6 +30,9 @@ interface TrustedDevice {
 
 export default function TwoFactorSection() {
   const { colors } = useTheme();
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t: t } = useTranslation(currentLanguage);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -87,7 +91,7 @@ export default function TwoFactorSection() {
         setStatus(data.two_factor);
       }
     } catch (err) {
-      console.error('Failed to fetch 2FA status:', err);
+      console.error(t.twofactorsection94, err);
     } finally {
       setLoading(false);
     }
@@ -139,7 +143,7 @@ export default function TwoFactorSection() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Fehler beim Starten des 2FA-Setups');
+        setError(data.message || t.twofactorsection146);
         return;
       }
 
@@ -147,7 +151,7 @@ export default function TwoFactorSection() {
       setSecret(data.secret);
       setSetupStep('qr');
     } catch (_err) {
-      setError('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+      setError(t.twofactorsection154);
     } finally {
       setLoadingSetup(false);
     }
@@ -180,7 +184,7 @@ export default function TwoFactorSection() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Ungültiger Code');
+        setError(data.message || t.twofactorsection187);
         return;
       }
 
@@ -188,7 +192,7 @@ export default function TwoFactorSection() {
       setStatus(data.two_factor);
       setSetupStep('recovery');
     } catch (_err) {
-      setError('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+      setError(t.twofactorsection195);
     } finally {
       setLoadingSetup(false);
     }
@@ -203,7 +207,7 @@ export default function TwoFactorSection() {
     setSecret(null);
     setVerifyCode('');
     setRecoveryCodes([]);
-    setSuccess('2FA wurde erfolgreich aktiviert!');
+    setSuccess(t.twofactorsection210);
     fetchStatus();
   };
 
@@ -254,7 +258,7 @@ export default function TwoFactorSection() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Fehler beim Deaktivieren von 2FA');
+        setError(data.message || t.twofactorsection261);
         return;
       }
 
@@ -262,9 +266,9 @@ export default function TwoFactorSection() {
       setDisablePassword('');
       setDisableCode('');
       setStatus(data.two_factor);
-      setSuccess('2FA wurde erfolgreich deaktiviert.');
+      setSuccess(t.twofactorsection269);
     } catch (_err) {
-      setError('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+      setError(t.twofactorsection271);
     } finally {
       setLoadingDisable(false);
     }
@@ -289,7 +293,7 @@ export default function TwoFactorSection() {
         setTrustedDevices(data.trusted_devices || []);
       }
     } catch (err) {
-      console.error('Failed to fetch trusted devices:', err);
+      console.error(t.twofactorsection296, err);
     } finally {
       setLoadingDevices(false);
     }
@@ -313,7 +317,7 @@ export default function TwoFactorSection() {
         fetchStatus();
       }
     } catch (err) {
-      console.error('Failed to remove device:', err);
+      console.error(t.twofactorsection320, err);
     }
   };
 
@@ -334,7 +338,7 @@ export default function TwoFactorSection() {
         fetchStatus();
       }
     } catch (err) {
-      console.error('Failed to remove all devices:', err);
+      console.error(t.twofactorsection341, err);
     }
   };
 
@@ -359,7 +363,7 @@ export default function TwoFactorSection() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Fehler beim Generieren neuer Codes');
+        setError(data.message || t.twofactorsection366);
         return;
       }
 
@@ -367,7 +371,7 @@ export default function TwoFactorSection() {
       setRegeneratePassword('');
       fetchStatus();
     } catch (_err) {
-      setError('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+      setError(t.twofactorsection374);
     } finally {
       setLoadingRegenerate(false);
     }
@@ -377,7 +381,7 @@ export default function TwoFactorSection() {
   const handleCopyCodes = (codes: string[]) => {
     const text = codes.join('\n');
     navigator.clipboard.writeText(text);
-    setSuccess('Backup-Codes wurden in die Zwischenablage kopiert.');
+    setSuccess(t.twofactorsection384);
   };
 
   // Loading state
@@ -407,12 +411,12 @@ export default function TwoFactorSection() {
           />
           <div>
             <h3 className="font-semibold" style={{ color: colors.textPrimary }}>
-              Zwei-Faktor-Authentifizierung (2FA)
+              {t.twofactorsection410}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
               {status?.enabled
-                ? 'Ihr Konto ist durch 2FA geschützt.'
-                : 'Fügen Sie eine zusätzliche Sicherheitsebene hinzu.'}
+                ? t.twofactorsection418
+                : t.twofactorsection419}
             </p>
           </div>
         </div>
@@ -422,20 +426,20 @@ export default function TwoFactorSection() {
             {/* Status Info */}
             <div className="flex items-center gap-2 text-sm" style={{ color: colors.textSecondary }}>
               <i className="pi pi-check-circle" style={{ color: '#22c55e' }} />
-              <span>Aktiviert seit {new Date(status.confirmed_at!).toLocaleDateString('de-DE')}</span>
+              <span>{t.twofactorsection429}{new Date(status.confirmed_at!).toLocaleDateString('de-DE')}</span>
             </div>
 
             <div className="flex items-center gap-2 text-sm" style={{ color: colors.textSecondary }}>
               <i className="pi pi-key" />
-              <span>{status.recovery_codes_count} Backup-Codes verfügbar</span>
+              <span>{status.recovery_codes_count}{t.twofactorsection434}</span>
               {status.recovery_codes_count < 3 && (
-                <span className="text-orange-500 ml-2">(Empfohlen: Neue Codes generieren)</span>
+                <span className="text-orange-500 ml-2">{t.twofactorsection436}</span>
               )}
             </div>
 
             <div className="flex items-center gap-2 text-sm" style={{ color: colors.textSecondary }}>
               <i className="pi pi-desktop" />
-              <span>{status.trusted_devices_count} vertrauenswürdige Geräte</span>
+              <span>{status.trusted_devices_count}{t.twofactorsection442}</span>
             </div>
 
             {/* Action Buttons */}
@@ -443,7 +447,7 @@ export default function TwoFactorSection() {
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                label="Backup-Codes erneuern"
+                label={t.twofactorsection450}
                 icon="pi pi-refresh"
                 className="p-button-outlined"
                 size="small"
@@ -455,7 +459,7 @@ export default function TwoFactorSection() {
               />
               <Button
                 type="button"
-                label="Geräte verwalten"
+                label={t.twofactorsection462}
                 icon="pi pi-desktop"
                 className="p-button-outlined"
                 size="small"
@@ -463,7 +467,7 @@ export default function TwoFactorSection() {
               />
               <Button
                 type="button"
-                label="2FA deaktivieren"
+                label={t.twofactorsection470}
                 icon="pi pi-times"
                 className="p-button-outlined p-button-danger"
                 size="small"
@@ -478,7 +482,7 @@ export default function TwoFactorSection() {
         ) : (
           <Button
             type="button"
-            label="2FA aktivieren"
+            label={t.twofactorsection485}
             icon="pi pi-shield"
             className="p-button-success"
             onClick={handleStartSetup}
@@ -493,27 +497,27 @@ export default function TwoFactorSection() {
       >
         <h4 className="font-semibold mb-2" style={{ color: colors.textPrimary }}>
           <i className="pi pi-info-circle mr-2" />
-          Wie funktioniert 2FA?
+          {t.twofactorsection500}
         </h4>
         <ul className="text-sm space-y-2" style={{ color: colors.textSecondary }}>
           <li>
-            <strong>1.</strong> Installieren Sie eine Authenticator-App (Google Authenticator, Authy, Microsoft Authenticator)
+            <strong>1.</strong>{t.twofactorsection504}
           </li>
           <li>
-            <strong>2.</strong> Scannen Sie den QR-Code oder geben Sie den Schlüssel manuell ein
+            <strong>2.</strong>{t.twofactorsection507}
           </li>
           <li>
-            <strong>3.</strong> Bei jedem Login geben Sie zusätzlich zum Passwort einen 6-stelligen Code ein
+            <strong>3.</strong>{t.twofactorsection510}
           </li>
           <li>
-            <strong>4.</strong> Sie können Geräte als "vertrauenswürdig" markieren (30 Tage gültig)
+            <strong>4.</strong>{t.twofactorsection513}
           </li>
         </ul>
       </div>
 
       {/* Setup Dialog */}
       <Dialog
-        header="2FA einrichten"
+        header={t.twofactorsection520}
         visible={setupMode}
         onHide={handleCancelSetup}
         style={{ width: '450px' }}
@@ -524,7 +528,7 @@ export default function TwoFactorSection() {
         {setupStep === 'password' && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <p style={{ color: colors.textSecondary }}>
-              Bestätigen Sie Ihr Passwort, um fortzufahren.
+              {t.twofactorsection531}
             </p>
             <div className="field">
               <label className="block text-sm font-medium mb-2">Passwort</label>
@@ -542,13 +546,13 @@ export default function TwoFactorSection() {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                label="Abbrechen"
+                label={t.twofactorsection549}
                 className="p-button-text"
                 onClick={handleCancelSetup}
               />
               <Button
                 type="submit"
-                label="Weiter"
+                label={t.twofactorsection555}
                 icon={loadingSetup ? 'pi pi-spinner pi-spin' : 'pi pi-arrow-right'}
                 disabled={loadingSetup || !password}
               />
@@ -559,7 +563,7 @@ export default function TwoFactorSection() {
         {setupStep === 'qr' && (
           <div className="space-y-4">
             <p style={{ color: colors.textSecondary }}>
-              Scannen Sie diesen QR-Code mit Ihrer Authenticator-App:
+              {t.twofactorsection566}
             </p>
             <div
               className="flex justify-center p-4 rounded-lg"
@@ -568,7 +572,7 @@ export default function TwoFactorSection() {
             />
             <div className="text-center">
               <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
-                Oder geben Sie diesen Code manuell ein:
+                {t.twofactorsection575}
               </p>
               <code
                 className="block p-2 rounded text-sm font-mono select-all"
@@ -580,13 +584,13 @@ export default function TwoFactorSection() {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                label="Abbrechen"
+                label={t.twofactorsection587}
                 className="p-button-text"
                 onClick={handleCancelSetup}
               />
               <Button
                 type="button"
-                label="Weiter"
+                label={t.twofactorsection593}
                 icon="pi pi-arrow-right"
                 onClick={handleContinueToVerify}
               />
@@ -597,7 +601,7 @@ export default function TwoFactorSection() {
         {setupStep === 'verify' && (
           <form onSubmit={handleVerifySubmit} className="space-y-4">
             <p style={{ color: colors.textSecondary }}>
-              Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein:
+              {t.twofactorsection604}
             </p>
             <div className="field">
               <InputText
@@ -614,13 +618,13 @@ export default function TwoFactorSection() {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                label="Zurück"
+                label={t.twofactorsection621}
                 className="p-button-text"
                 onClick={() => setSetupStep('qr')}
               />
               <Button
                 type="submit"
-                label="Verifizieren"
+                label={t.twofactorsection627}
                 icon={loadingSetup ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
                 disabled={loadingSetup || verifyCode.length !== 6}
               />
@@ -632,7 +636,7 @@ export default function TwoFactorSection() {
           <div className="space-y-4">
             <Message
               severity="success"
-              text="2FA wurde erfolgreich aktiviert!"
+              text={t.twofactorsection639}
               className="w-full"
             />
             <div
@@ -641,10 +645,10 @@ export default function TwoFactorSection() {
             >
               <h4 className="font-semibold mb-2" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-key mr-2" />
-                Backup-Codes
+                {t.twofactorsection648}
               </h4>
               <p className="text-sm mb-3" style={{ color: colors.textSecondary }}>
-                Speichern Sie diese Codes sicher. Sie können jeden Code einmal verwenden, falls Sie keinen Zugriff auf Ihre Authenticator-App haben.
+                {t.twofactorsection651}
               </p>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 {recoveryCodes.map((code, index) => (
@@ -659,7 +663,7 @@ export default function TwoFactorSection() {
               </div>
               <Button
                 type="button"
-                label="Codes kopieren"
+                label={t.twofactorsection666}
                 icon="pi pi-copy"
                 className="p-button-outlined w-full"
                 size="small"
@@ -668,13 +672,13 @@ export default function TwoFactorSection() {
             </div>
             <Message
               severity="warn"
-              text="Hinweis: Diese Codes werden nur einmal angezeigt. Speichern Sie sie jetzt!"
+              text={t.twofactorsection675}
               className="w-full"
             />
             <div className="flex justify-end">
               <Button
                 type="button"
-                label="Fertig"
+                label={t.twofactorsection681}
                 icon="pi pi-check"
                 className="p-button-success"
                 onClick={handleFinishSetup}
@@ -686,7 +690,7 @@ export default function TwoFactorSection() {
 
       {/* Disable Dialog */}
       <Dialog
-        header="2FA deaktivieren"
+        header={t.twofactorsection693}
         visible={disableMode}
         onHide={() => setDisableMode(false)}
         style={{ width: '400px' }}
@@ -695,11 +699,11 @@ export default function TwoFactorSection() {
         <form onSubmit={handleDisable} className="space-y-4">
           <Message
             severity="warn"
-            text="Warnung: Das Deaktivieren von 2FA verringert die Sicherheit Ihres Kontos."
+            text={t.twofactorsection702}
             className="w-full"
           />
           <div className="field">
-            <label className="block text-sm font-medium mb-2">Passwort</label>
+            <label className="block text-sm font-medium mb-2">{t.twofactorsection706}</label>
             <Password
               value={disablePassword}
               onChange={(e) => setDisablePassword(e.target.value)}
@@ -712,13 +716,13 @@ export default function TwoFactorSection() {
           </div>
           <div className="field">
             <label className="block text-sm font-medium mb-2">
-              Authenticator-Code oder Backup-Code
+              {t.twofactorsection719}
             </label>
             <InputText
               value={disableCode}
               onChange={(e) => setDisableCode(e.target.value.toUpperCase())}
               className="w-full"
-              placeholder="6-stelliger Code oder Backup-Code"
+              placeholder={t.twofactorsection725}
               required
             />
           </div>
@@ -726,13 +730,13 @@ export default function TwoFactorSection() {
           <div className="flex justify-end gap-2">
             <Button
               type="button"
-              label="Abbrechen"
+              label={t.twofactorsection733}
               className="p-button-text"
               onClick={() => setDisableMode(false)}
             />
             <Button
               type="submit"
-              label="2FA deaktivieren"
+              label={t.twofactorsection739}
               icon={loadingDisable ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
               className="p-button-danger"
               disabled={loadingDisable || !disablePassword || !disableCode}
@@ -743,7 +747,7 @@ export default function TwoFactorSection() {
 
       {/* Trusted Devices Dialog */}
       <Dialog
-        header="Vertrauenswürdige Geräte"
+        header={t.twofactorsection750}
         visible={showDevices}
         onHide={() => setShowDevices(false)}
         style={{ width: '500px' }}
@@ -755,7 +759,7 @@ export default function TwoFactorSection() {
           </div>
         ) : trustedDevices.length === 0 ? (
           <p style={{ color: colors.textSecondary }}>
-            Keine vertrauenswürdigen Geräte vorhanden.
+            {t.twofactorsection762}
           </p>
         ) : (
           <div className="space-y-4">
@@ -774,7 +778,7 @@ export default function TwoFactorSection() {
                     IP: {device.ip}
                   </div>
                   <div className="text-sm" style={{ color: colors.textSecondary }}>
-                    Gültig bis: {new Date(device.trusted_until).toLocaleDateString('de-DE')}
+                    {t.twofactorsection781}{new Date(device.trusted_until).toLocaleDateString('de-DE')}
                   </div>
                 </div>
                 <Button
@@ -788,7 +792,7 @@ export default function TwoFactorSection() {
             <Divider />
             <Button
               type="button"
-              label="Alle Geräte entfernen"
+              label={t.twofactorsection795}
               icon="pi pi-trash"
               className="p-button-outlined p-button-danger w-full"
               onClick={handleRemoveAllDevices}
@@ -812,11 +816,11 @@ export default function TwoFactorSection() {
           <form onSubmit={handleRegenerateCodes} className="space-y-4">
             <Message
               severity="warn"
-              text="Alle bisherigen Backup-Codes werden ungültig!"
+              text={t.twofactorsection819}
               className="w-full"
             />
             <div className="field">
-              <label className="block text-sm font-medium mb-2">Passwort bestätigen</label>
+              <label className="block text-sm font-medium mb-2">{t.twofactorsection823}</label>
               <Password
                 value={regeneratePassword}
                 onChange={(e) => setRegeneratePassword(e.target.value)}
@@ -832,13 +836,13 @@ export default function TwoFactorSection() {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                label="Abbrechen"
+                label={t.twofactorsection839}
                 className="p-button-text"
                 onClick={() => setShowRegenerateCodes(false)}
               />
               <Button
                 type="submit"
-                label="Neue Codes generieren"
+                label={t.twofactorsection845}
                 icon={loadingRegenerate ? 'pi pi-spinner pi-spin' : 'pi pi-refresh'}
                 disabled={loadingRegenerate || !regeneratePassword}
               />
@@ -848,7 +852,7 @@ export default function TwoFactorSection() {
           <div className="space-y-4">
             <Message
               severity="success"
-              text="Neue Backup-Codes wurden generiert!"
+              text={t.twofactorsection855}
               className="w-full"
             />
             <div className="grid grid-cols-2 gap-2">
@@ -864,20 +868,20 @@ export default function TwoFactorSection() {
             </div>
             <Button
               type="button"
-              label="Codes kopieren"
+              label={t.twofactorsection871}
               icon="pi pi-copy"
               className="p-button-outlined w-full"
               onClick={() => handleCopyCodes(newRecoveryCodes)}
             />
             <Message
               severity="warn"
-              text="Diese Codes werden nur einmal angezeigt. Speichern Sie sie jetzt!"
+              text={t.twofactorsection878}
               className="w-full"
             />
             <div className="flex justify-end">
               <Button
                 type="button"
-                label="Fertig"
+                label={t.twofactorsection884}
                 icon="pi pi-check"
                 onClick={() => {
                   setShowRegenerateCodes(false);

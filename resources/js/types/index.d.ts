@@ -28,7 +28,6 @@ export interface User {
 export interface TabContentProps {
     children: ReactNode;
     style?: CSSProperties;
-    [key: string]: unknown;
 }
 
 export interface NavigationPanelProps {

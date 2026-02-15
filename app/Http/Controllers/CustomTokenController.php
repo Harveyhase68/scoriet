@@ -60,6 +60,14 @@ class CustomTokenController extends AccessTokenController
                         ], 403);
                     }
 
+                    // Block system/admin user login in demo mode
+                    if ($user && config('scoriet.demo') && in_array($user->user_type, ['system', 'admin'])) {
+                        return response()->json([
+                            'error' => 'demo_restricted',
+                            'message' => 'System/Admin login is not available in demo mode.'
+                        ], 403);
+                    }
+
                     // Check if user account is deactivated due to inactivity
                     // If so, reactivate it on login (user is proving they're active)
                     if ($user && $user->isDeactivated()) {

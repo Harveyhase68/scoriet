@@ -1401,12 +1401,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>{option.label}</span>
                     </div>
                   ) : (
-                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1404 || "Design auswählen"}</span>
+                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1404}</span>
                   );
                 }}
               />
               <small style={{ color: colors.textMuted }}>
-                {t.profilemodal1409 || 'Wähle dein bevorzugtes Farbschema. Bei "Automatisch" wird tagsüber (6-18 Uhr) das helle Design verwendet.'}
+                {t.profilemodal1409}
               </small>
             </div>
 
@@ -1414,7 +1414,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="field mt-4">
               <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-th-large mr-2" style={{ color: colors.accent }}></i>
-                Kanban-Anzeige
+                {t.profilemodal1417}
               </label>
               <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
                 <div className="flex items-center gap-4">
@@ -1435,7 +1435,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   <div className="flex-1 space-y-2">
                     {/* Initials Input */}
                     <div className="flex items-center gap-2">
-                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>Kürzel:</label>
+                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>{t.profilemodal1438}</label>
                       <InputText
                         value={userData.kanban_initials || ''}
                         onChange={(e) => setUserData(prev => ({ ...prev, kanban_initials: e.target.value.toUpperCase().substring(0, 3) }))}
@@ -1444,11 +1444,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         className="w-20 text-center"
                         style={{ padding: '0.25rem 0.5rem' }}
                       />
-                      <span className="text-xs" style={{ color: colors.textMuted }}>{t.profilemodal1447 || 'max. 3 Zeichen'}</span>
+                      <span className="text-xs" style={{ color: colors.textMuted }}>{t.profilemodal1447}</span>
                     </div>
                     {/* Color Input */}
                     <div className="flex items-center gap-2">
-                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>Farbe:</label>
+                      <label className="text-xs w-16" style={{ color: colors.textMuted }}>{t.profilemodal1451}</label>
                       <input
                         type="color"
                         value={userData.kanban_color || '#3b82f6'}
@@ -1461,7 +1461,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   </div>
                 </div>
                 <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
-                  {t.profilemodal1464 || 'Diese Einstellungen werden im Kanban-Board für Ihre Zuweisung angezeigt.'}
+                  {t.profilemodal1464}
                 </p>
               </div>
             </div>
@@ -1470,17 +1470,17 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="field mt-4">
               <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-envelope mr-2" style={{ color: colors.accent }}></i>
-                {t.emailNotifications || 'E-Mail Benachrichtigungen'}
+                {t.emailNotifications}
               </label>
               <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
                 {/* System Notifications */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
-                      {t.emailSystemNotifications || 'System-Benachrichtigungen'}
+                      {t.emailSystemNotifications}
                     </span>
                     <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                      {t.emailSystemNotificationsDesc || 'Wichtige Systemmeldungen, Ankündigungen und Admin-Nachrichten'}
+                      {t.emailSystemNotificationsDesc}
                     </p>
                   </div>
                   <InputSwitch
@@ -1494,10 +1494,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
-                      {t.emailUserNotifications || 'Benutzer-Nachrichten'}
+                      {t.emailUserNotifications}
                     </span>
                     <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                      {t.emailUserNotificationsDesc || 'Nachrichten von anderen Benutzern, Teams und Projekt-Benachrichtigungen'}
+                      {t.emailUserNotificationsDesc}
                     </p>
                   </div>
                   <InputSwitch
@@ -1610,7 +1610,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             {/* Credits Display */}
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center">
-                <span className="text-lg" style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                <span className="text-lg" style={{ color: colors.textSecondary }}>{t.profilemodal1613}</span>
                 <span className="font-bold text-2xl" style={{ color: colors.textPrimary }}>{cliStatus?.credits || 0}</span>
               </div>
               <div className="mt-2">
@@ -1644,7 +1644,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="flex justify-between items-center mb-2">
                   <span className="flex items-center gap-2" style={{ color: colors.textSecondary }}>
                     <i className="pi pi-cloud" style={{ color: colors.accent }}></i>
-                    Anhang-Speicher:
+                    {t.profilemodal1647}
                   </span>
                   <span
                     className="font-bold"
@@ -1678,19 +1678,19 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       ></div>
                     </div>
                     <div className="flex justify-between text-xs" style={{ color: colors.textMuted }}>
-                      <span>{storageStatus.percentage}% verwendet</span>
-                      <span>{storageStatus.remaining_formatted} frei</span>
+                      <span>{storageStatus.percentage}{t.profilemodal1681}</span>
+                      <span>{storageStatus.remaining_formatted}{t.profilemodal1682}</span>
                     </div>
                     {storageStatus.is_full && (
                       <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.errorText }}>
                         <i className="pi pi-exclamation-triangle"></i>
-                        Speicher voll! Löschen Sie alte Nachrichten um Platz zu schaffen.
+                        {t.profilemodal1687}
                       </div>
                     )}
                     {storageStatus.is_warning && !storageStatus.is_full && (
                       <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.warningText }}>
                         <i className="pi pi-exclamation-circle"></i>
-                        Speicher fast voll!
+                        {t.profilemodal1693}
                       </div>
                     )}
                   </>
@@ -1703,7 +1703,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                 <p className="flex items-center gap-2" style={{ color: colors.infoText }}>
                   <i className="pi pi-star-fill" style={{ color: '#facc15' }}></i>
-                  <strong>Patron Status</strong> - Sie haben unbegrenzten Zugang zu allen Features!
+                  <strong>{t.profilemodal1706}</strong>{t.profilemodal1706_2}
                 </p>
               </div>
             )}
@@ -1712,7 +1712,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="mt-4">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-th-large" style={{ color: colors.accent }}></i>
-                Verfügbare Features
+                {t.profilemodal1715}
               </h3>
 
               {loadingFeatures ? (
@@ -1752,12 +1752,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                 <span className="font-semibold" style={{ color: colors.textPrimary }}>{feature.name}</span>
                                 {isBundle && (
                                   <span className="ml-2 px-2 py-0.5 text-xs rounded-full font-bold" style={{ backgroundColor: colors.warningText, color: '#000' }}>
-                                    SPARE 10 CREDITS!
+                                    {t.profilemodal1755}
                                   </span>
                                 )}
                                 {feature.is_patron && (
                                   <span className="px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>
-                                    Patron
+                                    {t.profilemodal1760}
                                   </span>
                                 )}
                               </div>
@@ -1766,7 +1766,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               {/* Expiry Info */}
                               {feature.unlocked && !feature.is_patron && feature.expires_at && (
                                 <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                                  Gültig bis: {new Date(feature.expires_at).toLocaleDateString('de-DE')}
+                                  {t.profilemodal1769}{new Date(feature.expires_at).toLocaleDateString('de-DE')}
                                   {feature.days_remaining !== null && ` (${feature.days_remaining} Tage)`}
                                 </p>
                               )}
@@ -1805,7 +1805,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               ) : (
                                 <>
                                   <span className="px-3 py-1 rounded-full text-sm flex items-center gap-1" style={{ backgroundColor: colors.bgHover, color: colors.textSecondary }}>
-                                    <i className="pi pi-lock"></i> Gesperrt
+                                    <i className="pi pi-lock"></i>{t.profilemodal1808}
                                   </span>
                                   {!feature.is_patron && (
                                     <>
@@ -1814,7 +1814,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                         <div className="mt-2 text-right">
                                           <span className="text-xs block mb-1" style={{ color: colors.textMuted }}>{feature.entityInfo}</span>
                                           <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: colors.bgHover, color: colors.textSecondary }}>
-                                            {feature.cost} Credits/Jahr pro {feature.name}
+                                            {feature.cost}{t.profilemodal1817}{feature.name}
                                           </span>
                                         </div>
                                       ) : isBundle && bundleDiscountInfo?.has_existing_subscriptions ? (
@@ -1845,7 +1845,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                           disabled={unlocking !== null || (cliStatus?.credits || 0) < feature.cost}
                                           className={`p-button-sm mt-2 ${isBundle ? 'p-button-success' : 'p-button-primary'}`}
                                           icon="pi pi-unlock"
-                                          label={`${feature.cost} Credits/Jahr`}
+                                          label={`${feature.cost}${t.profilemodal1848}`}
                                         />
                                       )}
                                     </>
@@ -1921,7 +1921,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                   <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{child.description}</p>
                                   {child.unlocked && !child.is_patron && child.expires_at && (
                                     <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                      {child.covered_by_bundle ? 'Bundle gültig bis: ' : 'Gültig bis: '}
+                                      {child.covered_by_bundle ? t.profilemodal1924 : t.profilemodal1924_2}
                                       {new Date(child.expires_at).toLocaleDateString('de-DE')}
                                     </p>
                                   )}
@@ -1942,7 +1942,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <div className="rounded-lg p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
                 <p className="text-sm flex items-center gap-2" style={{ color: colors.errorText }}>
                   <i className="pi pi-exclamation-triangle"></i>
-                  Sie haben nicht genug Credits. Kaufen Sie Credits um Features freizuschalten.
+                  {t.profilemodal1945}
                 </p>
               </div>
             )}
@@ -1952,10 +1952,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-list" style={{ color: colors.accent }}></i>
-                Einzelne Abonnements
+                {t.profilemodal1955}
               </h3>
               <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                Weitere Projekte, private Templates oder weitere Datenbanken - diese können beliebig oft verlängert werden.
+                {t.profilemodal1958}
               </p>
 
               {(() => {
@@ -1974,7 +1974,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 if (entitySubscriptions.length === 0) {
                   return (
                     <div className="rounded-lg p-4 text-center" style={{ backgroundColor: `${colors.bgTertiary}80` }}>
-                      <p style={{ color: colors.textMuted }}>Sie haben noch keine weiteren Projekte, private Templates oder weitere Datenbanken freigeschaltet.</p>
+                      <p style={{ color: colors.textMuted }}>{t.profilemodal1977}</p>
                     </div>
                   );
                 }
@@ -2023,12 +2023,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 3 ? (
                                 <span className="flex items-center gap-1" style={{ color: colors.errorText }}>
                                   <i className="pi pi-clock"></i>
-                                  Läuft ab in {sub.days_until_expiry} {sub.days_until_expiry === 1 ? 'Tag' : 'Tagen'} ({sub.expires_at_formatted})
+                                  {t.profilemodal2026}{sub.days_until_expiry} {sub.days_until_expiry === 1 ? t.profilemodal2026_2 : t.profilemodal2026_3} ({sub.expires_at_formatted})
                                 </span>
                               ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 14 ? (
                                 <span className="flex items-center gap-1" style={{ color: colors.warningText }}>
                                   <i className="pi pi-clock"></i>
-                                  Läuft ab in {sub.days_until_expiry} Tagen ({sub.expires_at_formatted})
+                                  {t.profilemodal2031}{sub.days_until_expiry}{t.profilemodal2031_2}({sub.expires_at_formatted})
                                 </span>
                               ) : (
                                 <span style={{ color: colors.textMuted }}>
@@ -2045,7 +2045,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                           {sub.is_eligible_for_bonus && (
                             <div className="mt-2 px-2 py-1 rounded text-xs inline-flex items-center gap-1" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                               <i className="pi pi-gift"></i>
-                              Jetzt verlängern und +{sub.bonus_days} Bonus-Tage erhalten!
+                              {t.profilemodal2048}+{sub.bonus_days}{t.profilemodal2048_2}
                             </div>
                           )}
                         </div>
@@ -2086,7 +2086,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             >
               <div className="space-y-4">
                 <p style={{ color: colors.textSecondary }}>
-                  Sie haben bereits ein CLI oder Service Abonnement. Wählen Sie eine Option:
+                  {t.profilemodal2089}
                 </p>
                 {bundleDiscountInfo?.options.map((option: any, index: number) => (
                   <div
@@ -2118,7 +2118,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     {option.price < 0 && (
                       <div className="mt-2 px-3 py-2 rounded text-sm flex items-center gap-2" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                         <i className="pi pi-gift"></i>
-                        <span>Sie erhalten <strong>{Math.abs(option.price)} Credits</strong> gutgeschrieben!</span>
+                        <span>{t.profilemodal2121}<strong>{Math.abs(option.price)} Credits</strong>{t.profilemodal2121_2}</span>
                       </div>
                     )}
                     {option.discount && option.discount > 0 && option.price >= 0 && (
@@ -2147,8 +2147,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               </div>
               <p style={{ color: colors.textSecondary }}>
                 {cliStatus?.cli.is_patron
-                  ? 'Sie haben als Patron unbegrenzten Zugang zu allen Features!'
-                  : 'Sie nutzen aktuell den kostenlosen Plan. Upgraden Sie für mehr Features!'
+                  ? t.profilemodal2150
+                  : t.profilemodal2151
                 }
               </p>
             </div>
@@ -2158,7 +2158,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                 <p className="flex items-center gap-2" style={{ color: colors.infoText }}>
                   <i className="pi pi-star-fill" style={{ color: '#facc15' }}></i>
-                  <strong>Patron Status</strong> - Vielen Dank für Ihre Unterstützung!
+                  <strong>{t.profilemodal2161}</strong>{t.profilemodal2161_2}
                 </p>
               </div>
             ) : (
@@ -2167,10 +2167,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   <div>
                     <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
                       <i className="pi pi-heart-fill" style={{ color: '#f87171' }}></i>
-                      Werden Sie Patron!
+                      {t.profilemodal2170}
                     </h3>
                     <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                      Unbegrenzter Zugang zu allen Features, private Projekte, Templates und mehr.
+                      {t.profilemodal2173}
                     </p>
                   </div>
                   <Button
@@ -2178,7 +2178,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     onClick={handleViewPlans}
                     className="p-button-help"
                     icon="pi pi-star"
-                    label="Pläne ansehen"
+                    label={t.profilemodal2181}
                   />
                 </div>
               </div>
@@ -2187,18 +2187,18 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             {/* Credits Section */}
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-lg" style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+                <span className="text-lg" style={{ color: colors.textSecondary }}>{t.profilemodal2190}</span>
                 <span className="font-bold text-2xl" style={{ color: colors.textPrimary }}>{cliStatus?.credits || userData.credits || 0}</span>
               </div>
               <p className="text-sm mb-3" style={{ color: colors.textMuted }}>
-                Credits werden für Projekte, Datenbanken, Teams und Code-Generierung benötigt.
+                {t.profilemodal2194}
               </p>
               <Button
                 type="button"
                 onClick={handleBuyCredits}
                 className="p-button-outlined p-button-info w-full"
                 icon="pi pi-shopping-cart"
-                label="Credits kaufen"
+                label={t.profilemodal2201}
               />
             </div>
 
@@ -2206,24 +2206,24 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
               <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: colors.infoText }}>
                 <i className="pi pi-info-circle"></i>
-                Preise im Überblick
+                {t.profilemodal2209}
               </h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div style={{ color: colors.textSecondary }}>
                   <i className="pi pi-folder mr-2" style={{ color: colors.accent }}></i>
-                  Projekt: 50 Credits/Jahr
+                  {t.profilemodal2214}
                 </div>
                 <div style={{ color: colors.textSecondary }}>
                   <i className="pi pi-database mr-2" style={{ color: colors.successText }}></i>
-                  Datenbank: 50 Credits/Jahr
+                  {t.profilemodal2218}
                 </div>
                 <div style={{ color: colors.textSecondary }}>
                   <i className="pi pi-users mr-2" style={{ color: colors.accent }}></i>
-                  Team: 50 Credits/Jahr
+                  {t.profilemodal2222}
                 </div>
                 <div style={{ color: colors.textSecondary }}>
                   <i className="pi pi-code mr-2" style={{ color: colors.warningText }}></i>
-                  Generierung: 5 Credits
+                  {t.profilemodal2226}
                 </div>
               </div>
             </div>
@@ -2245,10 +2245,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
                   <i className="pi pi-shopping-bag" style={{ color: colors.successText }}></i>
-                  {t.profilemodal2248 || 'Verkäufer-Modus aktivieren'}
+                  {t.profilemodal2248}
                 </h3>
                 <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                  {t.profilemodal2251 || 'Aktivieren Sie diesen Modus, um Templates im Store zu verkaufen.'}
+                  {t.profilemodal2251}
                 </p>
               </div>
               <InputSwitch
@@ -2262,13 +2262,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 {/* Earnings Overview */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 rounded-lg" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
-                    <p className="text-sm" style={{ color: colors.textMuted }}>Ausstehende Auszahlung</p>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal2265}</p>
                     <p className="text-2xl font-bold" style={{ color: colors.successText }}>
                       {parseFloat(String(userData.pending_earnings || 0)).toFixed(2)} €
                     </p>
                   </div>
                   <div className="p-4 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
-                    <p className="text-sm" style={{ color: colors.textMuted }}>Gesamt verdient</p>
+                    <p className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal2271}</p>
                     <p className="text-2xl font-bold" style={{ color: colors.infoText }}>
                       {parseFloat(String(userData.total_earnings || 0)).toFixed(2)} €
                     </p>
@@ -2326,7 +2326,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       onChange={(e) => setSellerData(prev => ({ ...prev, company_address: e.target.value }))}
                       className="w-full"
                       rows={3}
-                      placeholder={t.profilemodal2329 || "Musterstraße 123, 1234 Musterstadt"}
+                      placeholder={t.profilemodal2329}
                     />
                   </div>
                 </div>
@@ -2483,7 +2483,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
                 {/* Payout Info */}
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                  <h5 className="font-semibold text-white mb-2">{t.payoutInfo || 'Auszahlungs-Info'}</h5>
+                  <h5 className="font-semibold text-white mb-2">{t.profilemodal2486}</h5>
                   <ul className="text-gray-400 text-sm space-y-1">
                     <li>{t.profilemodal2488 || '• Auszahlungen erfolgen monatlich (Anfang des Folgemonats)'}</li>
                     <li>{t.profilemodal2489 || '• Mindestauszahlung: 10,00 €'}</li>
@@ -2516,12 +2516,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 )}
                 {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
                   <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.infoBorder, color: colors.textInverse }}>
-                    {gitIntegrationAccess.days_remaining} {t.profilemodal2519 || 'Tage verbleibend'}
+                    {gitIntegrationAccess.days_remaining} {t.profilemodal2519}
                   </span>
                 )}
               </h3>
               <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                Verbinden Sie Ihren GitHub oder GitLab Account, um generierten Code direkt in Ihre Repositories zu pushen.
+                {t.profilemodal2524}
               </p>
             </div>
 
@@ -2532,20 +2532,20 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   <div>
                     <div className="flex items-center gap-2 mb-1" style={{ color: colors.infoText }}>
                       <i className="pi pi-lock"></i>
-                      <span className="font-semibold">Git Integration ist ein Premium-Feature</span>
+                      <span className="font-semibold">{t.profilemodal2535}</span>
                     </div>
                     <p className="text-sm" style={{ color: colors.textMuted }}>
-                      Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
+                      {t.profilemodal2538}
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold mb-1" style={{ color: colors.infoText }}>
                       {gitIntegrationAccess.unlock_cost} Credits
                     </div>
-                    <div className="text-xs mb-2" style={{ color: colors.textMuted }}>für 1 Jahr</div>
+                    <div className="text-xs mb-2" style={{ color: colors.textMuted }}>{t.profilemodal2545}</div>
                     <Button
                       type="button"
-                      label={unlockingGit ? "Freischalten..." : "Jetzt freischalten"}
+                      label={unlockingGit ? t.profilemodal2548 : t.profilemodal2548_2}
                       icon={unlockingGit ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
                       className="p-button-sm"
                       style={{ backgroundColor: colors.accent, borderColor: colors.accent }}
@@ -2553,7 +2553,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       disabled={unlockingGit || (cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50)}
                     />
                     {(cliStatus?.credits || 0) < (gitIntegrationAccess.unlock_cost || 50) && (
-                      <p className="text-xs mt-1" style={{ color: colors.errorText }}>Nicht genug Credits</p>
+                      <p className="text-xs mt-1" style={{ color: colors.errorText }}>{t.profilemodal2556}</p>
                     )}
                   </div>
                 </div>
@@ -2567,7 +2567,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             ) : gitIntegrationAccess?.has_access === false ? (
               <div className="text-center py-8" style={{ color: colors.textMuted }}>
                 <i className="pi pi-lock text-4xl mb-2"></i>
-                <p>Schalten Sie Git Integration frei, um Provider zu verbinden.</p>
+                <p>{t.profilemodal2570}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -2583,10 +2583,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         {gitProviders.find(p => p.provider === 'github') ? (
                           <p className="text-sm flex items-center gap-1" style={{ color: colors.successText }}>
                             <i className="pi pi-check-circle"></i>
-                            Verbunden als @{gitProviders.find(p => p.provider === 'github')?.username}
+                            {t.profilemodal2586}@{gitProviders.find(p => p.provider === 'github')?.username}
                           </p>
                         ) : (
-                          <p className="text-sm" style={{ color: colors.textMuted }}>Nicht verbunden</p>
+                          <p className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal2589}</p>
                         )}
                       </div>
                     </div>
@@ -2594,7 +2594,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       {gitProviders.find(p => p.provider === 'github') ? (
                         <Button
                           type="button"
-                          label="Trennen"
+                          label={t.profilemodal2597}
                           icon={disconnectingProvider === 'github' ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
                           className="p-button-danger p-button-sm"
                           onClick={() => disconnectGitProvider('github')}
@@ -2603,7 +2603,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       ) : (
                         <Button
                           type="button"
-                          label="Verbinden"
+                          label={t.profilemodal2606}
                           icon={connectingProvider === 'github' ? 'pi pi-spinner pi-spin' : 'pi pi-link'}
                           className="p-button-primary p-button-sm"
                           onClick={() => connectGitProvider('github')}
@@ -2634,7 +2634,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         {gitProviders.find(p => p.provider === 'gitlab') ? (
                           <p className="text-sm flex items-center gap-1" style={{ color: colors.successText }}>
                             <i className="pi pi-check-circle"></i>
-                            Verbunden als @{gitProviders.find(p => p.provider === 'gitlab')?.username}
+                            {t.profilemodal2637}@{gitProviders.find(p => p.provider === 'gitlab')?.username}
                           </p>
                         ) : (
                           <p className="text-sm" style={{ color: colors.textMuted }}>Nicht verbunden</p>
@@ -2645,7 +2645,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       {gitProviders.find(p => p.provider === 'gitlab') ? (
                         <Button
                           type="button"
-                          label="Trennen"
+                          label={t.profilemodal2648}
                           icon={disconnectingProvider === 'gitlab' ? 'pi pi-spinner pi-spin' : 'pi pi-times'}
                           className="p-button-danger p-button-sm"
                           onClick={() => disconnectGitProvider('gitlab')}
@@ -2654,7 +2654,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       ) : (
                         <Button
                           type="button"
-                          label="Verbinden"
+                          label={t.profilemodal2657}
                           icon={connectingProvider === 'gitlab' ? 'pi pi-spinner pi-spin' : 'pi pi-link'}
                           className="p-button-primary p-button-sm"
                           onClick={() => connectGitProvider('gitlab')}
@@ -2669,14 +2669,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="rounded-lg p-4 mt-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                   <h5 className="font-semibold mb-2 flex items-center gap-2" style={{ color: colors.infoText }}>
                     <i className="pi pi-info-circle"></i>
-                    Wie funktioniert es?
+                    {t.profilemodal2672}
                   </h5>
                   <ul className="text-sm space-y-1" style={{ color: colors.textMuted }}>
-                    <li>1. Verbinden Sie Ihren GitHub oder GitLab Account</li>
-                    <li>2. Wählen Sie im Projekt ein Repository aus</li>
-                    <li>3. Nach der Code-Generierung können Sie direkt pushen</li>
-                    <li>• Sie haben volle Kontrolle über Branch und Commit-Message</li>
-                    <li>• Kein automatisches Merge - nur Push und optional PR erstellen</li>
+                    <li>{t.profilemodal2675}</li>
+                    <li>{t.profilemodal2676}</li>
+                    <li>{t.profilemodal2677}</li>
+                    <li>{t.profilemodal2678}</li>
+                    <li>{t.profilemodal2679}</li>
                   </ul>
                 </div>
               </div>
@@ -2705,7 +2705,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
               <h3 className="text-red-800 font-semibold mb-2 flex items-center">
                 <i className="pi pi-exclamation-triangle mr-2"></i>
-                Warning: Delete account
+                {t.profilemodal2708}
               </h3>
               <p className="text-red-700 text-sm mb-3">
                 {t.profilemodal714}
@@ -2737,7 +2737,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <div className="field">
               <label htmlFor="delete-confirm" className="block text-sm font-medium mb-2">
-                Enter "DELETE" to confirm
+                {t.profilemodal2740}"DELETE"{t.profilemodal2740_2}
               </label>
               <InputText
                 id="delete-confirm"
@@ -2750,7 +2750,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 required
               />
               <small className="text-gray-500">
-                You must enter exactly "DELETE" (capital letters)
+                {t.profilemodal2753}"DELETE"{t.profilemodal2753_2}
               </small>
             </div>
 

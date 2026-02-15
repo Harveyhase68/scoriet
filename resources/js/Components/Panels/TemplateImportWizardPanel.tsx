@@ -188,6 +188,9 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [previewFile, setPreviewFile] = useState<{ path: string; content: string | null; is_binary: boolean } | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
 
+    // Duplicate template detection
+    const [duplicateTemplateId, setDuplicateTemplateId] = useState<number | null>(null);
+
     // Service import state
     const [importMode, setImportMode] = useState<'upload' | 'service'>('upload');
     const [serviceDirectoryPath, setServiceDirectoryPath] = useState('');
@@ -516,6 +519,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setPrivateUnlockConfirmed(false);
         setHasCheckedSubscription(false);
         setAvailableSlots(0);
+        // Duplicate state
+        setDuplicateTemplateId(null);
         onClose();
     }, [sessionId, onClose, stopPolling]);
 
@@ -703,8 +708,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         }
     };
 
-    // Create template
-    const handleCreateTemplate = async () => {
+    // Create template with import mode: 'new' (default), 'overwrite' (replace all), 'merge' (add to existing)
+    const handleCreateTemplate = async (importMode: 'new' | 'overwrite' | 'merge' = 'new') => {
         if (!sessionId) return;
 
         const templateFilePaths = getSelectedPaths(selectedTemplateFiles);
@@ -731,6 +736,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
         setLoading(true);
         setError(null);
+        setDuplicateTemplateId(null);
 
         try {
             const response = await fetch(`/api/template-import/${sessionId}/create`, {
@@ -748,6 +754,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     visibility: templateVisibility,
                     is_system: isSystemTemplate,
                     unlock_private: privateUnlockConfirmed,
+                    import_mode: importMode,
                     template_files: templateFilePaths,
                     static_files: staticFilePaths,
                     static_directory_files: staticDirPaths,
@@ -758,6 +765,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             const data = await response.json();
 
             if (!response.ok) {
+                // Handle duplicate name - offer overwrite/merge options
+                if (response.status === 409 && data.error_code === 'DUPLICATE_NAME') {
+                    setDuplicateTemplateId(data.existing_template_id);
+                    setError(t.templateimportwizardpanelDuplicateName);
+                    setLoading(false);
+                    return;
+                }
                 throw new Error(data.message || t.templateimportwizardpanel761);
             }
 
@@ -1964,17 +1978,41 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         disabled={loading || currentStep === 0}
                     />
                 ) : (
-                    <Button
-                        label={t.templateimportwizardpanel1968}
-                        icon="pi pi-check"
-                        onClick={handleCreateTemplate}
-                        loading={loading}
-                        disabled={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed}
-                        tooltip={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed
-                            ? t.templateimportwizardpanel1974
-                            : undefined}
-                        tooltipOptions={{ position: 'top' }}
-                    />
+                    <>
+                        {duplicateTemplateId && (
+                            <>
+                                <Button
+                                    label={t.templateimportwizardpanelMerge}
+                                    icon="pi pi-plus-circle"
+                                    severity="info"
+                                    onClick={() => handleCreateTemplate('merge')}
+                                    loading={loading}
+                                    tooltip={t.templateimportwizardpanelMergeTooltip}
+                                    tooltipOptions={{ position: 'top' }}
+                                />
+                                <Button
+                                    label={t.templateimportwizardpanelOverwrite}
+                                    icon="pi pi-refresh"
+                                    severity="warning"
+                                    onClick={() => handleCreateTemplate('overwrite')}
+                                    loading={loading}
+                                    tooltip={t.templateimportwizardpanelOverwriteTooltip}
+                                    tooltipOptions={{ position: 'top' }}
+                                />
+                            </>
+                        )}
+                        <Button
+                            label={t.templateimportwizardpanel1968}
+                            icon="pi pi-check"
+                            onClick={() => handleCreateTemplate('new')}
+                            loading={loading}
+                            disabled={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed}
+                            tooltip={templateVisibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed
+                                ? t.templateimportwizardpanel1974
+                                : undefined}
+                            tooltipOptions={{ position: 'top' }}
+                        />
+                    </>
                 )}
             </div>
         </div>

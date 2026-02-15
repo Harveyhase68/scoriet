@@ -33,7 +33,9 @@ class VisitorController extends Controller
         $todayAnonymous = $todayCount - $todayAuthenticated;
 
         // Daily chart data (last 30 days)
-        $dailyData = VisitorLog::select(
+        // Use DB::table to avoid model date casting (Carbon vs string mismatch in firstWhere)
+        $dailyData = DB::table('visitor_logs')
+            ->select(
                 'visited_date',
                 DB::raw('COUNT(*) as total'),
                 DB::raw('SUM(CASE WHEN is_authenticated = 1 THEN 1 ELSE 0 END) as authenticated'),

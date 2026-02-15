@@ -575,7 +575,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  PHP Datumsformat (z.B. "d.m.Y" für 31.12.2026 oder "m/d/Y" für 12/31/2026)
+                  {t.editprojectmodal578}
                 </div>
               </div>
 
@@ -591,7 +591,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  PHP Zeitformat (z.B. "H:i:s" für 14:30:00 oder "h:i A" für 2:30 PM)
+                  {t.editprojectmodal594}
                 </div>
               </div>
             </div>
@@ -599,7 +599,7 @@ export default function EditProjectModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Currency Symbol
+                  {t.editprojectmodal602}
                 </label>
                 <InputText
                   value={editForm.currency_symbol}
@@ -610,13 +610,13 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Währungssymbol (z.B. t.editprojectmodal602, "$", "£", t.editprojectmodal608)
+                  {t.editprojectmodal613}
                 </div>
               </div>
 
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Timezone
+                  {t.editprojectmodal619}
                 </label>
                 <Dropdown
                   value={editForm.timezone}
@@ -637,14 +637,14 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Zeitzone für Datum/Zeit-Operationen
+                  {t.editprojectmodal640}
                 </div>
               </div>
             </div>
 
             <div className="field mt-6">
               <label className="block text-sm font-medium text-white mb-2">
-                Google Translate API Key
+                {t.editprojectmodal647}
               </label>
               <InputText
                 type="password"
@@ -655,11 +655,11 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                API-Schlüssel für automatische Übersetzungen via Google Translate
+                {t.editprojectmodal658}
               </div>
               <div className="text-xs text-blue-400 mt-1">
                 🔗 <a href="https://cloud.google.com/translate/docs/setup" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">
-                  Google Cloud Console - API Key erstellen
+                  {t.editprojectmodal662}
                 </a>
               </div>
             </div>
@@ -698,7 +698,7 @@ export default function EditProjectModal({
           disabled={saving}
         />
         <Button
-          label={saving ? "Saving..." : t.editprojectmodal696}
+          label={saving ? t.editprojectmodal701 : t.editprojectmodal696}
           icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
           onClick={handleSave}
           disabled={saving}

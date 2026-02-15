@@ -165,7 +165,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         setFormPaywallLoading(false);
       }
     } catch (error) {
-      console.error('Error checking form designer access:', error);
+      console.error(t.newnavigationpanel168, error);
       // On error, try to open panel anyway
       onOpenPanel(target);
       setFormPaywallLoading(false);
@@ -581,7 +581,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         },
         // Messaging button (always shown, also in demo mode)
         {
-          label: 'Nachrichten',
+          label: t.newnavigationpanel584,
           icon: 'pi pi-envelope',
           command: () => window.dispatchEvent(new CustomEvent('openMessaging'))
         },
@@ -1073,7 +1073,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       {/* Messaging Button (always shown, also in demo mode) */}
                       <button onClick={() => window.dispatchEvent(new CustomEvent('openMessaging'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-envelope"></i>
-                        <span>Nachrichten</span>
+                        <span>{t.newnavigationpanel1076}</span>
                       </button>
                       {/* 🎯 "Change Plan" - greyed out in DEMO mode but still visible */}
                       <button
@@ -1204,16 +1204,16 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           {formAccessInfo && (
             <div className="bg-gray-100 rounded-lg p-4 border border-gray-300">
               <div className="flex justify-between items-center text-sm mb-2">
-                <span className="text-gray-600">Ihre Credits:</span>
+                <span className="text-gray-600">{t.newnavigationpanel1207}</span>
                 <span className="text-gray-900 font-bold">{formAccessInfo.credits}</span>
               </div>
               <div className="flex justify-between items-center text-sm mb-2">
-                <span className="text-gray-600">Benötigt:</span>
+                <span className="text-gray-600">{t.newnavigationpanel1211}</span>
                 <span className="text-yellow-600 font-bold">{formAccessInfo.requiredCredits}</span>
               </div>
               <hr className="border-gray-300 my-2" />
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Danach:</span>
+                <span className="text-gray-600">{t.newnavigationpanel1216}</span>
                 <span className={`font-bold ${formAccessInfo.credits >= formAccessInfo.requiredCredits ? 'text-green-600' : 'text-red-600'}`}>
                   {formAccessInfo.credits >= formAccessInfo.requiredCredits
                     ? formAccessInfo.credits - formAccessInfo.requiredCredits
@@ -1226,7 +1226,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           {formAccessInfo && formAccessInfo.credits < formAccessInfo.requiredCredits && (
             <div className="bg-red-50 border border-red-400 rounded-lg p-3">
               <p className="text-red-600 text-sm">
-                Sie benötigen noch <strong>{formAccessInfo.requiredCredits - formAccessInfo.credits} weitere Credits</strong>.
+                {t.newnavigationpanel1229}<strong>{formAccessInfo.requiredCredits - formAccessInfo.credits}{t.newnavigationpanel1229_2}</strong>.
               </p>
             </div>
           )}
@@ -1239,7 +1239,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 className="flex-1"
                 severity="success"
                 icon="pi pi-unlock"
-                label="Freischalten (50 Credits)"
+                label={t.newnavigationpanel1242}
               />
             ) : (
               <Button
@@ -1247,7 +1247,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 className="flex-1"
                 severity="warning"
                 icon="pi pi-shopping-cart"
-                label="Credits kaufen"
+                label={t.newnavigationpanel1250}
               />
             )}
             <Button
@@ -1257,7 +1257,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               }}
               severity="secondary"
               icon="pi pi-times"
-              label="Abbrechen"
+              label={t.newnavigationpanel1260}
             />
           </div>
         </div>

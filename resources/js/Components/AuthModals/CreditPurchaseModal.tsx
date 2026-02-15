@@ -84,7 +84,7 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
               <p className="text-3xl font-bold text-yellow-400">{currentCredits} Credits</p>
             </div>
             <div className="text-sm text-gray-400">
-              <p>≈ {Math.floor(currentCredits / 5)} generations remaining</p>
+              <p>≈ {Math.floor(currentCredits / 5)}{t.creditpurchasemodal87}</p>
             </div>
           </div>
         </div>
@@ -92,10 +92,10 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
         {/* Info Box */}
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
           <p className="text-gray-300 text-sm mb-2">
-            <strong className="text-blue-400">Pay as you go!</strong> Buy credits when you need them.
+            <strong className="text-blue-400">{t.creditpurchasemodal95}</strong>{t.creditpurchasemodal95_2}
           </p>
           <p className="text-gray-400 text-xs">
-            💡 Each code generation costs 5 credits. Credits never expire and can be used anytime.
+            {t.creditpurchasemodal98}
           </p>
         </div>
 
@@ -108,10 +108,10 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
             >
               <div className="p-6">
                 {pkg.popular && (
-                  <Badge value="⭐ Most Popular" severity="info" className="mb-4" />
+                  <Badge value={t.creditpurchasemodal111} severity="info" className="mb-4" />
                 )}
                 {pkg.bestValue && (
-                  <Badge value="💎 Best Value" severity="success" className="mb-4" />
+                  <Badge value={t.creditpurchasemodal114} severity="success" className="mb-4" />
                 )}
 
                 <div className="mb-4">
@@ -127,14 +127,14 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
                 </div>
 
                 <div className="bg-gray-800 rounded p-3 mb-4">
-                  <p className="text-xs text-gray-400">Price per credit</p>
+                  <p className="text-xs text-gray-400">{t.creditpurchasemodal130}</p>
                   <p className="text-lg font-semibold text-green-400">
                     €{pkg.pricePerCredit}
                   </p>
                 </div>
 
                 <div className="bg-gray-900 rounded p-3 mb-6">
-                  <p className="text-xs text-gray-400 mb-1">You'll get</p>
+                  <p className="text-xs text-gray-400 mb-1">{t.creditpurchasemodal137}</p>
                   <p className="text-sm text-gray-300">
                     ≈ <strong className="text-blue-400">{Math.floor(pkg.credits / 5)}</strong> code generations
                   </p>
@@ -146,7 +146,7 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
                   className={pkg.bestValue ? 'p-button-success w-full' : pkg.popular ? 'p-button-primary w-full' : 'p-button-outlined w-full'}
                   style={{ borderRadius: '8px', paddingTop: '12px', paddingBottom: '12px', fontSize: '16px' }}
                   onClick={() => {
-                    alert(`Buying ${pkg.credits} credits for €${pkg.price.toFixed(2)} - Payment integration coming soon!`);
+                    alert(`${t.creditpurchasemodal149}${pkg.credits}${t.creditpurchasemodal149_2}€${pkg.price.toFixed(2)}${t.creditpurchasemodal149_3}`);
                     onHide();
                   }}
                 />
@@ -157,8 +157,8 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
 
         {/* Footer Note */}
         <div className="text-center text-gray-400 text-sm">
-          <p>💡 Credits are added to your account immediately after payment and never expire.</p>
-          <p className="mt-2">Need help? Contact our <a href="#" className="text-blue-400 hover:text-blue-300">support team</a>.</p>
+          <p>{t.creditpurchasemodal160}</p>
+          <p className="mt-2">{t.creditpurchasemodal161}<a href="#" className="text-blue-400 hover:text-blue-300">{t.creditpurchasemodal161_2}</a>.</p>
         </div>
       </div>
     </Dialog>

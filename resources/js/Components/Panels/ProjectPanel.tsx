@@ -338,7 +338,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       try {
         const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
         if (!token) {
-          setError(t.projectpanel341 || 'Nicht authentifiziert');
+          setError(t.projectpanel341);
           return;
         }
 
@@ -400,7 +400,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error(t.projectpanel403 || 'Nicht authentifiziert');
+        throw new Error(t.projectpanel403);
       }
 
       const response = await fetch(`/api/subscriptions/${project.subscription.id}/renew`, {
@@ -867,7 +867,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       console.error('Export preview error:', err);
       toast.current?.show({
         severity: 'error',
-        summary: t.projectpanel935 || 'Fehler',
+        summary: t.projectpanel935 || t.messageError,
         detail: t.projectpanel871 || 'Export-Vorschau konnte nicht geladen werden',
         life: 3000
       });
@@ -932,7 +932,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       console.error('Export error:', err);
       toast.current?.show({
         severity: 'error',
-        summary: t.projectpanel935 || 'Fehler',
+        summary: t.projectpanel935 || t.messageError,
         detail: err instanceof Error ? err.message : (t.projectpanel936 || 'Export fehlgeschlagen'),
         life: 3000
       });
@@ -1752,13 +1752,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     disabled={creating}
                   />
                   <div className="text-xs text-gray-400 mt-1">
-                    {t.projectpanel1755 || "Datumsformat (d.m.Y = 31.12.2026)"}
+                    {t.projectpanel1755}
                   </div>
                 </div>
 
                 <div className="field">
                   <label htmlFor="create-time-format" className="block text-sm font-medium text-white mb-2">
-                    {t.projectpanel1761 || "Time Format"}
+                    {t.projectpanel1761}
                   </label>
                   <InputText
                     id="create-time-format"
@@ -1769,7 +1769,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     disabled={creating}
                   />
                   <div className="text-xs text-gray-400 mt-1">
-                    {t.projectpanel1772 || "Zeitformat (H:i:s = 23:59:59)"}
+                    {t.projectpanel1772}
                   </div>
                 </div>
               </div>
@@ -1777,7 +1777,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               <div className="grid grid-cols-2 gap-4">
                 <div className="field">
                   <label htmlFor="create-currency-symbol" className="block text-sm font-medium text-white mb-2">
-                    {t.projectpanel1780 || "Currency Symbol"}
+                    {t.projectpanel1780}
                   </label>
                   <InputText
                     id="create-currency-symbol"
@@ -1789,13 +1789,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     maxLength={5}
                   />
                   <div className="text-xs text-gray-400 mt-1">
-                    {t.projectpanel1792 || "Währungssymbol (€, $, CHF, etc.)"}
+                    {t.projectpanel1792}
                   </div>
                 </div>
 
                 <div className="field">
                   <label htmlFor="create-timezone" className="block text-sm font-medium text-white mb-2">
-                    {t.projectpanel1798 || "Timezone"}
+                    {t.projectpanel1798}
                   </label>
                   <Dropdown
                     id="create-timezone"

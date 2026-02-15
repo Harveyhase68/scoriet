@@ -57,7 +57,7 @@ interface MessagingPanelProps {
 export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initialThreadId }: MessagingPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage);
+  const { t: t } = useTranslation(currentLanguage);
 
   // Theme
   const { colors } = useTheme();
@@ -130,7 +130,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       if (!silent) setLoading(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.messagingpanel133);
       }
 
       const response = await fetch('/api/messages/threads', {
@@ -141,7 +141,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       });
 
       if (!response.ok) {
-        throw new Error('Fehler beim Laden der Nachrichten');
+        throw new Error(t.messagingpanel144);
       }
 
       const data = await response.json();
@@ -162,8 +162,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       if (!silent) {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
-          detail: err.message || 'Fehler beim Laden',
+          summary: t.messageError,
+          detail: err.message || t.messagingpanel166,
           life: 3000,
         });
       }
@@ -327,8 +327,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const handleDeleteThread = async (thread: Thread) => {
     confirmDialog({
       group: 'messaging',
-      message: 'Möchten Sie diese Konversation wirklich löschen?',
-      header: 'Konversation löschen',
+      message: t.messagingpanel330,
+      header: t.messagingpanel331,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: async () => {
@@ -348,7 +348,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             toast.current?.show({
               severity: 'success',
               summary: 'Erfolg',
-              detail: 'Konversation gelöscht',
+              detail: t.messagingpanel351,
               life: 3000,
             });
             if (selectedThread?.id === thread.id) {
@@ -360,8 +360,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         } catch {
           toast.current?.show({
             severity: 'error',
-            summary: 'Fehler',
-            detail: 'Konversation konnte nicht gelöscht werden',
+            summary: t.messagingpanel363,
+            detail: t.messagingpanel364,
             life: 3000,
           });
         }
@@ -442,8 +442,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         // Attachment dialog not needed - user can now use the file picker directly
         toast.current?.show({
           severity: 'success',
-          summary: 'Freigeschaltet!',
-          detail: 'Nachrichten-Anhänge wurden freigeschaltet',
+          summary: t.messagingpanel445,
+          detail: t.messagingpanel446,
           life: 3000,
         });
         // Trigger credits refresh
@@ -451,16 +451,16 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
-          detail: data.message || 'Freischaltung fehlgeschlagen',
+          summary: t.messagingpanel454,
+          detail: data.message || t.messagingpanel455,
           life: 3000,
         });
       }
     } catch (_err) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: 'Freischaltung fehlgeschlagen',
+        summary: t.messagingpanel462,
+        detail: t.messagingpanel463,
         life: 3000,
       });
     } finally {
@@ -504,8 +504,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       if (!token) {
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
-          detail: 'Nicht authentifiziert',
+          summary: t.messageError,
+          detail: t.messagingpanel508,
           life: 3000,
         });
         return;
@@ -519,7 +519,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Download fehlgeschlagen');
+        throw new Error(errorData.message || t.messagingpanel522);
       }
 
       // Create blob and download
@@ -535,8 +535,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
     } catch (err: any) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: err.message || 'Download fehlgeschlagen',
+        summary: t.messageError,
+        detail: err.message || t.messagingpanel539,
         life: 3000,
       });
     }
@@ -609,19 +609,19 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const handleSendMessage = async () => {
     // Validate based on recipient type
     if (recipientType === 'individual' && !composeRecipient) {
-      toast.current?.show({ severity: 'warn', summary: 'Hinweis', detail: 'Bitte wählen Sie einen Empfänger', life: 3000 });
+      toast.current?.show({ severity: 'warn', summary: t.messagingpanel612, detail: t.messagingpanel612_2, life: 3000 });
       return;
     }
     if (recipientType === 'project' && !selectedProject) {
-      toast.current?.show({ severity: 'warn', summary: 'Hinweis', detail: 'Bitte wählen Sie ein Projekt', life: 3000 });
+      toast.current?.show({ severity: 'warn', summary: t.messagingpanel612, detail: t.messagingpanel616, life: 3000 });
       return;
     }
     if (recipientType === 'team' && !selectedTeam) {
-      toast.current?.show({ severity: 'warn', summary: 'Hinweis', detail: 'Bitte wählen Sie ein Team', life: 3000 });
+      toast.current?.show({ severity: 'warn', summary: t.messagingpanel612, detail: t.messagingpanel620, life: 3000 });
       return;
     }
     if (!composeSubject.trim() || !composeBody.trim()) {
-      toast.current?.show({ severity: 'warn', summary: 'Hinweis', detail: 'Bitte füllen Sie alle Felder aus', life: 3000 });
+      toast.current?.show({ severity: 'warn', summary: t.messagingpanel612, detail: t.messagingpanel624, life: 3000 });
       return;
     }
 
@@ -694,8 +694,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         const data = await response.json();
         toast.current?.show({
           severity: 'success',
-          summary: 'Erfolg',
-          detail: data.message || 'Nachricht gesendet',
+          summary: t.messagingpanel697,
+          detail: data.message || t.messagingpanel698,
           life: 3000,
         });
         setComposeVisible(false);
@@ -711,13 +711,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         }
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Fehler beim Senden');
+        throw new Error(errorData.message || t.messagingpanel714);
       }
     } catch (err: any) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: err.message || 'Nachricht konnte nicht gesendet werden',
+        summary: t.messageError,
+        detail: err.message || t.messagingpanel720,
         life: 3000,
       });
     } finally {
@@ -772,13 +772,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         loadThreadDetails(selectedThread.id); // Will auto-scroll to bottom
         loadThreads(true);
       } else {
-        throw new Error('Fehler beim Senden der Antwort');
+        throw new Error(t.messagingpanel775);
       }
     } catch (err: any) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: err.message || 'Antwort konnte nicht gesendet werden',
+        summary: t.messageError,
+        detail: err.message || t.messagingpanel781,
         life: 3000,
       });
     } finally {
@@ -842,7 +842,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             e.stopPropagation();
             handleDeleteThread(rowData);
           }}
-          tooltip="Löschen"
+          tooltip={t.messagingpanel845}
         />
       </div>
     );
@@ -856,7 +856,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           <InputText
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Suchen..."
+            placeholder={t.messagingpanel859}
             className="w-full"
           />
         </span>
@@ -868,13 +868,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
     return (
       <div className="flex gap-2">
         <Button
-          label="Neue Nachricht"
+          label={t.messagingpanel871}
           icon="pi pi-plus"
           className="p-button-sm p-button-success"
           onClick={openComposeModal}
         />
         <Button
-          label="Aktualisieren"
+          label={t.messagingpanel877}
           icon="pi pi-refresh"
           className="p-button-sm p-button-secondary"
           onClick={() => loadThreads()}
@@ -940,7 +940,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               dataKey="id"
               globalFilter={globalFilter}
               header={renderHeader()}
-              emptyMessage="Keine Nachrichten"
+              emptyMessage={t.messagingpanel943}
               scrollable
               scrollHeight="flex"
               className="text-sm themed-datatable flex-1"
@@ -954,9 +954,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               }}
               rowClassName={(data) => data.has_unread ? 'bg-blue-900/20' : ''}
             >
-              <Column field="subject" header="Betreff" body={subjectTemplate} sortable style={{ minWidth: '200px' }} />
-              <Column header="Von/An" body={participantsTemplate} style={{ minWidth: '120px' }} />
-              <Column header="Datum" body={dateTemplate} sortable style={{ width: '80px' }} />
+              <Column field="subject" header={t.messagingpanel957_2} body={subjectTemplate} sortable style={{ minWidth: '200px' }} />
+              <Column header={t.messagingpanel958} body={participantsTemplate} style={{ minWidth: '120px' }} />
+              <Column header={t.messagingpanel959} body={dateTemplate} sortable style={{ width: '80px' }} />
               <Column body={actionsTemplate} style={{ width: '60px' }} />
             </DataTable>
           </SplitterPanel>
@@ -999,7 +999,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       {loadingMoreMessages ? (
                         <span className="text-sm" style={{ color: colors.textMuted }}>
                           <i className="pi pi-spin pi-spinner mr-2" />
-                          Lade ältere Nachrichten...
+                          {t.messagingpanel1002}
                         </span>
                       ) : (
                         <button
@@ -1008,7 +1008,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                           style={{ color: colors.accent }}
                         >
                           <i className="pi pi-arrow-up mr-1" />
-                          Ältere Nachrichten laden ({totalMessages - (selectedThread.messages?.length || 0)} weitere)
+                          {t.messagingpanel1011}({totalMessages - (selectedThread.messages?.length || 0)}{t.messagingpanel1011_2}
                         </button>
                       )}
                     </div>
@@ -1027,7 +1027,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-semibold text-sm" style={{ color: colors.textPrimary }}>
-                          {msg.sender?.name || msg.sender?.username || 'Unbekannt'}
+                          {msg.sender?.name || msg.sender?.username || t.messagingpanel1030}
                         </span>
                         <span className="text-xs" style={{ color: colors.textMuted }}>
                           {formatDate(msg.created_at)}
@@ -1081,12 +1081,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                     <InputTextarea
                       value={replyBody}
                       onChange={(e) => setReplyBody(e.target.value)}
-                      placeholder="Antwort schreiben..."
+                      placeholder={t.messagingpanel1084}
                       rows={2}
                       className="flex-1"
                       style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.ctrlKey) {
+                        if (e.key === t.messagingpanel1089 && e.ctrlKey) {
                           handleReply();
                         }
                       }}
@@ -1103,7 +1103,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       <Button
                         className={`p-button-sm ${hasAttachmentAccess ? 'p-button-secondary' : 'p-button-warning'}`}
                         onClick={handleAttachmentClick}
-                        tooltip={hasAttachmentAccess ? 'Datei anhängen' : 'Anhänge freischalten (50 Credits)'}
+                        tooltip={hasAttachmentAccess ? t.messagingpanel1106 : t.messagingpanel1106_2}
                       >
                         <span className="flex items-center gap-1 text-xs">
                           <i className="pi pi-paperclip" />
@@ -1127,7 +1127,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted, backgroundColor: colors.bgPrimary }}>
                 <div className="text-center">
                   <i className="pi pi-envelope text-4xl mb-3" />
-                  <p>Wählen Sie eine Konversation aus</p>
+                  <p>{t.messagingpanel1130}</p>
                 </div>
               </div>
             )}
@@ -1139,7 +1139,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       <Dialog
         visible={composeVisible}
         onHide={() => setComposeVisible(false)}
-        header="Neue Nachricht"
+        header={t.messagingpanel1142}
         style={{ width: '550px' }}
         modal
         className="p-fluid themed-dialog"
@@ -1149,7 +1149,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         <div className="space-y-4">
           {/* Recipient Type Selection */}
           <div>
-            <label className="block text-sm font-medium mb-2">Empfänger-Typ</label>
+            <label className="block text-sm font-medium mb-2">{t.messagingpanel1152}</label>
             <SelectButton
               value={recipientType}
               onChange={(e) => {
@@ -1159,10 +1159,10 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 setSelectedTeam(null);
               }}
               options={[
-                { label: 'Einzelperson', value: 'individual', icon: 'pi pi-user' },
-                { label: 'Projekt', value: 'project', icon: 'pi pi-briefcase' },
-                { label: 'Team', value: 'team', icon: 'pi pi-users' },
-                ...(recipientOptions.can_broadcast ? [{ label: 'Alle (Broadcast)', value: 'broadcast', icon: 'pi pi-globe' }] : []),
+                { label: t.messagingpanel1162, value: 'individual', icon: 'pi pi-user' },
+                { label: t.messagingpanel1163, value: 'project', icon: 'pi pi-briefcase' },
+                { label: t.messagingpanel1164, value: 'team', icon: 'pi pi-users' },
+                ...(recipientOptions.can_broadcast ? [{ label: t.messagingpanel1165, value: 'broadcast', icon: 'pi pi-globe' }] : []),
               ]}
               itemTemplate={(option) => (
                 <span className="flex items-center gap-1 text-sm">
@@ -1177,14 +1177,14 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           {/* Individual Recipient */}
           {recipientType === 'individual' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Empfänger suchen</label>
+              <label className="block text-sm font-medium mb-1">{t.messagingpanel1180}</label>
               <AutoComplete
                 value={composeRecipient}
                 suggestions={userSuggestions}
                 completeMethod={(e) => searchUsers(e.query)}
                 field="name"
                 onChange={(e) => setComposeRecipient(e.value)}
-                placeholder="Mind. 2 Zeichen eingeben..."
+                placeholder={t.messagingpanel1187}
                 className="w-full"
                 minLength={2}
                 itemTemplate={(item: User | null) => item && (
@@ -1199,21 +1199,21 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                   </div>
                 )}
               />
-              <small style={{ color: colors.textMuted }}>Suche in: Projekt-/Team-Mitglieder, frühere Kontakte</small>
+              <small style={{ color: colors.textMuted }}>{t.messagingpanel1202}</small>
             </div>
           )}
 
           {/* Project Selection */}
           {recipientType === 'project' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Projekt auswählen</label>
+              <label className="block text-sm font-medium mb-1">{t.messagingpanel1209}</label>
               <Dropdown
                 value={selectedProject}
                 options={recipientOptions.projects}
                 onChange={(e) => setSelectedProject(e.value)}
                 optionLabel="name"
                 optionValue="id"
-                placeholder="Projekt wählen..."
+                placeholder={t.messagingpanel1216}
                 className="w-full"
                 itemTemplate={(option) => (
                   <div className="flex justify-between items-center w-full">
@@ -1221,9 +1221,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                     <Badge value={`${option.member_count} Mitglieder`} severity="info" />
                   </div>
                 )}
-                emptyMessage="Keine Projekte verfügbar"
+                emptyMessage={t.messagingpanel1224}
               />
-              <small style={{ color: colors.textMuted }}>Nachricht wird an alle Projekt-Mitglieder gesendet</small>
+              <small style={{ color: colors.textMuted }}>{t.messagingpanel1226}</small>
             </div>
           )}
 
@@ -1237,7 +1237,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 onChange={(e) => setSelectedTeam(e.value)}
                 optionLabel="name"
                 optionValue="id"
-                placeholder="Team wählen..."
+                placeholder={t.messagingpanel1240}
                 className="w-full"
                 itemTemplate={(option) => (
                   <div className="flex justify-between items-center w-full">
@@ -1245,12 +1245,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       <span>{option.name}</span>
                       {option.project_name && <span className="text-gray-400 text-sm ml-2">({option.project_name})</span>}
                     </div>
-                    <Badge value={`${option.member_count} Mitglieder`} severity="info" />
+                    <Badge value={`${option.member_count}${t.messagingpanel1248}`} severity="info" />
                   </div>
                 )}
-                emptyMessage="Keine Teams verfügbar"
+                emptyMessage={t.messagingpanel1251}
               />
-              <small style={{ color: colors.textMuted }}>Nachricht wird an alle Team-Mitglieder gesendet</small>
+              <small style={{ color: colors.textMuted }}>{t.messagingpanel1253}</small>
             </div>
           )}
 
@@ -1259,20 +1259,20 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
               <div className="flex items-center gap-2" style={{ color: colors.warningText }}>
                 <i className="pi pi-exclamation-triangle" />
-                <span className="font-medium">System-Broadcast</span>
+                <span className="font-medium">{t.messagingpanel1262}</span>
               </div>
               <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                Diese Nachricht wird an alle registrierten Benutzer gesendet.
+                {t.messagingpanel1265}
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Betreff</label>
+            <label className="block text-sm font-medium mb-1">{t.messagingpanel1271}</label>
             <InputText
               value={composeSubject}
               onChange={(e) => setComposeSubject(e.target.value)}
-              placeholder="Betreff eingeben..."
+              placeholder={t.messagingpanel1275}
               className="w-full"
             />
           </div>
@@ -1282,7 +1282,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             <InputTextarea
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
-              placeholder="Ihre Nachricht..."
+              placeholder={t.messagingpanel1285}
               rows={6}
               className="w-full"
             />
@@ -1295,11 +1295,11 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               <Button
                 className={`p-button-sm ${hasAttachmentAccess ? 'p-button-secondary' : 'p-button-warning'}`}
                 onClick={handleComposeAttachmentClick}
-                tooltip={hasAttachmentAccess ? 'Datei anhängen' : 'Anhänge freischalten (50 Credits)'}
+                tooltip={hasAttachmentAccess ? t.messagingpanel1298 : t.messagingpanel1298_2}
               >
                 <span className="flex items-center gap-1 text-xs">
                   <i className="pi pi-paperclip" />
-                  {hasAttachmentAccess ? 'Datei hinzufügen' : '💰 Freischalten'}
+                  {hasAttachmentAccess ? t.messagingpanel1302 : t.messagingpanel1302_2}
                 </span>
               </Button>
             </div>
@@ -1337,13 +1337,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
           <div className="flex justify-end gap-2 pt-4">
             <Button
-              label="Abbrechen"
+              label={t.messagingpanel1340}
               icon="pi pi-times"
               className="p-button-text"
               onClick={() => setComposeVisible(false)}
             />
             <Button
-              label={composeFiles.length > 0 ? `Senden (${composeFiles.length} Anhang${composeFiles.length > 1 ? 'e' : ''})` : 'Senden'}
+              label={composeFiles.length > 0 ? `${t.messagingpanel1346}(${composeFiles.length}${t.messagingpanel1346_2}${composeFiles.length > 1 ? 'e' : ''})` : t.messagingpanel1346_3}
               icon="pi pi-send"
               className="p-button-primary"
               onClick={handleSendMessage}
@@ -1364,7 +1364,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       <Dialog
         visible={showUnlockDialog}
         onHide={() => setShowUnlockDialog(false)}
-        header="Anhänge freischalten"
+        header={t.messagingpanel1367}
         style={{ width: '400px' }}
         modal
         className="themed-dialog"
@@ -1373,13 +1373,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Abbrechen"
+              label={t.messagingpanel1376}
               icon="pi pi-times"
               className="p-button-text"
               onClick={() => setShowUnlockDialog(false)}
             />
             <Button
-              label="Freischalten (50 Credits)"
+              label={t.messagingpanel1382}
               icon="pi pi-unlock"
               className="p-button-success"
               onClick={handleUnlockAttachments}
@@ -1392,25 +1392,25 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         <div className="space-y-4">
           <div className="text-center mb-4">
             <i className="pi pi-paperclip text-4xl mb-2" style={{ color: colors.accent }} />
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Nachrichten-Anhänge</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.messagingpanel1395}</h3>
           </div>
 
           <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary }}>
             <div className="flex justify-between items-center mb-3">
-              <span style={{ color: colors.textSecondary }}>Ihre Credits:</span>
+              <span style={{ color: colors.textSecondary }}>{t.messagingpanel1400}</span>
               <span className="font-bold" style={{ color: (attachmentAccessStatus?.user_credits || 0) >= 50 ? colors.successText : colors.errorText }}>
-                {attachmentAccessStatus?.user_credits || 0} Credits
+                {attachmentAccessStatus?.user_credits || 0}{t.messagingpanel1402}
               </span>
             </div>
             <div className="flex justify-between items-center mb-3">
-              <span style={{ color: colors.textSecondary }}>Kosten:</span>
-              <span className="font-bold" style={{ color: colors.warningText }}>50 Credits</span>
+              <span style={{ color: colors.textSecondary }}>{t.messagingpanel1406}</span>
+              <span className="font-bold" style={{ color: colors.warningText }}>{t.messagingpanel1407}</span>
             </div>
             <hr className="my-2" style={{ borderColor: colors.borderPrimary }} />
             <div className="flex justify-between items-center">
-              <span style={{ color: colors.textSecondary }}>Verbleibend:</span>
+              <span style={{ color: colors.textSecondary }}>{t.messagingpanel1411}</span>
               <span className="font-bold" style={{ color: (attachmentAccessStatus?.user_credits || 0) - 50 >= 0 ? colors.successText : colors.errorText }}>
-                {Math.max(0, (attachmentAccessStatus?.user_credits || 0) - 50)} Credits
+                {Math.max(0, (attachmentAccessStatus?.user_credits || 0) - 50)}{t.messagingpanel1413}
               </span>
             </div>
           </div>
@@ -1419,10 +1419,10 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             <div className="rounded p-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
               <div className="flex items-center gap-2" style={{ color: colors.errorText }}>
                 <i className="pi pi-exclamation-triangle" />
-                <span>Nicht genügend Credits!</span>
+                <span>{t.messagingpanel1422}</span>
               </div>
               <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                Sie benötigen mindestens 50 Credits zum Freischalten.
+                {t.messagingpanel1425}
               </p>
             </div>
           )}
@@ -1431,15 +1431,15 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             <div className="flex items-start gap-2">
               <i className="pi pi-info-circle mt-0.5" style={{ color: colors.infoText }} />
               <div className="text-sm" style={{ color: colors.textSecondary }}>
-                <p className="mb-1">Mit Nachrichten-Anhängen können Sie:</p>
+                <p className="mb-1">{t.messagingpanel1434}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Dateien an Nachrichten anhängen</li>
-                  <li>Bilder, PDFs, Dokumente teilen</li>
-                  <li>ZIP-Archive versenden</li>
+                  <li>{t.messagingpanel1436}</li>
+                  <li>{t.messagingpanel1437}</li>
+                  <li>{t.messagingpanel1438}</li>
                 </ul>
                 <p className="mt-2" style={{ color: colors.warningText }}>
                   <i className="pi pi-star mr-1" />
-                  Gültig für 1 Jahr nach Freischaltung
+                  {t.messagingpanel1442}
                 </p>
               </div>
             </div>
@@ -1448,7 +1448,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           <div className="rounded p-3 text-center" style={{ backgroundColor: `${colors.accent}20`, border: `1px solid ${colors.accent}` }}>
             <span className="text-sm" style={{ color: colors.accent }}>
               <i className="pi pi-crown mr-1" />
-              Patron-Mitglieder erhalten dieses Feature kostenlos!
+              {t.messagingpanel1451}
             </span>
           </div>
         </div>

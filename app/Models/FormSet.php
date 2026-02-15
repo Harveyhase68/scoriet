@@ -175,11 +175,11 @@ class FormSet extends Model
     {
         $windowTypes = ['main_menu', 'create_edit', 'data_table', 'report_single', 'report_list'];
         $displayNames = [
-            'main_menu' => 'Hauptmenü',
-            'create_edit' => 'Formular (Erstellen/Bearbeiten)',
-            'data_table' => 'Datentabelle',
-            'report_single' => 'Report (Einzeldatensatz)',
-            'report_list' => 'Report (Liste)',
+            'main_menu' => 'Main Menu',
+            'create_edit' => 'Create/Edit Form',
+            'data_table' => 'Data Table',
+            'report_single' => 'Single Report',
+            'report_list' => 'List Report',
         ];
 
         foreach ($windowTypes as $index => $type) {

@@ -42,7 +42,7 @@ interface Template {
 
 export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: ProjectWizardModalProps) {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage);
+  const { t: t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -62,7 +62,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   const handleProjectNameChange = (value: string) => {
     const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (value !== sanitized) {
-      setProjectNameError('Only lowercase letters, numbers, and underscores are allowed');
+      setProjectNameError(t.projectwizardmodal65);
     } else {
       setProjectNameError(null);
     }
@@ -196,7 +196,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         setAvailableLanguages(Array.isArray(data) ? data : []);
       }
     } catch (err) {
-      console.error('Error loading languages:', err);
+      console.error(t.projectwizardmodal199, err);
     }
   }, []);
 
@@ -220,7 +220,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         setExistingSchemas(schemas);
       }
     } catch (err) {
-      console.error('Error loading schemas:', err);
+      console.error(t.projectwizardmodal223, err);
     }
   }, []);
 
@@ -242,7 +242,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         setCurrentUser((prev: any) => ({ ...prev, credits: userData.credits }));
       }
     } catch (err) {
-      console.error('Error refreshing credits:', err);
+      console.error(t.projectwizardmodal245, err);
     }
   }, []);
 
@@ -264,7 +264,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         setTemplates(data.templates || []);
       }
     } catch (err) {
-      console.error('Error loading templates:', err);
+      console.error(t.projectwizardmodal267, err);
     }
   }, []);
 
@@ -296,7 +296,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         }
       }
     } catch (err) {
-      console.error('Error loading teams:', err);
+      console.error(t.projectwizardmodal299, err);
     }
   }, []);
 
@@ -355,7 +355,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               setUserSchemaCount(userOwnedSchemas.length);
             }
           } catch (err) {
-            console.error('Error loading schemas:', err);
+            console.error(t.projectwizardmodal358, err);
             setUserSchemaCount(0);
           }
         }
@@ -399,7 +399,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         setIsCheckingAccess(false);
 
       } catch (error) {
-        console.error('Error checking access:', error);
+        console.error(t.projectwizardmodal402, error);
         // On error, show wizard anyway at Step 1
         setNeedsProjectUnlock(false);
         setCurrentStep(1);
@@ -464,7 +464,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           setProjectNameExists(exists);
         }
       } catch (err) {
-        console.error('Error checking project name:', err);
+        console.error(t.projectwizardmodal467, err);
       } finally {
         setCheckingProjectName(false);
       }
@@ -502,7 +502,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           setSchemaNameExists(exists);
         }
       } catch (err) {
-        console.error('Error checking schema name:', err);
+        console.error(t.projectwizardmodal505, err);
       } finally {
         setCheckingSchemaName(false);
       }
@@ -539,7 +539,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           setTeamNameExists(exists);
         }
       } catch (err) {
-        console.error('Error checking team name:', err);
+        console.error(t.projectwizardmodal542, err);
       } finally {
         setCheckingTeamName(false);
       }
@@ -559,12 +559,12 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       }
       // Check snake_case format
       if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(projectName)) {
-        setError('Project name must be in snake_case format (lowercase letters, numbers, underscores)');
+        setError(t.projectwizardmodal562);
         return;
       }
       // Check if name already exists
       if (projectNameExists) {
-        setError('Project name already exists. Please choose a different name.');
+        setError(t.projectwizardmodal567);
         return;
       }
     }
@@ -572,7 +572,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     // Step 5: Database Selection - Check if unlock is needed
     if (currentStep === 5) {
       if (databaseOption === 'existing' && !selectedSchemaId) {
-        setError('Please select an existing database');
+        setError(t.projectwizardmodal575);
         return;
       }
 
@@ -606,7 +606,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               }
             }
           } catch (err) {
-            console.error('Error checking schema count:', err);
+            console.error(t.projectwizardmodal609, err);
           }
         }
       }
@@ -629,15 +629,15 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     // Step 7: Database Details validation
     if (currentStep === 7) {
       if (!schemaName.trim()) {
-        setError('Schema name is required');
+        setError(t.projectwizardmodal632);
         return;
       }
       if (schemaNameExists) {
-        setError('A database with this name already exists. Please choose a different name.');
+        setError(t.projectwizardmodal636);
         return;
       }
       if (checkingSchemaName) {
-        setError('Please wait while we check the database name...');
+        setError(t.projectwizardmodal640);
         return;
       }
     }
@@ -646,7 +646,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     if (currentStep === 8 && databaseOption === 'new' && !skipSqlImport && sqlScript.trim()) {
       const sqlUpper = sqlScript.toUpperCase();
       if (!sqlUpper.includes('CREATE TABLE')) {
-        setError('SQL script must contain at least one CREATE TABLE statement');
+        setError(t.projectwizardmodal649);
         return;
       }
     }
@@ -660,7 +660,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       }
       if (teamOption === 'existing') {
         if (!selectedTeamId) {
-          setError('Please select an existing team');
+          setError(t.projectwizardmodal663);
           return;
         }
         // Skip to templates (Step 12)
@@ -691,15 +691,15 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     // Step 11: Team Details validation
     if (currentStep === 11) {
       if (!teamName.trim()) {
-        setError('Team name is required');
+        setError(t.projectwizardmodal694);
         return;
       }
       if (teamNameExists) {
-        setError('A team with this name already exists. Please choose a different name.');
+        setError(t.projectwizardmodal698);
         return;
       }
       if (checkingTeamName) {
-        setError('Please wait while we check the team name...');
+        setError(t.projectwizardmodal702);
         return;
       }
     }
@@ -847,7 +847,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.projectwizardmodal850);
       }
 
       // Pre-check: Calculate total credits needed
@@ -868,7 +868,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             if (reservedCreditsForProject > 0) parts.push(`${reservedCreditsForProject} für Projekt`);
             if (reservedCreditsForDatabase > 0) parts.push(`${reservedCreditsForDatabase} für Datenbank`);
             if (reservedCreditsForTeam > 0) parts.push(`${reservedCreditsForTeam} für Team`);
-            setError(`Nicht genug Credits! Sie benötigen ${totalCreditsNeeded} Credits (${parts.join(' + ')}), haben aber nur ${userData.credits}.`);
+            setError(`${t.projectwizardmodal871}${totalCreditsNeeded} Credits (${parts.join(' + ')})${t.projectwizardmodal871_2}${userData.credits}.`);
             setLoading(false);
             setPlanModalInitialTab(1);
             setShowPlanModal(true);
@@ -937,14 +937,14 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
           // Handle insufficient credits error
           if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-            setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+            setError(`${t.projectwizardmodal940}${errorData.required_credits}${t.projectwizardmodal940_2}${errorData.current_credits}.`);
             setLoading(false);
             setPlanModalInitialTab(1);
             setShowPlanModal(true);
             return;
           }
 
-          throw new Error(errorData.message || 'Failed to create project');
+          throw new Error(errorData.message || t.projectwizardmodal947);
         }
 
         const project = await projectResponse.json();
@@ -1015,16 +1015,16 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
             // Handle insufficient credits error specifically
             if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-              setError(`Nicht genug Credits für Datenbank! Sie benötigen ${errorData.required_credits || 50} Credits.`);
+              setError(`${t.projectwizardmodal1018}${errorData.required_credits || 50} Credits.`);
               setLoading(false);
               setPlanModalInitialTab(1);
               setShowPlanModal(true);
               return;
             }
 
-            const errorMessage = errorData.message || errorData.error || 'Unknown error';
-            console.error('Schema creation failed:', errorData);
-            throw new Error(`Failed to create schema: ${errorMessage}`);
+            const errorMessage = errorData.message || errorData.error || t.projectwizardmodal1025;
+            console.error(t.projectwizardmodal1026, errorData);
+            throw new Error(`${t.projectwizardmodal1027}${errorMessage}`);
           }
 
           const schema = await schemaResponse.json();
@@ -1050,7 +1050,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         if (!associateResponse.ok) {
           const errorData = await associateResponse.json().catch(() => ({}));
-          throw new Error(`Failed to link schema to project: ${errorData.message || errorData.error || 'Unknown error'}`);
+          throw new Error(`${t.projectwizardmodal1053}${errorData.message || errorData.error || t.projectwizardmodal1053_2}`);
         }
       }
 
@@ -1076,7 +1076,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
           // Handle insufficient credits error
           if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-            setError(`Nicht genug Credits für Team! Sie benötigen ${errorData.required_credits || 50} Credits.`);
+            setError(`${t.projectwizardmodal1079}${errorData.required_credits || 50} Credits.`);
             setLoading(false);
             setPlanModalInitialTab(1);
             setShowPlanModal(true);
@@ -1084,7 +1084,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           }
 
           // Non-critical error - warn but continue
-          alert(`⚠️ Warning: Team creation failed\n\n${errorData.message || 'Unknown error'}\n\nYour project has been created successfully. You can create teams later from the Teams panel.`);
+          alert(`${t.projectwizardmodal1087}\n\n${errorData.message || t.projectwizardmodal1087_2}\n\n${t.projectwizardmodal1087_3}`);
         }
       } else if (teamOption === 'existing' && selectedTeamId && projectId) {
         // Assign existing team to project
@@ -1142,7 +1142,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             body: JSON.stringify({
               sql_script: sqlScript,
               schema_id: schemaId,
-              description: importDescription || 'Initial import from wizard',
+              description: importDescription || t.projectwizardmodal1145,
             }),
           });
 
@@ -1150,11 +1150,11 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             const errorData = await importResponse.json();
 
             // Show warning but don't fail the entire wizard
-            alert(`⚠️ Warning: SQL import failed\n\n${errorData.error || 'Unknown error'}\n\nYour project and schema have been created successfully and linked together. You can import your SQL later using the Database Designer.`);
+            alert(`${t.projectwizardmodal1153}\n\n${errorData.error || 'Unknown error'}\n\n${t.projectwizardmodal1153_2}`);
           }
         } catch {
           // Continue anyway - project is already set up
-          alert('⚠️ Warning: SQL import failed due to an error.\n\nYour project and schema have been created successfully and linked together. You can import your SQL later using the Database Designer.');
+          alert('${t.projectwizardmodal1157}\n\n${t.projectwizardmodal1157_2}');
         }
       }
 
@@ -1180,7 +1180,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       handleClose();
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to complete wizard');
+      setError(err instanceof Error ? err.message : t.projectwizardmodal1183);
     } finally {
       setLoading(false);
     }
@@ -1245,21 +1245,21 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
-              🔓 Unlock Additional Project Slot
+              {t.projectwizardmodal1248}
             </h3>
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
               <p className="text-sm mb-2" style={{ color: colors.warningText }}>
-                <strong>Project Limit Reached</strong>
+                <strong>{t.projectwizardmodal1253}</strong>
               </p>
               <p className="text-sm" style={{ color: colors.textPrimary }}>
-                Your current limit: <strong>{maxAllowed} project{maxAllowed > 1 ? 's' : ''}</strong> (1 free{activeSubscriptions > 0 ? ` + ${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''}` : ''})
+                {t.projectwizardmodal1256}<strong>{maxAllowed} project{maxAllowed > 1 ? 's' : ''}</strong> (1 free{activeSubscriptions > 0 ? ` + ${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''}` : ''})
               </p>
               <p className="text-sm" style={{ color: colors.textPrimary }}>
-                Active projects: <strong>{currentProjects}</strong>
+                {t.projectwizardmodal1259}<strong>{currentProjects}</strong>
               </p>
               <p className="text-sm mt-2" style={{ color: colors.textPrimary }}>
-                To create another project, you need to unlock a new slot for <strong>50 credits per year</strong>.
+                {t.projectwizardmodal1262}<strong>{t.projectwizardmodal1262_2}</strong>.
               </p>
             </div>
 
@@ -1284,7 +1284,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             {!hasEnoughCreditsForProject && (
               <div className="rounded-lg p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                 <p className="text-sm" style={{ color: colors.errorText }}>
-                  ⚠️ You don't have enough credits. You need <strong>{creditsNeededForProject} more credits</strong> to unlock this project slot.
+                  {t.projectwizardmodal1287}<strong>{creditsNeededForProject}{t.projectwizardmodal1287_2}</strong>{t.projectwizardmodal1287_3}
                 </p>
               </div>
             )}
@@ -1292,7 +1292,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <div className="flex gap-3">
               {hasEnoughCreditsForProject ? (
                 <Button
-                  label="Unlock Project Slot (50 Credits)"
+                  label={t.projectwizardmodal1295}
                   icon="pi pi-unlock"
                   onClick={handleStep0UnlockConfirm}
                   className="flex-1"
@@ -1300,7 +1300,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 />
               ) : (
                 <Button
-                  label="Buy Credits"
+                  label={t.projectwizardmodal1303}
                   icon="pi pi-shopping-cart"
                   onClick={handleBuyCredits}
                   className="flex-1"
@@ -1310,16 +1310,16 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
 
             <p className="text-xs text-center" style={{ color: colors.textMuted }}>
-              Or upgrade to{' '}
+              {t.projectwizardmodal1313}{' '}
               <button
                 type="button"
                 onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
                 className="underline font-semibold"
                 style={{ color: colors.warningText }}
               >
-                Patron Monthly
+                {t.projectwizardmodal1320}
               </button>
-              {' '}for unlimited projects!
+              {' '}{t.projectwizardmodal1322}
             </p>
           </div>
         );
@@ -1331,7 +1331,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Project Information</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Project Name *
+                {t.projectwizardmodal1334}
               </label>
               <InputText
                 value={projectName}
@@ -1349,19 +1349,19 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 {!projectNameError && checkingProjectName && projectName.trim() && (
                   <small className="flex items-center gap-1" style={{ color: colors.accent }}>
                     <i className="pi pi-spin pi-spinner"></i>
-                    Checking availability...
+                    {t.projectwizardmodal1352}
                   </small>
                 )}
                 {!projectNameError && !checkingProjectName && projectName.trim() && projectNameExists && (
                   <small className="flex items-center gap-1" style={{ color: colors.errorText }}>
                     <i className="pi pi-times-circle"></i>
-                    Project name already exists
+                    {t.projectwizardmodal1358}
                   </small>
                 )}
                 {!projectNameError && !checkingProjectName && projectName.trim() && !projectNameExists && /^[a-z0-9]+(_[a-z0-9]+)*$/.test(projectName) && (
                   <small className="flex items-center gap-1" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    Available
+                    {t.projectwizardmodal1364}
                   </small>
                 )}
               </div>
@@ -1369,13 +1369,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Description
+                {t.projectwizardmodal1372}
               </label>
               <InputTextarea
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
                 rows={3}
-                placeholder="Project description..."
+                placeholder={t.projectwizardmodal1378}
                 className="w-full"
               />
             </div>
@@ -1406,7 +1406,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Project Properties</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Project Directory
+                {t.projectwizardmodal1409}
               </label>
               <InputText
                 value={projectDirectory}
@@ -1417,7 +1417,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Project URL
+                {t.projectwizardmodal1420}
               </label>
               <InputText
                 value={projectUrl}
@@ -1429,7 +1429,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Start Page
+                  {t.projectwizardmodal1432}
                 </label>
                 <InputText
                   value={startPage}
@@ -1440,16 +1440,16 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Filename Short Length
+                  {t.projectwizardmodal1443}
                 </label>
                 <Dropdown
                   value={filenameShortLength}
                   onChange={(e) => setFilenameShortLength(e.value)}
                   options={[
-                    { label: '2 characters', value: 2 },
-                    { label: '3 characters', value: 3 },
-                    { label: '4 characters', value: 4 },
-                    { label: '5 characters', value: 5 },
+                    { label: t.projectwizardmodal1449, value: 2 },
+                    { label: t.projectwizardmodal1450, value: 3 },
+                    { label: t.projectwizardmodal1451, value: 4 },
+                    { label: t.projectwizardmodal1452, value: 5 },
                   ]}
                   className="w-full"
                 />
@@ -1464,7 +1464,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Database Connection</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Database Type
+                {t.projectwizardmodal1467}
               </label>
               <Dropdown
                 value={databaseType}
@@ -1481,7 +1481,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Server
+                  {t.projectwizardmodal1484}
                 </label>
                 <InputText
                   value={databaseServer}
@@ -1504,7 +1504,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Username
+                {t.projectwizardmodal1507}
               </label>
               <InputText
                 value={databaseUsername}
@@ -1515,7 +1515,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Password
+                {t.projectwizardmodal1518}
               </label>
               <InputText
                 type="password"
@@ -1537,24 +1537,25 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Language Selection</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1540}</h3>
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              Select the languages you want to use for code generation in this project.
+              {t.projectwizardmodal1542}
             </p>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Use the arrow buttons to move languages between lists, and the up/down buttons to reorder selected languages.
+              {t.projectwizardmodal1545}
             </p>
             <PickList
               source={sourceLanguages}
               target={targetLanguages}
+              dataKey="code"
               onChange={(e) => {
                 // Maintain the order of target languages
                 const targetCodes = e.target.map((item: Language) => item.code);
                 setSelectedLanguages(targetCodes);
               }}
               itemTemplate={(item: Language) => `${item.native_name} (${item.name})`}
-              sourceHeader="Available Languages"
-              targetHeader="Selected Languages (ordered)"
+              sourceHeader={t.projectwizardmodal1556}
+              targetHeader={t.projectwizardmodal1557}
               sourceStyle={{ height: '300px' }}
               targetStyle={{ height: '300px' }}
               showSourceControls={false}
@@ -1594,13 +1595,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             {databaseOption === 'existing' && (
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Select Database
+                  {t.projectwizardmodal1597}
                 </label>
                 <Dropdown
                   value={selectedSchemaId}
                   onChange={(e) => setSelectedSchemaId(e.value)}
                   options={existingSchemas.map(s => ({ label: s.name, value: s.id }))}
-                  placeholder="Select a database..."
+                  placeholder={t.projectwizardmodal1603}
                   className="w-full"
                 />
               </div>
@@ -1618,45 +1619,45 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
-              🔓 Unlock Additional Database
+              {t.projectwizardmodal1621}
             </h3>
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
               <p className="text-sm mb-2" style={{ color: colors.warningText }}>
-                <strong>Free Tier Limit Reached</strong>
+                <strong>{t.projectwizardmodal1626}</strong>
               </p>
               <p className="text-sm" style={{ color: colors.textSecondary }}>
-                Free users can have <strong>1 database</strong>. You currently have <strong>1 database</strong>.
+                {t.projectwizardmodal1629}<strong>{t.projectwizardmodal1629_2}</strong>{t.projectwizardmodal1629_3}<strong>{t.projectwizardmodal1629_5}</strong>.
               </p>
               <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-                To create additional databases, you need to unlock them for <strong>50 credits per database per year</strong>.
+                {t.projectwizardmodal1632_2}<strong>{t.projectwizardmodal1632_3}</strong>.
               </p>
             </div>
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Your Credits:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1638}</span>
                 <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
               </div>
               {reservedCreditsForProject > 0 && (
                 <div className="flex justify-between items-center mb-2">
-                  <span style={{ color: colors.textSecondary }}>Reserved for Project:</span>
+                  <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1643}</span>
                   <span className="font-bold text-lg" style={{ color: colors.warningText }}>-{reservedCreditsForProject}</span>
                 </div>
               )}
               {reservedCreditsForProject > 0 && (
                 <div className="flex justify-between items-center mb-2">
-                  <span style={{ color: colors.textSecondary }}>Available Credits:</span>
+                  <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1649}</span>
                   <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{availableCreditsForDb}</span>
                 </div>
               )}
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Required for Database:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1654}</span>
                 <span className="font-bold text-lg" style={{ color: colors.warningText }}>50</span>
               </div>
               <hr className="my-2" style={{ borderColor: colors.borderSecondary }} />
               <div className="flex justify-between items-center">
-                <span style={{ color: colors.textSecondary }}>After Unlock:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1659}</span>
                 <span className="font-bold text-lg" style={{ color: hasEnoughCreditsForDb ? colors.successText : colors.errorText }}>
                   {hasEnoughCreditsForDb ? availableCreditsForDb - 50 : `Need ${creditsNeededForDb} more`}
                 </span>
@@ -1666,7 +1667,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             {!hasEnoughCreditsForDb && (
               <div className="rounded-lg p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                 <p className="text-sm" style={{ color: colors.errorText }}>
-                  ⚠️ You don't have enough credits. You need <strong>{creditsNeededForDb} more credits</strong> to unlock this database.
+                  {t.projectwizardmodal1669}<strong>{creditsNeededForDb}{t.projectwizardmodal1669_2}</strong>{t.projectwizardmodal1669_3}
                 </p>
               </div>
             )}

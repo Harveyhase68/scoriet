@@ -38,16 +38,11 @@ Route::get('/project-invitations/decline/{token}', function ($token) {
 
 // Demo login route (for demo.scoriet.dev)
 Route::get('/demo-login', function () {
-    $userType = request('user', 'demo-user');
-    
-    if (!in_array($userType, ['demo-admin', 'demo-user'])) {
-        $userType = 'demo-user';
-    }
-    
+    // Only demo-user is allowed - no system/admin access in demo mode
     return Inertia::render('Index', [
         'demoLogin' => true,
-        'demoUser' => $userType,
-        'demoMessage' => 'Demo-Modus aktiviert! Daten werden alle 20 Minuten zurückgesetzt.'
+        'demoUser' => 'demo-user',
+        'demoMessage' => __('webphp45')
     ]);
 })->name('demo.login');
 

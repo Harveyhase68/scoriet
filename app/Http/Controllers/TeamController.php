@@ -237,7 +237,7 @@ class TeamController extends Controller
                 // Check if user has enough credits
                 if ($user->credits < $requiredCredits) {
                     return response()->json([
-                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits um ein neues Team freizuschalten.",
+                        'message' => __('teamcontrollerphp240') . "{$requiredCredits}" . __('teamcontrollerphp240_2'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => $requiredCredits,
                         'current_credits' => $user->credits,
@@ -778,7 +778,7 @@ class TeamController extends Controller
 
             $message = 'Team erfolgreich übertragen';
             if ($result['team_locked']) {
-                $message .= ' (gesperrt - Empfänger muss freischalten)';
+                $message .= __('teamcontrollerphp781');
             } elseif ($result['slot_transferred']) {
                 $message .= ' (inkl. Slot)';
             }
@@ -786,7 +786,7 @@ class TeamController extends Controller
             // Add info about unlinked projects
             $unlinkedCount = count($result['unlinked_projects']);
             if ($unlinkedCount > 0) {
-                $message .= ". {$unlinkedCount} Projekt-Verknüpfung(en) wurden entfernt.";
+                $message .= ". {$unlinkedCount}" . __('teamcontrollerphp789');
             }
 
             return response()->json([
@@ -807,7 +807,7 @@ class TeamController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Fehler beim Übertragen des Teams: ' . $e->getMessage(),
+                'message' => __('teamcontrollerphp810') . $e->getMessage(),
                 'error_code' => 'TRANSFER_FAILED',
             ], 500);
         }
@@ -828,7 +828,7 @@ class TeamController extends Controller
 
         // Only team owner can check transfer
         if ((string)$team->project_owner_id !== (string)$owner->id) {
-            return response()->json(['message' => 'Nur der Team-Owner kann das Team übertragen'], 403);
+            return response()->json(['message' => __('teamcontrollerphp831')], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -846,7 +846,7 @@ class TeamController extends Controller
         $newOwner = \App\Models\User::find($newOwnerId);
 
         if (!$newOwner) {
-            return response()->json(['message' => 'Benutzer nicht gefunden'], 404);
+            return response()->json(['message' => __('teamcontrollerphp849')], 404);
         }
 
         // Check recipient status

@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckCliAccess;
 use App\Http\Middleware\CheckServiceAccess;
 use App\Http\Middleware\CheckTeamPermission;
+use App\Http\Middleware\DemoProtection;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -65,6 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(append: [
             SetLocale::class,
+            DemoProtection::class,
         ]);
 
         // Register middleware aliases

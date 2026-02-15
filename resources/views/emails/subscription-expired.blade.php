@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abo abgelaufen - {{ $displayName }}</title>
+    <title>{{__('subscription-expiredbladephp6')}}{{ $displayName }}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -126,51 +126,51 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">Abo abgelaufen</h1>
+            <h1 class="title">{{__('subscription-expiredbladephp129')}}</h1>
         </div>
 
         <p>Hallo {{ $user->name }},</p>
 
         <div class="expired-banner">
             <div class="expired-icon">⏰</div>
-            <div class="expired-title">Ihr Abonnement ist abgelaufen</div>
+            <div class="expired-title">{{__('subscription-expiredbladephp136')}}</div>
             <p style="margin: 0; color: #6b7280;">
-                Das Feature wurde vorübergehend gesperrt (Soft-Lock).
+                {{__('subscription-expiredbladephp138')}}
             </p>
         </div>
 
         <div class="subscription-info">
             <div class="subscription-name">{{ $displayName }}</div>
             <p class="subscription-expiry">
-                Abgelaufen am: {{ $expiredAt }}
+                {{__('subscription-expiredbladephp145')}}{{ $expiredAt }}
             </p>
         </div>
 
         <div class="info-box">
-            <div class="info-title">Gute Nachrichten!</div>
+            <div class="info-title">{{__('subscription-expiredbladephp150')}}</div>
             <ul>
-                <li><strong>Ihre Daten sind sicher</strong> - Nichts wurde gelöscht</li>
-                <li><strong>Reaktivierung jederzeit möglich</strong></li>
-                <li><strong>Sofortiger Zugang</strong> nach Verlängerung</li>
+                <li><strong>{{__('subscription-expiredbladephp152')}}</strong>{{__('subscription-expiredbladephp152_2')}}</li>
+                <li><strong>{{__('subscription-expiredbladephp153')}}</strong></li>
+                <li><strong>{{__('subscription-expiredbladephp154')}}</strong>{{__('subscription-expiredbladephp154_2')}}</li>
             </ul>
         </div>
 
         <p style="text-align: center; margin: 25px 0;">
-            Reaktivieren Sie Ihr Abo jetzt und arbeiten Sie nahtlos weiter.<br>
-            <strong style="color: #059669;">Nur 50 Credits für ein ganzes Jahr!</strong>
+            __('subscription-expiredbladephp159')<br>
+            <strong style="color: #059669;">{{__('subscription-expiredbladephp160')}}</strong>
         </p>
 
         <div class="actions">
-            <a href="{{ $renewUrl }}" class="btn btn-reactivate">Jetzt reaktivieren</a>
+            <a href="{{ $renewUrl }}" class="btn btn-reactivate">{{__('subscription-expiredbladephp164')}}</a>
         </div>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Bei Fragen antworten Sie einfach auf diese E-Mail.
+                {{__('subscription-expiredbladephp169')}}<strong>Scoriet</strong>.<br>
+                {{__('subscription-expiredbladephp170')}}
             </p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
-                Subscription ID: {{ $subscription->id }}
+                {{__('subscription-expiredbladephp173')}}{{ $subscription->id }}
             </p>
         </div>
     </div>

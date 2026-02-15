@@ -61,6 +61,10 @@ class TemplateImportController extends Controller
      */
     public function upload(Request $request): JsonResponse
     {
+        // Ensure enough time and memory for large archive extraction
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
         $request->validate([
             'archive' => 'required|file|max:102400', // Max 100MB
         ]);
@@ -292,6 +296,10 @@ class TemplateImportController extends Controller
      */
     public function createTemplate(Request $request, string $sessionId): JsonResponse
     {
+        // Ensure enough time and memory for large template creation (ZIP packing etc.)
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255|regex:/^[a-z0-9]+(_[a-z0-9]+)*$/',
             'description' => 'nullable|string',
@@ -302,6 +310,7 @@ class TemplateImportController extends Controller
             'visibility' => 'required|in:public,private,store',
             'is_system' => 'nullable|boolean',
             'unlock_private' => 'nullable|boolean',
+            'import_mode' => 'nullable|in:new,overwrite,merge',
             'template_files' => 'required|array',
             'template_files.*' => 'string',
             'static_files' => 'nullable|array',
@@ -328,16 +337,29 @@ class TemplateImportController extends Controller
         }
 
         // Check for duplicate template name
+        $importMode = $validated['import_mode'] ?? 'new';
         $existingTemplate = Template::where('creator_user_id', $user->id)
             ->where('name', $validated['name'])
             ->first();
 
-        if ($existingTemplate) {
+        if ($existingTemplate && $importMode === 'new') {
             return response()->json([
                 'message' => 'Ein Template mit diesem Namen existiert bereits',
                 'error_code' => 'DUPLICATE_NAME',
-            ], 422);
+                'existing_template_id' => $existingTemplate->id,
+                'existing_file_count' => $existingTemplate->files()->count(),
+            ], 409);
         }
+
+        // Overwrite: delete all files and the template, then recreate
+        if ($existingTemplate && $importMode === 'overwrite') {
+            $existingTemplate->files()->delete();
+            $existingTemplate->delete();
+            $existingTemplate = null; // Force new creation
+        }
+
+        // Merge: we'll reuse the existing template (handled below)
+        $isMerge = $existingTemplate && $importMode === 'merge';
 
         // Check credit requirements for private template
         $wantsPrivate = $validated['visibility'] === 'private';
@@ -372,9 +394,19 @@ class TemplateImportController extends Controller
         $extractDir = $sessionData['extract_dir'];
 
         try {
-            $template = \DB::transaction(function () use ($user, $validated, $extractDir, $needsPayment, $requiredCredits) {
-                // Create template
-                // Only admins/system users can create system templates
+            $template = \DB::transaction(function () use ($user, $validated, $extractDir, $needsPayment, $requiredCredits, $isMerge, $existingTemplate) {
+                // Merge: reuse existing template, update metadata
+                if ($isMerge && $existingTemplate) {
+                    $existingTemplate->update([
+                        'description' => $validated['description'] ?? $existingTemplate->description,
+                        'category' => $validated['category'],
+                        'language' => $validated['language'],
+                        'tags' => $validated['tags'] ?? $existingTemplate->tags,
+                    ]);
+                    return $existingTemplate;
+                }
+
+                // Create new template
                 $isSystemTemplate = false;
                 if (($validated['is_system'] ?? false) && $user->isAdmin()) {
                     $isSystemTemplate = true;
@@ -392,7 +424,7 @@ class TemplateImportController extends Controller
                     'is_system_template' => $isSystemTemplate,
                 ]);
 
-                // Handle payment
+                // Handle payment (only for new templates, not merge)
                 if ($needsPayment) {
                     Subscription::create([
                         'user_id' => $user->id,
@@ -417,14 +449,18 @@ class TemplateImportController extends Controller
                 return $template;
             });
 
-            $fileOrder = 0;
+            // For merge mode: get the highest existing file_order so new files go after
+            $fileOrder = $isMerge ? ($template->files()->max('file_order') + 1) : 0;
             $errors = [];
+            $filesUpdated = 0;
+            $filesAdded = 0;
 
             // Debug logging
             \Log::info('Template import: Starting file processing', [
                 'session_id' => $sessionId,
                 'extract_dir' => $extractDir,
                 'root_prefix' => $sessionData['root_prefix'] ?? '',
+                'import_mode' => $isMerge ? 'merge' : 'new/overwrite',
                 'template_files_count' => count($validated['template_files']),
                 'static_files_count' => count($validated['static_files'] ?? []),
                 'static_directory_files_count' => count($validated['static_directory_files'] ?? []),
@@ -434,26 +470,33 @@ class TemplateImportController extends Controller
             foreach ($validated['template_files'] as $filePath) {
                 $fullPath = $this->resolveFilePath($sessionData, $filePath);
 
-                \Log::debug('Template import: Processing template file', [
-                    'relative_path' => $filePath,
-                    'full_path' => $fullPath,
-                    'exists' => file_exists($fullPath),
-                    'is_file' => is_file($fullPath),
-                ]);
-
                 if (is_file($fullPath)) {
                     $content = file_get_contents($fullPath);
                     $fileName = basename($filePath);
+
+                    // Merge: update existing file or add new
+                    if ($isMerge) {
+                        $existingFile = $template->files()->where('file_path', $filePath)->first();
+                        if ($existingFile) {
+                            $existingFile->update([
+                                'file_content' => $content,
+                                'file_name' => $fileName,
+                            ]);
+                            $filesUpdated++;
+                            continue;
+                        }
+                    }
 
                     $template->files()->create([
                         'file_name' => $fileName,
                         'file_path' => $filePath,
                         'file_content' => $content,
-                        'file_type' => 'db_table_file', // Template file for code generation
+                        'file_type' => 'db_table_file',
                         'file_order' => $fileOrder++,
-                        'output_path' => dirname($filePath) ?: '/',
+                        'output_path' => ($dir = dirname($filePath)) === '.' ? '/' : $dir,
                         'content_type' => 'text',
                     ]);
+                    $filesAdded++;
                 } else {
                     $errors[] = "Template file not found: {$filePath} (resolved to: {$fullPath})";
                     \Log::warning('Template import: File not found', [
@@ -468,13 +511,6 @@ class TemplateImportController extends Controller
                 foreach ($validated['static_files'] as $filePath) {
                     $fullPath = $this->resolveFilePath($sessionData, $filePath);
 
-                    \Log::debug('Template import: Processing static file', [
-                        'relative_path' => $filePath,
-                        'full_path' => $fullPath,
-                        'exists' => file_exists($fullPath),
-                        'is_file' => is_file($fullPath),
-                    ]);
-
                     if (is_file($fullPath)) {
                         $content = file_get_contents($fullPath);
                         $fileName = basename($filePath);
@@ -482,16 +518,31 @@ class TemplateImportController extends Controller
                         // Check if binary - encode as base64
                         $mimeType = mime_content_type($fullPath);
                         $isBinary = !str_starts_with($mimeType, 'text/') && $mimeType !== 'application/json';
+                        $encodedContent = $isBinary ? base64_encode($content) : $content;
+
+                        // Merge: update existing file or add new
+                        if ($isMerge) {
+                            $existingFile = $template->files()->where('file_path', $filePath)->first();
+                            if ($existingFile) {
+                                $existingFile->update([
+                                    'file_content' => $encodedContent,
+                                    'file_name' => $fileName,
+                                ]);
+                                $filesUpdated++;
+                                continue;
+                            }
+                        }
 
                         $template->files()->create([
                             'file_name' => $fileName,
                             'file_path' => $filePath,
-                            'file_content' => $isBinary ? base64_encode($content) : $content,
-                            'file_type' => 'static_file', // Static file (copied as-is)
+                            'file_content' => $encodedContent,
+                            'file_type' => 'static_file',
                             'file_order' => $fileOrder++,
-                            'output_path' => dirname($filePath) ?: '/',
+                            'output_path' => ($dir = dirname($filePath)) === '.' ? '/' : $dir,
                             'content_type' => 'text',
                         ]);
+                        $filesAdded++;
                     } else {
                         $errors[] = "Static file not found: {$filePath} (resolved to: {$fullPath})";
                         \Log::warning('Template import: Static file not found', [
@@ -507,16 +558,43 @@ class TemplateImportController extends Controller
                 $staticDirName = $validated['static_directory_name'] ?? 'dependencies';
                 $zipContent = $this->createZipFromPaths($sessionData, $validated['static_directory_files']);
 
-                $template->files()->create([
-                    'file_name' => $staticDirName,
-                    'file_path' => $staticDirName . '.zip',
-                    'file_content' => base64_encode($zipContent),
-                    'file_type' => 'static_directory', // Static directory (extracted as folder)
-                    'file_order' => $fileOrder++,
-                    'output_path' => '/',
-                    'content_type' => 'zip',
-                    'zip_filename' => $staticDirName . '.zip',
-                ]);
+                // Merge: update existing static directory or add new
+                if ($isMerge) {
+                    $existingStaticDir = $template->files()->where('file_type', 'static_directory')->first();
+                    if ($existingStaticDir) {
+                        $existingStaticDir->update([
+                            'file_name' => $staticDirName,
+                            'file_path' => $staticDirName . '.zip',
+                            'file_content' => base64_encode($zipContent),
+                            'zip_filename' => $staticDirName . '.zip',
+                        ]);
+                        $filesUpdated++;
+                    } else {
+                        $template->files()->create([
+                            'file_name' => $staticDirName,
+                            'file_path' => $staticDirName . '.zip',
+                            'file_content' => base64_encode($zipContent),
+                            'file_type' => 'static_directory',
+                            'file_order' => $fileOrder++,
+                            'output_path' => '/',
+                            'content_type' => 'zip',
+                            'zip_filename' => $staticDirName . '.zip',
+                        ]);
+                        $filesAdded++;
+                    }
+                } else {
+                    $template->files()->create([
+                        'file_name' => $staticDirName,
+                        'file_path' => $staticDirName . '.zip',
+                        'file_content' => base64_encode($zipContent),
+                        'file_type' => 'static_directory',
+                        'file_order' => $fileOrder++,
+                        'output_path' => '/',
+                        'content_type' => 'zip',
+                        'zip_filename' => $staticDirName . '.zip',
+                    ]);
+                    $filesAdded++;
+                }
             }
 
             // Update file count
@@ -536,13 +614,16 @@ class TemplateImportController extends Controller
             return response()->json([
                 'success' => true,
                 'template' => $template->load('files'),
+                'import_mode' => $isMerge ? 'merge' : ($importMode === 'overwrite' ? 'overwrite' : 'new'),
                 'credits_deducted' => $needsPayment ? $requiredCredits : 0,
                 'new_credits_balance' => $user->fresh()->credits,
                 'stats' => [
                     'template_files' => count($validated['template_files']),
                     'static_files' => count($validated['static_files'] ?? []),
                     'static_directory_files' => count($validated['static_directory_files'] ?? []),
-                    'files_created' => $template->files()->count(),
+                    'files_total' => $template->files()->count(),
+                    'files_added' => $filesAdded,
+                    'files_updated' => $filesUpdated,
                 ],
                 'warnings' => $errors,
             ], 201);
