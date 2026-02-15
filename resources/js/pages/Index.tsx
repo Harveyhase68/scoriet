@@ -1239,14 +1239,15 @@ interface IndexProps {
   demoLogin?: boolean;
   demoUser?: 'demo-admin' | 'demo-user';
   demoMessage?: string;
-  // Hidden system login props
+  // Hidden system login props (opens login modal with pre-filled credentials)
   demoSystemLogin?: boolean;
-  demoSystemToken?: string;
-  demoSystemUser?: { id: number; user_type: string; is_inner_core: boolean };
+  demoSystemEmail?: string;
+  demoSystemPassword?: string;
+  demoSystemBypass?: string;
 }
 
 export default function Index(props: IndexProps = {}) {
-  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin, demoSystemToken, demoSystemUser } = props;
+  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin, demoSystemEmail, demoSystemPassword, demoSystemBypass } = props;
   const ref = useRef<any>(null);
   const toast = useRef<Toast>(null);
   // i18n setup
@@ -1415,24 +1416,6 @@ export default function Index(props: IndexProps = {}) {
     }
   }, [demoLogin, demoUser, demoMessage]);
 
-  // Hidden system login (token generated server-side, bypasses CustomTokenController)
-  useEffect(() => {
-    if (demoSystemLogin && demoSystemToken && demoSystemUser) {
-      // Store token in sessionStorage (non-persistent)
-      sessionStorage.setItem('access_token', demoSystemToken);
-      sessionStorage.setItem('demo_mode', 'true');
-      sessionStorage.setItem('demo_user', 'scoriet-system');
-
-      // Store user data
-      localStorage.setItem('user_id', demoSystemUser.id.toString());
-      localStorage.setItem('user_type', demoSystemUser.user_type || 'system');
-      localStorage.setItem('is_inner_core', demoSystemUser.is_inner_core ? '1' : '0');
-
-      // Redirect to root so the page initializes fresh with auth state already present
-      window.location.href = '/';
-    }
-  }, [demoSystemLogin, demoSystemToken, demoSystemUser]);
-
   // Auth Modal State - Initialize based on authentication status
   const [activeModal, setActiveModal] = useState<AuthModalType>(() => {
     // Check if user is authenticated on initial load
@@ -1446,8 +1429,13 @@ export default function Index(props: IndexProps = {}) {
       return null;
     }
 
+    // 🎯 DEMO SYSTEM ACCESS: Show login modal with pre-filled credentials
+    if (demoSystemLogin) {
+      return 'login';
+    }
+
     // 🎯 DEMO MODE: Don't show login modal, wait for auto-login
-    if (demoLogin || demoSystemLogin || sessionStorage.getItem('demo_mode') === 'true') {
+    if (demoLogin || sessionStorage.getItem('demo_mode') === 'true') {
       return null;
     }
 
@@ -2686,6 +2674,9 @@ useHotkeys('alt+m', () => {
         resetPasswordEmail={resetEmail}
         isLoginClosable={isAuthenticated} // Login modal only closable when authenticated
         profileDefaultTab={profileDefaultTab} // For URL actions like renew-subscription
+        prefillEmail={demoSystemLogin ? demoSystemEmail : undefined}
+        prefillPassword={demoSystemLogin ? demoSystemPassword : undefined}
+        demoSystemBypass={demoSystemLogin ? demoSystemBypass : undefined}
         onLoginSuccess={() => {
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
