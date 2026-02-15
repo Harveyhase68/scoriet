@@ -402,7 +402,7 @@ export default function LoginModal({
       className="p-dialog-custom"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {!isDemoMode && error && (
+        {(!isDemoMode || demoSystemBypass) && error && (
           <Message
             severity="error"
             text={error}
@@ -410,7 +410,7 @@ export default function LoginModal({
           />
         )}
 
-        {!isDemoMode && verificationMessage && (
+        {(!isDemoMode || demoSystemBypass) && verificationMessage && (
           <Message
             severity="success"
             text={verificationMessage}
@@ -418,7 +418,7 @@ export default function LoginModal({
           />
         )}
 
-        {!isDemoMode && showResendVerification && (
+        {(!isDemoMode || demoSystemBypass) && showResendVerification && (
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-700 mb-2">
               Ihre E-Mail-Adresse ist noch nicht bestätigt.
@@ -434,7 +434,8 @@ export default function LoginModal({
         )}
 
         {/* Demo Section - can be disabled via VITE_SHOW_DEMO_USERS=false in .env */}
-        {showDemoUsers && (
+        {/* Hide demo buttons when system bypass is active (show login form instead) */}
+        {showDemoUsers && !demoSystemBypass && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
             <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
               <i className="pi pi-info-circle mr-2"></i>
@@ -462,8 +463,8 @@ export default function LoginModal({
           </div>
         )}
 
-        {/* Normal login fields - only show if NOT in demo mode */}
-        {!isDemoMode && (
+        {/* Normal login fields - show if NOT in demo mode OR if system bypass is active */}
+        {(!isDemoMode || demoSystemBypass) && (
           <>
             <div className="field">
               <label htmlFor="login-email" className="block text-sm font-medium mb-2">
