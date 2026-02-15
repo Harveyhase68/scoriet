@@ -197,7 +197,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
       console.error('Upload error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: error.message || 'Upload fehlgeschlagen',
         life: 5000,
       });
@@ -276,7 +276,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
       console.error('Import error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: error.message || 'Import fehlgeschlagen',
         life: 5000,
       });

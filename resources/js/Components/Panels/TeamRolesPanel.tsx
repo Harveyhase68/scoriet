@@ -59,22 +59,22 @@ interface TeamRolesPanelProps {
   updateTabTitle?: (newTitle: string) => void;
 }
 
-// Category display names in German
-const categoryNames: Record<string, string> = {
-  project: 'Projekt',
-  schema: 'Schema',
-  template: 'Templates',
-  generation: 'Code-Generierung',
-  team: 'Team',
-  forms: 'Formulare',
-  kanban: 'Kanban',
-  messaging: 'Nachrichten',
-};
-
 export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: TeamRolesPanelProps) {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  useTranslation(currentLanguage); // Initialize translations
+  const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
+
+  // Category display names (must be inside component to access t)
+  const categoryNames: Record<string, string> = {
+    project: t.teamrolespanel64,
+    schema: t.teamrolespanel65,
+    template: t.teamrolespanel66,
+    generation: t.teamrolespanel67,
+    team: t.teamrolespanel68,
+    forms: t.teamrolespanel69,
+    kanban: t.teamrolespanel70,
+    messaging: t.teamrolespanel71,
+  };
 
   // State
   const [roles, setRoles] = useState<TeamRole[]>([]);
@@ -112,7 +112,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     try {
       setLoading(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) throw new Error('Nicht authentifiziert');
+      if (!token) throw new Error(t.teamrolespanel115);
 
       // Load all data in parallel
       const [rolesRes, permissionsRes, membersRes] = await Promise.all([
@@ -128,7 +128,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       ]);
 
       if (!rolesRes.ok || !permissionsRes.ok || !membersRes.ok) {
-        throw new Error('Fehler beim Laden der Daten');
+        throw new Error(t.teamrolespanel131);
       }
 
       const [rolesData, permissionsData, membersData] = await Promise.all([
@@ -148,8 +148,8 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     } catch (error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: error instanceof Error ? error.message : 'Fehler beim Laden',
+        summary: t.messageError,
+        detail: error instanceof Error ? error.message : t.teamrolespanel152,
         life: 3000,
       });
     } finally {
@@ -191,7 +191,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   // Save role
   const handleSaveRole = async () => {
     if (!roleName.trim()) {
-      toast.current?.show({ severity: 'warn', summary: 'Hinweis', detail: 'Bitte geben Sie einen Namen ein', life: 3000 });
+      toast.current?.show({ severity: 'warn', summary: t.teamrolespanel194, detail: t.teamrolespanel194_2, life: 3000 });
       return;
     }
 
@@ -221,13 +221,13 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Fehler beim Speichern');
+        throw new Error(data.message || t.teamrolespanel224);
       }
 
       toast.current?.show({
         severity: 'success',
         summary: 'Erfolg',
-        detail: editingRole ? 'Rolle aktualisiert' : 'Rolle erstellt',
+        detail: editingRole ? t.teamrolespanel230 : t.teamrolespanel230_2,
         life: 3000,
       });
 
@@ -236,8 +236,8 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     } catch (error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: error instanceof Error ? error.message : 'Fehler beim Speichern',
+        summary: t.messageError,
+        detail: error instanceof Error ? error.message : t.teamrolespanel240,
         life: 3000,
       });
     } finally {
@@ -250,8 +250,8 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     if (role.is_owner_role) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Hinweis',
-        detail: 'Die Eigentümer-Rolle kann nicht gelöscht werden',
+        summary: t.teamrolespanel253,
+        detail: t.teamrolespanel254,
         life: 3000,
       });
       return;
@@ -259,8 +259,8 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
     confirmDialog({
       group: 'team-roles',
-      message: `Möchten Sie die Rolle "${role.name}" wirklich löschen?`,
-      header: 'Rolle löschen',
+      message: `${t.teamrolespanel262}"${role.name}"${t.teamrolespanel262_3}`,
+      header: t.teamrolespanel263,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: async () => {
@@ -274,7 +274,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.message || 'Fehler beim Löschen');
+            throw new Error(data.message || t.teamrolespanel277);
           }
 
           toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Rolle gelöscht', life: 3000 });
@@ -283,8 +283,8 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         } catch (error) {
           toast.current?.show({
             severity: 'error',
-            summary: 'Fehler',
-            detail: error instanceof Error ? error.message : 'Fehler beim Löschen',
+            summary: t.messageError,
+            detail: error instanceof Error ? error.message : t.teamrolespanel287,
             life: 3000,
           });
         }
@@ -304,16 +304,16 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Fehler beim Kopieren');
+        throw new Error(data.message || t.teamrolespanel307);
       }
 
-      toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Rolle kopiert - Sie können sie nun anpassen', life: 3000 });
+      toast.current?.show({ severity: 'success', summary: t.teamrolespanel310, detail: t.teamrolespanel310_2, life: 3000 });
       loadData();
     } catch (error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: error instanceof Error ? error.message : 'Fehler beim Kopieren',
+        summary: t.messageError,
+        detail: error instanceof Error ? error.message : t.teamrolespanel316,
         life: 3000,
       });
     }
@@ -344,17 +344,17 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Fehler beim Zuweisen');
+        throw new Error(data.message || t.teamrolespanel347);
       }
 
-      toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Rolle zugewiesen', life: 3000 });
+      toast.current?.show({ severity: 'success', summary: t.teamrolespanel350, detail: t.teamrolespanel350_2, life: 3000 });
       setMemberRoleModalVisible(false);
       loadData();
     } catch (error) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
-        detail: error instanceof Error ? error.message : 'Fehler beim Zuweisen',
+        summary: t.messageError,
+        detail: error instanceof Error ? error.message : t.teamrolespanel357,
         life: 3000,
       });
     }
@@ -422,11 +422,11 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <i className="pi pi-users" style={{ color: colors.accent }} />
-            <span className="font-medium" style={{ color: colors.textPrimary }}>Alle Rollen</span>
+            <span className="font-medium" style={{ color: colors.textPrimary }}>{t.teamrolespanel425}</span>
           </div>
           <Badge value={members.length} severity="info" />
         </div>
-        <p className="text-sm mt-1" style={{ color: colors.textMuted }}>Zeigt alle Team-Mitglieder an</p>
+        <p className="text-sm mt-1" style={{ color: colors.textMuted }}>{t.teamrolespanel429}</p>
       </div>
 
       {/* Divider */}
@@ -445,7 +445,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {role.is_owner_role && <i className="pi pi-crown text-yellow-500" title="Eigentümer-Rolle" />}
+              {role.is_owner_role && <i className="pi pi-crown text-yellow-500" title={t.teamrolespanel448} />}
               <span className="font-medium" style={{ color: colors.textPrimary }}>{role.name}</span>
             </div>
             <Badge value={role.member_count} severity={role.member_count > 0 ? 'info' : 'secondary'} />
@@ -466,12 +466,12 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
           <div className="text-center p-4">
             <i className="pi pi-users text-4xl mb-3" style={{ color: colors.accent }} />
-            <h3 className="text-lg font-semibold mb-2" style={{ color: colors.textPrimary }}>Alle Team-Mitglieder</h3>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: colors.textPrimary }}>{t.teamrolespanel469}</h3>
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              Anzeigen aller Team-Mitglieder ungeachtet der eingestellten Rolle.
+              {t.teamrolespanel471}
             </p>
             <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
-              Wählen Sie eine Rolle aus der Liste, um nur die Mitglieder in der jeweiligen Rolle anzuzeigen.
+              {t.teamrolespanel474}
             </p>
           </div>
         </div>
@@ -483,7 +483,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
           <div className="text-center">
             <i className="pi pi-shield text-4xl mb-2" style={{ color: colors.textMuted }} />
-            <p>Wählen Sie eine Rolle aus der Liste</p>
+            <p>{t.teamrolespanel486}</p>
           </div>
         </div>
       );
@@ -513,14 +513,14 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
               icon="pi pi-pencil"
               className="p-button-sm p-button-text"
               onClick={() => handleOpenRoleModal(selectedRole)}
-              tooltip="Bearbeiten"
+              tooltip={t.teamrolespanel516}
             />
             {/* Copy button - all roles can be copied */}
             <Button
               icon="pi pi-copy"
               className="p-button-sm p-button-text"
               onClick={() => handleCopyRoleToTeam(selectedRole)}
-              tooltip="Rolle duplizieren"
+              tooltip={t.teamrolespanel523}
             />
             {/* Delete button - only non-owner roles */}
             {!selectedRole.is_owner_role && (
@@ -528,7 +528,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
                 icon="pi pi-trash"
                 className="p-button-sm p-button-text p-button-danger"
                 onClick={() => handleDeleteRole(selectedRole)}
-                tooltip="Löschen"
+                tooltip={t.teamrolespanel531}
               />
             )}
           </div>
@@ -541,7 +541,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
             <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
               <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
                 <i className="pi pi-check-circle" />
-                <strong>Owner:</strong> Hat vollen Zugriff auf alle Funktionen
+                <strong>{t.teamrolespanel544}</strong>{t.teamrolespanel544_2}
               </p>
             </div>
           ) : (
@@ -583,7 +583,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       );
     }
     return (
-      <Badge value={member.role || 'Keine Rolle'} severity="secondary" />
+      <Badge value={member.role || t.teamrolespanel586} severity="secondary" />
     );
   };
 
@@ -591,7 +591,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     <Button
       icon="pi pi-pencil"
       className="p-button-rounded p-button-text p-button-sm"
-      tooltip="Rolle zuweisen"
+      tooltip={t.teamrolespanel594}
       onClick={() => handleOpenMemberRoleModal(member)}
     />
   );
@@ -606,12 +606,12 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         <div className="p-4">
           {/* Header */}
           <Card
-            title={`Rollen verwalten: ${teamName}`}
+            title={`${t.teamrolespanel609}${teamName}`}
             className="mb-4"
             style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}
           >
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              Verwalten Sie die Rollen und Berechtigungen für Ihr Team. Weisen Sie Mitgliedern Rollen zu, um deren Zugriff zu steuern.
+              {t.teamrolespanel614}
             </p>
           </Card>
 
@@ -626,10 +626,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold" style={{ color: colors.textPrimary }}>Rollen</h3>
+                <h3 className="font-semibold" style={{ color: colors.textPrimary }}>{t.teamrolespanel629}</h3>
                 <Button
                   icon="pi pi-plus"
-                  label="Neue Rolle"
+                  label={t.teamrolespanel632}
                   className="p-button-sm p-button-success"
                   onClick={() => handleOpenRoleModal()}
                 />
@@ -667,10 +667,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold" style={{ color: colors.textPrimary }}>
-                Team-Mitglieder
+                {t.teamrolespanel670}
                 {!showAllMembers && selectedRole && (
                   <span className="ml-2 text-sm font-normal" style={{ color: colors.textMuted }}>
-                    (gefiltert nach: {selectedRole.name})
+                    {t.teamrolespanel673}{selectedRole.name})
                   </span>
                 )}
               </h3>
@@ -682,7 +682,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
             <DataTable
               value={filteredMembers}
               loading={loading}
-              emptyMessage={showAllMembers ? "Keine Mitglieder gefunden" : `Keine Mitglieder mit der Rolle "${selectedRole?.name}" gefunden`}
+              emptyMessage={showAllMembers ? t.teamrolespanel685_3 : `${t.teamrolespanel685}"${selectedRole?.name}"${t.teamrolespanel685_2}`}
               className="p-datatable-sm themed-datatable"
               paginator
               rows={5}
@@ -693,10 +693,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
                 ['--dt-text' as string]: colors.textPrimary,
               }}
             >
-              <Column field="username" header="Benutzer" sortable />
-              <Column field="email" header="E-Mail" sortable />
-              <Column header="Rolle" body={memberRoleTemplate} />
-              <Column header="Aktionen" body={memberActionsTemplate} style={{ width: '100px' }} />
+              <Column field="username" header={t.teamrolespanel696} sortable />
+              <Column field="email" header={t.teamrolespanel697} sortable />
+              <Column header={t.teamrolespanel698} body={memberRoleTemplate} />
+              <Column header={t.teamrolespanel699} body={memberActionsTemplate} style={{ width: '100px' }} />
             </DataTable>
           </Card>
         </div>
@@ -704,7 +704,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
       {/* Create/Edit Role Modal */}
       <Dialog
-        header={editingRole ? `Rolle bearbeiten: ${editingRole.name}` : 'Neue Rolle erstellen'}
+        header={editingRole ? `${t.teamrolespanel707_2}${editingRole.name}` : t.teamrolespanel707}
         visible={roleModalVisible}
         onHide={() => setRoleModalVisible(false)}
         style={{ width: '700px' }}
@@ -715,7 +715,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
           <div style={{ backgroundColor: colors.bgTertiary, padding: '0.75rem 1rem', margin: '-1rem', marginTop: '0' }}>
             <Button label="Abbrechen" onClick={() => setRoleModalVisible(false)} className="p-button-secondary" />
             <Button
-              label={saving ? 'Speichern...' : 'Speichern'}
+              label={saving ? t.teamrolespanel718_2 : t.teamrolespanel718}
               onClick={handleSaveRole}
               disabled={saving || !roleName.trim()}
               icon={saving ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
@@ -743,7 +743,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
             <InputTextarea
               value={roleDescription}
               onChange={(e) => setRoleDescription(e.target.value)}
-              placeholder="Beschreiben Sie die Rolle..."
+              placeholder={t.teamrolespanel746}
               rows={2}
               className="w-full"
               style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
@@ -758,7 +758,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
                 value={copyFromRoleId}
                 options={roles.map(r => ({ label: r.name, value: r.id }))}
                 onChange={(e) => handleCopyFromRole(e.value)}
-                placeholder="-- Rolle auswählen --"
+                placeholder={t.teamrolespanel761}
                 className="w-full"
                 showClear
               />
@@ -831,7 +831,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
       {/* Assign Role to Member Modal */}
       <Dialog
-        header={`Rolle zuweisen: ${selectedMember?.username}`}
+        header={`${t.teamrolespanel834}${selectedMember?.username}`}
         visible={memberRoleModalVisible}
         onHide={() => setMemberRoleModalVisible(false)}
         style={{ width: '400px' }}
@@ -840,27 +840,27 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         modal
         footer={
           <div style={{ backgroundColor: colors.bgTertiary, padding: '0.75rem 1rem', margin: '-1rem', marginTop: '0' }}>
-            <Button label="Abbrechen" onClick={() => setMemberRoleModalVisible(false)} className="p-button-secondary" />
-            <Button label="Zuweisen" onClick={handleAssignRole} icon="pi pi-check" className="ml-2" />
+            <Button label={t.teamrolespanel843} onClick={() => setMemberRoleModalVisible(false)} className="p-button-secondary" />
+            <Button label={t.teamrolespanel844} onClick={handleAssignRole} icon="pi pi-check" className="ml-2" />
           </div>
         }
       >
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Rolle auswählen</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.teamrolespanel849}</label>
           <Dropdown
             value={assignedRoleId}
             options={[
-              { label: '-- Keine Rolle --', value: null },
+              { label: t.teamrolespanel853, value: null },
               ...roles.map(r => ({ label: r.name, value: r.id })),
             ]}
             onChange={(e) => setAssignedRoleId(e.value)}
-            placeholder="Rolle auswählen..."
+            placeholder={t.teamrolespanel857}
             className="w-full"
           />
           {assignedRoleId && (
             <div className="mt-3 p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
               <p className="text-sm" style={{ color: colors.infoText }}>
-                {roles.find(r => r.id === assignedRoleId)?.description || 'Keine Beschreibung verfügbar'}
+                {roles.find(r => r.id === assignedRoleId)?.description || t.teamrolespanel863}
               </p>
             </div>
           )}

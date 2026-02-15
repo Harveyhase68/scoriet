@@ -29,8 +29,17 @@ class TrackVisitor
         try {
             $ip = $request->ip();
             $today = now()->toDateString();
-            $user = Auth::guard('web')->user();
             $sessionId = $request->session()->getId();
+
+            // Try web session first, then API guard (reads laravel_token cookie from CreateFreshApiToken)
+            $user = Auth::guard('web')->user();
+            if (!$user) {
+                try {
+                    $user = Auth::guard('api')->user();
+                } catch (\Exception $e) {
+                    // API guard may fail silently
+                }
+            }
 
             // Check if this IP was already logged today
             $alreadyLogged = VisitorLog::where('ip_address', $ip)

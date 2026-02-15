@@ -8,7 +8,6 @@
     "vscode": "^1.80.0"
   },
   "categories": ["Other"],
-  "activationEvents": ["onCommand:scoriet-translate.translateSelection"],
   "main": "./extension.js",
   "contributes": {
     "commands": [

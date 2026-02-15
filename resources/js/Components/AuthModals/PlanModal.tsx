@@ -322,7 +322,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     {
       name: t.freeLabel || "Free",
       price: `${pricingData.currency} 0`,
-      period: t.forever || "forever",
+      period: "/forever",
       description: t.planmodal326 || "Perfect for trying out Scoriet",
       features: [
         t.planmodal328 || "50 credits to start (10 generations)",
@@ -338,7 +338,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     {
       name: "Patron Annual",
       price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: t.perYear || "/year",
+      period: "/year",
       description: t.planmodal342 || "Best value for committed developers",
       features: [
         t.planmodal344 || "Teams unlocked",
@@ -354,7 +354,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     {
       name: "Patron Monthly",
       price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      period: t.perMonth || "/month",
+      period: "/month",
       description: t.planmodal358 || "Ultimate flexibility with unlimited access",
       features: [
         t.planmodal360 || "Everything unlimited",

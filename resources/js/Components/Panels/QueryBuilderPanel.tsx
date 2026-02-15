@@ -158,7 +158,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         const error = await response.json();
         toast.current?.show({
           severity: 'error',
-          summary: 'Fehler',
+          summary: t.messageError,
           detail: error.message || 'Freischaltung fehlgeschlagen',
         });
       }
@@ -166,7 +166,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       console.error('Error unlocking schema migration:', err);
       toast.current?.show({
         severity: 'error',
-        summary: 'Fehler',
+        summary: t.messageError,
         detail: 'Freischaltung fehlgeschlagen',
       });
     } finally {

@@ -972,7 +972,7 @@ export default function ProjectSettingsPanel() {
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
-                toast.showError('Nicht authentifiziert');
+                toast.showError(t.projectsettingspanel975);
                 setSavingVariables(false);
                 return;
             }

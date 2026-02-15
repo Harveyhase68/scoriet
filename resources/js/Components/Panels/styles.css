@@ -1582,7 +1582,7 @@ button.p-button.p-button-text.p-button-rounded .p-button-icon,
 /* Landing page Go to App button - orange gradient */
 .landing-goto-app-btn.landing-goto-app-btn.p-button {
   background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
-  border: none !important;
+  border: 1px solid transparent !important;
   color: #ffffff !important;
   font-weight: 600 !important;
   box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4) !important;

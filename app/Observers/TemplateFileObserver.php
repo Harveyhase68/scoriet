@@ -6,6 +6,7 @@ use App\Models\TemplateFile;
 use App\Jobs\RegenerateProjectGenerationTree;
 use App\Jobs\PrecompileTemplatesJob;
 use App\Services\TemplateCacheService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +18,10 @@ class TemplateFileObserver
     public function created(TemplateFile $templateFile): void
     {
         Log::info("📄 [TEMPLATE-FILE-OBSERVER] created event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
+
+        // Invalidate compiled template cache and GTree cache for this template
+        $this->invalidateTemplateAndGtreeCache($templateFile);
+
         $this->regenerateAffectedProjects($templateFile, 'created');
     }
 
@@ -27,13 +32,16 @@ class TemplateFileObserver
     {
         Log::info("📄 [TEMPLATE-FILE-OBSERVER] updated event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
 
-        // 🎯 Invalidate cache for this specific file ONLY (not entire template)
+        // Invalidate cache for this specific file
         $this->invalidateFileCache($templateFile);
+
+        // Also invalidate GTree cache for affected projects
+        $this->invalidateGtreeCache($templateFile);
 
         // Regenerate generation trees
         $this->regenerateAffectedProjects($templateFile, 'updated');
 
-        // 🔥 Optional: Pre-compile in background (only if enabled in config)
+        // Optional: Pre-compile in background (only if enabled in config)
         if (config('templates.auto_precompile', false)) {
             $this->precompileFile($templateFile);
         }
@@ -46,8 +54,9 @@ class TemplateFileObserver
     {
         Log::info("📄 [TEMPLATE-FILE-OBSERVER] deleted event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
 
-        // 🎯 Invalidate cache for deleted file
+        // Invalidate cache for deleted file and GTree cache
         $this->invalidateFileCache($templateFile);
+        $this->invalidateGtreeCache($templateFile);
 
         // Regenerate generation trees
         $this->regenerateAffectedProjects($templateFile, 'deleted');
@@ -97,6 +106,36 @@ class TemplateFileObserver
             Log::info("🗑️ [CACHE] Invalidated cache for template file {$templateFile->id} ({$templateFile->file_name})");
         } catch (\Exception $e) {
             Log::error("❌ [CACHE] Failed to invalidate cache for file {$templateFile->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Invalidate entire template cache AND GTree cache
+     * Used when files are created (template structure changed)
+     */
+    protected function invalidateTemplateAndGtreeCache(TemplateFile $templateFile): void
+    {
+        try {
+            $cacheService = app(TemplateCacheService::class);
+            $cacheService->invalidateTemplate($templateFile->template_id);
+            $cacheService->invalidateGtreeForTemplate($templateFile->template_id);
+
+            Log::info("🗑️ [CACHE] Invalidated template + GTree cache for template {$templateFile->template_id}");
+        } catch (\Exception $e) {
+            Log::error("❌ [CACHE] Failed to invalidate template/GTree cache: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Invalidate GTree cache for all projects using this template
+     */
+    protected function invalidateGtreeCache(TemplateFile $templateFile): void
+    {
+        try {
+            $cacheService = app(TemplateCacheService::class);
+            $cacheService->invalidateGtreeForTemplate($templateFile->template_id);
+        } catch (\Exception $e) {
+            Log::error("❌ [CACHE] Failed to invalidate GTree cache: " . $e->getMessage());
         }
     }
 

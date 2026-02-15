@@ -1,38 +1,38 @@
 # Scoriet Translate Extension
 
-VS Code Extension zum Senden von markiertem Text an das WinDev Translation Tool.
+VS Code Extension for sending selected text to the WinDev Translation Tool.
 
 ## Features
 
-- **CTRL+M** drücken wenn Text markiert ist
-- Sendet automatisch an WinDev REST API:
-  - `selectedText` - Der markierte Text
-  - `filePath` - Vollständiger Dateipfad
-  - `fileName` - Dateiname
-  - `lineNumber` - Zeilennummer
-  - `columnNumber` - Spaltennummer
-  - `language` - Erkannte Sprache (de, en, etc.)
+- Press **CTRL+M** when text is selected
+- Automatically sends to WinDev REST API:
+  - `selectedText` - The selected text
+  - `filePath` - Full file path
+  - `fileName` - File name
+  - `lineNumber` - Line number
+  - `columnNumber` - Column number
+  - `language` - Detected language (de, en, etc.)
 
 ## Installation
 
-### Option 1: Direkt kopieren (einfachste Methode)
+### Option 1: Copy directly (easiest method)
 
-1. Kopiere den gesamten `vscode-translate-extension` Ordner nach:
+1. Copy the entire `vscode-translate-extension` folder to:
    ```
    %USERPROFILE%\.vscode\extensions\scoriet-translate
    ```
 
-   Also z.B.: `C:\Users\messe\.vscode\extensions\scoriet-translate`
+   For example: `C:\Users\messe\.vscode\extensions\scoriet-translate`
 
-2. VS Code neu starten
+2. Restart VS Code
 
-### Option 2: Als VSIX packen
+### Option 2: Package as VSIX
 
-1. Installiere vsce: `npm install -g @vscode/vsce`
-2. Im Extension-Ordner: `vsce package`
+1. Install vsce: `npm install -g @vscode/vsce`
+2. In the extension folder: `vsce package`
 3. In VS Code: Extensions → "..." → "Install from VSIX..."
 
-## Konfiguration
+## Configuration
 
 In VS Code Settings (`Ctrl+,`):
 
@@ -44,11 +44,11 @@ In VS Code Settings (`Ctrl+,`):
 
 ## WinDev REST API
 
-Dein WinDev Programm sollte POST requests auf `/translate` akzeptieren:
+Your WinDev application should accept POST requests on `/translate`:
 
 ```json
 {
-  "selectedText": "Der markierte Text",
+  "selectedText": "The selected text",
   "filePath": "C:\\wamp\\www\\scoriet\\resources\\js\\i18n\\locales\\de.ts",
   "fileName": "de.ts",
   "lineNumber": 42,
@@ -57,8 +57,8 @@ Dein WinDev Programm sollte POST requests auf `/translate` akzeptieren:
 }
 ```
 
-## Benutzung
+## Usage
 
-1. Text in VS Code markieren
-2. **CTRL+M** drücken
-3. WinDev empfängt die Daten und öffnet den Übersetzer
+1. Select text in VS Code
+2. Press **CTRL+M**
+3. WinDev receives the data and opens the translator

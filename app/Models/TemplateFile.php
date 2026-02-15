@@ -25,15 +25,18 @@ class TemplateFile extends Model
     public const FORM_WINDOW_REPORT_SINGLE = 4;
     public const FORM_WINDOW_REPORT_LIST = 5;
 
-    public const FORM_WINDOW_TYPES = [
-        self::FORM_WINDOW_NONE => 'Kein Formular',
-        self::FORM_WINDOW_MAIN_MENU => 'Hauptmenü',
-        self::FORM_WINDOW_CREATE_EDIT => 'Formular (Erstellen/Bearbeiten)',
-        self::FORM_WINDOW_DATA_TABLE => 'Datentabelle',
-        self::FORM_WINDOW_REPORT_SINGLE => 'Report (Einzeldatensatz)',
-        self::FORM_WINDOW_REPORT_LIST => 'Report (Liste)',
-    ];
-
+    public static function formWindowTypes(): array
+    {
+        return [
+            self::FORM_WINDOW_NONE => __('templatefilephp29'),
+            self::FORM_WINDOW_MAIN_MENU => __('templatefilephp30'),
+            self::FORM_WINDOW_CREATE_EDIT => __('templatefilephp31'),
+            self::FORM_WINDOW_DATA_TABLE => __('templatefilephp32'),
+            self::FORM_WINDOW_REPORT_SINGLE => __('templatefilephp33'),
+            self::FORM_WINDOW_REPORT_LIST => __('templatefilephp34'),
+        ];
+    }
+    
     protected $fillable = [
         'template_id',
         'file_name',

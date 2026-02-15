@@ -12,8 +12,10 @@ use App\Services\CodeScannerService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\TemplateCacheService;
 
 class TemplateController extends Controller
 {
@@ -929,6 +931,16 @@ class TemplateController extends Controller
 
             // Update file_count based on actual number of files
             $template->update(['file_count' => $template->files()->count()]);
+
+            // 🗑️ CACHE: Explicitly invalidate ALL caches after files were recreated
+            // The bulk delete above doesn't trigger model events, so we must invalidate manually
+            try {
+                $cacheService = app(TemplateCacheService::class);
+                $cacheService->invalidateTemplate($template->id);
+                $cacheService->invalidateGtreeForTemplate($template->id);
+            } catch (\Exception $e) {
+                \Log::warning("Cache invalidation after template file update failed: " . $e->getMessage());
+            }
         }
 
         // 🔄 QUEUE JOBS: Dispatch regeneration jobs for projects using this template

@@ -312,7 +312,7 @@ export default function TopBar() {
               padding: '4px',
               color: unreadMessagesCount > 0 ? colors.warningText : colors.textMuted
             }}
-            tooltip={unreadMessagesCount > 0 ? `${unreadMessagesCount} neue Nachricht(en)` : 'Nachrichten'}
+            tooltip={unreadMessagesCount > 0 ? `${unreadMessagesCount}${t.topbar315_2}` : t.topbar315}
             onClick={() => {
               window.dispatchEvent(new CustomEvent('openMessaging', {
                 detail: { threadId: latestUnreadThreadId }

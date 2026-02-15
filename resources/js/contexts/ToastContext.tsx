@@ -25,7 +25,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const showError = (message: string) => {
         toastRef.current?.show({
             severity: 'error',
-            summary: 'Fehler',
+            summary: t.messageError,
             detail: message,
             life: 4000
         });

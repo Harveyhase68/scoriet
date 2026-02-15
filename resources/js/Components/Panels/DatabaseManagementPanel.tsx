@@ -529,7 +529,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       try {
         const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
         if (!token) {
-          setError('Nicht authentifiziert');
+          setError(t.databasemanagementpanel532);
           return;
         }
 
@@ -590,7 +590,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Nicht authentifiziert');
+        throw new Error(t.databasemanagementpanel593);
       }
 
       const response = await fetch(`/api/subscriptions/${schema.subscription.id}/renew`, {
@@ -1236,7 +1236,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <Button
               icon="pi pi-link"
               className="p-button-rounded p-button-text p-button-sm p-button-success"
-              tooltip="Mit Projekten verknüpfen"
+              tooltip={t.databasemanagementpanel1239}
               onClick={() => handleOpenLinkModal(schema)}
             />
           </>
@@ -1343,16 +1343,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {/* MY SCHEMAS TABLE */}
-        <Card title="Meine Datenbanken" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <Card title={t.databasemanagementpanel1346} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
             {/* Type Filter - show 'system' option only for system/admin users */}
             <Dropdown
               value={myTypeFilter}
               options={[
-                { label: 'Alle', value: 'all' },
-                { label: 'Private', value: 'private' },
-                { label: 'Public', value: 'public' },
+                { label: t.databasemanagementpanel1353, value: 'all' },
+                { label: t.databasemanagementpanel1354, value: 'private' },
+                { label: t.databasemanagementpanel1355, value: 'public' },
                 ...(isSystemUser ? [{ label: 'System', value: 'system' }] : [])
               ]}
               onChange={(e) => setMyTypeFilter(e.value)}
@@ -1363,7 +1363,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <InputText
               value={mySearchTerm}
               onChange={(e) => setMySearchTerm(e.target.value)}
-              placeholder="Suche..."
+              placeholder={t.databasemanagementpanel1366}
               className="w-64"
             />
           </div>
@@ -1372,7 +1372,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           value={mySchemas}
           loading={mySchemasLoading}
           className="p-datatable-sm"
-          emptyMessage="Keine Schemas gefunden"
+          emptyMessage={t.databasemanagementpanel1375}
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 20, 50]}
@@ -1380,7 +1380,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <Column field="name" header={t.databasemanagementpanel840} body={nameTemplate} sortable />
           <Column field="description" header={t.createteammodal103} />
           <Column
-            header="Status"
+            header={t.databasemanagementpanel1383}
             body={statusTemplate}
             className="w-28"
           />
@@ -1417,25 +1417,25 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       </Card>
 
       {/* COMMUNITY SCHEMAS TABLE */}
-      <Card title="System & Öffentliche Datenbanken" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+      <Card title={t.databasemanagementpanel1420} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
             <Dropdown
               value={communityTypeFilter}
               options={[
-                { label: 'Alle', value: 'all' },
-                { label: 'System', value: 'system' },
-                { label: 'Public', value: 'public' }
+                { label: t.databasemanagementpanel1426, value: 'all' },
+                { label: t.databasemanagementpanel1427, value: 'system' },
+                { label: t.databasemanagementpanel1428, value: 'public' }
               ]}
               onChange={(e) => setCommunityTypeFilter(e.value)}
-              placeholder="Type"
+              placeholder={t.databasemanagementpanel1431}
               className="w-32"
               panelClassName="database-dropdown-panel"
             />
             <InputText
               value={communitySearchTerm}
               onChange={(e) => setCommunitySearchTerm(e.target.value)}
-              placeholder="Suche..."
+              placeholder={t.databasemanagementpanel1438}
               className="w-64"
             />
           </div>
@@ -1444,7 +1444,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           value={communitySchemas}
           loading={communityLoading}
           className="p-datatable-sm"
-          emptyMessage="Keine Schemas gefunden"
+          emptyMessage={t.databasemanagementpanel1447}
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 20, 50]}
@@ -1452,7 +1452,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <Column field="name" header={t.databasemanagementpanel840} body={nameTemplate} sortable />
           <Column field="description" header={t.createteammodal103} />
           <Column
-            header="Status"
+            header={t.databasemanagementpanel1455}
             body={statusTemplate}
             className="w-28"
           />
@@ -1494,7 +1494,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-sm text-gray-400 mb-2">
-                Export schema translations for {contextSelectedProject.name} to Excel or import translations from translation agencies.
+                {t.databasemanagementpanel1497}{contextSelectedProject.name}{t.databasemanagementpanel1497_2}
               </p>
             </div>
             <div className="flex gap-2">
@@ -1534,7 +1534,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <div className="space-y-4">
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Schema Name *
+              {t.databasemanagementpanel1537}
             </label>
             <InputText
               value={createForm.name}
@@ -1549,13 +1549,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               required
             />
             <small className="mt-1 block" style={{ color: colors.textMuted }}>
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.databasemanagementpanel1552}
             </small>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Description
+              {t.databasemanagementpanel1558}
             </label>
             <InputTextarea
               value={createForm.description}
@@ -1569,7 +1569,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Visibility
+              {t.databasemanagementpanel1572}
             </label>
             <Dropdown
               value={createForm.visibility}
@@ -1581,7 +1581,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               panelClassName="database-dropdown-panel"
             />
             <small style={{ color: colors.textMuted }}>
-              Public schemas can be linked by other users. Private schemas are only visible to you.
+              {t.databasemanagementpanel1584}
             </small>
           </div>
 
@@ -1597,10 +1597,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 disabled={creating}
               />
               <label htmlFor="is_system_schema" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
-                Is System Database
+                {t.databasemanagementpanel1600}
               </label>
               <small className="ml-2" style={{ color: colors.textMuted }}>
-                (System databases are available to all users)
+                {t.databasemanagementpanel1603}
               </small>
             </div>
           )}
@@ -1616,7 +1616,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               options={contextProjects
                 .filter(p => p.owner_id === currentUserId) // Only own projects
                 .map(p => ({ label: p.name, value: p.id }))}
-              placeholder="Select projects to link..."
+              placeholder={t.databasemanagementpanel1619}
               className="w-full"
               disabled={creating}
               display="chip"
@@ -1627,7 +1627,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               panelClassName="database-multiselect-panel"
             />
             <small style={{ color: colors.textMuted }}>
-              Link this database to one or more of your projects. Hold Ctrl/Cmd to select multiple.
+              {t.databasemanagementpanel1630}
             </small>
           </div>
 
@@ -1666,7 +1666,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <div className="space-y-4">
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Schema Name *
+              {t.databasemanagementpanel1669}
             </label>
             <InputText
               value={editForm.name}
@@ -1681,13 +1681,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               required
             />
             <small className="mt-1 block" style={{ color: colors.textMuted }}>
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.databasemanagementpanel1684}
             </small>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Description
+              {t.databasemanagementpanel1690}
             </label>
             <InputTextarea
               value={editForm.description}
@@ -1701,7 +1701,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Visibility
+              {t.databasemanagementpanel1704}
             </label>
             <Dropdown
               value={editForm.visibility}
@@ -1726,10 +1726,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 disabled={saving}
               />
               <label htmlFor="edit_is_system_schema" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
-                Is System Database
+                {t.databasemanagementpanel1729}
               </label>
               <small className="ml-2" style={{ color: colors.textMuted }}>
-                (System databases are available to all users)
+                {t.databasemanagementpanel1732}
               </small>
             </div>
           )}
@@ -1780,7 +1780,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           {!forceProjectId && (
             <div className="field">
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                Select Project *
+                {t.databasemanagementpanel1783}
               </label>
               <Dropdown
                 value={selectedProjectForAssociation}
@@ -1798,7 +1798,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           {forceProjectId && forceProjectName && (
             <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
               <label className="block text-sm font-medium mb-1" style={{ color: colors.successText }}>
-                Link to Project:
+                {t.databasemanagementpanel1801}
               </label>
               <p className="text-base font-semibold" style={{ color: colors.successText }}>
                 {forceProjectName}
@@ -1808,7 +1808,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Association Type
+              {t.databasemanagementpanel1811}
             </label>
             <Dropdown
               value={associationType}
@@ -1822,7 +1822,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Alias (optional)
+              {t.databasemanagementpanel1825}
             </label>
             <InputText
               value={alias}
@@ -1853,7 +1853,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Delete Schema Modal */}
       <Dialog
-        header={`🗑️ Delete Schema: ${deletingSchema?.name}`}
+        header={`${t.databasemanagementpanel1856}${deletingSchema?.name}`}
         visible={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
         style={{ width: '500px' }}
@@ -1877,22 +1877,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
             {deleteInfo && (
               <ul className="text-sm space-y-1 mb-3" style={{ color: colors.errorText }}>
-                <li>🗂️ <strong>{deleteInfo.versions_count}</strong> schema versions</li>
-                <li>🏗️ <strong>{deleteInfo.tables_count}</strong> database tables</li>
-                <li>🔗 <strong>{deleteInfo.projects_count}</strong> project associations</li>
-                <li>🎨 All schema designer layouts</li>
-                <li>⚙️ All constraints and relationships</li>
+                <li>🗂️ <strong>{deleteInfo.versions_count}</strong>{t.databasemanagementpanel1880}</li>
+                <li>🏗️ <strong>{deleteInfo.tables_count}</strong>{t.databasemanagementpanel1881}</li>
+                <li>🔗 <strong>{deleteInfo.projects_count}</strong>{t.databasemanagementpanel1882}</li>
+                <li>{t.databasemanagementpanel1883}</li>
+                <li>{t.databasemanagementpanel1884}</li>
               </ul>
             )}
 
             <p className="font-medium text-sm" style={{ color: colors.errorText }}>
-              💀 This action <u>cannot be undone</u>!
+              <u>{t.databasemanagementpanel1889}</u>!
             </p>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Gib <strong>DELETE</strong> ein, um zu bestätigen:
+              {t.databasemanagementpanel1895}<strong>"DELETE"</strong>{t.databasemanagementpanel1895_2}
             </label>
             <input
               type="text"
@@ -1909,7 +1909,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               autoComplete="off"
             />
             <small style={{ color: colors.textMuted }}>
-              Du musst exakt DELETE (Großbuchstaben) eingeben
+              {t.databasemanagementpanel1912}"DELETE"t.databasemanagementpanel1912_2
             </small>
           </div>
 
@@ -1955,16 +1955,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <div className="space-y-4">
           <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
             <h4 className="font-medium mb-1" style={{ color: colors.infoText }}>
-              Export for {contextSelectedProject?.name}
+              {t.databasemanagementpanel1958}{contextSelectedProject?.name}
             </h4>
             <p className="text-sm" style={{ color: colors.infoText, opacity: 0.9 }}>
-              Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
+              {t.databasemanagementpanel1961}
             </p>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Select Languages *
+              {t.databasemanagementpanel1967}
             </label>
             <MultiSelect
               value={selectedLanguages}
@@ -1977,7 +1977,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               panelClassName="database-multiselect-panel"
             />
             <small style={{ color: colors.textMuted }}>
-              Select one or more languages for the translation export
+              {t.databasemanagementpanel1980}
             </small>
           </div>
 
@@ -2021,16 +2021,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <div className="space-y-4">
           <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
             <h4 className="font-medium mb-1" style={{ color: colors.successText }}>
-              Import for {contextSelectedProject?.name}
+              {t.databasemanagementpanel2024}{contextSelectedProject?.name}
             </h4>
             <p className="text-sm" style={{ color: colors.successText, opacity: 0.9 }}>
-              Upload an Excel file with translations. The file must follow the export format.
+              {t.databasemanagementpanel2027}
             </p>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Upload Excel File *
+              {t.databasemanagementpanel2033}
             </label>
             <FileUpload
               mode="basic"
@@ -2044,7 +2044,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={importing}
             />
             <small style={{ color: colors.textMuted }}>
-              Excel files only (.xlsx, .xls), max 10MB
+              {t.databasemanagementpanel2047}
             </small>
           </div>
 
@@ -2081,16 +2081,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         <div className="space-y-4">
           <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
             <h4 className="font-medium mb-1" style={{ color: colors.infoText }}>
-              Copy: {copyingSchema?.name}
+              {t.databasemanagementpanel2084}{copyingSchema?.name}
             </h4>
             <p className="text-sm" style={{ color: colors.infoText, opacity: 0.9 }}>
-              This will create a complete copy of the database schema including all tables, fields, constraints, and designer layouts. The copy will be set to version 1.
+              {t.databasemanagementpanel2087}
             </p>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              New Schema Name *
+              {t.databasemanagementpanel2093}
             </label>
             <InputText
               value={copyName}
@@ -2101,7 +2101,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               required
             />
             <small style={{ color: colors.textMuted }}>
-              Choose a unique name for the copied schema
+              {t.databasemanagementpanel2104}
             </small>
           </div>
 
@@ -2132,7 +2132,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       {/* Link Schema to Projects Modal */}
       <Dialog
-        header={`Schema verknüpfen: ${schemaToLink?.name}`}
+        header={`${t.databasemanagementpanel2135}${schemaToLink?.name}`}
         visible={linkModalVisible}
         onHide={() => setLinkModalVisible(false)}
         footer={
@@ -2141,14 +2141,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               onClick={() => setLinkModalVisible(false)}
               className="p-button-secondary"
             >
-              Abbrechen
+              {t.databasemanagementpanel2144}
             </Button>
             <Button
               onClick={handleApplyProjectLinks}
               className="p-button-primary"
               disabled={loadingProjects}
             >
-              Anwenden
+              {t.databasemanagementpanel2151}
             </Button>
           </>
         }
@@ -2169,7 +2169,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           <div className="space-y-2">
             {allProjects.length === 0 ? (
               <div className="text-center py-4" style={{ color: colors.textMuted }}>
-                Keine Projekte gefunden
+                {t.databasemanagementpanel2172}
               </div>
             ) : (
               allProjects.map((project) => (

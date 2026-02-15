@@ -125,7 +125,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 setMyFormSets(filtered);
             }
         } catch (error) {
-            console.error('Error loading my FormSets:', error);
+            console.error(t.formsetmanagementpanel128, error);
             setMyFormSets([]);
         } finally {
             setMyFormSetsLoading(false);
@@ -157,7 +157,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 setPublicFormSets(filtered);
             }
         } catch (error) {
-            console.error('Error loading public FormSets:', error);
+            console.error(t.formsetmanagementpanel160, error);
             setPublicFormSets([]);
         } finally {
             setPublicFormSetsLoading(false);
@@ -193,7 +193,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 setAllProjects([]);
             }
         } catch (error) {
-            console.error('Error loading projects:', error);
+            console.error(t.formsetmanagementpanel196, error);
             setAllProjects([]);
         } finally {
             setLoadingProjects(false);
@@ -211,7 +211,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 return data.data || [];
             }
         } catch (error) {
-            console.error('Error loading linked projects:', error);
+            console.error(t.formsetmanagementpanel214, error);
         }
         return [];
     };
@@ -246,13 +246,13 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 });
             }
 
-            toast.showSuccess('FormSet erfolgreich verknüpft');
+            toast.showSuccess(t.formsetmanagementpanel249);
             setLinkModalVisible(false);
             loadMyFormSets();
             loadPublicFormSets();
         } catch (error) {
-            console.error('Error saving links:', error);
-            toast.showError('Fehler beim Verknüpfen');
+            console.error(t.formsetmanagementpanel254, error);
+            toast.showError(t.formsetmanagementpanel255);
         } finally {
             setSavingLink(false);
         }
@@ -260,7 +260,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
     // Open Form Designer for editing
     const handleEdit = (formSet: FormSet) => {
-        onOpenPanel?.('form-designer', { formSetId: formSet.id, title: `Form Designer: ${formSet.name}` });
+        onOpenPanel?.('form-designer', { formSetId: formSet.id, title: `${t.formsetmanagementpanel263}${formSet.name}` });
     };
 
     // Delete FormSet - Show custom dialog with DELETE confirmation
@@ -275,7 +275,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         if (!formSetToDelete) return;
 
         if (deleteConfirmText !== 'DELETE') {
-            toast.showError('Geben Sie DELETE ein um zu bestätigen');
+            toast.showError('${t.formsetmanagementpanel278}"DELETE"${t.formsetmanagementpanel278_2}');
             return;
         }
 
@@ -286,17 +286,17 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 headers: getAuthHeaders(),
             });
             if (response.ok) {
-                toast.showSuccess('FormSet erfolgreich gelöscht');
+                toast.showSuccess(t.formsetmanagementpanel289);
                 setDeleteModalVisible(false);
                 setFormSetToDelete(null);
                 setDeleteConfirmText('');
                 loadMyFormSets();
             } else {
-                toast.showError('Fehler beim Löschen');
+                toast.showError(t.formsetmanagementpanel295);
             }
         } catch (error) {
-            console.error('Error deleting FormSet:', error);
-            toast.showError('Netzwerkfehler beim Löschen');
+            console.error(t.formsetmanagementpanel298, error);
+            toast.showError(t.formsetmanagementpanel299);
         } finally {
             setDeleting(false);
         }
@@ -314,7 +314,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     // Quick link to current project
     const handleQuickLink = async (formSet: FormSet) => {
         if (!selectedProject?.id) {
-            toast.showWarn('Bitte wählen Sie zuerst ein Projekt aus');
+            toast.showWarn(t.formsetmanagementpanel317);
             return;
         }
 
@@ -325,15 +325,15 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 body: JSON.stringify({ form_set_id: formSet.id }),
             });
             if (response.ok) {
-                toast.showSuccess(`FormSet "${formSet.name}" mit Projekt verknüpft`);
+                toast.showSuccess(`${t.formsetmanagementpanel328}"${formSet.name}"${t.formsetmanagementpanel328_2}`);
                 loadMyFormSets();
                 loadPublicFormSets();
             } else {
-                toast.showError('Fehler beim Verknüpfen');
+                toast.showError(t.formsetmanagementpanel332);
             }
         } catch (error) {
-            console.error('Error linking FormSet:', error);
-            toast.showError('Netzwerkfehler beim Verknüpfen');
+            console.error(t.formsetmanagementpanel335, error);
+            toast.showError(t.formsetmanagementpanel336);
         }
     };
 
@@ -345,9 +345,9 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             'public': 'bg-green-500',
         };
         const labels: Record<string, string> = {
-            'private': 'Privat',
-            'team': 'Team',
-            'public': 'Öffentlich',
+            'private': t.formsetmanagementpanel348,
+            'team': t.formsetmanagementpanel349,
+            'public': t.formsetmanagementpanel350,
         };
         return (
             <span className={`px-2 py-1 ${visibilityColors[formSet.visibility] || 'bg-gray-500'} text-white rounded text-xs`}>
@@ -379,16 +379,16 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         <div className="formset-management-panel p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
 
             {/* MY FORMSETS TABLE */}
-            <Card title="Meine FormSets" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+            <Card title={t.formsetmanagementpanel382} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                         <Dropdown
                             value={myVisibilityFilter}
                             options={[
-                                { label: 'Alle', value: 'all' },
-                                { label: 'Privat', value: 'private' },
-                                { label: 'Team', value: 'team' },
-                                { label: 'Öffentlich', value: 'public' },
+                                { label: t.formsetmanagementpanel388, value: 'all' },
+                                { label: t.formsetmanagementpanel389, value: 'private' },
+                                { label: t.formsetmanagementpanel390, value: 'team' },
+                                { label: t.formsetmanagementpanel391, value: 'public' },
                             ]}
                             onChange={(e) => setMyVisibilityFilter(e.value)}
                             placeholder="Sichtbarkeit"
@@ -398,12 +398,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         <InputText
                             value={mySearchTerm}
                             onChange={(e) => setMySearchTerm(e.target.value)}
-                            placeholder="Suchen..."
+                            placeholder={t.formsetmanagementpanel401}
                             className="w-64"
                         />
                     </div>
                     <Button
-                        label="Neues FormSet"
+                        label={t.formsetmanagementpanel406}
                         icon="pi pi-plus"
                         className="p-button-success"
                         onClick={() => onOpenPanel?.('form-designer', { title: 'Form Designer' })}
@@ -420,10 +420,10 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     className="p-datatable-sm"
                     emptyMessage={t.formsetmanagementpanel421} //Keine FormSets gefunden
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="{first} bis {last} von {totalRecords} FormSets"
+                    currentPageReportTemplate={`{first}${t.formsetmanagementpanel423_2}{last}${t.formsetmanagementpanel423_3}{totalRecords}${t.formsetmanagementpanel423_4}`}
                 >
-                    <Column field={t.formsetmanagementpanel425} header="Name" sortable />
-                    <Column field={t.formsetmanagementpanel426} header="Beschreibung" style={{ maxWidth: '300px' }} />
+                    <Column field="name" header={t.formsetmanagementpanel425} sortable />
+                    <Column field="description" header={t.formsetmanagementpanel426} style={{ maxWidth: '300px' }} />
                     <Column header={t.formsetmanagementpanel427} body={visibilityBodyTemplate} />
                     <Column header={t.formsetmanagementpanel428} body={windowsBodyTemplate} />
                     <Column header={t.formsetmanagementpanel429} body={dateBodyTemplate} sortable field="created_at" />
@@ -492,7 +492,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     className="p-datatable-sm"
                     emptyMessage={t.formsetmanagementpanel493}
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="{first} bis {last} von {totalRecords} FormSets"
+                    currentPageReportTemplate={`{first}${t.formsetmanagementpanel423}{last}${t.formsetmanagementpanel495}{totalRecords}${t.formsetmanagementpanel495_2}`}
                 >
                     <Column field="name" header={t.formsetmanagementpanel497} sortable />
                     <Column field="description" header={t.formsetmanagementpanel498} style={{ maxWidth: '300px' }} />
@@ -500,7 +500,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     <Column header={t.formsetmanagementpanel500} body={windowsBodyTemplate} />
                     <Column header={t.formsetmanagementpanel501} body={dateBodyTemplate} sortable field="created_at" />
                     <Column
-                        header="Aktionen"
+                        header={t.formsetmanagementpanel503}
                         body={(formSet: FormSet) => (
                             <div className="flex gap-1">
                                 <Button

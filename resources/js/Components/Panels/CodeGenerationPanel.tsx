@@ -134,7 +134,7 @@ interface GitBranch {
 export default function CodeGenerationPanel() {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage); // Prefixed with _ to indicate intentionally unused
+  const { t: t } = useTranslation(currentLanguage); // Prefixed with _ to indicate intentionally unused
 
   // Theme
   const { colors } = useTheme();
@@ -1853,12 +1853,8 @@ export default function CodeGenerationPanel() {
               folderPath = folderPath ? `${langCode}/${folderPath}` : langCode;
             }
 
-            // Add table folder if needed (ONLY if not already in output_path)
-            if ((generationType === 'db_table_file' || generationType === 'db_table_file_languages')
-                && tableName
-                && !outputPath.includes(tableName)) {
-              folderPath = folderPath ? `${folderPath}/${tableName}` : tableName;
-            }
+            // Note: Table folders are NOT auto-added. Use %1 in output_path
+            // to create table-named subfolders (e.g. output_path = "%1/" → "addresses/")
 
             // Remove trailing slashes and clean up double slashes
             folderPath = folderPath.replace(/\/+$/, '').replace(/\/+/g, '/');
@@ -3165,7 +3161,7 @@ export default function CodeGenerationPanel() {
                     </div>
                     {currentUser.patron_type !== 'monthly' && (
                       <div className="text-sm flex items-center gap-3" style={{ color: colors.textSecondary }}>
-                        <span>Ihre Credits: <strong style={{ color: colors.textPrimary }}>{currentUser.credits || 0}</strong></span>
+                        <span>{t.codegenerationpanel3164}<strong style={{ color: colors.textPrimary }}>{currentUser.credits || 0}</strong></span>
                         {(currentUser.credits || 0) < 5 && (
                           <button
                             type="button"

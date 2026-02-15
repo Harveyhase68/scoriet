@@ -366,12 +366,12 @@ const FileModal: React.FC<FileModalProps> = ({
 
     // Form Window Type Options
     const formWindowTypeOptions = [
-        { label: 'Kein Formular', value: 0 },
-        { label: 'Hauptmenü', value: 1 },
-        { label: 'Formular (Erstellen/Bearbeiten)', value: 2 },
-        { label: 'Datentabelle', value: 3 },
-        { label: 'Report (Einzeldatensatz)', value: 4 },
-        { label: 'Report (Liste)', value: 5 },
+        { label: t.filemodal369, value: 0 },
+        { label: t.filemodal370, value: 1 },
+        { label: t.filemodal371, value: 2 },
+        { label: t.filemodal372, value: 3 },
+        { label: t.filemodal373, value: 4 },
+        { label: t.filemodal374, value: 5 },
     ];
     const [uploadedFile, setUploadedFile] = useState<any>(null);
     const [zipFileList, setZipFileList] = useState<Array<{ name: string; size: number }>>([]);
@@ -492,8 +492,8 @@ const FileModal: React.FC<FileModalProps> = ({
                 fileList.sort((a, b) => a.name.localeCompare(b.name));
                 setZipFileList(fileList);
             } catch (error: any) {
-                console.error('Failed to extract archive file list:', error);
-                toast.showError(`Fehler beim Lesen des Archivs: ${error.message}`);
+                console.error(t.filemodal495, error);
+                toast.showError(`${t.filemodal496}${error.message}`);
                 setZipFileList([]);
             } finally {
                 setIsLoadingZipList(false);
@@ -523,7 +523,7 @@ const FileModal: React.FC<FileModalProps> = ({
     // Download file for VS Code callback
     const handleDownloadForVSCode = useCallback(() => {
         if (!editingFile || !editingFile.file_content) {
-            toast.showError('Keine Datei zum Herunterladen vorhanden');
+            toast.showError(t.filemodal526);
             return;
         }
 
@@ -537,9 +537,9 @@ const FileModal: React.FC<FileModalProps> = ({
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            toast.showSuccess(`Datei "${editingFile.file_name}" heruntergeladen. Öffnen Sie sie in VS Code, bearbeiten Sie sie und laden Sie sie dann hier wieder hoch.`);
+            toast.showSuccess(`Datei "${editingFile.file_name}"${t.filemodal540}`);
         } catch (error: any) {
-            toast.showError(`Download fehlgeschlagen: ${error.message}`);
+            toast.showError(`${t.filemodal542}${error.message}`);
         }
     }, [editingFile, toast]);
 
@@ -555,10 +555,10 @@ const FileModal: React.FC<FileModalProps> = ({
                 ...control._formValues,
                 file_content: content
             });
-            toast.showSuccess(`Datei "${file.name}" geladen. Klicken Sie auf Speichern um die Änderungen zu übernehmen.`);
+            toast.showSuccess(`${t.filemodal558}"${file.name}"${t.filemodal558_2}`);
         };
         reader.onerror = () => {
-            toast.showError('Fehler beim Lesen der Datei');
+            toast.showError(t.filemodal561);
         };
         reader.readAsText(file);
         event.target.value = '';
@@ -591,20 +591,20 @@ const FileModal: React.FC<FileModalProps> = ({
                         ...control._formValues,
                         file_content: data.updated_content
                     });
-                    setServiceEditStatus('Änderungen empfangen!');
-                    toast.showSuccess('Datei wurde aktualisiert');
+                    setServiceEditStatus(t.filemodal594);
+                    toast.showSuccess(t.filemodal595);
                 }
 
                 if (data.status === 'watching') {
-                    setServiceEditStatus('Überwache Datei auf Änderungen...');
+                    setServiceEditStatus(t.filemodal599);
                 } else if (data.status === 'closed') {
                     stopServicePolling();
                     setServiceEditActive(false);
                     setServiceEditStatus('');
-                    toast.showInfo('Service-Bearbeitung beendet');
+                    toast.showInfo(t.filemodal604);
                 }
             } catch (err) {
-                console.error('Service polling error:', err);
+                console.error(t.filemodal607, err);
             }
         }, 1500);
     }, [stopServicePolling, reset, control, toast]);
@@ -612,12 +612,12 @@ const FileModal: React.FC<FileModalProps> = ({
     // Start editing via service callback
     const handleStartServiceEdit = useCallback(async () => {
         if (!editingFile || !templateId) {
-            toast.showError('Template-ID oder Datei nicht verfügbar');
+            toast.showError(t.filemodal615);
             return;
         }
 
         setServiceEditActive(true);
-        setServiceEditStatus('Erstelle Service-Task...');
+        setServiceEditStatus(t.filemodal620);
         setServiceEditLogs('');
 
         try {
@@ -638,17 +638,17 @@ const FileModal: React.FC<FileModalProps> = ({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Task-Erstellung fehlgeschlagen');
+                throw new Error(data.message || t.filemodal641);
             }
 
             setServiceEditSessionId(data.session_id);
-            setServiceEditStatus('Service öffnet Datei im Editor...');
+            setServiceEditStatus(t.filemodal645_2);
             startServicePolling(data.session_id);
-            toast.showSuccess('Datei wird im externen Editor geöffnet. Speichern Sie dort mit STRG+S um die Änderungen zu übernehmen.');
+            toast.showSuccess(t.filemodal647);
         } catch (error: any) {
             setServiceEditActive(false);
             setServiceEditStatus('');
-            toast.showError(error.message || 'Fehler beim Starten der Service-Bearbeitung');
+            toast.showError(error.message || t.filemodal651);
         }
     }, [editingFile, templateId, toast, startServicePolling]);
 
@@ -719,19 +719,19 @@ const FileModal: React.FC<FileModalProps> = ({
             file.name.endsWith('.tar.xz');
 
         if (!isArchive) {
-            toast.showError('Bitte wählen Sie eine ZIP, TAR.GZ oder TAR.XZ Datei aus.');
+            toast.showError(t.filemodal722);
             return false;
         }
 
-        // 🎯 Check 10MB size limit
-        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        // 🎯 Check 100MB size limit
+        const maxSize = 100 * 1024 * 1024; // 100MB in bytes
         if (file.size > maxSize) {
-            toast.showError(`Die Datei ist zu groß (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximale Größe: 10MB`);
+            toast.showError(`${t.filemodal729}(${(file.size / 1024 / 1024).toFixed(1)}MB){t.filemodal729_2}`);
             return false;
         }
 
         setUploadedFile(file);
-        toast.showSuccess(`${file.name} wurde geladen (${(file.size / 1024).toFixed(1)} KB)`);
+        toast.showSuccess(`${file.name}${t.filemodal734}(${(file.size / 1024).toFixed(1)} KB)`);
         return false; // Prevent auto upload
     };
 
@@ -768,13 +768,13 @@ const FileModal: React.FC<FileModalProps> = ({
         // Wait for all files to be read, then update state ONCE
         Promise.all(newFilesPromises).then((newFiles) => {
             setManagedFiles(prev => [...prev, ...newFiles]);
-            toast.showSuccess(`${newFiles.length} ${newFiles.length === 1 ? 'Datei' : 'Dateien'} hinzugefügt`);
+            toast.showSuccess(`${newFiles.length} ${newFiles.length === 1 ? t.filemodal771 : t.filemodal771_2}${t.filemodal771_3}`);
         });
     };
 
     const handleRemoveManagedFile = (id: string) => {
         setManagedFiles(prev => prev.filter(f => f.id !== id));
-        toast.showInfo('Datei entfernt');
+        toast.showInfo(t.filemodal777);
     };
 
     const handleUpdateManagedFilePath = (id: string, newPath: string) => {
@@ -829,8 +829,8 @@ const FileModal: React.FC<FileModalProps> = ({
             setManagedFiles(extractedFiles);
             toast.showSuccess(`${extractedFiles.length} ${extractedFiles.length === 1 ? 'Datei' : 'Dateien'} aus Archiv geladen`);
         } catch (error: any) {
-            console.error('Failed to extract ZIP to managed files:', error);
-            toast.showError(`Fehler beim Entpacken des Archivs: ${error.message}`);
+            console.error(t.filemodal832, error);
+            toast.showError(`${t.filemodal833}${error.message}`);
             setManagedFiles([]);
         }
     };
@@ -839,18 +839,18 @@ const FileModal: React.FC<FileModalProps> = ({
         <Dialog
             header={
                 <div className="flex items-center justify-between w-full pr-8">
-                    <span>{editingFile ? 'Datei bearbeiten' : t.filemodal111}</span>
+                    <span>{editingFile ? t.filemodal842 : t.filemodal111}</span>
                     {editingFile && contentMode === 'text' && (
                         <div className="flex items-center gap-2 ml-4">
                             {/* VS Code / External Edit Buttons */}
                             <Button
                                 icon="pi pi-download"
-                                label="Download"
+                                label={t.filemodal848}
                                 size="small"
                                 severity="secondary"
                                 text
                                 onClick={handleDownloadForVSCode}
-                                tooltip="Datei herunterladen für manuelle Bearbeitung"
+                                tooltip={t.filemodal853}
                                 tooltipOptions={{ position: 'bottom' }}
                             />
                             <input
@@ -867,7 +867,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                 severity="secondary"
                                 text
                                 onClick={() => document.getElementById('reupload-file-input')?.click()}
-                                tooltip="Bearbeitete Datei wieder hochladen"
+                                tooltip={t.filemodal870}
                                 tooltipOptions={{ position: 'bottom' }}
                             />
                             {templateId && !serviceEditActive && (
@@ -878,7 +878,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     severity="info"
                                     text
                                     onClick={handleStartServiceEdit}
-                                    tooltip="Im externen Editor bearbeiten (mit automatischer Synchronisation)"
+                                    tooltip={t.filemodal881}
                                     tooltipOptions={{ position: 'bottom' }}
                                 />
                             )}
@@ -888,21 +888,21 @@ const FileModal: React.FC<FileModalProps> = ({
                                     href={`vscode://file/C:/WINDOWS/SystemTemp/scoriet-edit/${editingFile.file_name}`}
                                     className="p-button p-button-text p-button-sm p-button-help"
                                     style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-                                    title="Datei direkt in VS Code öffnen (vscode:// Link)"
+                                    title="${t.filemodal891}(vscode:// Link)"
                                 >
                                     <i className="pi pi-external-link" />
-                                    <span>VS Code Link</span>
+                                    <span>{t.filemodal894}</span>
                                 </a>
                             )}
                             {serviceEditActive && (
                                 <Button
                                     icon="pi pi-stop"
-                                    label="Service beenden"
+                                    label={t.filemodal900}
                                     size="small"
                                     severity="danger"
                                     text
                                     onClick={handleStopServiceEdit}
-                                    tooltip="Service-Bearbeitung beenden"
+                                    tooltip={t.filemodal905}
                                     tooltipOptions={{ position: 'bottom' }}
                                 />
                             )}
@@ -956,7 +956,7 @@ const FileModal: React.FC<FileModalProps> = ({
                     {/* File Name */}
                     <div className="flex-1">
                         <label htmlFor="file_name" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Dateiname *
+                            {t.filemodal959}
                         </label>
                         <Controller
                             name="file_name"
@@ -979,7 +979,7 @@ const FileModal: React.FC<FileModalProps> = ({
                     {/* File Type */}
                     <div className="w-48">
                         <label htmlFor="file_type" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Template-Typ *
+                            {t.filemodal982}
                         </label>
                         <Controller
                             name="file_type"
@@ -991,7 +991,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     value={field.value}
                                     onChange={(e) => field.onChange(e.value)}
                                     options={fileTypes.map(type => ({ label: type.label, value: type.value }))}
-                                    placeholder="Typ auswählen"
+                                    placeholder={t.filemodal994}
                                     className="w-full"
                                 />
                             )}
@@ -1007,9 +1007,9 @@ const FileModal: React.FC<FileModalProps> = ({
                     {/* Form Window Type */}
                     <div className="flex-1">
                         <label htmlFor="form_window_type" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Formular-Fenstertyp
+                            {t.filemodal1010}
                             <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                                (für FormSet-Integration)
+                                {t.filemodal1012}
                             </span>
                         </label>
                         <Controller
@@ -1021,7 +1021,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     value={field.value}
                                     onChange={(e) => field.onChange(e.value)}
                                     options={formWindowTypeOptions}
-                                    placeholder="Fenstertyp auswählen"
+                                    placeholder={t.filemodal1024}
                                     className="w-full"
                                 />
                             )}
@@ -1031,7 +1031,7 @@ const FileModal: React.FC<FileModalProps> = ({
                     {/* Include-Only Checkbox */}
                     <div className="flex-shrink-0" style={{ minWidth: '200px' }}>
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Include-Only
+                            {t.filemodal1034}
                         </label>
                         <Controller
                             name="is_include_only"
@@ -1044,7 +1044,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                         onChange={(e) => field.onChange(e.checked)}
                                     />
                                     <label htmlFor="is_include_only" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
-                                        Nur für {'{:include:}'}
+                                        {t.filemodal1047}{'{:include:}'}
                                     </label>
                                 </div>
                             )}
@@ -1052,16 +1052,16 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 </div>
                 <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    <strong>Formular-Fenstertyp:</strong> Wählen Sie den Typ, wenn diese Datei für ein Formular generiert werden soll. |
-                    <strong> Include-Only:</strong> Wenn aktiviert, wird die Datei nicht generiert, sondern nur für <code>{'{:include: pfad/datei.php:}'}</code> verwendet.
+                    <strong>{t.filemodal1055}</strong>{t.filemodal1055_2}|
+                    <strong>{t.filemodal1056}</strong>{t.filemodal1056_2}<code>{'{:include: path/file.php:}'}</code>{t.filemodal1056_3}
                 </div>
 
                 {/* Output Path */}
                 <div>
                     <label htmlFor="output_path" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Zielverzeichnis *
+                        {t.filemodal1062}
                         <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                            (e.g., /components/, /services/, /data/)
+                            ({t.filemodal1064}/components/, /services/, /data/)
                         </span>
                     </label>
                     <Controller
@@ -1070,7 +1070,7 @@ const FileModal: React.FC<FileModalProps> = ({
                         rules={{ required: t.filemodal182 }}
                         render={({ field }) => (
                             <div className="p-inputgroup">
-                                <span className="p-inputgroup-addon">Pfad:</span>
+                                <span className="p-inputgroup-addon">{t.filemodal1073}</span>
                                 <InputText
                                     id="output_path"
                                     {...field}
@@ -1089,12 +1089,12 @@ const FileModal: React.FC<FileModalProps> = ({
                 {currentFileType === 'static_directory' && (
                     <div className="mb-4">
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            Upload-Modus:
+                            {t.filemodal1092}
                         </label>
                         <div className="flex gap-2">
                             <Button
                                 type="button"
-                                label="Archiv hochladen"
+                                label={t.filemodal1097}
                                 icon="pi pi-upload"
                                 severity={uploadMode === 'archive' ? undefined : 'secondary'}
                                 onClick={() => setUploadMode('archive')}
@@ -1102,7 +1102,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             />
                             <Button
                                 type="button"
-                                label="Dateien verwalten"
+                                label={t.filemodal1105}
                                 icon="pi pi-folder-open"
                                 severity={uploadMode === 'file_manager' ? undefined : 'secondary'}
                                 onClick={() => setUploadMode('file_manager')}
@@ -1119,13 +1119,13 @@ const FileModal: React.FC<FileModalProps> = ({
                         {editingFile && editingFile.content_type === 'zip' ? (
                             <div className="mb-4">
                                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                    Archiv-Inhalt ({editingFile.zip_filename || editingFile.file_name})
+                                    {t.filemodal1122}({editingFile.zip_filename || editingFile.file_name})
                                 </label>
                                 <div className="border-2 border-gray-600 bg-gray-800 rounded-lg p-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                     {isLoadingZipList ? (
                                         <div className="flex items-center justify-center p-8 text-gray-400">
                                             <i className="pi pi-spin pi-spinner mr-2"></i>
-                                            Lade Archiv-Inhalt...
+                                            {t.filemodal1128}
                                         </div>
                                     ) : zipFileList.length > 0 ? (
                                         <div className="space-y-0.5">
@@ -1134,7 +1134,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                                     {zipFileList.length} {zipFileList.length === 1 ? 'Datei' : 'Dateien'}
                                                 </span>
                                                 <span className="text-gray-400 text-sm">
-                                                    Gesamtgröße: {(zipFileList.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB
+                                                    {t.filemodal1137}{(zipFileList.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB
                                                 </span>
                                             </div>
                                             {zipFileList.map((file, index) => {
@@ -1167,7 +1167,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     ) : (
                                         <div className="text-center text-gray-400 p-8">
                                             <i className="pi pi-inbox text-4xl mb-2"></i>
-                                            <p>Keine Dateien gefunden</p>
+                                            <p>{t.filemodal1170}</p>
                                         </div>
                                     )}
                                 </div>
@@ -1175,7 +1175,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     <div className="flex items-start">
                                         <i className="pi pi-info-circle text-blue-400 mr-2 mt-0.5"></i>
                                         <div className="text-sm text-blue-200">
-                                            <strong>Hinweis:</strong> Um den Archiv-Inhalt zu ändern, wechseln Sie zu "Archive" und laden Sie ein neues Archiv hoch.
+                                            <strong>{t.filemodal1178}</strong>{t.filemodal1178_2}
                                         </div>
                                     </div>
                                 </div>
@@ -1184,7 +1184,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             // Show code editor for text files
                             <div>
                                 <label htmlFor="file_content" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                    Dateiinhalt {contentMode === 'text' && '*'}
+                                    {t.filemodal1187}{contentMode === 'text' && '*'}
                                 </label>
                                 <Controller
                                     name="file_content"
@@ -1211,13 +1211,13 @@ const FileModal: React.FC<FileModalProps> = ({
                 {contentMode === 'zip' && uploadMode === 'archive' && (
                     <div className="mb-4">
                         <label className="block text-sm font-medium mb-2">
-                            Archiv hochladen (ZIP, TAR.GZ, TAR.XZ)
+                            {t.filemodal1214}(ZIP, TAR.GZ, TAR.XZ)
                         </label>
                         {!uploadedFile ? (
                             <FileUpload
                                 name="zip_file"
                                 accept=".zip,.tar.gz,.tar.xz,.gz,.xz"
-                                maxFileSize={10000000}
+                                maxFileSize={104857600}
                                 customUpload
                                 auto
                                 chooseLabel={t.filemodal278}
@@ -1229,9 +1229,9 @@ const FileModal: React.FC<FileModalProps> = ({
                                 emptyTemplate={
                                     <div className="flex flex-col items-center justify-center p-8 text-gray-300">
                                         <i className="pi pi-upload" style={{ fontSize: '48px', color: '#6b7280', marginBottom: '16px' }}></i>
-                                        <p className="text-lg mb-2">Archiv hier ablegen oder klicken zum Auswählen</p>
+                                        <p className="text-lg mb-2">{t.filemodal1232}</p>
                                         <p className="text-sm text-gray-400">
-                                            Unterstützt werden ZIP, TAR.GZ und TAR.XZ Archive mit Template-Strukturen
+                                            {t.filemodal1234}
                                         </p>
                                     </div>
                                 }
@@ -1267,7 +1267,7 @@ const FileModal: React.FC<FileModalProps> = ({
                     <div className="mb-4">
                         <div className="flex justify-between items-center mb-3">
                             <label className="block text-sm font-medium">
-                                Dateien verwalten ({managedFiles.length} {managedFiles.length === 1 ? 'Datei' : 'Dateien'})
+                                {t.filemodal1270}({managedFiles.length} {managedFiles.length === 1 ? t.filemodal1270_2 : t.filemodal1270_3})
                             </label>
                             <input
                                 type="file"
@@ -1283,7 +1283,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             />
                             <Button
                                 type="button"
-                                label="Dateien hinzufügen"
+                                label={t.filemodal1286}
                                 icon="pi pi-plus"
                                 size="small"
                                 onClick={() => document.getElementById('managed-files-upload')?.click()}
@@ -1293,8 +1293,8 @@ const FileModal: React.FC<FileModalProps> = ({
                         {managedFiles.length === 0 ? (
                             <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center text-gray-400">
                                 <i className="pi pi-folder-open" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
-                                <p className="text-lg mb-2">Noch keine Dateien hinzugefügt</p>
-                                <p className="text-sm">Klicken Sie auf "Dateien hinzufügen" oder ziehen Sie Dateien hierher</p>
+                                <p className="text-lg mb-2">{t.filemodal1296}</p>
+                                <p className="text-sm">{t.filemodal1297}</p>
                             </div>
                         ) : (
                             <DataTable
@@ -1305,7 +1305,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             >
                                 <Column
                                     field="name"
-                                    header="Dateiname"
+                                    header={t.filemodal1308}
                                     style={{ width: '35%' }}
                                     body={(rowData) => (
                                         <div className="flex items-center">
@@ -1316,13 +1316,13 @@ const FileModal: React.FC<FileModalProps> = ({
                                 />
                                 <Column
                                     field="relativePath"
-                                    header="Relatives Verzeichnis"
+                                    header={t.filemodal1319}
                                     style={{ width: '40%' }}
                                     body={(rowData) => (
                                         <InputText
                                             value={rowData.relativePath}
                                             onChange={(e) => handleUpdateManagedFilePath(rowData.id, e.target.value)}
-                                            placeholder="z.B. css/ oder images/icons/"
+                                            placeholder={t.filemodal1325}
                                             className="w-full"
                                             style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}
                                         />
@@ -1330,7 +1330,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                 />
                                 <Column
                                     field="size"
-                                    header="Größe"
+                                    header={t.filemodal1333}
                                     style={{ width: '15%' }}
                                     body={(rowData) => (
                                         <span className="text-sm text-gray-400">
@@ -1339,7 +1339,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                     )}
                                 />
                                 <Column
-                                    header="Aktionen"
+                                    header={t.filemodal1342}
                                     style={{ width: '10%' }}
                                     body={(rowData) => (
                                         <Button
@@ -1348,7 +1348,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                             text
                                             size="small"
                                             onClick={() => handleRemoveManagedFile(rowData.id)}
-                                            tooltip="Datei entfernen"
+                                            tooltip={t.filemodal1351}
                                         />
                                     )}
                                 />
@@ -1359,8 +1359,8 @@ const FileModal: React.FC<FileModalProps> = ({
                             <div className="flex items-start">
                                 <i className="pi pi-info-circle text-blue-400 mr-2 mt-0.5"></i>
                                 <div className="text-sm text-blue-200">
-                                    <strong>Hinweis:</strong> Geben Sie für jede Datei das relative Zielverzeichnis an (z.B. "css/" oder "images/icons/").
-                                    Lassen Sie das Feld leer für das Root-Verzeichnis. Beim Speichern wird automatisch ein ZIP-Archiv erstellt.
+                                    <strong>{t.filemodal1362}</strong>{t.filemodal1362_2}
+                                    {t.filemodal1363}
                                 </div>
                             </div>
                         </div>
@@ -1368,7 +1368,7 @@ const FileModal: React.FC<FileModalProps> = ({
                 )}
 
                 <div className="p-3 rounded mb-4" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
-                    <strong style={{ color: colors.textPrimary }}>Template-Typen:</strong>
+                    <strong style={{ color: colors.textPrimary }}>{t.filemodal1371}</strong>
                     <ul className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
                         {fileTypes.map(type => (
                             <li key={type.value} className="mb-1">

@@ -177,7 +177,7 @@ class MessageController extends Controller
         // Check for attachments permission
         if ($request->hasFile('attachments') && !$user->hasMessageAttachmentsAccess()) {
             return response()->json([
-                'message' => 'Nachrichten-Anhänge sind ein Premium-Feature. Bitte freischalten für 50 Credits/Jahr.',
+                'message' => __('messagecontrollerphp180'),
                 'requires_subscription' => true,
                 'unlock_cost' => Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
             ], 403);
@@ -254,7 +254,7 @@ class MessageController extends Controller
         // Check for attachments permission
         if ($request->hasFile('attachments') && !$user->hasMessageAttachmentsAccess()) {
             return response()->json([
-                'message' => 'Nachrichten-Anhänge sind ein Premium-Feature. Bitte freischalten für 50 Credits/Jahr.',
+                'message' => __('messagecontrollerphp257'),
                 'requires_subscription' => true,
                 'unlock_cost' => Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
             ], 403);
@@ -706,7 +706,7 @@ class MessageController extends Controller
         // Check for attachments permission
         if ($request->hasFile('attachments') && !$user->hasMessageAttachmentsAccess()) {
             return response()->json([
-                'message' => 'Nachrichten-Anhänge sind ein Premium-Feature. Bitte freischalten für 50 Credits/Jahr.',
+                'message' => __('messagecontrollerphp709'),
                 'requires_subscription' => true,
                 'unlock_cost' => Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
             ], 403);
@@ -807,7 +807,7 @@ class MessageController extends Controller
         // Check for attachments permission
         if ($request->hasFile('attachments') && !$user->hasMessageAttachmentsAccess()) {
             return response()->json([
-                'message' => 'Nachrichten-Anhänge sind ein Premium-Feature. Bitte freischalten für 50 Credits/Jahr.',
+                'message' => __('messagecontrollerphp810'),
                 'requires_subscription' => true,
                 'unlock_cost' => Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
             ], 403);
@@ -875,13 +875,13 @@ class MessageController extends Controller
                 try {
                     Mail::to($recipient->email)->queue(new NewMessageMail($thread->messages()->first(), $recipient));
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send message notification: ' . $e->getMessage());
+                    \Log::error(__('messagecontrollerphp878') . $e->getMessage());
                 }
             }
         }
 
         return response()->json([
-            'message' => 'Nachricht an ' . count($recipientIds) . ' Team-Mitglieder gesendet',
+            'message' => 'Nachricht an ' . count($recipientIds) . __('messagecontrollerphp884'),
             'thread' => $thread->load(['messages.sender:id,name,username', 'participants.user:id,name,username']),
         ]);
     }
@@ -909,7 +909,7 @@ class MessageController extends Controller
         // Check if already has access
         if ($user->hasMessageAttachmentsAccess()) {
             return response()->json([
-                'message' => 'Sie haben bereits Zugang zu Nachrichten-Anhängen',
+                'message' => __('messagecontrollerphp912'),
                 'status' => $user->getMessageAttachmentsAccessStatus(),
             ]);
         }
@@ -928,12 +928,12 @@ class MessageController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'message' => 'Fehler beim Freischalten',
+                'message' => __('messagecontrollerphp931'),
             ], 500);
         }
 
         return response()->json([
-            'message' => 'Nachrichten-Anhänge freigeschaltet für 1 Jahr',
+            'message' => __('messagecontrollerphp936'),
             'status' => $user->fresh()->getMessageAttachmentsAccessStatus(),
         ]);
     }
@@ -962,7 +962,7 @@ class MessageController extends Controller
         $disk = Storage::disk('local');
 
         if (!$disk->exists($attachment->path)) {
-            return response()->json(['message' => 'Datei nicht gefunden'], 404);
+            return response()->json(['message' => __('messagecontrollerphp965')], 404);
         }
 
         return $disk->download($attachment->path, $attachment->original_filename);
@@ -979,7 +979,7 @@ class MessageController extends Controller
         $disk = Storage::disk('local');
 
         if (!$disk->exists($attachmentModel->path)) {
-            return response()->json(['message' => 'Datei nicht gefunden'], 404);
+            return response()->json(['message' => __('messagecontrollerphp982')], 404);
         }
 
         return $disk->download($attachmentModel->path, $attachmentModel->original_filename);
@@ -1028,7 +1028,7 @@ class MessageController extends Controller
 
         if ($storageStatus['is_full']) {
             return response()->json([
-                'message' => 'Speicherplatz voll! Bitte löschen Sie alte Nachrichten um Platz zu schaffen.',
+                'message' => __('messagecontrollerphp1031'),
                 'storage_full' => true,
                 'storage' => $storageStatus,
             ], 400);
@@ -1036,9 +1036,9 @@ class MessageController extends Controller
 
         if (!$user->hasEnoughStorageFor($uploadSize)) {
             return response()->json([
-                'message' => 'Nicht genügend Speicherplatz für diese Anhänge. ' .
-                    'Benötigt: ' . User::formatBytes($uploadSize) . ', ' .
-                    'Verfügbar: ' . $storageStatus['remaining_formatted'],
+                'message' => __('messagecontrollerphp1039') .
+                    __('messagecontrollerphp1040') . User::formatBytes($uploadSize) . ', ' .
+                    __('messagecontrollerphp1041') . $storageStatus['remaining_formatted'],
                 'storage_insufficient' => true,
                 'required' => $uploadSize,
                 'available' => $storageStatus['remaining'],

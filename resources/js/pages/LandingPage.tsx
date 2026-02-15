@@ -689,17 +689,39 @@ export default function LandingPage() {
             </p>
 
             <div className="flex justify-center gap-2">
-              {!isDemoMode ? (
-                <Button
-                  label={t.startFree}
-                  icon="pi pi-flag"
-                  className="p-button-primary"
-                  style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                  onClick={() => handleOpenModal('register')}
-                />
-              ) : (
+              {!isDemoMode && (
+                <>
+                  <Button
+                    label={t.startFree}
+                    icon="pi pi-flag"
+                    className="p-button-primary"
+                    style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                    onClick={() => handleOpenModal('register')}
+                  />
+                  <Button
+                    label={t.tryDemo}
+                    icon="pi pi-desktop"
+                    className="p-button-outlined p-button-primary"
+                    style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
+                    onClick={() => {
+                      const hostname = window.location.hostname;
+                      const isLocalDev = hostname === 'localhost' ||
+                                         hostname === '127.0.0.1' ||
+                                         hostname.includes('.local') ||
+                                         hostname.startsWith('10.') ||
+                                         hostname.startsWith('192.168.');
+                      const demoUrl = isLocalDev
+                        ? 'http://demo.scoriet.local/demo-login?user=demo-user'
+                        : 'https://demo.scoriet.dev/demo-login?user=demo-user';
+                      window.location.href = demoUrl;
+                    }}
+                  />
+                </>
+              )}
+              {isDemoMode && (
                 <Button
                   label={t.tryDemo}
+                  icon="pi pi-desktop"
                   className="p-button-primary"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
                   onClick={() => handleOpenModal('login')}

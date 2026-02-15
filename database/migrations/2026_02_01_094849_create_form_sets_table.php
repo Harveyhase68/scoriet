@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name', 100);
             $table->text('description')->nullable();
             $table->unsignedBigInteger('creator_user_id');
-            $table->enum('visibility', ['system', 'private', 'public'])->default('private');
+            $table->enum('visibility', ['system', 'private', 'team', 'public'])->default('private');
             $table->unsignedBigInteger('cloned_from_id')->nullable()->index('form_sets_cloned_from_id_foreign');
             $table->string('default_background_color', 7)->default('#1f2937');
             $table->string('default_window_color', 7)->default('#374151');

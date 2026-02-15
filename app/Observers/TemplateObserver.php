@@ -30,8 +30,10 @@ class TemplateObserver
      */
     public function updated(Template $template): void
     {
-        // Invalidate cache when template is updated
-        app(TemplateCacheService::class)->invalidateTemplate($template->id);
+        // Invalidate compiled template cache AND GTree cache
+        $cacheService = app(TemplateCacheService::class);
+        $cacheService->invalidateTemplate($template->id);
+        $cacheService->invalidateGtreeForTemplate($template->id);
 
         $this->regenerateAffectedProjects($template, 'updated');
     }
@@ -41,8 +43,10 @@ class TemplateObserver
      */
     public function deleted(Template $template): void
     {
-        // Invalidate cache when template is deleted
-        app(TemplateCacheService::class)->invalidateTemplate($template->id);
+        // Invalidate compiled template cache AND GTree cache
+        $cacheService = app(TemplateCacheService::class);
+        $cacheService->invalidateTemplate($template->id);
+        $cacheService->invalidateGtreeForTemplate($template->id);
 
         $this->regenerateAffectedProjects($template, 'deleted');
     }

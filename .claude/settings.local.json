@@ -145,7 +145,8 @@
       "Bash(del \"c:\\\\wamp\\\\www\\\\scoriet\\\\resources\\\\js\\\\pages\\\\CMSPage.tsx\")",
       "WebFetch(domain:github.com)",
       "Bash(del:*)",
-      "Bash(cmd /c del:*)"
+      "Bash(cmd /c del:*)",
+      "Bash(cmd /c \"magick --version 2>nul || convert --version 2>nul || echo NO_IMAGEMAGICK\")"
     ],
     "deny": [],
     "ask": []

@@ -780,10 +780,18 @@ class UltimateTemplateController extends Controller
                 ];
             })->toArray();
 
-            // 🎯 Create filtered field arrays for different use cases
-            $mappedFieldsNoKey = collect($mappedFields)->filter(function($field) {
-                return !$field['isprimary']; // Exclude primary keys
-            })->values()->toArray(); // Re-index after filtering
+            // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
+            $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            $fieldsNoKeyIndices = [];
+            $fieldsNoKeyAllIndices = [];
+            foreach ($mappedFields as $index => $field) {
+                if (!$field['isprimary']) {
+                    $fieldsNoKeyIndices[] = $index;
+                    if ($field['name'] !== $fileKeyName) {
+                        $fieldsNoKeyAllIndices[] = $index;
+                    }
+                }
+            }
 
             // Enhanced constraint mapping (ALL constraints)
             $mappedConstraints = $constraints->map(function($constraint, $index) use ($fields) {
@@ -864,7 +872,8 @@ class UltimateTemplateController extends Controller
                 // Counts
                 'nmaxitems' => count($mappedFields),
                 'nmaxfields' => count($mappedFields),
-                'nmaxitemsnokey' => count($mappedFieldsNoKey), // 🎯 Accurate count after filtering
+                'nmaxitemsnokey' => count($fieldsNoKeyIndices),
+                'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
@@ -879,14 +888,16 @@ class UltimateTemplateController extends Controller
 
                 // Data arrays
                 'fields' => $mappedFields,
-                'fieldsnokey' => $mappedFieldsNoKey, // 🎯 Fields without Primary Key (for UPDATE)
+                'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
+                'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
 
                 // Metadata
                 'tableindex' => $tableIndex,
-                'primarykeyfield' => $this->getPrimaryKeyField($fields), // 🎯 DAS LÖST DEIN {filekeyname} PROBLEM!
+                'primarykeyfield' => $this->getPrimaryKeyField($fields),
+                'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
             ];
         }
 
@@ -1035,10 +1046,18 @@ class UltimateTemplateController extends Controller
                 return $fieldData;
             })->toArray();
 
-            // 🎯 Create filtered field arrays for different use cases
-            $mappedFieldsNoKey = collect($mappedFields)->filter(function($field) {
-                return !$field['isprimary']; // Exclude primary keys
-            })->values()->toArray(); // Re-index after filtering
+            // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
+            $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            $fieldsNoKeyIndices = [];
+            $fieldsNoKeyAllIndices = [];
+            foreach ($mappedFields as $index => $field) {
+                if (!$field['isprimary']) {
+                    $fieldsNoKeyIndices[] = $index;
+                    if ($field['name'] !== $fileKeyName) {
+                        $fieldsNoKeyAllIndices[] = $index;
+                    }
+                }
+            }
 
             // Enhanced constraint mapping (ALL constraints)
             $mappedConstraints = $constraints->map(function($constraint, $index) use ($fields) {
@@ -1121,7 +1140,8 @@ class UltimateTemplateController extends Controller
                 // Counts
                 'nmaxitems' => count($mappedFields),
                 'nmaxfields' => count($mappedFields),
-                'nmaxitemsnokey' => count($mappedFieldsNoKey), // 🎯 Accurate count after filtering
+                'nmaxitemsnokey' => count($fieldsNoKeyIndices),
+                'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
@@ -1136,7 +1156,8 @@ class UltimateTemplateController extends Controller
 
                 // Data arrays
                 'fields' => $mappedFields,
-                'fieldsnokey' => $mappedFieldsNoKey, // 🎯 Fields without Primary Key (for UPDATE)
+                'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
+                'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
@@ -1144,6 +1165,7 @@ class UltimateTemplateController extends Controller
                 // Metadata
                 'tableindex' => $tableIndex,
                 'primarykeyfield' => $this->getPrimaryKeyField($fields),
+                'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
 
                 // 🌍 NEW: Language translations array
                 'lang' => $tableTranslations,
@@ -1256,14 +1278,19 @@ class UltimateTemplateController extends Controller
         $tableIndex = null;
         $actualTableName = null;
 
-        // OVERRIDE: If table_name parameter is provided, treat this as db_table_file or db_table_file_languages
+        // If table_name parameter is provided, resolve table index for db_table types
+        // Only override generation type for actual db_table types, NOT for project/static files
         if ($tableName) {
             error_log("🔧 Backend Debug: tableName parameter received: " . $tableName);
 
-            // Keep original generation type if it's already a language type
-            if ($generationType === 'db_table_file_languages') {
-                // Keep as db_table_file_languages
+            // Only set generation_type to db_table_file if the file is actually a DB type
+            if ($generationType === 'db_table_file' || $generationType === 'db_table_file_languages') {
+                // Keep original type (already correct)
+            } elseif ($generationType === 'project_file' || $generationType === 'project_file_languages'
+                || $generationType === 'static_file' || $generationType === 'static_directory') {
+                // Do NOT override - these are not DB table files
             } else {
+                // Unknown type with tableName provided - default to db_table_file
                 $generationType = 'db_table_file';
             }
 
@@ -2265,6 +2292,14 @@ JS;
 
                         // Skip ZIP files
                         if (($file->content_type ?? null) === 'zip') {
+                            continue;
+                        }
+
+                        // In batch mode (per-table loop), only process DB table files
+                        // Static files, project files, and static directories are NOT per-table
+                        // They are handled separately by the frontend
+                        $fileGenerationType = $this->determineGenerationType($file);
+                        if (!in_array($fileGenerationType, ['db_table_file', 'db_table_file_languages'])) {
                             continue;
                         }
 

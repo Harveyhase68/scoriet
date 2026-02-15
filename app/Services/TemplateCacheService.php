@@ -142,6 +142,30 @@ class TemplateCacheService
     }
 
     /**
+     * Invalidate GTree cache for all projects using a specific template
+     *
+     * @param int $templateId
+     * @return void
+     */
+    public function invalidateGtreeForTemplate(int $templateId): void
+    {
+        $projectIds = \Illuminate\Support\Facades\DB::table('project_template_usage')
+            ->where('template_id', $templateId)
+            ->where('is_active', true)
+            ->pluck('project_id')
+            ->unique();
+
+        foreach ($projectIds as $projectId) {
+            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
+            Cache::forget($gtreeCacheKey);
+        }
+
+        if ($projectIds->isNotEmpty()) {
+            Log::info("GTree cache invalidated for template {$templateId} across " . $projectIds->count() . " projects");
+        }
+    }
+
+    /**
      * Clear all template compilation cache
      * Use only for major changes (schema updates, etc.)
      *
@@ -150,19 +174,37 @@ class TemplateCacheService
     public function clearAll(): void
     {
         if (config('cache.default') === 'redis') {
-            // Only clear template-related cache (not sessions, etc.)
-            $pattern = 'compiled_template:*';
+            $tagsFlushed = 0;
+            $keysCleaned = 0;
 
-            // Using Laravel's Cache::flush() would clear everything
-            // Instead, use Redis directly to clear only template cache
-            $redis = Cache::getRedis();
-            $keys = $redis->keys($pattern);
-
-            if (!empty($keys)) {
-                $redis->del($keys);
+            // 1. Flush tagged entries via template tags
+            $templateIds = Template::pluck('id');
+            foreach ($templateIds as $templateId) {
+                try {
+                    Cache::tags(["template:{$templateId}"])->flush();
+                    $tagsFlushed++;
+                } catch (\Exception $e) {
+                    Log::warning("Failed to flush tag for template {$templateId}: " . $e->getMessage());
+                }
             }
 
-            Log::info("All template compilation cache cleared ({count} keys)", ['count' => count($keys)]);
+            // 2. Also clear un-tagged compiled_template keys using proper prefix
+            try {
+                $prefix = Cache::getStore()->getPrefix();
+                $redis = Cache::getRedis();
+                $keys = $redis->keys($prefix . 'compiled_template:*');
+                if (!empty($keys)) {
+                    $redis->del($keys);
+                    $keysCleaned = count($keys);
+                }
+            } catch (\Exception $e) {
+                Log::error("Failed to clear untagged template cache: " . $e->getMessage());
+            }
+
+            Log::info("All template compilation cache cleared", [
+                'tags_flushed' => $tagsFlushed,
+                'untagged_keys_cleaned' => $keysCleaned,
+            ]);
         } else {
             Cache::flush();
             Log::info("All cache cleared (file cache)");
@@ -183,8 +225,9 @@ class TemplateCacheService
 
         if (config('cache.default') === 'redis') {
             try {
+                $prefix = Cache::getStore()->getPrefix();
                 $redis = Cache::getRedis();
-                $keys = $redis->keys('compiled_template:*');
+                $keys = $redis->keys($prefix . 'compiled_template:*');
                 $stats['cached_templates'] = count($keys);
 
                 // Calculate total size

@@ -34,6 +34,12 @@ declare global {
       fileName?: string;
       languageId?: number;
       languageCode?: string;
+      // Database schema properties
+      preSelectedSchemaId?: number;
+      // Team roles properties
+      teamId?: number;
+      teamName?: string;
+      isOwner?: boolean;
     }>;
   }
 }
@@ -749,8 +755,24 @@ const loadTab = (
           isOwner: data.isOwner,
           updateTitleCallback: updateTitleCallback
         };
+        // Persist to localStorage so data survives Vite hot-reload and F5
+        localStorage.setItem('scoriet_teamRolesData', JSON.stringify({
+          teamId: data.teamId,
+          teamName: data.teamName,
+          isOwner: data.isOwner,
+        }));
       }
-      const teamRolesStoredData = window._tabData[teamRolesTabKey] || {};
+      let teamRolesStoredData = window._tabData[teamRolesTabKey] || {};
+      // Fallback: restore from localStorage if window._tabData was lost (Vite reload / F5)
+      if (!teamRolesStoredData.teamId) {
+        try {
+          const persisted = JSON.parse(localStorage.getItem('scoriet_teamRolesData') || '{}');
+          if (persisted.teamId) {
+            teamRolesStoredData = persisted;
+            window._tabData[teamRolesTabKey] = { ...persisted, updateTitleCallback };
+          }
+        } catch { /* ignore parse errors */ }
+      }
       const teamRolesTeamId = teamRolesStoredData.teamId as number;
       const teamRolesTeamName = teamRolesStoredData.teamName as string;
       const teamRolesIsOwner = teamRolesStoredData.isOwner as boolean;
@@ -777,7 +799,7 @@ const loadTab = (
     case 'messaging':
       return {
         id,
-        title: data.title || 'Nachrichten',
+        title: data.title || t.index796,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <MessagingPanel initialThreadId={data.threadId} />
@@ -1026,7 +1048,7 @@ const loadTab = (
         title: data.title || 'Code Anpassungen',
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <CodeAdjustmentsPanel onOpenPanel={openPanelFn} />
+            <CodeAdjustmentsPanel />
           </Suspense>
         ),
         closable: true,
@@ -1308,7 +1330,7 @@ export default function Index(props: IndexProps = {}) {
           // Demo credentials
           const credentials = {
             email: demoUser,
-            password: 'demo123' // Demo password
+            password: 'demo1234' // Demo password
           };
 
           // Get OAuth client credentials from env
@@ -1316,7 +1338,7 @@ export default function Index(props: IndexProps = {}) {
           const clientSecret = import.meta.env.VITE_PASSPORT_CLIENT_SECRET;
 
           // Request OAuth token
-          const response = await fetch('/oauth/token', {
+          const response = await fetch('/api/oauth/token', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1342,6 +1364,26 @@ export default function Index(props: IndexProps = {}) {
             // Mark as demo mode
             sessionStorage.setItem('demo_mode', 'true');
             sessionStorage.setItem('demo_user', demoUser);
+
+            // Fetch user data and store user_id/user_type (required for app to work)
+            try {
+              const userResponse = await fetch('/api/user', {
+                headers: {
+                  'Authorization': `Bearer ${data.access_token}`,
+                  'Accept': 'application/json',
+                },
+              });
+
+              if (userResponse.ok) {
+                const userData = await userResponse.json();
+                // Store in localStorage (same as normal login)
+                localStorage.setItem('user_id', userData.id.toString());
+                localStorage.setItem('user_type', userData.user_type || 'free');
+                localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
+              }
+            } catch (userError) {
+              console.error('❌ Failed to fetch user data:', userError);
+            }
 
             // Show success message only once per session (not on every F5)
             if (toast.current && demoMessage && !sessionStorage.getItem('demo_toast_shown')) {
