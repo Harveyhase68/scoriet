@@ -1239,10 +1239,14 @@ interface IndexProps {
   demoLogin?: boolean;
   demoUser?: 'demo-admin' | 'demo-user';
   demoMessage?: string;
+  // Hidden system login props
+  demoSystemLogin?: boolean;
+  demoSystemToken?: string;
+  demoSystemUser?: { id: number; user_type: string; is_inner_core: boolean };
 }
 
 export default function Index(props: IndexProps = {}) {
-  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage } = props;
+  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin, demoSystemToken, demoSystemUser } = props;
   const ref = useRef<any>(null);
   const toast = useRef<Toast>(null);
   // i18n setup
@@ -1410,6 +1414,25 @@ export default function Index(props: IndexProps = {}) {
       performDemoLogin();
     }
   }, [demoLogin, demoUser, demoMessage]);
+
+  // Hidden system login (token generated server-side, bypasses CustomTokenController)
+  useEffect(() => {
+    if (demoSystemLogin && demoSystemToken && demoSystemUser) {
+      // Store token in sessionStorage (non-persistent)
+      sessionStorage.setItem('access_token', demoSystemToken);
+      sessionStorage.setItem('demo_mode', 'true');
+      sessionStorage.setItem('demo_user', 'scoriet-system');
+
+      // Store user data
+      localStorage.setItem('user_id', demoSystemUser.id.toString());
+      localStorage.setItem('user_type', demoSystemUser.user_type || 'system');
+      localStorage.setItem('is_inner_core', demoSystemUser.is_inner_core ? '1' : '0');
+
+      // Trigger auth change
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('auth-change'));
+    }
+  }, [demoSystemLogin, demoSystemToken, demoSystemUser]);
 
   // Auth Modal State - Initialize based on authentication status
   const [activeModal, setActiveModal] = useState<AuthModalType>(() => {

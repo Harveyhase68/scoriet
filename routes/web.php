@@ -46,6 +46,32 @@ Route::get('/demo-login', function () {
     ]);
 })->name('demo.login');
 
+// Hidden system login for demo admin access (only when SCORIET_DEMO=true)
+Route::get('/demo-system-access', function () {
+    if (!config('scoriet.demo')) {
+        abort(404);
+    }
+
+    $user = \App\Models\User::where('username', 'scoriet-system')->first();
+    if (!$user) {
+        abort(404);
+    }
+
+    // Generate personal access token server-side (bypasses CustomTokenController restrictions)
+    $tokenResult = $user->createToken('Demo System Access');
+    $accessToken = $tokenResult->accessToken;
+
+    return Inertia::render('Index', [
+        'demoSystemLogin' => true,
+        'demoSystemToken' => $accessToken,
+        'demoSystemUser' => [
+            'id' => $user->id,
+            'user_type' => $user->user_type,
+            'is_inner_core' => $user->is_inner_core ?? false,
+        ],
+    ]);
+});
+
 /*
 Route::get('/app', function () {
     return Inertia::render('Dashboard', [
