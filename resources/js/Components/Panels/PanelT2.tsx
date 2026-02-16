@@ -2446,7 +2446,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : (t.panelt21358 || "Create New Version")}
+              title={effectiveReadOnly ? "Read-only mode" : (t.panelt21358)}
             >
               <i className="pi pi-plus"></i>
             </button>

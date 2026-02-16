@@ -45,6 +45,24 @@ Route::get('/popups/app', [\App\Http\Controllers\PageController::class, 'getAppP
 // Template Media - Serve blob images (public access for display, no auth required)
 Route::get('/media/{media}/serve', [\App\Http\Controllers\Api\TemplateMediaController::class, 'serve'])->name('api.template-media.serve.public');
 
+// Demo reset countdown (public - polled by frontend to show warnings before daily reset)
+Route::get('/demo/countdown', function () {
+    $resetAt = \Illuminate\Support\Facades\Cache::get('demo_reset_at');
+
+    if (!$resetAt) {
+        return response()->json(['active' => false]);
+    }
+
+    $resetTime = \Carbon\Carbon::parse($resetAt);
+    $minutesRemaining = (int) now()->diffInMinutes($resetTime, false); // negative = past
+
+    return response()->json([
+        'active' => true,
+        'reset_at' => $resetAt,
+        'minutes_remaining' => max($minutesRemaining, 0),
+    ]);
+});
+
 // Message Attachment Download via Signed URL (public - no auth, but signature validated)
 Route::get('/messages/attachments/{attachment}/download-signed', [\App\Http\Controllers\Api\MessageController::class, 'downloadSigned'])
     ->name('api.messages.attachments.download-signed')

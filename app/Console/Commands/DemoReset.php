@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
@@ -68,6 +69,9 @@ class DemoReset extends Command
         // Restore from snapshot
         $result = $this->restoreFromSnapshot();
 
+        // Clear countdown cache flag
+        Cache::forget('demo_reset_at');
+
         if ($result === 0) {
             $this->info('Demo database has been reset successfully!');
             $this->info('Demo user available: demo-user / demo1234');
@@ -91,8 +95,16 @@ class DemoReset extends Command
 
         $filename = storage_path('app/demo_backup_' . date('Y-m-d_H-i-s') . '.sql');
 
+        // Detect dump binary: prefer mariadb-dump, fallback to mysqldump
+        $dumpBin = 'mysqldump';
+        exec('which mariadb-dump 2>/dev/null', $whichOutput, $whichCode);
+        if ($whichCode === 0) {
+            $dumpBin = 'mariadb-dump';
+        }
+
         $command = sprintf(
-            'mysqldump -h%s -P%s -u%s -p%s --single-transaction %s > %s 2>&1',
+            '%s -h%s -P%s -u%s -p%s --single-transaction %s 2>/dev/null > %s',
+            $dumpBin,
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
@@ -121,9 +133,17 @@ class DemoReset extends Command
         // First, drop all existing tables
         $this->dropAllTables();
 
-        // Import the snapshot
+        // Detect mysql binary: prefer mariadb, fallback to mysql
+        $mysqlBin = 'mysql';
+        exec('which mariadb 2>/dev/null', $whichOutput, $whichCode);
+        if ($whichCode === 0) {
+            $mysqlBin = 'mariadb';
+        }
+
+        // Import the snapshot — stderr separate to avoid deprecation warnings breaking output
         $command = sprintf(
-            'mysql -h%s -P%s -u%s -p%s %s < %s 2>&1',
+            '%s -h%s -P%s -u%s -p%s %s < %s 2>&1',
+            $mysqlBin,
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),

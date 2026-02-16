@@ -86,7 +86,6 @@ const CodeAdjustmentsPanel: React.FC = () => {
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   const modifiedFileInputRef = useRef<HTMLInputElement>(null);
   const { selectedProject } = useProject();
-  const _t = useTranslation(getStoredLanguage());
   const { colors } = useTheme();
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -226,7 +225,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setCodeAdjustmentsAccess(data);
       }
     } catch (error) {
-      console.error('Failed to load code adjustments access:', error);
+      console.error(t.codeadjustmentspanel228, error);
     } finally {
       setLoadingAccess(false);
     }
@@ -247,22 +246,22 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'success',
           summary: 'Erfolg',
-          detail: data.message || 'Code Anpassungen freigeschaltet!',
+          detail: data.message || t.codeadjustmentspanel249,
         });
       } else {
         const error = await response.json();
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: error.message || 'Freischaltung fehlgeschlagen',
+          detail: error.message || t.codeadjustmentspanel256,
         });
       }
     } catch (err) {
-      console.error('Error unlocking code adjustments:', err);
+      console.error(t.codeadjustmentspanel260, err);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Freischaltung fehlgeschlagen',
+        detail: t.codeadjustmentspanel264,
       });
     } finally {
       setUnlocking(false);
@@ -284,16 +283,16 @@ const CodeAdjustmentsPanel: React.FC = () => {
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Error',
-          detail: data.message || 'Failed to load adjustments',
+          summary: t.codeadjustmentspanel286,
+          detail: data.message || t.codeadjustmentspanel287,
         });
       }
     } catch (error) {
       console.error('Load adjustments error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Network error loading adjustments',
+        summary: t.codeadjustmentspanel294,
+        detail: t.codeadjustmentspanel295,
       });
     } finally {
       setLoading(false);
@@ -310,7 +309,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setAvailableVariables(data.data);
       }
     } catch (error) {
-      console.error('Load variables error:', error);
+      console.error(t.codeadjustmentspanel312, error);
     }
   }, [getAuthHeaders]);
 
@@ -357,7 +356,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setGenerationFiles(data.data.files);
       }
     } catch (error) {
-      console.error('Load generation files error:', error);
+      console.error(t.codeadjustmentspanel359, error);
     } finally {
       setLoadingFiles(false);
     }
@@ -380,7 +379,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         })));
       }
     } catch (error) {
-      console.error('Load git providers error:', error);
+      console.error(t.codeadjustmentspanel382, error);
     } finally {
       setLoadingGitProviders(false);
     }
@@ -404,7 +403,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         })));
       }
     } catch (error) {
-      console.error('Load repositories error:', error);
+      console.error(t.codeadjustmentspanel406, error);
     } finally {
       setLoadingRepositories(false);
     }
@@ -429,7 +428,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Load branches error:', error);
+      console.error(t.codeadjustmentspanel431, error);
     } finally {
       setLoadingBranches(false);
     }
@@ -455,13 +454,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'success',
           summary: 'Geladen',
-          detail: `"${data.data.file_path}" aus Generierung geladen`,
+          detail: `"${data.data.file_path}"${t.codeadjustmentspanel457}`,
         });
       } else {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Datei konnte nicht geladen werden',
+          detail: data.message || t.codeadjustmentspanel463,
         });
       }
     } catch (error) {
@@ -469,7 +468,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Netzwerkfehler beim Laden der Datei',
+        detail: t.codeadjustmentspanel471,
       });
     } finally {
       setFetchingFile(false);
@@ -519,31 +518,31 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'success',
           summary: 'Success',
-          detail: isNew ? 'Adjustment created' : 'Adjustment updated',
+          detail: isNew ? t.codeadjustmentspanel521 : t.codeadjustmentspanel521_2,
         });
         setShowAdjustmentDialog(false);
         loadAdjustments();
       } else {
         toast.current?.show({
           severity: 'error',
-          summary: 'Error',
-          detail: data.message || 'Failed to save adjustment',
+          summary: t.codeadjustmentspanel528,
+          detail: data.message || t.codeadjustmentspanel529,
         });
       }
     } catch (error) {
       console.error('Save adjustment error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Network error saving adjustment',
+        summary: t.codeadjustmentspanel536,
+        detail: t.codeadjustmentspanel537,
       });
     }
   };
 
   const deleteAdjustment = async (adjustment: CodeAdjustment) => {
     confirmDialog({
-      message: `Delete adjustment "${adjustment.name}"?`,
-      header: 'Confirm Delete',
+      message: `${t.codeadjustmentspanel544}"${adjustment.name}"?`,
+      header: t.codeadjustmentspanel545,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: async () => {
@@ -557,8 +556,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
           if (data.success) {
             toast.current?.show({
               severity: 'success',
-              summary: 'Deleted',
-              detail: 'Adjustment deleted successfully',
+              summary: t.codeadjustmentspanel559,
+              detail: t.codeadjustmentspanel560,
             });
             if (selectedAdjustment?.id === adjustment.id) {
               setSelectedAdjustment(null);
@@ -566,7 +565,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
             loadAdjustments();
           }
         } catch (error) {
-          console.error('Delete error:', error);
+          console.error(t.codeadjustmentspanel568, error);
         }
       },
     });
@@ -584,7 +583,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         loadAdjustments();
       }
     } catch (error) {
-      console.error('Toggle error:', error);
+      console.error(t.codeadjustmentspanel586, error);
     }
   };
 
@@ -599,13 +598,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (data.success) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Duplicated',
-          detail: 'Adjustment duplicated successfully',
+          summary: t.codeadjustmentspanel601,
+          detail: t.codeadjustmentspanel602,
         });
         loadAdjustments();
       }
     } catch (error) {
-      console.error('Duplicate error:', error);
+      console.error(t.codeadjustmentspanel607, error);
     }
   };
 
@@ -630,8 +629,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (data.success) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Success',
-          detail: isNew ? 'Insertion added' : 'Insertion updated',
+          summary: t.codeadjustmentspanel632,
+          detail: isNew ? t.codeadjustmentspanel633 : t.codeadjustmentspanel633_2,
         });
         setShowInsertionDialog(false);
         // Reload adjustments and update selectedAdjustment with fresh data
@@ -649,7 +648,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Save insertion error:', error);
+      console.error(t.codeadjustmentspanel651, error);
     }
   };
 
@@ -658,7 +657,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
     confirmDialog({
       message: 'Delete this insertion?',
-      header: 'Confirm Delete',
+      header: t.codeadjustmentspanel660,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: async () => {
@@ -672,13 +671,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
           if (data.success) {
             toast.current?.show({
               severity: 'success',
-              summary: 'Deleted',
-              detail: 'Insertion deleted',
+              summary: t.codeadjustmentspanel674,
+              detail: t.codeadjustmentspanel675,
             });
             loadAdjustments();
           }
         } catch (error) {
-          console.error('Delete insertion error:', error);
+          console.error(t.codeadjustmentspanel680, error);
         }
       },
     });
@@ -690,8 +689,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!templateContent || !modifiedContent || !analysisFilename) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Missing Data',
-        detail: 'Please provide template content, modified content, and filename',
+        summary: t.codeadjustmentspanel692,
+        detail: t.codeadjustmentspanel693,
       });
       return;
     }
@@ -713,16 +712,16 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setAnalysisResult(data.data);
         toast.current?.show({
           severity: 'success',
-          summary: 'Analysis Complete',
-          detail: `Found ${data.data.insertions.length} insertions (${Math.round(data.data.confidence * 100)}% confidence)`,
+          summary: t.codeadjustmentspanel715,
+          detail: `${t.codeadjustmentspanel716}${data.data.insertions.length}${t.codeadjustmentspanel716_2}(${Math.round(data.data.confidence * 100)}${t.codeadjustmentspanel716_3})`,
         });
       }
     } catch (error) {
-      console.error('Analyze error:', error);
+      console.error(t.codeadjustmentspanel720, error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Analysis failed',
+        detail: t.codeadjustmentspanel724,
       });
     } finally {
       setAnalyzing(false);
@@ -745,15 +744,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
       }
       toast.current?.show({
         severity: 'success',
-        summary: 'Hochgeladen',
-        detail: `Template "${file.name}" geladen`,
+        summary: t.codeadjustmentspanel747,
+        detail: `${t.codeadjustmentspanel748}"${file.name}"${t.codeadjustmentspanel748_2}`,
       });
     };
     reader.onerror = () => {
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Datei konnte nicht gelesen werden',
+        detail: t.codeadjustmentspanel755,
       });
     };
     reader.readAsText(file);
@@ -771,15 +770,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
       setModifiedContent(content);
       toast.current?.show({
         severity: 'success',
-        summary: 'Hochgeladen',
-        detail: `Modifizierte Datei "${file.name}" geladen`,
+        summary: t.codeadjustmentspanel773,
+        detail: `${t.codeadjustmentspanel774}"${file.name}"${t.codeadjustmentspanel774_2}`,
       });
     };
     reader.onerror = () => {
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Datei konnte nicht gelesen werden',
+        detail: t.codeadjustmentspanel781,
       });
     };
     reader.readAsText(file);
@@ -799,8 +798,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!isValid) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Ungültiges Format',
-        detail: 'Bitte laden Sie eine ZIP, tar.gz oder tar.xz Datei hoch',
+        summary: t.codeadjustmentspanel801,
+        detail: t.codeadjustmentspanel802,
       });
       return;
     }
@@ -809,8 +808,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setDirectoryCompareResult(null);
     toast.current?.show({
       severity: 'success',
-      summary: 'Archiv geladen',
-      detail: `"${file.name}" bereit zum Vergleichen`,
+      summary: t.codeadjustmentspanel811,
+      detail: `"${file.name}"${t.codeadjustmentspanel812}`,
     });
     event.target.value = '';
   };
@@ -821,8 +820,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (directorySource === 'upload' && !uploadedArchive) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Kein Archiv',
-        detail: 'Bitte laden Sie zuerst ein Archiv hoch',
+        summary: t.codeadjustmentspanel823,
+        detail: t.codeadjustmentspanel824,
       });
       return;
     }
@@ -831,8 +830,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (!selectedGitProvider || !selectedRepository || !selectedBranch) {
         toast.current?.show({
           severity: 'warn',
-          summary: 'Git nicht konfiguriert',
-          detail: 'Bitte wählen Sie Provider, Repository und Branch aus',
+          summary: t.codeadjustmentspanel833,
+          detail: t.codeadjustmentspanel834,
         });
         return;
       }
@@ -841,8 +840,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!selectedGenerationForCompare) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Keine Referenz',
-        detail: 'Bitte wählen Sie eine Referenz-Generierung aus',
+        summary: t.codeadjustmentspanel843,
+        detail: t.codeadjustmentspanel844,
       });
       return;
     }
@@ -903,29 +902,29 @@ const CodeAdjustmentsPanel: React.FC = () => {
           const gi = data.data.git_info;
           const parts = [];
           if (gi.skipped_large > 0) {
-            parts.push(`${gi.skipped_large} große Dateien übersprungen`);
+            parts.push(`${gi.skipped_large}${t.codeadjustmentspanel905}`);
           }
           parts.push(`${gi.fetched} Dateien aus ${gi.repository}:${gi.branch}`);
           infoMessage = ` (${parts.join(', ')})`;
         }
         toast.current?.show({
           severity: 'success',
-          summary: 'Vergleich abgeschlossen',
-          detail: `${data.data.summary.modified} geänderte Dateien gefunden${infoMessage}`,
+          summary: t.codeadjustmentspanel912,
+          detail: `${data.data.summary.modified}${t.codeadjustmentspanel913}${infoMessage}`,
         });
       } else {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Vergleich fehlgeschlagen',
+          detail: data.message || t.codeadjustmentspanel919,
         });
       }
     } catch (error) {
-      console.error('Directory comparison error:', error);
+      console.error(t.codeadjustmentspanel923, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Netzwerkfehler beim Vergleich',
+        detail: t.codeadjustmentspanel927,
       });
     } finally {
       setComparingDirectory(false);
@@ -944,8 +943,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       setActiveTabIndex(1); // Switch to Einzelcode Vergleich tab
       toast.current?.show({
         severity: 'info',
-        summary: 'Datei geladen',
-        detail: `"${filePath}" in Einzelcode Vergleich geladen`,
+        summary: t.codeadjustmentspanel946,
+        detail: `"${filePath}"${t.codeadjustmentspanel948}`,
       });
     }
   };
@@ -963,7 +962,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setEditableInsertions([...analysisResult.insertions]);
     setNewAdjustmentData({
       name: filenameOnly, // Auto-populate with filename
-      description: 'Erstellt aus Code-Vergleich',
+      description: t.codeadjustmentspanel965,
       file_pattern: analysisFilename,
       min_confidence: 0.8,
       insertions: [...analysisResult.insertions],
@@ -1028,7 +1027,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       toast.current?.show({
         severity: 'warn',
         summary: t.messageError,
-        detail: 'Bitte einen Namen eingeben',
+        detail: t.codeadjustmentspanel1030,
       });
       return;
     }
@@ -1058,8 +1057,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (data.success) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Erstellt',
-          detail: 'Anpassung wurde erstellt',
+          summary: t.codeadjustmentspanel1060,
+          detail: t.codeadjustmentspanel1061,
         });
         setShowCreateFromAnalysisDialog(false);
         setActiveTabIndex(0); // Switch to management tab
@@ -1074,15 +1073,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Fehler beim Erstellen',
+          detail: data.message || t.codeadjustmentspanel1076,
         });
       }
     } catch (error) {
-      console.error('Create from analysis error:', error);
+      console.error(t.codeadjustmentspanel1080, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Netzwerkfehler',
+        detail: t.codeadjustmentspanel1084,
       });
     }
   };
@@ -1100,8 +1099,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (modifiedFiles.length === 0) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Keine Dateien',
-        detail: 'Keine geänderten Dateien mit Inhalt gefunden',
+        summary: t.codeadjustmentspanel1102,
+        detail: t.codeadjustmentspanel1103,
       });
       return;
     }
@@ -1146,14 +1145,14 @@ const CodeAdjustmentsPanel: React.FC = () => {
               headers: getAuthHeaders(),
               body: JSON.stringify({
                 name: `Auto: ${adjustmentName}`,
-                description: `Automatisch erstellt aus Verzeichnis-Vergleich`,
+                description: t.codeadjustmentspanel1148,
                 file_pattern: file.path,
                 insertions: insertions.map((ins: AnalysisInsertion) => ({
                   insertion_type: ins.insertion_type,
                   anchor_text: ins.anchor_text,
                   insertion_content: ins.insertion_content,
                   line_offset: ins.line_offset,
-                  description: `${ins.line_count} Zeile(n) hinzugefügt`,
+                  description: `${ins.line_count}${t.codeadjustmentspanel1155}`,
                 })),
               }),
             }
@@ -1164,11 +1163,11 @@ const CodeAdjustmentsPanel: React.FC = () => {
             successCount++;
           } else {
             errorCount++;
-            console.error(`[BATCH] Failed to create adjustment for ${file.path}:`, createData.message);
+            console.error(`${t.codeadjustmentspanel1166}${file.path}:`, createData.message);
           }
         } catch (fileError) {
           errorCount++;
-          console.error(`[BATCH] Error processing ${file.path}:`, fileError);
+          console.error(`${t.codeadjustmentspanel1170}${file.path}:`, fileError);
         }
       }
 
@@ -1176,8 +1175,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (successCount > 0) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Batch abgeschlossen',
-          detail: `${successCount} Anpassung(en) erstellt${errorCount > 0 ? `, ${errorCount} Fehler` : ''}`,
+          summary: t.codeadjustmentspanel1178,
+          detail: `${successCount}${t.codeadjustmentspanel1179}${errorCount > 0 ? `, ${errorCount} Fehler` : ''}`,
           life: 5000,
         });
         // Reload adjustments and switch to management tab
@@ -1187,23 +1186,23 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: `Keine Anpassungen erstellt, ${errorCount} Fehler`,
+          detail: `${t.codeadjustmentspanel1189}${errorCount}${t.codeadjustmentspanel1189_2}`,
           life: 5000,
         });
       } else {
         toast.current?.show({
           severity: 'info',
-          summary: 'Keine Änderungen',
-          detail: 'Keine Anpassungen erforderlich',
+          summary: t.codeadjustmentspanel1195,
+          detail: t.codeadjustmentspanel1196,
           life: 3000,
         });
       }
     } catch (error) {
-      console.error('Batch creation error:', error);
+      console.error(t.codeadjustmentspanel1201, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Batch-Verarbeitung fehlgeschlagen',
+        detail: t.codeadjustmentspanel1205,
       });
     } finally {
       setCreatingBatchAdjustments(false);
@@ -1237,22 +1236,22 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
         toast.current?.show({
           severity: 'success',
-          summary: 'Export erfolgreich',
-          detail: `${data.data.adjustments.length} Anpassung(en) exportiert`,
+          summary: t.codeadjustmentspanel1239,
+          detail: `${data.data.adjustments.length}${t.codeadjustmentspanel1240}`,
         });
       } else {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Export fehlgeschlagen',
+          detail: data.message || t.codeadjustmentspanel1246,
         });
       }
     } catch (error) {
-      console.error('Export error:', error);
+      console.error(t.codeadjustmentspanel1250, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Export fehlgeschlagen',
+        detail: t.codeadjustmentspanel1254,
       });
     } finally {
       setExporting(false);
@@ -1266,8 +1265,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!file.name.endsWith('.json')) {
       toast.current?.show({
         severity: 'error',
-        summary: 'Ungültiges Format',
-        detail: 'Bitte wählen Sie eine JSON-Datei',
+        summary: t.codeadjustmentspanel1268,
+        detail: t.codeadjustmentspanel1269,
       });
       return;
     }
@@ -1290,8 +1289,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       } catch {
         toast.current?.show({
           severity: 'error',
-          summary: 'Ungültige Datei',
-          detail: 'Die JSON-Datei ist ungültig oder beschädigt',
+          summary: t.codeadjustmentspanel1292,
+          detail: t.codeadjustmentspanel1293,
         });
         setImporting(false);
         return;
@@ -1301,8 +1300,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (!importData.version || !importData.adjustments || !Array.isArray(importData.adjustments)) {
         toast.current?.show({
           severity: 'error',
-          summary: 'Ungültiges Format',
-          detail: 'Die Datei hat nicht das erwartete Format',
+          summary: t.codeadjustmentspanel1303,
+          detail: t.codeadjustmentspanel1304,
         });
         setImporting(false);
         return;
@@ -1321,7 +1320,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (data.success) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Import erfolgreich',
+          summary: t.codeadjustmentspanel1323,
           detail: data.message,
           life: 5000,
         });
@@ -1332,15 +1331,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Import fehlgeschlagen',
+          detail: data.message || t.codeadjustmentspanel1334,
         });
       }
     } catch (error) {
-      console.error('Import error:', error);
+      console.error(t.codeadjustmentspanel1338, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Import fehlgeschlagen',
+        detail: t.codeadjustmentspanel1342,
       });
     } finally {
       setImporting(false);
@@ -1350,9 +1349,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
   // ========== RENDER HELPERS ==========
 
   const insertionTypeOptions = [
-    { label: 'Beginning', value: 'beginning' },
-    { label: 'End', value: 'end' },
-    { label: 'Middle', value: 'middle' },
+    { label: t.codeadjustmentspanel1352, value: 'beginning' },
+    { label: t.codeadjustmentspanel1353, value: 'end' },
+    { label: t.codeadjustmentspanel1354, value: 'middle' },
   ];
 
   const getInsertionTypeTag = (type: string) => {
@@ -1367,7 +1366,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <div className="text-center" style={{ color: colors.textMuted }}>
           <i className="pi pi-folder-open text-4xl mb-2" />
-          <p>Please select a project first</p>
+          <p>{t.codeadjustmentspanel1369}</p>
         </div>
       </div>
     );
@@ -1394,7 +1393,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         <div className="flex items-center justify-between p-3" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>
           <div className="flex items-center gap-2">
             <i className="pi pi-sliders-h text-xl" style={{ color: colors.accent }} />
-            <h2 className="text-lg font-semibold">Code Anpassungen</h2>
+            <h2 className="text-lg font-semibold">{t.codeadjustmentspanel1396}</h2>
             <Tag value={selectedProject.name} severity="info" />
           </div>
         </div>
@@ -1405,23 +1404,23 @@ const CodeAdjustmentsPanel: React.FC = () => {
             <div className="rounded-lg p-6 text-center" style={{ backgroundColor: colors.infoBg, borderWidth: '2px', borderStyle: 'solid', borderColor: colors.accent }}>
               <div className="text-4xl mb-4">🔒</div>
               <h3 className="text-xl font-semibold mb-2" style={{ color: colors.infoText }}>
-                Code Anpassungen ist ein Premium-Feature
+                {t.codeadjustmentspanel1407}
               </h3>
               <p className="mb-4" style={{ color: colors.textMuted }}>
-                Mit Code Anpassungen können Sie automatisch eigene Modifikationen in den generierten Code einfügen.
+                {t.codeadjustmentspanel1410}
               </p>
 
               <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgTertiary }}>
                 <div className="text-2xl font-bold mb-1" style={{ color: colors.accent }}>
-                  {codeAdjustmentsAccess?.unlock_cost || 50} Credits / Jahr
+                  {codeAdjustmentsAccess?.unlock_cost || 50}{t.codeadjustmentspanel1415}
                 </div>
                 <div className="text-sm" style={{ color: colors.textMuted }}>
-                  Einmalige Freischaltung für 12 Monate
+                  {t.codeadjustmentspanel1418}
                 </div>
               </div>
 
               <Button
-                label={unlocking ? 'Wird freigeschaltet...' : 'Freischalten'}
+                label={unlocking ? t.codeadjustmentspanel1423 : t.codeadjustmentspanel1423_2}
                 icon="pi pi-unlock"
                 className="p-button-lg"
                 style={{
@@ -1437,16 +1436,16 @@ const CodeAdjustmentsPanel: React.FC = () => {
                 <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                 <ul className="text-left space-y-1">
                   <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
-                    <span>📝</span> Einzelcode Vergleich
+                    <span>📝</span>{t.codeadjustmentspanel1439}
                   </li>
                   <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
-                    <span>📁</span> Verzeichnis Vergleich
+                    <span>📁</span>{t.codeadjustmentspanel1442}
                   </li>
                   <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
-                    <span>⚙️</span> Verwaltung von Anpassungen
+                    <span>⚙️</span>{t.codeadjustmentspanel1445}
                   </li>
                   <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textSecondary }}>
-                    <span>🔄</span> Automatische Anwendung bei Generierung
+                    <span>🔄</span>{t.codeadjustmentspanel1448}
                   </li>
                 </ul>
               </div>
@@ -1468,13 +1467,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
       <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>
         <div className="flex items-center gap-2">
           <i className="pi pi-sliders-h text-xl" style={{ color: colors.accent }} />
-          <h2 className="text-lg font-semibold">Code Anpassungen</h2>
+          <h2 className="text-lg font-semibold">{t.codeadjustmentspanel1470}</h2>
           <Tag value={selectedProject.name} severity="info" />
           {/* Access Status Badge */}
           {codeAdjustmentsAccess?.is_patron ? (
             <Tag value="Patron" severity="warning" className="ml-2" />
           ) : codeAdjustmentsAccess?.days_remaining !== undefined ? (
-            <Tag value={`${codeAdjustmentsAccess.days_remaining} Tage`} severity="info" className="ml-2" />
+            <Tag value={`${codeAdjustmentsAccess.days_remaining}${t.codeadjustmentspanel1476}`} severity="info" className="ml-2" />
           ) : null}
         </div>
         <div className="flex items-center gap-2">
@@ -1635,7 +1634,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{selectedAdjustment.name}</h3>
                         <Button
-                          label="Insertion hinzufugen"
+                          label={t.codeadjustmentspanel1637}
                           icon="pi pi-plus"
                           size="small"
                           onClick={() => {
@@ -1658,15 +1657,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
                       {/* Meta info */}
                       <div className="grid grid-cols-3 gap-2 mb-4 text-sm" style={{ color: colors.textMuted }}>
                         <div>
-                          <span className="font-medium">Pattern:</span>{' '}
+                          <span className="font-medium">{t.codeadjustmentspanel1660}</span>{' '}
                           <code style={{ color: colors.accent }}>{selectedAdjustment.file_pattern}</code>
                         </div>
                         <div>
-                          <span className="font-medium">Confidence:</span>{' '}
+                          <span className="font-medium">{t.codeadjustmentspanel1664}</span>{' '}
                           {Math.round(selectedAdjustment.min_confidence * 100)}%
                         </div>
                         <div>
-                          <span className="font-medium">Order:</span>{' '}
+                          <span className="font-medium">{t.codeadjustmentspanel1668}</span>{' '}
                           {selectedAdjustment.execution_order}
                         </div>
                       </div>
@@ -1674,7 +1673,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                       {/* Insertions Table */}
                       <DataTable
                         value={selectedAdjustment.insertions || []}
-                        emptyMessage="Keine Insertions"
+                        emptyMessage={t.codeadjustmentspanel1676}
                         size="small"
                         paginator
                         rows={10}
@@ -1691,13 +1690,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
                       >
                         <Column
                           field="insertion_type"
-                          header="Typ"
+                          header={t.codeadjustmentspanel1693}
                           body={(row: CodeAdjustmentInsertion) => getInsertionTypeTag(row.insertion_type)}
                           style={{ width: '100px' }}
                         />
                         <Column
                           field="anchor_text"
-                          header="Anker"
+                          header={t.codeadjustmentspanel1699}
                           body={(row: CodeAdjustmentInsertion) => (
                             <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                               {row.anchor_text.substring(0, 100)}
@@ -1707,7 +1706,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         />
                         <Column
                           field="insertion_content"
-                          header="Code"
+                          header={t.codeadjustmentspanel1709}
                           body={(row: CodeAdjustmentInsertion) => (
                             <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                               {row.insertion_content.substring(0, 100)}
@@ -1745,7 +1744,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                     <div className="flex items-center justify-center h-64" style={{ color: colors.textMuted }}>
                       <div className="text-center">
                         <i className="pi pi-arrow-left text-3xl mb-2" />
-                        <p>Wahle eine Anpassung aus der Liste</p>
+                        <p>{t.codeadjustmentspanel1747}</p>
                       </div>
                     </div>
                   )}
@@ -1779,11 +1778,11 @@ const CodeAdjustmentsPanel: React.FC = () => {
               <div className="rounded p-3 mb-4" style={{ backgroundColor: colors.bgSecondary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.borderPrimary }}>
                 <div className="flex items-center gap-2 mb-2">
                   <i className="pi pi-bolt" style={{ color: colors.warningText }} />
-                  <span className="text-sm font-medium">Schnellauswahl aus Generierung</span>
+                  <span className="text-sm font-medium">{t.codeadjustmentspanel1781}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Generierung</label>
+                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1785}</label>
                     <Dropdown
                       value={selectedGenerationId}
                       options={generations.map(g => ({
@@ -1794,13 +1793,13 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         setSelectedGenerationId(e.value);
                         setSelectedFilePath(null);
                       }}
-                      placeholder="Generierung wählen..."
+                      placeholder={t.codeadjustmentspanel1796}
                       className="w-full text-sm"
                       loading={loadingGenerations}
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Datei aus Archiv</label>
+                    <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1802}</label>
                     <Dropdown
                       value={selectedFilePath}
                       options={generationFiles.map(f => ({
@@ -1808,7 +1807,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         value: f.path,
                       }))}
                       onChange={(e) => setSelectedFilePath(e.value)}
-                      placeholder="Datei wählen..."
+                      placeholder={t.codeadjustmentspanel1810}
                       className="w-full text-sm font-mono"
                       filter
                       filterPlaceholder="Suchen..."
@@ -1818,7 +1817,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                   </div>
                   <div className="flex items-end">
                     <Button
-                      label="Laden"
+                      label={t.codeadjustmentspanel1820}
                       icon={fetchingFile ? 'pi pi-spin pi-spinner' : 'pi pi-download'}
                       size="small"
                       onClick={fetchFileFromGeneration}
@@ -1834,18 +1833,18 @@ const CodeAdjustmentsPanel: React.FC = () => {
             <div className="flex items-end gap-4 mb-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-1">
-                  Datei-Pattern
-                  <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname, %2 = Sprache)</span>
+                  {t.codeadjustmentspanel1836}
+                  <span className="text-xs ml-2" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel1837}</span>
                 </label>
                 <InputText
                   value={analysisFilename}
                   onChange={(e) => setAnalysisFilename(e.target.value)}
-                  placeholder="z.B. table_%1.php oder index.php"
+                  placeholder={t.codeadjustmentspanel1842}
                   className="w-full font-mono"
                 />
               </div>
               <Button
-                label="Analysieren"
+                label={t.codeadjustmentspanel1847}
                 icon={analyzing ? 'pi pi-spin pi-spinner' : 'pi pi-search'}
                 onClick={analyzeCode}
                 disabled={analyzing || !templateContent || !modifiedContent}
@@ -1855,7 +1854,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium">Original (Template-Output)</label>
+                  <label className="text-sm font-medium">{t.codeadjustmentspanel1857}</label>
                   <Button
                     icon="pi pi-upload"
                     size="small"
@@ -1978,7 +1977,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         </pre>
                       )}
                     />
-                    <Column field="line_count" header="Zeilen" style={{ width: '70px' }} />
+                    <Column field="line_count" header={t.codeadjustmentspanel1980} style={{ width: '70px' }} />
                   </DataTable>
                 ) : (
                   <div className="text-center py-4" style={{ color: colors.textMuted }}>
@@ -1991,7 +1990,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         </TabPanel>
 
         {/* Tab 3: Verzeichnis Vergleich */}
-        <TabPanel header="Verzeichnis Vergleich" leftIcon="pi pi-folder mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={t.codeadjustmentspanel1993} leftIcon="pi pi-folder mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             {/* Hidden file input for archive */}
             <input
@@ -2075,10 +2074,10 @@ const CodeAdjustmentsPanel: React.FC = () => {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <i className="pi pi-server text-xl" style={{ color: colors.successText }} />
-                    <span className="font-medium">Vom Service</span>
+                    <span className="font-medium">{t.codeadjustmentspanel2077}</span>
                   </div>
                   <p className="text-sm" style={{ color: colors.textMuted }}>
-                    Scoriet-Service
+                    {t.codeadjustmentspanel2080}
                   </p>
                   {directorySource === 'service' && (
                     <div className="mt-3 text-xs text-yellow-700">
@@ -2232,7 +2231,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                   >
                     <Column
                       field="status"
-                      header="Status"
+                      header={t.codeadjustmentspanel2234}
                       body={(row) => {
                         const severity = row.status === 'added' ? 'success' : row.status === 'modified' ? 'warning' : 'danger';
                         const label = row.status === 'added' ? 'Neu' : row.status === 'modified' ? t.codeadjustmentspanel2239 : t.codeadjustmentspanel2239_2;
@@ -2326,7 +2325,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       >
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
+            <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2328}</label>
             <InputText
               value={editingAdjustment.name || ''}
               onChange={(e) => {
@@ -2343,7 +2342,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
           <div>
             <label className="block text-sm font-medium mb-1">
               Datei-Pattern
-              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname, %2 = Sprache)</span>
+              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel2345}</span>
             </label>
             <InputText
               value={editingAdjustment.file_pattern || ''}
@@ -2504,7 +2503,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2506}</label>
               <InputText
                 value={newAdjustmentData.name}
                 onChange={(e) => {
@@ -2522,7 +2521,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
             <div>
               <label className="block text-sm font-medium mb-1">
                 {t.codeadjustmentspanel2525}
-                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(%1 = Tabellenname)</span>
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel2524}</span>
               </label>
               <InputText
                 value={newAdjustmentData.file_pattern}
@@ -2680,7 +2679,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
             <div>
               <label className="block text-sm font-medium mb-1">
                 {t.codeadjustmentspanel2683}
-                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(Code zum Finden der Position)</span>
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>{t.codeadjustmentspanel2682}</span>
               </label>
               <InputTextarea
                 value={editingAnalysisInsertion.anchor_text}
@@ -2760,7 +2759,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
           {/* File selection */}
           <div>
-            <label className="block text-sm font-medium mb-2">JSON-Datei auswählen</label>
+            <label className="block text-sm font-medium mb-2">{t.codeadjustmentspanel2762}</label>
             <div className="flex items-center gap-2">
               <Button
                 label={importFile ? importFile.name : t.codeadjustmentspanel2767}
@@ -2782,7 +2781,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
           {/* Import mode selection */}
           <div>
-            <label className="block text-sm font-medium mb-2">Import-Modus</label>
+            <label className="block text-sm font-medium mb-2">{t.codeadjustmentspanel2784}</label>
             <div className="flex flex-col gap-2">
               <div
                 className="p-3 rounded border-2 cursor-pointer transition-all"
@@ -2794,7 +2793,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   <i className={`pi ${importMode === 'merge' ? 'pi-check-circle' : 'pi-circle'}`} style={{ color: importMode === 'merge' ? colors.accent : colors.textMuted }} />
-                  <span className="font-medium">Zusammenführen (Merge)</span>
+                  <span className="font-medium">{t.codeadjustmentspanel2796}</span>
                 </div>
                 <p className="text-sm mt-1 ml-6" style={{ color: colors.textMuted }}>
                   {t.codeadjustmentspanel2801}

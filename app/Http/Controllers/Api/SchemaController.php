@@ -2206,7 +2206,7 @@ class SchemaController extends Controller
 
             if (!$sourceField->is_nullable && $targetField->is_nullable) {
                 // Source is NOT NULL, target is NULL - this is usually fine, just informative
-                $result['warning'] = "Hinweis: Quellfeld '{$sourceField->field_name}' ist NOT NULL, Zielfeld '{$targetField->field_name}' erlaubt NULL. SET NULL Aktionen sind nicht verfügbar.";
+                $result['warning'] = __('schemacontrollerphp2209') . "'{$sourceField->field_name}'".__('schemacontrollerphp2209_2') . "'{$targetField->field_name}'".__('schemacontrollerphp2209_3');
             }
 
             return $result;
@@ -2215,7 +2215,7 @@ class SchemaController extends Controller
         // Types are incompatible
         return [
             'valid' => false,
-            'message' => "Inkompatible Datentypen: {$sourceField->field_name} ({$sourceType}) kann nicht mit {$targetField->field_name} ({$targetType}) verknüpft werden. Foreign Keys erfordern kompatible Datentypen.",
+            'message' => __('schemacontrollerphp2218')."{$sourceField->field_name} ({$sourceType})".__('schemacontrollerphp2218_2')."{$targetField->field_name} ({$targetType})".__('schemacontrollerphp2218_3'),
         ];
     }
 
@@ -2270,9 +2270,9 @@ class SchemaController extends Controller
         if ($sourceField->is_primary_key) {
             return [
                 'valid' => false,
-                'message' => "Ungültige FK-Richtung: Das Quellfeld '{$sourceField->field_name}' ist ein PRIMARY KEY. " .
-                            "Primary Keys sollten das ZIEL eines Foreign Keys sein, nicht die QUELLE. " .
-                            "Bitte tauschen Sie Quelle und Ziel, oder entfernen Sie den Primary Key vom Quellfeld.",
+                'message' => __('schemacontrollerphp2273')."'{$sourceField->field_name}'".__('schemacontrollerphp2273_2').
+                            __('schemacontrollerphp2274') .
+                            __('schemacontrollerphp2275'),
             ];
         }
 
@@ -2280,15 +2280,15 @@ class SchemaController extends Controller
         if (!$targetField->is_primary_key && !$targetField->is_unique) {
             return [
                 'valid' => false,
-                'message' => "MySQL-Fehler: Das Zielfeld '{$targetField->field_name}' muss einen PRIMARY KEY oder UNIQUE-Index haben. " .
-                            "Foreign Keys können nur auf eindeutig indizierte Felder verweisen. " .
-                            "Bitte fügen Sie einen PRIMARY KEY oder UNIQUE-Index zum Zielfeld hinzu.",
+                'message' => __('schemacontrollerphp2283')."'{$targetField->field_name}'".__('schemacontrollerphp2283_2') .
+                            __('schemacontrollerphp2284') .
+                            __('schemacontrollerphp2285'),
             ];
         }
 
         // Source field should have an index for performance (warning only)
         if (!$sourceField->is_index && !$sourceField->is_unique) {
-            $warnings[] = "Empfehlung: Das Quellfeld '{$sourceField->field_name}' sollte einen Index haben für bessere Query-Performance bei JOINs.";
+            $warnings[] = __('schemacontrollerphp2291')."'{$sourceField->field_name}'".__('schemacontrollerphp2291_2');
         }
 
         return [
@@ -2415,13 +2415,13 @@ class SchemaController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('FK Suggestions Error:', [
+            \Log::error(__('schemacontrollerphp2418'), [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'message' => 'Failed to get FK suggestions',
+                'message' => __('schemacontrollerphp2424'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -2590,13 +2590,13 @@ class SchemaController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Get Field FK Dependencies Error:', [
+            \Log::error(__('schemacontrollerphp2593'), [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'message' => 'Failed to get FK dependencies',
+                'message' => __('schemacontrollerphp2599'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -2624,7 +2624,7 @@ class SchemaController extends Controller
             if ($version->hasSchema()) {
                 $schema = $version->schema;
                 if (!$schema->canBeEditedBy($user)) {
-                    return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                    return response()->json(['message' => __('schemacontrollerphp2627')], 403);
                 }
             }
 
@@ -2700,7 +2700,7 @@ class SchemaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cascading changes applied successfully',
+                'message' => __('schemacontrollerphp2703'),
                 'updated_field' => [
                     'id' => $field->id,
                     'name' => $field->field_name,
@@ -2714,17 +2714,17 @@ class SchemaController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('schemacontrollerphp2717'),
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Apply Cascading Field Changes Error:', [
+            \Log::error(__('schemacontrollerphp2721'), [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'message' => 'Failed to apply cascading changes',
+                'message' => __('schemacontrollerphp2727'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -2742,7 +2742,7 @@ class SchemaController extends Controller
         if ($schema->owner_id != $user->id && !$schema->canBeAccessedBy($user)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Unauthorized'
+                'error' => __('schemacontrollerphp2745')
             ], 403);
         }
 
@@ -2774,7 +2774,7 @@ class SchemaController extends Controller
                 || $schema->owner_id == $user->id;
 
         if (!$canLink) {
-            \Log::warning('updateLinkedProjects UNAUTHORIZED', [
+            \Log::warning(__('schemacontrollerphp2777'), [
                 'schema_id' => $id,
                 'user_id' => $user->id,
                 'is_system' => $schema->is_system_schema,
@@ -2783,7 +2783,7 @@ class SchemaController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Sie haben keine Berechtigung, dieses Schema zu verknüpfen'
+                'error' => __('schemacontrollerphp2786')
             ], 403);
         }
 
@@ -2852,7 +2852,7 @@ class SchemaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Schema-Verknüpfungen erfolgreich aktualisiert'
+            'message' => __('schemacontrollerphp2855')
         ]);
     }
 }

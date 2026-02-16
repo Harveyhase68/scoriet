@@ -339,7 +339,7 @@ export default function RegisterModal({
                 onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
                 <i className="pi pi-envelope mr-2"></i>
-                {t.registermodal_request_access || 'Request access via Email'}
+                {t.registermodal_request_access}
               </a>
             </div>
             <Button

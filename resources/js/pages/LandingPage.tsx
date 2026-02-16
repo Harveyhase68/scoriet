@@ -308,12 +308,12 @@ export default function LandingPage() {
       period: t.landingpage151,
       description: t.landingpage152,
       features: [
-        t.landingpage221 || "1 Projekt",
-        t.landingpage222 || "1 Datenbank",
-        t.landingpage223 || "50 kostenlose Credits",
-        t.landingpage224 || "Öffentliche Templates",
-        t.landingpage225 || "Community Support",
-        t.landingpage226 || "Funktionen nach Bedarf mit Credits freischalten"
+        t.landingpage221,
+        t.landingpage222,
+        t.landingpage223,
+        t.landingpage224,
+        t.landingpage225,
+        t.landingpage226
       ],
       buttonText: t.goStartFree,
       buttonClass: "p-button-outlined",
@@ -323,16 +323,16 @@ export default function LandingPage() {
       name: "Patron Annual",
       plan: "patron_annual",
       price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: t.landingpage236 || "/Jahr",
-      description: t.landingpage237 || "Teams + Credit-basierte Generierung",
+      period: t.landingpage236,
+      description: t.landingpage237,
       features: [
-        t.landingpage239 || "Teams freigeschaltet",
-        t.landingpage240 || "Private Templates",
-        t.landingpage241 || "5 Credits pro Generierung",
-        t.landingpage242 || "Credits nach Bedarf kaufen",
-        t.landingpage243 || "5 kostenlose Support-Tickets/Jahr"
+        t.landingpage239,
+        t.landingpage240,
+        t.landingpage241,
+        t.landingpage242,
+        t.landingpage243
       ],
-      buttonText: t.landingpage245 || "Patron Annual wählen",
+      buttonText: t.landingpage245,
       buttonClass: "p-button-primary",
       popular: true
     },
@@ -340,17 +340,17 @@ export default function LandingPage() {
       name: "Patron Monthly",
       plan: "patron_monthly",
       price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      period: t.landingpage254 || "/Monat",
-      yearlyPrice: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}${t.landingpage236 || "/Jahr"}`,
-      description: t.landingpage255 || "Alles unbegrenzt",
+      period: t.landingpage254,
+      yearlyPrice: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}${t.landingpage236}`,
+      description: t.landingpage255,
       features: [
-        t.landingpage257 || "Unbegrenzt alles",
-        t.landingpage258 || "Keine Credits benötigt",
-        t.landingpage259 || "Unbegrenzte Projekte",
-        t.landingpage260 || "Unbegrenzte Datenbanken",
-        t.landingpage261 || "5 kostenlose Support-Tickets/Monat"
+        t.landingpage257,
+        t.landingpage258,
+        t.landingpage259,
+        t.landingpage260,
+        t.landingpage261
       ],
-      buttonText: t.landingpage263 || "Patron Monthly wählen",
+      buttonText: t.landingpage263,
       buttonClass: "p-button-help",
       popular: false
     }
@@ -742,7 +742,7 @@ export default function LandingPage() {
                   onClick={handleInstallClick}
                 >
                   <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
-                  {t.installApp || 'App installieren'}
+                  {t.installApp}
                 </Button>
               )}
             </div>
@@ -860,7 +860,7 @@ export default function LandingPage() {
             <div className="flex justify-center gap-2">
               {isAuthenticated ? (
                 <Button
-                  label={t.goToApp || 'Zur App'}
+                  label={t.goToApp}
                   icon="pi pi-arrow-right"
                   className="landing-cta-btn"
                   style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}

@@ -100,9 +100,12 @@ const TemplateReviewPanel: React.FC = () => {
   // Check if current user is admin/system
   const userType = localStorage.getItem('user_type') || 'free';
   const isAdmin = userType === 'admin' || userType === 'system';
+  const isInnerCore = localStorage.getItem('is_inner_core') === '1';
 
   useEffect(() => {
-    loadPendingTemplates();
+    if (isInnerCore) {
+      loadPendingTemplates();
+    }
   }, []);
 
   const loadPendingTemplates = async () => {
@@ -384,6 +387,22 @@ const TemplateReviewPanel: React.FC = () => {
       </div>
     );
   };
+
+  if (!isInnerCore) {
+    return (
+      <TabContent colors={colors}>
+        <div className="h-full flex flex-col items-center justify-center">
+          <i className="pi pi-lock text-4xl mb-4" style={{ color: colors.textMuted }}></i>
+          <h2 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
+            Access Restricted
+          </h2>
+          <p className="text-sm" style={{ color: colors.textMuted }}>
+            Template Review is only available for Inner Core members.
+          </p>
+        </div>
+      </TabContent>
+    );
+  }
 
   return (
     <TabContent colors={colors}>

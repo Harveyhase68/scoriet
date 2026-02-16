@@ -2356,7 +2356,7 @@ function ${functionName}() {
                           fileInput.click();
                         }}
                         style={{ backgroundColor: colors.warningText, borderColor: colors.warningText, color: colors.textInverse }}
-                        tooltip="GTree JSON oder JS Datei hochladen und in localStorage speichern"
+                        tooltip={t.debugmanualgeneratorpanel2359}
                         tooltipOptions={{ position: 'top' }}
                       />
                       <Button
@@ -2365,7 +2365,7 @@ function ${functionName}() {
                         size="small"
                         onClick={() => setShowGTreeImportModal(true)}
                         style={{ backgroundColor: colors.infoText, borderColor: colors.infoText, color: colors.textInverse }}
-                        tooltip="GTree JSON aus Zwischenablage einfügen (STRG+V)"
+                        tooltip={t.debugmanualgeneratorpanel2368}
                         tooltipOptions={{ position: 'top' }}
                       />
                       <Button
@@ -2399,7 +2399,7 @@ function ${functionName}() {
                         <div className="h-full flex items-center justify-center" style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}>
                           <div className="text-center">
                             <div className="text-4xl mb-2">⚠️</div>
-                            <p>Code Editor could not be loaded</p>
+                            <p>{t.debugmanualgeneratorpanel2402}</p>
                             <p className="text-sm" style={{ color: colors.textMuted }}>Use a simple textarea as a fallback.</p>
                           </div>
                         </div>

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface PaymentResultProps {
   status: 'success' | 'cancelled' | 'pending_capture';
@@ -24,6 +25,9 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSubscription, setIsSubscription] = useState(type === 'subscription');
   const [isTemplatePurchase, _setIsTemplatePurchase] = useState(type === 'template');
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   useEffect(() => {
     const processPayment = async () => {
@@ -58,8 +62,8 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
             window.dispatchEvent(new CustomEvent('creditsChanged'));
           }
         } catch (err) {
-          console.error('Error verifying payment:', err);
-          setError('Fehler bei der Zahlungsverifizierung');
+          console.error(t.paymentresult65, err);
+          setError(t.paymentresult66);
         } finally {
           setLoading(false);
         }
@@ -83,11 +87,11 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
             // Notify other components about credit change
             window.dispatchEvent(new CustomEvent('creditsChanged'));
           } else {
-            setError(data.error || 'PayPal Zahlung konnte nicht abgeschlossen werden');
+            setError(data.error || t.paymentresult90);
           }
         } catch (err) {
-          console.error('PayPal capture error:', err);
-          setError('Fehler bei der PayPal-Zahlung');
+          console.error(t.paymentresult93, err);
+          setError(t.paymentresult94);
         } finally {
           setLoading(false);
         }
@@ -107,7 +111,7 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
 
   return (
     <>
-      <Head title={paymentSuccess ? 'Zahlung erfolgreich' : status === 'cancelled' ? 'Zahlung abgebrochen' : 'Zahlung wird verarbeitet'} />
+      <Head title={paymentSuccess ? t.paymentresult114 : status === 'cancelled' ? t.paymentresult114_2 : t.paymentresult114_3} />
 
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg bg-gray-800 border border-gray-700">
@@ -118,13 +122,13 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
                   <ProgressSpinner style={{ width: '40px', height: '40px' }} strokeWidth="4" />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-2">
-                  Zahlung wird verarbeitet...
+                  {t.paymentresult125}
                 </h1>
                 <p className="text-gray-300">
-                  {provider === 'paypal' ? 'PayPal-Zahlung wird abgeschlossen...' : 'Ihre Zahlung wird verifiziert...'}
+                  {provider === 'paypal' ? t.paymentresult128 : t.paymentresult128_2}
                 </p>
                 <p className="text-gray-500 text-sm mt-2">
-                  Bitte warten Sie einen Moment.
+                  {t.paymentresult131}
                 </p>
               </div>
             ) : error ? (
@@ -133,20 +137,20 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
                   <i className="pi pi-times text-4xl text-red-400"></i>
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-4">
-                  Zahlung fehlgeschlagen
+                  {t.paymentresult140}
                 </h1>
                 <p className="text-gray-300 mb-6">
                   {error}
                 </p>
                 <div className="flex gap-3 justify-center">
                   <Button
-                    label="Zurück zur App"
+                    label={t.paymentresult147}
                     icon="pi pi-arrow-left"
                     className="p-button-secondary"
                     onClick={goToApp}
                   />
                   <Button
-                    label="Erneut versuchen"
+                    label={t.paymentresult153}
                     icon="pi pi-refresh"
                     className="p-button-primary"
                     onClick={goToApp}
@@ -159,29 +163,29 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
                   <i className={`pi ${isTemplatePurchase ? 'pi-shopping-cart' : 'pi-check'} text-4xl text-green-400`}></i>
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-4">
-                  {isSubscription ? 'Willkommen als Patron!' : isTemplatePurchase ? 'Template gekauft!' : 'Zahlung erfolgreich!'}
+                  {isSubscription ? t.paymentresult166 : isTemplatePurchase ? t.paymentresult166_2 : t.paymentresult166_3}
                 </h1>
                 <p className="text-gray-300 mb-2">
                   {isSubscription
-                    ? 'Vielen Dank für Ihre Patron-Mitgliedschaft!'
+                    ? t.paymentresult170
                     : isTemplatePurchase
-                    ? 'Vielen Dank für Ihren Template-Kauf!'
-                    : `Vielen Dank für Ihren Kauf über ${providerName}!`}
+                    ? t.paymentresult172
+                    : `${t.paymentresult173}${providerName}!`}
                 </p>
                 <p className="text-gray-400 mb-6">
                   {isSubscription
-                    ? 'Sie haben jetzt vollen Zugriff auf alle Patron-Funktionen.'
+                    ? t.paymentresult177
                     : isTemplatePurchase
-                    ? 'Das Template wurde Ihrem Konto hinzugefügt und ist jetzt verfügbar.'
-                    : 'Ihre Credits wurden Ihrem Konto gutgeschrieben.'}
+                    ? t.paymentresult179
+                    : t.paymentresult180}
                 </p>
                 {paymentDetails?.customer_email && (
                   <p className="text-gray-400 text-sm mb-6">
-                    Eine Bestätigung wurde an {paymentDetails.customer_email} gesendet.
+                    {t.paymentresult184}{paymentDetails.customer_email}{t.paymentresult184_2}
                   </p>
                 )}
                 <Button
-                  label="Zur App"
+                  label={t.paymentresult188}
                   icon="pi pi-arrow-right"
                   className="p-button-success"
                   onClick={goToApp}
@@ -193,20 +197,20 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
                   <i className="pi pi-times text-4xl text-yellow-400"></i>
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-4">
-                  Zahlung abgebrochen
+                  {t.paymentresult200}
                 </h1>
                 <p className="text-gray-300 mb-6">
-                  Die Zahlung wurde nicht abgeschlossen. Sie können es jederzeit erneut versuchen.
+                  {t.paymentresult203}
                 </p>
                 <div className="flex gap-3 justify-center">
                   <Button
-                    label="Zurück zur App"
+                    label={t.paymentresult207}
                     icon="pi pi-arrow-left"
                     className="p-button-secondary"
                     onClick={goToApp}
                   />
                   <Button
-                    label="Erneut versuchen"
+                    label={t.paymentresult213}
                     icon="pi pi-refresh"
                     className="p-button-primary"
                     onClick={goToApp}
