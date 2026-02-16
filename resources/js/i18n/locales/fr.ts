@@ -4145,5 +4145,8 @@ export const fr: Translations = {
   profilemodal2753: 'Vous devez saisir exactement ',
   profilemodal2753_2: ' (lettres majuscules)',
   profilemodal1417: 'Affichage Kanban',
+  errorfallback38: 'Oups ! Une erreur s\'est produite.',
+  errorfallback56: 'Afficher la trace de la pile',
+  errorfallback49: 'Détails de l\'erreur :',
 
 };

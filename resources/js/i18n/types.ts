@@ -4181,4 +4181,7 @@ templatemodal480: string;
   profilemodal2753: string;
   profilemodal2753_2: string;
   profilemodal1417: string;
+  errorfallback38: string;
+  errorfallback56: string;
+  errorfallback49: string;
 }

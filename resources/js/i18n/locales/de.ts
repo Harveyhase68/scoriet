@@ -2534,7 +2534,7 @@ export const de: Translations = {
   projectpanel2356: 'Schemas:',
   projectpanel2360: 'Vorlagen:',
   projectpanel2364: 'Code Anpassungen:',
-  projectpanel2368: 'Um es zu formulieren:',
+  projectpanel2368: 'Formulare (FormSets):',
   projectpanel2377: 'Schemas:',
   projectpanel2394: 'Vorlagen:',
   projectpanel2410: 'Exportformat:',
@@ -4159,5 +4159,8 @@ export const de: Translations = {
   profilemodal2753: 'Sie müssen genau eingeben ',
   profilemodal2753_2: ' (Großbuchstaben)',
   profilemodal1417: 'Kanban-Anzeige',
+  errorfallback38: 'Oops! Etwas ist schiefgelaufen',
+  errorfallback56: 'Stack Trace anzeigen',
+  errorfallback49: 'Fehlerdetails:',
 
 };

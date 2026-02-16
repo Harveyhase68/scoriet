@@ -35,7 +35,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
 
           <div className="space-y-4">
             <h2 className="text-2xl font-bold" style={{ color: colors.errorText }}>
-              Oops! Etwas ist schiefgelaufen
+              {t.errorfallback38}
             </h2>
 
             <Message
@@ -46,14 +46,14 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
           </div>
 
           <div className="p-4 rounded max-w-lg w-full" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
-            <h3 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Fehlerdetails:</h3>
+            <h3 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.errorfallback49}</h3>
             <pre className="text-xs whitespace-pre-wrap break-words" style={{ color: colors.errorText }}>
               {error.message}
             </pre>
             {error.stack && (
               <details className="mt-2">
                 <summary className="text-xs cursor-pointer" style={{ color: colors.textMuted }}>
-                  Stack Trace anzeigen
+                  {t.errorfallback56}
                 </summary>
                 <pre className="text-xs mt-2 whitespace-pre-wrap break-words max-h-32 overflow-auto" style={{ color: colors.textMuted }}>
                   {error.stack}
