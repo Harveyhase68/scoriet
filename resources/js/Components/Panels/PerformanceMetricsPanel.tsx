@@ -152,7 +152,6 @@ export default function PerformanceMetricsPanel() {
       params.append('to', formatDateForApi(dateTo));
 
       const response = await api.request(`/admin/performance/overview?${params.toString()}`);
-      console.log('📊 Performance Overview Response:', response);
       setOverview(response.data || null);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';

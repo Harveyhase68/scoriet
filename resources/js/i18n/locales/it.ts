@@ -4147,5 +4147,7 @@ export const it: Translations = {
   errorfallback38: 'Oops! Qualcosa è andato storto.',
   errorfallback56: 'Visualizza la traccia dello stack',
   errorfallback49: 'Dettagli dell\'errore:',
+  codegenerationpanel3023: '📊 Facoltativo: Migrazione di versione',
+  debugmanualgeneratorpanel1763: '📊 Migrazione della versione ',
 
 };

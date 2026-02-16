@@ -188,12 +188,6 @@ class PostgreSQLParser
             'constraints' => $constraints,
         ];
 
-        \Log::info("[PG-Parser] CREATE TABLE parsed", [
-            'table_name' => $table_name,
-            'fields_count' => count($fields),
-            'constraints_count' => count($constraints),
-        ]);
-
         // Check if table already exists - merge instead of duplicate
         if (isset($this->table_map[$table_name])) {
             $existingTable = &$this->table_map[$table_name];
@@ -217,7 +211,6 @@ class PostgreSQLParser
         } else {
             $this->tables[] = $table;
             $this->table_map[$table_name] = &$this->tables[count($this->tables) - 1];
-            \Log::info("[PG-Parser] Table added to table_map with key: '{$table_name}'");
         }
     }
 
@@ -1041,17 +1034,8 @@ class PostgreSQLParser
 
         $fk = $this->parseForeignKeyConstraint($constraint_name);
 
-        \Log::info("[PG-Parser] ALTER TABLE ADD CONSTRAINT", [
-            'table_name' => $table_name,
-            'constraint_name' => $constraint_name,
-            'fk' => $fk,
-            'table_exists_in_map' => isset($this->table_map[$table_name]),
-            'table_map_keys' => array_keys($this->table_map),
-        ]);
-
         if ($fk && isset($this->table_map[$table_name])) {
             $this->table_map[$table_name]['constraints'][] = $fk;
-            \Log::info("[PG-Parser] FK added to table {$table_name}");
         } else {
             \Log::warning("[PG-Parser] FK NOT added - table '{$table_name}' not in table_map");
         }

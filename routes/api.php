@@ -245,6 +245,7 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/templates/{id}/linked-projects', [TemplateController::class, 'updateLinkedProjects']); // Update linked projects
     Route::patch('/templates/{templateId}/projects/{projectId}/toggle-active', [TemplateController::class, 'toggleProjectLinkActive']); // Toggle project link active status
     Route::get('/templates/{id}/files', [TemplateController::class, 'getTemplateFiles']);
+    Route::get('/templates/{templateId}/files/{fileId}/integrity', [TemplateController::class, 'checkFileIntegrity']);
     Route::post('/templates/{id}/files', [TemplateController::class, 'addTemplateFile']);
     Route::put('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'updateTemplateFile']);
     Route::delete('/templates/{templateId}/files/{fileId}', [TemplateController::class, 'deleteTemplateFile']);

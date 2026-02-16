@@ -40,13 +40,6 @@ class SvcController extends Controller
         // Mark task as processing
         $task->markAsProcessing();
 
-        Log::info('📤 [SVC] Task dispatched to service', [
-            'task_id' => $task->id,
-            'type' => $task->task_type,
-            'user_id' => $task->user_id,
-            'project_id' => $task->project_id,
-        ]);
-
         return response()->json([
             'success' => true,
             'task' => [
@@ -80,12 +73,6 @@ class SvcController extends Controller
 
         $result = $request->input('result', []);
         $task->markAsCompleted($result);
-
-        Log::info('✅ [SVC] Task completed', [
-            'task_id' => $task->id,
-            'type' => $task->task_type,
-            'duration' => $task->completed_at->diffInSeconds($task->started_at),
-        ]);
 
         return response()->json([
             'success' => true,
@@ -127,10 +114,6 @@ class SvcController extends Controller
         // Auto-retry if possible AND allowed
         if ($allowRetry && $task->canRetry()) {
             $task->resetForRetry();
-            Log::info('🔄 [SVC] Task reset for retry', [
-                'task_id' => $task->id,
-                'retry_count' => $task->retry_count,
-            ]);
         }
 
         return response()->json([
@@ -263,12 +246,6 @@ class SvcController extends Controller
         // Delete the task
         $task->delete();
 
-        Log::info('🚫 [SVC] Task cancelled by user', [
-            'task_id' => $task->id,
-            'type' => $task->task_type,
-            'user_id' => $user->id,
-        ]);
-
         return response()->json([
             'success' => true,
             'message' => 'Task cancelled successfully',
@@ -309,13 +286,6 @@ class SvcController extends Controller
             ],
             'priority' => 20, // High priority for quick feedback
             'max_retries' => 0, // No retry for connection tests
-        ]);
-
-        Log::info('📝 [SVC] Connection test task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'connection_type' => $payload['connection_type'],
-            'host' => $payload['host'],
         ]);
 
         return response()->json([
@@ -389,14 +359,6 @@ class SvcController extends Controller
             'priority' => 10, // High priority
         ]);
 
-        Log::info('📝 [SVC] Database import task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'project_id' => $task->project_id,
-            'connection_type' => $payload['connection_type'],
-            'schema_id' => $payload['target_schema_id'],
-        ]);
-
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
@@ -446,14 +408,6 @@ class SvcController extends Controller
             'max_retries' => 0, // No auto-retry for export
         ]);
 
-        Log::info('📝 [SVC] Database export task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'connection_type' => $payload['connection_type'],
-            'database' => $payload['database'],
-            'sql_length' => strlen($payload['sql_script']),
-        ]);
-
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
@@ -490,13 +444,6 @@ class SvcController extends Controller
                 'preserve_files' => $request->input('preserve_files', ['.env', '.git']),
             ],
             'priority' => 5,
-        ]);
-
-        Log::info('📝 [SVC] Project download task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'project_id' => $task->project_id,
-            'install_type' => $request->input('install_type'),
         ]);
 
         return response()->json([
@@ -546,13 +493,6 @@ class SvcController extends Controller
             ], 400);
         }
 
-        Log::info('📥 [SVC] Received schema data', [
-            'task_id' => $taskId,
-            'target_schema_id' => $targetSchemaId,
-            'schema_name' => $schemaName,
-            'table_count' => count($tables),
-        ]);
-
         try {
             // Transform data from Rust service format to SchemaStorageService format
             $transformedTables = $this->transformSchemaData($tables);
@@ -563,13 +503,6 @@ class SvcController extends Controller
                 $targetSchemaId,
                 $description
             );
-
-            Log::info('✅ [SVC] Schema stored successfully', [
-                'task_id' => $taskId,
-                'schema_version_id' => $schemaVersion->id,
-                'schema_id' => $schemaVersion->schema_id,
-                'tables_imported' => count($tables),
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -746,13 +679,6 @@ class SvcController extends Controller
             'priority' => 10, // High priority
         ]);
 
-        Log::info('📝 [SVC] Template upload task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'directory_path' => $validated['directory_path'],
-            'session_id' => $sessionId,
-        ]);
-
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
@@ -815,13 +741,6 @@ class SvcController extends Controller
                 'message' => 'Session user mismatch',
             ], 403);
         }
-
-        Log::info('📥 [SVC] Received template upload from service', [
-            'task_id' => $taskId,
-            'session_id' => $sessionId,
-            'file_count' => count($files),
-            'archive_size' => $archiveFile->getSize(),
-        ]);
 
         try {
             // Store the archive
@@ -1092,14 +1011,6 @@ class SvcController extends Controller
             'priority' => 20, // High priority for interactive tasks
         ]);
 
-        Log::info('📝 [SVC] File edit task created', [
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-            'template_id' => $validated['template_id'],
-            'file_name' => $validated['file_name'],
-            'session_id' => $sessionId,
-        ]);
-
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
@@ -1167,12 +1078,6 @@ class SvcController extends Controller
             $templateFile->file_content = $validated['content'];
             $templateFile->save();
 
-            Log::info('📤 [SVC] File content saved to database', [
-                'session_id' => $sessionId,
-                'template_id' => $sessionData['template_id'],
-                'file_id' => $sessionData['file_id'],
-                'content_length' => strlen($validated['content']),
-            ]);
         } else {
             Log::warning('📤 [SVC] TemplateFile not found for database save', [
                 'session_id' => $sessionId,
@@ -1273,11 +1178,6 @@ class SvcController extends Controller
         // Signal service to stop
         $sessionData['should_stop'] = true;
         file_put_contents($tempDir . '/session.json', json_encode($sessionData));
-
-        Log::info('🛑 [SVC] File edit stop requested', [
-            'session_id' => $sessionId,
-            'user_id' => $user->id,
-        ]);
 
         return response()->json(['success' => true, 'message' => 'Stop signal sent']);
     }

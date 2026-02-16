@@ -109,11 +109,9 @@ class TemplateCacheService
         if (config('cache.default') === 'redis') {
             // Redis: Use tags to flush all cache entries for this file
             Cache::tags(["template_file:{$fileId}"])->flush();
-            Log::info("Cache invalidated for template_file:{$fileId} (Redis tags)");
         } else {
             // File cache: We can't easily find all keys, so we rely on updated_at
             // When file is updated, updated_at changes → new cache key → old cache expires naturally
-            Log::info("Cache will auto-invalidate for template_file:{$fileId} (updated_at changed)");
         }
     }
 
@@ -128,7 +126,6 @@ class TemplateCacheService
     {
         if (config('cache.default') === 'redis') {
             Cache::tags(["template:{$templateId}"])->flush();
-            Log::info("Cache invalidated for template:{$templateId} (Redis tags)");
         } else {
             // File cache: Touch all template files → updated_at changes
             $template = Template::find($templateId);
@@ -137,7 +134,6 @@ class TemplateCacheService
                     $file->touch();
                 });
             }
-            Log::info("Cache will auto-invalidate for template:{$templateId} (files touched)");
         }
     }
 
@@ -160,9 +156,8 @@ class TemplateCacheService
             Cache::forget($gtreeCacheKey);
         }
 
-        if ($projectIds->isNotEmpty()) {
-            Log::info("GTree cache invalidated for template {$templateId} across " . $projectIds->count() . " projects");
-        }
+
+
     }
 
     /**
@@ -201,13 +196,8 @@ class TemplateCacheService
                 Log::error("Failed to clear untagged template cache: " . $e->getMessage());
             }
 
-            Log::info("All template compilation cache cleared", [
-                'tags_flushed' => $tagsFlushed,
-                'untagged_keys_cleaned' => $keysCleaned,
-            ]);
         } else {
             Cache::flush();
-            Log::info("All cache cleared (file cache)");
         }
     }
 

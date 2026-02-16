@@ -4148,5 +4148,7 @@ export const fr: Translations = {
   errorfallback38: 'Oups ! Une erreur s\'est produite.',
   errorfallback56: 'Afficher la trace de la pile',
   errorfallback49: 'Détails de l\'erreur :',
+  codegenerationpanel3023: '📊 Facultatif : Migration de la version',
+  debugmanualgeneratorpanel1763: '📊 Migration de version ',
 
 };

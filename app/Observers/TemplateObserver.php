@@ -6,7 +6,6 @@ use App\Models\Template;
 use App\Jobs\RegenerateProjectGenerationTree;
 use App\Services\TemplateCacheService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class TemplateObserver
 {
@@ -15,8 +14,6 @@ class TemplateObserver
      */
     public function created(Template $template): void
     {
-        Log::info("🧪 [TEMPLATE-OBSERVER] created event triggered for template {$template->id} ({$template->name})");
-
         // Invalidate cache for this template
         app(TemplateCacheService::class)->invalidateTemplate($template->id);
 
@@ -64,8 +61,7 @@ class TemplateObserver
      */
     public function forceDeleted(Template $template): void
     {
-        // After force delete, the template is gone, so just log it
-        Log::info("Template {$template->id} was force deleted");
+        // After force delete, the template is gone - no action needed
     }
 
     /**
@@ -82,11 +78,8 @@ class TemplateObserver
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("Template {$template->id} ({$action}): No projects affected");
             return;
         }
-
-        Log::info("Template {$template->id} ({$action}): Dispatching regeneration for " . count($projectIds) . " projects");
 
         // Dispatch queue jobs for each affected project
         foreach ($projectIds as $projectId) {

@@ -54,13 +54,6 @@ class AutoTranslateController extends Controller
         $translations = [];
         $errors = [];
 
-        \Log::info('Auto-translate request', [
-            'project_id' => $projectId,
-            'text' => $text,
-            'target_languages' => $targetLanguages,
-            'api_key_set' => !empty($apiKey)
-        ]);
-
         foreach ($targetLanguages as $targetLang) {
             try {
                 $response = Http::get('https://translation.googleapis.com/language/translate/v2', [
@@ -69,11 +62,6 @@ class AutoTranslateController extends Controller
                     'target' => $targetLang,
                     'source' => $sourceLanguage,
                     'format' => 'text',
-                ]);
-
-                \Log::info('Google Translate API response', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
                 ]);
 
                 if (!$response->successful()) {

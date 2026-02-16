@@ -1477,7 +1477,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       }
 
       const result = await response.json();
-      console.log('Delete table response:', result);
 
       // Show info message if FK constraints were deleted
       if (result.deleted_fks && result.deleted_fks > 0) {
@@ -1551,7 +1550,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         }
 
         const result = await response.json();
-        console.log('Delete table with new version response:', result);
 
         if (result.success && result.new_version_number) {
           // Show info message if FK constraints were deleted

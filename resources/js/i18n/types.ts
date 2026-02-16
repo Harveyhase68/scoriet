@@ -4184,4 +4184,6 @@ templatemodal480: string;
   errorfallback38: string;
   errorfallback56: string;
   errorfallback49: string;
+  codegenerationpanel3023: string;
+  debugmanualgeneratorpanel1763: string;
 }

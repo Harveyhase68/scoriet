@@ -153,11 +153,6 @@ class FtpSshUploadController extends Controller
 
         $project->update($validated);
 
-        Log::info("FTP/SSH settings updated for project {$project->id}", [
-            'user_id' => $user->id,
-            'deployment_type' => $validated['deployment_type'] ?? null,
-        ]);
-
         return response()->json([
             'success' => true,
             'message' => 'FTP/SSH-Einstellungen gespeichert',
@@ -246,19 +241,9 @@ class FtpSshUploadController extends Controller
             ], 404);
         }
 
-        Log::info("Starting FTP/SSH upload for project {$project->id}", [
-            'user_id' => $user->id,
-            'filename' => $validated['filename'],
-            'deployment_type' => $project->deployment_type,
-        ]);
-
         $result = $this->uploadService->uploadZip($project, $zipPath);
 
-        if ($result['success']) {
-            Log::info("FTP/SSH upload completed for project {$project->id}", [
-                'files_uploaded' => $result['files_uploaded'] ?? 0,
-            ]);
-        } else {
+        if (!$result['success']) {
             Log::error("FTP/SSH upload failed for project {$project->id}", [
                 'error' => $result['message'] ?? 'Unknown error',
             ]);
@@ -287,10 +272,6 @@ class FtpSshUploadController extends Controller
             'ftp_directory' => null,
             'ftp_passive' => true,
             'ftp_ssl' => false,
-        ]);
-
-        Log::info("FTP/SSH settings removed for project {$project->id}", [
-            'user_id' => $user->id,
         ]);
 
         return response()->json([

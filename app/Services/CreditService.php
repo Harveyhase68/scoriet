@@ -83,13 +83,6 @@ class CreditService
 
         // Free for Patron Monthly/Admin
         if ($canGenerate['is_free']) {
-            Log::info("Generation free for user {$user->id} (patron/admin)", [
-                'user_id' => $user->id,
-                'source' => $source,
-                'project_id' => $projectId,
-                'template_id' => $templateId,
-            ]);
-
             return [
                 'success' => true,
                 'message' => 'Generation free (Patron/Admin)',
@@ -123,15 +116,6 @@ class CreditService
                     'reference_id' => $projectId ?? $templateId ?? null,
                 ]);
             });
-
-            Log::info("Credits charged for generation", [
-                'user_id' => $user->id,
-                'credits_charged' => self::GENERATION_COST,
-                'credits_remaining' => $user->fresh()->credits,
-                'source' => $source,
-                'project_id' => $projectId,
-                'template_id' => $templateId,
-            ]);
 
             return [
                 'success' => true,

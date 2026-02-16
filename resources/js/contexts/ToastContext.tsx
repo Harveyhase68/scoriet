@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef } from 'react';
+import React, { createContext, useState, useContext, useRef } from 'react';
 import { Toast } from 'primereact/toast';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 

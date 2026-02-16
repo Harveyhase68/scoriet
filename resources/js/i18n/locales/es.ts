@@ -4147,5 +4147,7 @@ export const es: Translations = {
   errorfallback38: '¡Ups! Algo salió mal.',
   errorfallback56: 'Ver seguimiento de la pila',
   errorfallback49: 'Detalles del error:',
+  codegenerationpanel3023: '📊 Opcional: Migración de versión',
+  debugmanualgeneratorpanel1763: '📊 Migración de versiones ',
 
 };

@@ -64,12 +64,6 @@ class UltimateTemplateEngine
      */
     public function validateVariablesWithContext(string $templateContent, ?int $templateId = null, ?int $projectId = null, ?string $languageCode = null): array
     {
-        \Log::info("🔍 validateVariablesWithContext called", [
-            'templateId' => $templateId,
-            'projectId' => $projectId,
-            'languageCode' => $languageCode
-        ]);
-
         $unknownVariables = [];
         $requiredMissing = [];
         $optionalMissing = [];
@@ -83,13 +77,6 @@ class UltimateTemplateEngine
             foreach ($vars as $var) {
                 $templateVariables[$var->variable_name] = $var;
             }
-            \Log::info("🎨 Loaded template variables", [
-                'count' => count($templateVariables),
-                'templateId' => $templateId,
-                'variables' => array_keys($templateVariables)
-            ]);
-        } else {
-            \Log::info("⚠️ No templateId provided - cannot load template variables");
         }
 
         // Load project values if projectId provided
@@ -106,17 +93,6 @@ class UltimateTemplateEngine
             foreach ($values as $val) {
                 $projectValues[$val->variable_name] = $val->value;
             }
-
-            \Log::info("🎨 Loaded project variable values", [
-                'count' => count($projectValues),
-                'languageCode' => $languageCode,
-                'values' => $projectValues
-            ]);
-        } else {
-            \Log::info("⚠️ Cannot load project values", [
-                'projectId' => $projectId,
-                'templateId' => $templateId
-            ]);
         }
 
         foreach ($lines as $line) {

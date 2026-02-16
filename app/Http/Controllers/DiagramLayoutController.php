@@ -11,8 +11,6 @@ class DiagramLayoutController extends Controller
      */
     public function generate(Request $request)
     {
-        \Log::info("🎯 [AUTO-LAYOUT] HTTP Request received", $request->input());
-
         // Eingabe aus JSON-Body
         $tables = $request->input('tables', []);
         $foreignKeys = $request->input('foreignKeys', []);
@@ -35,7 +33,6 @@ class DiagramLayoutController extends Controller
                     'xStep' => $project->diagram_horizontal_spacing ?? 600,
                     'yStep' => $project->diagram_vertical_spacing ?? 700,
                 ];
-                \Log::info("🎯 [AUTO-LAYOUT] Using project settings", $settings);
             }
         }
 
@@ -60,12 +57,6 @@ class DiagramLayoutController extends Controller
      */
     public function generateLayoutInternal(array $tables, array $foreignKeys = [], ?array $settings = null)
     {
-        \Log::info("🎯 [AUTO-LAYOUT] Generating layout internally", [
-            'tables_count' => count($tables),
-            'foreignKeys_count' => count($foreignKeys),
-            'custom_settings' => $settings !== null
-        ]);
-
         // Plausibilitätscheck
         if (empty($tables)) {
             throw new \Exception('No tables provided for layout generation');
@@ -205,10 +196,6 @@ class DiagramLayoutController extends Controller
             }
             $y += $yStep;
         }
-
-        \Log::info("🎯 [AUTO-LAYOUT] Layout generated successfully", [
-            'positions_count' => count($positions)
-        ]);
 
         return $positions;
     }

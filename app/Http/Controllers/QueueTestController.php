@@ -58,24 +58,20 @@ class QueueTestController extends Controller
      */
     private function testJobDispatching(): array
     {
-        Log::info("🧪 [TEST] Starting job dispatch test");
-        
         $project = Project::first();
         if (!$project) {
             return ['error' => 'No project found'];
         }
         
         $jobsBefore = DB::table('jobs')->count();
-        Log::info("🧪 [TEST] Jobs before dispatch: {$jobsBefore}");
-        
+
         try {
             // Job mit Verzögerung dispatchen, damit wir ihn sehen können
             $job = RegenerateProjectGenerationTree::dispatch($project->id)
                 ->delay(now()->addMinutes(1));
                 
             $jobsAfter = DB::table('jobs')->count();
-            Log::info("🧪 [TEST] Jobs after dispatch: {$jobsAfter}");
-            
+
             return [
                 'success' => true,
                 'project_id' => $project->id,
@@ -99,8 +95,6 @@ class QueueTestController extends Controller
      */
     private function testSchemaVersionCreation(): array
     {
-        Log::info("🧪 [TEST] Starting schema version creation test");
-        
         $schema = FloatingSchema::first();
         if (!$schema) {
             return ['error' => 'No schema found'];
@@ -119,16 +113,13 @@ class QueueTestController extends Controller
         }
         
         $jobsBefore = DB::table('jobs')->count();
-        Log::info("🧪 [TEST] Jobs before schema version creation: {$jobsBefore}");
-        
+
         try {
             // Neue Schema-Version erstellen
             $version = SchemaVersion::createNewVersion($schema, 'Test version for queue testing');
-            Log::info("🧪 [TEST] Created schema version: {$version->id}");
-            
+
             $jobsAfter = DB::table('jobs')->count();
-            Log::info("🧪 [TEST] Jobs after schema version creation: {$jobsAfter}");
-            
+
             return [
                 'success' => true,
                 'schema_id' => $schema->id,
@@ -169,8 +160,6 @@ class QueueTestController extends Controller
             $job = RegenerateProjectGenerationTree::dispatch($projectId);
             
             $jobsAfter = DB::table('jobs')->count();
-            
-            Log::info("🧪 [MANUAL] Manually dispatched job for project {$projectId}");
             
             return response()->json([
                 'success' => true,

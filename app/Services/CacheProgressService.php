@@ -31,12 +31,6 @@ class CacheProgressService
 
         Cache::put($sessionId, $data, now()->addHours(24));
 
-        Log::info("Cache precompilation started", [
-            'session_id' => $sessionId,
-            'user_id' => $userId,
-            'total_items' => $totalItems
-        ]);
-
         return $sessionId;
     }
 
@@ -79,8 +73,6 @@ class CacheProgressService
         $data['updated_at'] = now()->toDateTimeString();
 
         Cache::put($sessionId, $data, now()->addHours(24));
-
-        Log::info("Cache precompilation completed", ['session_id' => $sessionId]);
     }
 
     /**

@@ -37,12 +37,8 @@ class RegenerateProjectGenerationTree implements ShouldQueue
                 return;
             }
 
-            Log::info("Regenerating generation tree for project: {$project->name} (ID: {$project->id})");
-
             $generator = new ProjectFileTreeGenerator();
             $generationTree = $generator->generateAndSave($project);
-
-            Log::info("Successfully regenerated generation tree for project {$project->id}. Total items: " . count($generationTree->tree_data));
 
         } catch (\Exception $e) {
             Log::error("Failed to regenerate generation tree for project {$this->projectId}: " . $e->getMessage());

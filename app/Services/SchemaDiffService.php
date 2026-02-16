@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\SchemaVersion;
 use App\Models\SchemaTable;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Schema Diff & Migration Generator Service
@@ -57,12 +56,6 @@ class SchemaDiffService
             'tables.constraints.foreignKeyReference.referencedTable',
             'tables.constraints.foreignKeyReference.referenceColumns.referencedField'
         ])->findOrFail($toVersionId);
-
-        Log::info("🔍 Schema Diff: Comparing versions", [
-            'from' => $fromVersion->id,
-            'to' => $toVersion->id,
-            'dialect' => $dialect,
-        ]);
 
         // Collect all changes
         $changes = [];
@@ -280,30 +273,8 @@ class SchemaDiffService
             $unsignedChanged = $fromUnsigned !== $toUnsigned;
         }
 
-        // Debug logging for changes that will be reported
         $hasChanges = $typeChanged || $lengthChanged || $precisionChanged || $scaleChanged ||
                       $nullableChanged || $unsignedChanged || $defaultChanged || $autoIncChanged;
-
-        if ($hasChanges) {
-            $changedProperties = [];
-            if ($typeChanged) $changedProperties[] = "type: {$fromType} -> {$toType}";
-            if ($lengthChanged) $changedProperties[] = "length: {$fromLength} -> {$toLength}";
-            if ($precisionChanged) $changedProperties[] = "precision: {$fromPrecision} -> {$toPrecision}";
-            if ($scaleChanged) $changedProperties[] = "scale: {$fromScale} -> {$toScale}";
-            if ($nullableChanged) $changedProperties[] = "nullable: " . ($fromNullable ? 'YES' : 'NO') . " -> " . ($toNullable ? 'YES' : 'NO');
-            if ($unsignedChanged) {
-                $fromUnsigned = !empty($fromField->is_unsigned);
-                $toUnsigned = !empty($toField->is_unsigned);
-                $changedProperties[] = "unsigned: " . ($fromUnsigned ? 'YES' : 'NO') . " -> " . ($toUnsigned ? 'YES' : 'NO');
-            }
-            if ($defaultChanged) $changedProperties[] = "default: '{$fromDefault}' -> '{$toDefault}'";
-            if ($autoIncChanged) $changedProperties[] = "auto_increment: " . ($fromAutoInc ? 'YES' : 'NO') . " -> " . ($toAutoInc ? 'YES' : 'NO');
-
-            Log::debug("Field modified: {$fromField->field_name}", [
-                'dialect' => $this->currentDialect,
-                'changes' => $changedProperties
-            ]);
-        }
 
         return $hasChanges;
     }

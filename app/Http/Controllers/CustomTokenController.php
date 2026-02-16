@@ -64,7 +64,6 @@ class CustomTokenController extends AccessTokenController
                     // If so, reactivate it on login (user is proving they're active)
                     if ($user && $user->isDeactivated()) {
                         $user->reactivate();
-                        \Log::info("User reactivated on login", ['user_id' => $user->id, 'email' => $user->email]);
                     }
 
                     // Check password before 2FA check

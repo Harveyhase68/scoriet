@@ -4164,5 +4164,7 @@ export const en: Translations = {
   errorfallback38: 'Oops! Something went wrong.',
   errorfallback56: 'View stack trace',
   errorfallback49: 'Error details:',
+  codegenerationpanel3023: '📊 Optional: Migration von Version',
+  debugmanualgeneratorpanel1763: '📊 Version migration ',
 
 };
