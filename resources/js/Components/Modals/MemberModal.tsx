@@ -137,7 +137,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
             const projectsData = await projectsResponse.json();
             const projects = projectsData.projects || [];
             // Find projects owned by the team owner
-            const matchingProjects = projects.filter((p: any) => p.owner_id === team.project_owner_id);
+            const matchingProjects = projects.filter((p: any) => Number(p.owner_id) === Number(team.project_owner_id));
             linkedProjectIds.push(...matchingProjects.map((p: any) => p.id));
           }
         }
@@ -203,7 +203,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     // Add project members not in team (available to assign)
     projectMembers.forEach(projectMember => {
-      const isAlreadyInTeam = teamMembers.some(tm => tm.user_id === projectMember.user_id);
+      const isAlreadyInTeam = teamMembers.some(tm => Number(tm.user_id) === Number(projectMember.user_id));
       if (!isAlreadyInTeam) {
         allMembers.push({
           id: `project_${projectMember.id}`,

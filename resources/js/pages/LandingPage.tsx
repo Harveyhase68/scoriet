@@ -462,7 +462,7 @@ export default function LandingPage() {
 
       <div className="min-h-screen overflow-y-auto max-h-screen" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         {/* Settings Panel (only shown in tab view) */}
-        {isAuthenticated && (window.location.pathname === '/app' || window.location.pathname === '/demo-login') && (
+        {isAuthenticated && (window.location.pathname === '/app' || window.location.pathname === '/demo-login' || window.location.pathname === '/demo-system-access') && (
           <div className="p-3" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderSecondary}` }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between">

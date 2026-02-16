@@ -1018,11 +1018,11 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       key={msg.id}
                       className="p-3 rounded-lg"
                       style={{
-                        backgroundColor: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0')
+                        backgroundColor: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0')
                           ? `${colors.accent}30`
                           : colors.bgTertiary,
-                        marginLeft: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0') ? '2rem' : 0,
-                        marginRight: msg.sender_id === parseInt(localStorage.getItem('user_id') || '0') ? 0 : '2rem',
+                        marginLeft: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0') ? '2rem' : 0,
+                        marginRight: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0') ? 0 : '2rem',
                       }}
                     >
                       <div className="flex justify-between items-start mb-2">

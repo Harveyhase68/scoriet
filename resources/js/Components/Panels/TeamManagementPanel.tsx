@@ -300,7 +300,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
   const handleManageRoles = (team: Team) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-    const isTeamOwner = team.project_owner_id === currentUserId;
+    const isTeamOwner = Number(team.project_owner_id) === currentUserId;
     window.dispatchEvent(new CustomEvent('openTeamRolesPanel', {
       detail: {
         teamId: team.id,
@@ -419,7 +419,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       setAllProjects(projects);
 
       // Load linked projects for this team
-      const linkedProjects = team.projects?.map(p => p.id) || [];
+      const linkedProjects = team.projects?.map(p => Number(p.id)) || [];
       setLinkedProjectIds(linkedProjects);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -432,10 +432,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   };
 
   const handleToggleProjectLink = (projectId: number) => {
-    if (linkedProjectIds.includes(projectId)) {
-      setLinkedProjectIds(linkedProjectIds.filter(id => id !== projectId));
+    const numId = Number(projectId);
+    if (linkedProjectIds.includes(numId)) {
+      setLinkedProjectIds(linkedProjectIds.filter(id => id !== numId));
     } else {
-      setLinkedProjectIds([...linkedProjectIds, projectId]);
+      setLinkedProjectIds([...linkedProjectIds, numId]);
     }
   };
 
@@ -461,7 +462,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         const members = await response.json();
         // Filter out the current owner
         const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-        const eligibleMembers = members.filter((m: TeamMember) => m.user_id !== currentUserId);
+        const eligibleMembers = members.filter((m: TeamMember) => Number(m.user_id) !== currentUserId);
         setTeamMembersForTransfer(eligibleMembers);
       }
     } catch (error) {
@@ -736,10 +737,10 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
   const actionsBodyTemplate = (team: Team) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-    const isOwner = team.project_owner_id === currentUserId;
+    const isOwner = Number(team.project_owner_id) === currentUserId;
 
     // Check if user is admin in this team
-    const currentUserMember = team.members?.find(m => m.user_id === currentUserId);
+    const currentUserMember = team.members?.find(m => Number(m.user_id) === currentUserId);
     const isAdmin = currentUserMember?.role === 'admin';
     const canManageTeam = isOwner || isAdmin;
 
@@ -1100,12 +1101,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                     key={member.user_id}
                     className="flex items-center justify-between p-3 rounded cursor-pointer transition-colors"
                     style={{
-                      border: `1px solid ${transferRecipientId === member.user_id ? colors.accent : colors.borderPrimary}`,
-                      backgroundColor: transferRecipientId === member.user_id ? colors.infoBg : colors.bgSecondary
+                      border: `1px solid ${transferRecipientId === Number(member.user_id) ? colors.accent : colors.borderPrimary}`,
+                      backgroundColor: transferRecipientId === Number(member.user_id) ? colors.infoBg : colors.bgSecondary
                     }}
-                    onClick={() => handleCheckTransferEligibility(member.user_id)}
-                    onMouseEnter={(e) => { if (transferRecipientId !== member.user_id) e.currentTarget.style.backgroundColor = colors.bgHover; }}
-                    onMouseLeave={(e) => { if (transferRecipientId !== member.user_id) e.currentTarget.style.backgroundColor = colors.bgSecondary; }}
+                    onClick={() => handleCheckTransferEligibility(Number(member.user_id))}
+                    onMouseEnter={(e) => { if (transferRecipientId !== Number(member.user_id)) e.currentTarget.style.backgroundColor = colors.bgHover; }}
+                    onMouseLeave={(e) => { if (transferRecipientId !== Number(member.user_id)) e.currentTarget.style.backgroundColor = colors.bgSecondary; }}
                   >
                     <div className="flex items-center gap-3">
                       <i className="pi pi-user" style={{ color: colors.textMuted }}></i>

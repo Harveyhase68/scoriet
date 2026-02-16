@@ -1183,8 +1183,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
     // Check if current project (from forceProjectId or context) is linked to this schema
     const currentProjectId = projectId; // This is forceProjectId || contextSelectedProject?.id
-    const isLinkedToCurrentProject = currentProjectId ? projects.some(p => p.id === currentProjectId) : false;
-    const currentProjectLink = currentProjectId ? projects.find(p => p.id === currentProjectId) : null;
+    const isLinkedToCurrentProject = currentProjectId ? projects.some(p => Number(p.id) === Number(currentProjectId)) : false;
+    const currentProjectLink = currentProjectId ? projects.find(p => Number(p.id) === Number(currentProjectId)) : null;
 
     // Check ownership and permissions
     const isOwner = String(schema.owner_id) === String(currentUserId); // Explicit string conversion like PHP
@@ -1614,7 +1614,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               value={createForm.project_ids}
               onChange={(e) => setCreateForm(prev => ({ ...prev, project_ids: e.value }))}
               options={contextProjects
-                .filter(p => p.owner_id === currentUserId) // Only own projects
+                .filter(p => Number(p.owner_id) === Number(currentUserId)) // Only own projects
                 .map(p => ({ label: p.name, value: p.id }))}
               placeholder={t.databasemanagementpanel1619}
               className="w-full"
@@ -2211,7 +2211,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         currentCredits={currentUser?.credits || 0}
         creditCost={50}
         resourceType="database"
-        currentCount={mySchemas.filter(s => s.owner_id === currentUser?.id).length}
+        currentCount={mySchemas.filter(s => Number(s.owner_id) === Number(currentUser?.id)).length}
         maxFreeCount={1}
       />
 
