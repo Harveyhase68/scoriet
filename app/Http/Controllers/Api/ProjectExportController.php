@@ -30,8 +30,9 @@ class ProjectExportController extends Controller
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        // Only owner can export
-        if ($project->owner_id !== $user->id) {
+        // Only owner or admin/system can export
+        if ((int) $project->owner_id !== (int) $user->id &&
+            !in_array($user->user_type, ['admin', 'system'])) {
             return response()->json(['message' => 'Only the project owner can export'], 403);
         }
 
@@ -76,8 +77,9 @@ class ProjectExportController extends Controller
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        // Only owner can see export preview
-        if ($project->owner_id !== $user->id) {
+        // Only owner or admin/system can see export preview
+        if ((int) $project->owner_id !== (int) $user->id &&
+            !in_array($user->user_type, ['admin', 'system'])) {
             return response()->json(['message' => 'Only the project owner can export'], 403);
         }
 
