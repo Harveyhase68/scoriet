@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef } from 'react';
 import { Toast } from 'primereact/toast';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ToastContextType {
     showSuccess: (message: string) => void;
@@ -12,6 +13,9 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const toastRef = useRef<Toast>(null);
+    // i18n
+    const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
+    const { t } = useTranslation(currentLanguage);
 
     const showSuccess = (message: string) => {
         toastRef.current?.show({

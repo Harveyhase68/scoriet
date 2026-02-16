@@ -4161,5 +4161,8 @@ export const en: Translations = {
   profilemodal2753: 'You must enter exactly  ',
   profilemodal2753_2: '  (capital letters)',
   profilemodal1417: 'Kanban display',
+  errorfallback38: 'Oops! Something went wrong.',
+  errorfallback56: 'View stack trace',
+  errorfallback49: 'Error details:',
 
 };

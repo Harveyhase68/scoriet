@@ -4144,5 +4144,8 @@ export const it: Translations = {
   profilemodal2753: 'Devi inserire esattamente ',
   profilemodal2753_2: ' (lettere maiuscole)',
   profilemodal1417: 'Visualizzazione Kanban',
+  errorfallback38: 'Oops! Qualcosa è andato storto.',
+  errorfallback56: 'Visualizza la traccia dello stack',
+  errorfallback49: 'Dettagli dell\'errore:',
 
 };
