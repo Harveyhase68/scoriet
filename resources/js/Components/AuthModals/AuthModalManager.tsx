@@ -41,17 +41,13 @@ export default function AuthModalManager({
 
   const [currentModal, setCurrentModal] = React.useState<AuthModalType>(activeModal);
 
-  // Update local state when prop changes - but don't override our local management
+  // Sync local state from parent prop
+  // Only depends on activeModal - internal switches (handleSwitchModal) update currentModal
+  // directly without going through the parent, so we don't need currentModal in deps.
+  // This ensures the modal properly closes when Index.tsx sets activeModal=null.
   React.useEffect(() => {
-    // Only update if activeModal is not null or if we don't have a current modal
-    if (activeModal !== null) {
-      setCurrentModal(activeModal);
-    } else if (currentModal === null) {
-      setCurrentModal(null);
-    } else {
-      // Don't override - keep the current modal for proper closing
-    }
-  }, [activeModal, currentModal]);
+    setCurrentModal(activeModal);
+  }, [activeModal]);
 
   const handleSwitchModal = (modalType: AuthModalType) => {
     // DIRECT APPROACH: Set local state immediately

@@ -67,9 +67,17 @@ class DemoSnapshot extends Command
         $host = config('database.connections.mysql.host');
         $port = config('database.connections.mysql.port', 3306);
 
-        // Build mysqldump command
+        // Detect dump binary: prefer mariadb-dump, fallback to mysqldump
+        $dumpBin = 'mysqldump';
+        exec('which mariadb-dump 2>/dev/null', $whichOutput, $whichCode);
+        if ($whichCode === 0) {
+            $dumpBin = 'mariadb-dump';
+        }
+
+        // Build dump command — stderr goes to /dev/null to avoid deprecation warnings in SQL file
         $command = sprintf(
-            'mysqldump -h%s -P%s -u%s -p%s --single-transaction --routines --triggers %s > %s 2>&1',
+            '%s -h%s -P%s -u%s -p%s --single-transaction --routines --triggers %s 2>/dev/null > %s',
+            $dumpBin,
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
@@ -78,13 +86,14 @@ class DemoSnapshot extends Command
             escapeshellarg($this->snapshotPath)
         );
 
-        // Execute mysqldump
+        // Execute dump
         $output = [];
         $returnCode = 0;
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
             $this->error('Failed to create snapshot!');
+            $this->error("Command: {$dumpBin}");
             $this->error(implode("\n", $output));
             return 1;
         }

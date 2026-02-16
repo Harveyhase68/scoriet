@@ -1608,7 +1608,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           {/* Project Assignment - Only show user's OWN projects (not team projects) */}
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              {t.createteammodal117 || 'Projects'} <span className="text-xs" style={{ color: colors.textMuted }}>(optional)</span>
+              {t.createteammodal117} <span className="text-xs" style={{ color: colors.textMuted }}>(optional)</span>
             </label>
             <MultiSelect
               value={createForm.project_ids}
@@ -1909,7 +1909,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               autoComplete="off"
             />
             <small style={{ color: colors.textMuted }}>
-              {t.databasemanagementpanel1912}"DELETE"t.databasemanagementpanel1912_2
+              {t.databasemanagementpanel1912}"DELETE"{t.databasemanagementpanel1912_2}
             </small>
           </div>
 

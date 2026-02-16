@@ -1154,7 +1154,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           }
         } catch {
           // Continue anyway - project is already set up
-          alert('${t.projectwizardmodal1157}\n\n${t.projectwizardmodal1157_2}');
+          alert(`${t.projectwizardmodal1157}\n\n${t.projectwizardmodal1157_2}`);
         }
       }
 

@@ -80,8 +80,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setPatronType(user.patron_type || null);
           setIsInnerCore(user.is_inner_core || false);
           return true;
-        } else {
-          // Token invalid - clean up and notify other components
+        } else if (response.status === 401) {
+          // Token truly invalid (unauthorized) - clean up and notify other components
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('remember_me');
@@ -98,6 +98,16 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
           // Trigger storage event to notify other components (like Index.tsx)
           window.dispatchEvent(new Event('storage'));
+          return false;
+        } else {
+          // Other error (500, 429, network timeout, etc.) - don't destroy tokens
+          // The token might still be valid, just a temporary server issue
+          setIsLoggedIn(false);
+          setUserName('');
+          setUserType('');
+          setUserCredits(0);
+          setPatronType(null);
+          setIsInnerCore(false);
           return false;
         }
       } catch {
@@ -469,7 +479,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('schema-translation')
         },
         {
-          label: 'Schema Migration 💰',
+          label: t.newnavigationpanel472,
           icon: 'pi pi-sync',
           command: () => onOpenPanel('query-builder')
         },
@@ -776,7 +786,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <div className="relative group/agile">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-chart-line"></i>
-                      <span>{t.navAgileMethod || 'Agile Methods'}</span>
+                      <span>{t.navAgileMethod}</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Agile Methods */}
@@ -784,7 +794,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('kanban-board')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-th-large"></i>
-                          <span>{t.newnavigationpanel357 || 'Kanban Board'}</span>
+                          <span>{t.newnavigationpanel357}</span>
                         </button>
                       </div>
                     </div>
@@ -876,7 +886,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </button>
                   <button onClick={() => onOpenPanel('query-builder')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sync"></i>
-                    <span>Schema Migration 💰</span>
+                    <span>{t.newnavigationpanel879}</span>
                   </button>
                   <div className="border-t nav-separator my-2"></div>
                   <button onClick={() => onOpenSqlImport && onOpenSqlImport()} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
@@ -909,14 +919,14 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <div className="border-t nav-separator my-2"></div>
                   <button onClick={() => onOpenPanel('code-adjustments')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sliders-h"></i>
-                    <span>Code Anpassungen 💰</span>
+                    <span>{t.newnavigationpanel912}</span>
                   </button>
                   {userType === 'system' && (
                     <>
                       <div className="border-t nav-separator my-2"></div>
                       <button onClick={() => onOpenPanel('cache-debug')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-server"></i>
-                        <span>Cache Debug</span>
+                        <span>{t.newnavigationpanel919}</span>
                       </button>
                     </>
                   )}
@@ -934,31 +944,31 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <div className="p-2">
                     <button onClick={() => onOpenPanel('system-settings')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-cog"></i>
-                      <span>System Settings</span>
+                      <span>{t.newnavigationpanel937}</span>
                     </button>
                     <button onClick={() => onOpenPanel('language-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-globe"></i>
-                      <span>Language Management</span>
+                      <span>{t.newnavigationpanel941}</span>
                     </button>
                     <button onClick={() => onOpenPanel('payout-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-wallet"></i>
-                      <span>Auszahlungen</span>
+                      <span>{t.newnavigationpanel945}</span>
                     </button>
                     <button onClick={() => onOpenPanel('performance-metrics')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-chart-line"></i>
-                      <span>Performance</span>
+                      <span>{t.newnavigationpanel949}</span>
                     </button>
                     {/* Show Invite Management only for system user when registration is closed */}
                     {userType === 'system' && !registrationOpen && (
                       <button onClick={() => onOpenPanel('invite-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-user-plus"></i>
-                        <span>Registration Invites</span>
+                        <span>{t.newnavigationpanel955}</span>
                       </button>
                     )}
                     <div className="border-t nav-separator my-2"></div>
                     <button onClick={() => onOpenPanel('cms-admin')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-file-edit"></i>
-                      <span>CMS Admin</span>
+                      <span>{t.newnavigationpanel961}</span>
                     </button>
                   </div>
                 </div>

@@ -154,7 +154,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
             header={
                 <div className="flex items-center space-x-2">
                     <i className="pi pi-plus"></i>
-                    <span>Add DB Schema Dependency</span>
+                    <span>{t.templatedbschemadependenciespanel157}</span>
                 </div>
             }
             visible={visible}
@@ -214,7 +214,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 {/* Is Required */}
                 <div>
                     <label htmlFor="is_required" className="block text-sm font-medium mb-2">
-                        Required Dependency
+                        {t.templatedbschemadependenciespanel217}
                     </label>
                     <Controller
                         name="is_required"
@@ -232,7 +232,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 {/* Alias */}
                 <div>
                     <label htmlFor="alias" className="block text-sm font-medium mb-2">
-                        Alias (Optional)
+                        {t.templatedbschemadependenciespanel235}
                     </label>
                     <Controller
                         name="alias"
@@ -498,7 +498,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold flex items-center space-x-2" style={{ color: colors.textPrimary }}>
                             <i className="pi pi-link"></i>
-                            <span>Template - DB Schema Dependencies</span>
+                            <span>{t.templatedbschemadependenciespanel501}</span>
                         </h2>
                         <Button
                             icon="pi pi-refresh"
@@ -568,7 +568,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                         <div>
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="text-lg font-semibold">
-                                    DB Schema Dependencies {selectedTemplate && `for ${selectedTemplate.name}`}
+                                    {t.templatedbschemadependenciespanel571}{selectedTemplate && `for ${selectedTemplate.name}`}
                                 </h3>
                                 {selectedTemplate && canUserEditTemplate(selectedTemplate) && (
                                     <Button
@@ -618,7 +618,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                                         color: colors.textMuted
                                     }}
                                 >
-                                    Select a template to view its DB schema dependencies
+                                    {t.templatedbschemadependenciespanel621}
                                 </div>
                             )}
                         </div>

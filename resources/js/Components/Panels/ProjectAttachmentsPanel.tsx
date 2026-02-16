@@ -144,13 +144,13 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 { headers: { 'Authorization': `Bearer ${getAuthToken()}` } }
             );
 
-            if (!response.ok) throw new Error('Fehler beim Laden der Anhänge');
+            if (!response.ok) throw new Error(t.projectattachmentspanel147_2);
 
             const data = await response.json();
             setAttachments(data.attachments);
             setCategories(data.categories);
         } catch (error: any) {
-            toast.showError(error.message || 'Fehler beim Laden der Anhänge');
+            toast.showError(error.message || t.projectattachmentspanel153);
         } finally {
             setLoading(false);
         }
@@ -183,14 +183,14 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Upload fehlgeschlagen');
+                throw new Error(errorData.message || t.projectattachmentspanel186);
             }
 
             const data = await response.json();
-            toast.showSuccess(`"${data.attachment.original_filename}" wurde hochgeladen`);
+            toast.showSuccess(`"${data.attachment.original_filename}"{$t.projectattachmentspanel190}`);
             loadAttachments();
         } catch (error: any) {
-            toast.showError(error.message || 'Upload fehlgeschlagen');
+            toast.showError(error.message || t.projectattachmentspanel193);
         } finally {
             setUploading(false);
             fileUploadRef.current?.clear();
@@ -198,8 +198,31 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     };
 
     // Handle download
-    const handleDownload = (attachment: Attachment) => {
-        window.open(`/api/projects/${effectiveProjectId}/attachments/${attachment.id}/download?token=${getAuthToken()}`, '_blank');
+    const handleDownload = async (attachment: Attachment) => {
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`/api/projects/${effectiveProjectId}/attachments/${attachment.id}/download`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Download failed: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = attachment.original_filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error: any) {
+            toast.showError(error.message || t.projectattachmentspanel193);
+        }
     };
 
     // Handle pin/unpin
@@ -217,9 +240,9 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 }
             );
 
-            if (!response.ok) throw new Error('Fehler beim Aktualisieren');
+            if (!response.ok) throw new Error(t.projectattachmentspanel220);
 
-            toast.showSuccess(attachment.is_pinned ? 'Anheftung entfernt' : 'Angeheftet');
+            toast.showSuccess(attachment.is_pinned ? t.projectattachmentspanel222 : t.projectattachmentspanel222_2);
             loadAttachments();
         } catch (error: any) {
             toast.showError(error.message);
@@ -252,9 +275,9 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 }
             );
 
-            if (!response.ok) throw new Error('Fehler beim Speichern');
+            if (!response.ok) throw new Error(t.projectattachmentspanel255);
 
-            toast.showSuccess('Anhang aktualisiert');
+            toast.showSuccess(t.projectattachmentspanel257);
             setEditDialogVisible(false);
             loadAttachments();
         } catch (error: any) {
@@ -265,7 +288,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     // Handle delete
     const handleDelete = (attachment: Attachment) => {
         confirmDialog({
-            message: `Möchten Sie "${attachment.original_filename}" wirklich löschen?`,
+            message: `${t.projectattachmentspanel268}"${attachment.original_filename}"${t.projectattachmentspanel268_2}`,
             header: 'Anhang löschen',
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
@@ -279,9 +302,9 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         }
                     );
 
-                    if (!response.ok) throw new Error('Fehler beim Löschen');
+                    if (!response.ok) throw new Error(t.projectattachmentspanel282);
 
-                    toast.showSuccess('Anhang gelöscht');
+                    toast.showSuccess(t.projectattachmentspanel284);
                     loadAttachments();
                 } catch (error: any) {
                     toast.showError(error.message);
@@ -297,7 +320,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
     // Category filter options
     const categoryOptions = [
-        { label: 'Alle Kategorien', value: 'all' },
+        { label: t.projectattachmentspanel300, value: 'all' },
         ...Object.entries(categories).map(([value, label]) => ({ label, value })),
     ];
 
@@ -320,7 +343,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     );
 
     const uploaderTemplate = (rowData: Attachment) => (
-        <span style={{ color: colors.textSecondary }}>{rowData.uploader?.name || 'Unbekannt'}</span>
+        <span style={{ color: colors.textSecondary }}>{rowData.uploader?.name || t.projectattachmentspanel323}</span>
     );
 
     const dateTemplate = (rowData: Attachment) => (
@@ -341,7 +364,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 text
                 severity="info"
                 onClick={() => handleDownload(rowData)}
-                tooltip="Herunterladen"
+                tooltip={t.projectattachmentspanel344}
                 tooltipOptions={{ position: 'top' }}
             />
             {canModify(rowData) && (
@@ -352,7 +375,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         text
                         severity={rowData.is_pinned ? 'warning' : 'secondary'}
                         onClick={() => handleTogglePin(rowData)}
-                        tooltip={rowData.is_pinned ? 'Nicht mehr anheften' : 'Anheften'}
+                        tooltip={rowData.is_pinned ? t.projectattachmentspanel355 : t.projectattachmentspanel355_2}
                         tooltipOptions={{ position: 'top' }}
                     />
                     <Button
@@ -361,7 +384,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         text
                         severity="secondary"
                         onClick={() => openEditDialog(rowData)}
-                        tooltip="Bearbeiten"
+                        tooltip={t.projectattachmentspanel364}
                         tooltipOptions={{ position: 'top' }}
                     />
                     <Button
@@ -370,7 +393,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         text
                         severity="danger"
                         onClick={() => handleDelete(rowData)}
-                        tooltip="Löschen"
+                        tooltip={t.projectattachmentspanel373}
                         tooltipOptions={{ position: 'top' }}
                     />
                 </>
@@ -383,7 +406,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
         return (
             <div className="flex flex-col items-center justify-center h-full p-8" style={{ color: colors.textMuted, backgroundColor: colors.bgPrimary }}>
                 <i className="pi pi-folder-open text-6xl mb-4"></i>
-                <p className="text-lg">Bitte wählen Sie ein Projekt aus</p>
+                <p className="text-lg">{t.projectattachmentspanel386}</p>
             </div>
         );
     }
@@ -397,7 +420,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 <div className="flex items-center gap-3">
                     <i className="pi pi-paperclip text-2xl" style={{ color: colors.accent }}></i>
                     <h2 className="text-xl font-semibold" style={{ color: colors.textPrimary }}>
-                        Projekt-Anhänge
+                        {t.projectattachmentspanel400}
                         {selectedProject && (
                             <span className="font-normal ml-2" style={{ color: colors.textMuted }}>
                                 - {selectedProject.name}
@@ -421,7 +444,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     name="file"
                     accept="*"
                     maxFileSize={25 * 1024 * 1024}
-                    chooseLabel="Datei hochladen"
+                    chooseLabel={t.projectattachmentspanel424}
                     customUpload
                     auto
                     uploadHandler={handleUpload}
@@ -444,7 +467,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     <InputText
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Suchen..."
+                        placeholder={t.projectattachmentspanel447}
                         className="w-48"
                     />
                 </span>
@@ -454,7 +477,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     value={selectedCategory}
                     options={categoryOptions}
                     onChange={(e) => setSelectedCategory(e.value)}
-                    placeholder="Kategorie"
+                    placeholder={t.projectattachmentspanel457}
                     className="w-48"
                 />
 
@@ -465,7 +488,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     text
                     severity="secondary"
                     onClick={loadAttachments}
-                    tooltip="Aktualisieren"
+                    tooltip={t.projectattachmentspanel468}
                     tooltipOptions={{ position: 'top' }}
                 />
             </div>
@@ -523,7 +546,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                     />
                     <Column
                         field="download_count"
-                        header="Downloads"
+                        header={t.projectattachmentspanel526}
                         sortable
                         style={{ width: '100px' }}
                         body={(rowData) => (
@@ -531,7 +554,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         )}
                     />
                     <Column
-                        header="Aktionen"
+                        header={t.projectattachmentspanel534}
                         body={actionsTemplate}
                         style={{ width: '180px' }}
                         frozen
@@ -577,18 +600,18 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                                 rows={4}
                                 className="w-full"
-                                placeholder="Optionale Beschreibung..."
+                                placeholder={t.projectattachmentspanel580}
                             />
                         </div>
 
                         <div className="flex justify-end gap-2 mt-4">
                             <Button
-                                label="Abbrechen"
+                                label={t.projectattachmentspanel586}
                                 severity="secondary"
                                 onClick={() => setEditDialogVisible(false)}
                             />
                             <Button
-                                label="Speichern"
+                                label={t.projectattachmentspanel591}
                                 severity="success"
                                 onClick={saveEdit}
                             />

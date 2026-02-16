@@ -6,6 +6,7 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProjectInvitationResponseProps {
   token: string;
@@ -41,6 +42,9 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [completed, setCompleted] = useState(false);
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   // Registration modal state
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
@@ -67,14 +71,14 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid or expired invitation');
+        throw new Error(errorData.message || t.projectinvitationresponse70);
       }
 
       const data = await response.json();
       setInvitation(data.invitation);
       setUserExists(data.user_exists);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invitation');
+      setError(err instanceof Error ? err.message : t.projectinvitationresponse81);
     } finally {
       setLoading(false);
     }
@@ -105,10 +109,10 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
         setSuccess(data.message);
         setCompleted(true);
       } else {
-        throw new Error(data.message || `Failed to ${action} invitation`);
+        throw new Error(data.message || `${t.projectinvitationresponse112}${action}${t.projectinvitationresponse112_2}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Error ${action}ing invitation`);
+      setError(err instanceof Error ? err.message : `${t.projectinvitationresponse115}${action}${t.projectinvitationresponse115_2}`);
     } finally {
       setProcessing(false);
     }
@@ -130,12 +134,12 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
 
   const handleRegistration = async () => {
     if (!registrationForm.name || !registrationForm.username || !registrationForm.password) {
-      setError('Please fill in all required fields');
+      setError(t.projectinvitationresponse137);
       return;
     }
 
     if (registrationForm.password !== registrationForm.password_confirmation) {
-      setError('Passwords do not match');
+      setError(t.projectinvitationresponse142);
       return;
     }
 
@@ -158,16 +162,16 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Registration successful! Please check your email to verify your account.');
+        setSuccess(t.projectinvitationresponse165);
         setShowRegistrationModal(false);
         setTimeout(() => {
           setCompleted(true);
         }, 2000);
       } else {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.message || t.projectinvitationresponse171);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error during registration');
+      setError(err instanceof Error ? err.message : t.projectinvitationresponse174);
     } finally {
       setRegistering(false);
     }
@@ -189,8 +193,8 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">🚀 Scoriet</h1>
-          <p className="text-gray-400">Enterprise Code Generator</p>
+          <h1 className="text-4xl font-bold text-white mb-2">{t.projectinvitationresponse196}</h1>
+          <p className="text-gray-400">{t.projectinvitationresponse197}</p>
         </div>
 
         <Card className="bg-gray-800 border border-gray-700">
@@ -218,10 +222,10 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                   <>
                     <div className="text-center mb-6">
                       <h2 className="text-2xl font-bold text-white mb-2">
-                        Welcome to Scoriet! 🎉
+                        {t.projectinvitationresponse225}
                       </h2>
                       <p className="text-gray-300">
-                        You've been invited to join a project, but first you need to create an account
+                        {t.projectinvitationresponse228}
                       </p>
                     </div>
                   </>
@@ -230,10 +234,10 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                   <>
                     <div className="text-center mb-6">
                       <h2 className="text-2xl font-bold text-white mb-2">
-                        {action === 'accept' ? 'Accept' : 'Decline'} Project Invitation
+                        {action === 'accept' ? t.projectinvitationresponse237 : t.projectinvitationresponse237_2}{t.projectinvitationresponse237_3}
                       </h2>
                       <p className="text-gray-300">
-                        You've been invited to join a project on Scoriet
+                        {t.projectinvitationresponse240}
                       </p>
                     </div>
                   </>
@@ -253,7 +257,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-400">Invited by:</span>
+                        <span className="text-gray-400">{t.projectinvitationresponse260}</span>
                         <div className="text-white font-medium">
                           {invitation.inviter.name}
                         </div>
@@ -263,14 +267,14 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                       </div>
                       
                       <div>
-                        <span className="text-gray-400">Role:</span>
+                        <span className="text-gray-400">{t.projectinvitationresponse270}</span>
                         <div className="text-white font-medium capitalize">
                           {invitation.role}
                         </div>
                       </div>
 
                       <div>
-                        <span className="text-gray-400">Project Owner:</span>
+                        <span className="text-gray-400">{t.projectinvitationresponse277}</span>
                         <div className="text-white font-medium">
                           {invitation.project.owner.name}
                         </div>
@@ -280,7 +284,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                       </div>
 
                       <div>
-                        <span className="text-gray-400">Expires:</span>
+                        <span className="text-gray-400">{t.projectinvitationresponse287}</span>
                         <div className="text-white font-medium">
                           {new Date(invitation.expires_at).toLocaleDateString()}
                         </div>
@@ -289,7 +293,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
 
                     {invitation.message && (
                       <div className="border-t border-gray-600 pt-4">
-                        <span className="text-gray-400 text-sm">Personal message:</span>
+                        <span className="text-gray-400 text-sm">{t.projectinvitationresponse296}</span>
                         <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mt-2 rounded">
                           <p className="text-yellow-800 italic">"{invitation.message}"</p>
                         </div>
@@ -304,23 +308,23 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                     // User doesn't exist - show registration button
                     <>
                       <Button
-                        label="🚀 Create Account & Join Project"
+                        label={t.projectinvitationresponse311}
                         icon="pi pi-user-plus"
                         onClick={openRegistrationModal}
                         className="p-button-success p-button-lg w-full"
                         size="large"
                       />
                       <p className="text-gray-400 text-sm">
-                        You'll create a free Scoriet account and automatically join this project as a {invitation.role}.
+                        {t.projectinvitationresponse318}{invitation.role}.
                       </p>
                       <div className="text-center mt-4">
                         <p className="text-gray-500 text-sm">
-                          Already have an account?{' '}
+                          {t.projectinvitationresponse322}{' '}
                           <button
                             onClick={() => window.location.href = `/?login=1&email=${encodeURIComponent(invitation.invited_email)}`}
                             className="text-blue-400 hover:text-blue-300 underline"
                           >
-                            Sign in here
+                            {t.projectinvitationresponse327}
                           </button>
                         </p>
                       </div>
@@ -331,7 +335,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                       {action === 'accept' ? (
                         <>
                           <Button
-                            label="✅ Accept Invitation"
+                            label={t.projectinvitationresponse338}
                             icon={processing ? "pi pi-spinner pi-spin" : "pi pi-check"}
                             onClick={handleResponse}
                             disabled={processing}
@@ -339,13 +343,13 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                             size="large"
                           />
                           <p className="text-gray-400 text-sm">
-                            By accepting, you'll become a {invitation.role} of this project and gain access to collaborate with the team.
+                            {t.projectinvitationresponse346}{invitation.role}{t.projectinvitationresponse346_2}
                           </p>
                         </>
                       ) : (
                         <>
                           <Button
-                            label="❌ Decline Invitation"
+                            label={t.projectinvitationresponse352}
                             icon={processing ? "pi pi-spinner pi-spin" : "pi pi-times"}
                             onClick={handleResponse}
                             disabled={processing}
@@ -353,7 +357,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                             size="large"
                           />
                           <p className="text-gray-400 text-sm">
-                            You can decline this invitation if you're not interested in joining this project.
+                            {t.projectinvitationresponse360}
                           </p>
                         </>
                       )}
@@ -370,20 +374,20 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-4">
                   {action === 'accept' 
-                    ? 'Welcome to the team!' 
-                    : 'Invitation declined'
+                    ? t.projectinvitationresponse377 
+                    : t.projectinvitationresponse378
                   }
                 </h2>
                 <p className="text-gray-300 mb-6">
                   {action === 'accept'
-                    ? 'You can now access the project and start collaborating with your team.'
-                    : 'The project owner has been notified of your decision.'
+                    ? t.projectinvitationresponse383
+                    : t.projectinvitationresponse384
                   }
                 </p>
                 
                 {action === 'accept' && (
                   <Button
-                    label="Go to Scoriet App"
+                    label={t.projectinvitationresponse390}
                     icon="pi pi-arrow-right"
                     onClick={goToApp}
                     className="p-button-primary p-button-lg"
@@ -396,7 +400,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
         </Card>
 
         <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>This is an automated message from Scoriet - Enterprise Code Generator</p>
+          <p>{t.projectinvitationresponse403}</p>
         </div>
       </div>
 
@@ -404,7 +408,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
       <Dialog
         visible={showRegistrationModal}
         onHide={() => setShowRegistrationModal(false)}
-        header="Create Your Scoriet Account"
+        header={t.projectinvitationresponse411}
         style={{ width: '500px' }}
         closable={!registering}
         dismissableMask={!registering}
@@ -414,30 +418,30 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
           {error && <Message severity="error" text={error} />}
 
           <div className="field">
-            <label htmlFor="name" className="font-medium">Full Name *</label>
+            <label htmlFor="name" className="font-medium">{t.projectinvitationresponse421}</label>
             <InputText
               id="name"
               value={registrationForm.name}
               onChange={(e) => setRegistrationForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="John Doe"
+              placeholder={t.projectinvitationresponse426}
               disabled={registering}
             />
           </div>
 
           <div className="field">
-            <label htmlFor="username" className="font-medium">Username *</label>
+            <label htmlFor="username" className="font-medium">{t.projectinvitationresponse432}</label>
             <InputText
               id="username"
               value={registrationForm.username}
               onChange={(e) => setRegistrationForm(prev => ({ ...prev, username: e.target.value.toLowerCase() }))}
-              placeholder="johndoe"
+              placeholder={t.projectinvitationresponse437}
               disabled={registering}
             />
-            <small className="text-gray-500">Only lowercase letters, numbers, hyphens and underscores</small>
+            <small className="text-gray-500">{t.projectinvitationresponse440}</small>
           </div>
 
           <div className="field">
-            <label htmlFor="email" className="font-medium">Email Address *</label>
+            <label htmlFor="email" className="font-medium">{t.projectinvitationresponse444}</label>
             <InputText
               id="email"
               type="email"
@@ -446,16 +450,16 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
               disabled={true}
               className="bg-gray-100"
             />
-            <small className="text-gray-500">Pre-filled from invitation</small>
+            <small className="text-gray-500">{t.projectinvitationresponse453}</small>
           </div>
 
           <div className="field">
-            <label htmlFor="password" className="font-medium">Password *</label>
+            <label htmlFor="password" className="font-medium">{t.projectinvitationresponse457}</label>
             <Password
               id="password"
               value={registrationForm.password}
               onChange={(e) => setRegistrationForm(prev => ({ ...prev, password: e.target.value }))}
-              placeholder="Enter your password"
+              placeholder={t.projectinvitationresponse462}
               disabled={registering}
               feedback={false}
               toggleMask
@@ -463,12 +467,12 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
           </div>
 
           <div className="field">
-            <label htmlFor="password_confirmation" className="font-medium">Confirm Password *</label>
+            <label htmlFor="password_confirmation" className="font-medium">{t.projectinvitationresponse470}</label>
             <Password
               id="password_confirmation"
               value={registrationForm.password_confirmation}
               onChange={(e) => setRegistrationForm(prev => ({ ...prev, password_confirmation: e.target.value }))}
-              placeholder="Confirm your password"
+              placeholder={t.projectinvitationresponse475}
               disabled={registering}
               feedback={false}
               toggleMask
@@ -477,14 +481,14 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button
-              label="Cancel"
+              label={t.projectinvitationresponse484}
               icon="pi pi-times"
               onClick={() => setShowRegistrationModal(false)}
               className="p-button-text"
               disabled={registering}
             />
             <Button
-              label="Create Account"
+              label={t.projectinvitationresponse491}
               icon={registering ? "pi pi-spinner pi-spin" : "pi pi-check"}
               onClick={handleRegistration}
               disabled={registering}

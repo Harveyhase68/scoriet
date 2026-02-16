@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-//import { useTranslation } from '@/i18n';
-//import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export interface ScriptStep {
@@ -29,7 +28,10 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
   const { colors } = useTheme();
   const [editingInstall, setEditingInstall] = useState<number | null>(null);
   const [editingUpdate, setEditingUpdate] = useState<number | null>(null);
-
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+  
   const addStep = (isInstall: boolean) => {
     const currentSteps = isInstall ? installScript : updateScript;
     const newStep: ScriptStep = {
@@ -107,7 +109,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
       <div className="space-y-3">
         {steps.length === 0 ? (
           <div className="italic p-3 text-center border border-dashed rounded theme-text-muted theme-border-primary">
-            No steps defined
+            {t.deploymentscriptseditor113}
           </div>
         ) : (
           steps.map((step, index) => (
@@ -161,7 +163,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                     <textarea
                       value={step.command}
                       onChange={(e) => updateStep(index, 'command', e.target.value, isInstall)}
-                      placeholder="Command(s) - one per line (e.g., npm install)"
+                      placeholder={t.deploymentscriptseditor167}
                       rows={4}
                       className="w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none"
                       style={{
@@ -261,8 +263,8 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
   return (
     <div className="deployment-scripts-editor">
       <div className="mb-6 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
-        <strong>Info:</strong> These scripts guide users through installation and updates.
-        Commands can be shell scripts, npm commands, build tools, or manual instructions.
+        <strong>Info:</strong>{t.deploymentscriptseditor267}
+        {t.deploymentscriptseditor268}
       </div>
 
       {/* Install Script */}
@@ -281,7 +283,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                 cursor: editingInstall !== null || editingUpdate !== null ? 'not-allowed' : 'pointer',
               }}
             >
-              + Add Step
+             {t.deploymentscriptseditor287}
             </button>
           )}
         </div>
@@ -304,7 +306,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                 cursor: editingInstall !== null || editingUpdate !== null ? 'not-allowed' : 'pointer',
               }}
             >
-              + Add Step
+              {t.deploymentscriptseditor310}
             </button>
           )}
         </div>

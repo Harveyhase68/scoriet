@@ -1373,7 +1373,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 value={themeMode}
                 options={themeOptions}
                 onChange={(e) => setThemeMode(e.value)}
-                placeholder={t.profilemodal1376 || "Design auswählen"}
+                placeholder={t.profilemodal1376}
                 className="w-full"
                 panelClassName="profile-language-dropdown-panel"
                 style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
@@ -1390,7 +1390,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 )}
                 valueTemplate={(selectedOption) => {
                   if (!selectedOption) {
-                    return <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1393 || "Design auswählen"}</span>;
+                    return <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1393}</span>;
                   }
                   const option = themeOptions.find(o => o.value === (selectedOption.value || selectedOption));
                   return option ? (
@@ -2231,7 +2231,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         </TabPanel>
 
         {/* Seller Profile Tab */}
-        <TabPanel header={t.profilemodal2234 || "Verkäufer"} leftIcon="pi pi-shopping-bag">
+        <TabPanel header={t.profilemodal2234} leftIcon="pi pi-shopping-bag">
           <form onSubmit={handleSellerSubmit} className="space-y-6">
             {sellerError && (
               <Message severity="error" text={sellerError} className="w-full" />
@@ -2281,26 +2281,26 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div>
                   <h4 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     <i className="pi pi-building" style={{ color: colors.accent }}></i>
-                    {t.profilemodal2284 || 'Unternehmensdaten'}
+                    {t.profilemodal2284}
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="field">
                       <label htmlFor="company_name" className="block text-sm font-medium mb-2">
-                        {t.profilemodal2290 || 'Firmenname / Name *'}
+                        {t.profilemodal2290}
                       </label>
                       <InputText
                         id="company_name"
                         value={sellerData.company_name}
                         onChange={(e) => setSellerData(prev => ({ ...prev, company_name: e.target.value }))}
                         className="w-full"
-                        placeholder={t.profilemodal2297 || "Musterfirma GmbH"}
+                        placeholder={t.profilemodal2297}
                       />
                     </div>
 
                     <div className="field profile-themed-dropdown">
                       <label htmlFor="company_country" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                        {t.profilemodal2303 || 'Land *'}
+                        {t.profilemodal2303}
                       </label>
                       <Dropdown
                         id="company_country"
@@ -2308,7 +2308,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         options={countries}
                         onChange={(e) => setSellerData(prev => ({ ...prev, company_country: e.value }))}
                         className="w-full"
-                        placeholder={t.profilemodal2311 || "Land auswählen"}
+                        placeholder={t.profilemodal2311}
                         filter
                         panelClassName="profile-language-dropdown-panel"
                         style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
@@ -2318,7 +2318,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
                   <div className="field mt-4">
                     <label htmlFor="company_address" className="block text-sm font-medium mb-2">
-                      {t.profilemodal2321 || 'Adresse'}
+                      {t.profilemodal2321}
                     </label>
                     <InputTextarea
                       id="company_address"
@@ -2337,15 +2337,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div>
                   <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <i className="pi pi-file text-yellow-400"></i>
-                    {t.profilemodal2340 || 'Steuer-Informationen'}
+                    {t.profilemodal2340}
                   </h4>
 
                   {isEuCountry ? (
                     <div className="field">
                       <label htmlFor="vat_id" className="block text-sm font-medium mb-2">
-                        {t.profilemodal2346 || 'UID-Nummer (USt-IdNr.)'}
+                        {t.profilemodal2346}
                         {sellerData.company_country !== 'AT' && (
-                          <span className="text-yellow-400 ml-2">{t.profilemodal2348 || '* Für Reverse Charge erforderlich'}</span>
+                          <span className="text-yellow-400 ml-2">{t.profilemodal2348}</span>
                         )}
                       </label>
                       <InputText
@@ -2357,8 +2357,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       />
                       <small className="text-gray-400">
                         {sellerData.company_country === 'AT'
-                          ? (t.profilemodal2360 || 'Österreichische Unternehmen erhalten Gutschriften inkl. USt.')
-                          : (t.profilemodal2361_2 || 'EU-Unternehmen mit UID erhalten Netto-Gutschriften (Reverse Charge).')
+                          ? (t.profilemodal2360)
+                          : (t.profilemodal2361_2)
                         }
                       </small>
                     </div>
@@ -2366,31 +2366,31 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     <div className="space-y-4">
                       <div className="field">
                         <label htmlFor="business_registration" className="block text-sm font-medium mb-2">
-                          {t.profilemodal2369 || 'Gewerbeschein / Business Registration'}
+                          {t.profilemodal2369}
                         </label>
                         <InputText
                           id="business_registration"
                           value={sellerData.business_registration}
                           onChange={(e) => setSellerData(prev => ({ ...prev, business_registration: e.target.value }))}
                           className="w-full"
-                          placeholder={t.profilemodal2376 || "Registrierungsnummer"}
+                          placeholder={t.profilemodal2376}
                         />
                       </div>
                       <div className="field">
                         <label htmlFor="tax_id" className="block text-sm font-medium mb-2">
-                          {t.profilemodal2381 || 'Steuer-ID / Tax ID'}
+                          {t.profilemodal2381}
                         </label>
                         <InputText
                           id="tax_id"
                           value={sellerData.tax_id}
                           onChange={(e) => setSellerData(prev => ({ ...prev, tax_id: e.target.value }))}
                           className="w-full"
-                          placeholder={t.profilemodal2388 || "Steuer-ID"}
+                          placeholder={t.profilemodal2388}
                         />
                       </div>
                       <Message
                         severity="info"
-                        text={t.profilemodal2393 || "Ohne Unternehmensnachweis wird von Ihrer Auszahlung 20% MwSt abgezogen."}
+                        text={t.profilemodal2393}
                         className="w-full"
                       />
                     </div>
@@ -2403,12 +2403,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div>
                   <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <i className="pi pi-wallet text-green-400"></i>
-                    {t.profilemodal2406 || 'Auszahlungsmethode'}
+                    {t.profilemodal2406}
                   </h4>
 
                   <div className="field mb-4 profile-themed-dropdown">
                     <label htmlFor="payout_method" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                      {t.profilemodal2411 || 'Auszahlungsart *'}
+                      {t.profilemodal2411}
                     </label>
                     <Dropdown
                       id="payout_method"
@@ -2416,7 +2416,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       options={payoutMethods}
                       onChange={(e) => setSellerData(prev => ({ ...prev, payout_method: e.value }))}
                       className="w-full"
-                      placeholder={t.profilemodal2419 || "Auszahlungsart wählen"}
+                      placeholder={t.profilemodal2419}
                       panelClassName="profile-language-dropdown-panel"
                       style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderSecondary }}
                     />
@@ -2426,7 +2426,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     <div className="field p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
                       <label htmlFor="paypal_payout_email" className="block text-sm font-medium mb-2">
                         <i className="pi pi-paypal mr-2"></i>
-                        {t.profilemodal2429 || 'PayPal-E-Mail-Adresse *'}
+                        {t.profilemodal2429}
                       </label>
                       <InputText
                         id="paypal_payout_email"
@@ -2434,7 +2434,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                         value={sellerData.paypal_payout_email}
                         onChange={(e) => setSellerData(prev => ({ ...prev, paypal_payout_email: e.target.value }))}
                         className="w-full"
-                        placeholder={t.profilemodal2437 || "ihre-email@paypal.com"}
+                        placeholder={t.profilemodal2437}
                       />
                     </div>
                   )}
@@ -2443,19 +2443,19 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     <div className="space-y-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
                       <div className="field">
                         <label htmlFor="bank_account_holder" className="block text-sm font-medium mb-2">
-                          {t.profilemodal2446 || 'Kontoinhaber *'}
+                          {t.profilemodal2446}
                         </label>
                         <InputText
                           id="bank_account_holder"
                           value={sellerData.bank_account_holder}
                           onChange={(e) => setSellerData(prev => ({ ...prev, bank_account_holder: e.target.value }))}
                           className="w-full"
-                          placeholder={t.profilemodal2453 || "Max Mustermann"}
+                          placeholder={t.profilemodal2453}
                         />
                       </div>
                       <div className="field">
                         <label htmlFor="bank_iban" className="block text-sm font-medium mb-2">
-                          {t.profilemodal2458 || 'IBAN *'}
+                          {t.profilemodal2458}
                         </label>
                         <InputText
                           id="bank_iban"
@@ -2467,7 +2467,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       </div>
                       <div className="field">
                         <label htmlFor="bank_bic" className="block text-sm font-medium mb-2">
-                          {t.profilemodal2470 || 'BIC/SWIFT'}
+                          {t.profilemodal2470}
                         </label>
                         <InputText
                           id="bank_bic"
@@ -2485,10 +2485,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
                   <h5 className="font-semibold text-white mb-2">{t.profilemodal2486}</h5>
                   <ul className="text-gray-400 text-sm space-y-1">
-                    <li>{t.profilemodal2488 || '• Auszahlungen erfolgen monatlich (Anfang des Folgemonats)'}</li>
-                    <li>{t.profilemodal2489 || '• Mindestauszahlung: 10,00 €'}</li>
-                    <li>{t.profilemodal2490 || '• Sie erhalten 80% des Verkaufspreises'}</li>
-                    <li>{t.profilemodal2491 || '• 20% verbleiben bei der Plattform'}</li>
+                    <li>{t.profilemodal2488}</li>
+                    <li>{t.profilemodal2489}</li>
+                    <li>{t.profilemodal2490}</li>
+                    <li>{t.profilemodal2491}</li>
                   </ul>
                 </div>
               </>
@@ -2496,7 +2496,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <Button
               type="submit"
-              label={savingSeller ? (t.profilemodal2499 || "Speichern...") : (t.profilemodal2499_2 || "Verkäufer-Profil speichern")}
+              label={savingSeller ? (t.profilemodal2499) : (t.profilemodal2499_2)}
               icon={savingSeller ? "pi pi-spinner pi-spin" : "pi pi-save"}
               disabled={savingSeller}
               className="w-full"
@@ -2510,7 +2510,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div>
               <h3 className="text-lg font-semibold mb-2 flex items-center gap-2" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-link" style={{ color: colors.accent }}></i>
-                {t.profilemodal2513 || 'Git Provider verbinden'}
+                {t.profilemodal2513}
                 {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
                   <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>Patron</span>
                 )}

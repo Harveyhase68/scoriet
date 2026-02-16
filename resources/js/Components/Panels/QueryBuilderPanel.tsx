@@ -71,7 +71,7 @@ interface DiffResult {
 export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage); // Future use for i18n
+  const { t: t } = useTranslation(currentLanguage); // Future use for i18n
   const { colors } = useTheme();
   const toast = useRef<Toast>(null);
 
@@ -129,7 +129,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         setSchemaMigrationAccess(data);
       }
     } catch (error) {
-      console.error('Failed to load schema migration access:', error);
+      console.error(t.querybuilderpanel132, error);
     } finally {
       setLoadingAccess(false);
     }
@@ -150,7 +150,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         toast.current?.show({
           severity: 'success',
           summary: 'Erfolg',
-          detail: data.message || 'Schema Migration freigeschaltet!',
+          detail: data.message || t.querybuilderpanel153,
         });
         // Trigger credits update event
         window.dispatchEvent(new Event('creditsChanged'));
@@ -159,15 +159,15 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: error.message || 'Freischaltung fehlgeschlagen',
+          detail: error.message || t.querybuilderpanel162,
         });
       }
     } catch (err) {
-      console.error('Error unlocking schema migration:', err);
+      console.error(t.querybuilderpanel166, err);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Freischaltung fehlgeschlagen',
+        detail: t.querybuilderpanel170,
       });
     } finally {
       setUnlocking(false);
@@ -227,7 +227,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         setToVersion(versionsData[0]);
       }
     } catch (err: any) {
-      setError('Failed to load versions: ' + (err.response?.data?.message || err.message));
+      setError(t.querybuilderpanel230 + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -235,12 +235,12 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
   const compareVersions = async () => {
     if (!fromVersion || !toVersion) {
-      setError('Please select both FROM and TO versions');
+      setError(t.querybuilderpanel238);
       return;
     }
 
     if (fromVersion.id === toVersion.id) {
-      setError('FROM and TO versions must be different');
+      setError(t.querybuilderpanel243);
       return;
     }
 
@@ -258,10 +258,10 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       if (response.success) {
         setDiffResult(response.data);
       } else {
-        setError('Comparison failed: ' + response.message);
+        setError(t.querybuilderpanel261 + response.message);
       }
     } catch (err: any) {
-      setError('Failed to compare versions: ' + (err.response?.data?.message || err.message));
+      setError(t.querybuilderpanel264 + (err.response?.data?.message || err.message));
     } finally {
       setComparing(false);
     }
@@ -285,7 +285,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
     if (!diffResult) return;
 
     navigator.clipboard.writeText(diffResult.sql).then(() => {
-      alert('SQL copied to clipboard!');
+      alert(t.querybuilderpanel288);
     });
   };
 
@@ -362,7 +362,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         <div className="flex items-center justify-between p-3" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="flex items-center gap-2">
             <i className="pi pi-database text-xl" style={{ color: colors.accent }} />
-            <h2 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Schema Migration</h2>
+            <h2 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.querybuilderpanel365}</h2>
           </div>
         </div>
 
@@ -372,10 +372,10 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
             <div className="rounded-lg p-6 text-center" style={{ backgroundColor: colors.warningBg, border: `2px solid ${colors.warningText}` }}>
               <div className="text-4xl mb-4">🔒</div>
               <h3 className="text-xl font-semibold mb-2" style={{ color: colors.warningText }}>
-                Schema Migration ist ein Premium-Feature
+                {t.querybuilderpanel375}
               </h3>
               <p className="mb-4" style={{ color: colors.textMuted }}>
-                Mit Schema Migration können Sie Datenbankversionen vergleichen und automatisch SQL-Migrationsskripte generieren.
+                {t.querybuilderpanel378}
               </p>
 
               <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgTertiary }}>
@@ -383,7 +383,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
                   {schemaMigrationAccess?.unlock_cost || 50} Credits / Jahr
                 </div>
                 <div className="text-sm" style={{ color: colors.textMuted }}>
-                  Einmalige Freischaltung für 12 Monate
+                  {t.querybuilderpanel386}
                 </div>
               </div>
 
@@ -404,16 +404,16 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
                 <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                 <ul className="text-left space-y-1">
                   <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
-                    <span>🔄</span> Versionsvergleich
+                    <span>🔄</span>{t.querybuilderpanel407}
                   </li>
                   <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
-                    <span>📝</span> SQL-Migration Generierung
+                    <span>📝</span>{t.querybuilderpanel410}
                   </li>
                   <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
-                    <span>📊</span> Detaillierte Änderungsübersicht
+                    <span>📊</span>{t.querybuilderpanel413}
                   </li>
                   <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
-                    <span>⬇️</span> SQL-Export & Download
+                    <span>⬇️</span>{t.querybuilderpanel416}
                   </li>
                 </ul>
               </div>
@@ -432,17 +432,17 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         <div className="flex items-center gap-2 mb-2">
           <h2 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
             <i className="pi pi-database mr-2" style={{ color: colors.accent }}></i>
-            Schema Migration
+            {t.querybuilderpanel435}
           </h2>
           {/* Access Status Badge */}
           {schemaMigrationAccess?.is_patron ? (
             <Tag value="Patron" severity="warning" />
           ) : schemaMigrationAccess?.days_remaining !== undefined ? (
-            <Tag value={`${schemaMigrationAccess.days_remaining} Tage`} severity="info" />
+            <Tag value={`${schemaMigrationAccess.days_remaining}{t.querybuilderpanel441}`} severity="info" />
           ) : null}
         </div>
         <p style={{ color: colors.textMuted }}>
-          Compare two schema versions and generate SQL migration scripts
+          {t.querybuilderpanel445}
         </p>
       </div>
 
@@ -456,14 +456,14 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {/* Schema Selection */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Select Schema
+              {t.querybuilderpanel459}
             </label>
             <Dropdown
               value={selectedSchema}
               options={schemas}
               onChange={(e) => setSelectedSchema(e.value)}
               optionLabel="name"
-              placeholder="Select a schema..."
+              placeholder={t.querybuilderpanel466}
               className="w-full"
               filter
               disabled={loading}
@@ -473,14 +473,14 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {/* FROM Version */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              FROM Version (Old)
+              {t.querybuilderpanel476}
             </label>
             <Dropdown
               value={fromVersion}
               options={versions}
               onChange={(e) => setFromVersion(e.value)}
               optionLabel="version_number"
-              placeholder="Select FROM version..."
+              placeholder={t.querybuilderpanel483}
               className="w-full"
               disabled={!selectedSchema || loading}
             />
@@ -489,14 +489,14 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {/* TO Version */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              TO Version (New)
+              {t.querybuilderpanel492}
             </label>
             <Dropdown
               value={toVersion}
               options={versions}
               onChange={(e) => setToVersion(e.value)}
               optionLabel="version_number"
-              placeholder="Select TO version..."
+              placeholder={t.querybuilderpanel499}
               className="w-full"
               disabled={!selectedSchema || loading}
             />
@@ -505,13 +505,13 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {/* Database Dialect */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Target Database
+              {t.querybuilderpanel508}
             </label>
             <Dropdown
               value={selectedDialect}
               options={dialectOptions}
               onChange={(e) => setSelectedDialect(e.value)}
-              placeholder="Select dialect..."
+              placeholder={t.querybuilderpanel514}
               className="w-full"
               disabled={loading || comparing}
             />
@@ -520,7 +520,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
         <div className="mt-4 flex gap-2">
           <Button
-            label="Compare Versions"
+            label={t.querybuilderpanel523}
             icon="pi pi-sync"
             onClick={compareVersions}
             disabled={!fromVersion || !toVersion || comparing || fromVersion.id === toVersion.id}
@@ -531,14 +531,14 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {diffResult && (
             <>
               <Button
-                label="Download SQL"
+                label={t.querybuilderpanel534}
                 icon="pi pi-download"
                 onClick={downloadSQL}
                 severity="success"
                 outlined
               />
               <Button
-                label="Copy to Clipboard"
+                label={t.querybuilderpanel541}
                 icon="pi pi-copy"
                 onClick={copyToClipboard}
                 severity="info"
@@ -562,78 +562,78 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           <div className="mb-4 p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>
               <i className="pi pi-chart-bar mr-2" style={{ color: colors.accent }}></i>
-              Migration Summary
+              {t.querybuilderpanel565}
             </h3>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
                 <div className="text-3xl font-bold" style={{ color: colors.infoText }}>{diffResult.summary.total_changes}</div>
-                <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>Total Changes</div>
+                <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>{t.querybuilderpanel571}</div>
               </div>
 
               {diffResult.summary.tables_created > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.successText }}>{diffResult.summary.tables_created}</div>
-                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>Tables Created</div>
+                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>{t.querybuilderpanel577}</div>
                 </div>
               )}
 
               {diffResult.summary.tables_dropped > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.tables_dropped}</div>
-                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>Tables Dropped</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>{t.querybuilderpanel584}</div>
                 </div>
               )}
 
               {diffResult.summary.columns_added > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.successText }}>{diffResult.summary.columns_added}</div>
-                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>Columns Added</div>
+                  <div className="text-sm" style={{ color: colors.successText, opacity: 0.8 }}>{t.querybuilderpanel591}</div>
                 </div>
               )}
 
               {diffResult.summary.columns_dropped > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.columns_dropped}</div>
-                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>Columns Dropped</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>{t.querybuilderpanel598}</div>
                 </div>
               )}
 
               {diffResult.summary.columns_modified > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.warningText }}>{diffResult.summary.columns_modified}</div>
-                  <div className="text-sm" style={{ color: colors.warningText, opacity: 0.8 }}>Columns Modified</div>
+                  <div className="text-sm" style={{ color: colors.warningText, opacity: 0.8 }}>{t.querybuilderpanel605}</div>
                 </div>
               )}
 
               {diffResult.summary.primary_keys_changed > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.accent}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.accent }}>{diffResult.summary.primary_keys_changed}</div>
-                  <div className="text-sm" style={{ color: colors.accent, opacity: 0.8 }}>PKs Changed</div>
+                  <div className="text-sm" style={{ color: colors.accent, opacity: 0.8 }}>{t.querybuilderpanel612}</div>
                 </div>
               )}
 
               {diffResult.summary.foreign_keys_added > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.infoText }}>{diffResult.summary.foreign_keys_added}</div>
-                  <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>FKs Added</div>
+                  <div className="text-sm" style={{ color: colors.infoText, opacity: 0.8 }}>{t.querybuilderpanel619}</div>
                 </div>
               )}
 
               {diffResult.summary.foreign_keys_dropped > 0 && (
                 <div className="p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                   <div className="text-3xl font-bold" style={{ color: colors.errorText }}>{diffResult.summary.foreign_keys_dropped}</div>
-                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>FKs Dropped</div>
+                  <div className="text-sm" style={{ color: colors.errorText, opacity: 0.8 }}>{t.querybuilderpanel626}</div>
                 </div>
               )}
             </div>
 
             <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
               <div>
-                <strong style={{ color: colors.textSecondary }}>From:</strong> {diffResult.from_version.schema_name} - Version {diffResult.from_version.version_number}
+                <strong style={{ color: colors.textSecondary }}>{t.querybuilderpanel633}</strong> {diffResult.from_version.schema_name}{t.querybuilderpanel633_2}{diffResult.from_version.version_number}
               </div>
               <div>
-                <strong style={{ color: colors.textSecondary }}>To:</strong> {diffResult.to_version.schema_name} - Version {diffResult.to_version.version_number}
+                <strong style={{ color: colors.textSecondary }}>{t.querybuilderpanel636}</strong> {diffResult.to_version.schema_name}{t.querybuilderpanel636_2}{diffResult.to_version.version_number}
               </div>
             </div>
           </div>
@@ -647,22 +647,22 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
                 rows={10}
                 rowsPerPageOptions={[10, 25, 50]}
                 className="p-datatable-sm"
-                emptyMessage="No changes detected"
+                emptyMessage={t.querybuilderpanel650}
               >
                 <Column
                   field="priority"
-                  header="Order"
+                  header={t.querybuilderpanel654}
                   body={(rowData) => <Tag value={rowData.priority} severity="info" />}
                   style={{ width: '80px' }}
                   sortable
                 />
                 <Column
-                  header="Change Type"
+                  header={t.querybuilderpanel660}
                   body={renderChangeType}
                   style={{ width: '200px' }}
                 />
                 <Column
-                  header="Details"
+                  header={t.querybuilderpanel665}
                   body={renderChangeDetails}
                 />
               </DataTable>
@@ -670,17 +670,17 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           )}
 
           {/* SQL Script */}
-          <Panel header="Generated Migration SQL Script" toggleable collapsed={false} className="query-builder-panel-section">
+          <Panel header={t.querybuilderpanel673} toggleable collapsed={false} className="query-builder-panel-section">
             <div className="mb-2 flex gap-2">
               <Button
-                label="Copy SQL"
+                label={t.querybuilderpanel676}
                 icon="pi pi-copy"
                 size="small"
                 onClick={copyToClipboard}
                 outlined
               />
               <Button
-                label="Download SQL"
+                label={t.querybuilderpanel683}
                 icon="pi pi-download"
                 size="small"
                 onClick={downloadSQL}
@@ -698,7 +698,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
             />
 
             <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
-              💡 Tip: Review the SQL carefully before executing it on your database!
+              {t.querybuilderpanel701}
             </div>
           </Panel>
 
@@ -706,7 +706,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {diffResult.summary.total_changes === 0 && (
             <Message
               severity="info"
-              text="No changes detected between the selected versions. The schemas are identical."
+              text={t.querybuilderpanel709}
               className="w-full"
             />
           )}

@@ -129,7 +129,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                   onLanguageChange={handleLanguageChange}
                 />
                 <Button
-                  label={t.goToApp || 'Go to App'}
+                  label={t.goToApp}
                   icon="pi pi-arrow-right"
                   iconPos="right"
                   onClick={handleGoToApp}
@@ -154,7 +154,7 @@ export default function PublicProjectPage({ project, username: _username, projec
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-white mb-2">{project.name}</h1>
                 <p className="text-gray-400 mb-3">
-                  {t.publicProjectBy || 'by'} <span className="text-blue-400 font-medium">@{project.owner.username}</span>
+                  {t.publicProjectBy} <span className="text-blue-400 font-medium">@{project.owner.username}</span>
                 </p>
                 {project.description && (
                   <p className="text-gray-300 text-lg">{project.description}</p>
@@ -172,7 +172,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{project.stats.teams_count}</p>
-                  <p className="text-gray-400">{t.teams || 'Teams'}</p>
+                  <p className="text-gray-400">{t.teams}</p>
                 </div>
               </div>
             </Card>
@@ -184,7 +184,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{project.stats.templates_count}</p>
-                  <p className="text-gray-400">{t.templates || 'Templates'}</p>
+                  <p className="text-gray-400">{t.templates}</p>
                 </div>
               </div>
             </Card>
@@ -196,7 +196,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{project.stats.schemas_count}</p>
-                  <p className="text-gray-400">{t.databases || 'Databases'}</p>
+                  <p className="text-gray-400">{t.databases}</p>
                 </div>
               </div>
             </Card>
@@ -209,14 +209,14 @@ export default function PublicProjectPage({ project, username: _username, projec
               <Card className="bg-gray-800/50 border border-gray-700" title={
                 <div className="flex items-center gap-2 text-white">
                   <GlobeAltIcon className="w-5 h-5" />
-                  <span>{t.projectSettings || 'Project Settings'}</span>
+                  <span>{t.projectSettings}</span>
                 </div>
               }>
                 <div className="space-y-4">
                   {/* Languages */}
                   {project.enabled_languages && project.enabled_languages.length > 0 && (
                     <div>
-                      <p className="text-gray-400 text-sm mb-2">{t.languages || 'Languages'}</p>
+                      <p className="text-gray-400 text-sm mb-2">{t.languages}</p>
                       <div className="flex flex-wrap gap-2">
                         {project.enabled_languages.map(lang => (
                           <Tag
@@ -236,28 +236,28 @@ export default function PublicProjectPage({ project, username: _username, projec
                     {project.date_format && (
                       <div className="flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.dateFormat || 'Date'}:</span>
+                        <span className="text-gray-400 text-sm">{t.dateFormat}:</span>
                         <span className="text-white text-sm">{project.date_format}</span>
                       </div>
                     )}
                     {project.time_format && (
                       <div className="flex items-center gap-2">
                         <ClockIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.timeFormat || 'Time'}:</span>
+                        <span className="text-gray-400 text-sm">{t.timeFormat}:</span>
                         <span className="text-white text-sm">{project.time_format}</span>
                       </div>
                     )}
                     {project.currency_symbol && (
                       <div className="flex items-center gap-2">
                         <CurrencyDollarIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.currency || 'Currency'}:</span>
+                        <span className="text-gray-400 text-sm">{t.currency}:</span>
                         <span className="text-white text-sm">{project.currency_symbol}</span>
                       </div>
                     )}
                     {project.timezone && (
                       <div className="flex items-center gap-2">
                         <MapPinIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.timezone || 'Timezone'}:</span>
+                        <span className="text-gray-400 text-sm">{t.timezone}:</span>
                         <span className="text-white text-sm">{project.timezone}</span>
                       </div>
                     )}
@@ -288,7 +288,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 <Card className="bg-gray-800/50 border border-gray-700" title={
                   <div className="flex items-center gap-2 text-white">
                     <UserGroupIcon className="w-5 h-5" />
-                    <span>{t.teams || 'Teams'}</span>
+                    <span>{t.teams}</span>
                     <Tag value={project.teams.length.toString()} severity="info" />
                   </div>
                 }>
@@ -313,7 +313,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 <Card className="bg-gray-800/50 border border-gray-700" title={
                   <div className="flex items-center gap-2 text-white">
                     <DocumentTextIcon className="w-5 h-5" />
-                    <span>{t.templates || 'Templates'}</span>
+                    <span>{t.templates}</span>
                     <Tag value={project.templates.length.toString()} severity="success" />
                   </div>
                 }>
@@ -340,8 +340,8 @@ export default function PublicProjectPage({ project, username: _username, projec
                 <Card className="bg-gray-800/50 border border-gray-700" title={
                   <div className="flex items-center gap-2 text-white">
                     <CircleStackIcon className="w-5 h-5" />
-                    <span>{t.databases || 'Databases'}</span>
-                    <Tag value={project.schemas.length.toString()} severity="help" />
+                    <span>{t.databases}</span>
+                    <Tag value={project.schemas.length.toString()} severity="secondary" />
                   </div>
                 }>
                   <div className="space-y-3">
@@ -362,7 +362,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                 <Card className="bg-gray-800/50 border border-gray-700" title={
                   <div className="flex items-center gap-2 text-white">
                     <PaperClipIcon className="w-5 h-5" />
-                    <span>{t.projectpanelAttachments || 'Attachments'}</span>
+                    <span>{t.projectpanelAttachments}</span>
                     <Tag value={project.attachments.length.toString()} severity="warning" />
                   </div>
                 }>
@@ -399,11 +399,11 @@ export default function PublicProjectPage({ project, username: _username, projec
               <Card className="bg-gray-800/50 border border-gray-700">
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.created || 'Created'}:</span>
+                    <span className="text-gray-400">{t.created}:</span>
                     <span className="text-white">{formatDate(project.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.lastUpdated || 'Last updated'}:</span>
+                    <span className="text-gray-400">{t.lastUpdated}:</span>
                     <span className="text-white">{formatDate(project.updated_at)}</span>
                   </div>
                 </div>
@@ -417,12 +417,12 @@ export default function PublicProjectPage({ project, username: _username, projec
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="text-gray-400 text-sm">
-                {t.publicProjectPoweredBy || 'Powered by'}{' '}
+                {t.publicProjectPoweredBy}{' '}
                 <a href="/" className="text-blue-400 hover:text-blue-300">Scoriet</a>
-                {' '}- {t.publicProjectTagline || 'Enterprise Code Generator'}
+                {' '}- {t.publicProjectTagline}
               </div>
               <Button
-                label={t.goToApp || 'Go to App'}
+                label={t.goToApp}
                 icon="pi pi-external-link"
                 iconPos="right"
                 onClick={handleGoToApp}

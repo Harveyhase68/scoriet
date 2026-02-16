@@ -216,7 +216,7 @@ class SubscriptionController extends Controller
         // Check if already has access
         if ($user->hasSchemaMigrationAccess()) {
             return response()->json([
-                'message' => 'Schema Migration ist bereits freigeschaltet',
+                'message' => __('subscriptioncontrollerphp219'),
                 'access_status' => $user->getSchemaMigrationAccessStatus(),
             ]);
         }
@@ -236,12 +236,12 @@ class SubscriptionController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'message' => 'Freischaltung fehlgeschlagen',
+                'message' => __('subscriptioncontrollerphp239'),
             ], 500);
         }
 
         return response()->json([
-            'message' => 'Schema Migration erfolgreich freigeschaltet!',
+            'message' => __('subscriptioncontrollerphp244'),
             'access_status' => $user->getSchemaMigrationAccessStatus(),
             'credits_remaining' => $user->fresh()->credits,
         ]);
@@ -278,7 +278,7 @@ class SubscriptionController extends Controller
             $user->decrement('credits', 50);
 
             return response()->json([
-                'message' => 'Teams-Abo um 1 Jahr verlängert!',
+                'message' => __('subscriptioncontrollerphp281'),
                 'expires_at' => $existingSubscription->expires_at->toIso8601String(),
                 'credits_remaining' => $user->fresh()->credits,
             ]);
@@ -306,7 +306,7 @@ class SubscriptionController extends Controller
         $user->decrement('credits', $cost);
 
         return response()->json([
-            'message' => 'Teams erfolgreich freigeschaltet!',
+            'message' => __('subscriptioncontrollerphp309'),
             'expires_at' => $subscription->expires_at->toIso8601String(),
             'credits_remaining' => $user->fresh()->credits,
         ]);

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -26,6 +27,15 @@ Schedule::command('users:check-inactive')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/inactive-users.log'));
+
+// Demo reset countdown: set cache flag 5 minutes before reset (only when SCORIET_DEMO=true)
+Schedule::call(function () {
+    Cache::put('demo_reset_at', now()->addMinutes(5)->toIso8601String(), 10); // TTL 10 min (auto-cleanup)
+})
+    ->dailyAt('04:55')
+    ->when(function () {
+        return config('scoriet.demo', false);
+    });
 
 // Reset demo database daily at 5 AM (only runs when SCORIET_DEMO=true)
 Schedule::command('demo:reset')

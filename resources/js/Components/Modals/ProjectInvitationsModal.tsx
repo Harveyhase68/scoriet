@@ -87,6 +87,12 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
         },
       });
 
+      if (response.status === 403) {
+        // User doesn't have permission to manage invitations — not an error, just no access
+        setInvitations([]);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(t.projectinvitationsmodal86);
       }

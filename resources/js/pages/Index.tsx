@@ -812,7 +812,7 @@ const loadTab = (
     case 'template-db-schema-dependencies':
       return {
         id,
-        title: data.title || 'Template - DB Schema Dependencies',
+        title: data.title || t.index815,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateDbSchemaDependenciesPanel />
@@ -825,7 +825,7 @@ const loadTab = (
     case 'debug-manual-generator':
       return {
         id,
-        title: data.title || '🔧 Debug Manual Generator',
+        title: data.title || t.index828,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <DebugManualGeneratorPanel
@@ -847,7 +847,7 @@ const loadTab = (
     case 'code-generation':
       return {
         id,
-        title: data.title || 'Code Generation',
+        title: data.title || t.index850,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CodeGenerationPanel />
@@ -860,7 +860,7 @@ const loadTab = (
     case 'deployment-log':
       return {
         id,
-        title: data.title || 'Deployment Log',
+        title: data.title || t.index863,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <DeploymentLogPanel />
@@ -873,7 +873,7 @@ const loadTab = (
     case 'language-management':
       return {
         id,
-        title: data.title || 'Language Management',
+        title: data.title || t.index876,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <LanguageManagementPanel />
@@ -886,7 +886,7 @@ const loadTab = (
     case 'schema-translation':
       return {
         id,
-        title: data.title || 'Schema Translation',
+        title: data.title || t.index889,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <SchemaTranslationPanel />
@@ -899,7 +899,7 @@ const loadTab = (
     case 'system-settings':
       return {
         id,
-        title: data.title || 'System Settings',
+        title: data.title || t.index902,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <SystemSettingsPanel />
@@ -912,7 +912,7 @@ const loadTab = (
     case 'payout-admin':
       return {
         id,
-        title: data.title || 'Auszahlungen',
+        title: data.title || t.index915,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PayoutAdminPanel />
@@ -925,7 +925,7 @@ const loadTab = (
     case 'performance-metrics':
       return {
         id,
-        title: data.title || 'Performance Metrics',
+        title: data.title || t.index928,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PerformanceMetricsPanel />
@@ -938,7 +938,7 @@ const loadTab = (
     case 'invite-management':
       return {
         id,
-        title: data.title || 'Registration Invites',
+        title: data.title || t.index941,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <InviteManagementPanel />
@@ -951,7 +951,7 @@ const loadTab = (
     case 'project-settings':
       return {
         id,
-        title: data.title || 'Project Settings',
+        title: data.title || t.index954,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectSettingsPanel />
@@ -964,7 +964,7 @@ const loadTab = (
     case 'project-attachments':
       return {
         id,
-        title: data.title || 'Projekt-Anhänge',
+        title: data.title || t.index967,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectAttachmentsPanel isActive={true} projectId={data.projectId} />
@@ -977,7 +977,7 @@ const loadTab = (
     case 'project-import':
       return {
         id,
-        title: data.title || 'Projekt importieren',
+        title: data.title || t.index980,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectImportPanel isActive={true} onOpenPanel={openPanelFn} />
@@ -990,7 +990,7 @@ const loadTab = (
     case 'kanban-board':
       return {
         id,
-        title: data.title || 'Kanban Board',
+        title: data.title || t.index993,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <KanbanBoardPanel isActive={true} projectId={data.projectId} />
@@ -1003,7 +1003,7 @@ const loadTab = (
     case 'cms-admin':
       return {
         id,
-        title: data.title || 'CMS Admin',
+        title: data.title || t.index1006,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CMSAdminPanel editPageId={data.editPageId} />
@@ -1016,7 +1016,7 @@ const loadTab = (
     case 'query-builder':
       return {
         id,
-        title: data.title || 'Schema Migration',
+        title: data.title || t.index1019,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <QueryBuilderPanel isActive={true} />
@@ -1029,7 +1029,7 @@ const loadTab = (
     case 'form-designer':
       return {
         id,
-        title: data.title || 'Form Designer',
+        title: data.title || t.index1032,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FormDesignerPanel
@@ -1045,7 +1045,7 @@ const loadTab = (
     case 'code-adjustments':
       return {
         id,
-        title: data.title || 'Code Anpassungen',
+        title: data.title || t.index1048,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CodeAdjustmentsPanel />
@@ -1058,7 +1058,7 @@ const loadTab = (
     case 'formset-management':
       return {
         id,
-        title: data.title || 'Formular Management',
+        title: data.title || t.index1061,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FormSetManagementPanel
@@ -1080,9 +1080,9 @@ const loadTab = (
         content: (
           <TabContent>
             <div className="p-4 text-center">
-              <p className="text-yellow-600 font-bold">📋 Information</p>
-              <p>Authentication is now handled via modal windows.</p>
-              <p>Use the navigation menu to access Login, Register, or Profile.</p>
+              <p className="text-yellow-600 font-bold">{t.index1083}</p>
+              <p>{t.index1084}</p>
+              <p>{t.index1085}</p>
             </div>
           </TabContent>
         ),
@@ -1119,7 +1119,7 @@ const loadTab = (
 
         return {
           id,
-          title: data.title || storedData.title || '🔧 Debug Manual Generator',
+          title: data.title || storedData.title || t.index1122,
           content: (
             <Suspense fallback={<PanelLoader />}>
               <DebugManualGeneratorPanel
@@ -1145,7 +1145,7 @@ const loadTab = (
         const projectId = parseInt(id.split('-')[1]);
         return {
           id,
-          title: data.title || `Project Management (${data.projectName || 'Project ' + projectId})`,
+          title: data.title || `${t.index1148}(${data.projectName || '${t.index1148_2}' + projectId})`,
           content: (
             <Suspense fallback={<PanelLoader />}>
               <ProjectPanel isActive={true} onOpenPanel={openPanelFn} projectId={projectId} />
@@ -1160,8 +1160,8 @@ const loadTab = (
       if (id.startsWith('designer_schema_')) {
         const schemaId = parseInt(id.split('_')[2]);
         const displayTitle = data.schemaName ? 
-          `Database Designer (${data.schemaName})` : 
-          `Database Designer (Schema ${schemaId})`;
+          `${t.index1163}(${data.schemaName})` : 
+          `${t.index1164}(Schema ${schemaId})`;
         return {
           id,
           title: data.title || displayTitle,
@@ -1180,7 +1180,7 @@ const loadTab = (
         const schemaId = parseInt(id.split('_')[2]);
         return {
           id,
-          title: data.title || `Database Designer (Schema ${schemaId})`,
+          title: data.title || `${t.index1183}${schemaId})`,
           content: (
             <Suspense fallback={<PanelLoader />}>
               <PanelT2 preSelectedSchemaId={schemaId} />
@@ -1201,11 +1201,11 @@ const loadTab = (
           content: (
             <TabContent>
               <div className="p-4">
-                <h4 className="font-bold text-red-600">⚠️ Unknown Tab: {id}</h4>
-                <p>This tab ID is not defined in loadTab function.</p>
-                <p className="mt-2">Available tabs: t2, t3, t5, protect1, login, register, profile, forgot</p>
+                <h4 className="font-bold text-red-600">{t.index1204}{id}</h4>
+                <p>{t.index1205}</p>
+                <p className="mt-2">{t.index1206}</p>
                 <div className="mt-4 p-3 bg-red-100 rounded">
-                  <p className="text-red-800">Check your loadTab function!</p>
+                  <p className="text-red-800">{t.index1208}</p>
                 </div>
               </div>
             </TabContent>
@@ -1384,7 +1384,7 @@ export default function Index(props: IndexProps = {}) {
                 localStorage.setItem('is_inner_core', userData.is_inner_core ? '1' : '0');
               }
             } catch (userError) {
-              console.error('❌ Failed to fetch user data:', userError);
+              console.error(t.index1387, userError);
             }
 
             // Show success message only once per session (not on every F5)
@@ -1398,14 +1398,17 @@ export default function Index(props: IndexProps = {}) {
               sessionStorage.setItem('demo_toast_shown', 'true');
             }
 
-            // Trigger auth change event
+            // Directly set authenticated state - don't wait for checkAuthStatus
+            setIsAuthenticated(true);
+
+            // Trigger auth change event for other components
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
           } else {
-            console.error('❌ Demo auto-login failed:', await response.text());
+            console.error(t.index1405, await response.text());
           }
         } catch (error) {
-          console.error('❌ Demo auto-login error:', error);
+          console.error(t.index1408, error);
         }
       };
 
@@ -1494,8 +1497,13 @@ export default function Index(props: IndexProps = {}) {
     const currentModal = activeModal;
 
     // Prevent closing login modal if not authenticated (mandatory login)
+    // In demo mode with a valid token, allow closing (state may not have caught up yet)
     if (currentModal === 'login' && !isAuthenticated) {
-      return; // Don't allow closing
+      const isDemoMode = sessionStorage.getItem('demo_mode') === 'true';
+      const hasToken = !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
+      if (!(isDemoMode && hasToken)) {
+        return; // Don't allow closing
+      }
     }
 
     setActiveModal(null);
@@ -1645,10 +1653,8 @@ export default function Index(props: IndexProps = {}) {
             if (activeModal === 'login') {
               setActiveModal(null);
             }
-          } else {
-            // Token is invalid (401, 404, etc.) - clean up and set as not authenticated
-            // Note: We had a token (checked at start of this function), so user WAS authenticated
-            const hadToken = true; // We only reach here if token existed
+          } else if (response.status === 401) {
+            // Token is truly invalid (unauthorized) - clean up and set as not authenticated
             const isLoggingOut = localStorage.getItem('logout_in_progress');
             const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
 
@@ -1664,7 +1670,7 @@ export default function Index(props: IndexProps = {}) {
             // If user had a token and got 401 (not during explicit logout),
             // show a notification that they were logged out from another device
             // Only notify once per session to avoid multiple notifications
-            if (hadToken && !isLoggingOut && !alreadyNotified && response.status === 401) {
+            if (!isLoggingOut && !alreadyNotified) {
               sessionStorage.setItem('session_revoke_notified', 'true');
               // Dispatch event for session forcibly ended - will be handled by event listener
               window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
@@ -1682,20 +1688,13 @@ export default function Index(props: IndexProps = {}) {
             // Trigger storage event for other components
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
+          } else {
+            // Other error (500, 429, etc.) - don't destroy tokens
+            // Temporary server issues shouldn't log out the user
           }
         } catch {
-          // Network error or other issue - clean up tokens and set unauthenticated
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('remember_me');
-          localStorage.removeItem('user');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-          setIsAuthenticated(false);
-
-          // Trigger storage event for other components
-          window.dispatchEvent(new Event('storage'));
-          window.dispatchEvent(new Event('auth-change'));
+          // Network error - don't destroy tokens, just mark as temporarily unauthenticated
+          // The next periodic check will re-validate when the network recovers
         }
       } else {
         setIsAuthenticated(false);
@@ -1758,17 +1757,20 @@ export default function Index(props: IndexProps = {}) {
     };
     window.addEventListener('sessionRevoked', handleSessionRevoked as EventListener);
 
-    // Listen for session forcibly ended events (when token is revoked by another login)
-    const handleSessionForciblyEnded = () => {
-      // Set the message directly in state (for immediate display)
-      const storedLang = localStorage.getItem('language') || 'en';
-      const message = storedLang === 'de'
-        ? 'Sie wurden abgemeldet, da Sie sich auf einem anderen Gerät angemeldet haben.'
-        : 'You have been logged out because you logged in on another device.';
+    // Listen for session forcibly ended events (when token is revoked by another login or demo reset)
+    const handleSessionForciblyEnded = (event: Event) => {
+      const reason = (event as CustomEvent).detail?.reason || 'other_device';
+
+      let message: string;
+      if (reason === 'demo_reset') {
+        message = t.index1769;
+      } else {
+        message = t.index1773;
+      }
       setForcedLogoutMessage(message);
 
       // Also store in localStorage in case of page reload
-      localStorage.setItem('forced_logout_reason', 'other_device');
+      localStorage.setItem('forced_logout_reason', reason);
       localStorage.setItem('forced_logout_time', Date.now().toString());
 
       // Close all panels and go back to lobby
@@ -1783,13 +1785,13 @@ export default function Index(props: IndexProps = {}) {
       // Only show if logout happened within the last 60 seconds (to avoid stale messages)
       const timeSinceLogout = Date.now() - parseInt(forcedLogoutTime, 10);
       if (timeSinceLogout < 60000) {
-        // Set the message to show in the static panel
-        const storedLang = localStorage.getItem('language') || 'en';
-        setForcedLogoutMessage(
-          storedLang === 'de'
-            ? 'Sie wurden abgemeldet, da Sie sich auf einem anderen Gerät angemeldet haben.'
-            : 'You have been logged out because you logged in on another device.'
-        );
+        let logoutMessage: string;
+        if (forcedLogoutReason === 'demo_reset') {
+          logoutMessage = t.index1791;
+        } else {
+          logoutMessage = t.index1793;
+        }
+        setForcedLogoutMessage(logoutMessage);
       }
       // Clear the stored reason
       localStorage.removeItem('forced_logout_reason');
@@ -1801,6 +1803,72 @@ export default function Index(props: IndexProps = {}) {
     const tokenCheckInterval = setInterval(() => {
       checkAuthStatus();
     }, 30 * 1000);
+
+    // Demo reset countdown polling (only in demo mode, every 30 seconds)
+    let demoCountdownShown5min = false;
+    let demoCountdownShown1min = false;
+    let demoCountdownInterval: ReturnType<typeof setInterval> | null = null;
+
+    if (sessionStorage.getItem('demo_mode') === 'true') {
+      demoCountdownInterval = setInterval(async () => {
+        try {
+          const resp = await fetch('/api/demo/countdown');
+          if (!resp.ok) return;
+          const data = await resp.json();
+          if (!data.active) return;
+
+          const mins = data.minutes_remaining;
+
+          // T-5 min warning (show once)
+          if (mins <= 5 && mins > 1 && !demoCountdownShown5min) {
+            demoCountdownShown5min = true;
+            if (toast.current) {
+              toast.current.show({
+                severity: 'warn',
+                summary: t.index1830,
+                detail: `${t.index1831}${mins}${t.index1831_2}`,
+                life: 10000,
+              });
+            }
+          }
+
+          // T-1 min urgent warning (show once, sticky)
+          if (mins <= 1 && mins > 0 && !demoCountdownShown1min) {
+            demoCountdownShown1min = true;
+            if (toast.current) {
+              toast.current.show({
+                severity: 'error',
+                summary: t.index1843,
+                detail: t.index1844,
+                sticky: true,
+              });
+            }
+          }
+
+          // T-0: force clean logout
+          if (mins <= 0) {
+            // Clear tokens
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('access_token');
+            sessionStorage.removeItem('refresh_token');
+            sessionStorage.removeItem('user');
+            sessionStorage.removeItem('demo_mode');
+
+            // Trigger forced logout UI
+            window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
+              detail: { reason: 'demo_reset' }
+            }));
+
+            // Stop polling
+            if (demoCountdownInterval) clearInterval(demoCountdownInterval);
+          }
+        } catch {
+          // Silently ignore network errors during countdown poll
+        }
+      }, 30 * 1000);
+    }
 
     // Also listen for manual localStorage changes
     const originalSetItem = localStorage.setItem;
@@ -1827,6 +1895,7 @@ export default function Index(props: IndexProps = {}) {
       window.removeEventListener('sessionRevoked', handleSessionRevoked as EventListener);
       window.removeEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
       clearInterval(tokenCheckInterval);
+      if (demoCountdownInterval) clearInterval(demoCountdownInterval);
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
     };
@@ -1969,14 +2038,12 @@ export default function Index(props: IndexProps = {}) {
   };
 
   const openPanel = useCallback((panelId: string, data?: any) => {
-    // Don't override existing auth modals
-    if (!isAuthenticated && !activeModal) {
-      setActiveModal('login');
-      return;
-    }
+    // Check token existence directly as a fallback for when isAuthenticated state
+    // hasn't caught up yet (e.g., during demo auto-login async phase)
+    const hasToken = !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
 
-    // If user is not authenticated and there's already a modal, just return
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !hasToken) {
+      setActiveModal('login');
       return;
     }
 
@@ -2128,7 +2195,8 @@ export default function Index(props: IndexProps = {}) {
 
   // Handle opening designer with pre-selected schema
   const handleOpenDesigner = useCallback((schemaId: number, schemaName?: string) => {
-    if (!isAuthenticated) {
+    const hasToken = !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
+    if (!isAuthenticated && !hasToken) {
       setActiveModal('login');
       return;
     }
@@ -2673,6 +2741,11 @@ useHotkeys('alt+m', () => {
         profileDefaultTab={profileDefaultTab} // For URL actions like renew-subscription
         showLoginFields={demoSystemLogin}
         onLoginSuccess={() => {
+          // Login succeeded - directly update auth state and close modal
+          // Don't rely on handleCloseModal() which checks isAuthenticated state
+          // that hasn't been updated yet via checkAuthStatus
+          setIsAuthenticated(true);
+          setActiveModal(null);
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
           // Also dispatch custom auth event for ProjectContext
@@ -2682,7 +2755,6 @@ useHotkeys('alt+m', () => {
           // Clear forced logout message and notification flag
           setForcedLogoutMessage(null);
           sessionStorage.removeItem('session_revoke_notified');
-          handleCloseModal();
           // Check for pending invitations after login
           setTimeout(() => {
             checkPendingInvitation();

@@ -275,7 +275,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         if (!formSetToDelete) return;
 
         if (deleteConfirmText !== 'DELETE') {
-            toast.showError('${t.formsetmanagementpanel278}"DELETE"${t.formsetmanagementpanel278_2}');
+            toast.showError(`${t.formsetmanagementpanel278}"DELETE"${t.formsetmanagementpanel278_2}`);
             return;
         }
 
@@ -529,7 +529,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             >
                 <div className="space-y-4">
                     <p className="text-sm" style={{ color: colors.textMuted }}>
-                        t.formsetmanagementpanel532
+                        {t.formsetmanagementpanel532}
                     </p>
 
                     <MultiSelect

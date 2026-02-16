@@ -800,10 +800,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
                                 <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                                     <tr>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Name</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Typ</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Größe</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Aktionen</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal803}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal804}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal805}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal806}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -897,11 +897,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
                                 <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                                     <tr>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Variable Name</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Beschreibung</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Default</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Pflicht</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>Aktionen</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal900}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal901}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal902}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal903}</th>
+                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal904}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -950,7 +950,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                             e.stopPropagation();
                                                             e.preventDefault();
                                                             if (variable.id && onDeleteVariable) {
-                                                                if (window.confirm(`Variable "${variable.variable_name}" wirklich löschen?`)) {
+                                                                if (window.confirm(`${t.templatemodal953}"${variable.variable_name}"${t.templatemodal953_2}`)) {
                                                                     onDeleteVariable(variable.id);
                                                                 }
                                                             }
@@ -1027,7 +1027,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             loading={isLoading}
                             disabled={isSaved || (getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)}
                             className={(isSaved || (getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)) ? 'opacity-50' : ''}
-                            tooltip={getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? 'Bitte erst "Freischalten" klicken' : undefined}
+                            tooltip={getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? t.templatemodal1030 : undefined}
                         >
                             {isSaved ? t.templatemodal667 : t.cmsadminpanel279}
                         </Button>
@@ -1038,7 +1038,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         onClick={handleSubmit}
                         disabled={(editingTemplate && !hasFormChanges) || (!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)}
                         className={((editingTemplate && !hasFormChanges) || (!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed)) ? 'opacity-50' : ''}
-                        tooltip={!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? 'Bitte erst "Freischalten" klicken' : undefined}
+                        tooltip={!editingTemplate && getValues().visibility === 'private' && needsPrivateUnlock && !privateUnlockConfirmed ? t.templatemodal1041 : undefined}
                     >
                         {editingTemplate ?
                             (hasFormChanges ? t.applicationsmodal313 : t.templatemodal502) :

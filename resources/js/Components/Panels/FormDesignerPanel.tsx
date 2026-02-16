@@ -1435,7 +1435,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Aktionen</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>{t.formdesignerpanel1438}</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.actions.map(elem => (
                   <button
