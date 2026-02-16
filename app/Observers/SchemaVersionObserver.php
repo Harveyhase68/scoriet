@@ -16,8 +16,6 @@ class SchemaVersionObserver
      */
     public function created(SchemaVersion $schemaVersion): void
     {
-        Log::info("SchemaVersionObserver: created event triggered for schema version {$schemaVersion->id}");
-
         // Clear all template cache as schema version changed
         app(TemplateCacheService::class)->clearAll();
 
@@ -68,11 +66,8 @@ class SchemaVersionObserver
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("SchemaVersion {$schemaVersion->id} ({$action}): No active projects found");
             return;
         }
-
-        Log::info("SchemaVersion {$schemaVersion->id} ({$action}): Dispatching regeneration for ALL " . count($projectIds) . " active projects");
 
         // Check if we should run synchronously (for development/testing)
         $runSynchronously = config('app.env') === 'local' || config('queue.default') === 'sync';
@@ -82,13 +77,11 @@ class SchemaVersionObserver
             try {
                 if ($runSynchronously) {
                     // Run the job immediately for development
-                    Log::info("SchemaVersion {$schemaVersion->id} ({$action}): Running regeneration job synchronously for project {$projectId}");
                     $job = new RegenerateProjectGenerationTree($projectId);
                     $job->handle();
                 } else {
                     // Dispatch to queue for production
                     RegenerateProjectGenerationTree::dispatch($projectId);
-                    Log::info("Successfully dispatched regeneration job for project {$projectId}");
                 }
             } catch (\Exception $e) {
                 Log::error("Failed to dispatch/run regeneration job for project {$projectId}: " . $e->getMessage());
@@ -110,10 +103,6 @@ class SchemaVersionObserver
                 $schemaCacheKey = "schema_data:{$projectId}";
                 if (Cache::has($schemaCacheKey)) {
                     Cache::forget($schemaCacheKey);
-                    Log::info("🗑️ [CACHE INVALIDATED] Schema cache for project #{$projectId}", [
-                        'schema_version' => $schemaVersion->id,
-                        'cache_key' => $schemaCacheKey,
-                    ]);
                 }
 
                 // 2. Delete Gtree Cache for all templates
@@ -122,10 +111,6 @@ class SchemaVersionObserver
                     $gtreeCacheKey = "gtree:{$projectId}:{$template->id}";
                     if (Cache::has($gtreeCacheKey)) {
                         Cache::forget($gtreeCacheKey);
-                        Log::info("🗑️ [CACHE INVALIDATED] Gtree cache for project #{$projectId} template #{$template->id}", [
-                            'schema_version' => $schemaVersion->id,
-                            'cache_key' => $gtreeCacheKey,
-                        ]);
                     }
                 }
             }

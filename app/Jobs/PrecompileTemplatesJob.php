@@ -45,14 +45,6 @@ class PrecompileTemplatesJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $startTime = microtime(true);
-
-        Log::info('[PrecompileTemplates] Started', [
-            'project_id' => $this->projectId,
-            'template_id' => $this->templateId,
-            'file_id' => $this->fileId,
-        ]);
-
         try {
             $project = Project::findOrFail($this->projectId);
 
@@ -62,7 +54,6 @@ class PrecompileTemplatesJob implements ShouldQueue
                 : $project->templates; // via template_usages
 
             if ($templates->isEmpty()) {
-                Log::info('[PrecompileTemplates] No templates found');
                 return;
             }
 
@@ -118,12 +109,6 @@ class PrecompileTemplatesJob implements ShouldQueue
                                 );
 
                                 // Cache will be stored automatically by TemplateCacheService
-                                Log::debug('[PrecompileTemplates] Compiled', [
-                                    'template' => $template->name,
-                                    'file' => $file->file_name,
-                                    'table' => $combo['table'] ?? 'project',
-                                    'language' => $combo['language'] ?? 'none',
-                                ]);
                             } catch (\Exception $e) {
                                 Log::warning('[PrecompileTemplates] Failed to compile', [
                                     'template' => $template->name,
@@ -138,14 +123,6 @@ class PrecompileTemplatesJob implements ShouldQueue
                 }
             }
 
-            $elapsed = round(microtime(true) - $startTime, 2);
-
-            Log::info('[PrecompileTemplates] Completed', [
-                'project_id' => $this->projectId,
-                'compiled' => $compiledCount,
-                'skipped' => $skippedCount,
-                'elapsed_seconds' => $elapsed,
-            ]);
         } catch (\Exception $e) {
             Log::error('[PrecompileTemplates] Failed', [
                 'project_id' => $this->projectId,

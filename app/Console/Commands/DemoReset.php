@@ -40,7 +40,7 @@ class DemoReset extends Command
      */
     public function handle()
     {
-        if (!app()->environment('local', 'demo')) {
+        if (!app()->environment('local', 'demo') && !config('scoriet.demo')) {
             $this->error('Demo reset can only be run in local or demo environment!');
             return 1;
         }

@@ -46,7 +46,6 @@ class CachePrecompilationJob implements ShouldQueue
         try {
             // Check if user is still online
             if (!$this->isUserOnline()) {
-                Log::info("User {$this->userId} is offline, skipping cache precompilation");
                 return;
             }
 
@@ -54,7 +53,6 @@ class CachePrecompilationJob implements ShouldQueue
             $templates = $this->getTemplatesToPrecompile();
 
             if ($templates->isEmpty()) {
-                Log::info("No templates to precompile for user {$this->userId}");
                 return;
             }
 
@@ -76,7 +74,6 @@ class CachePrecompilationJob implements ShouldQueue
                 foreach ($templateFiles as $file) {
                     // Check if still online before each file
                     if (!$this->isUserOnline()) {
-                        Log::info("User went offline during precompilation");
                         $progressService->fail($sessionId, 'User went offline');
                         return;
                     }
@@ -98,11 +95,6 @@ class CachePrecompilationJob implements ShouldQueue
                     );
 
                     if (Cache::has($cacheKey)) {
-                        Log::debug("File already cached, skipping", [
-                            'template_id' => $template->id,
-                            'file_id' => $file->id,
-                            'cache_key' => $cacheKey
-                        ]);
                         $completedItems++;
                         continue;
                     }
@@ -112,12 +104,6 @@ class CachePrecompilationJob implements ShouldQueue
 
                     // Store in cache
                     Cache::put($cacheKey, $compiledContent, now()->addHours(24));
-
-                    Log::debug("File cached successfully", [
-                        'template_id' => $template->id,
-                        'file_id' => $file->id,
-                        'size_bytes' => strlen($compiledContent)
-                    ]);
 
                     $completedItems++;
 
@@ -131,12 +117,6 @@ class CachePrecompilationJob implements ShouldQueue
 
             // Mark as completed
             $progressService->complete($sessionId);
-
-            Log::info("Cache precompilation completed successfully", [
-                'user_id' => $this->userId,
-                'total_items' => $totalItems,
-                'completed_items' => $completedItems
-            ]);
 
         } catch (\Exception $e) {
             Log::error("Cache precompilation failed", [

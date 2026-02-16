@@ -672,9 +672,22 @@ class TemplateController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $template->load(['files', 'creator']);
+
+        // Add file_content_length for ZIP files to enable frontend integrity verification
+        $templateArray = $template->toArray();
+        if (isset($templateArray['files'])) {
+            $templateArray['files'] = array_map(function ($file) {
+                if (($file['content_type'] ?? null) === 'zip' && isset($file['file_content'])) {
+                    $file['file_content_length'] = strlen($file['file_content']);
+                }
+                return $file;
+            }, $templateArray['files']);
+        }
+
         return response()->json([
             'success' => true,
-            'template' => $template->load(['files', 'creator']),
+            'template' => $templateArray,
         ]);
     }
 
@@ -1502,6 +1515,63 @@ class TemplateController extends Controller
         ]);
 
         return response()->json($file);
+    }
+
+    /**
+     * Check integrity of a template file's content (diagnostic endpoint)
+     * Returns hash, length, and first/last bytes without sending the full content.
+     * Use this to verify if API response matches DB content.
+     */
+    public function checkFileIntegrity($templateId, $fileId): JsonResponse
+    {
+        $template = Template::findOrFail($templateId);
+        $user = Auth::user();
+
+        if (!$template->canBeViewedBy($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $file = $template->files()->findOrFail($fileId);
+        $content = $file->file_content ?? '';
+
+        // Get the ACTUAL length from MySQL server-side (bypasses PHP PDO buffer limits)
+        $dbResult = \DB::selectOne(
+            'SELECT LENGTH(file_content) as db_length, MD5(file_content) as db_md5 FROM template_files WHERE id = ?',
+            [$file->id]
+        );
+
+        // Check PHP MySQL driver info
+        $pdoDriverInfo = [];
+        try {
+            $pdo = \DB::connection()->getPdo();
+            $pdoDriverInfo['client_version'] = $pdo->getAttribute(\PDO::ATTR_CLIENT_VERSION);
+            $pdoDriverInfo['server_version'] = $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
+            $pdoDriverInfo['driver_name'] = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        } catch (\Exception $e) {
+            $pdoDriverInfo['error'] = $e->getMessage();
+        }
+
+        return response()->json([
+            'file_id' => (int) $file->id,
+            'file_name' => $file->file_name,
+            'content_type' => $file->content_type,
+            // PHP-side values (may be truncated by PDO buffer)
+            'php_content_length' => strlen($content),
+            'php_content_md5' => md5($content),
+            'first_80_chars' => substr($content, 0, 80),
+            'last_80_chars' => substr($content, -80),
+            'starts_with_zip_magic' => str_starts_with($content, 'UEsDB'),
+            // MySQL server-side values (actual DB content, not affected by PHP buffer)
+            'db_content_length' => (int) ($dbResult->db_length ?? 0),
+            'db_content_md5' => $dbResult->db_md5 ?? null,
+            // If these differ, the PHP PDO driver is truncating the content!
+            'content_truncated' => strlen($content) !== (int) ($dbResult->db_length ?? 0),
+            // Server diagnostics
+            'php_memory_limit' => ini_get('memory_limit'),
+            'php_output_buffering' => ini_get('output_buffering'),
+            'mysql_max_allowed_packet' => \DB::selectOne('SHOW VARIABLES LIKE "max_allowed_packet"')?->Value ?? 'unknown',
+            'pdo_driver_info' => $pdoDriverInfo,
+        ]);
     }
 
     /**

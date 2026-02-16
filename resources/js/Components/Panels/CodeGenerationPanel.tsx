@@ -3020,7 +3020,7 @@ export default function CodeGenerationPanel() {
               {selectedSchemaIds.size > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                    📊 Optional: Migration von Version
+                    {t.codegenerationpanel3023}
                   </label>
                   {migrationVersionOptions.length > 0 ? (
                     <>

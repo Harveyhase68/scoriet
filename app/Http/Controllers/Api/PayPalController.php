@@ -192,13 +192,6 @@ class PayPalController extends Controller
                     }
                 }
 
-                Log::info('PayPal Template order created', [
-                    'user_id' => $user->id,
-                    'template_id' => $template->id,
-                    'price' => $price,
-                    'order_id' => $order['id'],
-                ]);
-
                 return response()->json([
                     'success' => true,
                     'order_id' => $order['id'],
@@ -236,12 +229,6 @@ class PayPalController extends Controller
         // Get the billing plan ID from config
         $billingPlanId = config("paypal.billing_plans.{$plan}");
 
-        Log::info('PayPal Subscription: Starting', [
-            'plan' => $plan,
-            'billing_plan_id' => $billingPlanId,
-            'user_id' => $user->id,
-        ]);
-
         if (!$billingPlanId) {
             Log::error('PayPal: Billing plan not configured for ' . $plan);
             return response()->json([
@@ -254,10 +241,6 @@ class PayPalController extends Controller
             $provider = new PayPalClient;
             $provider->setApiCredentials(config('paypal'));
             $accessToken = $provider->getAccessToken();
-
-            Log::info('PayPal Subscription: Got access token', [
-                'has_token' => !empty($accessToken),
-            ]);
 
             $subscriptionData = [
                 'plan_id' => $billingPlanId,
@@ -276,14 +259,8 @@ class PayPalController extends Controller
                 ]),
             ];
 
-            Log::info('PayPal Subscription: Request data', $subscriptionData);
-
             // Create subscription using PayPal Subscriptions API
             $subscription = $provider->createSubscription($subscriptionData);
-
-            Log::info('PayPal Subscription: Response', [
-                'response' => $subscription,
-            ]);
 
             if (isset($subscription['id']) && isset($subscription['status'])) {
                 // Find the approval link
@@ -296,11 +273,6 @@ class PayPalController extends Controller
                         }
                     }
                 }
-
-                Log::info('PayPal Subscription: Success', [
-                    'subscription_id' => $subscription['id'],
-                    'approval_url' => $approvalUrl,
-                ]);
 
                 return response()->json([
                     'success' => true,
@@ -335,12 +307,6 @@ class PayPalController extends Controller
         $subscriptionId = $request->query('subscription_id') ?? $request->query('token');
         $plan = $request->query('plan', 'patron_monthly');
 
-        Log::info('PayPal Subscription Success callback', [
-            'all_params' => $request->all(),
-            'subscription_id' => $subscriptionId,
-            'plan' => $plan,
-        ]);
-
         if (!$subscriptionId) {
             Log::error('PayPal Subscription Success: missing subscription_id', ['params' => $request->all()]);
             return redirect('/payment/cancel?error=missing_subscription_id');
@@ -372,8 +338,6 @@ class PayPalController extends Controller
                                 'paypal_subscription_id' => $subscriptionId,
                             ]);
                         });
-
-                        Log::info("PayPal Subscription activated for user {$user->id}: {$patronType}");
 
                         // Send admin notification
                         try {
@@ -487,7 +451,6 @@ class PayPalController extends Controller
                     ]);
                 });
 
-                Log::info("PayPal: Credits added: {$credits} to user {$userId}");
             }
         } elseif ($type === 'template') {
             $this->processTemplatePurchase($user, $metadata, $paypalOrderId);
@@ -515,7 +478,6 @@ class PayPalController extends Controller
                 ]);
             });
 
-            Log::info("PayPal: Patron subscription activated for user {$user->id}: {$patronType}");
         }
     }
 
@@ -546,14 +508,7 @@ class PayPalController extends Controller
             'paypal'
         );
 
-        if ($result['success']) {
-            Log::info('Template purchased via PayPal', [
-                'user_id' => $user->id,
-                'template_id' => $templateId,
-                'price_euros' => $priceEuros,
-                'paypal_order_id' => $paypalOrderId,
-            ]);
-        } else {
+        if (!$result['success']) {
             Log::error('Template purchase failed via PayPal', [
                 'user_id' => $user->id,
                 'template_id' => $templateId,
@@ -568,8 +523,6 @@ class PayPalController extends Controller
     public function handleWebhook(Request $request)
     {
         $payload = $request->all();
-
-        Log::info('PayPal Webhook received', ['event_type' => $payload['event_type'] ?? 'unknown']);
 
         // Verify webhook signature (recommended for production)
         // For now, we process the event directly
@@ -608,8 +561,6 @@ class PayPalController extends Controller
                 $this->handleSubscriptionCancelled($resource);
                 break;
 
-            default:
-                Log::info('Unhandled PayPal webhook event: ' . $eventType);
         }
 
         return response()->json(['received' => true]);
@@ -624,7 +575,6 @@ class PayPalController extends Controller
         $customId = $resource['custom_id'] ?? null;
 
         if (!$customId) {
-            Log::info('PayPal Subscription activated but no custom_id', ['subscription_id' => $subscriptionId]);
             return;
         }
 
@@ -661,7 +611,6 @@ class PayPalController extends Controller
                 ]);
             });
 
-            Log::info("PayPal Webhook: Subscription activated for user {$user->id}");
         }
     }
 
@@ -672,11 +621,6 @@ class PayPalController extends Controller
     {
         $subscriptionId = $resource['id'] ?? null;
         $customId = $resource['custom_id'] ?? null;
-
-        Log::info('PayPal subscription renewed', [
-            'subscription_id' => $subscriptionId,
-            'custom_id' => $customId,
-        ]);
 
         if (!$customId) {
             Log::warning('PayPal subscription renewed but no custom_id');
@@ -709,7 +653,6 @@ class PayPalController extends Controller
             ]);
         });
 
-        Log::info("PayPal: Subscription renewed, credits added for patron user {$user->id}");
     }
 
     /**
@@ -719,11 +662,6 @@ class PayPalController extends Controller
     {
         $subscriptionId = $resource['id'] ?? null;
         $customId = $resource['custom_id'] ?? null;
-
-        Log::info('PayPal Subscription cancelled/expired', [
-            'subscription_id' => $subscriptionId,
-            'custom_id' => $customId,
-        ]);
 
         if (!$customId) {
             return;
@@ -745,7 +683,6 @@ class PayPalController extends Controller
             'patron_type' => null,
         ]);
 
-        Log::info("PayPal: Patron subscription cancelled for user {$user->id}");
     }
 
     /**
@@ -785,16 +722,8 @@ class PayPalController extends Controller
                 ],
             ];
 
-            Log::info('PayPal Payout: Sending request', [
-                'receiver' => $receiverEmail,
-                'amount' => $amount,
-                'batch_id' => $senderBatchId,
-            ]);
-
             // Use the PayPal Payouts API
             $response = $provider->createBatchPayout($payoutData);
-
-            Log::info('PayPal Payout: Response', ['response' => $response]);
 
             if (isset($response['batch_header']['payout_batch_id'])) {
                 $batchId = $response['batch_header']['payout_batch_id'];
@@ -872,14 +801,7 @@ class PayPalController extends Controller
                 'items' => $items,
             ];
 
-            Log::info('PayPal Batch Payout: Sending request', [
-                'recipient_count' => count($recipients),
-                'batch_id' => $senderBatchId,
-            ]);
-
             $response = $provider->createBatchPayout($payoutData);
-
-            Log::info('PayPal Batch Payout: Response', ['response' => $response]);
 
             if (isset($response['batch_header']['payout_batch_id'])) {
                 return [

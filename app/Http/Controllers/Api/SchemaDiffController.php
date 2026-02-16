@@ -53,13 +53,6 @@ class SchemaDiffController extends Controller
         $toVersionId = $validated['to_version_id'];
         $dialect = $validated['dialect'] ?? 'mysql'; // Default to MySQL
 
-        Log::info("Schema Diff requested", [
-            'from_version_id' => $fromVersionId,
-            'to_version_id' => $toVersionId,
-            'dialect' => $dialect,
-            'user_id' => auth()->id(),
-        ]);
-
         $startTime = microtime(true);
 
         try {

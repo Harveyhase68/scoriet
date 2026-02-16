@@ -462,13 +462,18 @@ const FileModal: React.FC<FileModalProps> = ({
             setIsLoadingZipList(true);
             try {
                 // Decode Base64 ZIP content — clean whitespace that may be introduced by server transport
-                let base64Content = editingFile.file_content;
-                if (!base64Content || base64Content.length === 0) {
+                const rawContent = editingFile.file_content;
+                if (!rawContent || rawContent.length === 0) {
                     throw new Error('Empty file_content for ZIP file');
                 }
 
+                // Integrity check: verify content wasn't truncated during API response delivery
+                if (editingFile.file_content_length && rawContent.length !== editingFile.file_content_length) {
+                    throw new Error(`ZIP data truncated during transfer (expected ${editingFile.file_content_length} chars, got ${rawContent.length})`);
+                }
+
                 // Strip any whitespace/newlines (can be introduced by Nginx buffering, PHP output encoding, etc.)
-                base64Content = base64Content.replace(/[\s\r\n]+/g, '');
+                let base64Content = rawContent.replace(/[\s\r\n]+/g, '');
 
                 // Validate Base64 padding
                 const paddingNeeded = (4 - (base64Content.length % 4)) % 4;
@@ -479,12 +484,17 @@ const FileModal: React.FC<FileModalProps> = ({
                 // Decode Base64 to binary using fetch API (more robust than atob for large content)
                 const response = await fetch(`data:application/octet-stream;base64,${base64Content}`);
                 if (!response.ok) {
-                    throw new Error('Base64 decode failed — data may be corrupted or truncated');
+                    throw new Error(`Base64 decode failed (status ${response.status}) — data may be corrupted or truncated`);
                 }
                 const bytes = new Uint8Array(await response.arrayBuffer());
 
                 if (bytes.length < 22) {
                     throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
+                }
+
+                // Verify ZIP magic number (PK\x03\x04 = 50 4B 03 04)
+                if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                    throw new Error(`Not a valid ZIP file — starts with 0x${bytes[0].toString(16)}${bytes[1].toString(16)} instead of 0x504B (PK). Content may be corrupted during API transfer.`);
                 }
 
                 // Load ZIP with JSZip
@@ -816,12 +826,17 @@ const FileModal: React.FC<FileModalProps> = ({
             // Decode Base64 to binary using fetch API (more robust than atob for large content)
             const response = await fetch(`data:application/octet-stream;base64,${cleanedBase64}`);
             if (!response.ok) {
-                throw new Error('Base64 decode failed — data may be corrupted or truncated');
+                throw new Error(`Base64 decode failed (status ${response.status}) — data may be corrupted or truncated`);
             }
             const bytes = new Uint8Array(await response.arrayBuffer());
 
             if (bytes.length < 22) {
                 throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
+            }
+
+            // Verify ZIP magic number
+            if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+                throw new Error(`Not a valid ZIP file — starts with 0x${bytes[0].toString(16)}${bytes[1].toString(16)} instead of 0x504B (PK). Content may be corrupted during API transfer.`);
             }
 
             // Load ZIP with JSZip

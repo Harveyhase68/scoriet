@@ -6,7 +6,6 @@ use App\Models\Template;
 use App\Models\TemplateFile;
 use App\Models\TemplateFingerprint;
 use App\Models\TemplatePurchase;
-use Illuminate\Support\Facades\Log;
 
 class TemplateFingerprintService
 {
@@ -40,8 +39,6 @@ class TemplateFingerprintService
             'fingerprints_generated' => true,
             'fingerprints_generated_at' => now(),
         ]);
-
-        Log::info("Generated {$count} fingerprints for template {$template->id}");
 
         return $count;
     }

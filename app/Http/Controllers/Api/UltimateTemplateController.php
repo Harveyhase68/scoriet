@@ -2040,7 +2040,6 @@ class UltimateTemplateController extends Controller
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
             // Track performance metrics
-            \Log::info("📊 Performance tracking - execution time: {$executionTime}ms");
             try {
                 $tablesCount = count($tablesFromGtree ?? []);
                 $fieldsCount = 0;
@@ -2065,7 +2064,6 @@ class UltimateTemplateController extends Controller
                     ],
                     'created_at' => now(),
                 ]);
-                \Log::info("📊 Performance metric saved successfully");
             } catch (\Exception $trackingError) {
                 \Log::error("❌ Performance tracking failed: " . $trackingError->getMessage() . " | Trace: " . $trackingError->getTraceAsString());
             }

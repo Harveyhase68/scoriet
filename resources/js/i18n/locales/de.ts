@@ -4162,5 +4162,7 @@ export const de: Translations = {
   errorfallback38: 'Oops! Etwas ist schiefgelaufen',
   errorfallback56: 'Stack Trace anzeigen',
   errorfallback49: 'Fehlerdetails:',
+  codegenerationpanel3023: '📊 Optional: Migration von Version',
+  debugmanualgeneratorpanel1763: '📊 Migration von Version  ',
 
 };

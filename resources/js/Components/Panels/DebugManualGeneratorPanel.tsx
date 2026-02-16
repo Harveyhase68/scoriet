@@ -1760,7 +1760,7 @@ function ${functionName}() {
             {/* 6. Migration Version Dropdown - Optional: Migration von Version X */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                📊 Migration von Version {migrationVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.infoText }}>(Optional)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(nicht verfügbar)</span>}
+                {t.debugmanualgeneratorpanel1763}{migrationVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.infoText }}>(Optional)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(nicht verfügbar)</span>}
               </label>
               <Dropdown
                 value={migrationFromVersion}

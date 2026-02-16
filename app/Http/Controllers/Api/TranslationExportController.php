@@ -171,9 +171,6 @@ class TranslationExportController extends Controller
                 $col++;
             }
 
-            // Debug: Log headers
-            \Log::info('Import headers:', $headers);
-
             // Find language columns (after column D)
             // Only include selected languages if specified
             $languageColumns = [];
@@ -192,9 +189,6 @@ class TranslationExportController extends Controller
                     }
                 }
             }
-
-            // Debug: Log language columns
-            \Log::info('Language columns to import:', $languageColumns);
 
             // Get all existing tables and fields for this project
             $existingTables = [];
@@ -220,9 +214,6 @@ class TranslationExportController extends Controller
                 }
             }
             
-            \Log::info('Existing tables:', $existingTables);
-            \Log::info('Existing fields:', $existingFields);
-
             $imported = 0;
             $updated = 0;
             $skippedRows = 0;
@@ -270,12 +261,8 @@ class TranslationExportController extends Controller
                 
                 if (!$existsInDb) {
                     $notFoundInDb++;
-                    \Log::info("Skipping item '{$itemName}' - not found in database");
                     continue;
                 }
-
-                // Debug: Log row processing
-                \Log::info("Processing row {$row}: type={$type}, table={$table}, field={$field}, itemName={$itemName}");
 
                 // Process each language column
                 foreach ($languageColumns as $colLetter => $languageCode) {

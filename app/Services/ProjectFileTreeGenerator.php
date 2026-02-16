@@ -124,7 +124,6 @@ class ProjectFileTreeGenerator
             ->toArray();
 
         if (empty($linkedSchemaIds)) {
-            Log::info("🧪 [TREE-GEN] No schemas linked to project {$project->id}");
             return $tables;
         }
 
@@ -158,8 +157,6 @@ class ProjectFileTreeGenerator
 
             $tables = array_merge($tables, $schemaTables);
         }
-
-        Log::info("🧪 [TREE-GEN] Loaded tables from linked schemas: " . count($tables) . " tables from " . count($latestVersionsBySchema) . " schemas (linked schema IDs: " . implode(', ', $linkedSchemaIds) . ")");
 
         return $tables;
     }

@@ -170,11 +170,6 @@ class AuthController extends Controller
                 ->whereDate('expires_at', '>=', now())
                 ->first();
 
-            \Log::info('Registration with invitation token', [
-                'token' => $request->invitation_token,
-                'email' => $request->email,
-                'invitation_found' => !!$invitation,
-            ]);
         }
 
         // If not found via token, try to find by email
@@ -187,10 +182,6 @@ class AuthController extends Controller
 
         if ($invitation) {
             $pendingInvitationId = $invitation->id;
-            \Log::info('Pending invitation found for registration', [
-                'invitation_id' => $invitation->id,
-                'project_id' => $invitation->project_id,
-            ]);
         }
 
         $user = User::create([
@@ -206,11 +197,6 @@ class AuthController extends Controller
         // Mark registration invite as used (if any)
         if ($registrationInvite) {
             $registrationInvite->markAsUsed($user->id);
-            \Log::info('Registration invite marked as used', [
-                'invite_id' => $registrationInvite->id,
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
         }
 
         // Trigger the email verification
@@ -750,18 +736,11 @@ class AuthController extends Controller
             if ($user->hasPendingInvitation()) {
                 $invitation = $user->pendingProjectInvitation;
                 if ($invitation && $invitation->isPending()) {
-                    \Log::info(__('authcontrollerphp703'), [
-                        'user_id' => $user->id,
-                        'invitation_id' => $invitation->id,
-                        'project_id' => $invitation->project_id,
-                    ]);
-
                     $success = $invitation->accept();
                     if ($success) {
                         $invitationAccepted = true;
                         $projectName = $invitation->project->name;
                         $user->clearPendingInvitation();
-                        \Log::info(__('authcontrollerphp714'), ['project' => $projectName]);
                     }
                 }
             }

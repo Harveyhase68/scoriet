@@ -128,12 +128,6 @@ class ProjectApplicationController extends Controller
      */
     public function reviewApplication(Request $request)
     {
-        // Log IMMEDIATELY to see if we even reach this method
-        \Log::info('=== ReviewApplication METHOD CALLED ===', [
-            'request_all' => $request->all(),
-            'user_id' => $request->user()?->id,
-        ]);
-
         $validator = Validator::make($request->all(), [
             'application_id' => 'required|integer',
             'action' => 'required|in:approve,reject',
@@ -159,21 +153,6 @@ class ProjectApplicationController extends Controller
 
         $user = $request->user();
 
-        // Debug logging
-        \Log::info('ReviewApplication Debug', [
-            'application_id' => $applicationId,
-            'project_id' => $application->project_id,
-            'project_owner_id' => $application->project->owner_id,
-            'project_owner_id_type' => gettype($application->project->owner_id),
-            'user_id' => $user->id,
-            'user_id_type' => gettype($user->id),
-            'owner_id_string' => (string)$application->project->owner_id,
-            'user_id_string' => (string)$user->id,
-            'are_equal_strict' => (string)$application->project->owner_id === (string)$user->id,
-            'are_equal_loose' => $application->project->owner_id == $user->id,
-            'are_equal_string' => (string)$application->project->owner_id === (string)$user->id,
-        ]);
-
         // Only project owner can review
         if ((string)$application->project->owner_id !== (string)$user->id) {
             \Log::warning('ReviewApplication: Permission denied', [
@@ -187,7 +166,6 @@ class ProjectApplicationController extends Controller
 
         // Check if already reviewed
         if ($application->status !== 'pending') {
-            \Log::info('ReviewApplication: Already reviewed', ['status' => $application->status]);
             return response()->json([
                 'message' => 'Diese Bewerbung wurde bereits bearbeitet'
             ], 409);
@@ -228,18 +206,12 @@ class ProjectApplicationController extends Controller
                 [$application->user_id],  // recipient (applicant)
                 $body
             );
-            \Log::info('ReviewApplication: Notification message sent', [
-                'to_user_id' => $application->user_id,
-                'subject' => $subject
-            ]);
         } catch (\Exception $e) {
             \Log::error('ReviewApplication: Failed to send notification message', [
                 'error' => $e->getMessage()
             ]);
             // Don't fail the whole request if message sending fails
         }
-
-        \Log::info('ReviewApplication: Success', ['action' => $request->action]);
 
         return response()->json([
             'message' => $message,
@@ -269,24 +241,10 @@ class ProjectApplicationController extends Controller
      */
     public function getProjectByJoinCode(Request $request, $joinCode)
     {
-        // Debug log
-        \Log::info('ProjectApplicationController: getProjectByJoinCode called', [
-            'joinCode' => $joinCode,
-            'user_id' => $request->user()?->id,
-        ]);
-
         // First check if project exists with this join code (regardless of allow_join_requests)
         $projectExists = Project::where('join_code', $joinCode)
                                 ->with(['owner', 'teams'])
                                 ->first();
-
-        \Log::info('ProjectApplicationController: Project lookup result', [
-            'joinCode' => $joinCode,
-            'project_exists' => !!$projectExists,
-            'project_id' => $projectExists?->id,
-            'allow_join_requests' => $projectExists?->allow_join_requests,
-            'is_active' => $projectExists?->is_active,
-        ]);
 
         // Provide specific error messages for different scenarios
         if (!$projectExists) {

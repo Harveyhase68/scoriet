@@ -28,15 +28,6 @@ class EnsureUserIsAdmin
             }
         }
 
-        // Log for debugging
-        Log::info('Admin Middleware Check', [
-            'has_bearer_token' => $request->bearerToken() !== null,
-            'has_user' => $user !== null,
-            'user_id' => $user?->id,
-            'user_type' => $user?->user_type,
-            'user_email' => $user?->email,
-        ]);
-
         // Check if user is authenticated
         if (!$user) {
             Log::warning('Admin access denied: User not authenticated');
@@ -55,11 +46,6 @@ class EnsureUserIsAdmin
         // Check if user is admin or system user
         $isSystemAdmin = in_array($user->user_type, ['admin', 'system']);
 
-        Log::info('Admin check result', [
-            'user_type' => $user->user_type,
-            'is_admin' => $isSystemAdmin,
-        ]);
-
         if (!$isSystemAdmin) {
             Log::warning('Admin access denied: User is not admin/system', [
                 'user_id' => $user->id,
@@ -77,7 +63,6 @@ class EnsureUserIsAdmin
             return redirect('/app')->with('error', 'Zugriff verweigert. Nur System-Administratoren haben Zugang zu diesem Bereich.');
         }
 
-        Log::info('Admin access granted', ['user_id' => $user->id]);
         return $next($request);
     }
 }

@@ -280,16 +280,6 @@ class SchemaExportController extends Controller
             // Add constraint definitions
             $constraintLines = [];
 
-            // DEBUG: Log constraint processing for the first few tables
-            if (in_array($table->table_name, ['accounting_log', 'atm_log', 'banking_accounts'])) {
-                \Log::info("Processing constraints for table: {$table->table_name}");
-                \Log::info("Constraint count: " . $table->constraints->count());
-                foreach ($table->constraints as $constraint) {
-                    \Log::info("Constraint: {$constraint->constraint_name} (type: {$constraint->constraint_type})");
-                    \Log::info("ConstraintColumns count: " . $constraint->constraintColumns->count());
-                }
-            }
-
             foreach ($table->constraints as $constraint) {
                 switch (strtoupper($constraint->constraint_type)) {
                     case 'PRIMARY':

@@ -185,11 +185,6 @@ class GitProviderService
             : null;
         $gitProvider->save();
 
-        \Log::info('GitLab token refreshed successfully', [
-            'user_id' => $gitProvider->user_id,
-            'expires_at' => $gitProvider->token_expires_at,
-        ]);
-
         return true;
     }
 
@@ -693,14 +688,6 @@ class GitProviderService
 
         $branchExists = $branchCheck->successful();
 
-        \Log::info('GitLab push debug', [
-            'branch' => $branch,
-            'encodedBranch' => $encodedBranch,
-            'branchExists' => $branchExists,
-            'branchCheckStatus' => $branchCheck->status(),
-            'baseBranch' => $baseBranch,
-        ]);
-
         // GitLab uses commits API with actions
         // We need to check if each file exists to determine create vs update action
         $actions = [];
@@ -928,14 +915,6 @@ class GitProviderService
             $detailedStatus = $mr['detailed_merge_status'] ?? null;
             $state = $mr['state'] ?? 'unknown';
 
-            \Log::info('GitLab MR status check', [
-                'attempt' => $attempt,
-                'mr_iid' => $mrIid,
-                'state' => $state,
-                'merge_status' => $mergeStatus,
-                'detailed_merge_status' => $detailedStatus,
-            ]);
-
             // Check if already merged
             if ($state === 'merged') {
                 return [
@@ -951,7 +930,6 @@ class GitProviderService
 
             // Check if ready to merge
             if ($mergeStatus === 'can_be_merged' || $detailedStatus === 'mergeable') {
-                \Log::info('GitLab MR is ready to merge', ['attempt' => $attempt]);
                 break;
             }
 
@@ -963,7 +941,6 @@ class GitProviderService
 
             // If still checking/preparing, wait and retry
             if ($attempt < $maxAttempts && ($mergeStatus === 'checking' || $detailedStatus === 'preparing')) {
-                \Log::info('GitLab MR still preparing, waiting...', ['wait_seconds' => $waitSeconds]);
                 sleep($waitSeconds);
             }
         }
@@ -1002,8 +979,6 @@ class GitProviderService
 
             throw new \Exception($message);
         }
-
-        \Log::info('GitLab MR merged successfully', ['mr_iid' => $mrIid]);
 
         return [
             'merged' => true,
@@ -1236,7 +1211,6 @@ class GitProviderService
 
             // Skip very large files (> 1MB) - these would timeout anyway
             if (isset($file['size']) && $file['size'] > 1024 * 1024) {
-                \Log::info("Skipping large file: {$file['path']} ({$file['size']} bytes)");
                 $skippedLarge++;
                 continue;
             }

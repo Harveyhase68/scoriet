@@ -94,14 +94,6 @@ class SubscriptionController extends Controller
         // Renew with bonus
         $result = $subscription->renewWithBonus();
 
-        Log::info('Subscription renewed', [
-            'subscription_id' => $subscription->id,
-            'user_id' => $user->id,
-            'type' => $subscription->subscription_type,
-            'bonus_days' => $result['bonus_days'],
-            'new_expires_at' => $result['new_expires_at'],
-        ]);
-
         return response()->json([
             'success' => true,
             'message' => $result['bonus_days'] > 0
@@ -147,11 +139,6 @@ class SubscriptionController extends Controller
                 'message' => 'Freischaltung fehlgeschlagen',
             ], 500);
         }
-
-        Log::info('Code Adjustments unlocked', [
-            'user_id' => $user->id,
-            'subscription_id' => $subscription->id,
-        ]);
 
         return response()->json([
             'message' => __('subscriptioncontrollerphp157'),
@@ -203,11 +190,6 @@ class SubscriptionController extends Controller
             ], 500);
         }
 
-        Log::info('Database Designer unlocked', [
-            'user_id' => $user->id,
-            'subscription_id' => $subscription->id,
-        ]);
-
         return response()->json([
             'message' => 'Datenbank Designer erfolgreich freigeschaltet!',
             'access_status' => $user->getDatabaseDesignerAccessStatus(),
@@ -257,11 +239,6 @@ class SubscriptionController extends Controller
                 'message' => 'Freischaltung fehlgeschlagen',
             ], 500);
         }
-
-        Log::info('Schema Migration unlocked', [
-            'user_id' => $user->id,
-            'subscription_id' => $subscription->id,
-        ]);
 
         return response()->json([
             'message' => 'Schema Migration erfolgreich freigeschaltet!',
@@ -327,11 +304,6 @@ class SubscriptionController extends Controller
 
         // Deduct credits
         $user->decrement('credits', $cost);
-
-        Log::info('Teams feature unlocked', [
-            'user_id' => $user->id,
-            'subscription_id' => $subscription->id,
-        ]);
 
         return response()->json([
             'message' => 'Teams erfolgreich freigeschaltet!',
@@ -662,8 +634,6 @@ class SubscriptionController extends Controller
             $subscription->cancel_at_period_end = true;
             $subscription->save();
 
-            Log::info(__('subscriptioncontrollerphp665') . "{$user->stripe_subscription_id}" . __('subscriptioncontrollerphp665_2') . "{$user->id}");
-
             // Note: We don't change user_type here - the webhook will handle that when the subscription actually ends
             // For now, we can store that cancellation was requested
 
@@ -691,10 +661,6 @@ class SubscriptionController extends Controller
 
             // Cancel the subscription
             $response = $provider->cancelSubscription($user->paypal_subscription_id, __('subscriptioncontrollerphp693'));
-
-            Log::info(__('subscriptioncontrollerphp695') . "{$user->paypal_subscription_id}" . __('subscriptioncontrollerphp695_2'). "{$user->id}", [
-                'response' => $response,
-            ]);
 
             // Note: Similar to Stripe, the webhook will handle the actual status change
             // PayPal subscriptions are cancelled immediately but access continues until period end

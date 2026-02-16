@@ -2083,13 +2083,6 @@ class SchemaController extends Controller
             })
             ->get();
 
-        \Log::info("Looking for FK references to table", [
-            'table_id' => $table->id,
-            'table_name' => $table->table_name,
-            'schema_version_id' => $schemaVersionId,
-            'found_references' => $fkReferences->count(),
-        ]);
-
         foreach ($fkReferences as $fkReference) {
             // Get the parent constraint
             $constraint = $fkReference->constraint;
@@ -2097,13 +2090,6 @@ class SchemaController extends Controller
                 // Delete the constraint (this will cascade delete the reference and columns)
                 $constraint->delete();
                 $deletedCount++;
-
-                \Log::info("Deleted orphaned FK constraint", [
-                    'constraint_name' => $constraint->constraint_name,
-                    'source_table_id' => $constraint->table_id,
-                    'referenced_table_id' => $table->id,
-                    'referenced_table_name' => $table->table_name,
-                ]);
             }
         }
 

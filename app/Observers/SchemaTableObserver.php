@@ -16,8 +16,6 @@ class SchemaTableObserver
      */
     public function created(SchemaTable $schemaTable): void
     {
-        Log::info("📋 [SCHEMA-TABLE-OBSERVER] created event triggered for table {$schemaTable->id} ({$schemaTable->table_name})");
-
         // Clear all template cache as schema structure changed
         app(TemplateCacheService::class)->clearAll();
 
@@ -32,8 +30,6 @@ class SchemaTableObserver
      */
     public function updated(SchemaTable $schemaTable): void
     {
-        Log::info("📋 [SCHEMA-TABLE-OBSERVER] updated event triggered for table {$schemaTable->id} ({$schemaTable->table_name})");
-
         // Clear all template cache as schema structure changed
         app(TemplateCacheService::class)->clearAll();
 
@@ -48,8 +44,6 @@ class SchemaTableObserver
      */
     public function deleted(SchemaTable $schemaTable): void
     {
-        Log::info("📋 [SCHEMA-TABLE-OBSERVER] deleted event triggered for table {$schemaTable->id} ({$schemaTable->table_name})");
-
         // Clear all template cache as schema structure changed
         app(TemplateCacheService::class)->clearAll();
 
@@ -72,11 +66,8 @@ class SchemaTableObserver
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("📋 [SCHEMA-TABLE-OBSERVER] SchemaTable {$schemaTable->id} ({$action}): No active projects found");
             return;
         }
-
-        Log::info("📋 [SCHEMA-TABLE-OBSERVER] SchemaTable {$schemaTable->id} ({$action}): Dispatching regeneration for ALL " . count($projectIds) . " active projects");
 
         // Check if we should run synchronously (for development/testing)
         $runSynchronously = config('app.env') === 'local' || config('queue.default') === 'sync';
@@ -86,13 +77,11 @@ class SchemaTableObserver
             try {
                 if ($runSynchronously) {
                     // Run the job immediately for development
-                    Log::info("📋 [SCHEMA-TABLE-OBSERVER] Running regeneration job synchronously for project {$projectId}");
                     $job = new RegenerateProjectGenerationTree($projectId);
                     $job->handle();
                 } else {
                     // Dispatch to queue for production
                     RegenerateProjectGenerationTree::dispatch($projectId);
-                    Log::info("Successfully dispatched regeneration job for project {$projectId}");
                 }
             } catch (\Exception $e) {
                 Log::error("Failed to dispatch/run regeneration job for project {$projectId}: " . $e->getMessage());
@@ -108,7 +97,6 @@ class SchemaTableObserver
         if ($schemaTable->schema_version_id) {
             $cacheKey = "schema_tables:{$schemaTable->schema_version_id}";
             Cache::forget($cacheKey);
-            Log::info("🗑️ [SCHEMA CACHE] Invalidated cache for schema version {$schemaTable->schema_version_id}");
         }
 
         // 🆕 INVALIDATE NEW CACHE KEYS (schema_data + gtree)
@@ -122,10 +110,6 @@ class SchemaTableObserver
                 $schemaCacheKey = "schema_data:{$projectId}";
                 if (Cache::has($schemaCacheKey)) {
                     Cache::forget($schemaCacheKey);
-                    Log::info("🗑️ [CACHE INVALIDATED] Schema cache for project #{$projectId}", [
-                        'table' => $schemaTable->table_name,
-                        'cache_key' => $schemaCacheKey,
-                    ]);
                 }
 
                 // 2. Delete Gtree Cache for all templates
@@ -134,10 +118,6 @@ class SchemaTableObserver
                     $gtreeCacheKey = "gtree:{$projectId}:{$template->id}";
                     if (Cache::has($gtreeCacheKey)) {
                         Cache::forget($gtreeCacheKey);
-                        Log::info("🗑️ [CACHE INVALIDATED] Gtree cache for project #{$projectId} template #{$template->id}", [
-                            'table' => $schemaTable->table_name,
-                            'cache_key' => $gtreeCacheKey,
-                        ]);
                     }
                 }
             }

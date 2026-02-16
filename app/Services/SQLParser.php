@@ -729,10 +729,7 @@ class SQLParser
 
         // Loop to handle multiple ADD CONSTRAINT in one ALTER TABLE statement
         // e.g., ALTER TABLE `t` ADD CONSTRAINT `fk1` ..., ADD CONSTRAINT `fk2` ...;
-        \Log::info("[MySQL-Parser] Starting ALTER TABLE loop for table: {$table_name}");
-
         while ($this->currentTokenMatches('KEYWORD', 'ADD')) {
-            \Log::info("[MySQL-Parser] Found ADD keyword, consuming...");
             $this->consumeToken('KEYWORD', 'ADD');
 
             // Check if it's ADD CONSTRAINT - if not, skip to next comma or end
@@ -838,20 +835,13 @@ class SQLParser
 
             if (isset($this->table_map[$table_name])) {
                 $this->table_map[$table_name]['constraints'][] = $fk;
-                \Log::info("[MySQL-Parser] FK added: {$constraint_name} -> {$ref_table}");
             }
 
             // Check for comma (more ADD clauses follow) or semicolon (end)
-            $currentToken = $this->currentToken();
-            \Log::info("[MySQL-Parser] After FK, current token: " . ($currentToken ? "{$currentToken->type}:{$currentToken->value}" : "null"));
-
             if ($this->currentTokenMatches('COMMA')) {
                 $this->consumeToken('COMMA');
-                $nextToken = $this->currentToken();
-                \Log::info("[MySQL-Parser] Found comma, next token: " . ($nextToken ? "{$nextToken->type}:{$nextToken->value}" : "null"));
                 // Continue loop to parse next ADD CONSTRAINT
             } else {
-                \Log::info("[MySQL-Parser] No comma found, breaking loop");
                 // End of ALTER TABLE statement
                 break;
             }

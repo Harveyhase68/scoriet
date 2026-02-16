@@ -128,14 +128,6 @@ class GeneratedProjectUploadController extends Controller
             'notes' => $request->input('is_download_only') === 'true' ? 'Local download' : 'Deployment upload',
         ]);
 
-        \Log::info("📦 Generation recorded", [
-            'generation_id' => $generation->id,
-            'generation_number' => $generationNumber,
-            'project_id' => $projectId,
-            'filename' => $filename,
-            'file_size' => $fileSize,
-        ]);
-
         // Track performance metrics
         $uploadTime = round((microtime(true) - $startTime) * 1000, 2);
         $generationTimeMs = (int) $request->input('generation_time_ms', 0);
@@ -160,11 +152,6 @@ class GeneratedProjectUploadController extends Controller
                     'generation_number' => $generationNumber,
                 ],
                 'created_at' => now(),
-            ]);
-            \Log::info("📊 Performance metric saved", [
-                'operation' => 'generation',
-                'duration_ms' => $generationTimeMs > 0 ? $generationTimeMs : (int) $uploadTime,
-                'tables' => count($tables),
             ]);
         } catch (\Exception $trackingError) {
             \Log::error("❌ Performance tracking failed: " . $trackingError->getMessage());

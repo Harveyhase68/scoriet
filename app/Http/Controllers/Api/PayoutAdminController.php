@@ -204,12 +204,6 @@ class PayoutAdminController extends Controller
                         'sender_batch_id' => $senderBatchId,
                     ]);
 
-                    Log::info('PayPal Payout successful', [
-                        'payout_id' => $payout->id,
-                        'seller_id' => $seller->id,
-                        'amount' => $amounts['net_amount'],
-                        'batch_id' => $paypalResult['payout_batch_id'],
-                    ]);
                 } else {
                     // PayPal failed - rollback everything
                     DB::rollBack();
@@ -224,12 +218,6 @@ class PayoutAdminController extends Controller
                     'transaction_id' => 'BANK-PENDING-' . now()->format('YmdHis'),
                 ]);
 
-                Log::info('Bank transfer payout created (manual processing required)', [
-                    'payout_id' => $payout->id,
-                    'seller_id' => $seller->id,
-                    'amount' => $amounts['net_amount'],
-                    'iban' => $seller->bank_iban,
-                ]);
             }
 
             DB::commit();
@@ -382,12 +370,6 @@ class PayoutAdminController extends Controller
                 DB::commit();
 
                 $totalPaid = array_sum(array_column($payoutRecords, 'amount'));
-
-                Log::info('PayPal Batch Payout successful', [
-                    'recipient_count' => count($recipients),
-                    'total_amount' => $totalPaid,
-                    'batch_id' => $paypalResult['payout_batch_id'],
-                ]);
 
                 return response()->json([
                     'success' => true,

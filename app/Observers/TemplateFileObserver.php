@@ -17,8 +17,6 @@ class TemplateFileObserver
      */
     public function created(TemplateFile $templateFile): void
     {
-        Log::info("📄 [TEMPLATE-FILE-OBSERVER] created event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
-
         // Invalidate compiled template cache and GTree cache for this template
         $this->invalidateTemplateAndGtreeCache($templateFile);
 
@@ -30,8 +28,6 @@ class TemplateFileObserver
      */
     public function updated(TemplateFile $templateFile): void
     {
-        Log::info("📄 [TEMPLATE-FILE-OBSERVER] updated event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
-
         // Invalidate cache for this specific file
         $this->invalidateFileCache($templateFile);
 
@@ -52,8 +48,6 @@ class TemplateFileObserver
      */
     public function deleted(TemplateFile $templateFile): void
     {
-        Log::info("📄 [TEMPLATE-FILE-OBSERVER] deleted event triggered for file {$templateFile->id} (template: {$templateFile->template_id})");
-
         // Invalidate cache for deleted file and GTree cache
         $this->invalidateFileCache($templateFile);
         $this->invalidateGtreeCache($templateFile);
@@ -76,17 +70,13 @@ class TemplateFileObserver
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("TemplateFile {$templateFile->id} ({$action}): No projects affected");
             return;
         }
-
-        Log::info("TemplateFile {$templateFile->id} ({$action}): Dispatching regeneration for " . count($projectIds) . " projects");
 
         // Dispatch queue jobs for each affected project
         foreach ($projectIds as $projectId) {
             try {
                 RegenerateProjectGenerationTree::dispatch($projectId);
-                Log::info("Successfully dispatched regeneration job for project {$projectId}");
             } catch (\Exception $e) {
                 Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
             }
@@ -102,8 +92,6 @@ class TemplateFileObserver
         try {
             $cacheService = app(TemplateCacheService::class);
             $cacheService->invalidateFile($templateFile->id);
-
-            Log::info("🗑️ [CACHE] Invalidated cache for template file {$templateFile->id} ({$templateFile->file_name})");
         } catch (\Exception $e) {
             Log::error("❌ [CACHE] Failed to invalidate cache for file {$templateFile->id}: " . $e->getMessage());
         }
@@ -119,8 +107,6 @@ class TemplateFileObserver
             $cacheService = app(TemplateCacheService::class);
             $cacheService->invalidateTemplate($templateFile->template_id);
             $cacheService->invalidateGtreeForTemplate($templateFile->template_id);
-
-            Log::info("🗑️ [CACHE] Invalidated template + GTree cache for template {$templateFile->template_id}");
         } catch (\Exception $e) {
             Log::error("❌ [CACHE] Failed to invalidate template/GTree cache: " . $e->getMessage());
         }
@@ -154,11 +140,8 @@ class TemplateFileObserver
             ->toArray();
 
         if (empty($projectIds)) {
-            Log::info("🔥 [PRECOMPILE] No projects to pre-compile for file {$templateFile->id}");
             return;
         }
-
-        Log::info("🔥 [PRECOMPILE] Dispatching pre-compilation for file {$templateFile->id} across " . count($projectIds) . " projects");
 
         foreach ($projectIds as $projectId) {
             try {
@@ -168,8 +151,6 @@ class TemplateFileObserver
                     templateId: $templateFile->template_id,
                     fileId: $templateFile->id
                 );
-
-                Log::info("🔥 Dispatched pre-compilation job for project {$projectId}, file {$templateFile->id}");
             } catch (\Exception $e) {
                 Log::error("❌ Failed to dispatch pre-compilation for project {$projectId}: " . $e->getMessage());
             }

@@ -400,12 +400,6 @@ class ProjectController extends Controller
                 $project->update($updateData);
             }
 
-            \Log::info('Project cloned successfully', [
-                'original_project_id' => $originalProject->id,
-                'new_project_id' => $project->id,
-                'schemas_copied' => $originalSchemas->count(),
-                'templates_copied' => $originalTemplateUsages->count(),
-            ]);
         }
 
         // If user needed a project subscription (Free user creating 2nd+ project)
@@ -1401,22 +1395,6 @@ class ProjectController extends Controller
         // Merge with the relationship-based query results
         $allTeamProjects = $teamProjects->merge($explicitTeamProjectsModels)->unique('id');
 
-        // DEBUG: Log what we're finding
-        /*
-        \Log::info('getUserProjects DEBUG', [
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'owned_projects_count' => $ownedProjects->count(),
-            'owned_projects' => $ownedProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
-            'team_projects_count' => $teamProjects->count(),
-            'team_projects' => $teamProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
-            'explicit_team_projects_count' => $explicitTeamProjects->count(),
-            'explicit_team_projects' => $explicitTeamProjects->map(function($p) { return ['id' => $p['id'], 'name' => $p['name'], 'owner_id' => $p['owner_id']]; })->toArray(),
-            'all_team_projects_count' => $allTeamProjects->count(),
-            'all_team_projects' => $allTeamProjects->map(function($p) { return ['id' => $p->id, 'name' => $p->name, 'owner_id' => $p->owner_id]; })->toArray(),
-        ]);
-        */
-        
         // Merge and remove duplicates (in case user is both owner and team member)
         $allProjects = $ownedProjects->merge($allTeamProjects)
             ->filter(function($project) {

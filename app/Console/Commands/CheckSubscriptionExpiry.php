@@ -197,8 +197,6 @@ class CheckSubscriptionExpiry extends Command
             ]
         );
 
-        Log::info('Subscription expiry check completed', $stats);
-
         return Command::SUCCESS;
     }
 
@@ -269,13 +267,6 @@ class CheckSubscriptionExpiry extends Command
                 $message->to($user->email, $user->name)
                     ->subject($subject);
             });
-
-            Log::info('Bundled subscription notification sent', [
-                'user_id' => $user->id,
-                'warning_count' => count($warningItems),
-                'final_count' => count($finalItems),
-                'expired_count' => count($expiredItems),
-            ]);
 
             return true;
         } catch (\Exception $e) {

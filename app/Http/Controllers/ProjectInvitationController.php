@@ -237,15 +237,6 @@ class ProjectInvitationController extends Controller
     {
         $user = Auth::user();
 
-        \Log::info('=== Cancel Invitation Request ===', [
-            'user_id' => $user->id,
-            'project_id' => $project->id,
-            'invitation_id' => $invitation->id,
-            'invitation_project_id' => $invitation->project_id,
-            'invitation_status' => $invitation->status,
-            'user_can_manage' => $project->userCanManage($user),
-        ]);
-
         if (!$project->userCanManage($user)) {
             \Log::warning('Cancel invitation: Unauthorized', [
                 'user_id' => $user->id,
@@ -270,7 +261,6 @@ class ProjectInvitationController extends Controller
         }
 
         $invitation->update(['status' => 'expired']);
-        \Log::info('Invitation cancelled successfully', ['invitation_id' => $invitation->id]);
 
         return response()->json(['message' => 'Invitation cancelled successfully']);
     }

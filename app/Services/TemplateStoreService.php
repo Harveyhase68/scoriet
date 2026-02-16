@@ -136,15 +136,6 @@ class TemplateStoreService
                 return $purchase;
             });
 
-            Log::info("Template purchased with credits", [
-                'buyer_id' => $buyer->id,
-                'seller_id' => $seller->id,
-                'template_id' => $template->id,
-                'price' => $price,
-                'seller_credits' => $sellerCredits,
-                'platform_credits' => $platformCredits,
-            ]);
-
             return [
                 'success' => true,
                 'message' => "Successfully purchased '{$template->name}' for {$price} credits.",
@@ -296,17 +287,6 @@ class TemplateStoreService
 
                 return $purchase;
             });
-
-            Log::info("Template purchased with euros", [
-                'buyer_id' => $buyer->id,
-                'seller_id' => $seller->id,
-                'template_id' => $template->id,
-                'price' => $price,
-                'seller_euros' => $sellerEuros,
-                'platform_euros' => $platformEuros,
-                'payment_method' => $paymentMethod,
-                'payment_id' => $paymentId,
-            ]);
 
             return [
                 'success' => true,

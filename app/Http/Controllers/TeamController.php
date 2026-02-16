@@ -682,12 +682,6 @@ class TeamController extends Controller
                     $ownerSlot->user_id = $newOwner->id;
                     $ownerSlot->save();
                     $slotTransferred = true;
-
-                    \Log::info("Team slot transferred", [
-                        'subscription_id' => $ownerSlot->id,
-                        'from_user' => $owner->id,
-                        'to_user' => $newOwner->id,
-                    ]);
                 }
 
                 // 2. Remove project links that the new owner shouldn't have access to
@@ -706,13 +700,6 @@ class TeamController extends Controller
                             ->delete();
 
                         $unlinkedProjects[] = $project->name;
-
-                        \Log::info("Project link removed during team transfer", [
-                            'team_id' => $team->id,
-                            'project_id' => $project->id,
-                            'project_name' => $project->name,
-                            'reason' => 'private_not_owned_by_new_owner',
-                        ]);
                     }
                 }
 
@@ -733,11 +720,6 @@ class TeamController extends Controller
                         'expires_at' => now()->subDay(), // Already expired = soft-locked
                         'is_active' => true,
                         'is_soft_locked' => true,
-                    ]);
-
-                    \Log::info("Team transferred as soft-locked", [
-                        'team_id' => $team->id,
-                        'new_owner' => $newOwner->id,
                     ]);
                 }
 

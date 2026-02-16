@@ -112,12 +112,6 @@ class GitProviderController extends Controller
             'created_at' => now()->toIso8601String(),
         ], now()->addMinutes(15));
 
-        \Log::info('Git OAuth state created', [
-            'provider' => $provider,
-            'user_id' => $request->user()->id,
-            'state_prefix' => substr($state, 0, 10) . '...',
-        ]);
-
         try {
             $url = $this->gitProviderService->getAuthorizationUrl($provider, $state);
             return response()->json(['url' => $url, 'state' => $state]);
@@ -147,12 +141,6 @@ class GitProviderController extends Controller
         // Verify state from cache
         $cacheKey = "git_oauth_state_{$state}";
         $storedData = cache()->get($cacheKey);
-
-        \Log::info('Git OAuth callback received', [
-            'provider' => $provider,
-            'state_prefix' => substr($state, 0, 10) . '...',
-            'has_stored_data' => !is_null($storedData),
-        ]);
 
         if (!$storedData) {
             \Log::warning('Git OAuth state not found in cache', [

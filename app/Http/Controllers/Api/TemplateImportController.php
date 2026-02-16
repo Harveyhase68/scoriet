@@ -455,17 +455,6 @@ class TemplateImportController extends Controller
             $filesUpdated = 0;
             $filesAdded = 0;
 
-            // Debug logging
-            \Log::info('Template import: Starting file processing', [
-                'session_id' => $sessionId,
-                'extract_dir' => $extractDir,
-                'root_prefix' => $sessionData['root_prefix'] ?? '',
-                'import_mode' => $isMerge ? 'merge' : 'new/overwrite',
-                'template_files_count' => count($validated['template_files']),
-                'static_files_count' => count($validated['static_files'] ?? []),
-                'static_directory_files_count' => count($validated['static_directory_files'] ?? []),
-            ]);
-
             // Add template files
             foreach ($validated['template_files'] as $filePath) {
                 $fullPath = $this->resolveFilePath($sessionData, $filePath);

@@ -410,7 +410,6 @@ class RegistrationValidationService
             // Clear cache
             cache()->forget('disposable_email_domains');
 
-            \Log::info('Added custom disposable domain', ['domain' => $domain]);
             return true;
         }
 
@@ -482,7 +481,6 @@ class RegistrationValidationService
             // Clear cache
             cache()->forget('tor_exit_nodes');
 
-            \Log::info('Tor exit nodes updated', ['count' => count($nodes)]);
             return count($nodes);
         } catch (\Exception $e) {
             \Log::error('Failed to update Tor exit nodes: ' . $e->getMessage());

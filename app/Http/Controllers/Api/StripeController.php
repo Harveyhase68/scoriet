@@ -191,8 +191,6 @@ class StripeController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        Log::info('Stripe Webhook Event: ' . $event->type);
-
         switch ($event->type) {
             case 'checkout.session.completed':
                 $this->handleCheckoutCompleted($event->data->object);
@@ -211,8 +209,6 @@ class StripeController extends Controller
                 $this->handleInvoicePaid($event->data->object);
                 break;
 
-            default:
-                Log::info('Unhandled Stripe event: ' . $event->type);
         }
 
         return response()->json(['received' => true]);
@@ -258,7 +254,6 @@ class StripeController extends Controller
                     ]);
                 });
 
-                Log::info("Credits added: {$credits} to user {$userId}");
             }
         } elseif ($type === 'template') {
             $this->handleTemplatePurchase($session, $user, $metadata);
@@ -275,8 +270,6 @@ class StripeController extends Controller
                     'stripe_customer_id' => $session->customer ?? null,
                 ]);
             });
-
-            Log::info("Patron subscription activated for user {$user->id}: {$patronType}");
 
             // Send admin notification
             try {
@@ -315,14 +308,7 @@ class StripeController extends Controller
             'stripe'
         );
 
-        if ($result['success']) {
-            Log::info('Template purchased via Stripe', [
-                'user_id' => $user->id,
-                'template_id' => $templateId,
-                'price_euros' => $priceEuros,
-                'session_id' => $session->id,
-            ]);
-        } else {
+        if (!$result['success']) {
             Log::error('Template purchase failed via Stripe', [
                 'user_id' => $user->id,
                 'template_id' => $templateId,
@@ -368,7 +354,6 @@ class StripeController extends Controller
             ]);
         }
 
-        Log::info("Subscription updated for user {$user->id}: {$status}");
     }
 
     /**
@@ -386,8 +371,6 @@ class StripeController extends Controller
                 'user_type' => 'free',
                 'patron_type' => null,
             ]);
-
-            Log::info("Patron subscription canceled for user {$user->id}");
         }
     }
 
@@ -421,7 +404,6 @@ class StripeController extends Controller
             ]);
         });
 
-        Log::info("Monthly credits added for patron user {$user->id}");
     }
 
     /**
@@ -487,13 +469,6 @@ class StripeController extends Controller
                     'price_euros' => $price,
                     'type' => 'template',
                 ],
-            ]);
-
-            Log::info('Template Stripe checkout created', [
-                'user_id' => $user->id,
-                'template_id' => $template->id,
-                'price' => $price,
-                'session_id' => $session->id,
             ]);
 
             return response()->json([

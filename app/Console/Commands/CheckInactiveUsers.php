@@ -120,8 +120,6 @@ class CheckInactiveUsers extends Command
             ]
         );
 
-        Log::info('Inactive users check completed', $stats);
-
         return Command::SUCCESS;
     }
 
@@ -262,10 +260,6 @@ class CheckInactiveUsers extends Command
                     ->subject($subject);
             });
 
-            Log::info('Inactivity warning email sent', [
-                'user_id' => $user->id,
-                'warning_level' => $warningLevel,
-            ]);
         } catch (\Exception $e) {
             $this->error(" Failed to send email: {$e->getMessage()}");
             Log::error('Failed to send inactivity warning email', [
@@ -290,7 +284,6 @@ class CheckInactiveUsers extends Command
                     ->subject('Ihr Konto wurde wegen Inaktivität deaktiviert');
             });
 
-            Log::info('Account deactivation email sent', ['user_id' => $user->id]);
         } catch (\Exception $e) {
             $this->error(" Failed to send deactivation email: {$e->getMessage()}");
             Log::error('Failed to send deactivation email', [

@@ -59,6 +59,10 @@ return [
             'engine' => 'InnoDB ROW_FORMAT=DYNAMIC',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Fix: libmysqlclient default buffer is 1MB — too small for Base64 ZIP content in mediumtext columns.
+                // Value 1005 = PDO::MYSQL_ATTR_MAX_BUFFER_SIZE (constant only exists with libmysqlclient, not mysqlnd).
+                // mysqlnd ignores this setting, so it's safe to set on all environments.
+                1005 => 64 * 1024 * 1024, // 64MB
             ]) : [],
             // Add these lines for index length fix:
             'modes' => [
