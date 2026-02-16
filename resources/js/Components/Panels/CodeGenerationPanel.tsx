@@ -1898,12 +1898,37 @@ export default function CodeGenerationPanel() {
 
         for (const zipFile of zipFiles) {
           try {
-            // Decode Base64 ZIP content
-            const base64Content = zipFile.file_content;
-            const binaryString = atob(base64Content);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
+            // Decode Base64 ZIP content — clean whitespace that may be introduced by server transport
+            let base64Content = zipFile.file_content;
+            if (!base64Content || base64Content.length === 0) {
+              throw new Error('Empty file_content for ZIP file');
+            }
+
+            // Integrity check: verify content wasn't truncated during API response delivery
+            if (zipFile.file_content_length && base64Content.length !== zipFile.file_content_length) {
+              console.warn(`[ZIP] Content length mismatch for "${zipFile.file_name}": expected ${zipFile.file_content_length}, received ${base64Content.length}`);
+              throw new Error(`ZIP data truncated during transfer (expected ${zipFile.file_content_length} chars, got ${base64Content.length})`);
+            }
+
+            // Strip any whitespace/newlines (can be introduced by Nginx buffering, PHP output encoding, etc.)
+            base64Content = base64Content.replace(/[\s\r\n]+/g, '');
+
+            // Validate Base64 padding
+            const paddingNeeded = (4 - (base64Content.length % 4)) % 4;
+            if (paddingNeeded > 0) {
+              base64Content += '='.repeat(paddingNeeded);
+            }
+
+            // Decode Base64 to binary using fetch API (more robust than atob for large content)
+            const response = await fetch(`data:application/octet-stream;base64,${base64Content}`);
+            if (!response.ok) {
+              throw new Error('Base64 decode failed — data may be corrupted or truncated');
+            }
+            const bytes = new Uint8Array(await response.arrayBuffer());
+
+            if (bytes.length < 22) {
+              // Minimum ZIP file size is 22 bytes (empty ZIP)
+              throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
             }
 
             // Load ZIP with JSZip

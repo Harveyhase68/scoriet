@@ -461,12 +461,30 @@ const FileModal: React.FC<FileModalProps> = ({
 
             setIsLoadingZipList(true);
             try {
-                // Decode Base64 ZIP content
-                const base64Content = editingFile.file_content;
-                const binaryString = atob(base64Content);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
+                // Decode Base64 ZIP content — clean whitespace that may be introduced by server transport
+                let base64Content = editingFile.file_content;
+                if (!base64Content || base64Content.length === 0) {
+                    throw new Error('Empty file_content for ZIP file');
+                }
+
+                // Strip any whitespace/newlines (can be introduced by Nginx buffering, PHP output encoding, etc.)
+                base64Content = base64Content.replace(/[\s\r\n]+/g, '');
+
+                // Validate Base64 padding
+                const paddingNeeded = (4 - (base64Content.length % 4)) % 4;
+                if (paddingNeeded > 0) {
+                    base64Content += '='.repeat(paddingNeeded);
+                }
+
+                // Decode Base64 to binary using fetch API (more robust than atob for large content)
+                const response = await fetch(`data:application/octet-stream;base64,${base64Content}`);
+                if (!response.ok) {
+                    throw new Error('Base64 decode failed — data may be corrupted or truncated');
+                }
+                const bytes = new Uint8Array(await response.arrayBuffer());
+
+                if (bytes.length < 22) {
+                    throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
                 }
 
                 // Load ZIP with JSZip
@@ -786,11 +804,24 @@ const FileModal: React.FC<FileModalProps> = ({
     // 🆕 Extract ZIP content to managed files list (for editing)
     const extractZipToManagedFiles = async (base64Content: string) => {
         try {
-            // Decode Base64 ZIP content
-            const binaryString = atob(base64Content);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+            // Clean whitespace that may be introduced by server transport
+            let cleanedBase64 = base64Content.replace(/[\s\r\n]+/g, '');
+
+            // Validate Base64 padding
+            const paddingNeeded = (4 - (cleanedBase64.length % 4)) % 4;
+            if (paddingNeeded > 0) {
+                cleanedBase64 += '='.repeat(paddingNeeded);
+            }
+
+            // Decode Base64 to binary using fetch API (more robust than atob for large content)
+            const response = await fetch(`data:application/octet-stream;base64,${cleanedBase64}`);
+            if (!response.ok) {
+                throw new Error('Base64 decode failed — data may be corrupted or truncated');
+            }
+            const bytes = new Uint8Array(await response.arrayBuffer());
+
+            if (bytes.length < 22) {
+                throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
             }
 
             // Load ZIP with JSZip

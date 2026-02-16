@@ -1399,7 +1399,16 @@ class TemplateController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json($template->files);
+        // Add content_length for ZIP files to enable frontend integrity verification
+        $files = $template->files->map(function ($file) {
+            $fileArray = $file->toArray();
+            if ($file->content_type === 'zip' && $file->file_content) {
+                $fileArray['file_content_length'] = strlen($file->file_content);
+            }
+            return $fileArray;
+        });
+
+        return response()->json($files);
     }
 
     /**
@@ -1592,6 +1601,10 @@ class TemplateController extends Controller
                     'file_content' => $file->file_content,
                     'file_type' => $file->file_type,
                     'file_order' => $file->file_order,
+                    'content_type' => $file->content_type ?? 'text',
+                    'zip_filename' => $file->zip_filename,
+                    'form_window_type' => $file->form_window_type ?? 0,
+                    'is_include_only' => $file->is_include_only ?? false,
                 ];
             }),
             'export_info' => [
@@ -1929,6 +1942,11 @@ class TemplateController extends Controller
                 'template_data.files.*.file_content' => 'required|string',
                 'template_data.files.*.file_type' => 'nullable|string|max:50',
                 'template_data.files.*.file_order' => 'nullable|integer',
+                'template_data.files.*.content_type' => 'nullable|string|in:text,zip',
+                'template_data.files.*.zip_filename' => 'nullable|string',
+                'template_data.files.*.output_path' => 'nullable|string',
+                'template_data.files.*.form_window_type' => 'nullable|integer|min:0|max:5',
+                'template_data.files.*.is_include_only' => 'nullable|boolean',
                 'overwrite_existing' => 'boolean',
             ]);
 
@@ -1970,6 +1988,11 @@ class TemplateController extends Controller
                     'file_content' => $fileData['file_content'],
                     'file_type' => $fileData['file_type'] ?? 'template',
                     'file_order' => $fileData['file_order'] ?? $index,
+                    'content_type' => $fileData['content_type'] ?? 'text',
+                    'zip_filename' => $fileData['zip_filename'] ?? null,
+                    'output_path' => $fileData['output_path'] ?? '/',
+                    'form_window_type' => $fileData['form_window_type'] ?? 0,
+                    'is_include_only' => $fileData['is_include_only'] ?? false,
                 ]);
             }
 
