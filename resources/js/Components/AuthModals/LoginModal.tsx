@@ -16,9 +16,7 @@ interface LoginModalProps {
   onLoginSuccess?: () => void;
   closable?: boolean;
   currentLanguage?: SupportedLanguage;
-  prefillEmail?: string;
-  prefillPassword?: string;
-  demoSystemBypass?: string;
+  showLoginFields?: boolean; // Show login form fields in demo mode (for /demo-system-access)
 }
 
 export default function LoginModal({
@@ -29,13 +27,11 @@ export default function LoginModal({
   onLoginSuccess,
   closable = true,
   currentLanguage: propLanguage,
-  prefillEmail,
-  prefillPassword,
-  demoSystemBypass
+  showLoginFields
 }: LoginModalProps) {
   const [formData, setFormData] = useState({
-    email: prefillEmail || '',
-    password: prefillPassword || '',
+    email: '',
+    password: '',
     rememberMe: false
   });
 
@@ -75,17 +71,6 @@ export default function LoginModal({
       setCurrentLanguage(propLanguage);
     }
   }, [propLanguage]);
-
-  // Prefill credentials when props change (e.g. from /demo-system-access)
-  useEffect(() => {
-    if (prefillEmail || prefillPassword) {
-      setFormData(prev => ({
-        ...prev,
-        email: prefillEmail || prev.email,
-        password: prefillPassword || prev.password,
-      }));
-    }
-  }, [prefillEmail, prefillPassword]);
 
   // Check if we're on demo subdomain
   const isDemoMode = window.location.hostname === 'demo.scoriet.dev' ||
@@ -145,7 +130,6 @@ export default function LoginModal({
           password: formData.password,
           remember_me: formData.rememberMe,
           device_id: generateDeviceId(), // For 2FA trusted device check
-          ...(demoSystemBypass ? { demo_system_bypass: demoSystemBypass } : {}),
         }),
       });
 
@@ -402,7 +386,7 @@ export default function LoginModal({
       className="p-dialog-custom"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {(!isDemoMode || demoSystemBypass) && error && (
+        {(!isDemoMode || showLoginFields) && error && (
           <Message
             severity="error"
             text={error}
@@ -410,7 +394,7 @@ export default function LoginModal({
           />
         )}
 
-        {(!isDemoMode || demoSystemBypass) && verificationMessage && (
+        {(!isDemoMode || showLoginFields) && verificationMessage && (
           <Message
             severity="success"
             text={verificationMessage}
@@ -418,7 +402,7 @@ export default function LoginModal({
           />
         )}
 
-        {(!isDemoMode || demoSystemBypass) && showResendVerification && (
+        {(!isDemoMode || showLoginFields) && showResendVerification && (
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-700 mb-2">
               Ihre E-Mail-Adresse ist noch nicht bestätigt.
@@ -435,7 +419,7 @@ export default function LoginModal({
 
         {/* Demo Section - can be disabled via VITE_SHOW_DEMO_USERS=false in .env */}
         {/* Hide demo buttons when system bypass is active (show login form instead) */}
-        {showDemoUsers && !demoSystemBypass && (
+        {showDemoUsers && !showLoginFields && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
             <h3 className="text-blue-800 font-semibold mb-2 flex items-center">
               <i className="pi pi-info-circle mr-2"></i>
@@ -464,7 +448,7 @@ export default function LoginModal({
         )}
 
         {/* Normal login fields - show if NOT in demo mode OR if system bypass is active */}
-        {(!isDemoMode || demoSystemBypass) && (
+        {(!isDemoMode || showLoginFields) && (
           <>
             <div className="field">
               <label htmlFor="login-email" className="block text-sm font-medium mb-2">

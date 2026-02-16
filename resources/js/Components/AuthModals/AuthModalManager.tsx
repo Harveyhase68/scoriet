@@ -20,9 +20,7 @@ interface AuthModalManagerProps {
   currentLanguage?: SupportedLanguage;
   profileDefaultTab?: number; // Tab index to open in ProfileModal (0=Profile, 1=Password, 2=Subscriptions, etc.)
   inviteToken?: string | null; // Registration invite token
-  prefillEmail?: string;
-  prefillPassword?: string;
-  demoSystemBypass?: string;
+  showLoginFields?: boolean; // Show login form fields in demo mode (for /demo-system-access)
 }
 
 export default function AuthModalManager({
@@ -36,9 +34,7 @@ export default function AuthModalManager({
   currentLanguage: propLanguage,
   profileDefaultTab = 0,
   inviteToken,
-  prefillEmail,
-  prefillPassword,
-  demoSystemBypass
+  showLoginFields
 }: AuthModalManagerProps) {
   // Use prop language or fallback to stored language
   const currentLanguage = propLanguage || getStoredLanguage();
@@ -90,9 +86,7 @@ export default function AuthModalManager({
         onLoginSuccess={onLoginSuccess}
         closable={isLoginClosable}
         currentLanguage={currentLanguage}
-        prefillEmail={prefillEmail}
-        prefillPassword={prefillPassword}
-        demoSystemBypass={demoSystemBypass}
+        showLoginFields={showLoginFields}
       />
 
       <RegisterModal

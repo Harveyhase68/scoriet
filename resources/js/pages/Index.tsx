@@ -1239,15 +1239,12 @@ interface IndexProps {
   demoLogin?: boolean;
   demoUser?: 'demo-admin' | 'demo-user';
   demoMessage?: string;
-  // Hidden system login props (opens login modal with pre-filled credentials)
+  // Hidden system login - shows login fields in demo lobby
   demoSystemLogin?: boolean;
-  demoSystemEmail?: string;
-  demoSystemPassword?: string;
-  demoSystemBypass?: string;
 }
 
 export default function Index(props: IndexProps = {}) {
-  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin, demoSystemEmail, demoSystemPassword, demoSystemBypass } = props;
+  const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin } = props;
   const ref = useRef<any>(null);
   const toast = useRef<Toast>(null);
   // i18n setup
@@ -2674,9 +2671,7 @@ useHotkeys('alt+m', () => {
         resetPasswordEmail={resetEmail}
         isLoginClosable={isAuthenticated} // Login modal only closable when authenticated
         profileDefaultTab={profileDefaultTab} // For URL actions like renew-subscription
-        prefillEmail={demoSystemLogin ? demoSystemEmail : undefined}
-        prefillPassword={demoSystemLogin ? demoSystemPassword : undefined}
-        demoSystemBypass={demoSystemLogin ? demoSystemBypass : undefined}
+        showLoginFields={demoSystemLogin}
         onLoginSuccess={() => {
           // Update NavigationPanel auth status via localStorage event
           window.dispatchEvent(new Event('storage'));
