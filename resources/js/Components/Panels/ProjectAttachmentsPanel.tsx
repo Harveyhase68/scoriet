@@ -109,7 +109,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
     // Current user ID for permission checks
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-    const isOwner = selectedProject?.owner_id === currentUserId;
+    const isOwner = Number(selectedProject?.owner_id) === Number(currentUserId);
 
     // Load current user
     useEffect(() => {

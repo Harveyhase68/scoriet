@@ -828,7 +828,7 @@ export default function ProjectSettingsPanel() {
 
         // Confirm ownership transfer if requested
         if (formData.new_owner_id) {
-            const newOwner = projectMembers.find(m => m.user_id === formData.new_owner_id);
+            const newOwner = projectMembers.find(m => Number(m.user_id) === Number(formData.new_owner_id));
             if (newOwner) {
                 const confirmed = window.confirm(
                     `Möchten Sie die Eigentümerschaft wirklich an ${newOwner.user.name} (${newOwner.user.email}) übertragen?\n\nDiese Aktion kann nicht rückgängig gemacht werden und Sie verlieren Ihre Eigentümerrechte!`
@@ -1130,7 +1130,7 @@ export default function ProjectSettingsPanel() {
                                             value={formData.new_owner_id || null}
                                             onChange={(e) => setFormData({ ...formData, new_owner_id: e.value })}
                                             options={projectMembers
-                                                .filter(m => m.user_id !== selectedProject.owner.id)
+                                                .filter(m => Number(m.user_id) !== Number(selectedProject.owner.id))
                                                 .map(member => ({
                                                     label: `Übertragen an ${member.user.name} (${member.user.email}) - ${member.role}`,
                                                     value: member.user_id

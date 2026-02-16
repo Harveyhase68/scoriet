@@ -319,7 +319,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 >
                   <option value="">Keep current owner ({project.owner.name})</option>
-                  {projectMembers.filter(member => member.user_id !== project.owner.id).map(member => (
+                  {projectMembers.filter(member => Number(member.user_id) !== Number(project.owner.id)).map(member => (
                     <option key={member.user_id} value={member.user_id}>
                       Transfer to {member.user.name} ({member.user.email}) - {member.role}
                     </option>

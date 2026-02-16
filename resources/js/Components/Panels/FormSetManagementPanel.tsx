@@ -142,7 +142,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             if (response.ok) {
                 const data = await response.json();
                 let filtered = (data.data || []).filter((fs: FormSet) =>
-                    fs.visibility === 'public' && fs.creator_user_id !== currentUserId
+                    fs.visibility === 'public' && Number(fs.creator_user_id) !== Number(currentUserId)
                 );
 
                 // Apply search
@@ -430,7 +430,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     <Column
                         header={t.formsetmanagementpanel431}
                         body={(formSet: FormSet) => {
-                            const isOwner = formSet.creator_user_id === currentUserId;
+                            const isOwner = Number(formSet.creator_user_id) === Number(currentUserId);
                             return (
                                 <div className="flex gap-1">
                                     <Button

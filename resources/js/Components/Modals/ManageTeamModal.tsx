@@ -465,7 +465,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${getRoleColor(member.role)}`}>
                         {member.role}
                       </span>
-                      {isAdmin && member.role !== 'owner' && member.user_id !== currentUserId && (
+                      {isAdmin && member.role !== 'owner' && Number(member.user_id) !== Number(currentUserId) && (
                         <div className="flex items-center space-x-2">
                           {member.role === 'member' ? (
                             <button

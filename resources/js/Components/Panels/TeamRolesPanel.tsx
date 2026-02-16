@@ -182,7 +182,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   // Copy from role handler
   const handleCopyFromRole = (roleId: number) => {
     setCopyFromRoleId(roleId);
-    const sourceRole = roles.find(r => r.id === roleId);
+    const sourceRole = roles.find(r => Number(r.id) === Number(roleId));
     if (sourceRole) {
       setSelectedPermissions(sourceRole.permissions);
     }
@@ -405,7 +405,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   // Get filtered members based on selected role
   const filteredMembers = showAllMembers
     ? members
-    : members.filter(m => m.team_role_id === selectedRole?.id);
+    : members.filter(m => Number(m.team_role_id) === Number(selectedRole?.id));
 
   // Render roles list
   const renderRolesList = () => (
@@ -436,10 +436,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       {roles.map(role => (
         <div
           key={role.id}
-          className={`p-3 rounded cursor-pointer transition-colors ${!showAllMembers && selectedRole?.id === role.id ? 'ring-2' : ''}`}
+          className={`p-3 rounded cursor-pointer transition-colors ${!showAllMembers && Number(selectedRole?.id) === Number(role.id) ? 'ring-2' : ''}`}
           style={{
-            backgroundColor: !showAllMembers && selectedRole?.id === role.id ? colors.infoBg : colors.bgSecondary,
-            border: `1px solid ${!showAllMembers && selectedRole?.id === role.id ? colors.accent : colors.borderPrimary}`,
+            backgroundColor: !showAllMembers && Number(selectedRole?.id) === Number(role.id) ? colors.infoBg : colors.bgSecondary,
+            border: `1px solid ${!showAllMembers && Number(selectedRole?.id) === Number(role.id) ? colors.accent : colors.borderPrimary}`,
           }}
           onClick={() => handleSelectRole(role)}
         >
@@ -556,9 +556,9 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
                     {perms.map(perm => (
                       <div key={perm.id} className="flex items-center gap-2 text-sm">
                         <i
-                          className={`pi ${selectedRole.permissions.includes(perm.id) ? 'pi-check text-green-500' : 'pi-times text-red-400'}`}
+                          className={`pi ${selectedRole.permissions.map(Number).includes(Number(perm.id)) ? 'pi-check text-green-500' : 'pi-times text-red-400'}`}
                         />
-                        <span style={{ color: selectedRole.permissions.includes(perm.id) ? colors.textPrimary : colors.textMuted }}>
+                        <span style={{ color: selectedRole.permissions.map(Number).includes(Number(perm.id)) ? colors.textPrimary : colors.textMuted }}>
                           {perm.display_name}
                         </span>
                       </div>
@@ -811,7 +811,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
                           onClick={() => togglePermission(perm.id)}
                         >
                           <Checkbox
-                            checked={selectedPermissions.includes(perm.id)}
+                            checked={selectedPermissions.map(Number).includes(Number(perm.id))}
                             onChange={() => togglePermission(perm.id)}
                           />
                           <div>
@@ -860,7 +860,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
           {assignedRoleId && (
             <div className="mt-3 p-3 rounded" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
               <p className="text-sm" style={{ color: colors.infoText }}>
-                {roles.find(r => r.id === assignedRoleId)?.description || t.teamrolespanel863}
+                {roles.find(r => Number(r.id) === Number(assignedRoleId))?.description || t.teamrolespanel863}
               </p>
             </div>
           )}
