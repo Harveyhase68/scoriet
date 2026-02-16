@@ -2498,7 +2498,11 @@ class TemplateController extends Controller
         }
 
         // Write to temporary file to check magic bytes
-        $tempFilePath = storage_path('app/temp/archive_check_' . uniqid());
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $tempFilePath = $tempDir . '/archive_check_' . uniqid();
         \Illuminate\Support\Facades\File::put($tempFilePath, $binaryContent);
 
         try {
