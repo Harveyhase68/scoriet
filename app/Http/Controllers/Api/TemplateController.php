@@ -612,6 +612,13 @@ class TemplateController extends Controller
                         \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
                         throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
                     }
+                } elseif (isset($fileData['content_type']) && $fileData['content_type'] === 'zip') {
+                    // Already a ZIP with Base64 content - pass through without re-processing
+                    $processedContent = [
+                        'file_content' => $fileData['file_content'],
+                        'content_type' => 'zip',
+                        'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                    ];
                 } else {
                     // Process archive content (auto-converts TAR.GZ/TAR.XZ to ZIP)
                     $processedContent = $this->processArchiveFileContent(
@@ -908,6 +915,13 @@ class TemplateController extends Controller
                         \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
                         throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
                     }
+                } elseif (isset($fileData['content_type']) && $fileData['content_type'] === 'zip') {
+                    // Already a ZIP with Base64 content - pass through without re-processing
+                    $processedContent = [
+                        'file_content' => $fileData['file_content'],
+                        'content_type' => 'zip',
+                        'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                    ];
                 } else {
                     // Process archive content (auto-converts TAR.GZ/TAR.XZ to ZIP)
                     $processedContent = $this->processArchiveFileContent(
@@ -1410,13 +1424,22 @@ class TemplateController extends Controller
             'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
 
+        // Only normalize line endings for text content, not for ZIP/binary Base64 content
+        $fileContent = $validated['file_content'];
+        $contentType = $request->input('content_type', 'text');
+        if ($contentType !== 'zip') {
+            $fileContent = $this->normalizeLineEndings($fileContent);
+        }
+
         $file = $template->files()->create([
             'file_name' => $validated['file_name'],
-            'file_path' => $validated['file_path'] ?? $validated['file_name'], // Use provided file_path or fallback to file_name
-            'file_content' => $this->normalizeLineEndings($validated['file_content']), // Normalize line endings
+            'file_path' => $validated['file_path'] ?? $validated['file_name'],
+            'file_content' => $fileContent,
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? 0,
             'output_path' => $validated['output_path'] ?? '/',
+            'content_type' => $contentType,
+            'zip_filename' => $request->input('zip_filename'),
             'form_window_type' => $validated['form_window_type'] ?? 0,
         ]);
 
@@ -1450,13 +1473,22 @@ class TemplateController extends Controller
             'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
 
+        // Only normalize line endings for text content, not for ZIP/binary Base64 content
+        $fileContent = $validated['file_content'];
+        $contentType = $request->input('content_type', $file->content_type ?? 'text');
+        if ($contentType !== 'zip') {
+            $fileContent = $this->normalizeLineEndings($fileContent);
+        }
+
         $file->update([
             'file_name' => $validated['file_name'],
-            'file_path' => $validated['file_path'] ?? $file->file_path, // Preserve original file_path if not provided
-            'file_content' => $this->normalizeLineEndings($validated['file_content']), // Normalize line endings
+            'file_path' => $validated['file_path'] ?? $file->file_path,
+            'file_content' => $fileContent,
             'file_type' => $validated['file_type'],
             'file_order' => $validated['file_order'] ?? $file->file_order,
             'output_path' => $validated['output_path'] ?? $file->output_path,
+            'content_type' => $contentType,
+            'zip_filename' => $request->input('zip_filename', $file->zip_filename),
             'form_window_type' => $validated['form_window_type'] ?? $file->form_window_type ?? 0,
         ]);
 
