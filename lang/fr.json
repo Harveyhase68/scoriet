@@ -189,5 +189,6 @@
     "clisubscriptioncontrollerphp237_2": "Des crédits ont été ajoutés.",
     "clisubscriptioncontrollerphp238": "CLI + Service Bundle activés avec succès !",
     "clisubscriptioncontrollerphp275": "prolongée d'un an",
-    "clisubscriptioncontrollerphp283": "Prolongé d'un an !"
+    "clisubscriptioncontrollerphp283": "Prolongé d'un an !",
+    "customtokencontrollerphp51": "Les informations d'identification fournies sont incorrectes."
 }
