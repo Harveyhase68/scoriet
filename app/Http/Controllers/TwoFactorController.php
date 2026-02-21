@@ -41,14 +41,14 @@ class TwoFactorController extends Controller
         // Check password first
         if (!$request->has('password') || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Das Passwort ist nicht korrekt.',
+                'message' => __('twofactorcontrollerphp44'),
             ], 422);
         }
 
         // Check if already enabled
         if ($user->hasTwoFactorEnabled()) {
             return response()->json([
-                'message' => '2FA ist bereits aktiviert.',
+                'message' => __('twofactorcontrollerphp51'),
             ], 400);
         }
 
@@ -77,7 +77,7 @@ class TwoFactorController extends Controller
         $qrCodeSvg = $writer->writeString($qrCodeUrl);
 
         return response()->json([
-            'message' => '2FA Setup gestartet. Bitte scannen Sie den QR-Code.',
+            'message' => __('twofactorcontrollerphp80'),
             'secret' => $secret,
             'qr_code_svg' => $qrCodeSvg,
             'qr_code_url' => $qrCodeUrl,
@@ -98,7 +98,7 @@ class TwoFactorController extends Controller
         // Check if setup is pending
         if (!$user->isTwoFactorPending()) {
             return response()->json([
-                'message' => '2FA Setup wurde nicht gestartet oder ist bereits abgeschlossen.',
+                'message' => __('twofactorcontrollerphp101'),
             ], 400);
         }
 
@@ -107,7 +107,7 @@ class TwoFactorController extends Controller
 
         if (!$valid) {
             return response()->json([
-                'message' => 'Der eingegebene Code ist ungültig. Bitte versuchen Sie es erneut.',
+                'message' => __('twofactorcontrollerphp110'),
             ], 422);
         }
 
@@ -118,7 +118,7 @@ class TwoFactorController extends Controller
         $recoveryCodes = $user->generateTwoFactorRecoveryCodes();
 
         return response()->json([
-            'message' => '2FA wurde erfolgreich aktiviert!',
+            'message' => __('twofactorcontrollerphp121'),
             'recovery_codes' => $recoveryCodes,
             'two_factor' => $user->getTwoFactorStatus(),
         ]);
@@ -140,7 +140,7 @@ class TwoFactorController extends Controller
 
         if (!$user->hasTwoFactorEnabled()) {
             return response()->json([
-                'message' => '2FA ist nicht aktiviert.',
+                'message' => __('twofactorcontrollerphp143'),
             ], 400);
         }
 
@@ -163,7 +163,7 @@ class TwoFactorController extends Controller
 
         if (!$verified) {
             return response()->json([
-                'message' => 'Der eingegebene Code ist ungültig.',
+                'message' => __('twofactorcontrollerphp166'),
             ], 422);
         }
 
@@ -171,13 +171,13 @@ class TwoFactorController extends Controller
         if ($request->boolean('trust_device') && $request->device_id) {
             $user->trustDevice(
                 $request->device_id,
-                $request->browser ?? 'Unknown Browser',
+                $request->browser ?? __('twofactorcontrollerphp174'),
                 $request->ip()
             );
         }
 
         return response()->json([
-            'message' => '2FA erfolgreich verifiziert.',
+            'message' => __('twofactorcontrollerphp180'),
             'verified' => true,
             'recovery_code_used' => $isRecoveryCode,
             'recovery_codes_remaining' => $isRecoveryCode ? $user->getRecoveryCodesCount() : null,
@@ -227,13 +227,13 @@ class TwoFactorController extends Controller
         // Check password
         if (!Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Das Passwort ist nicht korrekt.',
+                'message' => __('twofactorcontrollerphp230'),
             ], 422);
         }
 
         if (!$user->hasTwoFactorEnabled()) {
             return response()->json([
-                'message' => '2FA ist nicht aktiviert.',
+                'message' => __('twofactorcontrollerphp236'),
             ], 400);
         }
 
@@ -253,7 +253,7 @@ class TwoFactorController extends Controller
 
         if (!$verified) {
             return response()->json([
-                'message' => 'Der eingegebene Code ist ungültig.',
+                'message' => __('twofactorcontrollerphp256'),
             ], 422);
         }
 
@@ -261,7 +261,7 @@ class TwoFactorController extends Controller
         $user->disableTwoFactor();
 
         return response()->json([
-            'message' => '2FA wurde erfolgreich deaktiviert.',
+            'message' => __('twofactorcontrollerphp264'),
             'two_factor' => $user->getTwoFactorStatus(),
         ]);
     }
@@ -280,20 +280,20 @@ class TwoFactorController extends Controller
         // Check password
         if (!Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Das Passwort ist nicht korrekt.',
+                'message' => __('twofactorcontrollerphp283'),
             ], 422);
         }
 
         if (!$user->hasTwoFactorEnabled()) {
             return response()->json([
-                'message' => '2FA ist nicht aktiviert.',
+                'message' => __('twofactorcontrollerphp289'),
             ], 400);
         }
 
         $recoveryCodes = $user->generateTwoFactorRecoveryCodes();
 
         return response()->json([
-            'message' => 'Neue Backup-Codes wurden generiert.',
+            'message' => __('twofactorcontrollerphp296'),
             'recovery_codes' => $recoveryCodes,
         ]);
     }
@@ -320,7 +320,7 @@ class TwoFactorController extends Controller
         $user->removeTrustedDevice($deviceId);
 
         return response()->json([
-            'message' => 'Gerät wurde entfernt.',
+            'message' => __('twofactorcontrollerphp323'),
             'trusted_devices' => $user->getTrustedDevices(),
         ]);
     }
@@ -335,7 +335,7 @@ class TwoFactorController extends Controller
         $user->removeAllTrustedDevices();
 
         return response()->json([
-            'message' => 'Alle vertrauenswürdigen Geräte wurden entfernt.',
+            'message' => __('twofactorcontrollerphp338'),
         ]);
     }
 
@@ -348,7 +348,7 @@ class TwoFactorController extends Controller
 
         if (!$user->isTwoFactorPending()) {
             return response()->json([
-                'message' => 'Kein 2FA Setup aktiv.',
+                'message' => __('twofactorcontrollerphp351'),
             ], 400);
         }
 
@@ -357,7 +357,7 @@ class TwoFactorController extends Controller
         $user->save();
 
         return response()->json([
-            'message' => '2FA Setup wurde abgebrochen.',
+            'message' => __('twofactorcontrollerphp360'),
             'two_factor' => $user->getTwoFactorStatus(),
         ]);
     }

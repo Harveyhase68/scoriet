@@ -35,6 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useToast } from '@/contexts/ToastContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import type { Translations } from '@/i18n/types';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function to get auth token
@@ -153,13 +154,6 @@ const PRIORITY_COLORS: Record<string, string> = {
     urgent: '#ef4444',
 };
 
-const PRIORITY_OPTIONS = [
-    { label: 'Low', value: 'low' },
-    { label: 'Medium', value: 'medium' },
-    { label: 'High', value: 'high' },
-    { label: 'Urgent', value: 'urgent' },
-];
-
 // Helper function to darken/lighten a hex color
 const adjustColor = (hex: string, amount: number): string => {
     const num = parseInt(hex.replace('#', ''), 16);
@@ -189,9 +183,11 @@ interface SortableCardProps {
     onAssignMe: () => void;
     onUnassignMe: () => void;
     isAssigned: boolean;
+    t: Translations;
+    currentLanguage: SupportedLanguage;
 }
 
-function SortableCard({ card, onEdit, onDelete, onAssignMe, onUnassignMe, isAssigned }: SortableCardProps) {
+function SortableCard({ card, onEdit, onDelete, onAssignMe, onUnassignMe, isAssigned, t, currentLanguage }: SortableCardProps) {
     const {
         attributes,
         listeners,
@@ -248,7 +244,7 @@ function SortableCard({ card, onEdit, onDelete, onAssignMe, onUnassignMe, isAssi
                 {card.due_date && (
                     <span className={`kanban-card-due ${isOverdue ? 'overdue' : isDueSoon ? 'due-soon' : ''}`}>
                         <i className="pi pi-calendar" />
-                        {new Date(card.due_date).toLocaleDateString('de-DE')}
+                        {new Date(card.due_date).toLocaleDateString(currentLanguage)}
                     </span>
                 )}
                 {/* Multiple assignees display */}
@@ -296,7 +292,7 @@ function SortableCard({ card, onEdit, onDelete, onAssignMe, onUnassignMe, isAssi
                     <button
                         className="kanban-card-action unassign"
                         onClick={(e) => { e.stopPropagation(); onUnassignMe(); }}
-                        title="Zuweisung entfernen"
+                        title={t.kanbanboardpanel299_2}
                     >
                         <i className="pi pi-user-minus" />
                     </button>
@@ -304,7 +300,7 @@ function SortableCard({ card, onEdit, onDelete, onAssignMe, onUnassignMe, isAssi
                     <button
                         className="kanban-card-action assign"
                         onClick={(e) => { e.stopPropagation(); onAssignMe(); }}
-                        title="Mir zuweisen"
+                        title={t.kanbanboardpanel307}
                     >
                         <i className="pi pi-user-plus" />
                     </button>
@@ -399,6 +395,12 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         assigned_to: null as number | null,
         label_ids: [] as number[],
     });
+    const PRIORITY_OPTIONS = [
+        { label: t.kanbanboardpanel158, value: 'low' },
+        { label: t.kanbanboardpanel159, value: 'medium' },
+        { label: t.kanbanboardpanel160, value: 'high' },
+        { label: t.kanbanboardpanel161, value: 'urgent' },
+    ];
     const [targetColumnId, setTargetColumnId] = useState<number | null>(null);
 
     // Column Dialog State
@@ -866,7 +868,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         if (!board) return;
 
         const projectName = selectedProject?.name || 'Projekt';
-        const today = new Date().toLocaleDateString('de-DE');
+        const today = new Date().toLocaleDateString(currentLanguage);
 
         // Build HTML content for print
         const columnsHtml = board.columns.map(column => {
@@ -886,7 +888,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     return `<span style="background: ${bgColor}; color: ${textColor}; padding: 1px 5px; border-radius: 10px; font-size: 9px; margin-right: 2px;">${initials}${roleBadge}</span>`;
                 }).join('') || '';
 
-                const dueDate = card.due_date ? new Date(card.due_date).toLocaleDateString('de-DE') : '';
+                const dueDate = card.due_date ? new Date(card.due_date).toLocaleDateString(currentLanguage) : '';
 
                 return `
                     <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid ${priorityColor}; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
@@ -915,7 +917,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>Kanban Board - ${projectName}</title>
+                <title>${t.kanbanboardpanel920}${projectName}</title>
                 <style>
                     @page {
                         size: landscape;
@@ -976,17 +978,17 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             <body>
                 <div class="header">
                     <h1>📋 ${board.name} - ${projectName}</h1>
-                    <div class="meta">Erstellt am ${today}</div>
+                    <div class="meta">${t.kanbanboardpanel981}${today}</div>
                 </div>
                 <div class="board">
                     ${columnsHtml}
                 </div>
                 <div class="legend">
-                    <strong>Prioritäten:</strong>
-                    <span class="legend-item"><span class="legend-color" style="background: #6b7280;"></span> Low</span>
-                    <span class="legend-item"><span class="legend-color" style="background: #3b82f6;"></span> Medium</span>
-                    <span class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> High</span>
-                    <span class="legend-item"><span class="legend-color" style="background: #ef4444;"></span> Urgent</span>
+                    <strong>${t.kanbanboardpanel987}</strong>
+                    <span class="legend-item"><span class="legend-color" style="background: #6b7280;"></span>${t.kanbanboardpanel988}</span>
+                    <span class="legend-item"><span class="legend-color" style="background: #3b82f6;"></span>${t.kanbanboardpanel989}</span>
+                    <span class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span>${t.kanbanboardpanel990}</span>
+                    <span class="legend-item"><span class="legend-color" style="background: #ef4444;"></span>${t.kanbanboardpanel991}</span>
                 </div>
             </body>
             </html>
@@ -1189,17 +1191,17 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
                         <div className="kanban-unlock-price">
                             <span className="price-amount" style={{ color: colors.accent }}>{accessStatus?.unlock_cost || 50}</span>
-                            <span className="price-label" style={{ color: colors.textSecondary }}>Credits</span>
+                            <span className="price-label" style={{ color: colors.textSecondary }}>{t.kanbanboardpanel1193}</span>
                             <span className="price-duration" style={{ color: colors.textMuted }}>{t.kanbanboardpanel1194}</span>
                         </div>
 
                         <div className="kanban-unlock-credits" style={{ color: colors.textSecondary }}>
                             <span>{t.kanbanboardpanel1198}</span>
-                            <strong style={{ color: colors.textPrimary }}>{accessStatus?.user_credits || 0} Credits</strong>
+                            <strong style={{ color: colors.textPrimary }}>{accessStatus?.user_credits || 0}{t.kanbanboardpanel1199}</strong>
                         </div>
 
                         <Button
-                            label={unlocking ? 'Freischalten...' : 'Jetzt freischalten'}
+                            label={unlocking ? t.kanbanboardpanel1203 : t.kanbanboardpanel1203_2}
                             icon={unlocking ? 'pi pi-spin pi-spinner' : 'pi pi-unlock'}
                             className="p-button-lg kanban-unlock-button"
                             onClick={unlockFeature}
@@ -1328,7 +1330,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             {/* Header */}
             <div className="kanban-header" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
                 <div className="kanban-header-left">
-                    <h2 style={{ color: colors.textPrimary }}>{board?.name || 'Kanban Board'}</h2>
+                    <h2 style={{ color: colors.textPrimary }}>{board?.name || t.kanbanboardpanel1332}</h2>
                 </div>
                 <div className="kanban-header-right">
                     {isProjectOwner() && (
@@ -1426,6 +1428,8 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                             onAssignMe={() => assignMeToCard(card.id)}
                                             onUnassignMe={() => unassignMeFromCard(card.id)}
                                             isAssigned={isCurrentUserAssigned(card)}
+                                            t={t}
+                                            currentLanguage={currentLanguage}
                                         />
                                     ))}
                                 </SortableContext>
@@ -1471,7 +1475,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             >
                 <div className="p-fluid">
                     <div className="field">
-                        <label htmlFor="card-title">Title *</label>
+                        <label htmlFor="card-title">{t.kanbanboardpanel1476}</label>
                         <InputText
                             id="card-title"
                             value={cardForm.title}
@@ -1482,7 +1486,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     </div>
 
                     <div className="field">
-                        <label htmlFor="card-description">Description</label>
+                        <label htmlFor="card-description">{t.kanbanboardpanel1487}</label>
                         <InputTextarea
                             id="card-description"
                             value={cardForm.description}
@@ -1493,7 +1497,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     </div>
 
                     <div className="field">
-                        <label htmlFor="card-priority">Priority</label>
+                        <label htmlFor="card-priority">{t.kanbanboardpanel1498}</label>
                         <Dropdown
                             id="card-priority"
                             value={cardForm.priority}
@@ -1503,7 +1507,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     </div>
 
                     <div className="field">
-                        <label htmlFor="card-due-date">Due Date</label>
+                        <label htmlFor="card-due-date">{t.kanbanboardpanel1508}</label>
                         <Calendar
                             id="card-due-date"
                             value={cardForm.due_date}
@@ -1527,7 +1531,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                                     <button
                                         key={label.id}
                                         type="button"
-                                        className={`kanban-label-option ${cardForm.label_ids.includes(label.id) ? 'selected' : ''}`}
+                                        className={`kanban-label-option ${cardForm.label_ids.includes(label.id) ? t.kanbanboardpanel1534 : ''}`}
                                         style={{ backgroundColor: label.color }}
                                         onClick={() => toggleLabel(label.id)}
                                     >
@@ -1545,7 +1549,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
             {/* Column Dialog */}
             <Dialog
-                header={editingColumn ? 'Edit Column' : 'New Column'}
+                header={editingColumn ? t.kanbanboardpanel1550 : t.kanbanboardpanel1550_2}
                 visible={columnDialogVisible}
                 onHide={() => setColumnDialogVisible(false)}
                 style={{ width: '400px' }}
@@ -1569,7 +1573,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             >
                 <div className="p-fluid">
                     <div className="field">
-                        <label htmlFor="column-name">Name *</label>
+                        <label htmlFor="column-name">{t.kanbanboardpanel1574}</label>
                         <InputText
                             id="column-name"
                             value={columnForm.name}
@@ -1580,7 +1584,7 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
                     </div>
 
                     <div className="field">
-                        <label htmlFor="column-color">Color</label>
+                        <label htmlFor="column-color">{t.kanbanboardpanel1585}</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <input
                                 type="color"

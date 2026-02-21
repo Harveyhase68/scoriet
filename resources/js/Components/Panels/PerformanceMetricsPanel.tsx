@@ -12,6 +12,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { apiClient as api } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface OperationStats {
   operation: string;
@@ -102,15 +103,6 @@ interface DailyData {
   translation_load?: DailyDataOperation;
 }
 
-const OPERATION_OPTIONS = [
-  { label: 'Alle Operationen', value: '' },
-  { label: 'Code Generation', value: 'generation' },
-  { label: 'Schema Loading', value: 'schema_load' },
-  { label: 'Gtree Building', value: 'gtree_build' },
-  { label: 'Diff Computation', value: 'diff_compute' },
-  { label: 'Translation Loading', value: 'translation_load' },
-];
-
 const OPERATION_COLORS: Record<string, string> = {
   generation: '#60a5fa',
   schema_load: '#34d399',
@@ -122,6 +114,9 @@ const OPERATION_COLORS: Record<string, string> = {
 export default function PerformanceMetricsPanel() {
   const toast = useToast();
   const { colors } = useTheme();
+  // i18n
+  const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   const [dateFrom, setDateFrom] = useState<Date | null>(() => {
     const date = new Date();
@@ -136,6 +131,15 @@ export default function PerformanceMetricsPanel() {
   const [slowOperations, setSlowOperations] = useState<SlowOperation[]>([]);
   const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
   const [loadingVisitors, setLoadingVisitors] = useState(false);
+
+    const OPERATION_OPTIONS = [
+    { label: t.performancemetricspanel106, value: '' },
+    { label: t.performancemetricspanel107, value: 'generation' },
+    { label: t.performancemetricspanel108, value: 'schema_load' },
+    { label: t.performancemetricspanel109, value: 'gtree_build' },
+    { label: t.performancemetricspanel110, value: 'diff_compute' },
+    { label: t.performancemetricspanel111, value: 'translation_load' },
+  ];
 
   const formatDateForApi = (date: Date | null): string => {
     if (!date) return '';
@@ -154,8 +158,8 @@ export default function PerformanceMetricsPanel() {
       const response = await api.request(`/admin/performance/overview?${params.toString()}`);
       setOverview(response.data || null);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.showError('Fehler beim Laden der Übersicht: ' + errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t.performancemetricspanel161;
+      toast.showError(t.performancemetricspanel162 + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -172,8 +176,8 @@ export default function PerformanceMetricsPanel() {
       const response = await api.request(`/admin/performance/daily?${params.toString()}`);
       setDailyData(response.data || []);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.showError('Fehler beim Laden der Tagesstatistiken: ' + errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t.performancemetricspanel179;
+      toast.showError(t.performancemetricspanel180 + errorMessage);
     }
   }, [dateFrom, dateTo, toast]);
 
@@ -189,8 +193,8 @@ export default function PerformanceMetricsPanel() {
       const response = await api.request(`/admin/performance/slow?${params.toString()}`);
       setSlowOperations(response.data || []);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.showError('Fehler beim Laden langsamer Operationen: ' + errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t.performancemetricspanel196;
+      toast.showError(t.performancemetricspanel197 + errorMessage);
     }
   }, [dateFrom, dateTo, toast]);
 
@@ -200,8 +204,8 @@ export default function PerformanceMetricsPanel() {
       const response = await api.request('/admin/visitors/stats');
       setVisitorStats(response);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast.showError('Fehler beim Laden der Besucherstatistiken: ' + errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t.performancemetricspanel207;
+      toast.showError(t.performancemetricspanel208 + errorMessage);
     } finally {
       setLoadingVisitors(false);
     }
@@ -284,7 +288,7 @@ export default function PerformanceMetricsPanel() {
   };
 
   const subscriptionBadge = (type: string | null) => {
-    if (!type) return <Tag value="Unknown" severity="secondary" />;
+    if (!type) return <Tag value={t.performancemetricspanel291} severity="secondary" />;
     const severityMap: Record<string, 'success' | 'info' | 'warning' | 'danger' | 'secondary'> = {
       free: 'secondary',
       patron_monthly: 'success',
@@ -331,19 +335,19 @@ export default function PerformanceMetricsPanel() {
       <div className="grid grid-cols-3 gap-4 mb-4">
         <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
           <div className="text-center">
-            <p className="text-sm" style={{ color: colors.textSecondary }}>Operationen gesamt</p>
+            <p className="text-sm" style={{ color: colors.textSecondary }}>{t.performancemetricspanel338}</p>
             <p className="text-3xl font-bold" style={{ color: colors.infoText }}>{overview._totals.total_operations.toLocaleString()}</p>
           </div>
         </Card>
         <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
           <div className="text-center">
-            <p className="text-sm" style={{ color: colors.textSecondary }}>Eindeutige User</p>
+            <p className="text-sm" style={{ color: colors.textSecondary }}>{t.performancemetricspanel344}</p>
             <p className="text-3xl font-bold" style={{ color: colors.successText }}>{overview._totals.unique_users.toLocaleString()}</p>
           </div>
         </Card>
         <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
           <div className="text-center">
-            <p className="text-sm" style={{ color: colors.textSecondary }}>Gesamtdauer</p>
+            <p className="text-sm" style={{ color: colors.textSecondary }}>{t.performancemetricspanel350}</p>
             <p className="text-3xl font-bold" style={{ color: colors.accent }}>{formatDuration(overview._totals.total_duration_ms)}</p>
           </div>
         </Card>
@@ -361,7 +365,7 @@ export default function PerformanceMetricsPanel() {
       <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Von</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.performancemetricspanel368}</label>
             <Calendar
               value={dateFrom}
               onChange={(e) => setDateFrom(e.value as Date)}
@@ -371,7 +375,7 @@ export default function PerformanceMetricsPanel() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Bis</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.performancemetricspanel378}</label>
             <Calendar
               value={dateTo}
               onChange={(e) => setDateTo(e.value as Date)}
@@ -381,7 +385,7 @@ export default function PerformanceMetricsPanel() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Operation</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.performancemetricspanel388}</label>
             <Dropdown
               value={selectedOperation}
               onChange={(e) => setSelectedOperation(e.value)}
@@ -391,7 +395,7 @@ export default function PerformanceMetricsPanel() {
           </div>
           <Button
             icon="pi pi-refresh"
-            label="Aktualisieren"
+            label={t.performancemetricspanel398}
             onClick={loadAllData}
             loading={loading}
           />
@@ -410,7 +414,7 @@ export default function PerformanceMetricsPanel() {
 
             {dailyData.length > 0 && (
               <Card className="mt-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Tägliche Operationen</h3>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.performancemetricspanel417}</h3>
                 <div style={{ height: '300px' }}>
                   <Chart type="line" data={getDailyChartData()} options={chartOptions} />
                 </div>
@@ -418,7 +422,7 @@ export default function PerformanceMetricsPanel() {
             )}
           </TabPanel>
 
-          <TabPanel header="Langsame Operationen" leftIcon="pi pi-exclamation-triangle mr-2">
+          <TabPanel header={t.performancemetricspanel425} leftIcon="pi pi-exclamation-triangle mr-2">
             <DataTable
               value={slowOperations}
               paginator
@@ -426,20 +430,27 @@ export default function PerformanceMetricsPanel() {
               rowsPerPageOptions={[10, 20, 50]}
               stripedRows
               size="small"
-              emptyMessage="Keine langsamen Operationen gefunden."
+              sortField="duration_ms"
+              sortOrder={-1}
+              emptyMessage={t.performancemetricspanel435}
             >
               <Column
-                header="Operation"
+                field="operation"
+                header={t.performancemetricspanel439}
+                sortable
                 body={(row: SlowOperation) => operationBadge(row.operation)}
                 style={{ width: '140px' }}
               />
               <Column
                 field="operation_detail"
-                header="Details"
+                header={t.performancemetricspanel446}
+                sortable
                 body={(row: SlowOperation) => row.operation_detail || '-'}
               />
               <Column
-                header="Dauer"
+                field="duration_ms"
+                header={t.performancemetricspanel452}
+                sortable
                 body={(row: SlowOperation) => (
                   <span style={{ color: row.duration_ms > 5000 ? colors.errorText : colors.warningText, fontWeight: row.duration_ms > 5000 ? 'bold' : 'normal' }}>
                     {row.formatted_duration}
@@ -448,26 +459,32 @@ export default function PerformanceMetricsPanel() {
                 style={{ width: '100px' }}
               />
               <Column
-                header="Memory"
+                field="memory_mb"
+                header={t.performancemetricspanel463}
+                sortable
                 body={(row: SlowOperation) => row.memory_mb ? `${row.memory_mb} MB` : '-'}
                 style={{ width: '80px' }}
               />
               <Column
-                header="Tabellen"
+                field="tables_count"
+                header={t.performancemetricspanel470}
+                sortable
                 body={(row: SlowOperation) => row.tables_count ?? '-'}
                 style={{ width: '80px' }}
               />
               <Column
-                header="User"
+                field="user.name"
+                header={t.performancemetricspanel477}
+                sortable
                 body={(row: SlowOperation) => row.user?.name || '-'}
               />
               <Column
-                header="Typ"
+                header={t.performancemetricspanel482}
                 body={(row: SlowOperation) => subscriptionBadge(row.subscription_type)}
                 style={{ width: '120px' }}
               />
               <Column
-                header="Cache"
+                header={t.performancemetricspanel487}
                 body={(row: SlowOperation) => (
                   <Tag
                     value={row.from_cache ? 'Hit' : 'Miss'}
@@ -477,14 +494,16 @@ export default function PerformanceMetricsPanel() {
                 style={{ width: '80px' }}
               />
               <Column
-                header="Zeit"
-                body={(row: SlowOperation) => new Date(row.created_at).toLocaleString('de-DE')}
+                field="created_at"
+                header={t.performancemetricspanel498}
+                sortable
+                body={(row: SlowOperation) => new Date(row.created_at).toLocaleString(currentLanguage)}
                 style={{ width: '150px' }}
               />
             </DataTable>
           </TabPanel>
 
-          <TabPanel header="Besucher" leftIcon="pi pi-users mr-2">
+          <TabPanel header={t.performancemetricspanel506} leftIcon="pi pi-users mr-2">
             {loadingVisitors ? (
               <div className="flex justify-center p-8">
                 <ProgressSpinner />
@@ -495,35 +514,35 @@ export default function PerformanceMetricsPanel() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Heute</p>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>{t.performancemetricspanel517}</p>
                       <p className="text-3xl font-bold" style={{ color: colors.infoText }}>{visitorStats.summary.today}</p>
                       <div className="flex justify-center gap-2 mt-1">
-                        <span className="text-xs" style={{ color: colors.successText }}>{visitorStats.summary.today_authenticated} angemeldet</span>
-                        <span className="text-xs" style={{ color: colors.textMuted }}>{visitorStats.summary.today_anonymous} anonym</span>
+                        <span className="text-xs" style={{ color: colors.successText }}>{visitorStats.summary.today_authenticated}{t.performancemetricspanel520}</span>
+                        <span className="text-xs" style={{ color: colors.textMuted }}>{visitorStats.summary.today_anonymous}{t.performancemetricspanel521}</span>
                       </div>
                     </div>
                   </Card>
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Gestern</p>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>{t.performancemetricspanel527}</p>
                       <p className="text-3xl font-bold" style={{ color: colors.textPrimary }}>{visitorStats.summary.yesterday}</p>
                     </div>
                   </Card>
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Diese Woche</p>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>{t.performancemetricspanel533}</p>
                       <p className="text-3xl font-bold" style={{ color: colors.accent }}>{visitorStats.summary.this_week}</p>
                     </div>
                   </Card>
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Dieser Monat</p>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>{t.performancemetricspanel539}</p>
                       <p className="text-3xl font-bold" style={{ color: colors.warningText }}>{visitorStats.summary.this_month}</p>
                     </div>
                   </Card>
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>Gesamt</p>
+                      <p className="text-xs uppercase tracking-wide mb-1" style={{ color: colors.textSecondary }}>{t.performancemetricspanel545}</p>
                       <p className="text-3xl font-bold" style={{ color: colors.successText }}>{visitorStats.summary.overall.toLocaleString()}</p>
                     </div>
                   </Card>
@@ -532,7 +551,7 @@ export default function PerformanceMetricsPanel() {
                 {/* Visitor Chart - Last 30 Days */}
                 {visitorStats.chart.length > 0 && (
                   <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Besucher der letzten 30 Tage</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.performancemetricspanel554}</h3>
                     <div style={{ height: '350px' }}>
                       <Chart
                         type="bar"
@@ -540,14 +559,14 @@ export default function PerformanceMetricsPanel() {
                           labels: visitorStats.chart.map(d => d.label),
                           datasets: [
                             {
-                              label: 'Angemeldet',
+                              label: t.performancemetricspanel562,
                               data: visitorStats.chart.map(d => d.authenticated),
                               backgroundColor: '#34d399',
                               borderRadius: 3,
                               stack: 'visitors',
                             },
                             {
-                              label: 'Anonym',
+                              label: t.performancemetricspanel569,
                               data: visitorStats.chart.map(d => d.anonymous),
                               backgroundColor: '#60a5fa',
                               borderRadius: 3,
@@ -568,7 +587,7 @@ export default function PerformanceMetricsPanel() {
                                 footer: (items: any[]) => {
                                   const dayIndex = items[0]?.dataIndex;
                                   if (dayIndex !== undefined && visitorStats.chart[dayIndex]) {
-                                    return 'Gesamt: ' + visitorStats.chart[dayIndex].total;
+                                    return t.performancemetricspanel590 + visitorStats.chart[dayIndex].total;
                                   }
                                   return '';
                                 },
@@ -597,7 +616,7 @@ export default function PerformanceMetricsPanel() {
                 {/* Top Referrers */}
                 {visitorStats.top_referrers.length > 0 && (
                   <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>Top Referrer (letzte 30 Tage)</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.performancemetricspanel619}</h3>
                     <DataTable
                       value={visitorStats.top_referrers}
                       size="small"
@@ -605,14 +624,14 @@ export default function PerformanceMetricsPanel() {
                     >
                       <Column
                         field="referrer"
-                        header="Referrer"
+                        header={t.performancemetricspanel627}
                         body={(row: VisitorReferrer) => (
                           <span className="text-sm" style={{ color: colors.infoText, wordBreak: 'break-all' }}>{row.referrer}</span>
                         )}
                       />
                       <Column
                         field="count"
-                        header="Besuche"
+                        header={t.performancemetricspanel634}
                         style={{ width: '100px', textAlign: 'right' }}
                         body={(row: VisitorReferrer) => (
                           <span className="font-bold" style={{ color: colors.textPrimary }}>{row.count}</span>
@@ -623,11 +642,11 @@ export default function PerformanceMetricsPanel() {
                 )}
               </div>
             ) : (
-              <p style={{ color: colors.textSecondary }}>Keine Besucherdaten vorhanden.</p>
+              <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel645}</p>
             )}
           </TabPanel>
 
-          <TabPanel header="Details" leftIcon="pi pi-list mr-2">
+          <TabPanel header={t.performancemetricspanel649} leftIcon="pi pi-list mr-2">
             {overview && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
@@ -644,27 +663,27 @@ export default function PerformanceMetricsPanel() {
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Anzahl</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel666}</p>
                         <p className="text-xl font-bold" style={{ color: colors.textPrimary }}>{op.total_count.toLocaleString()}</p>
                       </div>
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Cache Hit Rate</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel670}</p>
                         <p className="text-xl font-bold" style={{ color: colors.successText }}>{op.cache_hit_rate}%</p>
                       </div>
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Avg Dauer</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel674}</p>
                         <p className="text-xl font-bold" style={{ color: colors.infoText }}>{formatDuration(op.avg_duration_ms)}</p>
                       </div>
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Max Dauer</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel678}</p>
                         <p className="text-xl font-bold" style={{ color: colors.errorText }}>{formatDuration(op.max_duration_ms)}</p>
                       </div>
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Min Dauer</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel682}</p>
                         <p className="text-xl font-bold" style={{ color: colors.successText }}>{formatDuration(op.min_duration_ms)}</p>
                       </div>
                       <div>
-                        <p style={{ color: colors.textSecondary }}>Avg Memory</p>
+                        <p style={{ color: colors.textSecondary }}>{t.performancemetricspanel686}</p>
                         <p className="text-xl font-bold" style={{ color: colors.accent }}>{op.avg_memory_mb} MB</p>
                       </div>
                     </div>

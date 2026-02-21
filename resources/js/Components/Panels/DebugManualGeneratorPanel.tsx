@@ -16,7 +16,7 @@ import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism-tomorrow.css';
 import 'prismjs/plugins/line-numbers/prism-line-numbers.css';
 import 'prismjs/plugins/line-numbers/prism-line-numbers';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
 import type { Translations } from '@/i18n/types';
 
 // Professional JavaScript syntax highlighter using Prism.js
@@ -41,11 +41,12 @@ interface ThemeColors {
 }
 
 // Line Numbers Component for Syntax Highlighting
-const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange, colors }: {
+const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange, colors, t }: {
   code: string;
   readOnly?: boolean;
   onChange?: (newCode: string) => void;
   colors: ThemeColors;
+  t: Translations;
 }) => {
   const lines = code.split('\n');
   const maxLineNumberWidth = String(lines.length).length;
@@ -195,8 +196,8 @@ const LineNumbersCodeDisplay = ({ code, readOnly = false, onChange, colors }: {
             color: colors.textPrimary,
             outline: 'none'
           }}
-          className="code-editor"
-          placeholder="// Enter your JavaScript code here..."
+          className={t.debugmanualgeneratorpanel199_2}
+          placeholder={t.debugmanualgeneratorpanel199}
           textareaClassName="code-editor-textarea"
         />
       </div>
@@ -1152,7 +1153,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           const maxSizeKB = 200;
 
           if (codeWithGTree.length > maxSizeKB * 1024) {
-            setError(`Template-Code zu groß (${codeSizeKB}KB von max. ${maxSizeKB}KB). Bitte Template vereinfachen oder weniger Tabellen verwenden.`);
+            setError(`${t.debugmanualgeneratorpanel1155_1}(${codeSizeKB}${t.debugmanualgeneratorpanel1155_2}${maxSizeKB}KB).${t.debugmanualgeneratorpanel1155_3}`);
             setLoading(false);
             return;
           }
@@ -1222,13 +1223,13 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
     // Block execution if project is locked
     if (isProjectLocked()) {
-      setError('Das Projekt ist gesperrt. Bitte erneuern Sie das Abo in der Projektverwaltung.');
+      setError(t.debugmanualgeneratorpanel1225);
       return;
     }
 
     // Block execution if schema is locked
     if (isSchemaLocked()) {
-      setError('Die Datenbank ist gesperrt. Bitte entsperren Sie sie im Database Manager.');
+      setError(t.debugmanualgeneratorpanel1232);
       return;
     }
 
@@ -1432,20 +1433,20 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             .replace(/§/g, '\n');            // Convert § placeholder to newlines (legacy)
           result = normalizedResult;
         } else {
-          result = 'Error: Could not parse JavaScript function\n\n' + preparedCode;
+          result = t.debugmanualgeneratorpanel1435+'\n\n' + preparedCode;
         }
 
           // Set the fallback result with a note about fallback
-          setExecutedResult(`⚠️ Fallback interpretation enabled (SyntaxError):\n\n${result}\n\n🔧 Original Error:\n${errorMessage}`);
+          setExecutedResult(`${t.debugmanualgeneratorpanel1439}\n\n${result}\n\n${t.debugmanualgeneratorpanel1439_2}\n${errorMessage}`);
           setActiveTabIndex(1); // Switch to result tab
         } catch (fallbackErr) {
           // Use the enhanced error message from the main catch block
           const fallbackError = fallbackErr as Error;
-          setExecutedResult(`${errorMessage}\n\n🔧 Fallback interpretation also failed:\n${fallbackError.message || t.debugmanualgeneratorpanel1183}\n\nOriginal code (first 500 characters):\n${preparedCode.substring(0, 500)}...`);
+          setExecutedResult(`${errorMessage}\n\n{t.debugmanualgeneratorpanel1444}\n${fallbackError.message || t.debugmanualgeneratorpanel1183}\n\n${t.debugmanualgeneratorpanel1444_2}\n${preparedCode.substring(0, 500)}...`);
         }
       } else {
         // For non-SyntaxErrors (ReferenceError, TypeError, etc.), show error immediately without fallback
-        setExecutedResult(`${errorMessage}\n\n🔍 Debug tip: Use the Debug Helper tab for detailed analysis.`);
+        setExecutedResult(`${errorMessage}\n\n{t.debugmanualgeneratorpanel1448_2}`);
         setActiveTabIndex(1); // Switch to result tab
       }
     }
@@ -1457,7 +1458,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       let content = gtreeImportText.trim();
 
       if (!content) {
-        alert('❌ Please insert GTree JSON');
+        alert(t.debugmanualgeneratorpanel1461);
         return;
       }
 
@@ -1471,42 +1472,43 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
       // Validate basic structure
       if (!Array.isArray(gtreeData) || gtreeData.length === 0) {
-        alert('❌ Invalid GTree format: Must be an array');
+        alert(t.debugmanualgeneratorpanel1475);
         return;
       }
 
       if (!gtreeData[0]?.project || !Array.isArray(gtreeData[0].project)) {
-        alert('❌ Invalid GTree format: project array missing');
+        alert(t.debugmanualgeneratorpanel1480);
         return;
       }
 
       // Save to localStorage
       localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
 
-      alert(`✅ GTree successfully imported!\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || 'Unbekannt'}\n📁 Tables:${gtreeData[0].project[0]?.tables?.length || 0}`);
+      alert(`${t.debugmanualgeneratorpanel1487}\n\n${t.debugmanualgeneratorpanel1487_2}${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel1487_3}\n${t.debugmanualgeneratorpanel1487_4}${gtreeData[0].project[0]?.tables?.length || 0}`);
 
       // Close modal and clear text
       setShowGTreeImportModal(false);
       setGtreeImportText('');
 
     } catch (error) {
-      alert(`❌ Import error:\n\n${(error as Error).message}\n\nMake sure the text contains a valid GTree JSON.`);
+      alert(`${t.debugmanualgeneratorpanel1494}\n\n${(error as Error).message}\n\n${t.debugmanualgeneratorpanel1494_2}`);
     }
   };
 
   // Handle Unlock Editor for manual testing
   const handleUnlockEditor = () => {
     if (!editorUnlocked) {
-      // Generate starter template code
-      const selectedTableData = selectedTable !== null ? schemaTables[selectedTable] : undefined;
-      const tableName = selectedTableData?.tablename || 'table';
-      const fileName = getSelectedFileName() || 'file';
-      const languageCode = selectedLanguage || 'en';
+      // Only insert boilerplate if editor is empty (don't overwrite existing code e.g. from "Code holen")
+      if (!preparedCode || preparedCode.trim() === '') {
+        const selectedTableData = selectedTable !== null ? schemaTables[selectedTable] : undefined;
+        const tableName = selectedTableData?.tablename || 'table';
+        const fileName = getSelectedFileName() || 'file';
+        const languageCode = selectedLanguage || 'en';
 
-      // Create function name from file name (sanitize)
-      const functionName = `generate_${fileName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_{2,}/g, '_')}`;
+        // Create function name from file name (sanitize)
+        const functionName = `generate_${fileName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_{2,}/g, '_')}`;
 
-      const starterCode = `// GTree Data loaded efficiently from localStorage
+        const starterCode = `// GTree Data loaded efficiently from localStorage
 const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
 function ${functionName}() {
@@ -1520,7 +1522,9 @@ function ${functionName}() {
   return sContentResult;
 }`;
 
-      setPreparedCode(starterCode);
+        setPreparedCode(starterCode);
+      }
+
       setEditorUnlocked(true);
       setActiveTabIndex(0); // Switch to code tab
     } else {
@@ -1540,7 +1544,7 @@ function ${functionName}() {
   const fileOptions = Array.isArray(templateFiles) ? templateFiles
     .filter(f => f && f.id !== undefined && f.id !== null) // Filter invalid entries first
     .map(f => {
-      const fileName = f.file_name || (f as any).name || (f as any).filename || (f as any).template_file_name || 'Unbenannt';
+      const fileName = f.file_name || (f as any).name || (f as any).filename || (f as any).template_file_name || t.debugmanualgeneratorpanel1544;
       const fileType = f.file_type || (f as any).type || (f as any).template_file_type || t.testprojectschemas50;
 
       return {
@@ -1598,9 +1602,9 @@ function ${functionName}() {
       <div className="debug-manual-generator-panel h-full p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
         <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
         <div className="space-y-4">
-          <h2 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>🔧 Debug Manual Generator</h2>
+          <h2 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.debugmanualgeneratorpanel1602}</h2>
           <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
-            Template development and code debugging for individual files
+            {t.debugmanualgeneratorpanel1604}
           </p>
 
           {/* Selection Controls - FIXED ORDER: Template > File > Table > Project > Language */}
@@ -1657,7 +1661,7 @@ function ${functionName}() {
                       }
                       setSelectedTable(e.value);
                     }}
-                    placeholder="Tabelle wählen"
+                    placeholder={t.debugmanualgeneratorpanel1661}
                     className="w-full"
                     itemTemplate={(option) => (
                       <div className={`flex items-center justify-between w-full ${option.is_schema_locked ? 'opacity-60' : ''}`}>
@@ -1666,8 +1670,8 @@ function ${functionName}() {
                         </span>
                         {option.is_schema_locked && (
                           <div className="flex items-center gap-2">
-                            <i className="pi pi-lock text-red-500" title="Datenbank gesperrt" />
-                            <span className="text-xs text-red-400">Gesperrt</span>
+                            <i className="pi pi-lock text-red-500" title={t.debugmanualgeneratorpanel1670} />
+                            <span className="text-xs text-red-400">{t.debugmanualgeneratorpanel1671}</span>
                           </div>
                         )}
                       </div>
@@ -1679,14 +1683,14 @@ function ${functionName}() {
                           {option.label}
                         </span>
                       </div>
-                    ) : 'Tabelle wählen'}
+                    ) : t.debugmanualgeneratorpanel1683}
                   />
                 </>
               ) : shouldShowProjectDropdown() ? (
                 <>
                   {/* 🎯 NEU: Project-Datei: Schema-Version Dropdown anzeigen */}
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                    📐 Schema Version {schemaVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.successText }}>(Ziel-Version)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(keine Versionen)</span>}
+                    {t.debugmanualgeneratorpanel1690}{schemaVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1690_2}</span> : <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1690_3}</span>}
                   </label>
                   <Dropdown
                     value={selectedSchemaVersion}
@@ -1698,13 +1702,13 @@ function ${functionName}() {
                         setMigrationFromVersion(null);
                       }
                     }}
-                    placeholder={schemaVersionOptions.length > 0 ? "Version wählen" : "Keine Versionen verfügbar"}
+                    placeholder={schemaVersionOptions.length > 0 ? t.debugmanualgeneratorpanel1702 : t.debugmanualgeneratorpanel1702_2}
                     className="w-full"
                     disabled={schemaVersionOptions.length === 0}
                   />
                   {selectedSchemaVersion && (
                     <div className="mt-1 text-xs" style={{ color: colors.infoText }}>
-                      GTree wird mit Schema-Version {selectedSchemaVersion} generiert
+                      {t.debugmanualgeneratorpanel1708}{selectedSchemaVersion}{t.debugmanualgeneratorpanel1708_2}
                     </div>
                   )}
                 </>
@@ -1765,11 +1769,11 @@ function ${functionName}() {
               <Dropdown
                 value={migrationFromVersion}
                 options={[
-                  { label: 'Keine Migration', value: null },
+                  { label: t.debugmanualgeneratorpanel1768, value: null },
                   ...migrationVersionOptions
                 ]}
                 onChange={(e) => setMigrationFromVersion(e.value)}
-                placeholder="Keine Migration"
+                placeholder={t.debugmanualgeneratorpanel1772}
                 className="w-full"
                 disabled={migrationVersionOptions.length === 0}
               />
@@ -1824,7 +1828,7 @@ function ${functionName}() {
               >
                 <div className="space-y-2">
                   <p className="text-sm" style={{ color: colors.errorText }}>
-                    <strong>CRITICAL:</strong> {t.debugmanualgeneratorpanel1397}
+                    <strong>{t.debugmanualgeneratorpanel1828}</strong> {t.debugmanualgeneratorpanel1397}
                   </p>
 
                   <div className="p-3 rounded border max-h-64 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.errorText }}>
@@ -1855,7 +1859,7 @@ function ${functionName}() {
                   <div className="flex items-center gap-2">
                     <i className="pi pi-exclamation-triangle" style={{ color: colors.warningText }}></i>
                     <span className="font-semibold" style={{ color: colors.warningText }}>
-                      ⚠️ Template Syntax Warnings ({syntaxWarnings.length})
+                      {t.debugmanualgeneratorpanel1859}({syntaxWarnings.length})
                     </span>
                   </div>
                 }
@@ -1897,7 +1901,7 @@ function ${functionName}() {
                   <div className="flex items-center gap-2">
                     <i className="pi pi-exclamation-triangle" style={{ color: colors.warningText }}></i>
                     <span className="font-semibold" style={{ color: colors.warningText }}>
-                      Unknown Variables ({unknownVariables.length})
+                      {t.debugmanualgeneratorpanel1901}({unknownVariables.length})
                     </span>
                   </div>
                 }
@@ -1912,7 +1916,7 @@ function ${functionName}() {
               >
                 <div className="space-y-2">
                   <p className="text-sm" style={{ color: colors.warningText }}>
-                    The following variables are <strong>not defined</strong> and will output <strong>"undefined"</strong>:
+                    {t.debugmanualgeneratorpanel1916}<strong>{t.debugmanualgeneratorpanel1916_2}</strong>{t.debugmanualgeneratorpanel1916_3}<strong>"undefined"</strong>:
                   </p>
 
                   <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.warningText }}>
@@ -1920,7 +1924,7 @@ function ${functionName}() {
                       {unknownVariables.map((warning, idx) => (
                         <li key={idx} style={{ color: colors.textPrimary }}>
                           <span className="font-semibold" style={{ color: colors.warningText }}>{warning.file}</span>
-                          <span style={{ color: colors.textSecondary }}>, line {warning.line}</span>
+                          <span style={{ color: colors.textSecondary }}>,t.debugmanualgeneratorpanel1924{warning.line}</span>
                           : <span style={{ color: colors.accent }}>{`{${warning.variable}}`}</span>
                         </li>
                       ))}
@@ -1928,7 +1932,7 @@ function ${functionName}() {
                   </div>
 
                   <p className="text-xs mt-2 italic" style={{ color: colors.warningText }}>
-                    💡 Tip: Define custom template variables or use existing project fields.
+                    {t.debugmanualgeneratorpanel1932}
                   </p>
                 </div>
               </Panel>
@@ -1943,7 +1947,7 @@ function ${functionName}() {
                   <div className="flex items-center gap-2">
                     <i className="pi pi-times-circle" style={{ color: colors.errorText }}></i>
                     <span className="font-semibold" style={{ color: colors.errorText }}>
-                      Required Variables Missing ({requiredMissing.length})
+                      {t.debugmanualgeneratorpanel1947}({requiredMissing.length})
                     </span>
                   </div>
                 }
@@ -1958,7 +1962,7 @@ function ${functionName}() {
               >
                 <div className="space-y-2">
                   <p className="text-sm" style={{ color: colors.errorText }}>
-                    These variables are <strong>required</strong> but not filled in the project. Output: <strong>"undefined"</strong>
+                    {t.debugmanualgeneratorpanel1962}<strong>required</strong>{t.debugmanualgeneratorpanel1962_2}<strong>"undefined"</strong>
                   </p>
 
                   <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.errorText }}>
@@ -1977,7 +1981,7 @@ function ${functionName}() {
                   </div>
 
                   <p className="text-xs mt-2 italic" style={{ color: colors.errorText }}>
-                    ⚠️ Please fill these required variables in the project settings.
+                    {t.debugmanualgeneratorpanel1981}
                   </p>
                 </div>
               </Panel>
@@ -1992,7 +1996,7 @@ function ${functionName}() {
                   <div className="flex items-center gap-2">
                     <i className="pi pi-info-circle" style={{ color: colors.infoText }}></i>
                     <span className="font-semibold" style={{ color: colors.infoText }}>
-                      Optional Variables ({optionalMissing.length})
+                      {t.debugmanualgeneratorpanel1996}({optionalMissing.length})
                     </span>
                   </div>
                 }
@@ -2007,7 +2011,7 @@ function ${functionName}() {
               >
                 <div className="space-y-2">
                   <p className="text-sm" style={{ color: colors.infoText }}>
-                    These optional variables are not filled. Default value or <strong>empty string ""</strong> will be used.
+                    {t.debugmanualgeneratorpanel2011}<strong>{t.debugmanualgeneratorpanel2011_2}""</strong>{t.debugmanualgeneratorpanel2011_3}
                   </p>
 
                   <div className="p-3 rounded border max-h-48 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.infoText }}>
@@ -2018,7 +2022,7 @@ function ${functionName}() {
                           <span style={{ color: colors.textSecondary }}>, line {warning.line}</span>
                           : <span style={{ color: colors.accent }}>{`{${warning.variable}}`}</span>
                           {warning.default_value && (
-                            <span className="ml-2" style={{ color: colors.successText }}>→ default: "{warning.default_value}"</span>
+                            <span className="ml-2" style={{ color: colors.successText }}>t.debugmanualgeneratorpanel2022"{warning.default_value}"</span>
                           )}
                           {!warning.default_value && (
                             <span className="ml-2" style={{ color: colors.textMuted }}>→ ""</span>
@@ -2032,7 +2036,7 @@ function ${functionName}() {
                   </div>
 
                   <p className="text-xs mt-2 italic" style={{ color: colors.infoText }}>
-                    ℹ️ Optional variables - you can fill them if needed.
+                    {t.debugmanualgeneratorpanel2036}
                   </p>
                 </div>
               </Panel>
@@ -2045,9 +2049,9 @@ function ${functionName}() {
               <div className="flex items-center gap-2 text-red-400">
                 <i className="pi pi-lock text-lg"></i>
                 <div>
-                  <span className="font-semibold">Projekt gesperrt</span>
+                  <span className="font-semibold">{t.debugmanualgeneratorpanel2049}</span>
                   <span className="text-sm text-red-300 ml-2">
-                    - Abo in der Projektverwaltung erneuern
+                    {t.debugmanualgeneratorpanel2051}
                   </span>
                 </div>
               </div>
@@ -2060,9 +2064,9 @@ function ${functionName}() {
               <div className="flex items-center gap-2 text-red-400">
                 <i className="pi pi-lock text-lg"></i>
                 <div>
-                  <span className="font-semibold">Datenbank gesperrt</span>
+                  <span className="font-semibold">{t.debugmanualgeneratorpanel2064}</span>
                   <span className="text-sm text-red-300 ml-2">
-                    - Im Database Manager entsperren
+                    {t.debugmanualgeneratorpanel2066}
                   </span>
                 </div>
               </div>
@@ -2072,12 +2076,12 @@ function ${functionName}() {
           {/* Action Button */}
           <div className="flex space-x-2">
             <Button
-              label={loading ? "Retrieving code..." : t.debugmanualgeneratorpanel1369}
+              label={loading ? t.debugmanualgeneratorpanel2076: t.debugmanualgeneratorpanel1369}
               icon={loading ? "pi pi-spinner pi-spin" : ((isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-code")}
               onClick={fetchCode}
               disabled={!isButtonEnabled || isProjectLocked() || isSchemaLocked()}
               style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.infoText, color: colors.textInverse }}
-              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
+              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? t.debugmanualgeneratorpanel2081 : undefined)}
             />
 
             <Button
@@ -2086,7 +2090,7 @@ function ${functionName}() {
               onClick={executeCode}
               disabled={!preparedCode || isProjectLocked() || isSchemaLocked()}
               style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.successText, color: colors.textInverse }}
-              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? "Datenbank gesperrt - Im Database Manager entsperren" : undefined)}
+              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? t.debugmanualgeneratorpanel2090 : undefined)}
             />
 
             <Button
@@ -2127,26 +2131,26 @@ function ${functionName}() {
                       if (trimmed) {
                         // Check for common syntax issues
                         if (trimmed.includes('tables[]')) {
-                          syntaxIssues.push(`Line ${lineNum}: ❌ Empty array access 'tables[]' - missing index`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2131}`);
                         }
 
                         if (trimmed.includes("'") && !trimmed.includes("\\\\'")) {
                           const singleQuotes = (trimmed.match(/'/g) || []).length;
                           if (singleQuotes % 2 !== 0) {
-                            syntaxIssues.push(`Line ${lineNum}: ⚠️  Unmatched single quote - may cause string termination issues`);
+                            syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2137}`);
                           }
                         }
 
                         if (trimmed.includes('undefined')) {
-                          syntaxIssues.push(`Line ${lineNum}: 🟡 Contains 'undefined' - check variable initialization`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2142}`);
                         }
 
                         if (trimmed.includes('gtree[0].project[0].tables[') && !trimmed.includes('gtree[0].project[0].tables[0]') && !trimmed.includes('gtree[0].project[0].tables[i]')) {
-                          syntaxIssues.push(`Line ${lineNum}: 🔴 Dynamic table index may be problematic`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2146}`);
                         }
 
                         if (trimmed.includes('sContentResult +=') && trimmed.includes('\\n') && !trimmed.includes('\\\\u000A')) {
-                          syntaxIssues.push(`Line ${lineNum}: ⚠️  Raw \\n in string - should use \\\\u000A for consistency`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2150}\\n${t.debugmanualgeneratorpanel2150_2}\\\\u000A${t.debugmanualgeneratorpanel2150_3}`);
                         }
 
                         // Check for bracket balance in the line
@@ -2156,19 +2160,19 @@ function ${functionName}() {
                         const closeParens = (trimmed.match(/\)/g) || []).length;
 
                         if (openBrackets !== closeBrackets && !trimmed.endsWith('{') && !trimmed.startsWith('}')) {
-                          syntaxIssues.push(`Line ${lineNum}: 🔴 Unbalanced curly braces { } in line`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2160}`);
                         }
 
                         if (openParens !== closeParens && !trimmed.includes('for (')) {
-                          syntaxIssues.push(`Line ${lineNum}: 🔴 Unbalanced parentheses ( ) in line`);
+                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2164}`);
                         }
                       }
                     });
 
                     if (syntaxIssues.length === 0) {
-                      debugOutput += `✅ No syntax issues detected\n`;
+                      debugOutput += `${t.debugmanualgeneratorpanel2170}\n`;
                     } else {
-                      debugOutput += `Found ${syntaxIssues.length} potential syntax issues:\n\n`;
+                      debugOutput += `${t.debugmanualgeneratorpanel2172}${syntaxIssues.length}${t.debugmanualgeneratorpanel2172_2}\n\n`;
                       syntaxIssues.forEach(issue => {
                         debugOutput += `${issue}\n`;
                       });
@@ -2213,11 +2217,11 @@ function ${functionName}() {
             />
 
             <Button
-              label={editorUnlocked ? "Lock Editor" : "Unlock Editor"}
+              label={editorUnlocked ? t.debugmanualgeneratorpanel2217 : t.debugmanualgeneratorpanel2217_2}
               icon={editorUnlocked ? "pi pi-lock" : "pi pi-unlock"}
               onClick={handleUnlockEditor}
               style={{ backgroundColor: editorUnlocked ? colors.errorText : colors.warningText, color: colors.textInverse }}
-              tooltip={editorUnlocked ? "Lock and reset editor" : "Enable editor for manual tests"}
+              tooltip={editorUnlocked ? t.debugmanualgeneratorpanel2221 : t.debugmanualgeneratorpanel2221_2}
               tooltipOptions={{ position: 'top' }}
             />
           </div>
@@ -2249,7 +2253,7 @@ function ${functionName}() {
               <TabPanel header={t.debugmanualgeneratorpanel1531} style={{ color: colors.textPrimary }}>
                 <div className="p-4 rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm" style={{ color: colors.textMuted }}>Editable JavaScript code</span>
+                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel2253}</span>
                     <div className="flex gap-2">
                       <Button
                         label={t.debugmanualgeneratorpanel1537}
@@ -2306,7 +2310,7 @@ function ${functionName}() {
                         style={{ backgroundColor: colors.successText, borderColor: colors.successText, color: colors.textInverse }}
                       />
                       <Button
-                        label="Import GTree"
+                        label={t.debugmanualgeneratorpanel2310}
                         icon="pi pi-upload"
                         size="small"
                         onClick={() => {
@@ -2332,22 +2336,22 @@ function ${functionName}() {
 
                                   // Validate basic structure
                                   if (!Array.isArray(gtreeData) || gtreeData.length === 0) {
-                                    alert('❌ Invalid GTree format: Must be an array');
+                                    alert(t.debugmanualgeneratorpanel2336);
                                     return;
                                   }
 
                                   if (!gtreeData[0]?.project || !Array.isArray(gtreeData[0].project)) {
-                                    alert('❌ Invalid GTree format: project array missing');
+                                    alert(t.debugmanualgeneratorpanel2341);
                                     return;
                                   }
 
                                   // Save to localStorage
                                   localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
 
-                                  alert(`✅ GTree successfully imported!\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || 'Unbekannt'}\n📁 Tabellen: ${gtreeData[0].project[0]?.tables?.length || 0}`);
+                                  alert(`${t.debugmanualgeneratorpanel2348}\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel2348_2}\n${t.debugmanualgeneratorpanel2348_3}${gtreeData[0].project[0]?.tables?.length || 0}`);
 
                                 } catch (error) {
-                                  alert(`❌ Import error:\n\n${(error as Error).message}\n\nMake sure the file contains a valid GTree JSON.`);
+                                  alert(`${t.debugmanualgeneratorpanel2351}\n\n${(error as Error).message}\n\n${t.debugmanualgeneratorpanel2351_2}`);
                                 }
                               };
                               reader.readAsText(file);
@@ -2360,7 +2364,7 @@ function ${functionName}() {
                         tooltipOptions={{ position: 'top' }}
                       />
                       <Button
-                        label="GTree aus Clipboard"
+                        label={t.debugmanualgeneratorpanel2364}
                         icon="pi pi-paste"
                         size="small"
                         onClick={() => setShowGTreeImportModal(true)}
@@ -2406,10 +2410,11 @@ function ${functionName}() {
                       }
                     >
                       <LineNumbersCodeDisplay
-                        code={preparedCode || `Klicken Sie auf "${t.debugmanualgeneratorpanel1369}" um den Code zu sehen...`}
+                        code={preparedCode || `${t.debugmanualgeneratorpanel2410}"${t.debugmanualgeneratorpanel1369}"${t.debugmanualgeneratorpanel2410_2}`}
                         readOnly={!editorUnlocked}
                         onChange={(newCode) => setPreparedCode(newCode)}
                         colors={colors}
+                        t={t}
                       />
                     </ErrorBoundary>
                   </div>
@@ -2521,7 +2526,7 @@ function ${functionName}() {
                 <div className="rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   {/* Button Bar */}
                   <div className="flex justify-between items-center p-2 border-b" style={{ borderColor: colors.borderPrimary, backgroundColor: colors.bgSecondary }}>
-                    <div className="text-sm" style={{ color: colors.textMuted }}>Generated PHP code</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel2526}</div>
                     <div className="flex gap-2">
                       <Button
                         label={t.debugmanualgeneratorpanel1591}
@@ -2545,7 +2550,7 @@ function ${functionName}() {
                         style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
                       />
                       <Button
-                        label="Code downloaden"
+                        label={t.debugmanualgeneratorpanel2550}
                         icon="pi pi-download"
                         size="small"
                         onClick={() => {
@@ -2582,7 +2587,7 @@ function ${functionName}() {
                         lineHeight: 1.4
                       }}
                     >
-                      {executedResult || `Click on "${t.debugmanualgeneratorpanel1377}" to see the result...`}
+                      {executedResult || `${t.debugmanualgeneratorpanel2587}"${t.debugmanualgeneratorpanel1377}"${t.debugmanualgeneratorpanel2587_2}`}
                     </div>
                   </div>
                 </div>
@@ -2598,7 +2603,7 @@ function ${functionName}() {
                       lineHeight: 1.4
                     }}
                   >
-                    {debugInfo || `Click on "${t.debugmanualgeneratorpanel1385}" to see the result...`}
+                    {debugInfo || `${t.debugmanualgeneratorpanel2603}"${t.debugmanualgeneratorpanel1385}"${t.debugmanualgeneratorpanel2603_2}`}
                   </div>
                 </div>
               </TabPanel>
@@ -2611,7 +2616,7 @@ function ${functionName}() {
 
       {/* GTree Import Modal */}
       <Dialog
-        header="GTree aus Clipboard importieren"
+        header={t.debugmanualgeneratorpanel2616}
         visible={showGTreeImportModal}
         style={{ width: '50vw' }}
         onHide={() => {
@@ -2627,7 +2632,7 @@ function ${functionName}() {
         footer={
           <div>
             <Button
-              label="Abbrechen"
+              label={t.debugmanualgeneratorpanel2632}
               icon="pi pi-times"
               onClick={() => {
                 setShowGTreeImportModal(false);
@@ -2637,7 +2642,7 @@ function ${functionName}() {
               style={{ color: colors.textSecondary }}
             />
             <Button
-              label="Importieren"
+              label={t.debugmanualgeneratorpanel2642}
               icon="pi pi-check"
               onClick={handleGTreeImportFromText}
               disabled={!gtreeImportText.trim()}
@@ -2648,7 +2653,7 @@ function ${functionName}() {
       >
         <div className="mb-3">
           <p className="mb-2" style={{ color: colors.textSecondary }}>
-            Fügen Sie das GTree JSON hier ein (STRG+V):
+            {t.debugmanualgeneratorpanel2653}
           </p>
           <InputTextarea
             value={gtreeImportText}
@@ -2660,7 +2665,7 @@ function ${functionName}() {
             style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
           />
           <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
-            💡 Tip: You can leave "const gtree = " at the beginning - it will be removed automatically.
+            {t.debugmanualgeneratorpanel2665}"const gtree = "{t.debugmanualgeneratorpanel2665_2}
           </p>
         </div>
       </Dialog>

@@ -42,7 +42,7 @@ class FormDesignerController extends Controller
         if (Subscription::hasFormDesignerAccess($user->id)) {
             return response()->json([
                 'success' => true,
-                'message' => 'Feature bereits freigeschaltet',
+                'message' => __('formdesignercontrollerphp45'),
             ]);
         }
 
@@ -51,7 +51,7 @@ class FormDesignerController extends Controller
         if (($user->credits ?? 0) < $cost) {
             return response()->json([
                 'success' => false,
-                'error' => 'Nicht genügend Credits',
+                'error' => __('formdesignercontrollerphp54'),
                 'required' => $cost,
                 'available' => $user->credits ?? 0,
             ], 400);
@@ -62,13 +62,13 @@ class FormDesignerController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'error' => 'Freischaltung fehlgeschlagen',
+                'error' => __('formdesignercontrollerphp65'),
             ], 500);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Form Designer erfolgreich freigeschaltet!',
+            'message' => __('formdesignercontrollerphp71'),
             'credits_spent' => $cost,
             'credits_remaining' => $user->fresh()->credits ?? 0,
         ]);
@@ -118,7 +118,7 @@ class FormDesignerController extends Controller
         if (!$formSet) {
             return response()->json([
                 'success' => false,
-                'error' => 'FormSet nicht gefunden',
+                'error' => __('formdesignercontrollerphp121'),
             ], 404);
         }
 
@@ -127,7 +127,7 @@ class FormDesignerController extends Controller
         if ($formSet->visibility === 'private' && $formSet->creator_user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'error' => 'Kein Zugriff auf dieses FormSet',
+                'error' => __('formdesignercontrollerphp130'),
             ], 403);
         }
 
@@ -149,7 +149,7 @@ class FormDesignerController extends Controller
         if (!Subscription::hasFormDesignerAccess($user->id)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Form Designer nicht freigeschaltet',
+                'error' => __('formdesignercontrollerphp152'),
             ], 403);
         }
 
@@ -180,7 +180,7 @@ class FormDesignerController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'FormSet erstellt',
+            'message' => __('formdesignercontrollerphp183'),
             'data' => $formSet->load('windows.elements'),
         ], 201);
     }
@@ -195,12 +195,12 @@ class FormDesignerController extends Controller
         $formSet = FormSet::find($id);
 
         if (!$formSet) {
-            return response()->json(['success' => false, 'error' => 'FormSet nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp198')], 404);
         }
 
         // Nur Ersteller kann bearbeiten
         if ($formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp203')], 403);
         }
 
         $validated = $request->validate([
@@ -234,18 +234,18 @@ class FormDesignerController extends Controller
         $formSet = FormSet::find($id);
 
         if (!$formSet) {
-            return response()->json(['success' => false, 'error' => 'FormSet nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp237')], 404);
         }
 
         if ($formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp241')], 403);
         }
 
         $formSet->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'FormSet gelöscht',
+            'message' => __('formdesignercontrollerphp248'),
         ]);
     }
 
@@ -259,20 +259,20 @@ class FormDesignerController extends Controller
         $formSet = FormSet::with('windows.elements')->find($id);
 
         if (!$formSet) {
-            return response()->json(['success' => false, 'error' => 'FormSet nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp262')], 404);
         }
 
         // Zugriffsprüfung
         if ($formSet->visibility === 'private' && $formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Kein Zugriff'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp267')], 403);
         }
 
-        $newName = $request->input('name', $formSet->name . ' (Kopie)');
+        $newName = $request->input('name', $formSet->name . __('formdesignercontrollerphp270'));
         $clone = $formSet->cloneForUser($user->id, $newName);
 
         return response()->json([
             'success' => true,
-            'message' => 'FormSet geklont',
+            'message' => __('formdesignercontrollerphp275'),
             'data' => $clone->load('windows.elements'),
         ], 201);
     }
@@ -288,7 +288,7 @@ class FormDesignerController extends Controller
         $formSet = FormSet::with('windows.elements')->find($id);
 
         if (!$formSet) {
-            return response()->json(['success' => false, 'error' => 'FormSet nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp291')], 404);
         }
 
         return response()->json([
@@ -307,12 +307,12 @@ class FormDesignerController extends Controller
         $window = FormWindow::with('formSet')->find($id);
 
         if (!$window) {
-            return response()->json(['success' => false, 'error' => 'Fenster nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp310')], 404);
         }
 
         // Berechtigungsprüfung
         if ($window->formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp315')], 403);
         }
 
         $validated = $request->validate([
@@ -346,7 +346,7 @@ class FormDesignerController extends Controller
         $window = FormWindow::with('elements')->find($id);
 
         if (!$window) {
-            return response()->json(['success' => false, 'error' => 'Fenster nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp349')], 404);
         }
 
         return response()->json([
@@ -365,11 +365,11 @@ class FormDesignerController extends Controller
         $window = FormWindow::with('formSet')->find($id);
 
         if (!$window) {
-            return response()->json(['success' => false, 'error' => 'Fenster nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp368')], 404);
         }
 
         if ($window->formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp372')], 403);
         }
 
         $elements = $request->input('elements', []);
@@ -421,7 +421,7 @@ class FormDesignerController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Elemente gespeichert',
+            'message' => __('formdesignercontrollerphp424'),
             'data' => $window->fresh()->elements,
         ]);
     }
@@ -436,11 +436,11 @@ class FormDesignerController extends Controller
         $window = FormWindow::with('formSet')->find($id);
 
         if (!$window) {
-            return response()->json(['success' => false, 'error' => 'Fenster nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp439')], 404);
         }
 
         if ($window->formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp443')], 403);
         }
 
         $validated = $request->validate([
@@ -461,7 +461,7 @@ class FormDesignerController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Element hinzugefügt',
+            'message' => __('formdesignercontrollerphp464'),
             'data' => $element,
         ], 201);
     }
@@ -476,18 +476,18 @@ class FormDesignerController extends Controller
         $element = FormElement::with('formWindow.formSet')->find($id);
 
         if (!$element) {
-            return response()->json(['success' => false, 'error' => 'Element nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp479')], 404);
         }
 
         if ($element->formWindow->formSet->creator_user_id !== $user->id) {
-            return response()->json(['success' => false, 'error' => 'Keine Berechtigung'], 403);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp483')], 403);
         }
 
         $element->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Element gelöscht',
+            'message' => __('formdesignercontrollerphp490'),
         ]);
     }
 
@@ -535,7 +535,7 @@ class FormDesignerController extends Controller
         $formSet = FormSet::find($id);
 
         if (!$formSet) {
-            return response()->json(['success' => false, 'error' => 'FormSet nicht gefunden'], 404);
+            return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp538')], 404);
         }
 
         // Alle Projekt-IDs finden, bei denen dieses FormSet aktiv verknüpft ist

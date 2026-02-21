@@ -155,7 +155,7 @@ class FtpSshUploadController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'FTP/SSH-Einstellungen gespeichert',
+            'message' => __('ftpsshuploadcontrollerphp158'),
         ]);
     }
 
@@ -199,7 +199,7 @@ class FtpSshUploadController extends Controller
             if (!$project->hasFtpDeployment()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Keine FTP/SSH-Verbindungsdaten konfiguriert',
+                    'message' => __('ftpsshuploadcontrollerphp202'),
                 ]);
             }
 
@@ -237,7 +237,7 @@ class FtpSshUploadController extends Controller
         if (!file_exists($zipPath)) {
             return response()->json([
                 'success' => false,
-                'message' => 'ZIP-Datei nicht gefunden: ' . $validated['filename'],
+                'message' => __('ftpsshuploadcontrollerphp240') . $validated['filename'],
             ], 404);
         }
 

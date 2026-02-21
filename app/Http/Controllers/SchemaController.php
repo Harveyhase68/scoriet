@@ -68,7 +68,7 @@ class SchemaController extends Controller
             if (!$schema->canBeAccessedBy($user->id)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('schemacontrollerphp71'),
                 ], 403);
             }
 
@@ -79,7 +79,7 @@ class SchemaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Schema not found',
+                'error' => __('schemacontrollerphp82'),
             ], 404);
         }
     }
@@ -105,7 +105,7 @@ class SchemaController extends Controller
                 if ($schemaCount >= 1) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Free users können nur 1 Datenbank erstellen. Upgrade zu Patron oder kaufe eine zusätzliche Datenbank für 50 Credits/Jahr.',
+                        'error' => __('schemacontrollerphp108'),
                         'error_code' => 'SCHEMA_LIMIT_REACHED',
                         'limit' => 1,
                         'current' => $schemaCount,
@@ -118,7 +118,7 @@ class SchemaController extends Controller
             if ($validated['visibility'] === 'private' && !$user->canCreatePrivateSchemas()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You need a patron account to create private schemas',
+                    'error' => __('schemacontrollerphp121'),
                 ], 403);
             }
 
@@ -130,7 +130,7 @@ class SchemaController extends Controller
             if ($existingSchema) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You already have a schema with this name',
+                    'error' => __('schemacontrollerphp133'),
                 ], 409);
             }
 
@@ -145,7 +145,7 @@ class SchemaController extends Controller
             return response()->json([
                 'success' => true,
                 'schema' => $schema->load('owner'),
-                'message' => 'Schema created successfully',
+                'message' => __('schemacontrollerphp148'),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -168,7 +168,7 @@ class SchemaController extends Controller
             if (!$schema->isOwnedBy($user->id)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You can only edit your own schemas',
+                    'error' => __('schemacontrollerphp171'),
                 ], 403);
             }
 
@@ -182,7 +182,7 @@ class SchemaController extends Controller
             if (isset($validated['visibility']) && $validated['visibility'] === 'private' && !$user->canCreatePrivateSchemas()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You need a patron account to make schemas private',
+                    'error' => __('schemacontrollerphp185'),
                 ], 403);
             }
 
@@ -196,7 +196,7 @@ class SchemaController extends Controller
                 if ($existingSchema) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'You already have a schema with this name',
+                        'error' => __('schemacontrollerphp199'),
                     ], 409);
                 }
             }
@@ -206,7 +206,7 @@ class SchemaController extends Controller
             return response()->json([
                 'success' => true,
                 'schema' => $schema->load('owner'),
-                'message' => 'Schema updated successfully',
+                'message' => __('schemacontrollerphp209'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -229,7 +229,7 @@ class SchemaController extends Controller
             if (!$schema->isOwnedBy($user->id)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You can only delete your own schemas',
+                    'error' => __('schemacontrollerphp232'),
                 ], 403);
             }
 
@@ -238,7 +238,7 @@ class SchemaController extends Controller
             if ($dependentTemplates > 0) {
                 return response()->json([
                     'success' => false,
-                    'error' => "Cannot delete schema. It is being used by {$dependentTemplates} template(s)",
+                    'error' => __('schemacontrollerphp241')."{$dependentTemplates}".__('schemacontrollerphp241_2'),
                 ], 409);
             }
 
@@ -246,7 +246,7 @@ class SchemaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Schema deleted successfully',
+                'message' => __('schemacontrollerphp249'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -269,7 +269,7 @@ class SchemaController extends Controller
             if (!$schema->canBeAccessedBy($user->id)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('schemacontrollerphp272'),
                 ], 403);
             }
 
@@ -285,7 +285,7 @@ class SchemaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Schema not found',
+                'error' => __('schemacontrollerphp288'),
             ], 404);
         }
     }
@@ -303,7 +303,7 @@ class SchemaController extends Controller
             if (!$schema->canBeAccessedBy($user->id)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('schemacontrollerphp306'),
                 ], 403);
             }
 
@@ -319,7 +319,7 @@ class SchemaController extends Controller
             if (!$template->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You cannot edit this template',
+                    'error' => __('schemacontrollerphp322'),
                 ], 403);
             }
 
@@ -331,7 +331,7 @@ class SchemaController extends Controller
             if ($existingDependency) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Template is already linked to this schema',
+                    'error' => __('schemacontrollerphp334'),
                 ], 409);
             }
 
@@ -345,7 +345,7 @@ class SchemaController extends Controller
             return response()->json([
                 'success' => true,
                 'dependency' => $dependency->load(['template', 'schema']),
-                'message' => 'Template linked to schema successfully',
+                'message' => __('schemacontrollerphp348'),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -369,7 +369,7 @@ class SchemaController extends Controller
             if (!$template->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You cannot edit this template',
+                    'error' => __('schemacontrollerphp372'),
                 ], 403);
             }
 
@@ -381,12 +381,12 @@ class SchemaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template unlinked from schema successfully',
+                'message' => __('schemacontrollerphp384'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Dependency not found',
+                'error' => __('schemacontrollerphp389'),
             ], 404);
         }
     }
@@ -419,7 +419,7 @@ class SchemaController extends Controller
                     // Create new version
                     $newVersion = $this->schemaVersionService->createVersionFromExisting(
                         $version,
-                        "Deleted FK constraint: {$constraint->constraint_name}"
+                        __('schemacontrollerphp422')."{$constraint->constraint_name}"
                     );
 
                     // Find the constraint in the new version

@@ -14,6 +14,22 @@
       {
         "command": "scoriet-translate.translateSelection",
         "title": "Scoriet: Translate Selection"
+      },
+      {
+        "command": "scoriet-translate.highlightLines",
+        "title": "Scoriet: Highlight Lines from Clipboard"
+      },
+      {
+        "command": "scoriet-translate.clearHighlights",
+        "title": "Scoriet: Clear Line Highlights"
+      },
+      {
+        "command": "scoriet-translate.nextHighlight",
+        "title": "Scoriet: Next Highlight"
+      },
+      {
+        "command": "scoriet-translate.prevHighlight",
+        "title": "Scoriet: Previous Highlight"
       }
     ],
     "keybindings": [
@@ -21,6 +37,26 @@
         "command": "scoriet-translate.translateSelection",
         "key": "ctrl+m",
         "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "scoriet-translate.highlightLines",
+        "key": "ctrl+shift+h",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "scoriet-translate.clearHighlights",
+        "key": "ctrl+shift+j",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "scoriet-translate.nextHighlight",
+        "key": "ctrl+shift+n",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "scoriet-translate.prevHighlight",
+        "key": "ctrl+shift+b",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -30,6 +66,21 @@
           "type": "string",
           "default": "http://localhost:7777/i18n",
           "description": "URL of the WinDev translation REST API"
+        },
+        "scorietTranslate.highlightBackground": {
+          "type": "string",
+          "default": "rgba(255, 235, 59, 0.25)",
+          "description": "Background color for highlighted lines (CSS color)"
+        },
+        "scorietTranslate.highlightBorder": {
+          "type": "string",
+          "default": "rgba(255, 235, 59, 0.6)",
+          "description": "Left border color for highlighted lines (CSS color)"
+        },
+        "scorietTranslate.highlightGutterColor": {
+          "type": "string",
+          "default": "#FFEB3B",
+          "description": "Overview ruler (minimap) color for highlighted lines"
         }
       }
     }

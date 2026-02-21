@@ -311,7 +311,7 @@ export default function RegisterModal({
       {checkingStatus && (
         <div className="flex items-center justify-center py-8">
           <i className="pi pi-spinner pi-spin text-2xl mr-3"></i>
-          <span>Checking registration status...</span>
+          <span>{t.registermodal314}</span>
         </div>
       )}
 
@@ -500,7 +500,7 @@ export default function RegisterModal({
             type="text"
             value={honeypotValue}
             onChange={(e) => setHoneypotValue(e.target.value)}
-            placeholder="Ihre Antwort"
+            placeholder={t.registermodal503}
             autoComplete="off"
             tabIndex={-1}
           />
@@ -534,7 +534,7 @@ export default function RegisterModal({
             }}
             valueTemplate={(selectedOption: any) => {
               if (!selectedOption) {
-                return <span className="text-sm text-gray-500">Select Language</span>;
+                return <span className="text-sm text-gray-500">{t.registermodal537}</span>;
               }
 
               // Extract the actual value from the option object
@@ -549,7 +549,7 @@ export default function RegisterModal({
                   <span className="text-sm font-medium">{lang.nativeName}</span>
                 </div>
               ) : (
-                <span className="text-sm text-gray-500">Select Language</span>
+                <span className="text-sm text-gray-500">{t.registermodal552}</span>
               );
             }}
             panelClassName="language-dropdown-panel"

@@ -3,6 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Badge } from 'primereact/badge';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface CMSPopup {
   id: number;
@@ -53,6 +54,8 @@ export default function CMSPopupModal({
   onAllPopupsClosed
 }: CMSPopupModalProps) {
   const { colors } = useTheme();
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
   const [currentPopupIndex, setCurrentPopupIndex] = useState<number>(-1);
   const [visiblePopups, setVisiblePopups] = useState<CMSPopup[]>([]);
   const [isUpdateVersion, setIsUpdateVersion] = useState<boolean>(false);
@@ -140,10 +143,10 @@ export default function CMSPopupModal({
         <div className="flex items-center gap-3">
           <span>{currentPopup.title}</span>
           {isUpdateVersion && (
-            <Badge value="Update" severity="warning" />
+            <Badge value={t.cmspopupmodal146} severity="warning" />
           )}
           {remainingCount > 0 && (
-            <Badge value={`+${remainingCount} more`} severity="info" />
+            <Badge value={`+${remainingCount}${t.cmspopupmodal149}`} severity="info" />
           )}
         </div>
       }
@@ -153,7 +156,7 @@ export default function CMSPopupModal({
             {currentPopupIndex + 1} / {visiblePopups.length}
           </span>
           <Button
-            label={remainingCount > 0 ? 'OK, weiter' : 'Verstanden'}
+            label={remainingCount > 0 ? t.cmspopupmodal156 : t.cmspopupmodal156_2}
             icon={remainingCount > 0 ? 'pi pi-arrow-right' : 'pi pi-check'}
             onClick={handleClose}
             className="p-button-primary"

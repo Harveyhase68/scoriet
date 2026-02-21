@@ -119,7 +119,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
 
           <div className="field">
             <label htmlFor="email" className="block text-sm font-medium mb-2 text-gray-300">
-              E-Mail
+              {t.loginpanel122}
             </label>
             <InputText
               id="email"
@@ -135,7 +135,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
 
           <div className="field">
             <label htmlFor="password" className="block text-sm font-medium mb-2 text-gray-300">
-              Password
+              {t.loginpanel138}
             </label>
             <Password
               id="password"
@@ -164,7 +164,7 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
               <div>
                 <Button
                   type="button"
-                  label="Don't have an account? Register"
+                  label={t.loginpanel167}
                   className="p-button-link p-button-sm"
                   onClick={() => onSwitchPanel('register')}
                 />

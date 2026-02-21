@@ -6,7 +6,7 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
-import { Tree, TreeNode } from 'primereact/tree';
+import { Tree } from 'primereact/tree';
 import { InputText } from 'primereact/inputtext';
 import { api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
@@ -91,8 +91,9 @@ export default function SchemaTranslationPanel() {
       let projectLanguages = allLanguages;
       if (selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
         // Only show languages that are enabled for this project
+        const enabledLangs = selectedProject.enabled_languages;
         projectLanguages = allLanguages.filter((lang: Language) =>
-          selectedProject.enabled_languages.includes(lang.code)
+          enabledLangs.includes(lang.code)
         );
       }
 
@@ -106,7 +107,7 @@ export default function SchemaTranslationPanel() {
       // Pre-select all except source language for auto-translate
       setTargetLanguagesForTranslate(allCodes.filter((code: string) => code !== 'de'));
     } catch (error: any) {
-      toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.schematranslationpanel109 + (error.response?.data?.message || error.message));
     }
   }, [selectedProject, toast]);
 
@@ -135,7 +136,7 @@ export default function SchemaTranslationPanel() {
         setExpandedKeys({});
       }
     } catch (error: any) {
-      toast.showError('Failed to load schema structure: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.schematranslationpanel138 + (error.response?.data?.message || error.message));
       setSchemaStructure([]);
       setExpandedKeys({});
     } finally {
@@ -198,7 +199,7 @@ export default function SchemaTranslationPanel() {
     setExpandedKeys({});
   };
 
-  const buildTreeData = (): TreeNode[] => {
+  const buildTreeData = () => {
     return schemaStructure.map(table => ({
       label: (
         <div className="flex items-center gap-2">
@@ -321,7 +322,7 @@ export default function SchemaTranslationPanel() {
       setShowExportDialog(false);
       toast.showSuccess(t.databasemanagementpanel259);
     } catch (error: any) {
-      toast.showError('Failed to export: ' + (error.message || t.schematranslationpanel319));
+      toast.showError(t.schematranslationpanel324 + (error.message || t.schematranslationpanel319));
     } finally {
       setExporting(false);
     }
@@ -372,14 +373,14 @@ export default function SchemaTranslationPanel() {
       const result = await response.json();
       setShowImportDialog(false);
       setImportFile(null);
-      toast.showSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
+      toast.showSuccess(`${t.schematranslationpanel375}${result.imported_count}${t.schematranslationpanel375_2}(${result.updated_count}${t.schematranslationpanel375_3}${result.created_count}${t.schematranslationpanel375_4})`);
 
       // Refresh current item translations if an item is selected
       if (selectedItem) {
         fetchTranslationsForItem(selectedItem);
       }
     } catch (error: any) {
-      toast.showError('Failed to import: ' + (error.message || t.schematranslationpanel319));
+      toast.showError(t.schematranslationpanel382 + (error.message || t.schematranslationpanel319));
     } finally {
       setImporting(false);
     }
@@ -441,9 +442,9 @@ export default function SchemaTranslationPanel() {
 
     // Show info message if items found
     if (itemCount > 0) {
-      toast.showInfo(`Found ${itemCount} items with ${sourceLanguageForTranslate.toUpperCase()} translation (${totalChars} chars total)`, 2);
+      toast.showInfo(`${t.schematranslationpanel444}${itemCount}${t.schematranslationpanel444_2}${sourceLanguageForTranslate.toUpperCase()}${t.schematranslationpanel444_3}(${totalChars}${t.schematranslationpanel444_4})`);
     } else {
-      toast.showWarn(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation. Please add translations first.`, 3);
+      toast.showWarn(`${t.schematranslationpanel447}${sourceLanguageForTranslate.toUpperCase()}${t.schematranslationpanel447_2}`);
     }
   };
 
@@ -474,7 +475,7 @@ export default function SchemaTranslationPanel() {
         const sourceText = selectedItemTranslations[sourceLanguageForTranslate];
 
         if (!sourceText || sourceText.trim() === '') {
-          toast.showError(`Please enter a translation for ${sourceLanguageForTranslate.toUpperCase()} first, or select a different source language.`);
+          toast.showError(`${t.schematranslationpanel478}${sourceLanguageForTranslate.toUpperCase()}${t.schematranslationpanel478_2}`);
           setTranslating(false);
           return;
         }
@@ -483,7 +484,7 @@ export default function SchemaTranslationPanel() {
       }
 
     } catch (error: any) {
-      toast.showError('Auto-translate failed: ' + (error.message || t.schematranslationpanel319));
+      toast.showError(t.schematranslationpanel487 + (error.message || t.schematranslationpanel319));
     } finally {
       setTranslating(false);
       setTranslationProgress({ current: 0, total: 0 });
@@ -519,7 +520,7 @@ export default function SchemaTranslationPanel() {
     });
 
     setSelectedItemTranslations(newTranslations);
-    toast.showSuccess(`Translated from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages. Review and save when ready.`);
+    toast.showSuccess(`${t.schematranslationpanel523}${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length}${t.schematranslationpanel523_2}`);
   };
 
   const translateAllSchemaItems = async (token: string) => {
@@ -550,7 +551,7 @@ export default function SchemaTranslationPanel() {
     }
 
     if (itemsToTranslate.length === 0) {
-      toast.showWarn(`No items found with ${sourceLanguageForTranslate.toUpperCase()} translation`);
+      toast.showWarn(`${t.schematranslationpanel554}${sourceLanguageForTranslate.toUpperCase()}${t.schematranslationpanel554_2}`);
       return;
     }
 
@@ -605,7 +606,7 @@ export default function SchemaTranslationPanel() {
       }
     }
 
-    toast.showSuccess(`Translated ${successCount} items from ${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length} languages! ${errorCount > 0 ? `(${errorCount} failed)` : ''}`);
+    toast.showSuccess(`${t.schematranslationpanel609}${successCount}${t.schematranslationpanel609_2}${sourceLanguageForTranslate.toUpperCase()}${t.schematranslationpanel609_3}${targetLanguagesForTranslate.length}${t.schematranslationpanel609_4}${errorCount > 0 ? `(${errorCount}${t.schematranslationpanel609_5})` : ''}`);
 
     // Refresh current item if selected
     if (selectedItem) {
@@ -664,8 +665,8 @@ export default function SchemaTranslationPanel() {
         <div className="flex items-center justify-center h-full" style={{ color: colors.textMuted }}>
           <div className="text-center">
             <div className="text-4xl mb-4">🌍</div>
-            <h3 className="text-lg font-semibold mb-2">Select an item to translate</h3>
-            <p>Choose a table or field from the schema tree to manage its translations</p>
+            <h3 className="text-lg font-semibold mb-2">{t.schematranslationpanel668}</h3>
+            <p>{t.schematranslationpanel669}</p>
           </div>
         </div>
       );
@@ -684,13 +685,13 @@ export default function SchemaTranslationPanel() {
                   <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{itemInfo.displayName}</h3>
                   <Tag value={itemInfo.type} severity={itemInfo.color === 'blue' ? 'info' : 'success'} />
                 </div>
-                <p className="text-sm" style={{ color: colors.textMuted }}>Manage translations for this {itemInfo.type.toLowerCase()}</p>
+                <p className="text-sm" style={{ color: colors.textMuted }}>{t.schematranslationpanel688}{itemInfo.type.toLowerCase()}</p>
               </div>
             </div>
             {autoSaving && (
               <div className="flex items-center gap-2" style={{ color: colors.successText }}>
                 <i className="pi pi-spin pi-spinner"></i>
-                <span className="text-sm">Auto-saving...</span>
+                <span className="text-sm">{t.schematranslationpanel694}</span>
               </div>
             )}
           </div>
@@ -705,7 +706,7 @@ export default function SchemaTranslationPanel() {
                 <div>
                   <p className="font-semibold">{t.schematranslationpanel701} "{selectedItem}"</p>
                   <p className="text-sm mt-1" style={{ color: colors.infoText, opacity: 0.8 }}>
-                    Enter translations below to create new entries. They will be auto-saved after 1 second of inactivity.
+                    {t.schematranslationpanel709}
                   </p>
                 </div>
               </div>
@@ -727,7 +728,7 @@ export default function SchemaTranslationPanel() {
                   )}
                 </div>
                 <InputText
-                  placeholder={`Enter ${language.name} translation...`}
+                  placeholder={`Enter ${language.name}${t.schematranslationpanel731}`}
                   value={selectedItemTranslations[language.code] || ''}
                   onChange={(e) => handleTranslationChange(language.code, e.target.value)}
                   className="w-full schema-translation-input"
@@ -747,10 +748,10 @@ export default function SchemaTranslationPanel() {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-              Schema Translation Manager
+              {t.schematranslationpanel751}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Translate database table and field names for internationalization
+              {t.schematranslationpanel754}
             </p>
           </div>
           <div className="flex gap-2">
@@ -792,7 +793,7 @@ export default function SchemaTranslationPanel() {
         >
           <div className="p-4 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
             <div className="flex justify-between items-start mb-2">
-              <h4 className="font-semibold" style={{ color: colors.textPrimary }}>Database Schema</h4>
+              <h4 className="font-semibold" style={{ color: colors.textPrimary }}>{t.schematranslationpanel796}</h4>
               {/* Expand/Collapse Buttons */}
               {schemaStructure.length > 0 && (
                 <div className="flex gap-1">
@@ -815,28 +816,28 @@ export default function SchemaTranslationPanel() {
                 </div>
               )}
             </div>
-            <p className="text-sm" style={{ color: colors.textMuted }}>Select tables and fields to translate</p>
+            <p className="text-sm" style={{ color: colors.textMuted }}>{t.schematranslationpanel819}</p>
             {selectedProject && (
-              <p className="text-xs mt-1" style={{ color: colors.accent }}>Project: {selectedProject.name}</p>
+              <p className="text-xs mt-1" style={{ color: colors.accent }}>{t.schematranslationpanel821}{selectedProject.name}</p>
             )}
           </div>
           <div className="flex-1 p-4 overflow-y-auto overflow-x-auto min-h-0">
             {!selectedProject ? (
               <div className="text-center mt-8" style={{ color: colors.textMuted }}>
                 <div className="text-2xl mb-2">📋</div>
-                <p>Please select a project first</p>
+                <p>{t.schematranslationpanel828}</p>
               </div>
             ) : loading ? (
-              <div className="text-center" style={{ color: colors.textMuted }}>Loading schema...</div>
+              <div className="text-center" style={{ color: colors.textMuted }}>{t.schematranslationpanel831}</div>
             ) : schemaStructure.length === 0 ? (
               <div className="text-center mt-8" style={{ color: colors.textMuted }}>
                 <div className="text-2xl mb-2">📭</div>
-                <p>No schema tables found</p>
-                <p className="text-xs mt-1">This project has no schema data to translate</p>
+                <p>{t.schematranslationpanel835}</p>
+                <p className="text-xs mt-1">{t.schematranslationpanel836}</p>
               </div>
             ) : (
               <Tree
-                value={buildTreeData()}
+                value={buildTreeData() as any}
                 selectionMode="single"
                 selectionKeys={selectedItem ? { [selectedItem]: true } : {}}
                 onSelectionChange={(e) => {
@@ -920,9 +921,9 @@ export default function SchemaTranslationPanel() {
             <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
               <i className="pi pi-info-circle"></i>
               <div>
-                <p className="font-semibold">Export for {selectedProject?.name}</p>
+                <p className="font-semibold">{t.schematranslationpanel924}{selectedProject?.name}</p>
                 <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
-                  Select languages to include in the Excel export. The export will contain all tables and fields from linked databases.
+                  {t.schematranslationpanel926}
                 </p>
               </div>
             </div>
@@ -930,7 +931,7 @@ export default function SchemaTranslationPanel() {
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Select Languages *
+              {t.schematranslationpanel934}
             </label>
             <MultiSelect
               value={selectedLanguagesForExport}
@@ -942,7 +943,7 @@ export default function SchemaTranslationPanel() {
               display="chip"
             />
             <small style={{ color: colors.textMuted }}>
-              Select one or more languages for the translation export
+              {t.schematranslationpanel946}
             </small>
           </div>
 
@@ -991,7 +992,7 @@ export default function SchemaTranslationPanel() {
               <div>
                 <p className="font-semibold">Import for {selectedProject?.name}</p>
                 <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
-                  Upload an Excel file with translations. Select which languages to import.
+                  {t.schematranslationpanel995}
                 </p>
               </div>
             </div>
@@ -999,7 +1000,7 @@ export default function SchemaTranslationPanel() {
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Upload Excel File *
+              {t.schematranslationpanel1003}
             </label>
             <FileUpload
               mode="basic"
@@ -1013,13 +1014,13 @@ export default function SchemaTranslationPanel() {
               disabled={importing}
             />
             <small style={{ color: colors.textMuted }}>
-              Excel files only (.xlsx, .xls), max 10MB
+              {t.schematranslationpanel1017}
             </small>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Select Languages to Import *
+              {t.schematranslationpanel1023}
             </label>
             <MultiSelect
               value={selectedLanguagesForImport}
@@ -1031,7 +1032,7 @@ export default function SchemaTranslationPanel() {
               display="chip"
             />
             <small style={{ color: colors.textMuted }}>
-              Only selected languages will be imported from the Excel file
+              {t.schematranslationpanel1035}
             </small>
           </div>
 
@@ -1082,7 +1083,7 @@ export default function SchemaTranslationPanel() {
               <i className="pi pi-info-circle"></i>
               <div>
                 <p className="font-semibold">
-                  {translateAllItems ? 'Translate All Items' : (selectedItem ? `Translate "${selectedItem}"` : t.schematranslationpanel771)}
+                  {translateAllItems ? t.schematranslationpanel1086 : (selectedItem ? `${t.schematranslationpanel1086_3}"${selectedItem}"` : t.schematranslationpanel771)}
                 </p>
                 <p className="text-sm mt-1" style={{ opacity: 0.8 }}>
                   {translateAllItems
@@ -1112,17 +1113,17 @@ export default function SchemaTranslationPanel() {
                 disabled={translating}
               />
               <label htmlFor={t.schematranslationpanel1090} className="text-sm font-medium cursor-pointer" style={{ color: colors.textSecondary }}>
-                🚀 Translate all tables and fields
+                {t.schematranslationpanel1116}
               </label>
             </div>
             <small className="ml-6" style={{ color: colors.textMuted }}>
-              Automatically translates all items that have the source language
+              {t.schematranslationpanel1120}
             </small>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Source Language *
+              {t.schematranslationpanel1126}
             </label>
             <Dropdown
               value={sourceLanguageForTranslate}
@@ -1142,13 +1143,13 @@ export default function SchemaTranslationPanel() {
               className="w-full"
             />
             <small style={{ color: colors.textMuted }}>
-              The language to translate FROM (must already have a translation)
+              {t.schematranslationpanel1146}
             </small>
           </div>
 
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-              Target Languages *
+              {t.schematranslationpanel1152}
             </label>
             <MultiSelect
               value={targetLanguagesForTranslate}
@@ -1161,14 +1162,14 @@ export default function SchemaTranslationPanel() {
               display="chip"
             />
             <small style={{ color: colors.textMuted }}>
-              Languages to translate TO
+              {t.schematranslationpanel1165}
             </small>
           </div>
 
           {translating && translationProgress.total > 0 && (
             <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}` }}>
               <p className="text-sm font-medium" style={{ color: colors.successText }}>
-                ⏳ Translating {translationProgress.current} of {translationProgress.total} items...
+                {t.schematranslationpanel1172}{translationProgress.current}{t.schematranslationpanel1172_2}{translationProgress.total}{t.schematranslationpanel1172_3}
               </p>
               <div className="w-full rounded-full h-2 mt-2" style={{ backgroundColor: colors.bgTertiary }}>
                 <div
@@ -1185,7 +1186,7 @@ export default function SchemaTranslationPanel() {
                 <i className="pi pi-info-circle"></i>
                 <div>
                   <p className="font-semibold">
-                    📊 Estimated cost: ~${translateAllItems
+                    {t.schematranslationpanel1189}~${translateAllItems
                       ? ((estimatedCharCount * targetLanguagesForTranslate.length) / 1000000 * 20).toFixed(3)
                       : `0.00${Math.max(1, targetLanguagesForTranslate.length * 2)}`
                     }

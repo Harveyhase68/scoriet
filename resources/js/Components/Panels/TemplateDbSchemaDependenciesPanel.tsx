@@ -169,7 +169,7 @@ const AddDependencyModal: React.FC<AddDependencyModalProps> = ({ visible, onClos
                 {/* Database Schema */}
                 <div>
                     <label htmlFor="schema_id" className="block text-sm font-medium mb-2">
-                        Database Schema *
+                        {t.templatedbschemadependenciespanel172}
                     </label>
                     <Controller
                         name="schema_id"
@@ -511,7 +511,7 @@ const TemplateDbSchemaDependenciesPanel: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Templates List */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-3">Templates</h3>
+                            <h3 className="text-lg font-semibold mb-3">{t.templatedbschemadependenciespanel514}</h3>
 
                             {/* Template Filter */}
                             <div className="mb-3">

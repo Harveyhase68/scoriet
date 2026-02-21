@@ -104,12 +104,12 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
             }
 
             if (response.data.success) {
-                toast.showSuccess(`Datei erfolgreich ${editingFile ? 'aktualisiert' : 'erstellt'}`);
+                toast.showSuccess(`${t.templatefilemanager107}${editingFile ? t.templatefilemanager107_2 : t.templatefilemanager107_3}`);
                 setModalVisible(false);
                 onFilesUpdate();
             }
         } catch {
-            toast.showError(`Fehler beim ${editingFile ? t.applicationsmodal313 : t.teammodal240} der Datei`);
+            toast.showError(`${t.templatefilemanager112}${editingFile ? t.applicationsmodal313 : t.teammodal240}${t.templatefilemanager112_2}`);
         }
     };
 
@@ -217,7 +217,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
         <div className="space-y-4">
             <ConfirmDialog />
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Template Dateien verwalten</h3>
+                <h3 className="text-lg font-semibold">{t.templatefilemanager220}</h3>
                 <div className="flex gap-2">
                     <Button
                         icon="pi pi-plus"
@@ -238,7 +238,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
             <DataTable
                 value={files}
-                rowKey="id"
+                dataKey="id"
                 size="small"
                 stripedRows
                 showGridlines
@@ -253,7 +253,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
             {/* Create/Edit Modal */}
             <Dialog
-                header={editingFile ? 'Datei bearbeiten' : t.templatefilemanager252}
+                header={editingFile ? t.templatefilemanager256 : t.templatefilemanager252}
                 visible={modalVisible}
                 onHide={() => setModalVisible(false)}
                 style={{ width: '800px' }}
@@ -267,7 +267,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                         {/* File Name */}
                         <div className="flex-1">
                             <label htmlFor="file_name" className="block text-sm font-medium mb-2">
-                                Dateiname *
+                                {t.templatefilemanager270}
                             </label>
                             <Controller
                                 name="file_name"
@@ -290,7 +290,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                         {/* File Type */}
                         <div className="w-40">
                             <label htmlFor="file_type" className="block text-sm font-medium mb-2">
-                                Typ *
+                                {t.templatefilemanager293}
                             </label>
                             <Controller
                                 name="file_type"
@@ -302,7 +302,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                                         value={field.value}
                                         onChange={(e) => field.onChange(e.value)}
                                         options={fileTypes.map(type => ({ label: type, value: type }))}
-                                        placeholder="Typ auswählen"
+                                        placeholder={t.templatefilemanager305}
                                         className="w-full"
                                     />
                                 )}
@@ -315,7 +315,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                         {/* File Order */}
                         <div className="w-32">
                             <label htmlFor="file_order" className="block text-sm font-medium mb-2">
-                                Reihenfolge
+                                {t.templatefilemanager318}
                             </label>
                             <Controller
                                 name="file_order"
@@ -337,7 +337,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
                     {/* File Content */}
                     <div>
                         <label htmlFor="file_content" className="block text-sm font-medium mb-2">
-                            Dateiinhalt *
+                            {t.templatefilemanager340}
                         </label>
                         <Controller
                             name="file_content"

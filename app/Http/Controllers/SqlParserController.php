@@ -47,7 +47,7 @@ class SqlParserController extends Controller
         if (empty(trim($sqlScript))) {
             return response()->json([
                 'success' => false,
-                'error' => 'SQL script is required',
+                'error' => __('sqlparsercontrollerphp50'),
             ], 400);
         }
 
@@ -96,14 +96,14 @@ class SqlParserController extends Controller
         if (empty(trim($sqlScript))) {
             return response()->json([
                 'success' => false,
-                'error' => 'SQL script is required',
+                'error' => __('sqlparsercontrollerphp99'),
             ], 400);
         }
 
         if (!$schemaId) {
             return response()->json([
                 'success' => false,
-                'error' => 'Schema ID is required',
+                'error' => __('sqlparsercontrollerphp106'),
             ], 400);
         }
 
@@ -113,7 +113,7 @@ class SqlParserController extends Controller
             if (!$schema) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Schema not found',
+                    'error' => __('sqlparsercontrollerphp116'),
                 ], 404);
             }
 
@@ -122,7 +122,7 @@ class SqlParserController extends Controller
             if (!$schema->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You do not have permission to edit this schema',
+                    'error' => __('sqlparsercontrollerphp125'),
                 ], 403);
             }
 
@@ -140,9 +140,9 @@ class SqlParserController extends Controller
             if (empty($parsedTables)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'No tables found in SQL script. Please ensure the script contains valid CREATE TABLE statements.',
-                    'error_type' => 'No Tables Found',
-                    'suggestion' => 'The SQL file must contain at least one CREATE TABLE statement.',
+                    'error' => __('sqlparsercontrollerphp143'),
+                    'error_type' => __('sqlparsercontrollerphp144'),
+                    'suggestion' => __('sqlparsercontrollerphp145')."CREATE TABLE".__('sqlparsercontrollerphp145_2'),
                 ], 400);
             }
 
@@ -258,8 +258,8 @@ class SqlParserController extends Controller
                         );
                     }
                 } catch (\Exception $e) {
-                    \Log::error("🎯 [AUTO-LAYOUT] Failed to generate automatic layout: " . $e->getMessage());
-                    \Log::error("🎯 [AUTO-LAYOUT] Exception details:", [
+                    \Log::error(__('sqlparsercontrollerphp261') . $e->getMessage());
+                    \Log::error(__('sqlparsercontrollerphp262'), [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),
                         'trace' => $e->getTraceAsString()
@@ -302,7 +302,7 @@ class SqlParserController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log the full error for debugging
-            \Log::error('SQL Import failed', [
+            \Log::error(__('sqlparsercontrollerphp305'), [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -316,25 +316,25 @@ class SqlParserController extends Controller
             // Check for SQL syntax errors
             if (strpos($errorMessage, 'syntax error') !== false || 
                 strpos($errorMessage, 'parse error') !== false) {
-                $errorDetails['type'] = 'Syntax Error';
-                $errorDetails['suggestion'] = 'Please check your SQL syntax for missing semicolons, parentheses, or invalid keywords.';
+                $errorDetails['type'] = __('sqlparsercontrollerphp319');
+                $errorDetails['suggestion'] = __('sqlparsercontrollerphp320');
             }
             // Check for unsupported SQL features
             elseif (strpos($errorMessage, 'unsupported') !== false || 
                      strpos($errorMessage, 'not supported') !== false) {
-                $errorDetails['type'] = 'Unsupported Feature';
-                $errorDetails['suggestion'] = 'This SQL feature is not yet supported by our parser. Please try simplifying your SQL.';
+                $errorDetails['type'] = __('sqlparsercontrollerphp325');
+                $errorDetails['suggestion'] = __('sqlparsercontrollerphp326');
             }
             // Check for table/column related errors
             elseif (strpos($errorMessage, 'table') !== false || 
                      strpos($errorMessage, 'column') !== false) {
-                $errorDetails['type'] = 'Table/Column Error';
-                $errorDetails['suggestion'] = 'Please check table and column definitions for correct syntax.';
+                $errorDetails['type'] = __('sqlparsercontrollerphp331');
+                $errorDetails['suggestion'] = __('sqlparsercontrollerphp332');
             }
             // Generic parsing error
             else {
-                $errorDetails['type'] = 'Parsing Error';
-                $errorDetails['suggestion'] = 'Please check your SQL for common issues like missing semicolons, incorrect keywords, or unsupported syntax.';
+                $errorDetails['type'] = __('sqlparsercontrollerphp336');
+                $errorDetails['suggestion'] = __('sqlparsercontrollerphp337');
             }
 
             // Extract SQL position information from error message if available
@@ -420,12 +420,12 @@ class SqlParserController extends Controller
             if ($newBusinessCount > 5) $newTablesList .= '...';
 
             throw new \Exception(
-                "🛡️ BREAKING CHANGE DETECTED: This SQL import would create a completely new database structure with no table overlap.\n\n" .
-                "Current version has {$existingBusinessCount} business tables: {$existingTablesList}\n" .
-                "New import has {$newBusinessCount} business tables: {$newTablesList}\n\n" .
-                "🚨 For data safety, this import has been blocked.\n" .
-                "✅ Solution: Create a new database/schema for this structure instead of versioning the existing one.\n" .
-                "✅ Alternative: Ensure at least one business table name matches between versions."
+                __('sqlparsercontrollerphp423')."\n\n" .
+                __('sqlparsercontrollerphp424')."{$existingBusinessCount}".__('sqlparsercontrollerphp424_2')."{$existingTablesList}\n" .
+                __('sqlparsercontrollerphp425')."{$newBusinessCount}".__('sqlparsercontrollerphp425_2')."{$newTablesList}\n\n" .
+                __('sqlparsercontrollerphp426')."\n" .
+                __('sqlparsercontrollerphp427')."\n" .
+                __('sqlparsercontrollerphp428')
             );
         }
     }
@@ -438,7 +438,7 @@ class SqlParserController extends Controller
             if (! $schemaVersion) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Schema version not found',
+                    'error' => __('sqlparsercontrollerphp441'),
                 ], 404);
             }
 
@@ -479,7 +479,7 @@ class SqlParserController extends Controller
             if (! $schemaVersion) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Schema version not found',
+                    'error' => __('sqlparsercontrollerphp482'),
                 ], 404);
             }
 
@@ -534,7 +534,7 @@ class SqlParserController extends Controller
             if (empty($parsedTables)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'No tables found in SQL script',
+                    'error' => __('sqlparsercontrollerphp537'),
                 ], 400);
             }
 
@@ -650,7 +650,7 @@ class SqlParserController extends Controller
             if (empty(trim($sqlScript))) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'SQL script is required',
+                    'error' => __('sqlparsercontrollerphp653'),
                 ], 400);
             }
 
@@ -701,7 +701,7 @@ class SqlParserController extends Controller
             try {
                 \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
             } catch (\Exception $e) {
-                \Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
+                \Log::error(__('sqlparsercontrollerphp704')."{$projectId}: " . $e->getMessage());
             }
         }
     }

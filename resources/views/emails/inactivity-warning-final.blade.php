@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LETZTE WARNUNG: Konto wird deaktiviert!</title>
+    <title>{{__('inactivity-warning-finalbladephp6')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -104,49 +104,49 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">LETZTE WARNUNG!</h1>
+            <h1 class="title">{{__('inactivity-warning-finalbladephp107')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('inactivity-warning-finalbladephp110')}}{{ $user->name }},</p>
 
         <p>
-            Dies ist unsere <strong>letzte Warnung</strong> bevor Ihr Konto deaktiviert wird.
-            Ihr letzter Login war am <strong>{{ $lastLoginAt }}</strong> - das ist fast 4 Monate her!
+            {{__('inactivity-warning-finalbladephp113')}}<strong>{{__('inactivity-warning-finalbladephp113_2')}}</strong>{{__('inactivity-warning-finalbladephp113_3')}}
+            {{__('inactivity-warning-finalbladephp114')}}<strong>{{ $lastLoginAt }}</strong>{{__('inactivity-warning-finalbladephp114_2')}}
         </p>
 
         <div class="danger-banner">
             <div class="danger-title">
-                IHR KONTO WIRD IN WENIGEN TAGEN DEAKTIVIERT!
+                {{__('inactivity-warning-finalbladephp119')}}
             </div>
             <p style="margin: 0; color: #991b1b;">
-                Bitte loggen Sie sich <strong>JETZT</strong> ein, um Ihr Konto zu behalten.
-                Ein einziger Klick genügt!
+                {{__('inactivity-warning-finalbladephp122')}}<strong>{{__('inactivity-warning-finalbladephp122_2')}}</strong>{{__('inactivity-warning-finalbladephp122_3')}}
+                {{__('inactivity-warning-finalbladephp123')}}
             </p>
         </div>
 
         <div class="countdown">{{ $daysRemaining }}</div>
-        <div class="countdown-label">TAGE VERBLEIBEND</div>
+        <div class="countdown-label">{{__('inactivity-warning-finalbladephp128')}}</div>
 
         <div class="actions">
-            <a href="{{ $loginUrl }}" class="btn btn-danger">JETZT EINLOGGEN</a>
+            <a href="{{ $loginUrl }}" class="btn btn-danger">{{__('inactivity-warning-finalbladephp131')}}</a>
         </div>
 
         <div class="reassurance-box">
             <div class="reassurance-title">Keine Sorge!</div>
             <p style="margin: 5px 0; color: #047857;">
-                Auch nach einer Deaktivierung können Sie sich jederzeit wieder einloggen.
-                Ihr Konto wird dann automatisch reaktiviert und alle Ihre Daten bleiben erhalten.
+                {{__('inactivity-warning-finalbladephp137')}}
+                {{__('inactivity-warning-finalbladephp138')}}
             </p>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Wir würden Sie ungern verlieren! Ein Login dauert nur wenige Sekunden.
+            {{__('inactivity-warning-finalbladephp143')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil Ihr Konto seit fast 4 Monaten inaktiv ist.
+                {{__('inactivity-warning-finalbladephp148')}}<strong>Scoriet</strong>.<br>
+                {{__('inactivity-warning-finalbladephp149')}}
             </p>
         </div>
     </div>

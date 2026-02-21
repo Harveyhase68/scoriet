@@ -71,7 +71,7 @@ const VariableModal: React.FC<VariableModalProps> = ({
 
     return (
         <Dialog
-            header={editingVariable ? 'Variable bearbeiten' : 'Variable hinzufügen'}
+            header={editingVariable ? t.variablemodal74 : t.variablemodal74_2}
             visible={visible}
             onHide={onCancel}
             style={{ width: '600px' }}
@@ -90,10 +90,10 @@ const VariableModal: React.FC<VariableModalProps> = ({
                         name="variable_name"
                         control={control}
                         rules={{
-                            required: 'Variable Name ist erforderlich',
+                            required: t.variablemodal93,
                             pattern: {
                                 value: /^[a-z_][a-z0-9_]*$/i,
-                                message: 'Variable Name darf nur Buchstaben, Zahlen und Unterstriche enthalten und muss mit einem Buchstaben beginnen (z.B. copyright, company_name)'
+                                message: t.variablemodal96
                             }
                         }}
                         render={({ field }) => (
@@ -110,7 +110,7 @@ const VariableModal: React.FC<VariableModalProps> = ({
                         <small className="text-red-400 mt-1 block">{errors.variable_name.message}</small>
                     )}
                     <div className="text-xs text-gray-500 mt-1">
-                        Wird als Platzhalter verwendet: {'{variable_name}'}
+                        {t.variablemodal113}{'{variable_name}'}
                     </div>
                 </div>
 
@@ -127,20 +127,20 @@ const VariableModal: React.FC<VariableModalProps> = ({
                                 id="description"
                                 {...field}
                                 rows={3}
-                                placeholder="Z.B. 'Copyright-Hinweis für das Projekt'"
+                                placeholder={t.variablemodal130}
                                 className="w-full"
                             />
                         )}
                     />
                     <div className="text-xs text-gray-500 mt-1">
-                        Hilft Benutzern zu verstehen, wofür diese Variable verwendet wird
+                        {t.variablemodal136}
                     </div>
                 </div>
 
                 {/* Default Value */}
                 <div>
                     <label htmlFor="default_value" className="block text-sm font-medium mb-2">
-                        Standard-Wert
+                        {t.variablemodal143}
                     </label>
                     <Controller
                         name="default_value"
@@ -149,13 +149,13 @@ const VariableModal: React.FC<VariableModalProps> = ({
                             <InputText
                                 id="default_value"
                                 {...field}
-                                placeholder="Z.B. '© 2026 My Company'"
+                                placeholder={t.variablemodal152}
                                 className="w-full"
                             />
                         )}
                     />
                     <div className="text-xs text-gray-500 mt-1">
-                        Wird verwendet, wenn der Benutzer keinen Wert eingibt
+                        {t.variablemodal158}
                     </div>
                 </div>
 
@@ -172,22 +172,22 @@ const VariableModal: React.FC<VariableModalProps> = ({
                                     onChange={(e) => field.onChange(e.checked)}
                                 />
                                 <label htmlFor="is_required" className="cursor-pointer text-gray-200">
-                                    Variable ist erforderlich
+                                    {t.variablemodal175}
                                 </label>
                             </div>
                         )}
                     />
                     <div className="text-xs text-gray-500 mt-1">
-                        Wenn aktiviert, müssen Benutzer einen Wert für diese Variable angeben
+                        {t.variablemodal181}
                     </div>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-4 border-t">
                     <Button type="button" onClick={onCancel}>
-                        Abbrechen
+                        {t.variablemodal187}
                     </Button>
                     <Button type="submit" className="p-button-primary">
-                        {editingVariable ? 'Aktualisieren' : 'Erstellen'}
+                        {editingVariable ? t.variablemodal190 : t.variablemodal190_2}
                     </Button>
                 </div>
             </form>

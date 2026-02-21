@@ -79,7 +79,7 @@ export default function SystemSettingsPanel() {
         price_credits_2500: parseFloat(response.price_credits_2500),
       });
     } catch (error: any) {
-      toast.showError('Failed to load settings: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.systemsettingspanel82 + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export default function SystemSettingsPanel() {
       setSettings(response.settings);
       toast.showSuccess(t.systemsettingspanel67);
     } catch (error: any) {
-      toast.showError('Failed to update settings: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.systemsettingspanel103 + (error.response?.data?.message || error.message));
     } finally {
       setSaving(false);
     }
@@ -117,12 +117,12 @@ export default function SystemSettingsPanel() {
       const success = await pricingUtils.refreshPricingData();
 
       if (success) {
-        toast.showSuccess('Pricing cache refreshed successfully! All users will see new prices immediately.');
+        toast.showSuccess(t.systemsettingspanel120);
       } else {
-        toast.showError('Failed to refresh pricing cache');
+        toast.showError(t.systemsettingspanel122);
       }
     } catch (error: any) {
-      toast.showError('Failed to refresh pricing: ' + (error.message || 'Unknown error'));
+      toast.showError(t.systemsettingspanel125 + (error.message || t.systemsettingspanel125_2));
     } finally {
       setRefreshingPrices(false);
     }
@@ -135,7 +135,7 @@ export default function SystemSettingsPanel() {
       const response = await api.request('/admin/users');
       setUsers(response.users || []);
     } catch (error: any) {
-      toast.showError('Failed to load users: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.systemsettingspanel138 + (error.response?.data?.message || error.message));
     } finally {
       setLoadingUsers(false);
     }
@@ -157,7 +157,7 @@ export default function SystemSettingsPanel() {
 
       toast.showSuccess(response.message);
     } catch (error: any) {
-      toast.showError('Failed to update user: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.systemsettingspanel160 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -180,10 +180,10 @@ export default function SystemSettingsPanel() {
     <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <div className="flex-shrink-0 p-6" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
         <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
-          ⚙️ System Settings
+          {t.systemsettingspanel183}
         </h3>
         <p className="text-sm" style={{ color: colors.textSecondary }}>
-          Configure global system settings for Scoriet
+          {t.systemsettingspanel186}
         </p>
       </div>
 
@@ -194,22 +194,22 @@ export default function SystemSettingsPanel() {
           className="h-full themed-tabview"
         >
           {/* Settings Tab */}
-          <TabPanel header="Settings" leftIcon="pi pi-cog">
+          <TabPanel header={t.systemsettingspanel197} leftIcon="pi pi-cog">
             <div className="p-6">
               <div className="max-w-4xl">
                 <form onSubmit={handleSubmit(onSubmit)}>
             {/* Google Translate API Section */}
             <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <h4 className="text-lg font-semibold mb-4" style={{ color: colors.textPrimary }}>
-                🌍 Google Translate API
+                {t.systemsettingspanel204}
               </h4>
               <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                Configure the global Google Translate API key for Business plan users
+                {t.systemsettingspanel207}
               </p>
 
               <div className="field">
                 <label htmlFor="global_google_translate_key" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Global API Key
+                  {t.systemsettingspanel212}
                 </label>
                 <Controller
                   name="global_google_translate_key"
@@ -226,7 +226,7 @@ export default function SystemSettingsPanel() {
                   )}
                 />
                 <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                  This key will be used for Business plan users. Leave empty to require users to provide their own key.
+                  {t.systemsettingspanel229}
                 </small>
               </div>
             </div>
@@ -235,41 +235,41 @@ export default function SystemSettingsPanel() {
             <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-                  💰 Subscription Pricing
+                  {t.systemsettingspanel238}
                 </h4>
                 <Button
                   type="button"
-                  label="Refresh Price Cache"
+                  label={t.systemsettingspanel242}
                   icon={refreshingPrices ? "pi pi-spinner pi-spin" : "pi pi-sync"}
                   severity="info"
                   size="small"
                   outlined
                   onClick={refreshPrices}
                   disabled={refreshingPrices}
-                  tooltip="Clear pricing cache and force all users to see updated prices immediately"
+                  tooltip={t.systemsettingspanel249}
                   tooltipOptions={{ position: 'left' }}
                 />
               </div>
               <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                Set prices for Patron subscriptions (in €)
+                {t.systemsettingspanel254}
               </p>
 
               <div className="rounded p-3 mb-4" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                 <p className="text-xs" style={{ color: colors.textSecondary }}>
-                  💡 <strong>Note:</strong> Prices are cached for 10 minutes. After saving changes, click <strong>"Refresh Price Cache"</strong> to make them visible to all users immediately.
+                  💡 <strong>Note:</strong>{t.systemsettingspanel259}<strong>"{t.systemsettingspanel259_2}"</strong>{t.systemsettingspanel259_3}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="field">
                   <label htmlFor="price_patron_annual" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Patron Annual (€/year) *
+                    {t.systemsettingspanel266}
                   </label>
                   <Controller
                     name="price_patron_annual"
                     control={control}
                     rules={{
-                      required: 'Patron Annual price is required',
+                      required: t.systemsettingspanel272,
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
@@ -295,13 +295,13 @@ export default function SystemSettingsPanel() {
 
                 <div className="field">
                   <label htmlFor="price_patron_monthly" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Patron Monthly (€/month) *
+                    {t.systemsettingspanel298}
                   </label>
                   <Controller
                     name="price_patron_monthly"
                     control={control}
                     rules={{
-                      required: 'Patron Monthly price is required',
+                      required: t.systemsettingspanel304,
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
@@ -327,22 +327,22 @@ export default function SystemSettingsPanel() {
               </div>
 
               <h5 className="text-md font-semibold mb-3 mt-6" style={{ color: colors.textPrimary }}>
-                Credit Packages
+                {t.systemsettingspanel330}
               </h5>
               <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                Set prices for credit packages (in €)
+                {t.systemsettingspanel333}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="field">
                   <label htmlFor="price_credits_500" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    500 Credits (€) *
+                    {t.systemsettingspanel339}
                   </label>
                   <Controller
                     name="price_credits_500"
                     control={control}
                     rules={{
-                      required: '500 credits price is required',
+                      required: t.systemsettingspanel345,
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
@@ -368,13 +368,13 @@ export default function SystemSettingsPanel() {
 
                 <div className="field">
                   <label htmlFor="price_credits_1000" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    1000 Credits (€) *
+                    {t.systemsettingspanel371}
                   </label>
                   <Controller
                     name="price_credits_1000"
                     control={control}
                     rules={{
-                      required: '1000 credits price is required',
+                      required: t.systemsettingspanel377,
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
@@ -400,13 +400,13 @@ export default function SystemSettingsPanel() {
 
                 <div className="field">
                   <label htmlFor="price_credits_2500" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    2500 Credits (€) *
+                    {t.systemsettingspanel403}
                   </label>
                   <Controller
                     name="price_credits_2500"
                     control={control}
                     rules={{
-                      required: '2500 credits price is required',
+                      required: t.systemsettingspanel409,
                       min: { value: 0, message: t.systemsettingspanel149 }
                     }}
                     render={({ field }) => (
@@ -445,7 +445,7 @@ export default function SystemSettingsPanel() {
               />
               <Button
                 type="submit"
-                label={saving ? "Saving..." : t.systemsettingspanel251}
+                label={saving ? t.systemsettingspanel448 : t.systemsettingspanel251}
                 icon={saving ? "pi pi-spinner pi-spin" : "pi pi-save"}
                 severity="success"
                 loading={saving}
@@ -457,21 +457,21 @@ export default function SystemSettingsPanel() {
           </TabPanel>
 
           {/* User Management Tab */}
-          <TabPanel header="User Management" leftIcon="pi pi-users">
+          <TabPanel header={t.systemsettingspanel460} leftIcon="pi pi-users">
             <div className="p-6">
               <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-                      👥 User Management
+                      {t.systemsettingspanel466}
                     </h4>
                     <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                      Manage users and assign Inner Core Reviewer permissions
+                      {t.systemsettingspanel469}
                     </p>
                   </div>
                   <Button
                     icon="pi pi-refresh"
-                    label="Refresh"
+                    label={t.systemsettingspanel474}
                     onClick={() => fetchUsers()}
                     disabled={loadingUsers}
                     severity="secondary"
@@ -490,24 +490,24 @@ export default function SystemSettingsPanel() {
                     rows={10}
                     rowsPerPageOptions={[5, 10, 25, 50]}
                     tableStyle={{ minWidth: '50rem' }}
-                    emptyMessage="No users found"
+                    emptyMessage={t.systemsettingspanel493}
                     className="p-datatable-sm"
                   >
                     <Column
                       field="name"
-                      header="Name"
+                      header={t.systemsettingspanel498}
                       sortable
                       style={{ minWidth: '150px' }}
                     />
                     <Column
                       field="email"
-                      header="Email"
+                      header={t.systemsettingspanel504}
                       sortable
                       style={{ minWidth: '200px' }}
                     />
                     <Column
                       field="user_type"
-                      header="Type"
+                      header={t.systemsettingspanel510}
                       sortable
                       body={(rowData) => (
                         <Tag
@@ -518,7 +518,7 @@ export default function SystemSettingsPanel() {
                     />
                     <Column
                       field="is_verified"
-                      header="Verified"
+                      header={t.systemsettingspanel521}
                       body={(rowData) => (
                         <Tag
                           value={rowData.is_verified ? 'Yes' : 'No'}
@@ -529,18 +529,18 @@ export default function SystemSettingsPanel() {
                     />
                     <Column
                       field="is_inner_core"
-                      header="Inner Core Reviewer"
+                      header={t.systemsettingspanel532}
                       body={(rowData) => (
                         <div className="flex items-center gap-2">
                           {rowData.is_inner_core ? (
                             <>
-                              <Tag value="Reviewer" severity="success" icon="pi pi-star-fill" />
+                              <Tag value={t.systemsettingspanel537} severity="success" icon="pi pi-star-fill" />
                               <Button
                                 icon="pi pi-times"
                                 severity="danger"
                                 size="small"
                                 outlined
-                                tooltip="Remove Inner Core status"
+                                tooltip={t.systemsettingspanel543}
                                 tooltipOptions={{ position: 'top' }}
                                 onClick={() => handleToggleInnerCore(rowData.id)}
                               />
@@ -548,11 +548,11 @@ export default function SystemSettingsPanel() {
                           ) : (
                             <Button
                               icon="pi pi-check"
-                              label="Assign"
+                              label={t.systemsettingspanel551}
                               severity="success"
                               size="small"
                               outlined
-                              tooltip="Assign as Inner Core Reviewer"
+                              tooltip={t.systemsettingspanel555}
                               tooltipOptions={{ position: 'top' }}
                               onClick={() => handleToggleInnerCore(rowData.id)}
                             />
@@ -562,12 +562,12 @@ export default function SystemSettingsPanel() {
                     />
                     <Column
                       field="member_since"
-                      header="Member Since"
+                      header={t.systemsettingspanel565}
                       sortable
                     />
                     <Column
                       field="last_login"
-                      header="Last Login"
+                      header={t.systemsettingspanel570}
                       sortable
                     />
                   </DataTable>

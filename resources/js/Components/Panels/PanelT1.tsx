@@ -101,7 +101,7 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
             teamNode.children = members.map((member: any) => {
               return {
                 id: `member-${member.user_id}-team-${team.id}-project-${project.id}`, // Unique ID for each member-team-project combination
-                name: member.user?.name || member.name || 'Unknown User',
+                name: member.user?.name || member.name || t.panelt1104,
                 type: 'member',
                 teamId: team.id,
                 projectId: project.id,
@@ -281,7 +281,7 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
     if (allTeams.length > 0) {
       const teamsContainer: TreeNode = {
         id: 'my-teams',
-        name: t.panelt1MyTeams || 'Meine Teams',
+        name: t.panelt1MyTeams || t.panelt1284,
         type: 'standalone-teams-container',
         expanded: false,
         children: allTeams.map((team: any) => ({
@@ -302,7 +302,7 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
     if (allTemplates.length > 0) {
       const templatesContainer: TreeNode = {
         id: 'my-templates',
-        name: t.panelt1MyTemplates || 'Meine Templates',
+        name: t.panelt1MyTemplates || t.panelt1305,
         type: 'standalone-templates-container',
         expanded: false,
         children: allTemplates.map((template: any) => ({
@@ -323,7 +323,7 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
     if (allSchemas.length > 0) {
       const databasesContainer: TreeNode = {
         id: 'my-databases',
-        name: t.panelt1MyDatabases || 'Meine Datenbanken',
+        name: t.panelt1MyDatabases || t.panelt1326,
         type: 'standalone-databases-container',
         expanded: false,
         children: allSchemas.map((schema: any) => ({
@@ -341,7 +341,7 @@ const generateProjectTreeData = async (t: any): Promise<TreeNode[]> => {
     return treeNodes;
   } catch (error) {
     // Log the error for debugging
-    console.error('Error in generateProjectTreeData:', error);
+    console.error(t.panelt1344, error);
     // Return a fallback structure for debugging
     return [
       {
@@ -732,7 +732,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           onOpenPanel(uniqueTeamPanelId, {
             type: 'team-management',
-            title: `Team Management`, // Will be updated by the panel itself
+            title: t.panelt1735, // Will be updated by the panel itself
             projectId: node.projectId,
             teamId: node.teamId,
             teamName: node.name,
@@ -748,7 +748,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
           const uniqueMemberPanelId = `team-management-team-${node.teamId}`;
           onOpenPanel(uniqueMemberPanelId, {
             type: 'team-management',
-            title: `Team Management`,
+            title: t.panelt1751,
             projectId: node.projectId,
             teamId: node.teamId,
             filterByProject: node.projectId ? true : false,
@@ -764,7 +764,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           onOpenPanel(uniqueTemplatePanelId, {
             type: 'template-management',
-            title: `Template Management: ${node.projectName || 'Project'}`,
+            title: `${t.panelt1767}${node.projectName || t.panelt1767_2}`,
             projectId: node.projectId,
             projectName: node.projectName,
             templateId: node.templateId,
@@ -780,7 +780,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           onOpenPanel(uniqueDatabasePanelId, {
             type: 'database-management',
-            title: `Database Management: ${node.projectName || 'Project'}`,
+            title: `${t.panelt1783}${node.projectName || t.panelt1783_2}`,
             projectId: node.projectId,
             projectName: node.projectName,
             filterByProject: true,
@@ -796,7 +796,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
 
           onOpenPanel(uniqueDesignerPanelId, {
             type: 't2',
-            title: `Database Designer: ${node.name}`,
+            title: `${t.panelt1799}${node.name}`,
             schemaName: node.name,
             preSelectedSchemaId: node.schemaId
           });
@@ -804,12 +804,12 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         break;
       case 'table':
         if (onOpenPanel && node.tableId && node.schemaId) {
-          // Open Debug Manual Generator with this table pre-selected
+          // Open Template Tester & Debug with this table pre-selected
           const uniqueDebugPanelId = `debug-manual-generator-table-${node.tableId}`;
 
           onOpenPanel(uniqueDebugPanelId, {
             type: 'debug-manual-generator',
-            title: `Debug Manual Generator: ${node.tableName || 'Table'}`,
+            title: `${t.panelt1812}${node.tableName || 'Table'}`,
             tableId: node.tableId,
             tableName: node.tableName,
             schemaId: node.schemaId,
@@ -820,12 +820,12 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         break;
       case 'generated-file':
         if (onOpenPanel) {
-          // Open Debug Manual Generator with ALL parameters pre-selected
+          // Open Template Tester & Debug with ALL parameters pre-selected
           const uniqueDebugPanelId = `debug-manual-generator-gen-file-${node.fileId}-${node.tableId}-${node.languageId}`;
 
           onOpenPanel(uniqueDebugPanelId, {
             type: 'debug-manual-generator',
-            title: `Generator: ${node.name}`,
+            title: `${t.panelt1828}${node.name}`,
             projectId: node.projectId,
             projectName: node.projectName,
             templateId: node.templateId,
@@ -846,7 +846,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel) {
           onOpenPanel('team-management', {
             type: 'team-management',
-            title: 'Team Management',
+            title: t.panelt1849,
             filterByProject: false
           });
         }
@@ -856,7 +856,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel && node.teamId) {
           onOpenPanel(`team-management-team-${node.teamId}`, {
             type: 'team-management',
-            title: `Team: ${node.name}`,
+            title: `${t.panelt1859}${node.name}`,
             teamId: node.teamId,
             teamName: node.name,
             filterByProject: false
@@ -868,7 +868,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel) {
           onOpenPanel('template-management', {
             type: 'template-management',
-            title: 'Template Management',
+            title: t.panelt1871,
             filterByProject: false
           });
         }
@@ -878,7 +878,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel && node.templateId) {
           onOpenPanel(`template-management-template-${node.templateId}`, {
             type: 'template-management',
-            title: `Template: ${node.name}`,
+            title: `${t.panelt1881}${node.name}`,
             templateId: node.templateId,
             filterByProject: false
           });
@@ -889,7 +889,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel) {
           onOpenPanel('database-management', {
             type: 'database-management',
-            title: 'Database Management',
+            title:t.panelt1892,
             filterByProject: false
           });
         }
@@ -899,7 +899,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         if (onOpenPanel && node.schemaId) {
           onOpenPanel(`database-management-schema-${node.schemaId}`, {
             type: 'database-management',
-            title: `Database: ${node.name}`,
+            title: `${t.panelt1902}${node.name}`,
             filterByProject: false,
             preSelectedSchemaId: node.schemaId
           });
@@ -936,7 +936,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
       <div className="h-full flex flex-col p-4">
         {/* Header - fixed height */}
         <div className="flex-shrink-0 flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold" style={{ color: 'var(--theme-accent)' }}>📁 Navigation</h3>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--theme-accent)' }}>{t.panelt1939}</h3>
           <div className="flex space-x-2">
             <button
               onClick={expandAll}
@@ -985,9 +985,9 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
           <div className="flex-shrink-0 mt-4 p-3 panel-info-box rounded">
             <h5 className="font-medium mb-1" style={{ color: 'var(--theme-success-text)' }}>{t.panelt1833}</h5>
             <div className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-              <div><strong>Name:</strong> {selectedNode.name}</div>
-              <div><strong>Type:</strong> {selectedNode.type}</div>
-              <div><strong>ID:</strong> {selectedNode.id}</div>
+              <div><strong>{t.panelt1988}</strong> {selectedNode.name}</div>
+              <div><strong>{t.panelt1989}</strong> {selectedNode.type}</div>
+              <div><strong>{t.panelt1990}</strong> {selectedNode.id}</div>
               {selectedNode.path && (
                 <div><strong>{t.panelt1843}</strong> {selectedNode.path}</div>
               )}
@@ -998,18 +998,18 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
                 <div><strong>{t.panelt1845}</strong> {selectedNode.teamId}</div>
               )}
               {selectedNode.type === 'member' && (
-                <div><strong>{t.panelt1848}</strong> Team Member</div>
+                <div><strong>{t.panelt1848}</strong>{t.panelt11001}</div>
               )}
               {selectedNode.type === 'generated-file' && (
                 <>
                   {selectedNode.templateId && (
-                    <div><strong>Template ID:</strong> {selectedNode.templateId}</div>
+                    <div><strong>{t.panelt11006}</strong> {selectedNode.templateId}</div>
                   )}
                   {selectedNode.tableName && (
-                    <div><strong>Table:</strong> {selectedNode.tableName}</div>
+                    <div><strong>{t.panelt11009}</strong> {selectedNode.tableName}</div>
                   )}
                   {selectedNode.languageCode && (
-                    <div><strong>Language:</strong> {selectedNode.languageCode}</div>
+                    <div><strong>{t.panelt11012}</strong> {selectedNode.languageCode}</div>
                   )}
                 </>
               )}

@@ -177,6 +177,7 @@ class SchemaController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9_]+$/',
                 Rule::unique('schemas')->where(function ($query) use ($user) {
                     return $query->where('owner_id', $user->id);
                 })
@@ -222,7 +223,7 @@ class SchemaController extends Controller
                 // User needs to buy a new subscription slot
                 if (!$user->hasCredits(50)) {
                     return response()->json([
-                        'message' => 'Nicht genug Credits. Sie benötigen 50 Credits um eine zusätzliche Datenbank freizuschalten.',
+                        'message' => __('schemacontrollerphp225'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => 50,
                         'current_credits' => $user->credits,
@@ -260,7 +261,7 @@ class SchemaController extends Controller
                 'user_id' => $user->id,
                 'amount' => -50,
                 'type' => 'db_renewal',
-                'description' => 'Schema slot (1 year) - created schema: ' . $schema->name,
+                'description' => __('schemacontrollerphp263') . $schema->name,
                 'reference_type' => 'App\Models\Subscription',
                 'reference_id' => null, // Slot-based, no specific entity
                 'price_paid' => null,
@@ -303,7 +304,7 @@ class SchemaController extends Controller
         
         // Check if user can access this schema
         if (!$schema->canBeAccessedBy($user)) {
-            return response()->json(['message' => 'Schema not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp306')], 404);
         }
 
         $schema->load(['owner', 'projects']);
@@ -324,7 +325,7 @@ class SchemaController extends Controller
         
         // Check if user can edit this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp327')], 403);
         }
 
         $validated = $request->validate([
@@ -332,6 +333,7 @@ class SchemaController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9_]+$/',
                 Rule::unique('schemas')->where(function ($query) use ($user) {
                     return $query->where('owner_id', $user->id);
                 })->ignore($schema->id)
@@ -367,7 +369,7 @@ class SchemaController extends Controller
 
         // Check if user can delete this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to delete this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp370')], 403);
         }
 
         // Get counts for confirmation message
@@ -385,7 +387,7 @@ class SchemaController extends Controller
             // The frontend will handle this and make a second request with force_delete=true
             return response()->json([
                 'success' => false,
-                'message' => "Schema is being used by {$projectsCount} project(s). Use force delete to proceed.",
+                'message' => __('schemacontrollerphp388') . "{$projectsCount}" .__('schemacontrollerphp388_2'),
                 'projects_count' => $projectsCount,
                 'versions_count' => $versionsCount,
                 'tables_count' => $totalTablesCount,
@@ -443,21 +445,21 @@ class SchemaController extends Controller
             });
 
             return response()->json([
-                'message' => 'Schema and all related data deleted successfully',
+                'message' => __('schemacontrollerphp446'),
                 'deleted_projects_count' => $projectsCount,
                 'deleted_versions_count' => $versionsCount,
                 'deleted_tables_count' => $totalTablesCount
             ]);
 
         } catch (\Exception $e) {
-            Log::error("❌ Schema deletion failed", [
+            Log::error(__('schemacontrollerphp453'), [
                 'schema_id' => $schema->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'message' => 'Failed to delete schema',
+                'message' => __('schemacontrollerphp460'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -472,7 +474,7 @@ class SchemaController extends Controller
         
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp475')], 404);
         }
 
         // Get schemas that are not already associated with this project
@@ -499,7 +501,7 @@ class SchemaController extends Controller
 
         // Check if user can access this schema
         if (!$schema->canBeAccessedBy($user)) {
-            return response()->json(['message' => 'Schema not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp502')], 404);
         }
 
         $versions = $schema->versions()
@@ -522,7 +524,7 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeAccessedBy($user)) {
-                return response()->json(['message' => 'Schema version not found'], 404);
+                return response()->json(['message' => __('schemacontrollerphp525')], 404);
             }
         }
 
@@ -567,7 +569,7 @@ class SchemaController extends Controller
                 'created_at' => now(),
             ]);
         } catch (\Exception $e) {
-            Log::error("Performance tracking failed: " . $e->getMessage());
+            Log::error(__('schemacontrollerphp570') . $e->getMessage());
         }
 
         return response()->json($tables);
@@ -582,7 +584,7 @@ class SchemaController extends Controller
         
         // Check if user can edit this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp585')], 403);
         }
 
         $request->validate([
@@ -601,12 +603,12 @@ class SchemaController extends Controller
                 $request->input('layouts')
             );
 
-            return response()->json(['message' => 'Layout saved successfully']);
+            return response()->json(['message' => __('schemacontrollerphp604')]);
         } catch (\Exception $e) {
             \Log::error('Layout save error: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
-                'message' => 'Failed to save layout',
+                'message' => __('schemacontrollerphp609'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -621,7 +623,7 @@ class SchemaController extends Controller
         
         // Check if user can access this schema
         if (!$schema->canBeAccessedBy($user)) {
-            return response()->json(['message' => 'Schema not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp624')], 404);
         }
 
         $layouts = SchemaDesignerLayout::getLayoutForVersion($schema->id, $versionNumber);
@@ -640,7 +642,7 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp643')], 403);
             }
         }
 
@@ -786,12 +788,12 @@ class SchemaController extends Controller
             $table->load('fields');
 
             return response()->json([
-                'message' => 'Table created successfully',
+                'message' => __('schemacontrollerphp789'),
                 'table' => $table
             ], 201);
 
         } catch (\Exception $e) {
-            \Log::error('CreateTable Exception:', [
+            \Log::error(__('schemacontrollerphp794'), [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -799,7 +801,7 @@ class SchemaController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to create table',
+                'message' => __('schemacontrollerphp802'),
                 'error' => $e->getMessage(),
                 'debug' => [
                     'file' => $e->getFile(),
@@ -820,13 +822,13 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp823')], 403);
             }
         }
 
         // Validate that the table belongs to this version
         if ($table->schema_version_id !== $version->id) {
-            return response()->json(['message' => 'Table does not belong to this schema version'], 404);
+            return response()->json(['message' => __('schemacontrollerphp829')], 404);
         }
 
         $request->validate([
@@ -1143,7 +1145,7 @@ class SchemaController extends Controller
 
                 // Check if all source fields still exist
                 if (count($sourceFieldIds) !== count($fkData['source_fields'])) {
-                    Log::warning('⚠️ Could not restore FK (source fields missing):', [
+                    Log::warning(__('schemacontrollerphp1146'), [
                         'constraint' => $fkData['constraint_name'],
                         'fields' => $fkData['source_fields']
                     ]);
@@ -1153,7 +1155,7 @@ class SchemaController extends Controller
                 // Find referenced table (still exists, unchanged)
                 $referencedTable = \App\Models\SchemaTable::find($fkData['referenced_table_id']);
                 if (!$referencedTable) {
-                    Log::warning('⚠️ Could not restore FK (referenced table not found):', [
+                    Log::warning(__('schemacontrollerphp1156'), [
                         'constraint' => $fkData['constraint_name'],
                         'referenced_table_id' => $fkData['referenced_table_id']
                     ]);
@@ -1173,7 +1175,7 @@ class SchemaController extends Controller
 
                 // Check if all referenced fields exist
                 if (count($referencedFieldIds) !== count($fkData['referenced_fields'])) {
-                    Log::warning('⚠️ Could not restore FK (referenced fields missing):', [
+                    Log::warning(__('schemacontrollerphp1176'), [
                         'constraint' => $fkData['constraint_name'],
                         'referenced_fields' => $fkData['referenced_fields']
                     ]);
@@ -1216,13 +1218,13 @@ class SchemaController extends Controller
             $table->load(['fields', 'constraints']);
 
             return response()->json([
-                'message' => 'Table updated successfully',
+                'message' => __('schemacontrollerphp1219'),
                 'table' => $table
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to update table',
+                'message' => __('schemacontrollerphp1225'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1239,13 +1241,13 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp1242')], 403);
             }
         }
 
         // Check if table belongs to this version
         if ($table->schema_version_id !== $version->id) {
-            return response()->json(['message' => 'Table does not belong to this schema version'], 400);
+            return response()->json(['message' => __('schemacontrollerphp1248')], 400);
         }
 
         try {
@@ -1255,9 +1257,9 @@ class SchemaController extends Controller
             // Delete the table and all its related data (fields, constraints, etc.)
             $table->delete();
 
-            $message = 'Table deleted successfully';
+            $message = __('schemacontrollerphp1258');
             if ($deletedFKs > 0) {
-                $message .= " ({$deletedFKs} FK-Constraint(s) die auf diese Tabelle zeigten wurden ebenfalls gelöscht)";
+                $message .= " ({$deletedFKs}" . __('schemacontrollerphp1260');
             }
 
             return response()->json(['success' => true, 'message' => $message, 'deleted_fks' => $deletedFKs]);
@@ -1275,17 +1277,17 @@ class SchemaController extends Controller
 
         // Check if this schema version has a schema and user can edit it
         if (!$version->hasSchema()) {
-            return response()->json(['message' => 'This action requires a floating schema'], 400);
+            return response()->json(['message' => __('schemacontrollerphp1278')], 400);
         }
 
         $schema = $version->schema;
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp1283')], 403);
         }
 
         // Check if table belongs to this version
         if ($table->schema_version_id !== $version->id) {
-            return response()->json(['message' => 'Table does not belong to this schema version'], 400);
+            return response()->json(['message' => __('schemacontrollerphp1288')], 400);
         }
 
         try {
@@ -1293,14 +1295,14 @@ class SchemaController extends Controller
             $newVersion = SchemaVersion::createNewVersionWithCopy(
                 $schema,
                 $version->version_number,
-                $request->input('description', "Table deletion: {$table->table_name}")
+                $request->input('description', __('schemacontrollerphp1296') . "{$table->table_name}")
             );
 
             // Find the table to delete in the NEW version
             $tableToDelete = $newVersion->tables()->where('table_name', $table->table_name)->first();
 
             if (!$tableToDelete) {
-                throw new \Exception("Table '{$table->table_name}' not found in new version {$newVersion->version_number}");
+                throw new \Exception(__('schemacontrollerphp1303'). "'{$table->table_name}'" . __('schemacontrollerphp1303_2') . "{$newVersion->version_number}");
             }
 
             // Delete FK constraints that reference this table from other tables
@@ -1309,9 +1311,9 @@ class SchemaController extends Controller
             // Delete the table from the NEW version only
             $tableToDelete->delete();
 
-            $message = 'New version created and table deleted';
+            $message = __('schemacontrollerphp1312');
             if ($deletedFKs > 0) {
-                $message .= " ({$deletedFKs} FK-Constraint(s) die auf diese Tabelle zeigten wurden ebenfalls gelöscht)";
+                $message .= " ({$deletedFKs}" . __('schemacontrollerphp1314');
             }
 
             return response()->json([
@@ -1337,11 +1339,11 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp1340')], 403);
             }
         }
 
-        $version->update(['has_unsaved_changes' => true]);
+        $version->update([__('schemacontrollerphp1344') => true]);
 
         return response()->json(['success' => true]);
     }
@@ -1355,7 +1357,7 @@ class SchemaController extends Controller
         
         // Check if user can edit this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp1358')], 403);
         }
 
         $request->validate([
@@ -1394,18 +1396,18 @@ class SchemaController extends Controller
 
         // Check if user can edit this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp1397')], 403);
         }
 
         // Check if version belongs to this schema
         if ($version->schema_id !== $schema->id) {
-            return response()->json(['message' => 'Version does not belong to this schema'], 400);
+            return response()->json(['message' => __('schemacontrollerphp1402')], 400);
         }
 
         // Check if this is the last version
         $versionCount = $schema->versions()->count();
         if ($versionCount <= 1) {
-            return response()->json(['message' => 'Cannot delete the only version. Delete the schema instead.'], 422);
+            return response()->json(['message' => __('schemacontrollerphp1408')], 422);
         }
 
         try {
@@ -1431,13 +1433,13 @@ class SchemaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Schema version deleted successfully',
+                'message' => __('schemacontrollerphp1434'),
                 'new_last_version' => $schema->last_version,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete version',
+                'message' => __('schemacontrollerphp1440'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -1452,7 +1454,7 @@ class SchemaController extends Controller
 
         // Check if user can edit this schema
         if (!$schema->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+            return response()->json(['message' => __('schemacontrollerphp1455')], 403);
         }
 
         $request->validate([
@@ -1475,13 +1477,13 @@ class SchemaController extends Controller
                 $newVersion = SchemaVersion::createNewVersionWithCopy(
                     $schema,
                     $latestVersion->version_number,
-                    $request->input('description', "New table: {$request->table_name}")
+                    $request->input('description', __('schemacontrollerphp1478') . "{$request->table_name}")
                 );
             } else {
                 // First version - create empty version
                 $newVersion = SchemaVersion::createNewVersion(
                     $schema,
-                    $request->input('description', "New table: {$request->table_name}")
+                    $request->input('description', __('schemacontrollerphp1484') . "{$request->table_name}")
                 );
             }
 
@@ -1490,8 +1492,8 @@ class SchemaController extends Controller
 
             if ($existingTable) {
                 return response()->json([
-                    'message' => 'A table with this name already exists in this schema version',
-                    'error' => "Table '{$request->table_name}' already exists"
+                    'message' => __('schemacontrollerphp1493'),
+                    'error' => __('schemacontrollerphp1494'). "'{$request->table_name}'" . __('schemacontrollerphp1494_2')
                 ], 422);
             }
 
@@ -1523,14 +1525,14 @@ class SchemaController extends Controller
             $table->load('fields');
 
             return response()->json([
-                'message' => 'New version created with table successfully',
+                'message' => __('schemacontrollerphp1526'),
                 'version' => $newVersion,
                 'table' => $table
             ], 201);
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to create version and table',
+                'message' => __('schemacontrollerphp1533'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1547,7 +1549,7 @@ class SchemaController extends Controller
         if ($version->hasSchema()) {
             $schema = $version->schema;
             if (!$schema->canBeAccessedBy($user)) {
-                return response()->json(['message' => 'Schema version not found'], 404);
+                return response()->json(['message' => __('schemacontrollerphp1550')], 404);
             }
         }
 
@@ -1614,19 +1616,19 @@ class SchemaController extends Controller
             $version = $table->schemaVersion;
 
             if (!$version || !$version->hasSchema()) {
-                return response()->json(['message' => 'This action requires a floating schema'], 400);
+                return response()->json(['message' => __('schemacontrollerphp1617')], 400);
             }
 
             $schema = $version->schema;
 
             // Check permissions
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp1624')], 403);
             }
 
             // Check if this is a foreign key
             if ($constraint->constraint_type !== 'FOREIGN KEY') {
-                return response()->json(['message' => 'Only foreign key constraints can be deleted with this endpoint'], 400);
+                return response()->json(['message' => __('schemacontrollerphp1629')], 400);
             }
 
             // Get constraint info for response
@@ -1649,7 +1651,7 @@ class SchemaController extends Controller
                 // Find the corresponding constraint in the new version
                 $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
                 if (!$newTable) {
-                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                    return response()->json(['message' => __('schemacontrollerphp1652')], 500);
                 }
 
                 $newConstraint = $newTable->constraints()
@@ -1658,7 +1660,7 @@ class SchemaController extends Controller
                     ->first();
 
                 if (!$newConstraint) {
-                    return response()->json(['message' => 'Failed to find constraint in new version'], 500);
+                    return response()->json(['message' => __('schemacontrollerphp1661')], 500);
                 }
 
                 // Delete the constraint in the new version
@@ -1666,7 +1668,7 @@ class SchemaController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'New version created and foreign key deleted',
+                    'message' => __('schemacontrollerphp1669'),
                     'constraint' => $constraintInfo,
                     'new_version' => [
                         'id' => $newVersion->id,
@@ -1679,13 +1681,13 @@ class SchemaController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Foreign key deleted successfully',
+                    'message' => __('schemacontrollerphp1682'),
                     'constraint' => $constraintInfo,
                 ]);
             }
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Constraint not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp1688')], 404);
         } catch (\Exception $e) {
             \Log::error('Delete FK Error:', [
                 'message' => $e->getMessage(),
@@ -1693,7 +1695,7 @@ class SchemaController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to delete foreign key',
+                'message' => __('schemacontrollerphp1696'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1721,19 +1723,19 @@ class SchemaController extends Controller
             $version = $table->schemaVersion;
 
             if (!$version || !$version->hasSchema()) {
-                return response()->json(['message' => 'This action requires a floating schema'], 400);
+                return response()->json(['message' => __('schemacontrollerphp1724')], 400);
             }
 
             $schema = $version->schema;
 
             // Check permissions
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp1731')], 403);
             }
 
             // Check if this is a foreign key
             if ($constraint->constraint_type !== 'FOREIGN KEY') {
-                return response()->json(['message' => 'Only foreign key constraints can be updated with this endpoint'], 400);
+                return response()->json(['message' => __('schemacontrollerphp1736')], 400);
             }
 
             // Check if this is the latest version
@@ -1750,7 +1752,7 @@ class SchemaController extends Controller
                 // Find the corresponding constraint in the new version
                 $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
                 if (!$newTable) {
-                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                    return response()->json(['message' => __('schemacontrollerphp1753')], 500);
                 }
 
                 $newConstraint = $newTable->constraints()
@@ -1759,7 +1761,7 @@ class SchemaController extends Controller
                     ->first();
 
                 if (!$newConstraint) {
-                    return response()->json(['message' => 'Failed to find constraint in new version'], 500);
+                    return response()->json(['message' => __('schemacontrollerphp1762')], 500);
                 }
 
                 // Update the constraint in the new version
@@ -1767,7 +1769,7 @@ class SchemaController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'New version created and foreign key updated',
+                    'message' => __('schemacontrollerphp1770'),
                     'new_version' => [
                         'id' => $newVersion->id,
                         'version_number' => $newVersion->version_number,
@@ -1779,7 +1781,7 @@ class SchemaController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Foreign key updated successfully',
+                    'message' => __('schemacontrollerphp1782'),
                 ]);
             }
 
@@ -1789,7 +1791,7 @@ class SchemaController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Constraint not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp1792')], 404);
         } catch (\Exception $e) {
             \Log::error('Update FK Error:', [
                 'message' => $e->getMessage(),
@@ -1797,7 +1799,7 @@ class SchemaController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to update foreign key',
+                'message' => __('schemacontrollerphp1800'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1824,14 +1826,14 @@ class SchemaController extends Controller
             $version = $table->schemaVersion;
 
             if (!$version || !$version->hasSchema()) {
-                return response()->json(['message' => 'This action requires a floating schema'], 400);
+                return response()->json(['message' => __('schemacontrollerphp1827')], 400);
             }
 
             $schema = $version->schema;
 
             // Check permissions
             if (!$schema->canBeEditedBy($user)) {
-                return response()->json(['message' => 'Unauthorized to edit this schema'], 403);
+                return response()->json(['message' => __('schemacontrollerphp1834')], 403);
             }
 
             // Get source and target fields for validation
@@ -1839,7 +1841,7 @@ class SchemaController extends Controller
             $targetField = \App\Models\SchemaField::find($validated['target_field_id']);
 
             if (!$sourceField || !$targetField) {
-                return response()->json(['message' => 'Source or target field not found'], 404);
+                return response()->json(['message' => __('schemacontrollerphp1842')], 404);
             }
 
             // Validate data type compatibility
@@ -1867,13 +1869,13 @@ class SchemaController extends Controller
             if (!$sourceField->is_nullable) {
                 if (strtoupper($onDelete) === 'SET NULL') {
                     return response()->json([
-                        'message' => "SET NULL bei ON DELETE nicht möglich: Das Quellfeld '{$sourceField->field_name}' ist NOT NULL. MySQL kann keine NULL-Werte in eine NOT NULL Spalte schreiben.",
+                        'message' => "SET NULL" . __('schemacontrollerphp1870') . "ON DELETE" . __('schemacontrollerphp1870_2'). "'{$sourceField->field_name}'" . __('schemacontrollerphp1870_3')." NULL." . __('schemacontrollerphp1870_4'),
                         'error_type' => 'set_null_on_not_null',
                     ], 422);
                 }
                 if (strtoupper($onUpdate) === 'SET NULL') {
                     return response()->json([
-                        'message' => "SET NULL bei ON UPDATE nicht möglich: Das Quellfeld '{$sourceField->field_name}' ist NOT NULL. MySQL kann keine NULL-Werte in eine NOT NULL Spalte schreiben.",
+                        'message' => "SET NULL" . __('schemacontrollerphp1876') . "ON UPDATE" . __('schemacontrollerphp1876_2') . "'{$sourceField->field_name}'" . __('schemacontrollerphp1876_3') . "NOT NULL." . __('schemacontrollerphp1876_4'),
                         'error_type' => 'set_null_on_not_null',
                     ], 422);
                 }
@@ -1899,7 +1901,7 @@ class SchemaController extends Controller
                 // Find the corresponding table in the new version
                 $newTable = $newVersion->tables()->where('table_name', $table->table_name)->first();
                 if (!$newTable) {
-                    return response()->json(['message' => 'Failed to find table in new version'], 500);
+                    return response()->json(['message' => __('schemacontrollerphp1902')], 500);
                 }
 
                 // Create the constraint in the new version
@@ -1907,7 +1909,7 @@ class SchemaController extends Controller
 
                 $response = [
                     'success' => true,
-                    'message' => 'New version created and foreign key created',
+                    'message' => __('schemacontrollerphp1910'),
                     'new_version' => [
                         'id' => $newVersion->id,
                         'version_number' => $newVersion->version_number,
@@ -1923,7 +1925,7 @@ class SchemaController extends Controller
 
                 $response = [
                     'success' => true,
-                    'message' => 'Foreign key created successfully',
+                    'message' => __('schemacontrollerphp1926'),
                 ];
                 if (!empty($warnings)) {
                     $response['warnings'] = $warnings;
@@ -1937,7 +1939,7 @@ class SchemaController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Table not found'], 404);
+            return response()->json(['message' => __('schemacontrollerphp1940')], 404);
         } catch (\Exception $e) {
             \Log::error('Create FK Error:', [
                 'message' => $e->getMessage(),
@@ -1945,7 +1947,7 @@ class SchemaController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to create foreign key',
+                'message' => __('schemacontrollerphp1948'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -2148,7 +2150,7 @@ class SchemaController extends Controller
                 if ($sourceSize !== $targetSize) {
                     return [
                         'valid' => false,
-                        'message' => "Inkompatible Integer-Größen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) müssen den gleichen Datentyp haben. MySQL erlaubt keine Foreign Keys zwischen unterschiedlichen Integer-Größen.",
+                        'message' => __('schemacontrollerphp2151') . "{$sourceField->field_name} ({$sourceBaseType})" . __('schemacontrollerphp2151_2') . "{$targetField->field_name} ({$targetBaseType})" . __('schemacontrollerphp2151_3'),
                     ];
                 }
 
@@ -2158,7 +2160,7 @@ class SchemaController extends Controller
                     $targetUnsigned = $targetField->is_unsigned ? 'UNSIGNED' : 'SIGNED';
                     return [
                         'valid' => false,
-                        'message' => "UNSIGNED-Attribut stimmt nicht überein: {$sourceField->field_name} ist {$sourceUnsigned}, aber {$targetField->field_name} ist {$targetUnsigned}. Beide Felder müssen das gleiche UNSIGNED-Attribut haben.",
+                        'message' => "UNSIGNED" . __('schemacontrollerphp2161') . "{$sourceField->field_name}" . __('schemacontrollerphp2161_2') . "{$sourceUnsigned}," . __('schemacontrollerphp2161_3') . "{$targetField->field_name} ist {$targetUnsigned}" . __('schemacontrollerphp2161_4'),
                     ];
                 }
             }
@@ -2172,7 +2174,7 @@ class SchemaController extends Controller
                 if ($sourceLength !== null && $targetLength !== null && $sourceLength > $targetLength) {
                     return [
                         'valid' => false,
-                        'message' => "Inkompatible String-Längen: {$sourceField->field_name} ({$sourceType}) ist größer als {$targetField->field_name} ({$targetType}). Das Quellfeld darf nicht größer sein als das Zielfeld.",
+                        'message' => __('schemacontrollerphp2175') . "{$sourceField->field_name} ({$sourceType})" . __('schemacontrollerphp2175_2') . "{$targetField->field_name} ({$targetType})" . __('schemacontrollerphp2175_3'),
                     ];
                 }
 
@@ -2182,7 +2184,7 @@ class SchemaController extends Controller
                     !($sourceBaseType === 'VARCHAR' && $targetBaseType === 'CHAR')) {
                     return [
                         'valid' => false,
-                        'message' => "Inkompatible String-Typen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) sind nicht kompatibel.",
+                        'message' => __('schemacontrollerphp2185') . "{$sourceField->field_name} ({$sourceBaseType})" . __('schemacontrollerphp2185_2') . "{$targetField->field_name} ({$targetBaseType})" . __('schemacontrollerphp2185_3'),
                     ];
                 }
             }
@@ -2192,7 +2194,7 @@ class SchemaController extends Controller
                 if ($sourceBaseType !== $targetBaseType) {
                     return [
                         'valid' => false,
-                        'message' => "Inkompatible Dezimal-Typen: {$sourceField->field_name} ({$sourceBaseType}) und {$targetField->field_name} ({$targetBaseType}) müssen den gleichen Typ haben.",
+                        'message' => __('schemacontrollerphp2195') . "{$sourceField->field_name} ({$sourceBaseType})" . __('schemacontrollerphp2195_2') . "{$targetField->field_name} ({$targetBaseType})" . __('schemacontrollerphp2195_3'),
                     ];
                 }
             }
@@ -2310,14 +2312,14 @@ class SchemaController extends Controller
                 ->findOrFail($versionId);
 
             if (!$version->hasSchema()) {
-                return response()->json(['message' => 'Schema not found'], 404);
+                return response()->json(['message' => __('schemacontrollerphp2313')], 404);
             }
 
             $schema = $version->schema;
 
             // Check permissions
             if (!$schema->canBeAccessedBy($user)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['message' => __('schemacontrollerphp2320')], 403);
             }
 
             $suggestions = [];
@@ -2501,7 +2503,7 @@ class SchemaController extends Controller
             if ($version->hasSchema()) {
                 $schema = $version->schema;
                 if (!$schema->canBeAccessedBy($user)) {
-                    return response()->json(['message' => 'Unauthorized'], 403);
+                    return response()->json(['message' => __('schemacontrollerphp2504')], 403);
                 }
             }
 

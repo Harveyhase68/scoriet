@@ -7,6 +7,7 @@ use App\Models\ProjectApplication;
 use App\Models\MessageThread;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Jobs\SendPushNotificationJob;
 
 class ProjectApplicationController extends Controller
 {
@@ -34,7 +35,7 @@ class ProjectApplicationController extends Controller
 
         if (!$project) {
             return response()->json([
-                'message' => 'Ungültiger Join-Code oder Bewerbungen nicht erlaubt'
+                'message' => __('projectapplicationcontrollerphp37')
             ], 404);
         }
 
@@ -49,7 +50,7 @@ class ProjectApplicationController extends Controller
             // If pending, don't allow another application
             if ($existingApplication->status === 'pending') {
                 return response()->json([
-                    'message' => 'Sie haben bereits eine ausstehende Bewerbung für dieses Projekt',
+                    'message' => __('projectapplicationcontrollerphp52'),
                     'status' => $existingApplication->status
                 ], 409);
             }
@@ -61,7 +62,7 @@ class ProjectApplicationController extends Controller
 
                 if ($isMember) {
                     return response()->json([
-                        'message' => 'Sie sind bereits Mitglied dieses Projekts',
+                        'message' => __('projectapplicationcontrollerphp64'),
                         'status' => $existingApplication->status
                     ], 409);
                 }
@@ -87,7 +88,7 @@ class ProjectApplicationController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Bewerbung erfolgreich eingereicht',
+            'message' => __('projectapplicationcontrollerphp90'),
             'application' => $application->load(['project', 'user']),
             'project' => [
                 'id' => $project->id,
@@ -108,7 +109,7 @@ class ProjectApplicationController extends Controller
         // Only project owner can see applications
         if ((string)$project->owner_id !== (string)$user->id) {
             return response()->json([
-                'message' => 'Keine Berechtigung'
+                'message' => __('projectapplicationcontrollerphp111')
             ], 403);
         }
 
@@ -135,9 +136,9 @@ class ProjectApplicationController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('ReviewApplication: Validation failed', ['errors' => $validator->errors()]);
+            \Log::error(__('projectapplicationcontrollerphp138'), ['errors' => $validator->errors()]);
             return response()->json([
-                'message' => 'Validierungsfehler',
+                'message' => __('projectapplicationcontrollerphp140'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -147,54 +148,54 @@ class ProjectApplicationController extends Controller
         try {
             $application = ProjectApplication::with(['project', 'user'])->findOrFail($applicationId);
         } catch (\Exception $e) {
-            \Log::error('ReviewApplication: Application not found', ['applicationId' => $applicationId, 'error' => $e->getMessage()]);
-            return response()->json(['message' => 'Application not found'], 404);
+            \Log::error(__('projectapplicationcontrollerphp150'), ['applicationId' => $applicationId, 'error' => $e->getMessage()]);
+            return response()->json(['message' => __('projectapplicationcontrollerphp151')], 404);
         }
 
         $user = $request->user();
 
         // Only project owner can review
         if ((string)$application->project->owner_id !== (string)$user->id) {
-            \Log::warning('ReviewApplication: Permission denied', [
+            \Log::warning(__('projectapplicationcontrollerphp158'), [
                 'project_owner_id' => $application->project->owner_id,
                 'user_id' => $user->id,
             ]);
             return response()->json([
-                'message' => 'Keine Berechtigung - Du bist nicht der Projekt-Owner'
+                'message' => __('projectapplicationcontrollerphp163')
             ], 403);
         }
 
         // Check if already reviewed
         if ($application->status !== 'pending') {
             return response()->json([
-                'message' => 'Diese Bewerbung wurde bereits bearbeitet'
+                'message' => __('projectapplicationcontrollerphp170')
             ], 409);
         }
 
         // Review the application
         if ($request->action === 'approve') {
             $application->approve($user->id, $request->notes);
-            $message = 'Bewerbung wurde angenommen';
+            $message = __('projectapplicationcontrollerphp177');
 
             // Send notification message to applicant
-            $subject = "Bewerbung angenommen: {$application->project->name}";
-            $body = "Gute Neuigkeiten! {$user->name} hat deine Bewerbung zum Projekt '{$application->project->name}' angenommen!\n\n";
+            $subject = __('projectapplicationcontrollerphp180')."{$application->project->name}";
+            $body = __('projectapplicationcontrollerphp181')."{$user->name}".__('projectapplicationcontrollerphp181_2')."{$application->project->name}".__('projectapplicationcontrollerphp181_3')."\n\n";
             if ($request->notes) {
-                $body .= "Nachricht: {$request->notes}";
+                $body .= __('projectapplicationcontrollerphp183')."{$request->notes}";
             } else {
-                $body .= "Du bist jetzt Mitglied des Projekts.";
+                $body .= __('projectapplicationcontrollerphp185');
             }
         } else {
             $application->reject($user->id, $request->notes);
-            $message = 'Bewerbung wurde abgelehnt';
+            $message = __('projectapplicationcontrollerphp189');
 
             // Send notification message to applicant
             $subject = "Bewerbung abgelehnt: {$application->project->name}";
-            $body = "{$user->name} hat deine Bewerbung zum Projekt '{$application->project->name}' leider abgelehnt.\n\n";
+            $body = "{$user->name}".__('projectapplicationcontrollerphp193')."'{$application->project->name}'".__('projectapplicationcontrollerphp193_2')."\n\n";
             if ($request->notes) {
-                $body .= "Begründung: {$request->notes}";
+                $body .= __('projectapplicationcontrollerphp195')."{$request->notes}";
             } else {
-                $body .= "Es wurde keine Begründung angegeben.";
+                $body .= __('projectapplicationcontrollerphp197');
             }
         }
 
@@ -207,11 +208,23 @@ class ProjectApplicationController extends Controller
                 $body
             );
         } catch (\Exception $e) {
-            \Log::error('ReviewApplication: Failed to send notification message', [
+            \Log::error(__('projectapplicationcontrollerphp210'), [
                 'error' => $e->getMessage()
             ]);
             // Don't fail the whole request if message sending fails
         }
+
+        // Send push notification to applicant
+        $pushTitle = $action === 'approve'
+            ? __('push.application_approved')
+            : __('push.application_rejected');
+        SendPushNotificationJob::dispatch(
+            [$application->user_id],
+            $pushTitle,
+            $application->project->name ?? '',
+            '/',
+            'application'
+        );
 
         return response()->json([
             'message' => $message,
@@ -249,19 +262,19 @@ class ProjectApplicationController extends Controller
         // Provide specific error messages for different scenarios
         if (!$projectExists) {
             return response()->json([
-                'message' => 'Ungültiger Join-Code. Bitte überprüfen Sie den Code.'
+                'message' => __('projectapplicationcontrollerphp252')
             ], 404);
         }
 
         if (!$projectExists->is_active) {
             return response()->json([
-                'message' => 'Dieses Projekt ist nicht mehr aktiv.'
+                'message' => __('projectapplicationcontrollerphp258')
             ], 400);
         }
 
         if (!$projectExists->allow_join_requests) {
             return response()->json([
-                'message' => 'Dieses Projekt akzeptiert derzeit keine Beitrittsanfragen.'
+                'message' => __('projectapplicationcontrollerphp264')
             ], 403);
         }
 

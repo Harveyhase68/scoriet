@@ -20,7 +20,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const showSuccess = (message: string) => {
         toastRef.current?.show({
             severity: 'success',
-            summary: 'Erfolg',
+            summary: t.toastcontext23,
             detail: message,
             life: 3000
         });
@@ -38,7 +38,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const showInfo = (message: string) => {
         toastRef.current?.show({
             severity: 'info',
-            summary: 'Info',
+            summary: t.toastcontext41,
             detail: message,
             life: 3000
         });
@@ -47,7 +47,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const showWarn = (message: string) => {
         toastRef.current?.show({
             severity: 'warn',
-            summary: 'Warnung',
+            summary: t.toastcontext50,
             detail: message,
             life: 3000
         });

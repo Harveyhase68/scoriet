@@ -10,9 +10,176 @@ const http = require('http');
  * Shortcut: CTRL+M (when text is selected)
  */
 
+// ─── Line Highlight state ───────────────────────────────────────────
+// Decoration type is created once and reused across highlight/clear calls.
+// Stored at module level so both commands can access it.
+var highlightDecorationType = null;
+var highlightedLines = [];      // sorted array of 1-based line numbers
+var highlightCurrentIndex = -1; // current navigation position in highlightedLines
+
 function activate(context) {
     console.log('Scoriet Translate extension is now active');
 
+    // ─── Highlight Lines from Clipboard ─────────────────────────────
+    var highlightCmd = vscode.commands.registerCommand('scoriet-translate.highlightLines', async function () {
+        var editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active editor found');
+            return;
+        }
+
+        // Read line numbers from clipboard
+        var clipboardText = await vscode.env.clipboard.readText();
+        if (!clipboardText || clipboardText.trim().length === 0) {
+            vscode.window.showWarningMessage('Clipboard is empty. Copy line numbers first (e.g. "12, 45, 89" or one per line).');
+            return;
+        }
+
+        // Parse line numbers: support comma-separated, space-separated, newline-separated, or mixed
+        var lineNumbers = parseLineNumbers(clipboardText);
+
+        if (lineNumbers.length === 0) {
+            vscode.window.showWarningMessage('No valid line numbers found in clipboard. Expected format: "12, 45, 89" or one per line.');
+            return;
+        }
+
+        // Filter out line numbers that are out of range
+        var totalLines = editor.document.lineCount;
+        var validLines = [];
+        for (var i = 0; i < lineNumbers.length; i++) {
+            if (lineNumbers[i] >= 1 && lineNumbers[i] <= totalLines) {
+                validLines.push(lineNumbers[i]);
+            }
+        }
+
+        if (validLines.length === 0) {
+            vscode.window.showWarningMessage('None of the line numbers (' + lineNumbers.join(', ') + ') are within the document range (1-' + totalLines + ').');
+            return;
+        }
+
+        // Clear previous highlights if any
+        if (highlightDecorationType) {
+            highlightDecorationType.dispose();
+        }
+
+        // Create decoration type from settings
+        var config = vscode.workspace.getConfiguration('scorietTranslate');
+        var bgColor = config.get('highlightBackground', 'rgba(255, 235, 59, 0.25)');
+        var borderColor = config.get('highlightBorder', 'rgba(255, 235, 59, 0.6)');
+        var gutterColor = config.get('highlightGutterColor', '#FFEB3B');
+
+        highlightDecorationType = vscode.window.createTextEditorDecorationType({
+            backgroundColor: bgColor,
+            borderWidth: '0 0 0 3px',
+            borderStyle: 'solid',
+            borderColor: borderColor,
+            isWholeLine: true,
+            overviewRulerColor: gutterColor,
+            overviewRulerLane: vscode.OverviewRulerLane.Full,
+            gutterIconSize: 'contain'
+        });
+
+        // Build decoration ranges (convert 1-based to 0-based)
+        var ranges = [];
+        for (var j = 0; j < validLines.length; j++) {
+            var lineIndex = validLines[j] - 1;
+            var lineRange = editor.document.lineAt(lineIndex).range;
+            ranges.push(lineRange);
+        }
+
+        editor.setDecorations(highlightDecorationType, ranges);
+        highlightedLines = validLines; // store for navigation
+        highlightCurrentIndex = 0;     // start at first highlight
+
+        var skipped = lineNumbers.length - validLines.length;
+        var msg = 'Highlighted ' + validLines.length + ' line' + (validLines.length !== 1 ? 's' : '');
+        if (skipped > 0) {
+            msg += ' (' + skipped + ' out of range, skipped)';
+        }
+        vscode.window.showInformationMessage(msg);
+
+        // Jump to the first highlighted line
+        jumpToHighlight(editor, 0);
+    });
+
+    // ─── Clear Highlights ───────────────────────────────────────────
+    var clearCmd = vscode.commands.registerCommand('scoriet-translate.clearHighlights', function () {
+        if (highlightDecorationType) {
+            var count = highlightedLines.length;
+            highlightDecorationType.dispose();
+            highlightDecorationType = null;
+            highlightedLines = [];
+            highlightCurrentIndex = -1;
+            vscode.window.showInformationMessage('Cleared ' + count + ' line highlight' + (count !== 1 ? 's' : ''));
+        } else {
+            vscode.window.showInformationMessage('No highlights to clear');
+        }
+    });
+
+    // ─── Next Highlight ─────────────────────────────────────────────
+    var nextCmd = vscode.commands.registerCommand('scoriet-translate.nextHighlight', function () {
+        var editor = vscode.window.activeTextEditor;
+        if (!editor || highlightedLines.length === 0) {
+            vscode.window.showInformationMessage('No highlights active');
+            return;
+        }
+
+        // Find the next highlight after current cursor position
+        var cursorLine = editor.selection.active.line + 1; // convert to 1-based
+        var nextIndex = -1;
+
+        // Search for the first highlighted line AFTER the cursor
+        for (var i = 0; i < highlightedLines.length; i++) {
+            if (highlightedLines[i] > cursorLine) {
+                nextIndex = i;
+                break;
+            }
+        }
+
+        // Wrap around to the beginning if no next found
+        if (nextIndex === -1) {
+            nextIndex = 0;
+        }
+
+        highlightCurrentIndex = nextIndex;
+        jumpToHighlight(editor, nextIndex);
+    });
+
+    // ─── Previous Highlight ─────────────────────────────────────────
+    var prevCmd = vscode.commands.registerCommand('scoriet-translate.prevHighlight', function () {
+        var editor = vscode.window.activeTextEditor;
+        if (!editor || highlightedLines.length === 0) {
+            vscode.window.showInformationMessage('No highlights active');
+            return;
+        }
+
+        // Find the previous highlight before current cursor position
+        var cursorLine = editor.selection.active.line + 1; // convert to 1-based
+        var prevIndex = -1;
+
+        // Search backwards for the first highlighted line BEFORE the cursor
+        for (var i = highlightedLines.length - 1; i >= 0; i--) {
+            if (highlightedLines[i] < cursorLine) {
+                prevIndex = i;
+                break;
+            }
+        }
+
+        // Wrap around to the end if no previous found
+        if (prevIndex === -1) {
+            prevIndex = highlightedLines.length - 1;
+        }
+
+        highlightCurrentIndex = prevIndex;
+        jumpToHighlight(editor, prevIndex);
+    });
+
+    context.subscriptions.push(highlightCmd);
+    context.subscriptions.push(clearCmd);
+    context.subscriptions.push(nextCmd);
+    context.subscriptions.push(prevCmd);
+
+    // ─── Translate Selection (existing) ─────────────────────────────
     let disposable = vscode.commands.registerCommand('scoriet-translate.translateSelection', async function () {
         const editor = vscode.window.activeTextEditor;
 
@@ -362,7 +529,82 @@ function sendToWinDev(apiUrl, data) {
     });
 }
 
-function deactivate() {}
+/**
+ * Jump to a highlighted line by index in the highlightedLines array.
+ * Shows the position as "3/10" in the status message.
+ */
+function jumpToHighlight(editor, index) {
+    var lineNum = highlightedLines[index];
+    var lineIndex = lineNum - 1; // convert to 0-based
+    var pos = new vscode.Position(lineIndex, 0);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+
+    // Show position indicator in status bar
+    var position = (index + 1) + '/' + highlightedLines.length;
+    vscode.window.setStatusBarMessage('Highlight ' + position + ' (line ' + lineNum + ')', 3000);
+}
+
+/**
+ * Parse line numbers from clipboard text.
+ * Supports multiple formats:
+ *   - Comma-separated: "12, 45, 89"
+ *   - One per line: "12\n45\n89"
+ *   - Space-separated: "12 45 89"
+ *   - Mixed: "12, 45\n89 120"
+ *   - With surrounding text: "Line 12: some text" → extracts 12
+ *   - Ranges: "10-15" → expands to 10,11,12,13,14,15
+ */
+function parseLineNumbers(text) {
+    var results = [];
+    var seen = {};
+
+    // Split by newlines and commas first
+    var parts = text.split(/[\n,]+/);
+
+    for (var i = 0; i < parts.length; i++) {
+        var part = parts[i].trim();
+        if (part.length === 0) continue;
+
+        // Check for range pattern like "10-15"
+        var rangeMatch = part.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (rangeMatch) {
+            var start = parseInt(rangeMatch[1], 10);
+            var end = parseInt(rangeMatch[2], 10);
+            if (start > 0 && end > 0 && end >= start && (end - start) <= 1000) {
+                for (var r = start; r <= end; r++) {
+                    if (!seen[r]) {
+                        results.push(r);
+                        seen[r] = true;
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Split by spaces and extract numbers
+        var tokens = part.split(/\s+/);
+        for (var j = 0; j < tokens.length; j++) {
+            var num = parseInt(tokens[j], 10);
+            if (!isNaN(num) && num > 0 && !seen[num]) {
+                results.push(num);
+                seen[num] = true;
+            }
+        }
+    }
+
+    // Sort ascending
+    results.sort(function(a, b) { return a - b; });
+    return results;
+}
+
+function deactivate() {
+    // Clean up highlight decoration if active
+    if (highlightDecorationType) {
+        highlightDecorationType.dispose();
+        highlightDecorationType = null;
+    }
+}
 
 module.exports = {
     activate,

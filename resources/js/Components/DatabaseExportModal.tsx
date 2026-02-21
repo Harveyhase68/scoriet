@@ -318,7 +318,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       if (downloadMode) {
         // Download mode - trigger download immediately
         downloadSQL(sqlContent);
-        setSuccessMessage('SQL script downloaded successfully!');
+        setSuccessMessage(t.databaseexportmodal321);
       }
       // View mode - just set the SQL content, user can see it below
     } catch (error) {
@@ -363,10 +363,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(exportedSQL);
-      setSuccessMessage('SQL copied to clipboard!');
+      setSuccessMessage(t.databaseexportmodal366);
       setTimeout(() => setSuccessMessage(null), 2000);
     } catch {
-      setError('Failed to copy to clipboard');
+      setError(t.databaseexportmodal369);
     }
   };
 
@@ -374,12 +374,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setTestingConnection(true);
     setError(null);
     setConnectionTestResult(null);
-    setServiceLog(['🔌 Testing database connection...']);
+    setServiceLog([t.databaseexportmodal377]);
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.databaseexportmodal382);
       }
 
       // Create connection test task
@@ -407,10 +407,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to create connection test task');
+        throw new Error(result.message || t.databaseexportmodal410);
       }
 
-      setServiceLog(prev => [...prev, `✅ Test task created (ID: ${result.task_id})`, '⏳ Waiting for service...']);
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal413}${result.task_id})`, t.databaseexportmodal413_2]);
 
       // Poll for result
       const taskId = result.task_id;
@@ -452,10 +452,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
               setServiceLog(prev => [
                 ...prev,
-                `✅ Connection successful!`,
-                `📊 Server: ${taskResult.server_version || 'Unknown'}`,
-                `📁 Found ${dbCount} database(s)`,
-                ...(schemaCount > 0 ? [`📋 Found ${schemaCount} schema(s)`] : []),
+                `${t.databaseexportmodal455}`,
+                `${t.databaseexportmodal456}${taskResult.server_version || t.databaseexportmodal456_2}`,
+                `${t.databaseexportmodal457}${dbCount}${t.databaseexportmodal457_2}`,
+                ...(schemaCount > 0 ? [`${t.databaseexportmodal458}${schemaCount}${t.databaseexportmodal458_2}`] : []),
               ]);
 
               // Auto-select database if only one available
@@ -474,66 +474,66 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             } else {
               setConnectionTestResult({
                 success: false,
-                error: taskResult.error || 'Connection failed',
+                error: taskResult.error || t.databaseexportmodal477,
               });
-              setServiceLog(prev => [...prev, `❌ ${taskResult.error || 'Connection failed'}`]);
-              setError(taskResult.error || 'Connection failed');
+              setServiceLog(prev => [...prev, `❌ ${taskResult.error || t.databaseexportmodal479}`]);
+              setError(taskResult.error || t.databaseexportmodal480);
             }
           } else if (taskData.status === 'failed') {
             clearInterval(pollInterval);
             setTestingConnection(false);
             setConnectionTestResult({
               success: false,
-              error: taskData.error_message || 'Connection test failed',
+              error: taskData.error_message || t.databaseexportmodal487,
             });
-            setServiceLog(prev => [...prev, `❌ ${taskData.error_message || 'Connection test failed'}`]);
-            setError(taskData.error_message || 'Connection test failed');
+            setServiceLog(prev => [...prev, `❌ ${taskData.error_message || t.databaseexportmodal489}`]);
+            setError(taskData.error_message || t.databaseexportmodal490);
           } else if (pollCount >= maxPolls) {
             clearInterval(pollInterval);
             setTestingConnection(false);
-            setServiceLog(prev => [...prev, '⏱️ Timeout: Service did not respond in 30 seconds']);
-            setError('Connection test timeout - service may be offline');
+            setServiceLog(prev => [...prev, t.databaseexportmodal494]);
+            setError(t.databaseexportmodal495);
           }
         } catch (err) {
           clearInterval(pollInterval);
           setTestingConnection(false);
-          setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-          setError(err instanceof Error ? err.message : 'Failed to check test status');
+          setServiceLog(prev => [...prev, `${t.databaseexportmodal500}${err instanceof Error ? err.message : t.databaseexportmodal500_2}`]);
+          setError(err instanceof Error ? err.message : t.databaseexportmodal501);
         }
       }, 1000);
 
     } catch (err) {
       setTestingConnection(false);
-      setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-      setError(err instanceof Error ? err.message : 'Failed to start connection test');
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal507}${err instanceof Error ? err.message : t.databaseexportmodal507_2}`]);
+      setError(err instanceof Error ? err.message : t.databaseexportmodal508);
     }
   };
 
   const handleDatabaseExport = async () => {
     if (!selectedSchemaId || selectedVersion === null || !dbDatabase) {
-      setError('Please select a schema, version, and target database');
+      setError(t.databaseexportmodal514);
       return;
     }
 
     // Check if there's already a running task
     if (serviceTaskId) {
-      setError('An export task is already running. Please wait for it to complete.');
+      setError(t.databaseexportmodal520);
       return;
     }
 
     try {
       setError(null);
       setServicePolling(true);
-      setServiceLog(['🚀 Starting database export...']);
+      setServiceLog([t.databaseexportmodal527]);
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.databaseexportmodal531);
       }
 
       // First, get the SQL export
       const exportFormat = getExportFormat();
-      setServiceLog(prev => [...prev, `📄 Generating ${exportFormat.toUpperCase()} SQL script...`]);
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal536}${exportFormat.toUpperCase()}${t.databaseexportmodal536_2}`]);
 
       const exportResponse = await fetch(`/api/schemas/${selectedSchemaId}/export/${exportFormat}?version=${selectedVersion}`, {
         method: 'GET',
@@ -544,15 +544,15 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       });
 
       if (!exportResponse.ok) {
-        throw new Error('Failed to generate SQL export');
+        throw new Error(t.databaseexportmodal547);
       }
 
       const exportData = await exportResponse.json();
       if (!exportData.success || !exportData.sql) {
-        throw new Error(exportData.error || 'Failed to generate SQL export');
+        throw new Error(exportData.error || t.databaseexportmodal552);
       }
 
-      setServiceLog(prev => [...prev, `✅ SQL script generated (${exportData.table_count} tables)`]);
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal555}(${exportData.table_count}${t.databaseexportmodal555_2})`]);
 
       // Create export task
       const payload = {
@@ -570,7 +570,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         }
       };
 
-      setServiceLog(prev => [...prev, '📤 Sending to database service...']);
+      setServiceLog(prev => [...prev, t.databaseexportmodal573]);
 
       const response = await fetch('/cli/svc/tasks/database-export', {
         method: 'POST',
@@ -585,11 +585,11 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to create export task');
+        throw new Error(result.message || t.databaseexportmodal588);
       }
 
       setServiceTaskId(result.task_id);
-      setServiceLog(prev => [...prev, `✅ Task created (ID: ${result.task_id})`, '⏳ Waiting for service to pick up task...']);
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal592}${result.task_id})`, t.databaseexportmodal592_2]);
 
       // Start polling
       startPolling(result.task_id, token);
@@ -597,7 +597,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start export');
       setServicePolling(false);
-      setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+      setServiceLog(prev => [...prev, `${t.databaseexportmodal600}${err instanceof Error ? err.message : t.databaseexportmodal600_2}`]);
     }
   };
 
@@ -625,7 +625,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch task status');
+          throw new Error(result.message || t.databaseexportmodal628);
         }
 
         const taskData = result.task;
@@ -634,21 +634,21 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         if (taskData.status === 'processing') {
           setServiceLog(prev => {
             if (!prev.some(log => log.includes('Service picked up task'))) {
-              return [...prev, '📡 Service picked up task', '🔌 Connecting to database...'];
+              return [...prev, t.databaseexportmodal637, t.databaseexportmodal637_2];
             }
             return prev;
           });
         } else if (taskData.status === 'completed') {
-          setServiceLog(prev => [...prev, '✅ Connected to database', '📊 Executing SQL statements...', '✅ All tables created successfully!', '', '🎉 Export completed! You can close this window.']);
+          setServiceLog(prev => [...prev, t.databaseexportmodal642, t.databaseexportmodal642_2, t.databaseexportmodal642_3, '', t.databaseexportmodal642_4]);
           setServicePolling(false);
-          setSuccessMessage('Database export completed successfully!');
+          setSuccessMessage(t.databaseexportmodal644);
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
         } else if (taskData.status === 'failed') {
-          const errorMsg = taskData.error_message || 'Unknown error occurred';
-          setServiceLog(prev => [...prev, `❌ Export failed: ${errorMsg}`, '', '💡 Check your connection settings and try again.']);
+          const errorMsg = taskData.error_message || t.databaseexportmodal650;
+          setServiceLog(prev => [...prev, `{t.databaseexportmodal651}${errorMsg}`, '', t.databaseexportmodal651_2]);
           setError(`Export failed: ${errorMsg}`);
           setServicePolling(false);
           setServiceTaskId(null);
@@ -661,9 +661,9 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         // Timeout check
         if (pollCount >= maxPolls) {
           setServiceLog(prev => [...prev,
-            '⏱️ Timeout: Service did not respond in time (5 minutes)',
+            t.databaseexportmodal664,
           ]);
-          setError('Export timeout - service may be offline.');
+          setError(t.databaseexportmodal666);
           setServicePolling(false);
           setServiceTaskId(null);
           if (pollIntervalRef.current) {
@@ -673,8 +673,8 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         }
 
       } catch (err) {
-        setServiceLog(prev => [...prev, `❌ Polling error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-        setError(err instanceof Error ? err.message : 'Failed to check task status');
+        setServiceLog(prev => [...prev, `${t.databaseexportmodal676}${err instanceof Error ? err.message : t.databaseexportmodal676_2}`]);
+        setError(err instanceof Error ? err.message : t.databaseexportmodal677);
         setServicePolling(false);
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
@@ -693,10 +693,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       {/* Database Selection */}
       <div>
         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-          Database Schema
+          {t.databaseexportmodal696}
         </label>
         {loadingSchemas ? (
-          <div className="text-sm" style={{ color: colors.textMuted }}>Loading schemas...</div>
+          <div className="text-sm" style={{ color: colors.textMuted }}>{t.databaseexportmodal699}</div>
         ) : schemas.length > 0 ? (
           <Dropdown
             value={selectedSchemaId}
@@ -711,7 +711,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
           />
         ) : (
           <div className="text-sm" style={{ color: colors.textMuted }}>
-            {selectedProject ? 'No databases found in project' : t.databaseexportmodal344}
+            {selectedProject ? t.databaseexportmodal714 : t.databaseexportmodal344}
           </div>
         )}
       </div>
@@ -719,12 +719,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       {/* Version Selection */}
       <div>
         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-          Version
+          {t.databaseexportmodal722}
         </label>
         {!selectedSchemaId ? (
-          <div className="text-sm" style={{ color: colors.textMuted }}>Select database first</div>
+          <div className="text-sm" style={{ color: colors.textMuted }}>{t.databaseexportmodal725}</div>
         ) : loadingVersions ? (
-          <div className="text-sm" style={{ color: colors.textMuted }}>Loading versions...</div>
+          <div className="text-sm" style={{ color: colors.textMuted }}>{t.databaseexportmodal727}</div>
         ) : schemaVersions.length > 0 ? (
           <Dropdown
             value={selectedVersion}
@@ -735,7 +735,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             panelClassName="custom-dropdown-panel"
           />
         ) : (
-          <div className="text-sm" style={{ color: colors.textMuted }}>No versions found</div>
+          <div className="text-sm" style={{ color: colors.textMuted }}>{t.databaseexportmodal738}</div>
         )}
       </div>
     </div>
@@ -767,7 +767,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     >
       <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary }}>
         <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>
-          Export database schema as {getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} SQL script
+          {t.databaseexportmodal770}{getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} SQL script
           {selectedProject?.database_type && (
             <span className="ml-2 text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.infoBg, color: colors.infoText }}>
               {selectedProject.database_type}
@@ -787,7 +787,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
               backgroundColor: activeTab === 'view' ? colors.bgSecondary : 'transparent'
             }}
           >
-            👁️ SQL anzeigen
+            {t.databaseexportmodal790}
           </button>
           <button
             type="button"
@@ -799,7 +799,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
               backgroundColor: activeTab === 'download' ? colors.bgSecondary : 'transparent'
             }}
           >
-            📁 SQL herunterladen
+            {t.databaseexportmodal802}
           </button>
           <button
             type="button"
@@ -811,7 +811,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
               backgroundColor: activeTab === 'database' ? colors.bgSecondary : 'transparent'
             }}
           >
-            🔌 Direkt in Datenbank
+            {t.databaseexportmodal814}
           </button>
         </div>
 
@@ -852,13 +852,13 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
                 {/* Export Info */}
                 <div className="mb-4 text-xs" style={{ color: colors.textMuted }}>
-                  Export format: {getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} SQL • Structure only
+                  {t.databaseexportmodal855}{getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'}{t.databaseexportmodal855_2}
                 </div>
 
                 {/* Generate Button */}
                 <div className="flex justify-center mb-4">
                   <Button
-                    label="SQL generieren"
+                    label={t.databaseexportmodal861}
                     onClick={() => exportSchema(false)}
                     disabled={loading || !selectedSchemaId || selectedVersion === null}
                     className="p-button-primary"
@@ -870,7 +870,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                 {exportedSQL && (
                   <div className="rounded" style={{ border: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center p-3 rounded-t" style={{ backgroundColor: colors.bgSecondary }}>
-                      <h3 className="text-sm font-medium" style={{ color: colors.textPrimary }}>Generated SQL Script</h3>
+                      <h3 className="text-sm font-medium" style={{ color: colors.textPrimary }}>{t.databaseexportmodal873}</h3>
                       <div className="flex space-x-2">
                         <button
                           onClick={copyToClipboard}
@@ -914,7 +914,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
                 {/* Export Info */}
                 <div className="mb-4 text-xs" style={{ color: colors.textMuted }}>
-                  Export format: {getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} SQL • Structure only
+                  {t.databaseexportmodal917}{getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'}{t.databaseexportmodal917_2}
                 </div>
 
                 {/* Download Preview */}
@@ -925,7 +925,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                       {schemas.find(s => s.id === selectedSchemaId)?.name || 'schema'}_v{selectedVersion}_{getExportFormat()}_export.sql
                     </p>
                     <p className="text-sm" style={{ color: colors.textMuted }}>
-                      {getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} CREATE TABLE statements
+                      {getExportFormat() === 'postgresql' ? 'PostgreSQL' : 'MySQL'} CREATE TABLE{t.databaseexportmodal928}
                     </p>
                   </div>
                 </div>
@@ -940,7 +940,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   >
                     {loading && <i className="pi pi-spinner pi-spin mr-2"></i>}
                     <i className="pi pi-download mr-2"></i>
-                    SQL herunterladen
+                    {t.databaseexportmodal943}
                   </button>
                 </div>
               </div>
@@ -953,11 +953,11 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
                 {/* Database Connection Form */}
                 <div className="p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                  <h4 className="text-sm font-medium mb-4" style={{ color: colors.textPrimary }}>Ziel-Datenbank</h4>
+                  <h4 className="text-sm font-medium mb-4" style={{ color: colors.textPrimary }}>{t.databaseexportmodal956}</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Connection Type
+                        {t.databaseexportmodal960}
                       </label>
                       <select
                         value={dbConnectionType}
@@ -990,7 +990,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Host
+                        {t.databaseexportmodal993}
                       </label>
                       <input
                         type="text"
@@ -1004,7 +1004,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Port
+                        {t.databaseexportmodal1007}
                       </label>
                       <input
                         type="text"
@@ -1018,7 +1018,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Username
+                        {t.databaseexportmodal1021}
                       </label>
                       <input
                         type="text"
@@ -1032,7 +1032,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Password
+                        {t.databaseexportmodal1035}
                       </label>
                       <input
                         type="password"
@@ -1052,7 +1052,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                         className="w-full px-4 py-2 rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
                         style={{ backgroundColor: colors.successText, color: colors.textInverse }}
                       >
-                        {testingConnection ? '⏳ Testing...' : '🔌 Test Connection'}
+                        {testingConnection ? t.databaseexportmodal1055 : t.databaseexportmodal1055_2}
                       </button>
                     </div>
                   </div>
@@ -1066,14 +1066,14 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                       {connectionTestResult.success ? (
                         <div>
                           <div className="flex items-center gap-2 font-medium mb-2" style={{ color: colors.successText }}>
-                            <span>✅</span> Connection successful
+                            <span>✅</span>{t.databaseexportmodal1069}
                             {connectionTestResult.server_version && (
                               <span className="text-xs" style={{ color: colors.successText }}>({connectionTestResult.server_version})</span>
                             )}
                           </div>
                           {availableDatabases.length > 0 && (
                             <div className="text-sm" style={{ color: colors.successText }}>
-                              Found {availableDatabases.length} database(s)
+                              {t.databaseexportmodal1076}{availableDatabases.length}{t.databaseexportmodal1076_2}
                             </div>
                           )}
                         </div>
@@ -1089,7 +1089,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Ziel-Datenbank {availableDatabases.length > 0 && <span className="text-xs" style={{ color: colors.successText }}>({availableDatabases.length} available)</span>}
+                        {t.databaseexportmodal1092}{availableDatabases.length > 0 && <span className="text-xs" style={{ color: colors.successText }}>({availableDatabases.length} available)</span>}
                       </label>
                       {/* Always show text input for free database name entry */}
                       <input
@@ -1113,12 +1113,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                        Schema Name
+                        {t.databaseexportmodal1116}
                         {dbConnectionType === 'postgresql' && (
-                          <span className="text-xs ml-1" style={{ color: colors.infoText }}>(required for PostgreSQL)</span>
+                          <span className="text-xs ml-1" style={{ color: colors.infoText }}>{t.databaseexportmodal1118}</span>
                         )}
                         {dbConnectionType !== 'postgresql' && (
-                          <span className="text-xs ml-1" style={{ color: colors.textMuted }}>(optional)</span>
+                          <span className="text-xs ml-1" style={{ color: colors.textMuted }}>{t.databaseexportmodal1121}</span>
                         )}
                       </label>
                       {/* Always show text input for free schema name entry */}
@@ -1126,7 +1126,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                         type="text"
                         value={dbSchemaName}
                         onChange={(e) => setDbSchemaName(e.target.value)}
-                        placeholder={dbConnectionType === 'postgresql' ? 'public' : 'Leave empty to use database name'}
+                        placeholder={dbConnectionType === 'postgresql' ? 'public' : t.databaseexportmodal1129}
                         list="available-schemas-list"
                         className="w-full px-3 py-2 rounded focus:outline-none"
                         style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
@@ -1146,7 +1146,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
                 {/* Export Options */}
                 <div className="p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-                  <h4 className="text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>Export Optionen</h4>
+                  <h4 className="text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>{t.databaseexportmodal1149}</h4>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1157,11 +1157,11 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                       disabled={servicePolling}
                     />
                     <span className="text-sm" style={{ color: colors.textSecondary }}>
-                      DROP TABLE IF EXISTS vor CREATE (empfohlen)
+                      DROP TABLE IF EXISTS vor CREATEt.databaseexportmodal1160
                     </span>
                   </label>
                   <div className="mt-2 text-xs" style={{ color: colors.warningText }}>
-                    ⚠️ Dieser Export überschreibt existierende Tabellen in der Ziel-Datenbank!
+                    {t.databaseexportmodal1164}
                   </div>
                 </div>
 
@@ -1174,7 +1174,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                     className="px-6 py-3 rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
                     style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
                   >
-                    {servicePolling ? '⏳ Exportiere...' : serviceTaskId ? '⏸️ Task läuft' : '🚀 In Datenbank exportieren'}
+                    {servicePolling ? t.databaseexportmodal1177 : serviceTaskId ? t.databaseexportmodal1177_2 : t.databaseexportmodal1177_4}
                   </button>
                 </div>
 
@@ -1182,7 +1182,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                 {serviceLog.length > 0 && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Log
+                      {t.databaseexportmodal1185}
                     </label>
                     <div className="rounded p-4 max-h-48 overflow-y-scroll font-mono text-xs" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                       {serviceLog.map((log, index) => (
@@ -1208,7 +1208,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
             className="px-6 py-2 rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
             style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
           >
-            {servicePolling ? 'Export läuft im Hintergrund...' : 'Schließen'}
+            {servicePolling ? t.databaseexportmodal1211 : t.databaseexportmodal1211_2}
           </button>
         </div>
 

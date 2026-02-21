@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from 'primereact/button';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface DeploymentLog {
   id: number;
@@ -14,7 +15,11 @@ interface DeploymentLog {
 
 export default function DeploymentLogPanel() {
   const { colors } = useTheme();
-  const { selectedProjectId } = useProject();
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
+  const { selectedProject } = useProject();
+  const selectedProjectId = selectedProject?.id ?? null;
   const [logs, setLogs] = useState<DeploymentLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +61,7 @@ export default function DeploymentLogPanel() {
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.deploymentlogpanel64);
       }
 
       const response = await fetch(`/api/projects/${selectedProjectId}/deployment-logs?limit=100`, {
@@ -67,7 +72,7 @@ export default function DeploymentLogPanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load deployment logs');
+        throw new Error(t.deploymentlogpanel71);
       }
 
       const result = await response.json();
@@ -86,7 +91,7 @@ export default function DeploymentLogPanel() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load logs');
+      setError(err.message || t.deploymentlogpanel94);
     } finally {
       setLoading(false);
     }
@@ -115,7 +120,7 @@ export default function DeploymentLogPanel() {
         }
       }
     } catch (err) {
-      console.error('Failed to check task status:', err);
+      console.error(t.deploymentlogpanel123, err);
     }
   };
 
@@ -143,7 +148,7 @@ export default function DeploymentLogPanel() {
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch task status');
+          throw new Error(result.message || t.deploymentlogpanel151);
         }
 
         const taskData = result.task;
@@ -169,7 +174,7 @@ export default function DeploymentLogPanel() {
           }
         }
       } catch (err: any) {
-        console.error('Polling error:', err);
+        console.error(t.deploymentlogpanel177, err);
       }
     }, 2000); // Poll every 2 seconds
 
@@ -179,13 +184,13 @@ export default function DeploymentLogPanel() {
   const clearLogs = async () => {
     if (!selectedProjectId) return;
 
-    const confirmed = window.confirm('Are you sure you want to clear all deployment logs?');
+    const confirmed = window.confirm(t.deploymentlogpanel187);
     if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.deploymentlogpanel193);
       }
 
       const response = await fetch(`/api/projects/${selectedProjectId}/deployment-logs`, {
@@ -197,12 +202,12 @@ export default function DeploymentLogPanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to clear logs');
+        throw new Error(t.deploymentlogpanel205);
       }
 
       setLogs([]);
     } catch (err: any) {
-      setError(err.message || 'Failed to clear logs');
+      setError(err.message || t.deploymentlogpanel210);
     }
   };
 
@@ -239,18 +244,18 @@ export default function DeploymentLogPanel() {
       {/* Header */}
       <div className="flex items-center justify-between p-4" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">📋 Deployment Log</h2>
+          <h2 className="text-xl font-semibold">{t.deploymentlogpanel247}</h2>
           {polling && (
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm" style={{ backgroundColor: colors.infoBg, color: colors.infoText }}>
               <span className="inline-block animate-spin">🔄</span>
-              Monitoring...
+              {t.deploymentlogpanel251}
             </span>
           )}
         </div>
 
         <div className="flex gap-2">
           <Button
-            label={loading ? 'Loading...' : 'Refresh'}
+            label={loading ? t.deploymentlogpanel258 : t.deploymentlogpanel258_2}
             icon="pi pi-refresh"
             onClick={loadLogs}
             disabled={loading}
@@ -258,7 +263,7 @@ export default function DeploymentLogPanel() {
             size="small"
           />
           <Button
-            label="Clear Logs"
+            label={t.deploymentlogpanel266}
             icon="pi pi-trash"
             onClick={clearLogs}
             disabled={loading || logs.length === 0}
@@ -271,7 +276,7 @@ export default function DeploymentLogPanel() {
       {/* Error Display */}
       {error && (
         <div className="p-4" style={{ backgroundColor: colors.errorBg, borderBottom: `1px solid ${colors.errorBorder}`, color: colors.errorText }}>
-          <strong>Error:</strong> {error}
+          <strong>{t.deploymentlogpanel279}</strong> {error}
         </div>
       )}
 
@@ -280,13 +285,13 @@ export default function DeploymentLogPanel() {
         {loading && logs.length === 0 ? (
           <div className="text-center py-8" style={{ color: colors.textMuted }}>
             <div className="inline-block animate-spin text-2xl mb-2">🔄</div>
-            <p>Loading logs...</p>
+            <p>{t.deploymentlogpanel288}</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="text-center py-8" style={{ color: colors.textMuted }}>
             <p className="text-2xl mb-2">📋</p>
-            <p>No deployment logs yet</p>
-            <p className="text-sm mt-2">Logs will appear here when you deploy projects</p>
+            <p>{t.deploymentlogpanel293}</p>
+            <p className="text-sm mt-2">{t.deploymentlogpanel294}</p>
           </div>
         ) : (
           <div className="space-y-1">

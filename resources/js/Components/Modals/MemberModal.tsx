@@ -440,7 +440,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   };
 
   const joinedBodyTemplate = (member: TeamMember) => {
-    return new Date(member.joined_at).toLocaleDateString('de-DE', {
+    return new Date(member.joined_at).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
@@ -458,7 +458,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     // Owner cannot be removed
     if (member.role === 'owner') {
-      return <span className="text-xs" style={{ color: colors.textMuted }}>Owner</span>;
+      return <span className="text-xs" style={{ color: colors.textMuted }}>{t.membermodal461}</span>;
     }
 
     // If member is in team, show Remove button

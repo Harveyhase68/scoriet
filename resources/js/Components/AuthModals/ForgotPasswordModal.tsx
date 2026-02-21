@@ -86,7 +86,7 @@ export default function ForgotPasswordModal({
       className="p-dialog-custom"
     >
       <div className="mb-4 text-sm text-gray-600">
-        Enter your email address and we will send you a link to reset your password.
+        {t.forgotpasswordmodal89}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,7 +108,7 @@ export default function ForgotPasswordModal({
 
         <div className="field">
           <label htmlFor="forgot-email" className="block text-sm font-medium mb-2">
-            E-Mail
+            {t.forgotpasswordmodal111}
           </label>
           <InputText
             id="forgot-email"
@@ -124,7 +124,7 @@ export default function ForgotPasswordModal({
 
         <Button
           type="submit"
-          label={loading ? "Wird gesendet..." : t.forgotpasswordmodal122}
+          label={loading ? t.forgotpasswordmodal127 : t.forgotpasswordmodal122}
           icon={loading ? "pi pi-spinner pi-spin" : "pi pi-send"}
           className="w-full"
           disabled={loading}

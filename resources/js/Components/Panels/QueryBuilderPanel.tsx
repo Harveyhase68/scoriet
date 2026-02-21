@@ -149,7 +149,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
         setSchemaMigrationAccess(data.access_status);
         toast.current?.show({
           severity: 'success',
-          summary: 'Erfolg',
+          summary: t.querybuilderpanel152,
           detail: data.message || t.querybuilderpanel153,
         });
         // Trigger credits update event
@@ -203,7 +203,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
       const response = await api.get('/schemas');
       setSchemas(response.schemas || []);
     } catch (err: any) {
-      setError('Failed to load schemas: ' + (err.response?.data?.message || err.message));
+      setError(t.querybuilderpanel206 + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -330,7 +330,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
   };
 
   const renderChangeDetails = (rowData: DiffChange) => {
-    let details = `Table: ${rowData.table}`;
+    let details = `${t.querybuilderpanel333}${rowData.table}`;
     if (rowData.field) {
       details += ` | Field: ${rowData.field}`;
     }
@@ -380,7 +380,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
               <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgTertiary }}>
                 <div className="text-2xl font-bold mb-1" style={{ color: colors.warningText }}>
-                  {schemaMigrationAccess?.unlock_cost || 50} Credits / Jahr
+                  {schemaMigrationAccess?.unlock_cost || 50}{t.querybuilderpanel383}
                 </div>
                 <div className="text-sm" style={{ color: colors.textMuted }}>
                   {t.querybuilderpanel386}
@@ -388,7 +388,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
               </div>
 
               <Button
-                label={unlocking ? 'Wird freigeschaltet...' : 'Freischalten'}
+                label={unlocking ? t.querybuilderpanel391 : t.querybuilderpanel391_2}
                 icon="pi pi-unlock"
                 className="p-button-lg"
                 style={{
@@ -401,7 +401,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
               />
 
               <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
-                <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
+                <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>{t.querybuilderpanel404}</p>
                 <ul className="text-left space-y-1">
                   <li className="flex items-center gap-2 opacity-80" style={{ color: colors.textSecondary }}>
                     <span>🔄</span>{t.querybuilderpanel407}
@@ -436,7 +436,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           </h2>
           {/* Access Status Badge */}
           {schemaMigrationAccess?.is_patron ? (
-            <Tag value="Patron" severity="warning" />
+            <Tag value={t.querybuilderpanel439} severity="warning" />
           ) : schemaMigrationAccess?.days_remaining !== undefined ? (
             <Tag value={`${schemaMigrationAccess.days_remaining}{t.querybuilderpanel441}`} severity="info" />
           ) : null}
@@ -640,7 +640,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
 
           {/* Changes List */}
           {diffResult.changes.length > 0 && (
-            <Panel header="Detected Changes" toggleable className="mb-4 query-builder-panel-section">
+            <Panel header={t.querybuilderpanel643} toggleable className="mb-4 query-builder-panel-section">
               <DataTable
                 value={diffResult.changes}
                 paginator

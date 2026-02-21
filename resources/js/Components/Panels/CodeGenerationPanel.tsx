@@ -318,7 +318,7 @@ export default function CodeGenerationPanel() {
         setCodeAdjustmentsAccess(data);
       }
     } catch (error) {
-      console.error('Failed to load code adjustments access:', error);
+      console.error(t.codegenerationpanel321, error);
     }
   };
 
@@ -415,8 +415,8 @@ export default function CodeGenerationPanel() {
         .map(t => t.name)
         .slice(0, 3)
         .join(', ');
-      const suffix = selectedTemplateIds.size > 3 ? ` (+${selectedTemplateIds.size - 3} more)` : '';
-      setCommitMessage(`Generated code for ${selectedProject.name}: ${templateNames}${suffix}`);
+      const suffix = selectedTemplateIds.size > 3 ? ` (+${selectedTemplateIds.size - 3}${t.codegenerationpanel418})` : '';
+      setCommitMessage(`${t.codegenerationpanel419}${selectedProject.name}: ${templateNames}${suffix}`);
     }
   }, [selectedProject, selectedTemplateIds, templates]);
 
@@ -491,7 +491,7 @@ export default function CodeGenerationPanel() {
       setGitProvidersLoaded(false);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        console.warn('[GIT DEBUG] No token found when loading providers');
+        console.warn('t.codegenerationpanel494');
         return;
       }
 
@@ -513,7 +513,7 @@ export default function CodeGenerationPanel() {
         // Note: Auto-selection is handled separately in useEffect to avoid timing issues
       }
     } catch (err) {
-      console.error('Failed to load Git providers:', err);
+      console.error(t.codegenerationpanel516, err);
     } finally {
       setLoadingGitData(false);
       setGitProvidersLoaded(true);
@@ -546,11 +546,11 @@ export default function CodeGenerationPanel() {
         setShowProfileModal(true);
       } else {
         const error = await response.json();
-        alert(error.message || 'Freischaltung fehlgeschlagen');
+        alert(error.message || t.codegenerationpanel549);
       }
     } catch (err) {
       console.error('Error unlocking git integration:', err);
-      alert('Freischaltung fehlgeschlagen');
+      alert(t.codegenerationpanel553);
     } finally {
       setUnlockingGitIntegration(false);
     }
@@ -575,7 +575,7 @@ export default function CodeGenerationPanel() {
         setGitRepositories(data.repositories || []);
       }
     } catch (err) {
-      console.error('Failed to load repositories:', err);
+      console.error(t.codegenerationpanel578, err);
     } finally {
       setLoadingGitData(false);
     }
@@ -601,7 +601,7 @@ export default function CodeGenerationPanel() {
         setGitBranches(data.branches || []);
       }
     } catch (err) {
-      console.error('Failed to load branches:', err);
+      console.error(t.codegenerationpanel604, err);
     } finally {
       setLoadingGitData(false);
     }
@@ -610,22 +610,22 @@ export default function CodeGenerationPanel() {
   // Push generated files to Git
   const pushToGitRepository = async (files: Record<string, string>): Promise<boolean> => {
     if (!selectedGitProvider || !selectedRepository) {
-      console.error('No Git provider or repository selected');
+      console.error(t.codegenerationpanel613);
       return false;
     }
 
     const branch = useNewBranch ? newBranchName : selectedBranch;
     if (!branch) {
-      console.error('No branch selected');
+      console.error(t.codegenerationpanel619);
       return false;
     }
 
     try {
       setGitPushStatus('pushing');
-      setDeploymentLogs(prev => [...prev, `🔗 Pushing to ${selectedGitProvider.provider}/${selectedRepository.full_name}...`]);
+      setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel625}${selectedGitProvider.provider}/${selectedRepository.full_name}...`]);
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) throw new Error('Not authenticated');
+      if (!token) throw new Error(t.codegenerationpanel628);
 
       const baseBranch = selectedRepository.default_branch || 'main';
 
@@ -639,13 +639,13 @@ export default function CodeGenerationPanel() {
         body: JSON.stringify({
           repository: selectedRepository.full_name,
           branch: branch,
-          commit_message: commitMessage || 'Generated code from Scoriet',
+          commit_message: commitMessage || t.codegenerationpanel642,
           files: files,
           base_branch: baseBranch,
           // PR options
           create_pr: createPullRequest,
-          pr_title: prTitle || `Generated code: ${commitMessage || 'Code generation'}`,
-          pr_description: `Automatically generated code from Scoriet.\n\n**Branch:** ${branch}\n**Files:** ${Object.keys(files).length}`,
+          pr_title: prTitle || `${t.codegenerationpanel647}${commitMessage || t.codegenerationpanel647_2}`,
+          pr_description: `${t.codegenerationpanel648}\n\n${t.codegenerationpanel648_2}${branch}\n${t.codegenerationpanel648_3}${Object.keys(files).length}`,
           auto_merge: autoMerge,
           delete_branch_after_merge: deleteBranchAfterMerge,
         }),
@@ -653,13 +653,13 @@ export default function CodeGenerationPanel() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to push to Git');
+        throw new Error(errorData.message || t.codegenerationpanel656);
       }
 
       const result = await response.json();
       setDeploymentLogs(prev => [
         ...prev,
-        `✅ Successfully pushed ${result.files_count} files to ${branch}`,
+        `${t.codegenerationpanel662}${result.files_count}${t.codegenerationpanel662_2}${branch}`,
         `📝 Commit: ${result.commit_sha?.substring(0, 7) || 'created'}`,
       ]);
 
@@ -668,15 +668,15 @@ export default function CodeGenerationPanel() {
         const prType = selectedGitProvider.provider === 'gitlab' ? 'Merge Request' : 'Pull Request';
         setDeploymentLogs(prev => [
           ...prev,
-          `🔀 ${prType} #${result.pr_number} created`,
+          `🔀 ${prType} #${result.pr_number}${t.codegenerationpanel671}`,
           `🔗 ${result.pr_url}`,
         ]);
 
         // Log merge status if auto-merge was requested
         if (result.merged) {
-          setDeploymentLogs(prev => [...prev, `✅ ${prType} automatically merged`]);
+          setDeploymentLogs(prev => [...prev, `✅ ${prType}${t.codegenerationpanel677}`]);
         } else if (result.merge_error) {
-          setDeploymentLogs(prev => [...prev, `⚠️ Auto-merge failed: ${result.merge_error}`]);
+          setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel679}${result.merge_error}`]);
         }
       }
 
@@ -689,8 +689,8 @@ export default function CodeGenerationPanel() {
 
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setDeploymentLogs(prev => [...prev, `❌ Git push failed: ${message}`]);
+      const message = err instanceof Error ? err.message : t.codegenerationpanel692;
+      setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel693_2}${message}`]);
       setGitPushStatus('error');
       return false;
     }
@@ -722,7 +722,7 @@ export default function CodeGenerationPanel() {
       });
 
       if (response.ok) {
-        setDeploymentLogs(prev => [...prev, '💾 Git-Einstellungen im Projekt gespeichert']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel725]);
         // Update local project state
         setSelectedProject(prev => prev ? {
           ...prev,
@@ -733,7 +733,7 @@ export default function CodeGenerationPanel() {
         } : null);
       }
     } catch (err) {
-      console.error('Failed to save Git settings:', err);
+      console.error(t.codegenerationpanel736, err);
     }
   };
 
@@ -767,7 +767,7 @@ export default function CodeGenerationPanel() {
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Authentication required');
+        setError(t.codegenerationpanel770);
         return;
       }
 
@@ -779,7 +779,7 @@ export default function CodeGenerationPanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load projects');
+        throw new Error(t.codegenerationpanel782);
       }
 
       const data = await response.json();
@@ -810,7 +810,7 @@ export default function CodeGenerationPanel() {
 
       setProjects(uniqueProjects);
     } catch (err: any) {
-      setError(err.message || 'Failed to load projects');
+      setError(err.message || t.codegenerationpanel813);
       setProjects([]);
     } finally {
       setLoading(false);
@@ -826,7 +826,7 @@ export default function CodeGenerationPanel() {
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Authentication required');
+        setError(t.codegenerationpanel829);
         return;
       }
 
@@ -836,7 +836,7 @@ export default function CodeGenerationPanel() {
       });
 
       if (!projectRes.ok) {
-        throw new Error('Failed to load project details');
+        throw new Error(t.codegenerationpanel839);
       }
 
       const projectData = await projectRes.json();
@@ -856,7 +856,7 @@ export default function CodeGenerationPanel() {
       ]);
 
       if (!templatesRes.ok || !schemasRes.ok || !allLanguagesRes.ok) {
-        throw new Error('Failed to load project data');
+        throw new Error(t.codegenerationpanel859);
       }
 
       const [templatesData, schemasData, allLanguagesData] = await Promise.all([
@@ -948,7 +948,7 @@ export default function CodeGenerationPanel() {
       }
 
     } catch (err: any) {
-      setError(err.message || 'Failed to load project data');
+      setError(err.message || t.codegenerationpanel951);
       setTemplates([]);
       setSchemas([]);
       setLanguages([]);
@@ -975,7 +975,7 @@ export default function CodeGenerationPanel() {
       if (templatesNeedingDB.length > 0) {
         newWarnings.push({
           type: 'database',
-          message: 'Some templates contain DB Table files but no database is selected. These files will not be generated.',
+          message: t.codegenerationpanel978,
           templates: templatesNeedingDB.map(t => t.name),
         });
       }
@@ -992,7 +992,7 @@ export default function CodeGenerationPanel() {
       if (templatesNeedingLang.length > 0) {
         newWarnings.push({
           type: 'language',
-          message: 'Some templates contain Language files but no language is selected. These files will not be generated.',
+          message: t.codegenerationpanel995,
           templates: templatesNeedingLang.map(t => t.name),
         });
       }
@@ -1082,7 +1082,7 @@ export default function CodeGenerationPanel() {
   const chargeCreditsForGeneration = async (): Promise<{ success: boolean; message?: string; isFree?: boolean }> => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) {
-      return { success: false, message: 'Authentifizierung erforderlich' };
+      return { success: false, message: t.codegenerationpanel1085 };
     }
 
     try {
@@ -1101,7 +1101,7 @@ export default function CodeGenerationPanel() {
       if (!response.ok) {
         return {
           success: false,
-          message: data.message || `Nicht genug Credits. Benötigt: ${data.credits_required}, Verfügbar: ${data.credits_available}`,
+          message: data.message || `${t.codegenerationpanel1104}${data.credits_required}${t.codegenerationpanel1104_2}${data.credits_available}`,
         };
       }
 
@@ -1119,7 +1119,7 @@ export default function CodeGenerationPanel() {
       };
     } catch (err) {
       console.error('Credit charge error:', err);
-      return { success: false, message: 'Fehler beim Prüfen der Credits' };
+      return { success: false, message: t.codegenerationpanel1122};
     }
   };
 
@@ -1168,7 +1168,7 @@ export default function CodeGenerationPanel() {
               filePath: fullPath,
               templates: [{
                 id: templateId,
-                name: template?.name || `Template ${templateId}`
+                name: template?.name || `${t.codegenerationpanel1171}${templateId}`
               }],
               type: 'intra-template'
             });
@@ -1183,7 +1183,7 @@ export default function CodeGenerationPanel() {
           interTemplateFileMap.get(fullPath)!.add(templateId);
         }
       } catch (err) {
-        console.error(`Failed to fetch files for template ${templateId}:`, err);
+        console.error(`${t.codegenerationpanel1186}${templateId}:`, err);
       }
     }
 
@@ -1194,7 +1194,7 @@ export default function CodeGenerationPanel() {
           const template = templates.find(t => t.id === id);
           return {
             id,
-            name: template?.name || `Template ${id}`
+            name: template?.name || `${t.codegenerationpanel1197}${id}`
           };
         });
 
@@ -1211,7 +1211,7 @@ export default function CodeGenerationPanel() {
 
   const handleGenerateProject = async () => {
     if (!canGenerate()) {
-      setError('Please select at least one template');
+      setError(t.codegenerationpanel1214);
       return;
     }
 
@@ -1242,7 +1242,7 @@ export default function CodeGenerationPanel() {
       });
 
       if (!response.ok) {
-        console.warn('[CODE-ADJUSTMENTS] Failed to fetch adjustments:', response.status);
+        console.warn(t.codegenerationpanel1245, response.status);
         return [];
       }
 
@@ -1253,7 +1253,7 @@ export default function CodeGenerationPanel() {
       }
       return [];
     } catch (error) {
-      console.warn('[CODE-ADJUSTMENTS] Error fetching adjustments:', error);
+      console.warn(t.codegenerationpanel1256, error);
       return [];
     }
   };
@@ -1351,7 +1351,7 @@ export default function CodeGenerationPanel() {
   ) => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) {
-      throw new Error('Authentication required');
+      throw new Error(t.codegenerationpanel1354);
     }
 
       // Starting hybrid browser-based project generation
@@ -1366,8 +1366,8 @@ export default function CodeGenerationPanel() {
           current: 0,
           total: 100,
           percentage: 2,
-          eta: 'Berechne...',
-          currentTask: 'Lade Code Anpassungen...'
+          eta: t.codegenerationpanel1369,
+          currentTask: t.codegenerationpanel1370
         });
         codeAdjustments = await fetchCodeAdjustments(selectedProjectId, token);
       }
@@ -1379,8 +1379,8 @@ export default function CodeGenerationPanel() {
         current: 0,
         total: 100,
         percentage: 5,
-        eta: 'Berechne...',
-        currentTask: 'Lade Datenbank-Schema...'
+        eta: t.codegenerationpanel1382,
+        currentTask: t.codegenerationpanel1383
       });
 
       const gtreeDataPromises = Array.from(selectedSchemaIds).map(async (schemaId) => {
@@ -1389,7 +1389,7 @@ export default function CodeGenerationPanel() {
         });
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Failed to load schema ${schemaId}: ${errorText}`);
+          throw new Error(`${t.codegenerationpanel1392}${schemaId}: ${errorText}`);
         }
         return response.json();
       });
@@ -1455,7 +1455,7 @@ export default function CodeGenerationPanel() {
         const percentage = Math.min(95, Math.floor((completedOperations / totalOperations) * 100));
 
         // Calculate ETA based on recent operations (not all operations)
-        let etaText = 'Berechne...';
+        let etaText = t.codegenerationpanel1458;
         let medianTimePerOp = 0;
         let cappedTimePerOp = 0;
 
@@ -1490,11 +1490,11 @@ export default function CodeGenerationPanel() {
             const etaSeconds = Math.floor((etaMs % 60000) / 1000);
 
             if (etaMinutes > 0) {
-              etaText = `~${etaMinutes}min ${etaSeconds}s verbleibend`;
+              etaText = `~${etaMinutes}${t.codegenerationpanel1493}${etaSeconds}${t.codegenerationpanel1493_2}`;
             } else if (etaSeconds > 5) {
-              etaText = `~${etaSeconds}s verbleibend`;
+              etaText = `~${etaSeconds}${t.codegenerationpanel1495}`;
             } else {
-              etaText = 'Fast fertig...';
+              etaText = t.codegenerationpanel1497;
             }
           }
         }
@@ -1518,7 +1518,7 @@ export default function CodeGenerationPanel() {
         const percentage = Math.min(95, Math.floor((completedOperations / totalOperations) * 100));
 
         // Recalculate ETA with current data
-        let etaText = 'Berechne...';
+        let etaText = t.codegenerationpanel1521;
         const _now = Date.now();
 
         if (operationTimestamps.length > WARMUP_OPERATIONS) {
@@ -1545,11 +1545,11 @@ export default function CodeGenerationPanel() {
             const etaSeconds = Math.floor((etaMs % 60000) / 1000);
 
             if (etaMinutes > 0) {
-              etaText = `~${etaMinutes}min ${etaSeconds}s verbleibend`;
+              etaText = `~${etaMinutes}${t.codegenerationpanel1548}${etaSeconds}${t.codegenerationpanel1548_2}`;
             } else if (etaSeconds > 5) {
-              etaText = `~${etaSeconds}s verbleibend`;
+              etaText = `~${etaSeconds}${t.codegenerationpanel1550}`;
             } else {
-              etaText = 'Fast fertig...';
+              etaText = t.codegenerationpanel1552;
             }
           }
         }
@@ -1646,7 +1646,7 @@ export default function CodeGenerationPanel() {
 
             if (!response.ok) {
               const errorText = await response.text();
-              throw new Error(`API returned ${response.status}: ${errorText}`);
+              throw new Error(`${t.codegenerationpanel1649}${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
@@ -1713,13 +1713,13 @@ export default function CodeGenerationPanel() {
 
             if (!response.ok) {
               const errorText = await response.text();
-              throw new Error(`Batch API returned ${response.status}: ${errorText}`);
+              throw new Error(`${t.codegenerationpanel1716}${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
 
             if (!data.success) {
-              throw new Error(data.error || 'Batch request failed');
+              throw new Error(data.error || t.codegenerationpanel1722);
             }
 
             // Store all results in cache
@@ -1755,9 +1755,9 @@ export default function CodeGenerationPanel() {
 
           } catch (error: any) {
             errors.push({
-              file: 'Batch Template compilation',
+              file: t.codegenerationpanel1758,
               template: template.name,
-              error: error.message || 'Unknown batch error'
+              error: error.message || t.codegenerationpanel1760
             });
           }
         };
@@ -1809,7 +1809,7 @@ export default function CodeGenerationPanel() {
               const generatedFunction = (window as any)[functionName];
 
               if (!generatedFunction) {
-                throw new Error(`Function ${functionName} not found after eval`);
+                throw new Error(`${t.codegenerationpanel1812}${functionName}${t.codegenerationpanel1812_2}`);
               }
 
               // Execute function (gtree is available as global variable)
@@ -1830,7 +1830,7 @@ export default function CodeGenerationPanel() {
             } catch (execError: any) {
               // Clean up on error
               delete (window as any).gtree;
-              throw new Error(`JavaScript execution failed: ${execError.message}`);
+              throw new Error(`${t.codegenerationpanel1833}${execError.message}`);
             }
 
             // Build file path for ZIP - USE OUTPUT_PATH FROM TEMPLATE!
@@ -1888,7 +1888,7 @@ export default function CodeGenerationPanel() {
               template: template.name,
               table: tableName || undefined,
               language: langCode || undefined,
-              error: fileError.message || 'Unknown error'
+              error: fileError.message || t.codegenerationpanel1891
             });
           }
         };
@@ -1901,13 +1901,13 @@ export default function CodeGenerationPanel() {
             // Decode Base64 ZIP content — clean whitespace that may be introduced by server transport
             let base64Content = zipFile.file_content;
             if (!base64Content || base64Content.length === 0) {
-              throw new Error('Empty file_content for ZIP file');
+              throw new Error(t.codegenerationpanel1904);
             }
 
             // Integrity check: verify content wasn't truncated during API response delivery
             if (zipFile.file_content_length && base64Content.length !== zipFile.file_content_length) {
-              console.warn(`[ZIP] Content length mismatch for "${zipFile.file_name}": expected ${zipFile.file_content_length}, received ${base64Content.length}`);
-              throw new Error(`ZIP data truncated during transfer (expected ${zipFile.file_content_length} chars, got ${base64Content.length})`);
+              console.warn(`${t.codegenerationpanel1909}"${zipFile.file_name}":${t.codegenerationpanel1909_2}${zipFile.file_content_length},{t.codegenerationpanel1909_3}${base64Content.length}`);
+              throw new Error(`${t.codegenerationpanel1910}${zipFile.file_content_length}${t.codegenerationpanel1910_2}${base64Content.length})`);
             }
 
             // Strip any whitespace/newlines (can be introduced by Nginx buffering, PHP output encoding, etc.)
@@ -1922,13 +1922,13 @@ export default function CodeGenerationPanel() {
             // Decode Base64 to binary using fetch API (more robust than atob for large content)
             const response = await fetch(`data:application/octet-stream;base64,${base64Content}`);
             if (!response.ok) {
-              throw new Error('Base64 decode failed — data may be corrupted or truncated');
+              throw new Error(t.codegenerationpanel1925);
             }
             const bytes = new Uint8Array(await response.arrayBuffer());
 
             if (bytes.length < 22) {
               // Minimum ZIP file size is 22 bytes (empty ZIP)
-              throw new Error(`Decoded ZIP is too small (${bytes.length} bytes) — data may be truncated`);
+              throw new Error(`${t.codegenerationpanel1931}(${bytes.length}${t.codegenerationpanel1931_2}`);
             }
 
             // Load ZIP with JSZip
@@ -1962,8 +1962,8 @@ export default function CodeGenerationPanel() {
 
           } catch (error: any) {
             errors.push({
-              file: zipFile.file_name || zipFile.zip_filename || 'Unknown ZIP',
-              error: `ZIP extraction failed: ${error.message}`,
+              file: zipFile.file_name || zipFile.zip_filename || t.codegenerationpanel1965,
+              error: `${t.codegenerationpanel1966}${error.message}`,
               template: template.name
             });
           }
@@ -1978,7 +1978,7 @@ export default function CodeGenerationPanel() {
         // 1. Process project_file and static_file (fetch once, execute once)
         const nonZipProjectFiles = projectFiles.filter(f => f.content_type !== 'zip');
         if (nonZipProjectFiles.length > 0) {
-          await updateProgress(`[${template.name}] Generiere Projekt-Dateien...`);
+          await updateProgress(`[${template.name}]${t.codegenerationpanel1981}`);
           const { compiled, gtree } = await fetchCompiledTemplates(null, null);
           const projectFileTemplates = compiled.filter(t =>
             t.generation_type === 'project_file' || t.generation_type === 'static_file'
@@ -1990,7 +1990,7 @@ export default function CodeGenerationPanel() {
 
         // 2. Process project_file_languages (fetch once with first lang, execute per language)
         if (projectLangFiles.length > 0 && selectedLangs.length > 0) {
-          await updateProgress(`[${template.name}] Generiere Sprach-Dateien...`);
+          await updateProgress(`[${template.name}]${t.codegenerationpanel1993}`);
           const firstLang = selectedLangs[0];
           const { compiled, gtree } = await fetchCompiledTemplates(null, firstLang);
           const projectLangTemplates = compiled.filter(t =>
@@ -2043,7 +2043,7 @@ export default function CodeGenerationPanel() {
 
             processedCount++;
             // 🎯 Update progress for EVERY table (not just every 5)
-            await updateProgress(`[${template.name}] Tabelle ${processedCount}/${allTables.length}: ${tableName}`);
+            await updateProgress(`[${template.name}]${t.codegenerationpanel2046}${processedCount}/${allTables.length}: ${tableName}`);
           }
         }
 
@@ -2090,7 +2090,7 @@ export default function CodeGenerationPanel() {
 
             processedCount++;
             // 🎯 Update progress for EVERY table (not just every 5)
-            await updateProgress(`[${template.name}] Multi-Lang ${processedCount}/${allTables.length}: ${tableName}`);
+            await updateProgress(`[${template.name}]${t.codegenerationpanel2093}${processedCount}/${allTables.length}: ${tableName}`);
           }
         }
       }
@@ -2134,8 +2134,8 @@ export default function CodeGenerationPanel() {
           current: totalOperations,
           total: totalOperations,
           percentage: 98,
-          eta: 'Fast fertig...',
-          currentTask: 'Erstelle ZIP-Archiv...'
+          eta: t.codegenerationpanel2137,
+          currentTask: t.codegenerationpanel2138
         });
 
         // Generate ZIP blob directly in browser
@@ -2150,8 +2150,8 @@ export default function CodeGenerationPanel() {
           current: totalOperations,
           total: totalOperations,
           percentage: 100,
-          eta: 'Fertig!',
-          currentTask: 'Verarbeite ZIP...'
+          eta: t.codegenerationpanel2153,
+          currentTask: t.codegenerationpanel2154
         });
 
         setArchiveWarning(null);
@@ -2197,7 +2197,7 @@ export default function CodeGenerationPanel() {
         });
 
         if (!archiveResponse.ok) {
-          throw new Error(`Archive creation failed: ${archiveResponse.statusText}`);
+          throw new Error(`${t.codegenerationpanel2200}${archiveResponse.statusText}`);
         }
 
         // Check for fallback warning in headers
@@ -2209,7 +2209,7 @@ export default function CodeGenerationPanel() {
             const warningMessage = atob(warningHeader);
             setArchiveWarning(warningMessage);
           } catch {
-            setArchiveWarning('Archive format fallback occurred. Archive created as ZIP.');
+            setArchiveWarning(t.codegenerationpanel2212);
           }
         } else {
           setArchiveWarning(null);
@@ -2250,7 +2250,7 @@ export default function CodeGenerationPanel() {
       // 💰 Charge credits before generation
       const chargeResult = await chargeCreditsForGeneration();
       if (!chargeResult.success) {
-        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setError(chargeResult.message || t.codegenerationpanel2253);
         setGenerating(false);
         return;
       }
@@ -2270,7 +2270,7 @@ export default function CodeGenerationPanel() {
 
         // 🔗 Git Push if enabled
         if (pushToGit && selectedGitProvider && selectedRepository) {
-          setDeploymentLogs(['🔗 Git Push gestartet...']);
+          setDeploymentLogs([t.codegenerationpanel2273]);
 
           // Extract files from ZIP for Git push
           const filesForGit: Record<string, string> = {};
@@ -2281,7 +2281,7 @@ export default function CodeGenerationPanel() {
                 filesForGit[path] = content;
               } catch {
                 // If file is binary, skip it for now (or handle differently)
-                console.warn(`[GIT] Skipping binary file: ${path}`);
+                console.warn(`${t.codegenerationpanel2284}${path}`);
               }
             }
           }
@@ -2330,7 +2330,7 @@ export default function CodeGenerationPanel() {
       });
 
     } catch (err: any) {
-      setError(err.message || 'Failed to generate project');
+      setError(err.message || t.codegenerationpanel2333);
     } finally {
       setGenerating(false);
       setTimeout(() => {
@@ -2345,7 +2345,7 @@ export default function CodeGenerationPanel() {
    */
   const handleGenerateAndDeploy = async () => {
     if (!canGenerate()) {
-      setError('Please select at least one template');
+      setError(t.codegenerationpanel2348);
       return;
     }
 
@@ -2366,12 +2366,12 @@ export default function CodeGenerationPanel() {
    */
   const handleFtpUpload = async () => {
     if (!canGenerate()) {
-      setError('Please select at least one template');
+      setError(t.codegenerationpanel2369);
       return;
     }
 
     if (!selectedProject?.has_ftp_deployment) {
-      setError('Keine FTP/SSH-Verbindung konfiguriert. Bitte konfigurieren Sie die FTP/SSH-Einstellungen in den Projekteinstellungen.');
+      setError(t.codegenerationpanel2374);
       return;
     }
 
@@ -2401,7 +2401,7 @@ export default function CodeGenerationPanel() {
       // 💰 Charge credits before generation
       const chargeResult = await chargeCreditsForGeneration();
       if (!chargeResult.success) {
-        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setError(chargeResult.message || t.codegenerationpanel2404);
         setGenerating(false);
         setFtpUploading(false);
         return;
@@ -2409,7 +2409,7 @@ export default function CodeGenerationPanel() {
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.codegenerationpanel2412);
       }
 
       const projectName = selectedProject?.name || 'project';
@@ -2419,10 +2419,10 @@ export default function CodeGenerationPanel() {
 
       // Add initial log entry
       setDeploymentLogs([
-        `📡 Starting ${ftpType} Upload...`,
-        `📦 Project: ${projectName}`,
-        `🌐 Server: ${ftpHost}`,
-        `📂 Directory: ${ftpDir}`,
+        `${t.codegenerationpanel2422}${ftpType}${t.codegenerationpanel2422_2}`,
+        `${t.codegenerationpanel2423}${projectName}`,
+        `${t.codegenerationpanel2424}${ftpHost}`,
+        `${t.codegenerationpanel2425}${ftpDir}`,
         ''
       ]);
 
@@ -2431,8 +2431,8 @@ export default function CodeGenerationPanel() {
         // Add log: Generation complete
         setDeploymentLogs(prev => [
           ...prev,
-          '✅ Code generation completed',
-          `📊 Archive size: ${(zipBlob.size / 1024).toFixed(2)} KB`,
+          `${t.codegenerationpanel2434}`,
+          `${t.codegenerationpanel2435}${(zipBlob.size / 1024).toFixed(2)} KB`,
           ''
         ]);
 
@@ -2441,11 +2441,11 @@ export default function CodeGenerationPanel() {
           current: 0,
           total: 100,
           percentage: 85,
-          eta: 'Fast fertig...',
-          currentTask: 'Lade Archiv zum Server hoch...'
+          eta: t.codegenerationpanel2444,
+          currentTask: t.codegenerationpanel2445
         });
 
-        setDeploymentLogs(prev => [...prev, '📤 Uploading archive to server...']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel2448]);
 
         const formData = new FormData();
         formData.append('project_id', selectedProjectId!.toString());
@@ -2462,7 +2462,7 @@ export default function CodeGenerationPanel() {
 
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
-          throw new Error(`Failed to upload archive: ${errorText}`);
+          throw new Error(`${t.codegenerationpanel2465}${errorText}`);
         }
 
         const uploadResult = await uploadResponse.json();
@@ -2470,7 +2470,7 @@ export default function CodeGenerationPanel() {
 
         setDeploymentLogs(prev => [
           ...prev,
-          '✅ Archive uploaded to server',
+          t.codegenerationpanel2473,
           ''
         ]);
 
@@ -2479,8 +2479,8 @@ export default function CodeGenerationPanel() {
           current: 0,
           total: 100,
           percentage: 90,
-          eta: 'Fast fertig...',
-          currentTask: `Uploading via ${ftpType}...`
+          eta: t.codegenerationpanel2482,
+          currentTask: `${t.codegenerationpanel2483}${ftpType}...`
         });
 
         setDeploymentLogs(prev => [
@@ -2506,30 +2506,30 @@ export default function CodeGenerationPanel() {
         }
 
         if (!ftpResult.success) {
-          throw new Error(ftpResult.message || `${ftpType} upload failed`);
+          throw new Error(ftpResult.message || `${ftpType}${t.codegenerationpanel2509}`);
         }
 
         setDeploymentLogs(prev => [
           ...prev,
           '',
-          `✅ ${ftpType} Upload erfolgreich!`,
-          `📁 ${ftpResult.files_uploaded || 0} Dateien übertragen`
+          `✅ ${ftpType}${t.codegenerationpanel2515}`,
+          `📁 ${ftpResult.files_uploaded || 0}${t.codegenerationpanel2516}`
         ]);
 
         setGenerationProgress({
           current: 100,
           total: 100,
           percentage: 100,
-          eta: 'Fertig!',
-          currentTask: `${ftpType} Upload abgeschlossen`
+          eta: t.codegenerationpanel2523,
+          currentTask: `${ftpType}${t.codegenerationpanel2524}`
         });
 
       }, true); // Force ZIP format for FTP upload
 
     } catch (err: any) {
-      console.error('FTP Upload error:', err);
-      setError(err.message || 'FTP/SSH Upload failed');
-      setDeploymentLogs(prev => [...prev, '', `❌ Error: ${err.message}`]);
+      console.error(t.codegenerationpanel2530, err);
+      setError(err.message || t.codegenerationpanel2531);
+      setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2532}${err.message}`]);
     } finally {
       setGenerating(false);
       setFtpUploading(false);
@@ -2563,7 +2563,7 @@ export default function CodeGenerationPanel() {
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch task status');
+          throw new Error(result.message || t.codegenerationpanel2566);
         }
 
         const taskData = result.task;
@@ -2575,17 +2575,17 @@ export default function CodeGenerationPanel() {
           // Append backend logs to existing frontend logs
           setDeploymentLogs(prev => {
             // Find where frontend logs end (last frontend log is "⏳ Waiting for scoriet-svc...")
-            const frontendLogsEndIndex = prev.findIndex(log => log.includes('⏳ Waiting for scoriet-svc'));
+            const frontendLogsEndIndex = prev.findIndex(log => log.includes(t.codegenerationpanel2578));
 
             if (frontendLogsEndIndex >= 0) {
               // Keep frontend logs up to and including the "waiting" message
               const frontendLogs = prev.slice(0, frontendLogsEndIndex + 1);
 
               // Add separator and backend logs
-              return [...frontendLogs, '', '📡 Service logs:', '', ...backendLogs];
+              return [...frontendLogs, '', t.codegenerationpanel2585, '', ...backendLogs];
             } else {
               // Fallback: just append backend logs
-              return [...prev, '', '📡 Service logs:', '', ...backendLogs];
+              return [...prev, '', t.codegenerationpanel2588, '', ...backendLogs];
             }
           });
         }
@@ -2598,8 +2598,8 @@ export default function CodeGenerationPanel() {
             deploymentPollIntervalRef.current = null;
           }
         } else if (taskData.status === 'failed') {
-          const errorMsg = taskData.error_message || 'Unknown error occurred';
-          setDeploymentLogs(prev => [...prev, '', `❌ Deployment failed: ${errorMsg}`]);
+          const errorMsg = taskData.error_message || t.codegenerationpanel2601;
+          setDeploymentLogs(prev => [...prev, '', `{t.codegenerationpanel2602}${errorMsg}`]);
           setDeploymentPolling(false);
           if (deploymentPollIntervalRef.current) {
             clearInterval(deploymentPollIntervalRef.current);
@@ -2609,7 +2609,7 @@ export default function CodeGenerationPanel() {
 
         // Stop polling after max attempts
         if (pollCount >= maxPolls) {
-          setDeploymentLogs(prev => [...prev, '', '⏰ Polling timeout - please check service status manually']);
+          setDeploymentLogs(prev => [...prev, '', t.codegenerationpanel2612]);
           setDeploymentPolling(false);
           if (deploymentPollIntervalRef.current) {
             clearInterval(deploymentPollIntervalRef.current);
@@ -2617,7 +2617,7 @@ export default function CodeGenerationPanel() {
           }
         }
       } catch (err: any) {
-        console.error('Polling error:', err);
+        console.error(t.codegenerationpanel2620, err);
       }
     }, 2000); // Poll every 2 seconds
 
@@ -2641,29 +2641,29 @@ export default function CodeGenerationPanel() {
       // 💰 Charge credits before generation
       const chargeResult = await chargeCreditsForGeneration();
       if (!chargeResult.success) {
-        setError(chargeResult.message || 'Nicht genug Credits für die Generierung');
+        setError(chargeResult.message || t.codegenerationpanel2644);
         setGenerating(false);
         return;
       }
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.codegenerationpanel2651);
       }
 
       const projectName = selectedProject?.name || 'project';
 
       // Add initial log entry
-      setDeploymentLogs(['🚀 Starting deployment...', `📦 Project: ${projectName}`, '']);
+      setDeploymentLogs([t.codegenerationpanel2657, `${t.codegenerationpanel2657_2}${projectName}`, '']);
 
       // Perform generation with upload callback (force ZIP format for deployment)
       await performGeneration(async (zipBlob, zip) => {
         // Add log: Generation complete
-        setDeploymentLogs(prev => [...prev, '✅ Code generation completed', `📊 Archive size: ${(zipBlob.size / 1024).toFixed(2)} KB`, '']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel2662, `${t.codegenerationpanel2662_2}${(zipBlob.size / 1024).toFixed(2)} KB`, '']);
 
         // 🔗 Git Push if enabled
         if (pushToGit && selectedGitProvider && selectedRepository) {
-          setDeploymentLogs(prev => [...prev, '🔗 Git Push gestartet...']);
+          setDeploymentLogs(prev => [...prev, t.codegenerationpanel2666]);
 
           // Extract files from ZIP for Git push
           const filesForGit: Record<string, string> = {};
@@ -2673,7 +2673,7 @@ export default function CodeGenerationPanel() {
                 const content = await zipEntry.async('string');
                 filesForGit[path] = content;
               } catch {
-                console.warn(`[GIT] Skipping binary file: ${path}`);
+                console.warn(`${t.codegenerationpanel2676}${path}`);
               }
             }
           }
@@ -2687,10 +2687,10 @@ export default function CodeGenerationPanel() {
           total: 100,
           percentage: 95,
           eta: 'Fast fertig...',
-          currentTask: 'Lade Archiv zum Server hoch...'
+          currentTask: t.codegenerationpanel2690
         });
 
-        setDeploymentLogs(prev => [...prev, '📤 Uploading archive to server...']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel2693]);
 
         const formData = new FormData();
         formData.append('project_id', selectedProjectId!.toString());
@@ -2725,24 +2725,24 @@ export default function CodeGenerationPanel() {
 
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
-          throw new Error(`Failed to upload archive: ${errorText}`);
+          throw new Error(`${t.codegenerationpanel2728}${errorText}`);
         }
 
         const uploadResult = await uploadResponse.json();
         const downloadUrl = uploadResult.download_url;
 
-        setDeploymentLogs(prev => [...prev, '✅ Upload successful', `🔗 Download URL: ${downloadUrl}`, '']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel2734, `${t.codegenerationpanel2734_2}${downloadUrl}`, '']);
 
         // Create download task for scoriet-svc
         setGenerationProgress({
           current: 0,
           total: 100,
           percentage: 98,
-          eta: 'Fast fertig...',
-          currentTask: 'Erstelle Download-Task für scoriet-svc...'
+          eta: t.codegenerationpanel2741,
+          currentTask: t.codegenerationpanel2742
         });
 
-        setDeploymentLogs(prev => [...prev, '📋 Creating deployment task for scoriet-svc...']);
+        setDeploymentLogs(prev => [...prev, t.codegenerationpanel2745]);
 
         const taskPayload = {
           project_id: selectedProjectId,
@@ -2763,14 +2763,14 @@ export default function CodeGenerationPanel() {
 
         if (!taskResponse.ok) {
           const errorText = await taskResponse.text();
-          throw new Error(`Failed to create download task: ${errorText}`);
+          throw new Error(`${t.codegenerationpanel2766}${errorText}`);
         }
 
         const taskResult = await taskResponse.json();
         const taskId = taskResult.task?.id || taskResult.task_id;
 
         setDeploymentTaskId(taskId);
-        setDeploymentLogs(prev => [...prev, `✅ Task created: #${taskId}`, `📂 Target: C:\\deployed_projects\\${projectName}`, '', '⏳ Waiting for scoriet-svc to pick up task...']);
+        setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel2773}${taskId}`, `${t.codegenerationpanel2773_3}C:\\deployed_projects\\${projectName}`, '', t.codegenerationpanel2773_4]);
 
         // Start polling for task status
         setDeploymentPolling(true);
@@ -2780,8 +2780,8 @@ export default function CodeGenerationPanel() {
           current: 100,
           total: 100,
           percentage: 100,
-          eta: 'Fertig!',
-          currentTask: `✅ Task ${taskId} an scoriet-svc gesendet!`
+          eta: t.codegenerationpanel2783,
+          currentTask: `${t.codegenerationpanel2784}${taskId}${t.codegenerationpanel2784_2}`
         });
       }, true); // forceZip = true for deployment
 
@@ -2791,11 +2791,11 @@ export default function CodeGenerationPanel() {
       }, 5000);
 
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to create deployment task';
+      const errorMessage = err.message || t.codegenerationpanel2794;
       setError(errorMessage);
 
       // Add error to deployment log
-      setDeploymentLogs(prev => [...prev, '', `❌ Deployment failed: ${errorMessage}`, '', '💡 You can try deploying again.']);
+      setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2798}${errorMessage}`, '', t.codegenerationpanel2798_2]);
       setDeploymentPolling(false);
     } finally {
       setGenerating(false);
@@ -2806,14 +2806,14 @@ export default function CodeGenerationPanel() {
     <div className="h-full p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="rounded-lg p-6" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
-          <h2 className="text-2xl font-bold mb-6" style={{ color: colors.textPrimary }}>Code Generation</h2>
+          <h2 className="text-2xl font-bold mb-6" style={{ color: colors.textPrimary }}>{t.codegenerationpanel2809}</h2>
 
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded text-red-200">
               <div className="flex items-start justify-between">
                 <div>
-                  <strong>Error:</strong> {error}
+                  <strong>{t.codegenerationpanel2816}</strong> {error}
                 </div>
                 {error.toLowerCase().includes('credit') && (
                   <button
@@ -2821,7 +2821,7 @@ export default function CodeGenerationPanel() {
                     onClick={() => { setPlanModalInitialTab(1); setShowPlanModal(true); }}
                     className="ml-3 px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-sm font-semibold transition-colors"
                   >
-                    Credits kaufen
+                    {t.codegenerationpanel2824}
                   </button>
                 )}
               </div>
@@ -2834,7 +2834,7 @@ export default function CodeGenerationPanel() {
               <div className="flex items-start space-x-2">
                 <span className="text-xl">⚠️</span>
                 <div className="flex-1">
-                  <div className="font-medium text-yellow-200 mb-1">Archive Format Warning</div>
+                  <div className="font-medium text-yellow-200 mb-1">{t.codegenerationpanel2837}</div>
                   <div className="text-sm text-yellow-300">{archiveWarning}</div>
                 </div>
               </div>
@@ -2844,7 +2844,7 @@ export default function CodeGenerationPanel() {
           {/* Project Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Select Project *
+              {t.codegenerationpanel2847}
             </label>
             <Dropdown
               value={selectedProjectId}
@@ -2864,7 +2864,7 @@ export default function CodeGenerationPanel() {
               }}
               optionLabel="name"
               optionValue="id"
-              placeholder="Select a project..."
+              placeholder={t.codegenerationpanel2867}
               disabled={loading}
               className="w-full"
               filter
@@ -2872,7 +2872,7 @@ export default function CodeGenerationPanel() {
                 <div className="flex items-center justify-between w-full">
                   <span className={option.is_soft_locked ? 'text-red-400' : ''}>{option.name}</span>
                   {option.is_soft_locked && (
-                    <i className="pi pi-lock text-red-500 ml-2" title="Abo abgelaufen" />
+                    <i className="pi pi-lock text-red-500 ml-2" title={t.codegenerationpanel2875} />
                   )}
                 </div>
               )}
@@ -2883,13 +2883,13 @@ export default function CodeGenerationPanel() {
                     <i className="pi pi-lock text-red-500 ml-2" />
                   )}
                 </div>
-              ) : 'Select a project...'}
+              ) : t.codegenerationpanel2886}
             />
           </div>
 
           {loading && (
             <div className="text-center py-8" style={{ color: colors.textMuted }}>
-              Loading project data...
+              {t.codegenerationpanel2892}
             </div>
           )}
 
@@ -2899,18 +2899,18 @@ export default function CodeGenerationPanel() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
-                    Templates * (at least 1 required)
+                    {t.codegenerationpanel2902_2}
                   </label>
                   <button
                     onClick={toggleAllTemplates}
                     className="text-xs text-blue-400 hover:text-blue-300"
                   >
-                    {selectedTemplateIds.size === templates.filter(t => !t.is_soft_locked).length ? 'Deselect All' : 'Select All'}
+                    {selectedTemplateIds.size === templates.filter(t => !t.is_soft_locked).length ? t.codegenerationpanel2908 : t.codegenerationpanel2908_2}
                   </button>
                 </div>
                 <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {templates.length === 0 ? (
-                    <div className="text-sm" style={{ color: colors.textMuted }}>No templates available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>{t.codegenerationpanel2913}</div>
                   ) : (
                     <div className="space-y-2">
                       {templates.map(template => {
@@ -2926,7 +2926,7 @@ export default function CodeGenerationPanel() {
                             style={{ color: colors.textPrimary }}
                             onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = colors.bgHover)}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                            title={isLocked ? 'Template-Abo abgelaufen - bitte im Template Manager entsperren' : undefined}
+                            title={isLocked ? t.codegenerationpanel2929 : undefined}
                           >
                             <input
                               type="checkbox"
@@ -2939,7 +2939,7 @@ export default function CodeGenerationPanel() {
                               <div className="flex items-center gap-2">
                                 {isLocked && <i className="pi pi-lock text-red-500" />}
                                 <span style={{ color: isLocked ? '#f87171' : colors.textPrimary }}>{template.name}</span>
-                                {isLocked && <span className="text-xs text-red-400">Gesperrt</span>}
+                                {isLocked && <span className="text-xs text-red-400">{t.codegenerationpanel2942}</span>}
                               </div>
                               {template.description && (
                                 <div className="text-xs" style={{ color: colors.textMuted }}>{template.description}</div>
@@ -2952,7 +2952,7 @@ export default function CodeGenerationPanel() {
                   )}
                 </div>
                 <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
-                  {selectedTemplateIds.size} of {templates.length} selected
+                  {selectedTemplateIds.size}{t.codegenerationpanel2955_2}{templates.length}{t.codegenerationpanel2955}
                 </div>
               </div>
 
@@ -2960,7 +2960,7 @@ export default function CodeGenerationPanel() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
-                    Databases (optional)
+                    {t.codegenerationpanel2963}
                   </label>
                   <button
                     onClick={toggleAllSchemas}
@@ -2971,7 +2971,7 @@ export default function CodeGenerationPanel() {
                 </div>
                 <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {schemas.length === 0 ? (
-                    <div className="text-sm" style={{ color: colors.textMuted }}>No databases available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>{t.codegenerationpanel2974}</div>
                   ) : (
                     <div className="space-y-2">
                       {schemas.map(schema => {
@@ -2987,7 +2987,7 @@ export default function CodeGenerationPanel() {
                             style={{ color: colors.textPrimary }}
                             onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = colors.bgHover)}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                            title={isLocked ? 'Datenbank-Abo abgelaufen - bitte im Database Manager entsperren' : undefined}
+                            title={isLocked ? t.codegenerationpanel2990 : undefined}
                           >
                             <input
                               type="checkbox"
@@ -3003,7 +3003,7 @@ export default function CodeGenerationPanel() {
                               {schema.name}
                             </span>
                             {isLocked && (
-                              <span className="text-xs text-red-400 ml-auto">Gesperrt</span>
+                              <span className="text-xs text-red-400 ml-auto">{t.codegenerationpanel3006}</span>
                             )}
                           </label>
                         );
@@ -3012,7 +3012,7 @@ export default function CodeGenerationPanel() {
                   )}
                 </div>
                 <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
-                  {selectedSchemaIds.size} of {schemas.length} selected
+                  {selectedSchemaIds.size}{t.codegenerationpanel3015}{schemas.length}{t.codegenerationpanel3015_2}
                 </div>
               </div>
 
@@ -3030,22 +3030,22 @@ export default function CodeGenerationPanel() {
                         className="w-full rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                       >
-                        <option value="">Keine Migration (nur aktuelle Version)</option>
+                        <option value="">{t.codegenerationpanel3033}</option>
                         {migrationVersionOptions.map(opt => (
                           <option key={opt.value} value={opt.value}>
-                            {opt.label} → Aktuell
+                            {opt.label}{t.codegenerationpanel3036}
                           </option>
                         ))}
                       </select>
                       <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
                         {migrationFromVersion
-                          ? `Migration von v${migrationFromVersion} zur aktuellen Version`
-                          : 'Wähle eine vorherige Version für Schema-Migrations-SQL'}
+                          ? `${t.codegenerationpanel3042_2}${migrationFromVersion}${t.codegenerationpanel3042}`
+                          : t.codegenerationpanel3043}
                       </div>
                     </>
                   ) : (
                     <div className="text-sm rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textMuted }}>
-                      Keine Migration verfügbar - Schema hat nur Version 1
+                      {t.codegenerationpanel3048}
                     </div>
                   )}
                 </div>
@@ -3055,18 +3055,18 @@ export default function CodeGenerationPanel() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium" style={{ color: colors.textPrimary }}>
-                    Languages (optional)
+                    {t.codegenerationpanel3058}
                   </label>
                   <button
                     onClick={toggleAllLanguages}
                     className="text-xs text-blue-400 hover:text-blue-300"
                   >
-                    {selectedLanguageCodes.size === languages.length ? 'Deselect All' : 'Select All'}
+                    {selectedLanguageCodes.size === languages.length ? t.codegenerationpanel3064 : t.codegenerationpanel3064_2}
                   </button>
                 </div>
                 <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   {languages.length === 0 ? (
-                    <div className="text-sm" style={{ color: colors.textMuted }}>No languages available</div>
+                    <div className="text-sm" style={{ color: colors.textMuted }}>{t.codegenerationpanel3069}</div>
                   ) : (
                     <div className="space-y-2">
                       {languages.map(language => (
@@ -3089,7 +3089,7 @@ export default function CodeGenerationPanel() {
                   )}
                 </div>
                 <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
-                  {selectedLanguageCodes.size} of {languages.length} selected
+                  {selectedLanguageCodes.size}{t.codegenerationpanel3092}{languages.length}{t.codegenerationpanel3092_2}
                 </div>
               </div>
 
@@ -3103,7 +3103,7 @@ export default function CodeGenerationPanel() {
                         <div className="flex-1">
                           <div className="font-medium mb-1">{warning.message}</div>
                           <div className="text-xs">
-                            Affected templates: {warning.templates.join(', ')}
+                            {t.codegenerationpanel3106}{warning.templates.join(', ')}
                           </div>
                         </div>
                       </div>
@@ -3119,10 +3119,10 @@ export default function CodeGenerationPanel() {
                     <span className="text-2xl">🚨</span>
                     <div>
                       <div className="font-bold text-red-300">
-                        Syntax Errors Found During Generation
+                        {t.codegenerationpanel3122}
                       </div>
                       <div className="text-sm text-red-400">
-                        {generationStats.errors} error{generationStats.errors !== 1 ? 's' : ''} | {generationStats.files} file{generationStats.files !== 1 ? 's' : ''} generated successfully
+                        {generationStats.errors}{t.codegenerationpanel3125}{generationStats.errors !== 1 ? 's' : ''} | {generationStats.files}{generationStats.files !== 1 ? t.codegenerationpanel3125_4 : t.codegenerationpanel3125_5}{t.codegenerationpanel3125_3}
                       </div>
                     </div>
                   </div>
@@ -3136,7 +3136,7 @@ export default function CodeGenerationPanel() {
                           <div className="flex-1 space-y-1">
                             <div className="font-medium" style={{ color: colors.errorText }}>{err.file}</div>
                             <div className="text-xs" style={{ color: colors.textMuted }}>
-                              Template: <span style={{ color: colors.textSecondary }}>{err.template}</span>
+                              {t.codegenerationpanel3139}<span style={{ color: colors.textSecondary }}>{err.template}</span>
                               {err.table && <> | Table: <span style={{ color: colors.textSecondary }}>{err.table}</span></>}
                               {err.language && <> | Language: <span style={{ color: colors.textSecondary }}>{err.language}</span></>}
                             </div>
@@ -3147,13 +3147,13 @@ export default function CodeGenerationPanel() {
                     ))}
                     {generationStats.errors > generationErrors.length && (
                       <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgTertiary, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.warningBorder, color: colors.warningText }}>
-                        ⚠️ {generationStats.errors - generationErrors.length} more error(s) - see ERRORS.txt in the ZIP file
+                        ⚠️ {generationStats.errors - generationErrors.length}{t.codegenerationpanel3150}
                       </div>
                     )}
                   </div>
 
                   <div className="mt-3 text-xs text-red-400">
-                    💡 Tip: All errors are also saved in <strong>ERRORS.txt</strong> inside the ZIP file
+                    {t.codegenerationpanel3156}<strong>ERRORS.txt</strong>{t.codegenerationpanel3156_2}
                   </div>
                 </div>
               )}
@@ -3175,11 +3175,11 @@ export default function CodeGenerationPanel() {
                       <div className="text-sm">
                         {currentUser.patron_type === 'monthly' ? (
                           <span style={{ color: colors.successText }}>
-                            <strong>Patron Monthly</strong> - Generierung kostenlos
+                            <strong>{t.codegenerationpanel3178_2}</strong>{t.codegenerationpanel3178}
                           </span>
                         ) : (
                           <span style={{ color: colors.warningText }}>
-                            Generierung kostet <strong>5 Credits</strong>
+                            {t.codegenerationpanel3182}<strong>{t.codegenerationpanel3182_2}</strong>
                           </span>
                         )}
                       </div>
@@ -3193,7 +3193,7 @@ export default function CodeGenerationPanel() {
                             onClick={() => { setPlanModalInitialTab(1); setShowPlanModal(true); }}
                             className="text-yellow-400 hover:text-yellow-300 underline text-xs font-semibold"
                           >
-                            Credits kaufen
+                            {t.codegenerationpanel3196}
                           </button>
                         )}
                       </div>
@@ -3202,7 +3202,7 @@ export default function CodeGenerationPanel() {
                   {/* Patron Monthly upgrade hint when low on credits */}
                   {currentUser.patron_type !== 'monthly' && (currentUser.credits || 0) < 5 && (
                     <p className="text-xs text-center mt-2" style={{ color: colors.textMuted }}>
-                      Oder upgrade zu{' '}
+                      {t.codegenerationpanel3205}{' '}
                       <button
                         type="button"
                         onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
@@ -3211,7 +3211,7 @@ export default function CodeGenerationPanel() {
                       >
                         Patron Monthly
                       </button>
-                      {' '}für unbegrenzte Generierung!
+                      {' '}{t.codegenerationpanel3214}
                     </p>
                   )}
                 </div>
@@ -3231,14 +3231,14 @@ export default function CodeGenerationPanel() {
                     />
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🔗</span>
-                      <span className="font-medium" style={{ color: colors.textPrimary }}>Push to Git</span>
-                      <span className="text-xs" style={{ color: colors.textMuted }}>(automatisch nach Generierung)</span>
+                      <span className="font-medium" style={{ color: colors.textPrimary }}>{t.codegenerationpanel3234}</span>
+                      <span className="text-xs" style={{ color: colors.textMuted }}>{t.codegenerationpanel3235}</span>
                       {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
-                        <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">Patron</span>
+                        <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">{t.codegenerationpanel3237}</span>
                       )}
                       {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
                         <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
-                          {gitIntegrationAccess.days_remaining} Tage
+                          {gitIntegrationAccess.days_remaining}{t.codegenerationpanel3241}
                         </span>
                       )}
                     </div>
@@ -3254,7 +3254,7 @@ export default function CodeGenerationPanel() {
                         className="w-4 h-4 rounded text-green-600 focus:ring-green-500"
                         style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                       />
-                      <span>Merken</span>
+                      <span>{t.codegenerationpanel3257}</span>
                       {rememberPushToGit && <span style={{ color: colors.successText }}>✓</span>}
                     </label>
                   )}
@@ -3266,11 +3266,11 @@ export default function CodeGenerationPanel() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2" style={{ color: colors.infoText }}>
                         <span>🔒</span>
-                        <span className="text-sm">Git Integration ist ein Premium-Feature</span>
+                        <span className="text-sm">{t.codegenerationpanel3269}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium" style={{ color: colors.textSecondary }}>
-                          {gitIntegrationAccess.unlock_cost} Credits / Jahr
+                          {gitIntegrationAccess.unlock_cost}{t.codegenerationpanel3273}
                         </span>
                         <button
                           type="button"
@@ -3278,12 +3278,12 @@ export default function CodeGenerationPanel() {
                           disabled={unlockingGitIntegration}
                           className="px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-wait text-white text-sm font-medium rounded transition-colors"
                         >
-                          {unlockingGitIntegration ? '...' : 'Freischalten'}
+                          {unlockingGitIntegration ? '...' : t.codegenerationpanel3281}
                         </button>
                       </div>
                     </div>
                     <p className="mt-2 text-xs" style={{ color: colors.textMuted }}>
-                      Schalten Sie Git Integration frei, um Code direkt zu GitHub/GitLab zu pushen, PRs zu erstellen und automatisch zu mergen.
+                      {t.codegenerationpanel3286}
                     </p>
                   </div>
                 )}
@@ -3296,7 +3296,7 @@ export default function CodeGenerationPanel() {
                       <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, borderWidth: '1px', borderStyle: 'solid', borderColor: colors.warningBorder, color: colors.warningText }}>
                         <div className="flex items-center gap-2">
                           <span>⚠️</span>
-                          <span>Kein Git-Provider verbunden. Bitte verbinden Sie GitHub oder GitLab in den Profileinstellungen.</span>
+                          <span>{t.codegenerationpanel3299}</span>
                         </div>
                       </div>
                     )}
@@ -3307,7 +3307,7 @@ export default function CodeGenerationPanel() {
                         {/* Provider Dropdown */}
                         <div>
                           <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                            Provider
+                            {t.codegenerationpanel3310}
                           </label>
                           <select
                             value={selectedGitProvider?.id || ''}
@@ -3319,7 +3319,7 @@ export default function CodeGenerationPanel() {
                             className="w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500"
                             style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           >
-                            <option value="">Provider wählen...</option>
+                            <option value="">{t.codegenerationpanel3322}</option>
                             {gitProviders.map(provider => (
                               <option key={provider.id} value={provider.id}>
                                 {provider.provider === 'github' ? '🐙 GitHub' : '🦊 GitLab'} - @{provider.username}
@@ -3331,7 +3331,7 @@ export default function CodeGenerationPanel() {
                         {/* Repository Dropdown */}
                         <div>
                           <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                            Repository
+                            {t.codegenerationpanel3334}
                           </label>
                           <select
                             value={selectedRepository?.id || ''}
@@ -3344,7 +3344,7 @@ export default function CodeGenerationPanel() {
                             style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           >
                             <option value="">
-                              {loadingGitData ? 'Lade Repositories...' : 'Repository wählen...'}
+                              {loadingGitData ? t.codegenerationpanel3347 : t.codegenerationpanel3347_2}
                             </option>
                             {gitRepositories.map(repo => (
                               <option key={repo.id} value={repo.id}>
@@ -3371,7 +3371,7 @@ export default function CodeGenerationPanel() {
                                 onChange={() => setUseNewBranch(false)}
                                 className="text-blue-600"
                               />
-                              Existierend
+                              {t.codegenerationpanel3374}
                             </label>
                             <label className="flex items-center gap-2 text-sm" style={{ color: colors.textMuted }}>
                               <input
@@ -3380,7 +3380,7 @@ export default function CodeGenerationPanel() {
                                 onChange={() => setUseNewBranch(true)}
                                 className="text-blue-600"
                               />
-                              Neu erstellen
+                              {t.codegenerationpanel3383}
                             </label>
                           </div>
                           {!useNewBranch ? (
@@ -3392,7 +3392,7 @@ export default function CodeGenerationPanel() {
                               style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                             >
                               <option value="">
-                                {loadingGitData ? 'Lade Branches...' : 'Branch wählen...'}
+                                {loadingGitData ? t.codegenerationpanel3395 : t.codegenerationpanel3395_2}
                               </option>
                               {gitBranches.map(branch => (
                                 <option key={branch.name} value={branch.name}>
@@ -3405,7 +3405,7 @@ export default function CodeGenerationPanel() {
                               type="text"
                               value={newBranchName}
                               onChange={(e) => setNewBranchName(e.target.value)}
-                              placeholder="z.B. feature/generated-code"
+                              placeholder={t.codegenerationpanel3408}
                               className="mt-2 w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
                               style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                             />
@@ -3415,13 +3415,13 @@ export default function CodeGenerationPanel() {
                         {/* Commit Message */}
                         <div>
                           <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                            Commit Message
+                            {t.codegenerationpanel3418}
                           </label>
                           <input
                             type="text"
                             value={commitMessage}
                             onChange={(e) => setCommitMessage(e.target.value)}
-                            placeholder="Commit message..."
+                            placeholder={t.codegenerationpanel3424}
                             className="mt-6 w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
                             style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                           />
@@ -3444,7 +3444,7 @@ export default function CodeGenerationPanel() {
                               className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                               style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                             />
-                            <span>🔀 {selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} erstellen</span>
+                            <span>🔀 {selectedGitProvider?.provider === 'gitlab' ? t.codegenerationpanel3447 : t.codegenerationpanel3447_2}{t.codegenerationpanel3447_3}</span>
                           </label>
 
                           {/* PR Title (shown when PR is enabled) */}
@@ -3452,13 +3452,13 @@ export default function CodeGenerationPanel() {
                             <>
                               <div>
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
-                                  {selectedGitProvider?.provider === 'gitlab' ? 'MR' : 'PR'} Titel
+                                  {selectedGitProvider?.provider === 'gitlab' ? 'MR' : 'PR'}{t.codegenerationpanel3455}
                                 </label>
                                 <input
                                   type="text"
                                   value={prTitle}
                                   onChange={(e) => setPrTitle(e.target.value)}
-                                  placeholder={`${selectedGitProvider?.provider === 'gitlab' ? 'Merge Request' : 'Pull Request'} Titel...`}
+                                  placeholder={`${selectedGitProvider?.provider === 'gitlab' ? t.codegenerationpanel3461 : t.codegenerationpanel3461_2}${t.codegenerationpanel3461_3}`}
                                   className="w-full px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 themed-input"
                                   style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
                                 />
@@ -3473,7 +3473,7 @@ export default function CodeGenerationPanel() {
                                   className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
                                   style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                                 />
-                                <span>⚡ Auto-Merge nach Erstellung</span>
+                                <span>{t.codegenerationpanel3476}</span>
                               </label>
 
                               {/* Delete Branch After Merge (shown when auto-merge is enabled) */}
@@ -3486,7 +3486,7 @@ export default function CodeGenerationPanel() {
                                     className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
                                     style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                                   />
-                                  <span>🗑️ Branch nach Merge löschen</span>
+                                  <span>{t.codegenerationpanel3489}</span>
                                 </label>
                               )}
                             </>
@@ -3506,11 +3506,11 @@ export default function CodeGenerationPanel() {
                             className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                             style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}
                           />
-                          <span>💾 Einstellungen im Projekt speichern</span>
+                          <span>{t.codegenerationpanel3509}</span>
                         </label>
                         {rememberGitSettings && (
                           <span className="text-xs" style={{ color: colors.successText }}>
-                            Wird beim Generieren gespeichert
+                            {t.codegenerationpanel3513}
                           </span>
                         )}
                       </div>
@@ -3529,11 +3529,11 @@ export default function CodeGenerationPanel() {
                       >
                         {gitPushStatus === 'pushing' && (
                           <span className="flex items-center gap-2">
-                            <span className="animate-spin">⚙️</span> Pushing to Git...
+                            <span className="animate-spin">⚙️</span>{t.codegenerationpanel3532}
                           </span>
                         )}
-                        {gitPushStatus === 'success' && '✅ Erfolgreich gepusht!'}
-                        {gitPushStatus === 'error' && '❌ Push fehlgeschlagen - siehe Log'}
+                        {gitPushStatus === 'success' && t.codegenerationpanel3535}
+                        {gitPushStatus === 'error' && t.codegenerationpanel3536}
                       </div>
                     )}
                   </div>
@@ -3546,9 +3546,9 @@ export default function CodeGenerationPanel() {
                   <div className="flex items-center gap-2 text-red-400">
                     <i className="pi pi-lock text-xl"></i>
                     <div>
-                      <div className="font-semibold">Projekt gesperrt</div>
+                      <div className="font-semibold">{t.codegenerationpanel3549}</div>
                       <div className="text-sm text-red-300">
-                        Das Abo für dieses Projekt ist abgelaufen. Bitte erneuern Sie das Abo in der Projektverwaltung, um Code zu generieren.
+                        {t.codegenerationpanel3551}
                       </div>
                     </div>
                   </div>
@@ -3584,8 +3584,8 @@ export default function CodeGenerationPanel() {
                     </>
                   ) : (
                     currentUser?.patron_type === 'monthly'
-                      ? '🚀 Generate & Download'
-                      : '🚀 Generate & Download (5 Credits)'
+                      ? t.codegenerationpanel3587
+                      : t.codegenerationpanel3588
                   )}
                 </button>
 
@@ -3612,12 +3612,12 @@ export default function CodeGenerationPanel() {
                   {generating ? (
                     <>
                       <span className="inline-block animate-spin mr-2">⚙️</span>
-                      Deploying...
+                      {t.codegenerationpanel3615}
                     </>
                   ) : (
                     currentUser?.patron_type === 'monthly'
-                      ? '📦 Generate & Deploy'
-                      : '📦 Generate & Deploy (5 Credits)'
+                      ? t.codegenerationpanel3619
+                      : t.codegenerationpanel3620
                   )}
                 </button>
 
@@ -3647,12 +3647,12 @@ export default function CodeGenerationPanel() {
                     {ftpUploading ? (
                       <>
                         <span className="inline-block animate-spin mr-2">⚙️</span>
-                        Uploading...
+                        {t.codegenerationpanel3650}
                       </>
                     ) : (
                       currentUser?.patron_type === 'monthly'
-                        ? `📡 Generate & ${selectedProject.deployment_type?.toUpperCase()} Upload`
-                        : `📡 Generate & ${selectedProject.deployment_type?.toUpperCase()} Upload (5 Credits)`
+                        ? `${t.codegenerationpanel3654}${selectedProject.deployment_type?.toUpperCase()}${t.codegenerationpanel3654_2}`
+                        : `${t.codegenerationpanel3655}${selectedProject.deployment_type?.toUpperCase()}${t.codegenerationpanel3655_2}`
                     )}
                   </button>
                 )}
@@ -3687,7 +3687,7 @@ export default function CodeGenerationPanel() {
                   {/* ETA and progress info */}
                   <div className="flex items-center justify-between text-xs" style={{ color: colors.textMuted }}>
                     <div>
-                      {generationProgress.current} / {generationProgress.total} Operationen
+                      {generationProgress.current} / {generationProgress.total}{t.codegenerationpanel3690}
                     </div>
                     <div className="font-medium" style={{ color: colors.accent }}>
                       {generationProgress.eta}
@@ -3701,11 +3701,11 @@ export default function CodeGenerationPanel() {
                 <div className="mt-6 rounded-lg overflow-hidden" style={{ backgroundColor: colors.bgPrimary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                   <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: colors.bgTertiary, borderBottomColor: colors.borderPrimary, borderBottomWidth: '1px', borderBottomStyle: 'solid' }}>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>📋 Deployment Log</h3>
+                      <h3 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{t.codegenerationpanel3704}</h3>
                       {deploymentPolling && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-900 text-blue-200 rounded text-xs">
                           <span className="inline-block animate-spin">🔄</span>
-                          Monitoring...
+                          {t.codegenerationpanel3708}
                         </span>
                       )}
                       {deploymentTaskId && (
@@ -3719,7 +3719,7 @@ export default function CodeGenerationPanel() {
                       onMouseEnter={(e) => { e.currentTarget.style.color = colors.textPrimary; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = colors.textMuted; }}
                     >
-                      Clear
+                      {t.codegenerationpanel3722}
                     </button>
                   </div>
                   <div className="p-4 font-mono text-xs max-h-96 overflow-y-auto bg-black">
@@ -3745,7 +3745,7 @@ export default function CodeGenerationPanel() {
               {/* Validation Message */}
               {selectedTemplateIds.size === 0 && (
                 <div className="mt-2 text-xs text-red-400 text-right">
-                  Please select at least one template
+                  {t.codegenerationpanel3748}
                 </div>
               )}
             </>
@@ -3760,9 +3760,9 @@ export default function CodeGenerationPanel() {
             <div className="flex items-center gap-3 mb-4">
               <div className="text-4xl">⚠️</div>
               <div>
-                <h2 className="text-2xl font-bold text-yellow-400">ACHTUNG: Datei-Konflikte erkannt!</h2>
+                <h2 className="text-2xl font-bold text-yellow-400">{t.codegenerationpanel3763}</h2>
                 <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                  Die folgenden Dateien werden von mehreren Templates generiert und überschreiben sich gegenseitig:
+                  {t.codegenerationpanel3765}
                 </p>
               </div>
             </div>
@@ -3779,14 +3779,14 @@ export default function CodeGenerationPanel() {
                         </div>
                         {conflict.type === 'intra-template' && (
                           <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: colors.errorBg, color: colors.errorText }}>
-                            DUPLIKAT IM TEMPLATE
+                            {t.codegenerationpanel3782}
                           </span>
                         )}
                       </div>
                       <div className="text-sm ml-4" style={{ color: colors.textMuted }}>
                         {conflict.type === 'intra-template' ? (
                           <>
-                            <strong style={{ color: colors.errorText }}>⚠️ Achtung:</strong> Diese Datei existiert <strong>mehrfach im gleichen Template</strong>:
+                            <strong style={{ color: colors.errorText }}>{t.codegenerationpanel3789}</strong>{t.codegenerationpanel3789_2}<strong>{t.codegenerationpanel3789_3}</strong>:
                             <ul className="mt-1 space-y-1">
                               <li className="flex items-center gap-2">
                                 <span style={{ color: colors.errorText }}>•</span>
@@ -3797,7 +3797,7 @@ export default function CodeGenerationPanel() {
                           </>
                         ) : (
                           <>
-                            Wird generiert von <strong>mehreren Templates</strong>:
+                            {t.codegenerationpanel3800_2}<strong>{t.codegenerationpanel3800}</strong>:
                             <ul className="mt-1 space-y-1">
                               {conflict.templates.map((template, tIdx) => (
                                 <li key={tIdx} className="flex items-center gap-2">
@@ -3819,8 +3819,8 @@ export default function CodeGenerationPanel() {
               <div className="flex items-start gap-2">
                 <span className="text-blue-400 text-xl">💡</span>
                 <div className="text-sm text-blue-200">
-                  <strong>Hinweis:</strong> Wenn Sie fortfahren, wird die <strong>zuletzt generierte</strong> Datei die vorherigen überschreiben.
-                  Dies kann zu unerwartetem Verhalten führen.
+                  <strong>{t.codegenerationpanel3822}</strong>{t.codegenerationpanel3822_2}<strong>{t.codegenerationpanel3822_3}</strong>{t.codegenerationpanel3822_4}
+                  {t.codegenerationpanel3823}
                 </div>
               </div>
             </div>
@@ -3834,7 +3834,7 @@ export default function CodeGenerationPanel() {
                 className="px-6 py-3 rounded-lg font-medium transition-colors"
                 style={{ backgroundColor: colors.buttonSecondary, color: colors.textPrimary }}
               >
-                Abbrechen
+                {t.codegenerationpanel3837}
               </button>
               <button
                 onClick={() => {
@@ -3843,7 +3843,7 @@ export default function CodeGenerationPanel() {
                 className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
               >
                 <span>⚠️</span>
-                Trotzdem generieren
+                {t.codegenerationpanel3846}
               </button>
             </div>
           </div>

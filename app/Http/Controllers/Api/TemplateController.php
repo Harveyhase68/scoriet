@@ -31,7 +31,7 @@ class TemplateController extends Controller
             // If project_id is specified, only show templates specifically for this project
             $project = Project::find($projectId);
             if (!$project || !$project->userCanAccess($user)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['message' => __('templatecontrollerphp34')], 403);
             }
 
             // Get templates linked to this project via project_template_usage table
@@ -202,23 +202,23 @@ class TemplateController extends Controller
 
         // Check permissions
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized to access this project'], 403);
+            return response()->json(['message' => __('templatecontrollerphp205')], 403);
         }
 
         if (!$template->canBeUsedBy($user)) {
-            return response()->json(['message' => 'Cannot use this template'], 403);
+            return response()->json(['message' => __('templatecontrollerphp209')], 403);
         }
 
         // Check if already using this template
         if ($project->isUsingTemplate($template)) {
-            return response()->json(['message' => 'Template is already used by this project'], 400);
+            return response()->json(['message' => __('templatecontrollerphp214')], 400);
         }
 
         // Link the template
         $usage = $project->linkTemplate($template, $validated['alias'] ?? null, $validated['config'] ?? null);
 
         return response()->json([
-            'message' => 'Template linked successfully',
+            'message' => __('templatecontrollerphp221'),
             'usage' => $usage->load('template'),
         ]);
     }
@@ -239,7 +239,7 @@ class TemplateController extends Controller
                 'max:255',
                 function ($attribute, $value, $fail) {
                     if ($value && !\App\Models\Template::validateTemplateName($value)) {
-                        $fail('Template name must be lowercase letters, numbers, and max one underscore.');
+                        $fail(__('templatecontrollerphp242'));
                     }
                 },
             ],
@@ -251,11 +251,11 @@ class TemplateController extends Controller
 
         // Check permissions
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized to access this project'], 403);
+            return response()->json(['message' => __('templatecontrollerphp254')], 403);
         }
 
         if (!$template->canBeClonedBy($user)) {
-            return response()->json(['message' => 'Cannot clone this template'], 403);
+            return response()->json(['message' => __('templatecontrollerphp258')], 403);
         }
 
         // Clone the template
@@ -266,7 +266,7 @@ class TemplateController extends Controller
         );
 
         return response()->json([
-            'message' => 'Template cloned successfully',
+            'message' => __('templatecontrollerphp269'),
             'template' => $result['template'],
             'usage' => $result['usage'],
         ]);
@@ -280,7 +280,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp283')], 403);
         }
 
         $usages = $project->usedTemplates()->get();
@@ -355,7 +355,7 @@ class TemplateController extends Controller
 
         // Check permissions
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized to access this project'], 403);
+            return response()->json(['message' => __('templatecontrollerphp358')], 403);
         }
 
         $assignedCount = 0;
@@ -378,7 +378,7 @@ class TemplateController extends Controller
         }
 
         return response()->json([
-            'message' => "Successfully assigned {$assignedCount} template(s) to project",
+            'message' => __('templatecontrollerphp381')+"{$assignedCount}".__('templatecontrollerphp381_2'),
             'assigned_count' => $assignedCount,
         ]);
     }
@@ -398,16 +398,16 @@ class TemplateController extends Controller
         $template = Template::find($templateId);
 
         if (!$project) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('templatecontrollerphp401')], 404);
         }
 
         if (!$template) {
-            return response()->json(['message' => 'Template not found'], 404);
+            return response()->json(['message' => __('templatecontrollerphp405')], 404);
         }
 
         // Check permissions
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized to access this project'], 403);
+            return response()->json(['message' => __('templatecontrollerphp410')], 403);
         }
 
         // Find and deactivate the template usage (using strict integer comparison)
@@ -417,14 +417,14 @@ class TemplateController extends Controller
             ->first();
 
         if (!$usage) {
-            return response()->json(['message' => 'Template is not assigned to this project'], 404);
+            return response()->json(['message' => __('templatecontrollerphp420')], 404);
         }
 
         // Deactivate the usage (soft delete)
         $usage->update(['is_active' => false]);
 
         return response()->json([
-            'message' => 'Template removed from project successfully',
+            'message' => __('templatecontrollerphp427'),
             'success' => true,
         ]);
     }
@@ -443,12 +443,12 @@ class TemplateController extends Controller
         $usage = ProjectTemplateUsage::findOrFail($validated['usage_id']);
 
         if (!$usage->project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp446')], 403);
         }
 
         $usage->update(['is_active' => false]);
 
-        return response()->json(['message' => 'Template usage removed successfully']);
+        return response()->json(['message' => __('templatecontrollerphp451')]);
     }
 
     /**
@@ -533,7 +533,7 @@ class TemplateController extends Controller
                 // Check if user has enough credits for a new slot
                 if ($user->credits < $requiredCredits) {
                     return response()->json([
-                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
+                        'message' => __('templatecontrollerphp536')."{$requiredCredits}".__('templatecontrollerphp536_2'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => $requiredCredits,
                         'current_credits' => $user->credits,
@@ -586,7 +586,7 @@ class TemplateController extends Controller
                     'user_id' => $user->id,
                     'amount' => -$requiredCredits,
                     'type' => 'templates_unlock',
-                    'description' => "Private template slot (1 year) - created template: {$validated['name']}",
+                    'description' => __('templatecontrollerphp589')."{$validated['name']}",
                 ]);
             }
 
@@ -609,8 +609,8 @@ class TemplateController extends Controller
                             'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
                         ];
                     } catch (\Exception $e) {
-                        \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
-                        throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
+                        \Log::error(__('templatecontrollerphp612'), ['error' => $e->getMessage()]);
+                        throw new \Exception(__('templatecontrollerphp613') . $e->getMessage());
                     }
                 } elseif (isset($fileData['content_type']) && $fileData['content_type'] === 'zip') {
                     // Already a ZIP with Base64 content - pass through without re-processing
@@ -669,7 +669,7 @@ class TemplateController extends Controller
 
         // Check if user can view this template
         if (!$template->canBeViewedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp672')], 403);
         }
 
         $template->load(['files', 'creator']);
@@ -700,7 +700,7 @@ class TemplateController extends Controller
 
         // Check if user can edit this template
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp703')], 403);
         }
 
         $validated = $request->validate([
@@ -791,7 +791,7 @@ class TemplateController extends Controller
                 // Check if user has enough credits for a new slot
                 if ($user->credits < $requiredCredits) {
                     return response()->json([
-                        'message' => "Nicht genug Credits. Sie benötigen {$requiredCredits} Credits für ein privates Template.",
+                        'message' => __('templatecontrollerphp794')."{$requiredCredits}".__('templatecontrollerphp794_2'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => $requiredCredits,
                         'current_credits' => $user->credits,
@@ -811,7 +811,7 @@ class TemplateController extends Controller
                 // or return error if they explicitly try to change it
                 if ($validated['visibility'] !== $template->visibility) {
                     return response()->json([
-                        'message' => 'Die Sichtbarkeit dieses Templates kann nicht geändert werden, da es von einem gekauften Template geklont wurde.',
+                        'message' => __('templatecontrollerphp814'),
                         'error_code' => 'VISIBILITY_LOCKED',
                     ], 403);
                 }
@@ -864,7 +864,7 @@ class TemplateController extends Controller
                 $updateData['visibility'] = 'private';
                 $autoSetToPrivate = true;
 
-                \Log::warning('Code Scanner: Malicious code detected - automatically set template to private', [
+                \Log::warning(__('templatecontrollerphp867'), [
                     'template_id' => $template->id,
                     'template_name' => $template->name,
                     'was_trying_to_go_public_or_store' => $isBecomingPublicOrStore,
@@ -903,7 +903,7 @@ class TemplateController extends Controller
                 'user_id' => $user->id,
                 'amount' => -$requiredCredits,
                 'type' => 'templates_unlock',
-                'description' => "Private template slot (1 year) - updated template: {$template->name}",
+                'description' => __('templatecontrollerphp906')."{$template->name}",
             ]);
         }
 
@@ -925,8 +925,8 @@ class TemplateController extends Controller
                             'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
                         ];
                     } catch (\Exception $e) {
-                        \Log::error("Failed to create ZIP from managed files", ['error' => $e->getMessage()]);
-                        throw new \Exception('Failed to create archive from managed files: ' . $e->getMessage());
+                        \Log::error(__('templatecontrollerphp928'), ['error' => $e->getMessage()]);
+                        throw new \Exception(__('templatecontrollerphp929') . $e->getMessage());
                     }
                 } elseif (isset($fileData['content_type']) && $fileData['content_type'] === 'zip') {
                     // Already a ZIP with Base64 content - pass through without re-processing
@@ -966,7 +966,7 @@ class TemplateController extends Controller
                 $cacheService->invalidateTemplate($template->id);
                 $cacheService->invalidateGtreeForTemplate($template->id);
             } catch (\Exception $e) {
-                \Log::warning("Cache invalidation after template file update failed: " . $e->getMessage());
+                \Log::warning(__('templatecontrollerphp969') . $e->getMessage());
             }
         }
 
@@ -992,7 +992,7 @@ class TemplateController extends Controller
             // If template was automatically set to private due to malicious code
             if ($autoSetToPrivate) {
                 $responseData['auto_set_to_private'] = true;
-                $responseData['warning'] = 'Template unusual content detected, switching back to private.';
+                $responseData['warning'] = __('templatecontrollerphp995');
 
                 // Detaillierte Issue-Liste für Frontend
                 if (!empty($scanResult['issues']['hard_blocks'])) {
@@ -1018,11 +1018,11 @@ class TemplateController extends Controller
         // Check if user can delete this template
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
-                return response()->json(['message' => 'System-Templates können nicht gelöscht werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1021')], 403);
             } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
-                return response()->json(['message' => 'Public Templates anderer Benutzer können nicht gelöscht werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1023')], 403);
             } else {
-                return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu löschen'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1025')], 403);
             }
         }
 
@@ -1033,7 +1033,7 @@ class TemplateController extends Controller
         // Note: Observer will handle this automatically, but we ensure it's dispatched
         // $this->dispatchRegenerationJobsForTemplate($template); // Not needed - Observer handles it
 
-        return response()->json(['message' => 'Template deleted successfully']);
+        return response()->json(['message' => __('templatecontrollerphp1036')]);
     }
 
     /**
@@ -1046,11 +1046,11 @@ class TemplateController extends Controller
         // Check if user can delete this template
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
-                return response()->json(['message' => 'System-Templates können nicht permanent gelöscht werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1049')], 403);
             } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
-                return response()->json(['message' => 'Public Templates anderer Benutzer können nicht permanent gelöscht werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1051')], 403);
             } else {
-                return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template permanent zu löschen'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1053')], 403);
             }
         }
 
@@ -1063,7 +1063,7 @@ class TemplateController extends Controller
         // Delete the template itself
         $template->delete();
 
-        return response()->json(['message' => 'Template permanently deleted']);
+        return response()->json(['message' => __('templatecontrollerphp1066')]);
     }
 
     /**
@@ -1076,18 +1076,18 @@ class TemplateController extends Controller
         // Check if user can edit this template
         if (!$template->canBeEditedBy($user)) {
             if ($template->is_system_template) {
-                return response()->json(['message' => 'System-Templates können nicht aktiviert/deaktiviert werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1079')], 403);
             } elseif ($template->visibility === 'public' && $template->creator_user_id !== (string)$user->id) {
-                return response()->json(['message' => 'Public Templates anderer Benutzer können nicht geändert werden'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1081')], 403);
             } else {
-                return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu ändern'], 403);
+                return response()->json(['message' => __('templatecontrollerphp1083')], 403);
             }
         }
 
         $newStatus = !$template->is_active;
         $template->update(['is_active' => $newStatus]);
 
-        $message = $newStatus ? 'Template activated successfully' : 'Template deactivated successfully';
+        $message = $newStatus ? __('templatecontrollerphp1090') : __('templatecontrollerphp1090_2');
 
         return response()->json([
             'message' => $message,
@@ -1105,7 +1105,7 @@ class TemplateController extends Controller
 
         // Check if user owns this template
         if ((int)$template->creator_user_id !== (int)$user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1108')], 403);
         }
 
         $validated = $request->validate([
@@ -1141,7 +1141,7 @@ class TemplateController extends Controller
         // Load template manually since route uses {id} not {template}
         $template = Template::find($id);
         if (!$template) {
-            return response()->json(['message' => 'Template nicht gefunden'], 404);
+            return response()->json(['message' => __('templatecontrollerphp1144')], 404);
         }
 
         $validated = $request->validate([
@@ -1168,9 +1168,9 @@ class TemplateController extends Controller
                 'reason' => 'canBeViewedBy returned false'
             ]);
             return response()->json([
-                'message' => 'Sie haben keine Berechtigung, dieses Template zu klonen. ' .
+                'message' => __('templatecontrollerphp1171') .
                     ($template->visibility === 'store' && !$hasPurchased
-                        ? 'Dieses Store-Template wurde nicht von Ihrem Konto gekauft.'
+                        ? __('templatecontrollerphp1173')
                         : ''),
                 'debug' => [
                     'your_user_id' => $user->id,
@@ -1217,7 +1217,7 @@ class TemplateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Template erfolgreich geklont',
+            'message' => __('templatecontrollerphp1220'),
             'template' => $clonedTemplate->load('files'),
         ]);
     }
@@ -1250,7 +1250,7 @@ class TemplateController extends Controller
 
         // Check if user can view this template
         if (!$template->canBeViewedBy($user)) {
-            return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu betrachten'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1253')], 403);
         }
 
         try {
@@ -1285,7 +1285,7 @@ class TemplateController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to load template dependencies'
+                'error' => __('templatecontrollerphp1288')
             ], 500);
         }
     }
@@ -1299,7 +1299,7 @@ class TemplateController extends Controller
 
         // Check if user can edit this template
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu bearbeiten'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1302')], 403);
         }
 
         try {
@@ -1309,7 +1309,7 @@ class TemplateController extends Controller
                 'alias' => 'nullable|string|max:255',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation failed for add DB schema dependency', [
+            \Log::error(__('templatecontrollerphp1312'), [
                 'template_id' => $template->id,
                 'request_data' => $request->all(),
                 'validation_errors' => $e->errors()
@@ -1331,7 +1331,7 @@ class TemplateController extends Controller
             if ($existing) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Diese Abhängigkeit existiert bereits'
+                    'error' => __('templatecontrollerphp1334')
                 ], 422);
             }
 
@@ -1345,11 +1345,11 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'DB Schema Abhängigkeit erfolgreich hinzugefügt',
+                'message' => __('templatecontrollerphp1348'),
                 'dependency' => $dependency->load('dbSchema.owner')
             ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to add DB schema dependency: ' . $e->getMessage(), [
+            \Log::error(__('templatecontrollerphp1352') . $e->getMessage(), [
                 'template_id' => $template->id,
                 'request_data' => $validated ?? $request->all(),
                 'exception' => $e
@@ -1357,7 +1357,7 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to add dependency: ' . $e->getMessage()
+                'error' => __('templatecontrollerphp1360') . $e->getMessage()
             ], 500);
         }
     }
@@ -1371,7 +1371,7 @@ class TemplateController extends Controller
 
         // Check if user can edit this template
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Sie haben keine Berechtigung, dieses Template zu bearbeiten'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1374')], 403);
         }
 
         try {
@@ -1382,7 +1382,7 @@ class TemplateController extends Controller
             if (!$dependency) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Abhängigkeit nicht gefunden'
+                    'error' => __('templatecontrollerphp1385')
                 ], 404);
             }
 
@@ -1390,12 +1390,12 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'DB Schema Abhängigkeit erfolgreich entfernt'
+                'message' => __('templatecontrollerphp1393')
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to remove dependency'
+                'error' => __('templatecontrollerphp1398')
             ], 500);
         }
     }
@@ -1409,7 +1409,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeViewedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1412')], 403);
         }
 
         // Add content_length for ZIP files to enable frontend integrity verification
@@ -1433,7 +1433,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1436')], 403);
         }
 
         $validated = $request->validate([
@@ -1480,7 +1480,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1483')], 403);
         }
 
         $file = $template->files()->findOrFail($fileId);
@@ -1528,7 +1528,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeViewedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1531')], 403);
         }
 
         $file = $template->files()->findOrFail($fileId);
@@ -1583,7 +1583,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeEditedBy($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1586')], 403);
         }
 
         $file = $template->files()->findOrFail($fileId);
@@ -1592,7 +1592,7 @@ class TemplateController extends Controller
         // Update file_count
         $template->update(['file_count' => $template->files()->count()]);
 
-        return response()->json(['message' => 'File deleted successfully']);
+        return response()->json(['message' => __('templatecontrollerphp1595')]);
     }
 
     /**
@@ -1617,7 +1617,7 @@ class TemplateController extends Controller
             try {
                 \App\Jobs\RegenerateProjectGenerationTree::dispatch($projectId);
             } catch (\Exception $e) {
-                \Log::error("Failed to dispatch regeneration job for project {$projectId}: " . $e->getMessage());
+                \Log::error(__('templatecontrollerphp1620')."{$projectId}: " . $e->getMessage());
             }
         }
     }
@@ -1634,7 +1634,7 @@ class TemplateController extends Controller
 
         if (!$template) {
             return response()->json([
-                'message' => 'Template not found.',
+                'message' => __('templatecontrollerphp1637'),
             ], 404);
         }
 
@@ -1643,7 +1643,7 @@ class TemplateController extends Controller
             !in_array($user->user_type, ['admin', 'system']) &&
             !$user->is_inner_core) {
             return response()->json([
-                'message' => 'Unauthorized to export this template.',
+                'message' => __('templatecontrollerphp1646'),
             ], 403);
         }
 
@@ -1699,7 +1699,7 @@ class TemplateController extends Controller
 
         if (!$template) {
             return response()->json([
-                'message' => 'Template not found.',
+                'message' => __('templatecontrollerphp1702'),
             ], 404);
         }
 
@@ -1708,7 +1708,7 @@ class TemplateController extends Controller
             !in_array($user->user_type, ['admin', 'system']) &&
             !$user->is_inner_core) {
             return response()->json([
-                'message' => 'Unauthorized to download this template.',
+                'message' => __('templatecontrollerphp1711'),
             ], 403);
         }
 
@@ -1725,7 +1725,7 @@ class TemplateController extends Controller
         $zip = new \ZipArchive();
         if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             return response()->json([
-                'message' => 'Failed to create ZIP archive.',
+                'message' => __('templatecontrollerphp1728'),
             ], 500);
         }
 
@@ -1783,19 +1783,19 @@ class TemplateController extends Controller
         $format = $request->query('format', 'zip');
 
         if (!in_array($format, ['zip', 'tar.gz', 'tar.xz'])) {
-            return response()->json(['error' => 'Invalid format'], 400);
+            return response()->json(['error' => __('templatecontrollerphp1786')], 400);
         }
 
         $template = Template::with(['files', 'creator'])->find($templateId);
 
         if (!$template) {
-            return response()->json(['message' => 'Template not found.'], 404);
+            return response()->json(['message' => __('templatecontrollerphp1792')], 404);
         }
 
         if ($template->creator_user_id != $user->id &&
             !in_array($user->user_type, ['admin', 'system']) &&
             !$user->is_inner_core) {
-            return response()->json(['message' => 'Unauthorized to download this template.'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1798')], 403);
         }
 
         $tempDir = storage_path('app/temp/template_export_' . uniqid());
@@ -1880,7 +1880,7 @@ class TemplateController extends Controller
                 $readme .= "Creator: {$template->creator->name} ({$template->creator->email})\n";
             }
             $readme .= "Created: {$template->created_at}\n";
-            $readme .= "\nScoriet Template Export\n";
+            $readme .= "\n".__('templatecontrollerphp1883')."\n";
             $readme .= "https://scoriet.com\n";
             \Illuminate\Support\Facades\File::put($tempDir . '/README.txt', $readme);
 
@@ -1915,7 +1915,7 @@ class TemplateController extends Controller
                 $zipPath = $archivePath . '.zip';
 
                 if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                    throw new \Exception('Failed to create ZIP archive');
+                    throw new \Exception(__('templatecontrollerphp1918'));
                 }
 
                 $this->addFilesToZipRecursive($zip, $tempDir, '');
@@ -1955,8 +1955,8 @@ class TemplateController extends Controller
             return response()->download($finalArchive, $template->name . '.' . $format)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            \Log::error('Template archive download failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to create archive: ' . $e->getMessage()], 500);
+            \Log::error(__('templatecontrollerphp1958'), ['error' => $e->getMessage()]);
+            return response()->json(['error' => __('templatecontrollerphp1959') . $e->getMessage()], 500);
         } finally {
             if (\Illuminate\Support\Facades\File::exists($tempDir)) {
                 \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
@@ -2029,7 +2029,7 @@ class TemplateController extends Controller
             if ($existingTemplate && !$overwriteExisting) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                    'error' => __('templatecontrollerphp2032'),
                     'existing_template_id' => $existingTemplate->id,
                 ], 409);
             }
@@ -2069,7 +2069,7 @@ class TemplateController extends Controller
             return response()->json([
                 'success' => true,
                 'template' => $template->load('files'),
-                'message' => $overwriteExisting ? 'Template successfully imported and replaced existing one' : 'Template successfully imported',
+                'message' => $overwriteExisting ? __('templatecontrollerphp2072') : __('templatecontrollerphp2072_2'),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -2112,16 +2112,16 @@ class TemplateController extends Controller
                     // Plain TAR file
                     $this->extractTar($file->getRealPath(), $tempDir);
                 } else {
-                    throw new \Exception('Only TAR, TAR.GZ archives are supported (not standalone .gz files)');
+                    throw new \Exception(__('templatecontrollerphp2115'));
                 }
             } elseif ($extension === 'xz') {
                 if (str_ends_with(strtolower($filename), '.tar.xz')) {
                     $this->extractTarXz($file->getRealPath(), $tempDir);
                 } else {
-                    throw new \Exception('Only TAR.XZ archives are supported (not standalone .xz files)');
+                    throw new \Exception(__('templatecontrollerphp2121'));
                 }
             } else {
-                throw new \Exception('Unsupported archive format');
+                throw new \Exception(__('templatecontrollerphp2124'));
             }
 
             // Check if template.json exists in archive
@@ -2134,7 +2134,7 @@ class TemplateController extends Controller
                 $templateData = json_decode($jsonContent, true);
 
                 if (!$templateData || !isset($templateData['template'])) {
-                    throw new \Exception('Invalid template.json format');
+                    throw new \Exception(__('templatecontrollerphp2137'));
                 }
 
                 $templateInfo = $templateData['template'];
@@ -2145,7 +2145,7 @@ class TemplateController extends Controller
                 if ($existingTemplate && !$overwriteExisting) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'error' => __('templatecontrollerphp2148'),
                         'existing_template_id' => $existingTemplate->id,
                     ], 409);
                 }
@@ -2216,7 +2216,7 @@ class TemplateController extends Controller
                 $templateFiles = $this->readTemplateFilesFromDirectory($tempDir);
 
                 if (empty($templateFiles)) {
-                    throw new \Exception('No template files found in archive');
+                    throw new \Exception(__('templatecontrollerphp2219'));
                 }
 
                 // Generate template name from filename (without extension)
@@ -2228,7 +2228,7 @@ class TemplateController extends Controller
                 if ($existingTemplate && !$overwriteExisting) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Template with this name already exists. Set overwrite_existing to true to replace it.',
+                        'error' => __('templatecontrollerphp2231'),
                         'existing_template_id' => $existingTemplate->id,
                     ], 409);
                 }
@@ -2241,7 +2241,7 @@ class TemplateController extends Controller
                 // Create template
                 $template = Template::create([
                     'name' => $templateName,
-                    'description' => 'Imported from ' . $filename,
+                    'description' => __('templatecontrollerphp2244') . $filename,
                     'category' => 'Web', // Default category
                     'language' => 'PHP', // Default language
                     'tags' => [],
@@ -2265,18 +2265,18 @@ class TemplateController extends Controller
             return response()->json([
                 'success' => true,
                 'template' => $template->load('files'),
-                'message' => 'Template successfully imported from archive',
+                'message' => __('templatecontrollerphp2268'),
             ], 201);
 
         } catch (\Exception $e) {
-            \Log::error('Template import from archive failed', [
+            \Log::error(__('templatecontrollerphp2272'), [
                 'error' => $e->getMessage(),
                 'file' => $filename,
             ]);
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to import template: ' . $e->getMessage(),
+                'error' => __('templatecontrollerphp2279') . $e->getMessage(),
             ], 400);
 
         } finally {
@@ -2295,7 +2295,7 @@ class TemplateController extends Controller
         $zip = new \ZipArchive();
 
         if ($zip->open($zipPath) !== true) {
-            throw new \Exception('Failed to open ZIP archive');
+            throw new \Exception(__('templatecontrollerphp2298'));
         }
 
         $zip->extractTo($destination);
@@ -2311,7 +2311,7 @@ class TemplateController extends Controller
             $phar = new \PharData($tarPath);
             $phar->extractTo($destination, null, true);
         } catch (\Exception $e) {
-            throw new \Exception('Failed to extract TAR archive: ' . $e->getMessage());
+            throw new \Exception(__('templatecontrollerphp2314') . $e->getMessage());
         }
     }
 
@@ -2324,7 +2324,7 @@ class TemplateController extends Controller
             $phar = new \PharData($tarGzPath);
             $phar->extractTo($destination, null, true);
         } catch (\Exception $e) {
-            throw new \Exception('Failed to extract TAR.GZ archive: ' . $e->getMessage());
+            throw new \Exception(__('templatecontrollerphp2327') . $e->getMessage());
         }
     }
 
@@ -2337,7 +2337,7 @@ class TemplateController extends Controller
         $xzAvailable = shell_exec('which xz 2>/dev/null') || shell_exec('where xz 2>nul');
 
         if (!$xzAvailable) {
-            throw new \Exception('TAR.XZ extraction not available (requires xz command). Please use ZIP or TAR.GZ format instead.');
+            throw new \Exception(__('templatecontrollerphp2340'));
         }
 
         try {
@@ -2347,7 +2347,7 @@ class TemplateController extends Controller
             shell_exec($command);
 
             if (!file_exists($tarPath)) {
-                throw new \Exception('XZ decompression failed');
+                throw new \Exception(__('templatecontrollerphp2350'));
             }
 
             // Then extract tar
@@ -2360,7 +2360,7 @@ class TemplateController extends Controller
             }
 
         } catch (\Exception $e) {
-            throw new \Exception('Failed to extract TAR.XZ archive: ' . $e->getMessage());
+            throw new \Exception(__('templatecontrollerphp2363') . $e->getMessage());
         }
     }
 
@@ -2423,7 +2423,7 @@ class TemplateController extends Controller
         $zip = new \ZipArchive();
 
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            throw new \Exception('Failed to create ZIP archive from managed files');
+            throw new \Exception(__('templatecontrollerphp2426'));
         }
 
         try {
@@ -2435,7 +2435,7 @@ class TemplateController extends Controller
                 // Decode base64 content
                 $binaryContent = base64_decode($file['content'], true);
                 if ($binaryContent === false) {
-                    throw new \Exception("Failed to decode content for file: {$fileName}");
+                    throw new \Exception(__('templatecontrollerphp2438')."{$fileName}");
                 }
 
                 // Add file to ZIP with relative path
@@ -2561,7 +2561,7 @@ class TemplateController extends Controller
             } elseif ($archiveType === 'tar.xz') {
                 $this->extractTarXz($archivePath, $tempExtractDir);
             } else {
-                throw new \Exception('Unsupported archive type for conversion: ' . $archiveType);
+                throw new \Exception(__('templatecontrollerphp2564') . $archiveType);
             }
 
             // Create a new ZIP archive
@@ -2569,7 +2569,7 @@ class TemplateController extends Controller
             $zip = new \ZipArchive();
 
             if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                throw new \Exception('Failed to create ZIP archive during conversion');
+                throw new \Exception(__('templatecontrollerphp2572'));
             }
 
             // Add all extracted files to the ZIP
@@ -2714,7 +2714,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp2717'),
             ], 404);
         }
 
@@ -2724,7 +2724,7 @@ class TemplateController extends Controller
         if (!$template->canBeUsedBy($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'You do not have permission to link this template',
+                'message' => __('templatecontrollerphp2727'),
             ], 403);
         }
 
@@ -2740,14 +2740,14 @@ class TemplateController extends Controller
             $project = Project::find($projectId);
 
             if (!$project || !$project->userCanAccess($user)) {
-                $errors[] = "Access denied to project #{$projectId}";
+                $errors[] = __('templatecontrollerphp2743')."#{$projectId}";
                 continue;
             }
 
             // Check if already linked
             $existing = $project->templates()->where('templates.id', $template->id)->first();
             if ($existing) {
-                $errors[] = "Template already linked to project #{$projectId}";
+                $errors[] = __('templatecontrollerphp2750')."#{$projectId}";
                 continue;
             }
 
@@ -2758,7 +2758,7 @@ class TemplateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Template linked to {$linkedCount} project(s)",
+            'message' => __('templatecontrollerphp2761')."{$linkedCount}".__('templatecontrollerphp2761_2'),
             'linked_count' => $linkedCount,
             'errors' => $errors,
         ]);
@@ -2775,7 +2775,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp2778'),
             ], 404);
         }
 
@@ -2793,7 +2793,7 @@ class TemplateController extends Controller
             $project = Project::find($projectId);
 
             if (!$project || !$project->userCanAccess($user)) {
-                $errors[] = "Access denied to project #{$projectId}";
+                $errors[] = __('templatecontrollerphp2796')."#{$projectId}";
                 continue;
             }
 
@@ -2804,7 +2804,7 @@ class TemplateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Template unlinked from {$unlinkedCount} project(s)",
+            'message' => __('templatecontrollerphp2807')."{$unlinkedCount}".__('templatecontrollerphp2807_2'),
             'unlinked_count' => $unlinkedCount,
             'errors' => $errors,
         ]);
@@ -2926,7 +2926,7 @@ class TemplateController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Sie haben keine Berechtigung, dieses Template zu verknüpfen'
+                'error' => __('templatecontrollerphp2929')
             ], 403);
         }
 
@@ -2995,7 +2995,7 @@ class TemplateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Template-Verknüpfungen erfolgreich aktualisiert'
+            'message' => __('templatecontrollerphp2998')
         ]);
     }
 
@@ -3012,7 +3012,7 @@ class TemplateController extends Controller
         if (!$project->userCanAccess($user)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Sie haben keine Berechtigung für dieses Projekt'
+                'error' => __('templatecontrollerphp3015')
             ], 403);
         }
 
@@ -3020,7 +3020,7 @@ class TemplateController extends Controller
         if (!$template->canBeUsedBy($user) && $template->creator_user_id != $user->id) {
             return response()->json([
                 'success' => false,
-                'error' => 'Sie haben keine Berechtigung, dieses Template zu verwenden'
+                'error' => __('templatecontrollerphp3023')
             ], 403);
         }
 
@@ -3039,7 +3039,7 @@ class TemplateController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Verknüpfung erfolgreich aktualisiert'
+            'message' => __('templatecontrollerphp3042')
         ]);
     }
 

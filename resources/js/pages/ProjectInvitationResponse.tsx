@@ -112,7 +112,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
         throw new Error(data.message || `${t.projectinvitationresponse112}${action}${t.projectinvitationresponse112_2}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : `${t.projectinvitationresponse115}${action}${t.projectinvitationresponse115_2}`);
+            setError(err instanceof Error ? err.message : `Error ${action}ing invitation`);
     } finally {
       setProcessing(false);
     }
@@ -182,7 +182,7 @@ export default function ProjectInvitationResponse({ token, action }: ProjectInvi
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <ProgressSpinner />
-          <p className="text-gray-300 mt-4">Loading invitation...</p>
+          <p className="text-gray-300 mt-4">{t.projectinvitationresponse185}</p>
         </div>
       </div>
     );

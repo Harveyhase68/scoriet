@@ -66,7 +66,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 #### 🚀 **Code Generation System**
 - ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
 - ✅ **Template Includes**: Reusable template snippets with `{:include: path/file.ext:}` syntax
-- ✅ **Debug Manual Generator**: Real-time template debugging and testing
+- ✅ **Template Tester & Debug**: Real-time template debugging and testing
 - ✅ **Full Code Generation**: Generate complete projects from multiple templates
 - ✅ **Multi-Template Support**: Stack multiple templates for complex applications
 - ✅ **Multi-Language Generation**: Generate code in multiple languages simultaneously
@@ -158,7 +158,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 #### 🚀 **Code Generation Engine**
 - **Template Engine** - Powerful client-side template execution with JavaScript integration
 - **Template Includes** - Reusable template snippets with `{:include:}` syntax
-- **Debug Manual Generator** - Real-time template debugging with live preview
+- **Template Tester & Debug** - Real-time template debugging with live preview
 - **Full Code Generation** - Generate complete projects from multiple templates
 - **Multi-Template Support** - Stack templates for complex application scaffolding
 - **Multi-Language Generation** - Generate code in multiple languages simultaneously
@@ -344,9 +344,9 @@ npm run dev                                       # Frontend
 
 Scoriet's template engine is one of its most powerful features, offering advanced code generation capabilities:
 
-### 🔧 Debug Manual Generator
+### 🔧 Template Tester & Debug
 
-The Debug Manual Generator provides real-time template debugging and testing:
+The Template Tester & Debug provides real-time template debugging and testing:
 
 - **Live Preview**: See generated code instantly as you edit templates
 - **File Type Detection**: Automatically determines if templates need database or project context

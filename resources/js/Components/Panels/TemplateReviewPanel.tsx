@@ -84,7 +84,7 @@ interface TemplateFile {
 const TemplateReviewPanel: React.FC = () => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage); // Future use for i18n
+  const { t: t } = useTranslation(currentLanguage); // Future use for i18n
   const toast = useToast();
   const { colors } = useTheme();
 
@@ -114,7 +114,7 @@ const TemplateReviewPanel: React.FC = () => {
       const response = await api.request('/template-reviews/pending');
       setTemplates(response.templates || []);
     } catch (error: any) {
-      toast.showError('Failed to load pending templates: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.templatereviewpanel117 + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -127,12 +127,12 @@ const TemplateReviewPanel: React.FC = () => {
         body: JSON.stringify({ vote, comment: null }),
       });
 
-      toast.showSuccess(response.message || 'Review submitted successfully!');
+      toast.showSuccess(response.message || t.templatereviewpanel130);
 
       // Reload templates
       await loadPendingTemplates();
     } catch (error: any) {
-      toast.showError('Failed to submit review: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.templatereviewpanel135 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -142,12 +142,12 @@ const TemplateReviewPanel: React.FC = () => {
         method: 'POST',
       });
 
-      toast.showSuccess(response.message || 'Template approved by admin!');
+      toast.showSuccess(response.message || t.templatereviewpanel145);
 
       // Reload templates
       await loadPendingTemplates();
     } catch (error: any) {
-      toast.showError('Failed to approve template: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.templatereviewpanel150 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -166,7 +166,7 @@ const TemplateReviewPanel: React.FC = () => {
       // API returns array directly, not wrapped in { files: [...] }
       setTemplateFiles(Array.isArray(response) ? response : (response.files || []));
     } catch (error: any) {
-      toast.showError('Failed to load template files: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.templatereviewpanel169 + (error.response?.data?.message || error.message));
     } finally {
       setLoadingFiles(false);
     }
@@ -197,9 +197,9 @@ const TemplateReviewPanel: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
 
-      toast.showSuccess('Template exported successfully!');
+      toast.showSuccess(t.templatereviewpanel200);
     } catch (error: any) {
-      toast.showError('Failed to export template: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.templatereviewpanel202 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -225,7 +225,7 @@ const TemplateReviewPanel: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to download ZIP');
+        throw new Error(t.templatereviewpanel228);
       }
 
       // Get blob from response
@@ -237,9 +237,9 @@ const TemplateReviewPanel: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
 
-      toast.showSuccess('Template ZIP downloaded successfully!');
+      toast.showSuccess(t.templatereviewpanel240);
     } catch (error: any) {
-      toast.showError('Failed to download ZIP: ' + (error.message || 'Unknown error'));
+      toast.showError(t.templatereviewpanel242 + (error.message || t.templatereviewpanel242_2));
     }
   };
 
@@ -272,7 +272,7 @@ const TemplateReviewPanel: React.FC = () => {
 
   const visibilityBodyTemplate = (rowData: Template) => {
     if (rowData.visibility === 'store') {
-      let priceText = 'Preis nicht gesetzt';
+      let priceText = t.templatereviewpanel275;
       if (rowData.price_type === 'euros' && rowData.price_euros != null) {
         priceText = `${Number(rowData.price_euros).toFixed(2)} EUR`;
       } else if (rowData.price_type === 'credits' && rowData.price_credits != null) {
@@ -280,12 +280,12 @@ const TemplateReviewPanel: React.FC = () => {
       }
       return (
         <div className="flex flex-col gap-1">
-          <Tag value="Store" severity="warning" icon="pi pi-shopping-cart" />
+          <Tag value={t.templatereviewpanel283} severity="warning" icon="pi pi-shopping-cart" />
           <span className="text-xs" style={{ color: colors.textMuted }}>{priceText}</span>
         </div>
       );
     }
-    return <Tag value="Public" severity="success" icon="pi pi-globe" />;
+    return <Tag value={t.templatereviewpanel288} severity="success" icon="pi pi-globe" />;
   };
 
   const scoreBodyTemplate = (rowData: Template) => {
@@ -303,10 +303,10 @@ const TemplateReviewPanel: React.FC = () => {
           />
         </div>
         {isApproved ? (
-          <Badge value={`✓ Freigegeben (${reviewCount} Reviews)`} severity="success" />
+          <Badge value={`${t.templatereviewpanel306}(${reviewCount}${t.templatereviewpanel306_2})`} severity="success" />
         ) : (
           rowData.reviews_needed !== undefined && rowData.reviews_needed > 0 && (
-            <Badge value={`${rowData.reviews_needed} noch benötigt`} severity="warning" />
+            <Badge value={`${rowData.reviews_needed}${t.templatereviewpanel309}`} severity="warning" />
           )
         )}
       </div>
@@ -321,7 +321,7 @@ const TemplateReviewPanel: React.FC = () => {
         {/* Quick View */}
         <Button
           icon="pi pi-eye"
-          tooltip="Quick View"
+          tooltip={t.templatereviewpanel324}
           tooltipOptions={{ position: 'top' }}
           size="small"
           severity="secondary"
@@ -332,7 +332,7 @@ const TemplateReviewPanel: React.FC = () => {
         {/* Full Review */}
         <Button
           icon="pi pi-search"
-          tooltip="Full Review"
+          tooltip={t.templatereviewpanel335}
           tooltipOptions={{ position: 'top' }}
           size="small"
           severity="info"
@@ -346,7 +346,7 @@ const TemplateReviewPanel: React.FC = () => {
             <Button
               icon="pi pi-check"
               label="+1"
-              tooltip="Approve"
+              tooltip={t.templatereviewpanel349}
               tooltipOptions={{ position: 'top' }}
               size="small"
               severity="success"
@@ -356,7 +356,7 @@ const TemplateReviewPanel: React.FC = () => {
             <Button
               icon="pi pi-times"
               label="-1"
-              tooltip="Reject"
+              tooltip={t.templatereviewpanel359}
               tooltipOptions={{ position: 'top' }}
               size="small"
               severity="danger"
@@ -376,8 +376,8 @@ const TemplateReviewPanel: React.FC = () => {
         {isAdmin && (
           <Button
             icon="pi pi-bolt"
-            label="Admin Approve"
-            tooltip="Force approve to 5/5 (Admin Override)"
+            label={t.templatereviewpanel379}
+            tooltip={t.templatereviewpanel380}
             tooltipOptions={{ position: 'top' }}
             size="small"
             severity="warning"
@@ -394,10 +394,10 @@ const TemplateReviewPanel: React.FC = () => {
         <div className="h-full flex flex-col items-center justify-center">
           <i className="pi pi-lock text-4xl mb-4" style={{ color: colors.textMuted }}></i>
           <h2 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
-            Access Restricted
+            {t.templatereviewpanel397}
           </h2>
           <p className="text-sm" style={{ color: colors.textMuted }}>
-            Template Review is only available for Inner Core members.
+            {t.templatereviewpanel400}
           </p>
         </div>
       </TabContent>
@@ -412,15 +412,15 @@ const TemplateReviewPanel: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: colors.textPrimary }}>
               <i className="pi pi-star-fill text-yellow-400"></i>
-              Template Review Queue
+              {t.templatereviewpanel415}
             </h2>
             <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-              Review public and store templates awaiting approval
+              {t.templatereviewpanel418}
             </p>
           </div>
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            label={t.templatereviewpanel423}
             onClick={() => loadPendingTemplates()}
             disabled={loading}
             severity="secondary"
@@ -440,53 +440,53 @@ const TemplateReviewPanel: React.FC = () => {
               paginator
               rows={10}
               rowsPerPageOptions={[5, 10, 25, 50]}
-              emptyMessage="No templates pending review"
+              emptyMessage={t.templatereviewpanel443}
               className="p-datatable-sm"
             >
               <Column
                 field="name"
-                header="Template"
+                header={t.templatereviewpanel448}
                 body={nameBodyTemplate}
                 sortable
                 style={{ minWidth: '250px' }}
               />
               <Column
                 field="creator.name"
-                header="Creator"
+                header={t.templatereviewpanel455}
                 body={creatorBodyTemplate}
                 sortable
                 style={{ minWidth: '150px' }}
               />
               <Column
                 field="category"
-                header="Category"
+                header={t.templatereviewpanel462}
                 body={categoryBodyTemplate}
                 sortable
               />
               <Column
                 field="visibility"
-                header="Type"
+                header={t.templatereviewpanel468}
                 body={visibilityBodyTemplate}
                 sortable
               />
               <Column
                 field="language"
-                header="Language"
+                header={t.templatereviewpanel474}
                 sortable
               />
               <Column
                 field="file_count"
-                header="Files"
+                header={t.templatereviewpanel479}
                 sortable
               />
               <Column
                 field="review_score"
-                header="Score"
+                header={t.templatereviewpanel484}
                 body={scoreBodyTemplate}
                 sortable
               />
               <Column
-                header="Actions"
+                header={t.templatereviewpanel489}
                 body={actionsBodyTemplate}
                 style={{ minWidth: '300px' }}
               />
@@ -496,7 +496,7 @@ const TemplateReviewPanel: React.FC = () => {
 
         {/* Quick View Modal */}
         <Dialog
-          header="Quick View"
+          header={t.templatereviewpanel499}
           visible={quickViewVisible}
           onHide={() => setQuickViewVisible(false)}
           style={{ width: '600px' }}
@@ -509,37 +509,37 @@ const TemplateReviewPanel: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-xl font-bold" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
-                <p className="mt-2" style={{ color: colors.textMuted }}>{selectedTemplate.description || 'No description'}</p>
+                <p className="mt-2" style={{ color: colors.textMuted }}>{selectedTemplate.description || t.templatereviewpanel512}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-sm" style={{ color: colors.textMuted }}>Category:</span>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel517}</span>
                   <div className="mt-1">
                     <Tag value={selectedTemplate.category} severity="info" />
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm" style={{ color: colors.textMuted }}>Language:</span>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel523}</span>
                   <div className="mt-1" style={{ color: colors.textPrimary }}>{selectedTemplate.language}</div>
                 </div>
               </div>
 
               <div>
-                <span className="text-sm" style={{ color: colors.textMuted }}>Tags:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel529}</span>
                 <div className="mt-1 flex gap-2 flex-wrap">
                   {selectedTemplate.tags && selectedTemplate.tags.length > 0 ? (
                     selectedTemplate.tags.map((tag, idx) => (
                       <Tag key={idx} value={tag} severity="secondary" />
                     ))
                   ) : (
-                    <span style={{ color: colors.textMuted }}>No tags</span>
+                    <span style={{ color: colors.textMuted }}>{t.templatereviewpanel536}</span>
                   )}
                 </div>
               </div>
 
               <div>
-                <span className="text-sm" style={{ color: colors.textMuted }}>Creator:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel542}</span>
                 <div className="mt-1">
                   <div style={{ color: colors.textPrimary }}>{selectedTemplate.creator.name}</div>
                   <div className="text-xs" style={{ color: colors.textMuted }}>{selectedTemplate.creator.email}</div>
@@ -547,42 +547,42 @@ const TemplateReviewPanel: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-sm" style={{ color: colors.textMuted }}>Type:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel550}</span>
                 <div className="mt-1">
                   {selectedTemplate.visibility === 'store' ? (
                     <div className="flex items-center gap-2">
-                      <Tag value="Store Template" severity="warning" icon="pi pi-shopping-cart" />
+                      <Tag value={t.templatereviewpanel554} severity="warning" icon="pi pi-shopping-cart" />
                       <span style={{ color: colors.textPrimary }}>
                         {selectedTemplate.price_type === 'euros' && selectedTemplate.price_euros != null
                           ? `${Number(selectedTemplate.price_euros).toFixed(2)} EUR`
                           : selectedTemplate.price_type === 'credits' && selectedTemplate.price_credits != null
-                            ? `${selectedTemplate.price_credits} Credits`
-                            : 'Preis nicht gesetzt'}
+                            ? `${selectedTemplate.price_credits}${t.templatereviewpanel559}`
+                            : t.templatereviewpanel560}
                       </span>
                     </div>
                   ) : (
-                    <Tag value="Public Template" severity="success" icon="pi pi-globe" />
+                    <Tag value={t.templatereviewpanel564} severity="success" icon="pi pi-globe" />
                   )}
                 </div>
               </div>
 
               <div>
-                <span className="text-sm" style={{ color: colors.textMuted }}>Review Status:</span>
+                <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel570}</span>
                 <div className="mt-1 flex flex-wrap gap-2">
                   <Tag
-                    value={`${selectedTemplate.review_score || 0} Punkte`}
+                    value={`${selectedTemplate.review_score || 0}${t.templatereviewpanel573}`}
                     severity={selectedTemplate.review_status === 'approved' ? 'success' : (selectedTemplate.review_score || 0) >= 3 ? 'success' : 'warning'}
                     icon="pi pi-star-fill"
                   />
                   {selectedTemplate.review_status === 'approved' ? (
                     <Badge
-                      value={`✓ Freigegeben (${selectedTemplate.reviews?.length || 0} Reviews)`}
+                      value={`$t.templatereviewpanel579(${selectedTemplate.reviews?.length || 0}${t.templatereviewpanel579_2})`}
                       severity="success"
                     />
                   ) : (
                     selectedTemplate.reviews_needed !== undefined && selectedTemplate.reviews_needed > 0 && (
                       <Badge
-                        value={`${selectedTemplate.reviews_needed} noch benötigt`}
+                        value={`${selectedTemplate.reviews_needed}${t.templatereviewpanel585}`}
                         severity="warning"
                       />
                     )
@@ -591,8 +591,8 @@ const TemplateReviewPanel: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-sm" style={{ color: colors.textMuted }}>Files:</span>
-                <div className="mt-1" style={{ color: colors.textPrimary }}>{selectedTemplate.file_count} files</div>
+                <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatereviewpanel594}</span>
+                <div className="mt-1" style={{ color: colors.textPrimary }}>{selectedTemplate.file_count}{t.templatereviewpanel595}</div>
               </div>
             </div>
           )}
@@ -600,7 +600,7 @@ const TemplateReviewPanel: React.FC = () => {
 
         {/* Full Review Modal */}
         <Dialog
-          header="Full Review"
+          header={t.templatereviewpanel603}
           visible={fullReviewVisible}
           onHide={() => setFullReviewVisible(false)}
           style={{ width: '90vw', maxWidth: '1200px' }}
@@ -615,22 +615,22 @@ const TemplateReviewPanel: React.FC = () => {
               {/* Template Info */}
               <div className="p-4 rounded" style={{ backgroundColor: colors.bgSecondary }}>
                 <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
-                <p style={{ color: colors.textMuted }}>{selectedTemplate.description || 'No description'}</p>
+                <p style={{ color: colors.textMuted }}>{selectedTemplate.description || t.templatereviewpanel618}</p>
 
                 <div className="mt-4 flex gap-4 items-center flex-wrap">
                   <Tag value={selectedTemplate.category} severity="info" />
                   <Tag value={selectedTemplate.language} severity="secondary" />
                   <Tag
-                    value={`${selectedTemplate.review_score || 0} Punkte`}
+                    value={`${selectedTemplate.review_score || 0}${t.templatereviewpanel624}`}
                     severity={selectedTemplate.review_status === 'approved' ? 'success' : (selectedTemplate.review_score || 0) >= 3 ? 'success' : 'warning'}
                     icon="pi pi-star-fill"
                   />
                   {selectedTemplate.review_status === 'approved' && (
-                    <Badge value={`✓ Freigegeben`} severity="success" />
+                    <Badge value={`$t.templatereviewpanel629_2`} severity="success" />
                   )}
                   <Button
                     icon="pi pi-file-export"
-                    label="Download ZIP"
+                    label={t.templatereviewpanel633}
                     size="small"
                     severity="success"
                     outlined
@@ -638,7 +638,7 @@ const TemplateReviewPanel: React.FC = () => {
                   />
                   <Button
                     icon="pi pi-download"
-                    label="Export JSON"
+                    label={t.templatereviewpanel641}
                     size="small"
                     severity="info"
                     outlined
@@ -664,7 +664,7 @@ const TemplateReviewPanel: React.FC = () => {
                         </div>
                         <Button
                           icon="pi pi-download"
-                          label="Download"
+                          label={t.templatereviewpanel667}
                           size="small"
                           severity="info"
                           outlined

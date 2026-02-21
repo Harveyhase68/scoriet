@@ -23,8 +23,6 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
   onUpdateScriptChange,
   readOnly = false
 }) => {
-  //const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  //const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
   const [editingInstall, setEditingInstall] = useState<number | null>(null);
   const [editingUpdate, setEditingUpdate] = useState<number | null>(null);
@@ -124,13 +122,13 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-bold theme-text-primary">Step {step.step}:</span>
+                    <span className="font-bold theme-text-primary">{t.deploymentscriptseditor127}{step.step}:</span>
                     {editing === index && !readOnly ? (
                       <input
                         type="text"
                         value={step.description}
                         onChange={(e) => updateStep(index, 'description', e.target.value, isInstall)}
-                        placeholder="Description (e.g., Install dependencies)"
+                        placeholder={t.deploymentscriptseditor133}
                         className="flex-1 px-2 py-1 border rounded focus:outline-none"
                         style={{
                           backgroundColor: colors.bgSecondary,
@@ -154,7 +152,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                         onMouseEnter={(e) => e.currentTarget.style.color = colors.accent}
                         onMouseLeave={(e) => e.currentTarget.style.color = colors.textPrimary}
                       >
-                        {step.description || <span className="italic theme-text-muted">No description</span>}
+                        {step.description || <span className="italic theme-text-muted">{t.deploymentscriptseditor157}</span>}
                       </span>
                     )}
                   </div>
@@ -191,7 +189,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.bgSecondary}
                     >
-                      {step.command || <span className="italic theme-text-muted">No command</span>}
+                      {step.command || <span className="italic theme-text-muted">{t.deploymentscriptseditor194}</span>}
                     </pre>
                   )}
                 </div>
@@ -207,7 +205,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                         backgroundColor: colors.buttonSecondary,
                         color: colors.textPrimary,
                       }}
-                      title="Move up"
+                      title={t.deploymentscriptseditor210}
                     >
                       ↑
                     </button>
@@ -220,7 +218,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                         backgroundColor: colors.buttonSecondary,
                         color: colors.textPrimary,
                       }}
-                      title="Move down"
+                      title={t.deploymentscriptseditor223}
                     >
                       ↓
                     </button>
@@ -232,7 +230,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                         backgroundColor: colors.buttonDanger,
                         color: colors.textInverse,
                       }}
-                      title="Remove"
+                      title={t.deploymentscriptseditor235}
                     >
                       ✕
                     </button>
@@ -250,7 +248,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
                     color: colors.textInverse,
                   }}
                 >
-                  Done Editing
+                  {t.deploymentscriptseditor253}
                 </button>
               )}
             </div>
@@ -270,7 +268,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
       {/* Install Script */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold theme-text-primary">Install Script</h3>
+          <h3 className="text-lg font-semibold theme-text-primary">{t.deploymentscriptseditor273}</h3>
           {!readOnly && (
             <button
               type="button"
@@ -293,7 +291,7 @@ export const DeploymentScriptsEditor: React.FC<DeploymentScriptsEditorProps> = (
       {/* Update Script */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold theme-text-primary">Update Script</h3>
+          <h3 className="text-lg font-semibold theme-text-primary">{t.deploymentscriptseditor296}</h3>
           {!readOnly && (
             <button
               type="button"

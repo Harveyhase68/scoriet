@@ -240,7 +240,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
       setShowDialog(false);
       fetchPages();
     } catch (error: any) {
-      toast.showError('Failed to save page: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.cmsadminpanel243 + (error.response?.data?.message || error.message));
     } finally {
       setSaving(false);
     }
@@ -248,7 +248,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
   const handleDelete = (page: Page) => {
     confirmDialog({
-      message: `Are you sure you want to delete "${page.title}"?`,
+      message: `${t.cmsadminpanel251}"${page.title}"?`,
       header: t.cmsadminpanel144,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
@@ -260,7 +260,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           toast.showSuccess(t.cmsadminpanel152);
           fetchPages();
         } catch (error: any) {
-          toast.showError('Failed to delete page: ' + (error.response?.data?.message || error.message));
+          toast.showError(t.cmsadminpanel263 + (error.response?.data?.message || error.message));
         }
       },
     });
@@ -324,7 +324,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
             className="px-2 py-1 rounded text-xs"
             style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}
           >
-            Lobby
+            {t.cmsadminpanel327}
           </span>
         )}
         {rowData.popup_on_app && (
@@ -332,7 +332,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
             className="px-2 py-1 rounded text-xs"
             style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}
           >
-            App
+            {t.cmsadminpanel335}
           </span>
         )}
         {hasPopup && (
@@ -364,10 +364,10 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
-              📝 CMS Page Management
+              {t.cmsadminpanel367}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Manage static content pages (Help, Impressum, etc.)
+              {t.cmsadminpanel370}
             </p>
           </div>
           <Button
@@ -396,7 +396,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           <Column field="title" header={t.cmsadminpanel246} sortable />
           <Column field="is_active" header={t.applicationsmodal335} body={statusBodyTemplate} sortable style={{ width: '100px' }} />
           <Column
-            header="Popup"
+            header={t.cmsadminpanel399}
             body={popupBodyTemplate}
             style={{ width: '180px' }}
           />
@@ -417,7 +417,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
       {/* Create/Edit Dialog */}
       <Dialog
-        header={editingPage ? 'Edit Page' : t.cmsadminpanel224}
+        header={editingPage ? t.cmsadminpanel420 : t.cmsadminpanel224}
         visible={showDialog}
         style={{ width: '90vw', maxWidth: '900px' }}
         breakpoints={{ '960px': '95vw', '640px': '100vw' }}
@@ -437,7 +437,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               outlined
             />
             <Button
-              label={saving ? 'Saving...' : t.cmsadminpanel279}
+              label={saving ? t.cmsadminpanel440 : t.cmsadminpanel279}
               icon={saving ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
               onClick={handleSave}
               severity="success"
@@ -450,7 +450,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           {/* Slug */}
           <div className="field">
             <label htmlFor="slug" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Slug *
+              {t.cmsadminpanel453}
             </label>
             <InputText
               id="slug"
@@ -468,14 +468,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               disabled={!!editingPage}
             />
             <small style={{ color: colors.textMuted }}>
-              Only lowercase letters, numbers and underscores (e.g. welcome_popup)
+              {t.cmsadminpanel471}
             </small>
           </div>
 
           {/* Language */}
           <div className="field">
             <label htmlFor="locale" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Language *
+              {t.cmsadminpanel478}
             </label>
             <Dropdown
               id="locale"
@@ -487,14 +487,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               disabled={!!editingPage}
             />
             <small style={{ color: colors.textMuted }}>
-              Cannot be changed after creation
+              {t.cmsadminpanel490}
             </small>
           </div>
 
           {/* Title */}
           <div className="field">
             <label htmlFor="title" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Title *
+              {t.cmsadminpanel497}
             </label>
             <InputText
               id="title"
@@ -508,7 +508,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
           {/* Content Editor with Tabs */}
           <div className="field">
             <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Content *
+              {t.cmsadminpanel511}
             </label>
             <TabView
               activeIndex={activeTabIndex}
@@ -516,7 +516,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               className="w-full themed-tabview"
             >
               {/* Tab 1: WYSIWYG Editor */}
-              <TabPanel header="WYSIWYG Editor" className="p-0">
+              <TabPanel header={t.cmsadminpanel519} className="p-0">
                 <PrimeEditor
                   value={formData.content}
                   onTextChange={(e: any) => setFormData({ ...formData, content: e.htmlValue || '' })}
@@ -528,7 +528,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
               <TabPanel header={t.cmsadminpanel360} className="p-0">
                 <div className="h-full rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                   <div className="flex justify-between items-center p-2" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
-                    <span className="text-sm" style={{ color: colors.textSecondary }}>HTML Quellcode mit Syntax-Highlighting</span>
+                    <span className="text-sm" style={{ color: colors.textSecondary }}>{t.cmsadminpanel531}</span>
                     <Button
                       label={t.cmsadminpanel365}
                       icon="pi pi-refresh"
@@ -590,18 +590,18 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                 onChange={(e) => setFormData({ ...formData, is_active: !!e.checked })}
               />
               <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
-                {formData.is_active ? '✅' : '⬜'} Active (visible to visitors)
+                {formData.is_active ? '✅' : '⬜'}{t.cmsadminpanel593}
               </div>
             </div>
             <small className="mt-2 block" style={{ color: colors.textMuted }}>
-              When checked, this page will be visible to all visitors
+              {t.cmsadminpanel597}
             </small>
           </div>
 
           {/* Popup Settings Section */}
           <div className="field mt-4">
             <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
-              Popup Settings
+              {t.cmsadminpanel604}
             </label>
             <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
               {/* Popup on Landingpage */}
@@ -615,11 +615,11 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                   onChange={(e) => setFormData({ ...formData, popup_on_landingpage: !!e.checked })}
                 />
                 <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
-                  {formData.popup_on_landingpage ? '🏠' : '⬜'} Show as Popup on Lobby (Landing Page)
+                  {formData.popup_on_landingpage ? '🏠' : '⬜'}{t.cmsadminpanel618}
                 </div>
                 {formData.popup_on_landingpage && (
                   <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}>
-                    Lobby
+                    {t.cmsadminpanel622}
                   </span>
                 )}
               </div>
@@ -635,11 +635,11 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                   onChange={(e) => setFormData({ ...formData, popup_on_app: !!e.checked })}
                 />
                 <div className="text-sm font-medium select-none" style={{ color: colors.textPrimary }}>
-                  {formData.popup_on_app ? '📱' : '⬜'} Show as Popup in App
+                  {formData.popup_on_app ? '📱' : '⬜'}{t.cmsadminpanel638}
                 </div>
                 {formData.popup_on_app && (
                   <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}>
-                    App
+                    {t.cmsadminpanel642}
                   </span>
                 )}
               </div>
@@ -650,7 +650,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                   {/* Priority */}
                   <div>
                     <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>
-                      Priority (1 = highest)
+                      {t.cmsadminpanel653}
                     </label>
                     <InputNumber
                       value={formData.popup_priority}
@@ -660,14 +660,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                       className="w-full"
                     />
                     <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                      1 = Cookie/Privacy (always first), 2 = Welcome, etc.
+                      {t.cmsadminpanel663}
                     </small>
                   </div>
 
                   {/* Version */}
                   <div>
                     <label className="block text-sm mb-2" style={{ color: colors.textSecondary }}>
-                      Version (for "Update" badge)
+                      {t.cmsadminpanel670_2}
                     </label>
                     <InputNumber
                       value={formData.popup_version}
@@ -676,7 +676,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
                       className="w-full"
                     />
                     <small className="mt-1 block" style={{ color: colors.textMuted }}>
-                      Increase to show popup again with "Update" badge
+                      {t.cmsadminpanel679}
                     </small>
                   </div>
                 </div>

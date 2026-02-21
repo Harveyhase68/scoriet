@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wir vermissen Sie!</title>
+    <title>{{__('inactivity-warning-1bladephp6')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -109,51 +109,51 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">Wir vermissen Sie!</h1>
+            <h1 class="title">{{__('inactivity-warning-1bladephp112')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('inactivity-warning-1bladephp115')}}{{ $user->name }},</p>
 
         <p>
-            Sie haben sich seit dem <strong>{{ $lastLoginAt }}</strong> nicht mehr bei Scoriet eingeloggt.
-            Das sind schon eine ganze Weile! Wir wollten nur sicherstellen, dass alles in Ordnung ist.
+            {{__('inactivity-warning-1bladephp118')}}<strong>{{ $lastLoginAt }}</strong>{{__('inactivity-warning-1bladephp118_2')}}
+            {{__('inactivity-warning-1bladephp119')}}
         </p>
 
         <div class="info-banner">
             <div class="info-title">
-                Hinweis zur Kontosicherheit
+                {{__('inactivity-warning-1bladephp124')}}
             </div>
             <p style="margin: 0; color: #1e40af;">
-                Aus Sicherheitsgründen werden inaktive Konten nach 4 Monaten automatisch deaktiviert.
-                Ein einfacher Login genügt, um Ihr Konto aktiv zu halten!
+                {{__('inactivity-warning-1bladephp127')}}
+                {{__('inactivity-warning-1bladephp128')}}
             </p>
         </div>
 
         <div class="countdown">{{ $daysRemaining }}</div>
-        <div class="countdown-label">Tage bis zur automatischen Deaktivierung</div>
+        <div class="countdown-label">{{__('inactivity-warning-1bladephp133')}}</div>
 
         <div class="features-box">
-            <div class="features-title">Was Sie verpassen:</div>
+            <div class="features-title">{{__('inactivity-warning-1bladephp136')}}</div>
             <ul class="features-list">
-                <li>Ihre gespeicherten Projekte und Templates</li>
-                <li>Monatlich 50 Gratis-Credits (bei Login)</li>
-                <li>Alle neuen Features und Verbesserungen</li>
-                <li>Ihre Team-Mitgliedschaften</li>
+                <li>{{__('inactivity-warning-1bladephp138')}}</li>
+                <li>{{__('inactivity-warning-1bladephp139')}}</li>
+                <li>{{__('inactivity-warning-1bladephp140')}}</li>
+                <li>{{__('inactivity-warning-1bladephp141')}}</li>
             </ul>
         </div>
 
         <div class="actions">
-            <a href="{{ $loginUrl }}" class="btn btn-primary">Jetzt einloggen</a>
+            <a href="{{ $loginUrl }}" class="btn btn-primary">{{__('inactivity-warning-1bladephp146')}}</a>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Ein Login setzt den Inaktivitätszähler zurück und sichert Ihre monatlichen Credits!
+            {{__('inactivity-warning-1bladephp150')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil Sie sich länger nicht eingeloggt haben.
+                {{__('inactivity-warning-1bladephp155')}}<strong>Scoriet</strong>.<br>
+                {{__('inactivity-warning-1bladephp156')}}
             </p>
         </div>
     </div>

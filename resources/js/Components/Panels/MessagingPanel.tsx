@@ -347,7 +347,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           if (response.ok) {
             toast.current?.show({
               severity: 'success',
-              summary: 'Erfolg',
+              summary: t.messagingpanel350,
               detail: t.messagingpanel351,
               life: 3000,
             });
@@ -793,13 +793,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString(currentLanguage, { hour: '2-digit', minute: '2-digit' });
     } else if (days === 1) {
-      return 'Gestern';
+      return t.messagingpanel798;
     } else if (days < 7) {
-      return date.toLocaleDateString('de-DE', { weekday: 'short' });
+      return date.toLocaleDateString(currentLanguage, { weekday: 'short' });
     } else {
-      return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      return date.toLocaleDateString(currentLanguage, { day: '2-digit', month: '2-digit', year: '2-digit' });
     }
   };
 
@@ -808,7 +808,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
     return (
       <div className="flex items-center gap-2">
         {rowData.is_broadcast && (
-          <Badge value="System" severity="danger" className="text-xs" />
+          <Badge value={t.messagingpanel811} severity="danger" className="text-xs" />
         )}
         {rowData.has_unread && (
           <i className="pi pi-circle-fill text-blue-400 text-xs" />
@@ -978,12 +978,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 <div className="pb-3 mb-3" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
                   <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     {selectedThread.is_broadcast && (
-                      <Badge value="System" severity="danger" />
+                      <Badge value={t.messagingpanel981} severity="danger" />
                     )}
                     {selectedThread.subject}
                   </h3>
                   <div className="text-sm" style={{ color: colors.textSecondary }}>
-                    Mit: {selectedThread.other_participants?.map(p => p.name || p.username).join(', ') || '-'}
+                    {t.messagingpanel986}{selectedThread.other_participants?.map(p => p.name || p.username).join(', ') || '-'}
                   </div>
                 </div>
 
@@ -1098,7 +1098,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                         onClick={handleReply}
                         loading={replying}
                         disabled={!replyBody.trim()}
-                        tooltip="Senden (Ctrl+Enter)"
+                        tooltip={t.messagingpanel1101}
                       />
                       <Button
                         className={`p-button-sm ${hasAttachmentAccess ? 'p-button-secondary' : 'p-button-warning'}`}
@@ -1218,7 +1218,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 itemTemplate={(option) => (
                   <div className="flex justify-between items-center w-full">
                     <span>{option.name}</span>
-                    <Badge value={`${option.member_count} Mitglieder`} severity="info" />
+                    <Badge value={`${option.member_count}${t.messagingpanel1221}`} severity="info" />
                   </div>
                 )}
                 emptyMessage={t.messagingpanel1224}
@@ -1230,7 +1230,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           {/* Team Selection */}
           {recipientType === 'team' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Team auswählen</label>
+              <label className="block text-sm font-medium mb-1">{t.messagingpanel1233}</label>
               <Dropdown
                 value={selectedTeam}
                 options={recipientOptions.teams}
@@ -1278,7 +1278,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Nachricht</label>
+            <label className="block text-sm font-medium mb-1">{t.messagingpanel1281}</label>
             <InputTextarea
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
@@ -1291,7 +1291,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           {/* Attachments Section */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <label className="block text-sm font-medium">Anhänge</label>
+              <label className="block text-sm font-medium">{t.messagingpanel1294}</label>
               <Button
                 className={`p-button-sm ${hasAttachmentAccess ? 'p-button-secondary' : 'p-button-warning'}`}
                 onClick={handleComposeAttachmentClick}

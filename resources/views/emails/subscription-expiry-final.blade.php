@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DRINGEND: Abo läuft in {{ $daysUntilExpiry }} Tagen ab!</title>
+    <title>{{__('subscription-expiry-finalbladephp6')}}{{ $daysUntilExpiry }}{{__('subscription-expiry-finalbladephp6_2')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -160,54 +160,54 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">DRINGEND - Scoriet</div>
-            <h1 class="title">Letzte Erinnerung!</h1>
+            <div class="logo">{{__('subscription-expiry-finalbladephp163')}}</div>
+            <h1 class="title">{{__('subscription-expiry-finalbladephp164')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{__('subscription-expiry-finalbladephp167')}}{{ $user->name }},</p>
 
         <div class="urgent-banner">
-            <div class="urgent-title">Ihr Abo läuft in Kürze ab!</div>
+            <div class="urgent-title">{__('subscription-expiry-finalbladephp170')}}</div>
             <div class="countdown">{{ $daysUntilExpiry }}</div>
-            <div class="countdown-label">{{ $daysUntilExpiry == 1 ? 'Tag' : 'Tage' }} verbleibend!</div>
+            <div class="countdown-label">{{ $daysUntilExpiry == 1 ? __('subscription-expiry-finalbladephp172') : __('subscription-expiry-finalbladephp172_2') }} {__('subscription-expiry-finalbladephp172_3')}</div>
         </div>
 
         <div class="subscription-info">
             <div class="subscription-name">{{ $displayName }}</div>
             <p class="subscription-expiry">
-                Läuft ab am: {{ $expiresAt }}
+                {{__('subscription-expiry-finalbladephp178')}}{{ $expiresAt }}
             </p>
         </div>
 
         <div class="consequences">
-            <div class="consequences-title">Was passiert nach Ablauf?</div>
+            <div class="consequences-title">{{__('subscription-expiry-finalbladephp183')}}</div>
             <ul>
-                <li>Das Feature wird gesperrt (Soft-Lock)</li>
-                <li>Ihre Daten bleiben erhalten</li>
-                <li>Sie können jederzeit reaktivieren</li>
+                <li>{{__('subscription-expiry-finalbladephp185')}}</li>
+                <li>{{__('subscription-expiry-finalbladephp186')}}</li>
+                <li>{{__('subscription-expiry-finalbladephp187')}}</li>
             </ul>
         </div>
 
         <div class="bonus-box">
-            <div class="bonus-title">Jetzt noch Frühbucher-Bonus sichern!</div>
-            <div class="bonus-days">+{{ $bonusDays }} Tage GRATIS</div>
+            <div class="bonus-title">{{__('subscription-expiry-finalbladephp192')}}</div>
+            <div class="bonus-days">+{{ $bonusDays }}{{__('subscription-expiry-finalbladephp193')}}</div>
         </div>
 
         <div class="actions">
-            <a href="{{ $renewUrl }}" class="btn btn-urgent">JETZT VERLÄNGERN</a>
+            <a href="{{ $renewUrl }}" class="btn btn-urgent">{{__('subscription-expiry-finalbladephp197')}}</a>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Die Verlängerung kostet nur <strong>50 Credits</strong> für ein weiteres Jahr.
+            {{__('subscription-expiry-finalbladephp201_2')}}<strong>{{__('subscription-expiry-finalbladephp201_4')}}</strong>{{__('subscription-expiry-finalbladephp201_3')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine <strong>dringende</strong> Erinnerung von <strong>Scoriet</strong>.<br>
-                Handeln Sie jetzt, um Unterbrechungen zu vermeiden.
+                {{__('subscription-expiry-finalbladephp206')}}<strong>{{__('subscription-expiry-finalbladephp206_2')}}</strong>{{__('subscription-expiry-finalbladephp206_3')}}<strong>Scoriet</strong>.<br>
+                {{__('subscription-expiry-finalbladephp207')}}
             </p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
-                Subscription ID: {{ $subscription->id }}
+                {{__('subscription-expiry-finalbladephp210')}}{{ $subscription->id }}
             </p>
         </div>
     </div>

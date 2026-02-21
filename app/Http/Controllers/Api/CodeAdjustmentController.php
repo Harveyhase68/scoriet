@@ -91,7 +91,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Code adjustment created successfully',
+            'message' => __('codeadjustmentcontrollerphp94'),
             'data' => $adjustment->toApiArray(),
         ], 201);
     }
@@ -120,7 +120,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Code adjustment updated successfully',
+            'message' => __('codeadjustmentcontrollerphp123'),
             'data' => $adjustment->toApiArray(),
         ]);
     }
@@ -138,7 +138,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Code adjustment deleted successfully',
+            'message' => __('codeadjustmentcontrollerphp141'),
         ]);
     }
 
@@ -155,7 +155,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $adjustment->is_active ? 'Adjustment activated' : 'Adjustment deactivated',
+            'message' => $adjustment->is_active ? __('codeadjustmentcontrollerphp158') : __('codeadjustmentcontrollerphp158_2'),
             'data' => ['is_active' => $adjustment->is_active],
         ]);
     }
@@ -188,7 +188,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Code adjustment duplicated successfully',
+            'message' => __('codeadjustmentcontrollerphp191'),
             'data' => $newAdjustment->toApiArray(),
         ], 201);
     }
@@ -226,7 +226,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Insertion added successfully',
+            'message' => __('codeadjustmentcontrollerphp229'),
             'data' => $insertion->toApiArray(),
         ], 201);
     }
@@ -267,7 +267,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Insertion updated successfully',
+            'message' => __('codeadjustmentcontrollerphp270'),
             'data' => $insertion->toApiArray(),
         ]);
     }
@@ -290,7 +290,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Insertion deleted successfully',
+            'message' => __('codeadjustmentcontrollerphp293'),
         ]);
     }
 
@@ -407,7 +407,7 @@ class CodeAdjustmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Code adjustment created from analysis',
+            'message' => __('codeadjustmentcontrollerphp410'),
             'data' => $adjustment->toApiArray(),
         ], 201);
     }
@@ -447,7 +447,7 @@ class CodeAdjustmentController extends Controller
         if (!$generation->fileExists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Archiv-Datei existiert nicht mehr',
+                'message' => __('codeadjustmentcontrollerphp450'),
             ], 404);
         }
 
@@ -487,7 +487,7 @@ class CodeAdjustmentController extends Controller
         if (!$generation->fileExists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Archiv-Datei existiert nicht mehr',
+                'message' => __('codeadjustmentcontrollerphp490'),
             ], 404);
         }
 
@@ -534,7 +534,7 @@ class CodeAdjustmentController extends Controller
         if (!$generation->fileExists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Die Referenz-Generierung existiert nicht mehr auf dem Server',
+                'message' => __('codeadjustmentcontrollerphp537'),
             ], 404);
         }
 
@@ -587,7 +587,7 @@ class CodeAdjustmentController extends Controller
         if (!$gitProvider) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sie haben keine Verbindung zu ' . ucfirst($validated['provider']) . '. Bitte verbinden Sie Ihren Account in den Projekteinstellungen.',
+                'message' => __('codeadjustmentcontrollerphp537') . ucfirst($validated['provider']) . __('codeadjustmentcontrollerphp590'),
             ], 400);
         }
 
@@ -598,7 +598,7 @@ class CodeAdjustmentController extends Controller
         if (!$generation->fileExists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Die Referenz-Generierung existiert nicht mehr auf dem Server',
+                'message' => __('codeadjustmentcontrollerphp601'),
             ], 404);
         }
 
@@ -754,8 +754,8 @@ class CodeAdjustmentController extends Controller
         return response()->json([
             'success' => true,
             'message' => $mode === 'replace'
-                ? "Import abgeschlossen: {$importedCount} Anpassung(en) importiert"
-                : "Import abgeschlossen: {$importedCount} Anpassung(en) importiert, {$skippedCount} übersprungen (bereits vorhanden)",
+                ? __('codeadjustmentcontrollerphp757')."{$importedCount}".__('codeadjustmentcontrollerphp757_2')
+                : __('codeadjustmentcontrollerphp758')."{$importedCount}".__('codeadjustmentcontrollerphp758_2'),
             'data' => [
                 'imported' => $importedCount,
                 'skipped' => $skippedCount,
@@ -778,7 +778,7 @@ class CodeAdjustmentController extends Controller
                 || $project->teams()->whereHas('members', fn($q) => $q->where('user_id', $user->id))->exists();
 
             if (!$hasAccess && !in_array($user->user_type, ['admin', 'system'])) {
-                abort(403, 'You do not have access to this project');
+                abort(403, __('codeadjustmentcontrollerphp781'));
             }
         }
     }

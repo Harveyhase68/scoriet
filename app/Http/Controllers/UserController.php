@@ -22,7 +22,7 @@ class UserController extends Controller
         // If no user is logged in (which shouldn't happen with your route,
         // since it has 'auth:api' middleware), we return an error message.
         if (! $user) {
-            return response()->json(['message' => 'Benutzer nicht authentifiziert.'], 401);
+            return response()->json(['message' => __('usercontrollerphp25')], 401);
         }
 
         // Set the 'last_login_at' timestamp to the current time.
@@ -33,6 +33,6 @@ class UserController extends Controller
         $user->save();
 
         // Return a success message as JSON.
-        return response()->json(['message' => 'Login-Zeitstempel erfolgreich aktualisiert.']);
+        return response()->json(['message' => __('usercontrollerphp36')]);
     }
 }

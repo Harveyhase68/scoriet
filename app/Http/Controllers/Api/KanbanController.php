@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\SendPushNotificationJob;
 
 class KanbanController extends Controller
 {
@@ -24,6 +25,10 @@ class KanbanController extends Controller
     /**
      * Check if user has Kanban Board access
      * GET /api/kanban/access
+     *
+     * Checks three levels of access:
+     * 1. User-level subscription (admin, patron, credits-based)
+     * 2. Team-based access (user is a team member with kanban.use permission)
      */
     public function checkAccess(): JsonResponse
     {
@@ -31,7 +36,46 @@ class KanbanController extends Controller
         $status = Subscription::getKanbanBoardAccessStatus($user->id);
         $status['user_credits'] = $user->credits ?? 0;
 
+        // If user already has access via subscription, return immediately
+        if (!empty($status['has_access'])) {
+            return response()->json($status);
+        }
+
+        // Check team-based access: is the user a team member of any project
+        // where their team role grants kanban.use permission?
+        $hasTeamAccess = $this->userHasTeamKanbanAccess($user);
+
+        if ($hasTeamAccess) {
+            $status['has_access'] = true;
+            $status['access_type'] = 'team';
+        }
+
         return response()->json($status);
+    }
+
+    /**
+     * Check if user has Kanban access via team membership on any project.
+     * Returns true if the user is a team member with kanban.use permission.
+     */
+    private function userHasTeamKanbanAccess($user): bool
+    {
+        // Find all teams the user is a member of
+        $teamMemberships = \App\Models\TeamMember::where('user_id', $user->id)->get();
+
+        foreach ($teamMemberships as $membership) {
+            // Team owner always has all permissions
+            $team = \App\Models\Team::find($membership->team_id);
+            if ($team && (string)$team->project_owner_id === (string)$user->id) {
+                return true;
+            }
+
+            // Check if team member's role has kanban.use permission
+            if ($membership->hasPermission('kanban.use')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -46,7 +90,7 @@ class KanbanController extends Controller
         if (Subscription::hasKanbanBoardAccess($user->id)) {
             return response()->json([
                 'success' => true,
-                'message' => 'Kanban Board bereits freigeschaltet',
+                'message' => __('kanbancontrollerphp92'),
             ]);
         }
 
@@ -55,7 +99,7 @@ class KanbanController extends Controller
         if (($user->credits ?? 0) < $cost) {
             return response()->json([
                 'success' => false,
-                'error' => 'Nicht genügend Credits',
+                'error' => __('kanbancontrollerphp101'),
                 'required' => $cost,
                 'available' => $user->credits ?? 0,
             ], 400);
@@ -66,13 +110,13 @@ class KanbanController extends Controller
         if (!$subscription) {
             return response()->json([
                 'success' => false,
-                'error' => 'Freischaltung fehlgeschlagen',
+                'error' => __('kanbancontrollerphp112'),
             ], 500);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Kanban Board erfolgreich freigeschaltet!',
+            'message' => __('kanbancontrollerphp118'),
             'credits_spent' => $cost,
             'credits_remaining' => $user->fresh()->credits ?? 0,
         ]);
@@ -91,18 +135,18 @@ class KanbanController extends Controller
         $project = Project::find($projectId);
 
         if (!$project) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp137')], 404);
         }
 
         if (!$project->userCanUseKanban($user)) {
-            return response()->json(['message' => 'Access denied - kanban.use permission required'], 403);
+            return response()->json(['message' => __('kanbancontrollerphp141')], 403);
         }
 
         // Get or create board
         $board = KanbanBoard::where('project_id', $projectId)->first();
 
         if (!$board) {
-            $board = KanbanBoard::createWithDefaults($projectId, $project->name . ' Board');
+            $board = KanbanBoard::createWithDefaults($projectId, $project->name . __('kanbancontrollerphp148'));
         }
 
         $board->loadFullBoard();
@@ -153,7 +197,7 @@ class KanbanController extends Controller
     {
         $board = $this->getBoardWithAccess($boardId);
         if (!$board) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp199')], 404);
         }
 
         $validated = $request->validate([
@@ -173,7 +217,7 @@ class KanbanController extends Controller
     {
         $board = $this->getBoardWithAccess($boardId);
         if (!$board) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp219')], 404);
         }
 
         $validated = $request->validate([
@@ -199,7 +243,7 @@ class KanbanController extends Controller
     {
         $column = KanbanColumn::find($columnId);
         if (!$column || !$this->hasAccessToBoard($column->board_id)) {
-            return response()->json(['message' => 'Column not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp245')], 404);
         }
 
         $validated = $request->validate([
@@ -221,12 +265,12 @@ class KanbanController extends Controller
     {
         $column = KanbanColumn::find($columnId);
         if (!$column || !$this->hasAccessToBoard($column->board_id)) {
-            return response()->json(['message' => 'Column not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp267')], 404);
         }
 
         // Check if column has cards
         if ($column->cards()->count() > 0) {
-            return response()->json(['message' => 'Cannot delete column with cards. Move or delete cards first.'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp272')], 422);
         }
 
         $column->delete();
@@ -241,7 +285,7 @@ class KanbanController extends Controller
     {
         $board = $this->getBoardWithAccess($boardId);
         if (!$board) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp287')], 404);
         }
 
         $validated = $request->validate([
@@ -257,7 +301,7 @@ class KanbanController extends Controller
             }
         });
 
-        return response()->json(['message' => 'Columns reordered']);
+        return response()->json(['message' => __('kanbancontrollerphp303')]);
     }
 
     /**
@@ -267,12 +311,12 @@ class KanbanController extends Controller
     {
         $column = KanbanColumn::find($columnId);
         if (!$column || !$this->hasAccessToBoard($column->board_id)) {
-            return response()->json(['message' => 'Column not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp313')], 404);
         }
 
         // Check WIP limit
         if ($column->isWipLimitReached()) {
-            return response()->json(['message' => 'Work in Progress limit reached for this column'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp318')], 422);
         }
 
         $validated = $request->validate([
@@ -324,7 +368,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp370')], 404);
         }
 
         $validated = $request->validate([
@@ -376,7 +420,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp422')], 404);
         }
 
         $validated = $request->validate([
@@ -388,7 +432,7 @@ class KanbanController extends Controller
 
         // Check WIP limit on target column (if moving to different column)
         if ($newColumn->id !== $card->column_id && $newColumn->isWipLimitReached()) {
-            return response()->json(['message' => 'Work in Progress limit reached for target column'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp434')], 422);
         }
 
         $user = auth()->user();
@@ -396,7 +440,7 @@ class KanbanController extends Controller
         // Store old column info for notification
         $oldColumnId = $card->column_id;
         $oldColumn = KanbanColumn::find($oldColumnId);
-        $oldColumnName = $oldColumn ? $oldColumn->name : 'Unbekannt';
+        $oldColumnName = $oldColumn ? $oldColumn->name : __('kanbancontrollerphp442');
 
         // Update positions of other cards in the target column
         DB::transaction(function () use ($card, $validated, $user, $oldColumnId) {
@@ -465,14 +509,14 @@ class KanbanController extends Controller
 
         // Create message for each assignee
         foreach ($assigneesToNotify as $assignee) {
-            $subject = "Kanban: Karte \"{$card->title}\" verschoben";
+            $subject = __('kanbancontrollerphp511')."\"{$card->title}\"".__('kanbancontrollerphp511_2');
 
             $body = "Hallo {$assignee->username},\n\n" .
-                "Ich habe Ihre Karte **\"{$card->title}\"** im Projekt **{$projectName}** verschoben:\n\n" .
-                "**Von:** {$fromColumn}\n" .
-                "**Nach:** {$toColumn}\n\n" .
-                "Falls Sie Fragen haben, können Sie mir gerne antworten.\n\n" .
-                "Mit freundlichen Grüßen,\n" .
+                __('kanbancontrollerphp514_3')."**\"{$card->title}\"".__('kanbancontrollerphp514')."{$projectName}".__('kanbancontrollerphp514_2')."\n\n" .
+                __('kanbancontrollerphp515')."{$fromColumn}\n" .
+                __('kanbancontrollerphp516')."{$toColumn}\n\n" .
+                __('kanbancontrollerphp517')."\n\n" .
+                __('kanbancontrollerphp518')."\n" . 
                 "{$mover->username}";
 
             // Create a direct message thread from the mover to the assignee
@@ -483,6 +527,16 @@ class KanbanController extends Controller
                 $body
             );
         }
+
+        // Send push notification to all assignees
+        $assigneeIds = $assigneesToNotify->pluck('id')->toArray();
+        SendPushNotificationJob::dispatch(
+            $assigneeIds,
+            __('push.kanban_card_moved'),
+            $card->title,
+            '/',
+            'kanban'
+        );
     }
 
     /**
@@ -492,7 +546,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp538')], 404);
         }
 
         $columnId = $card->column_id;
@@ -505,7 +559,7 @@ class KanbanController extends Controller
             ->where('position', '>', $position)
             ->decrement('position');
 
-        return response()->json(['message' => 'Card deleted']);
+        return response()->json(['message' => __('kanbancontrollerphp551')]);
     }
 
     /**
@@ -515,7 +569,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp561')], 404);
         }
 
         $validated = $request->validate([
@@ -543,7 +597,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp589')], 404);
         }
 
         $card->load([
@@ -565,7 +619,7 @@ class KanbanController extends Controller
     {
         $board = $this->getBoardWithAccess($boardId);
         if (!$board) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp611')], 404);
         }
 
         $validated = $request->validate([
@@ -585,7 +639,7 @@ class KanbanController extends Controller
     {
         $label = KanbanLabel::find($labelId);
         if (!$label || !$this->hasAccessToBoard($label->board_id)) {
-            return response()->json(['message' => 'Label not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp631')], 404);
         }
 
         $validated = $request->validate([
@@ -605,12 +659,12 @@ class KanbanController extends Controller
     {
         $label = KanbanLabel::find($labelId);
         if (!$label || !$this->hasAccessToBoard($label->board_id)) {
-            return response()->json(['message' => 'Label not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp651')], 404);
         }
 
         $label->delete();
 
-        return response()->json(['message' => 'Label deleted']);
+        return response()->json(['message' => __('kanbancontrollerphp656')]);
     }
 
     // ========== ASSIGNEE OPERATIONS ==========
@@ -623,14 +677,14 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp669')], 404);
         }
 
         $user = auth()->user();
 
         // Check if already assigned
         if ($card->isAssignedTo($user->id)) {
-            return response()->json(['message' => 'Already assigned to this card'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp676')], 422);
         }
 
         $card->assignUser($user->id, $user->id);
@@ -638,7 +692,7 @@ class KanbanController extends Controller
         $card->load(['assignees', 'labels', 'creator']);
 
         return response()->json([
-            'message' => 'Successfully assigned',
+            'message' => __('kanbancontrollerphp684'),
             'card' => $this->transformCardWithKanbanInfo($card),
         ]);
     }
@@ -651,14 +705,14 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp697')], 404);
         }
 
         $user = auth()->user();
 
         // Check if assigned
         if (!$card->isAssignedTo($user->id)) {
-            return response()->json(['message' => 'Not assigned to this card'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp704')], 422);
         }
 
         $card->unassignUser($user->id, $user->id);
@@ -666,7 +720,7 @@ class KanbanController extends Controller
         $card->load(['assignees', 'labels', 'creator']);
 
         return response()->json([
-            'message' => 'Successfully unassigned',
+            'message' => __('kanbancontrollerphp712'),
             'card' => $this->transformCardWithKanbanInfo($card),
         ]);
     }
@@ -712,7 +766,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp758')], 404);
         }
 
         $validated = $request->validate([
@@ -727,12 +781,12 @@ class KanbanController extends Controller
         $targetUser = \App\Models\User::find($validated['user_id']);
 
         if (!$project->userCanAccess($targetUser)) {
-            return response()->json(['message' => 'User does not have access to this project'], 403);
+            return response()->json(['message' => __('kanbancontrollerphp773')], 403);
         }
 
         // Check if already assigned
         if ($card->isAssignedTo($validated['user_id'])) {
-            return response()->json(['message' => 'User already assigned to this card'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp778')], 422);
         }
 
         $card->assignUser($validated['user_id'], $currentUser->id);
@@ -753,7 +807,7 @@ class KanbanController extends Controller
     {
         $card = KanbanCard::find($cardId);
         if (!$card || !$this->hasAccessToBoard($card->column->board_id)) {
-            return response()->json(['message' => 'Card not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp799')], 404);
         }
 
         $currentUser = auth()->user();
@@ -764,12 +818,12 @@ class KanbanController extends Controller
         $project = Project::find($board->project_id);
 
         if ($userId !== $currentUser->id && $project->owner_id !== $currentUser->id) {
-            return response()->json(['message' => 'You can only remove yourself from this card'], 403);
+            return response()->json(['message' => __('kanbancontrollerphp810')], 403);
         }
 
         // Check if assigned
         if (!$card->isAssignedTo($userId)) {
-            return response()->json(['message' => 'User not assigned to this card'], 422);
+            return response()->json(['message' => __('kanbancontrollerphp815')], 422);
         }
 
         $card->unassignUser($userId, $currentUser->id);
@@ -777,7 +831,7 @@ class KanbanController extends Controller
         $card->load(['assignees', 'labels', 'creator']);
 
         return response()->json([
-            'message' => 'User removed successfully',
+            'message' => __('kanbancontrollerphp823'),
             'card' => $card,
         ]);
     }
@@ -790,12 +844,12 @@ class KanbanController extends Controller
     {
         $board = $this->getBoardWithAccess($boardId);
         if (!$board) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp836')], 404);
         }
 
         $project = Project::find($board->project_id);
         if (!$project) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp841')], 404);
         }
 
         // Get all users who have access to this project
@@ -923,7 +977,7 @@ class KanbanController extends Controller
     {
         $board = KanbanBoard::find($boardId);
         if (!$board || !$this->hasAccessToBoard($boardId)) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp969')], 404);
         }
 
         $roles = ProjectKanbanRole::getProjectRoles($board->project_id);
@@ -955,7 +1009,7 @@ class KanbanController extends Controller
     {
         $board = KanbanBoard::find($boardId);
         if (!$board || !$this->hasAccessToBoard($boardId)) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp1001')], 404);
         }
 
         $project = Project::find($board->project_id);
@@ -963,7 +1017,7 @@ class KanbanController extends Controller
 
         // Only project owner can assign roles
         if ($project->owner_id !== $currentUser->id) {
-            return response()->json(['message' => 'Only project owner can assign roles'], 403);
+            return response()->json(['message' => __('kanbancontrollerphp1009')], 403);
         }
 
         $request->validate([
@@ -989,7 +1043,7 @@ class KanbanController extends Controller
         // Validate role if provided (not null)
         $validRoles = ['srm', 'sdm', 'flow_manager'];
         if ($role !== null && !in_array($role, $validRoles, true)) {
-            return response()->json(['message' => 'Invalid role: ' . $role], 422);
+            return response()->json(['message' => __('kanbancontrollerphp1035') . $role], 422);
         }
 
         try {
@@ -1015,7 +1069,7 @@ class KanbanController extends Controller
                 ]);
             } else {
                 return response()->json([
-                    'message' => 'Role removed successfully',
+                    'message' => __('kanbancontrollerphp1061'),
                     'role' => null,
                 ]);
             }
@@ -1032,7 +1086,7 @@ class KanbanController extends Controller
     {
         $board = KanbanBoard::find($boardId);
         if (!$board || !$this->hasAccessToBoard($boardId)) {
-            return response()->json(['message' => 'Board not found or access denied'], 404);
+            return response()->json(['message' => __('kanbancontrollerphp1078')], 404);
         }
 
         $project = Project::find($board->project_id);
@@ -1040,13 +1094,13 @@ class KanbanController extends Controller
 
         // Only project owner can remove roles
         if ($project->owner_id !== $currentUser->id) {
-            return response()->json(['message' => 'Only project owner can remove roles'], 403);
+            return response()->json(['message' => __('kanbancontrollerphp1086')], 403);
         }
 
         ProjectKanbanRole::setUserRole($board->project_id, $userId, null);
 
         return response()->json([
-            'message' => 'Role removed successfully',
+            'message' => __('kanbancontrollerphp1092'),
         ]);
     }
 

@@ -80,7 +80,7 @@ export default function LanguageManagementPanel() {
       if (error.response?.status === 403) {
         toast.showError(t.languagecontroller17);
       } else {
-        toast.showError('Failed to load languages: ' + (error.response?.data?.message || error.message));
+        toast.showError(t.languagemanagementpanel83 + (error.response?.data?.message || error.message));
       }
     } finally {
       setLoading(false);
@@ -128,7 +128,7 @@ export default function LanguageManagementPanel() {
       icon: 'pi pi-exclamation-triangle',
       accept: () => handleDelete(language),
       acceptLabel: t.languagemanagementpanel124,
-      rejectLabel: 'No',
+      rejectLabel: t.languagemanagementpanel131,
       acceptClassName: 'p-button-danger'
     });
   };
@@ -139,17 +139,17 @@ export default function LanguageManagementPanel() {
       toast.showSuccess(t.languagemanagementpanel133);
       fetchLanguages();
     } catch (error: any) {
-      toast.showError('Failed to delete language: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.languagemanagementpanel142 + (error.response?.data?.message || error.message));
     }
   };
 
   const handleToggleActive = async (language: Language) => {
     try {
       await api.request(`/languages/${language.id}/toggle-active`, { method: t.languagemanagementpanel142 });
-      toast.showSuccess(`Language ${language.is_active ? 'deactivated' : 'activated'} successfully`);
+      toast.showSuccess(`${t.languagemanagementpanel149}${language.is_active ? t.languagemanagementpanel149_2 : t.languagemanagementpanel149_3}{t.languagemanagementpanel149_4}`);
       fetchLanguages();
     } catch (error: any) {
-      toast.showError('Failed to toggle language status: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.languagemanagementpanel152 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -159,7 +159,7 @@ export default function LanguageManagementPanel() {
       toast.showSuccess(t.languagemanagementpanel153);
       fetchLanguages();
     } catch (error: any) {
-      toast.showError('Failed to set default language: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.languagemanagementpanel162 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -181,7 +181,7 @@ export default function LanguageManagementPanel() {
       setModalVisible(false);
       fetchLanguages();
     } catch (error: any) {
-      toast.showError('Failed to save language: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.languagemanagementpanel184 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -220,7 +220,7 @@ export default function LanguageManagementPanel() {
           value={rowData.is_active ? t.templatesStatusActive : t.manageteammodal328}
           severity={rowData.is_active ? 'success' : 'danger'}
         />
-        {rowData.is_default && <Tag value="Default" severity="warning" />}
+        {rowData.is_default && <Tag value={t.languagemanagementpanel223} severity="warning" />}
       </div>
     );
   };
@@ -243,7 +243,7 @@ export default function LanguageManagementPanel() {
           size="small"
           severity="info"
           onClick={() => handleEdit(rowData)}
-          tooltip="Edit Language"
+          tooltip={t.languagemanagementpanel246}
           tooltipOptions={{ position: 'top' }}
         />
 
@@ -254,7 +254,7 @@ export default function LanguageManagementPanel() {
           size="small"
           severity={rowData.is_active ? "warning" : "success"}
           onClick={() => handleToggleActive(rowData)}
-          tooltip={rowData.is_active ? 'Deactivate' : t.languagemanagementpanel251}
+          tooltip={rowData.is_active ? t.languagemanagementpanel257: t.languagemanagementpanel251}
           tooltipOptions={{ position: 'top' }}
           disabled={rowData.is_default && rowData.is_active}
         />
@@ -295,10 +295,10 @@ export default function LanguageManagementPanel() {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-              Language Management
+              {t.languagemanagementpanel298}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Manage languages for content translation (System Admin Only)
+              {t.languagemanagementpanel301}
             </p>
           </div>
           <Button
@@ -343,7 +343,7 @@ export default function LanguageManagementPanel() {
       </div>
 
         <Dialog
-          header={editingLanguage ? 'Edit Language' : t.languagemanagementpanel340}
+          header={editingLanguage ? t.languagemanagementpanel346 : t.languagemanagementpanel340}
           visible={modalVisible}
           onHide={() => setModalVisible(false)}
           style={{ width: '600px' }}
@@ -366,7 +366,7 @@ export default function LanguageManagementPanel() {
               />
               <Button
                 type="button"
-                label={editingLanguage ? 'Update' : t.teammodal240}
+                label={editingLanguage ? t.languagemanagementpanel369 : t.teammodal240}
                 icon="pi pi-check"
                 severity="success"
                 onClick={handleSubmit(onSubmit)}
@@ -379,7 +379,7 @@ export default function LanguageManagementPanel() {
               {/* Language Code */}
               <div>
                 <label htmlFor="code" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                  Language Code *
+                  {t.languagemanagementpanel382}
                 </label>
                 <Controller
                   name="code"
@@ -387,13 +387,13 @@ export default function LanguageManagementPanel() {
                   rules={{
                     required: t.languagemanagementpanel378,
                     maxLength: { value: 5, message: t.languagemanagementpanel379 },
-                    pattern: { value: /^[a-z]{2,3}(-[A-Z]{2})?$/, message: 'Please enter valid language code (e.g., en, de, en-US)' }
+                    pattern: { value: /^[a-z]{2,3}(-[A-Z]{2})?$/, message: t.languagemanagementpanel390 }
                   }}
                   render={({ field }) => (
                     <InputText
                       id="code"
                       {...field}
-                      placeholder="e.g., en, de, fr"
+                      placeholder={t.languagemanagementpanel396}
                       className="w-full"
                     />
                   )}
@@ -406,7 +406,7 @@ export default function LanguageManagementPanel() {
               {/* Flag */}
               <div>
                 <label htmlFor="flag" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                  Flag
+                  {t.languagemanagementpanel409}
                 </label>
                 <Controller
                   name="flag"
@@ -431,7 +431,7 @@ export default function LanguageManagementPanel() {
               {/* English Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                  English Name *
+                  {t.languagemanagementpanel434}
                 </label>
                 <Controller
                   name="name"
@@ -457,7 +457,7 @@ export default function LanguageManagementPanel() {
               {/* Native Name */}
               <div>
                 <label htmlFor="native_name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                  Native Name *
+                  {t.languagemanagementpanel460}
                 </label>
                 <Controller
                   name="native_name"
@@ -484,7 +484,7 @@ export default function LanguageManagementPanel() {
             {/* Description */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                Description
+                {t.languagemanagementpanel487}
               </label>
               <Controller
                 name="description"
@@ -511,7 +511,7 @@ export default function LanguageManagementPanel() {
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '40px' }}>
               <div style={{ minWidth: '100px' }}>
                 <label htmlFor="sort_order" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                  Sort Order *
+                  {t.languagemanagementpanel514}
                 </label>
                 <Controller
                   name="sort_order"
@@ -548,7 +548,7 @@ export default function LanguageManagementPanel() {
                   )}
                 />
                 <label htmlFor="is_active" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
-                  Active
+                  {t.languagemanagementpanel551}
                 </label>
               </div>
               <div className="flex items-center gap-2 pb-2">
@@ -564,7 +564,7 @@ export default function LanguageManagementPanel() {
                   )}
                 />
                 <label htmlFor="is_default" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
-                  Default Language
+                  {t.languagemanagementpanel567}
                 </label>
               </div>
             </div>

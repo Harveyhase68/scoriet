@@ -47,26 +47,26 @@ class AuthController extends Controller
 
             if ($errors->has('email')) {
                 if (str_contains($errors->first('email'), 'has already been taken')) {
-                    $friendlyMessage = 'Diese E-Mail-Adresse ist bereits registriert. Möchten Sie sich einloggen?';
+                    $friendlyMessage = __('authcontrollerphp50');
                 } else {
-                    $friendlyMessage = 'Bitte geben Sie eine gültige E-Mail-Adresse ein.';
+                    $friendlyMessage = __('authcontrollerphp52');
                 }
             } elseif ($errors->has('username')) {
                 if (str_contains($errors->first('username'), 'has already been taken')) {
-                    $friendlyMessage = 'Dieser Benutzername ist bereits vergeben. Bitte wählen Sie einen anderen.';
+                    $friendlyMessage = __('authcontrollerphp56');
                 } else {
-                    $friendlyMessage = 'Der Benutzername darf nur Kleinbuchstaben, Zahlen, _ und - enthalten.';
+                    $friendlyMessage = __('authcontrollerphp58');
                 }
             } elseif ($errors->has('password')) {
                 if (str_contains($errors->first('password'), 'confirmation')) {
-                    $friendlyMessage = 'Die Passwörter stimmen nicht überein.';
+                    $friendlyMessage = __('authcontrollerphp62');
                 } else {
-                    $friendlyMessage = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+                    $friendlyMessage = __('authcontrollerphp64');
                 }
             } elseif ($errors->has('name')) {
-                $friendlyMessage = 'Bitte geben Sie Ihren Namen ein.';
+                $friendlyMessage = __('authcontrollerphp67');
             } else {
-                $friendlyMessage = 'Bitte überprüfen Sie Ihre Eingaben.';
+                $friendlyMessage = __('authcontrollerphp69');
             }
 
             return response()->json([
@@ -79,7 +79,7 @@ class AuthController extends Controller
         // Honeypot check - if math_check field is filled, it's a bot
         // Silently pretend success but don't actually register
         if ($request->filled('math_check')) {
-            \Log::warning('Bot registration blocked by honeypot', [
+            \Log::warning(__('authcontrollerphp82'), [
                 'email' => $request->email,
                 'ip' => $request->ip(),
                 'honeypot_value' => $request->math_check,
@@ -87,7 +87,7 @@ class AuthController extends Controller
 
             // Return fake success response
             return response()->json([
-                'message' => 'Benutzer erfolgreich registriert. Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.',
+                'message' => __('authcontrollerphp90'),
                 'user' => [
                     'id' => 0,
                     'name' => $request->name,
@@ -104,7 +104,7 @@ class AuthController extends Controller
             $securityErrors = $securityValidation['errors'];
             $friendlyMessage = reset($securityErrors); // Get first error message
 
-            \Log::warning('Registration blocked by security validation', [
+            \Log::warning(__('authcontrollerphp107'), [
                 'email' => $request->email,
                 'ip' => $request->ip(),
                 'errors' => $securityErrors,
@@ -135,7 +135,7 @@ class AuthController extends Controller
             // If token provided but invalid
             if (!$registrationInvite) {
                 return response()->json([
-                    'message' => 'Invalid or expired invitation token.',
+                    'message' => __('authcontrollerphp138'),
                     'registration_closed' => !$registrationOpen,
                 ], 403);
             }
@@ -143,7 +143,7 @@ class AuthController extends Controller
             // If token is for different email, reject
             if ($registrationInvite->email !== $request->email) {
                 return response()->json([
-                    'message' => 'This invitation is for a different email address.',
+                    'message' => __('authcontrollerphp146'),
                     'expected_email' => $registrationInvite->email,
                     'registration_closed' => !$registrationOpen,
                 ], 403);
@@ -153,7 +153,7 @@ class AuthController extends Controller
         // If registration is closed and no valid invite, reject
         if (!$registrationOpen && !$registrationInvite) {
             return response()->json([
-                'message' => 'Registration is currently by invitation only. Please request an invite or contact support.',
+                'message' => __('authcontrollerphp156'),
                 'registration_closed' => true,
             ], 403);
         }
@@ -208,11 +208,11 @@ class AuthController extends Controller
                 ->notify(new NewUserRegistered($user));
         } catch (\Exception $e) {
             // Log error but don't fail registration
-            \Log::error('Failed to send admin notification: ' . $e->getMessage());
+            \Log::error(__('authcontrollerphp211') . $e->getMessage());
         }
 
         return response()->json([
-            'message' => 'Benutzer erfolgreich registriert. Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.',
+            'message' => __('authcontrollerphp215'),
             'user' => $user,
             'email_verification_required' => true,
             'has_pending_invitation' => $user->hasPendingInvitation()
@@ -391,7 +391,7 @@ class AuthController extends Controller
         $user->tokens()->update(['revoked' => true]);
 
         // Create a personal access token
-        $tokenResult = $user->createToken($rememberMe ? 'RememberMe Token' : 'Personal Access Token');
+        $tokenResult = $user->createToken($rememberMe ? __('authcontrollerphp394') : __('authcontrollerphp394_2'));
         $tokenModel = $tokenResult->token;
 
         // Set extended expiry for remember_me (30 days)
@@ -709,7 +709,7 @@ class AuthController extends Controller
 
         if ($user->hasVerifiedEmail()) {
             // User already verified - still auto-login them
-            $tokenResult = $user->createToken('Personal Access Token');
+            $tokenResult = $user->createToken(__('authcontrollerphp712'));
             $token = $tokenResult->accessToken;
 
             return response()->json([
@@ -724,7 +724,7 @@ class AuthController extends Controller
 
         if ($user->markEmailAsVerified()) {
             // Auto-login after successful verification
-            $tokenResult = $user->createToken('Personal Access Token');
+            $tokenResult = $user->createToken(__('authcontrollerphp727'));
             $token = $tokenResult->accessToken;
 
             // Refresh user to get any updated data

@@ -192,7 +192,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
     if (!project) return;
 
     confirmDialog({
-      message: `Are you sure you want to cancel the invitation for ${invitation.invited_email}?`,
+      message: `${t.projectinvitationsmodal195}${invitation.invited_email}?`,
       header: t.manageteammodal534,
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
@@ -231,7 +231,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
     if (!project) return;
 
     confirmDialog({
-      message: `Resend invitation to ${invitation.invited_email}?`,
+      message: `${t.projectinvitationsmodal234}${invitation.invited_email}?`,
       header: t.projectinvitationsmodal243,
       icon: 'pi pi-send',
       accept: async () => {
@@ -349,11 +349,11 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
         {/* Send New Invitation Form */}
         <div className="bg-gray-800 p-4 border-radius-md border border-gray-600">
-          <h3 className="text-lg font-semibold mb-4 text-gray-100">Send New Invitation</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-100">{t.projectinvitationsmodal352}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="field">
-              <label htmlFor="email" className="font-medium text-gray-300">Email Address *</label>
+              <label htmlFor="email" className="font-medium text-gray-300">{t.projectinvitationsmodal356}</label>
               <InputText
                 id="email"
                 type="email"
@@ -365,7 +365,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             </div>
 
             <div className="field">
-              <label htmlFor="role" className="font-medium text-gray-300">Role</label>
+              <label htmlFor="role" className="font-medium text-gray-300">{t.projectinvitationsmodal368}</label>
               <Dropdown
                 id="role"
                 value={inviteForm.role}
@@ -376,7 +376,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
           </div>
 
           <div className="field">
-            <label htmlFor="message" className="font-medium text-gray-300">Personal Message (Optional)</label>
+            <label htmlFor="message" className="font-medium text-gray-300">{t.projectinvitationsmodal379}</label>
             <InputTextarea
               id="message"
               value={inviteForm.message}
@@ -398,7 +398,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
 
         {/* Existing Invitations */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-gray-100">Existing Invitations</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-100">{t.projectinvitationsmodal401}</h3>
           
           <DataTable
             value={invitations}

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Invitation - {{ $project->name }}</title>
+    <title>{{__('project-invitationbladephp6')}}{{ $project->name }}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -113,12 +113,12 @@
     <div class="container">
         <div class="header">
             <div class="logo">🚀 Scoriet</div>
-            <h1 class="title">You're invited to collaborate!</h1>
+            <h1 class="title">{{__('project-invitationbladephp116')}}</h1>
         </div>
 
-        <p>Hi there!</p>
+        <p>{{__('project-invitationbladephp119')}}</p>
 
-        <p><strong>{{ $inviter->name }}</strong> ({{ $inviter->email }}) has invited you to join the project:</p>
+        <p><strong>{{ $inviter->name }}</strong> ({{ $inviter->email }}){{__('project-invitationbladephp121')}}</p>
 
         <div class="project-info">
             <div class="project-name">{{ $project->name }}</div>
@@ -126,38 +126,38 @@
                 <p style="margin: 5px 0; color: #6b7280;">{{ $project->description }}</p>
             @endif
             <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">
-                Role: <strong>{{ ucfirst($invitation->role) }}</strong>
+                {{__('project-invitationbladephp129')}}<strong>{{ ucfirst($invitation->role) }}</strong>
             </p>
         </div>
 
         @if($invitation->message)
             <div class="message-box">
-                <strong>Personal message from {{ $inviter->name }}:</strong><br>
+                <strong>{{__('project-invitationbladephp135')}}{{ $inviter->name }}:</strong><br>
                 "{{ $invitation->message }}"
             </div>
         @endif
 
         <div class="actions">
-            <a href="{{ $acceptUrl }}" class="btn btn-accept">✅ Accept Invitation</a>
-            <a href="{{ $declineUrl }}" class="btn btn-decline">❌ Decline</a>
+            <a href="{{ $acceptUrl }}" class="btn btn-accept">{{__('project-invitationbladephp141')}}</a>
+            <a href="{{ $declineUrl }}" class="btn btn-decline">{{__('project-invitationbladephp142')}}</a>
         </div>
 
         <div class="expiry">
-            ⏰ This invitation expires on {{ $expiresAt->format('F j, Y \a\t g:i A') }}
+            {{__('project-invitationbladephp146')}}{{ $expiresAt->format('F j, Y \a\t g:i A') }}
         </div>
 
         <div class="security-note">
-            <strong>🔒 Security Note:</strong> This invitation was sent to {{ $invitation->invited_email }}. 
-            If you didn't expect this invitation, you can safely ignore this email or click "Decline" to reject it.
+            <strong>{{__('project-invitationbladephp150')}}</strong>{{__('project-invitationbladephp150_2')}}{{ $invitation->invited_email }}. 
+            {{__('project-invitationbladephp151')}}
         </div>
 
         <div class="footer">
             <p>
-                This is an automated message from <strong>Scoriet</strong> - Enterprise Code Generator.<br>
-                If you have any questions, please reply to this email to contact {{ $inviter->name }} directly.
+                {{__('project-invitationbladephp156')}}<strong>Scoriet</strong>{{__('project-invitationbladephp156_2')}}<br>
+                {{__('project-invitationbladephp157')}}{{ $inviter->name }}{{__('project-invitationbladephp157_2')}}
             </p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
-                Invitation ID: {{ $invitation->id }} | Token: {{ substr($invitation->token, 0, 8) }}...
+                {{__('project-invitationbladephp160')}}{{ $invitation->id }} | Token: {{ substr($invitation->token, 0, 8) }}...
             </p>
         </div>
     </div>

@@ -235,7 +235,7 @@ class ProjectController extends Controller
             // Original project must be public to be cloned
             if (!$originalProject || !$originalProject->is_public) {
                 return response()->json([
-                    'message' => 'Original project not found or is not public'
+                    'message' => __('projectcontrollerphp238')
                 ], 404);
             }
         }
@@ -258,7 +258,7 @@ class ProjectController extends Controller
                 // User needs to buy a new subscription slot
                 if (!$user->hasCredits(50)) {
                     return response()->json([
-                        'message' => 'Nicht genug Credits. Sie benötigen 50 Credits um ein zusätzliches Projekt freizuschalten.',
+                        'message' => __('projectcontrollerphp261'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => 50,
                         'current_credits' => $user->credits,
@@ -447,7 +447,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp450')], 403);
         }
 
         // Load gitProvider relationship for Git integration
@@ -466,7 +466,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp469')], 403);
         }
 
         $validated = $request->validate([
@@ -534,13 +534,13 @@ class ProjectController extends Controller
             // Only current owner can transfer ownership
             $user = Auth::user();
             if ($project->owner_id !== $user->id) {
-                return response()->json(['message' => 'Only the project owner can transfer ownership'], 403);
+                return response()->json(['message' => __('projectcontrollerphp537')], 403);
             }
 
             // Check if new owner is a project member
             $newOwnerMembership = $project->members()->where('user_id', $validated['new_owner_id'])->first();
             if (!$newOwnerMembership) {
-                return response()->json(['message' => 'New owner must be a project member'], 400);
+                return response()->json(['message' => __('projectcontrollerphp543')], 400);
             }
 
             // Transfer ownership
@@ -601,7 +601,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp604')], 403);
         }
 
         try {
@@ -632,7 +632,7 @@ class ProjectController extends Controller
 
             DB::commit();
 
-            return response()->json(['message' => 'Project deleted successfully']);
+            return response()->json(['message' => __('projectcontrollerphp635')]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -643,7 +643,7 @@ class ProjectController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to delete project',
+                'message' => __('projectcontrollerphp646'),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -656,12 +656,12 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp659')], 403);
         }
 
         $project->delete();
 
-        return response()->json(['message' => 'Project permanently deleted']);
+        return response()->json(['message' => __('projectcontrollerphp664')]);
     }
 
     /**
@@ -676,7 +676,7 @@ class ProjectController extends Controller
 
         $project->update(['is_active' => true]);
 
-        return response()->json(['message' => 'Project restored successfully']);
+        return response()->json(['message' => __('projectcontrollerphp679')]);
     }
 
     /**
@@ -686,7 +686,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp689')], 403);
         }
 
         // Get teams that are not yet assigned to this project
@@ -708,7 +708,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp711')], 403);
         }
 
         // Get ONLY teams that are assigned via pivot table to this specific project
@@ -730,7 +730,7 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+            return response()->json(['message' => __('projectcontrollerphp733')], 401);
         }
 
         // Get team IDs where user is a member (existence in table = active membership)
@@ -819,7 +819,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp822')], 403);
         }
 
         $validated = $request->validate([
@@ -836,7 +836,7 @@ class ProjectController extends Controller
             ->toArray();
 
         if (count($userTeams) !== count($teamIds)) {
-            return response()->json(['message' => 'Some teams do not belong to you'], 403);
+            return response()->json(['message' => __('projectcontrollerphp839')], 403);
         }
 
         // Assign teams to project using pivot table
@@ -852,7 +852,7 @@ class ProjectController extends Controller
         
         $project->teams()->attach($pivotData);
 
-        return response()->json(['message' => 'Teams assigned successfully']);
+        return response()->json(['message' => __('projectcontrollerphp855')]);
     }
 
     /**
@@ -862,23 +862,23 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp865')], 403);
         }
 
         // Check if team belongs to user
         if ((string)$team->project_owner_id !== (string)Auth::id()) {
-            return response()->json(['message' => 'Team does not belong to you'], 403);
+            return response()->json(['message' => __('projectcontrollerphp870')], 403);
         }
 
         // Check if team is assigned to this project
         if (!$project->teams()->where('teams.id', $team->id)->exists()) {
-            return response()->json(['message' => 'Team is not assigned to this project'], 400);
+            return response()->json(['message' => __('projectcontrollerphp875')], 400);
         }
 
         // Remove team from project using pivot table
         $project->teams()->detach($team->id);
 
-        return response()->json(['message' => 'Team removed from project successfully']);
+        return response()->json(['message' => __('projectcontrollerphp881')]);
     }
 
     /**
@@ -888,7 +888,7 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp891')], 403);
         }
 
         $validated = $request->validate([
@@ -901,18 +901,18 @@ class ProjectController extends Controller
         
         // Check if user can access the schema
         if (!$schema->canBeAccessedBy(Auth::user())) {
-            return response()->json(['message' => 'Schema not found'], 404);
+            return response()->json(['message' => __('projectcontrollerphp904')], 404);
         }
 
         // Check if association already exists
         if ($project->hasSchemaAccess($schema)) {
-            return response()->json(['message' => 'Schema is already associated with this project'], 422);
+            return response()->json(['message' => __('projectcontrollerphp909')], 422);
         }
 
         // Associate the schema
         $project->associateSchema($schema, $validated['association_type'], $validated['alias']);
 
-        return response()->json(['message' => 'Schema associated successfully']);
+        return response()->json(['message' => __('projectcontrollerphp915')]);
     }
 
     /**
@@ -922,18 +922,18 @@ class ProjectController extends Controller
     {
         // Check if user has access to this project
         if (!$this->userHasProjectAccess($project)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp925')], 403);
         }
 
         // Check if association exists
         if (!$project->hasSchemaAccess($schema)) {
-            return response()->json(['message' => 'Schema is not associated with this project'], 422);
+            return response()->json(['message' => __('projectcontrollerphp930')], 422);
         }
 
         // Remove association
         $project->dissociateSchema($schema);
 
-        return response()->json(['message' => 'Schema association removed successfully']);
+        return response()->json(['message' => __('projectcontrollerphp936')]);
     }
 
     /**
@@ -945,7 +945,7 @@ class ProjectController extends Controller
 
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('projectcontrollerphp948')], 404);
         }
 
         // Get all schemas linked to the project
@@ -1068,7 +1068,7 @@ class ProjectController extends Controller
 
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('projectcontrollerphp1071')], 404);
         }
 
         // Get all schemas associated with the project
@@ -1117,7 +1117,7 @@ class ProjectController extends Controller
 
         // Check if user has access to the project
         if (!$project->visibleTo($user)->exists()) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('projectcontrollerphp1120')], 404);
         }
 
         // Get all project members with user details
@@ -1181,17 +1181,17 @@ class ProjectController extends Controller
         $memberToRemove = $project->members()->where('user_id', $request->user_id)->first();
 
         if (!$memberToRemove) {
-            return response()->json(['message' => 'User is not a member of this project'], 404);
+            return response()->json(['message' => __('projectcontrollerphp1184')], 404);
         }
 
         // Prevent removing project owner
         if ($memberToRemove->role === 'owner') {
-            return response()->json(['message' => 'Cannot remove project owner'], 400);
+            return response()->json(['message' => __('projectcontrollerphp1189')], 400);
         }
 
         // Prevent non-owners from removing admins
         if ($userMembership->role !== 'owner' && $memberToRemove->role === 'admin') {
-            return response()->json(['message' => 'Only project owner can remove admins'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1194')], 403);
         }
 
         // Get the user ID before deleting the membership
@@ -1214,7 +1214,7 @@ class ProjectController extends Controller
         }
 
         return response()->json([
-            'message' => 'Member removed successfully from project and all associated teams'
+            'message' => __('projectcontrollerphp1217')
         ]);
     }
 
@@ -1228,7 +1228,7 @@ class ProjectController extends Controller
         // Check if user is project owner (only owners can change roles)
         $userMembership = $project->members()->where('user_id', $user->id)->first();
         if (!$userMembership || $userMembership->role !== 'owner') {
-            return response()->json(['message' => 'Only project owner can change member roles'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1231')], 403);
         }
 
         $request->validate([
@@ -1239,17 +1239,17 @@ class ProjectController extends Controller
         $memberToUpdate = $project->members()->where('user_id', $request->user_id)->first();
 
         if (!$memberToUpdate) {
-            return response()->json(['message' => 'User is not a member of this project'], 404);
+            return response()->json(['message' => __('projectcontrollerphp1242')], 404);
         }
 
         // Prevent changing owner role
         if ($memberToUpdate->role === 'owner') {
-            return response()->json(['message' => 'Cannot change owner role'], 400);
+            return response()->json(['message' => __('projectcontrollerphp1247')], 400);
         }
 
         $memberToUpdate->update(['role' => $request->role]);
 
-        return response()->json(['message' => 'Member role updated successfully']);
+        return response()->json(['message' => __('projectcontrollerphp1252')]);
     }
 
     /**
@@ -1261,7 +1261,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1264')], 403);
         }
 
         $validated = $request->validate([
@@ -1299,7 +1299,7 @@ class ProjectController extends Controller
         $project->update($updateData);
 
         return response()->json([
-            'message' => 'Project settings updated successfully',
+            'message' => __('projectcontrollerphp1302'),
             'project' => $project
         ]);
     }
@@ -1313,7 +1313,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1316')], 403);
         }
 
         return response()->json([
@@ -1333,7 +1333,7 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+            return response()->json(['message' => __('projectcontrollerphp1336')], 401);
         }
 
         // Get projects owned by the user
@@ -1493,7 +1493,7 @@ class ProjectController extends Controller
         $generationTree = $generator->generateAndSave($project);
 
         return response()->json([
-            'message' => 'Generation tree made regenerated successfully',
+            'message' => __('projectcontrollerphp1496'),
             'tree_data' => $generationTree->tree_data,
             'generated_at' => $generationTree->generated_at,
         ]);
@@ -1508,7 +1508,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1511')], 403);
         }
 
         // Load templates from project_template_usage with protected_files
@@ -1530,7 +1530,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1533')], 403);
         }
 
         // Load the git provider relationship
@@ -1561,7 +1561,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1564')], 403);
         }
 
         $validated = $request->validate([
@@ -1580,7 +1580,7 @@ class ProjectController extends Controller
         if (isset($validated['git_provider_id']) && $validated['git_provider_id']) {
             $gitProvider = $user->gitProviders()->find($validated['git_provider_id']);
             if (!$gitProvider) {
-                return response()->json(['error' => 'Git provider not found or does not belong to you'], 400);
+                return response()->json(['error' => __('projectcontrollerphp1583')], 400);
             }
         }
 
@@ -1591,7 +1591,7 @@ class ProjectController extends Controller
         $project->load('gitProvider');
 
         return response()->json([
-            'message' => 'Git settings updated successfully',
+            'message' => __('projectcontrollerphp1594'),
             'git_settings' => $project->getGitSettings(),
         ]);
     }
@@ -1605,7 +1605,7 @@ class ProjectController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('projectcontrollerphp1608')], 403);
         }
 
         // Clear all git settings
@@ -1622,7 +1622,7 @@ class ProjectController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Git integration removed successfully',
+            'message' => __('projectcontrollerphp1625'),
         ]);
     }
 }

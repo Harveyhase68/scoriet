@@ -75,7 +75,7 @@ export default function GitPushModal({
             const defaultBranch = gitSettings.default_branch || `scoriet/${timestamp}`;
 
             setBranchName(defaultBranch);
-            setCommitMessage(`${t.gitpushmodal78}${new Date().toLocaleString('de-DE')}`);
+            setCommitMessage(`${t.gitpushmodal78}${new Date().toLocaleString(currentLanguage)}`);
 
             // PR settings based on workflow
             setCreatePr(gitSettings.workflow !== 'push_only');
@@ -83,13 +83,13 @@ export default function GitPushModal({
 
             // PR title and description
             const title = (gitSettings.pr_title_template || `${t.gitpushmodal85}{timestamp}`)
-                .replace('{timestamp}', new Date().toLocaleString('de-DE'))
+                .replace('{timestamp}', new Date().toLocaleString(currentLanguage))
                 .replace('{project_name}', projectName);
             setPrTitle(title);
 
             const description = (gitSettings.pr_description_template ||
                 `${t.gitpushmodal91}\n\n${t.gitpushmodal91_2}{timestamp}\n${t.gitpushmodal91_3}{project_name}`)
-                .replace('{timestamp}', new Date().toLocaleString('de-DE'))
+                .replace('{timestamp}', new Date().toLocaleString(currentLanguage))
                 .replace('{project_name}', projectName);
             setPrDescription(description);
 

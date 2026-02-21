@@ -11,22 +11,20 @@
     "require": {
         "php": "^8.2",
         "bacon/bacon-qr-code": "^3.0",
-        "codeat3/blade-ant-design-icons": "^1.9",
-        "doctrine/dbal": "^4.4",
         "inertiajs/inertia-laravel": "^2.0",
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
         "laravel/passport": "^13.0",
         "laravel/tinker": "^2.10.1",
+        "minishlink/web-push": "^10.0",
         "phpoffice/phpspreadsheet": "*",
-        "pragmarx/google2fa-laravel": "^2.3",
         "predis/predis": "*",
         "srmklive/paypal": "^3.0",
-        "stripe/stripe-php": "^19.0",
-        "tightenco/ziggy": "^2.4"
+        "stripe/stripe-php": "^19.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "icanhazstring/composer-unused": "^0.9.6",
         "kitloong/laravel-migrations-generator": "*",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",

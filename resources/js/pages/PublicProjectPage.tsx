@@ -85,7 +85,7 @@ export default function PublicProjectPage({ project, username: _username, projec
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(currentLanguage === 'de' ? 'de-DE' : 'en-US', {
+    return date.toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -94,11 +94,11 @@ export default function PublicProjectPage({ project, username: _username, projec
 
   const getLanguageName = (code: string) => {
     const languages: Record<string, string> = {
-      'de': 'Deutsch',
-      'en': 'English',
-      'fr': 'Français',
-      'es': 'Español',
-      'it': 'Italiano',
+      'de': t.publicprojectpage97,
+      'en': t.publicprojectpage98,
+      'fr': t.publicprojectpage99,
+      'es': t.publicprojectpage100,
+      'it': t.publicprojectpage101,
     };
     return languages[code] || code.toUpperCase();
   };
@@ -323,7 +323,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                         <div className="flex items-center gap-2">
                           <p className="text-white font-medium">{template.name}</p>
                           {template.is_system_template && (
-                            <Tag value="System" severity="warning" className="text-xs" />
+                            <Tag value={t.publicprojectpage326} severity="warning" className="text-xs" />
                           )}
                         </div>
                         {template.description && (

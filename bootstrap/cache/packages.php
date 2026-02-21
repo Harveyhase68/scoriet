@@ -1,18 +1,4 @@
 <?php return array (
-  'blade-ui-kit/blade-icons' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'BladeUI\\Icons\\BladeIconsServiceProvider',
-    ),
-  ),
-  'codeat3/blade-ant-design-icons' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Codeat3\\BladeAntDesignIcons\\BladeAntDesignIconsServiceProvider',
-    ),
-  ),
   'inertiajs/inertia-laravel' => 
   array (
     'providers' => 
@@ -83,17 +69,6 @@
       0 => 'Pest\\Laravel\\PestServiceProvider',
     ),
   ),
-  'pragmarx/google2fa-laravel' => 
-  array (
-    'aliases' => 
-    array (
-      'Google2FA' => 'PragmaRX\\Google2FALaravel\\Facade',
-    ),
-    'providers' => 
-    array (
-      0 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
-    ),
-  ),
   'srmklive/paypal' => 
   array (
     'aliases' => 
@@ -103,13 +78,6 @@
     'providers' => 
     array (
       0 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
-    ),
-  ),
-  'tightenco/ziggy' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
     ),
   ),
 );

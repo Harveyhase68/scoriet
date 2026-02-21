@@ -37,25 +37,25 @@ class NewUserRegistered extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $registrationTime = $this->user->created_at->format('d.m.Y H:i:s');
-        
+        $registrationTime = $this->user->created_at->format('Y-m-d H:i:s');
+
         return (new MailMessage)
-            ->subject('🎉 Neue Registrierung auf Scoriet')
-            ->greeting('Hallo Admin!')
-            ->line('Es hat sich ein neuer Benutzer auf Scoriet registriert:')
+            ->subject('New Registration on Scoriet')
+            ->greeting('Hello Admin!')
+            ->line('A new user has registered on Scoriet:')
             ->line('')
-            ->line('**Benutzerinformationen:**')
+            ->line('**User Information:**')
             ->line('• **Name:** ' . $this->user->name)
-            ->line('• **Username:** ' . ($this->user->username ?? 'Nicht angegeben'))
-            ->line('• **E-Mail:** ' . $this->user->email)
-            ->line('• **User-ID:** ' . $this->user->id)
-            ->line('• **Registriert am:** ' . $registrationTime)
+            ->line('• **Username:** ' . ($this->user->username ?? 'Not specified'))
+            ->line('• **Email:** ' . $this->user->email)
+            ->line('• **User ID:** ' . $this->user->id)
+            ->line('• **Registered at:** ' . $registrationTime)
             ->line('')
-            ->line('**E-Mail Status:** ' . ($this->user->hasVerifiedEmail() ? '✅ Bestätigt' : '⏳ Noch nicht bestätigt'))
+            ->line('**Email Status:** ' . ($this->user->hasVerifiedEmail() ? 'Verified' : 'Not yet verified'))
             ->line('')
-            ->action('User in Admin-Panel anzeigen', config('app.url'))
-            ->line('Diese E-Mail wurde automatisch generiert.')
-            ->salutation('Viele Grüße vom Scoriet-System');
+            ->action('View User in Admin Panel', config('app.url'))
+            ->line('This email was generated automatically.')
+            ->salutation('Best regards, Scoriet System');
     }
 
     /**

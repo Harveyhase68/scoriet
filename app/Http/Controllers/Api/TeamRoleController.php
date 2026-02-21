@@ -63,12 +63,12 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp66')], 404);
         }
 
         // Check access
         if (!$this->canAccessTeam($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp71')], 403);
         }
 
         // Get roles for this team (team-specific roles only)
@@ -98,12 +98,12 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp101')], 404);
         }
 
         // Check manage roles permission
         if (!$this->canManageRoles($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp106')], 403);
         }
 
         $validated = $request->validate([
@@ -120,7 +120,7 @@ class TeamRoleController extends Controller
             ->exists();
         if ($existingName) {
             return response()->json([
-                'message' => 'Eine Rolle mit diesem Namen existiert bereits in diesem Team',
+                'message' => __('teamrolecontrollerphp123'),
             ], 422);
         }
 
@@ -164,7 +164,7 @@ class TeamRoleController extends Controller
         }
 
         return response()->json([
-            'message' => 'Role created successfully',
+            'message' => __('teamrolecontrollerphp167'),
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,
@@ -186,21 +186,21 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp189')], 404);
         }
 
         if (!$this->canManageRoles($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp193')], 403);
         }
 
         $role = TeamRole::find($roleId);
         if (!$role) {
-            return response()->json(['message' => 'Role not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp198')], 404);
         }
 
         // Can only edit roles belonging to this team
         if ($role->team_id !== $teamId) {
-            return response()->json(['message' => 'Role does not belong to this team'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp203')], 403);
         }
 
         $validated = $request->validate([
@@ -218,7 +218,7 @@ class TeamRoleController extends Controller
                 ->exists();
             if ($existingName) {
                 return response()->json([
-                    'message' => 'Eine Rolle mit diesem Namen existiert bereits in diesem Team',
+                    'message' => __('teamrolecontrollerphp221'),
                 ], 422);
             }
         }
@@ -238,7 +238,7 @@ class TeamRoleController extends Controller
         }
 
         return response()->json([
-            'message' => 'Role updated successfully',
+            'message' => __('teamrolecontrollerphp241'),
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,
@@ -262,26 +262,26 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp265')], 404);
         }
 
         if (!$this->canManageRoles($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp269')], 403);
         }
 
         $role = TeamRole::find($roleId);
         if (!$role) {
-            return response()->json(['message' => 'Role not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp274')], 404);
         }
 
         // Can only delete roles belonging to this team
         if ($role->team_id !== $teamId) {
-            return response()->json(['message' => 'Role does not belong to this team'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp279')], 403);
         }
 
         // Cannot delete the Owner role (slug = 'owner')
         if ($role->slug === 'owner') {
-            return response()->json(['message' => 'The Owner role cannot be deleted'], 422);
+            return response()->json(['message' => __('teamrolecontrollerphp284')], 422);
         }
 
         // Check if any members have this role
@@ -291,13 +291,13 @@ class TeamRoleController extends Controller
 
         if ($memberCount > 0) {
             return response()->json([
-                'message' => "Cannot delete role: {$memberCount} member(s) have this role assigned",
+                'message' => __('teamrolecontrollerphp294')."{$memberCount}".__('teamrolecontrollerphp294_2'),
             ], 422);
         }
 
         $role->delete();
 
-        return response()->json(['message' => 'Role deleted successfully']);
+        return response()->json(['message' => __('teamrolecontrollerphp300')]);
     }
 
     /**
@@ -308,11 +308,11 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp311')], 404);
         }
 
         if (!$this->canManageRoles($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp315')], 403);
         }
 
         $member = TeamMember::where('team_id', $teamId)
@@ -320,7 +320,7 @@ class TeamRoleController extends Controller
             ->first();
 
         if (!$member) {
-            return response()->json(['message' => 'Team member not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp323')], 404);
         }
 
         // Get team_role_id from request - handle null, empty string, and valid integers
@@ -337,12 +337,12 @@ class TeamRoleController extends Controller
             $role = TeamRole::find($teamRoleId);
 
             if (!$role) {
-                return response()->json(['message' => 'Role not found'], 422);
+                return response()->json(['message' => __('teamrolecontrollerphp340')], 422);
             }
 
             // Verify role is valid for this team (team-specific or system default)
             if ($role->team_id !== null && $role->team_id !== $teamId) {
-                return response()->json(['message' => 'Role is not available for this team'], 422);
+                return response()->json(['message' => __('teamrolecontrollerphp345')], 422);
             }
         }
 
@@ -377,11 +377,11 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp380')], 404);
         }
 
         if (!$this->canAccessTeam($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp384')], 403);
         }
 
         $members = TeamMember::where('team_id', $teamId)
@@ -418,21 +418,21 @@ class TeamRoleController extends Controller
     {
         $team = Team::find($teamId);
         if (!$team) {
-            return response()->json(['message' => 'Team not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp421')], 404);
         }
 
         if (!$this->canManageRoles($team)) {
-            return response()->json(['message' => 'Access denied'], 403);
+            return response()->json(['message' => __('teamrolecontrollerphp425')], 403);
         }
 
         $sourceRole = TeamRole::find($roleId);
         if (!$sourceRole) {
-            return response()->json(['message' => 'Source role not found'], 404);
+            return response()->json(['message' => __('teamrolecontrollerphp430')], 404);
         }
 
         // Can only copy roles from this team
         if ($sourceRole->team_id !== $teamId && $sourceRole->team_id !== null) {
-            return response()->json(['message' => 'Can only copy roles from this team'], 422);
+            return response()->json(['message' => __('teamrolecontrollerphp435')], 422);
         }
 
         // Generate unique name and slug for the copy
@@ -468,7 +468,7 @@ class TeamRoleController extends Controller
         $newRole->syncPermissions($permissionIds);
 
         return response()->json([
-            'message' => 'Role copied successfully',
+            'message' => __('teamrolecontrollerphp471'),
             'role' => [
                 'id' => $newRole->id,
                 'name' => $newRole->name,

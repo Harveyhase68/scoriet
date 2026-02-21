@@ -287,7 +287,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
               </div>
-              <small className="text-gray-500">Users can join this project using this code</small>
+              <small className="text-gray-500">{t.editprojectmodal290}</small>
             </div>
 
             <div className="field">
@@ -301,16 +301,16 @@ export default function EditProjectModal({
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="edit-is-public" className="text-sm font-medium text-white">
-                  Public Project
+                  {t.editprojectmodal304}
                 </label>
               </div>
-              <small className="text-gray-500">Make this project visible to all users</small>
+              <small className="text-gray-500">{t.editprojectmodal307}</small>
             </div>
 
             {project.is_owner && projectMembers.length > 0 && (
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Transfer Ownership
+                  {t.editprojectmodal313}
                 </label>
                 <select
                   value={editForm.new_owner_id || ''}
@@ -318,15 +318,15 @@ export default function EditProjectModal({
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
                   disabled={saving}
                 >
-                  <option value="">Keep current owner ({project.owner.name})</option>
+                  <option value="">{t.editprojectmodal321}({project.owner.name})</option>
                   {projectMembers.filter(member => Number(member.user_id) !== Number(project.owner.id)).map(member => (
                     <option key={member.user_id} value={member.user_id}>
-                      Transfer to {member.user.name} ({member.user.email}) - {member.role}
+                      {t.editprojectmodal324}{member.user.name} ({member.user.email}) - {member.role}
                     </option>
                   ))}
                 </select>
                 <small className="text-yellow-500">
-                  ⚠️ Warning: You will lose owner privileges after transfer!
+                  {t.editprojectmodal329}
                 </small>
               </div>
             )}
@@ -338,7 +338,7 @@ export default function EditProjectModal({
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Database Name
+                {t.editprojectmodal341}
               </label>
               <InputText
                 value={editForm.database_name}
@@ -348,13 +348,13 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Name der Datenbank für dieses Projekt
+                {t.editprojectmodal351}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Database Type
+                {t.editprojectmodal357}
               </label>
               <Dropdown
                 value={editForm.database_type}
@@ -373,7 +373,7 @@ export default function EditProjectModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Server
+                  {t.editprojectmodal376}
                 </label>
                 <InputText
                   value={editForm.database_server}
@@ -386,7 +386,7 @@ export default function EditProjectModal({
 
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Port
+                  {t.editprojectmodal389}
                 </label>
                 <InputText
                   value={editForm.database_port}
@@ -400,7 +400,7 @@ export default function EditProjectModal({
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Username
+                {t.editprojectmodal403}
               </label>
               <InputText
                 value={editForm.database_username}
@@ -413,13 +413,13 @@ export default function EditProjectModal({
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Password
+                {t.editprojectmodal416}
               </label>
               <InputText
                 type="password"
                 value={editForm.database_password}
                 onChange={(e) => setEditForm(prev => ({ ...prev, database_password: e.target.value }))}
-                placeholder="database_password"
+                placeholder={t.editprojectmodal422}
                 className="w-full"
                 disabled={saving}
               />
@@ -432,7 +432,7 @@ export default function EditProjectModal({
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Project Directory
+                {t.editprojectmodal435}
               </label>
               <InputText
                 value={editForm.project_directory}
@@ -442,13 +442,13 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Pfad wo generierte Dateien gespeichert werden sollen
+                {t.editprojectmodal445}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Project URL
+                {t.editprojectmodal451}
               </label>
               <InputText
                 value={editForm.project_url}
@@ -458,13 +458,13 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                URL für den Zugriff auf das Projekt
+                {t.editprojectmodal461}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Start Page
+                {t.editprojectmodal467}
               </label>
               <InputText
                 value={editForm.start_page}
@@ -474,13 +474,13 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Haupt-Einstiegsdatei (z.B. index.php, main.py, app.js)
+                {t.editprojectmodal477}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Default Language
+                {t.editprojectmodal483}
               </label>
               <Dropdown
                 value={editForm.default_language}
@@ -496,13 +496,13 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Standard-Sprache für Projekt-Generierung
+                {t.editprojectmodal499}
               </div>
             </div>
 
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
-                Filename Short Length
+                {t.editprojectmodal505}
               </label>
               <Dropdown
                 value={editForm.filename_short_length}
@@ -517,7 +517,7 @@ export default function EditProjectModal({
                 disabled={saving}
               />
               <div className="text-xs text-gray-400 mt-1">
-                Länge der kurzen Dateinamen im Database Designer (z.B. "us" für users)
+                {t.editprojectmodal520}
               </div>
             </div>
           </div>
@@ -529,7 +529,7 @@ export default function EditProjectModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Decimal Separator
+                  {t.editprojectmodal532}
                 </label>
                 <InputText
                   value={editForm.decimal_separator}
@@ -540,13 +540,13 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Trennzeichen für Dezimalstellen (z.B. "," für 1,23 oder "." für 1.23)
+                  {t.editprojectmodal543_4}
                 </div>
               </div>
 
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Thousands Separator
+                  {t.editprojectmodal549}
                 </label>
                 <InputText
                   value={editForm.thousands_separator}
@@ -557,7 +557,7 @@ export default function EditProjectModal({
                   disabled={saving}
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Tausendertrennzeichen (z.B. "." für 1.234 oder "," für 1,234)
+                  {t.editprojectmodal560_2}
                 </div>
               </div>
             </div>
@@ -565,7 +565,7 @@ export default function EditProjectModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Date Format
+                  {t.editprojectmodal568}
                 </label>
                 <InputText
                   value={editForm.date_format}
@@ -581,7 +581,7 @@ export default function EditProjectModal({
 
               <div className="field">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Time Format
+                  {t.editprojectmodal584}
                 </label>
                 <InputText
                   value={editForm.time_format}
@@ -650,7 +650,7 @@ export default function EditProjectModal({
                 type="password"
                 value={editForm.google_translate_api_key}
                 onChange={(e) => setEditForm({ ...editForm, google_translate_api_key: e.target.value })}
-                placeholder="AIzaSy..."
+                placeholder={t.editprojectmodal653}
                 className="w-full font-mono"
                 disabled={saving}
               />

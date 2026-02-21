@@ -173,7 +173,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 }
             }
         } catch (err) {
-            console.error('Error checking private template subscription:', err);
+            console.error(t.templatemodal176, err);
         } finally {
             setCheckingSubscription(false);
         }
@@ -197,7 +197,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 setCurrentUser(userData);
             }
         } catch (err) {
-            console.error('Error refreshing credits:', err);
+            console.error(t.templatemodal200, err);
         }
     }, []);
 
@@ -534,7 +534,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Tags */}
                 <div>
                     <label htmlFor="tags" className="block text-sm font-medium mb-2">
-                        Tags
+                        {t.templatemodal537}
                     </label>
                     <Controller
                         name="tags"
@@ -569,10 +569,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                                 <div className="flex items-center gap-2">
                                     <i className="pi pi-lock text-yellow-500"></i>
-                                    <span style={{ color: colors.textSecondary }}>Private (gesperrt)</span>
+                                    <span style={{ color: colors.textSecondary }}>{t.templatemodal572}</span>
                                 </div>
                                 <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                    Von einem gekauften Template geklont - Sichtbarkeit kann nicht geändert werden
+                                    {t.templatemodal575}
                                 </p>
                             </div>
                         </div>
@@ -602,9 +602,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             }
                                         }}
                                         options={[
-                                            { label: t.databasemanagementpanel772 + ' (FREE)', value: 'public' },
-                                            { label: t.databasemanagementpanel771 + ' (50 Credits/Jahr)', value: 'private' },
-                                            { label: 'Store (Approval required)', value: 'store' }
+                                            { label: t.databasemanagementpanel772 + t.templatemodal605, value: 'public' },
+                                            { label: t.databasemanagementpanel771 + t.templatemodal606, value: 'private' },
+                                            { label: t.templatemodal607, value: 'store' }
                                         ]}
                                         placeholder={t.templatemodal320}
                                         className="w-full"
@@ -653,32 +653,32 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         {checkingSubscription ? (
                             <div className="py-4 text-center bg-gray-800 rounded-lg border border-gray-700">
                                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                                <p className="text-gray-400 text-sm">Überprüfe Subscription...</p>
+                                <p className="text-gray-400 text-sm">{t.templatemodal656}</p>
                             </div>
                         ) : needsPrivateUnlock ? (
                             <>
                                 <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
                                     <p className="text-yellow-300 text-sm mb-1">
                                         <i className="pi pi-lock mr-2"></i>
-                                        <strong>Private Template - Premium Feature</strong>
+                                        <strong>{t.templatemodal663}</strong>
                                     </p>
                                     <p className="text-gray-300 text-xs">
-                                        Private Templates kosten <strong>50 Credits pro Jahr</strong>. Öffentliche Templates sind kostenlos!
+                                        {t.templatemodal666}<strong>{t.templatemodal666_2}</strong>{t.templatemodal666_3}
                                     </p>
                                 </div>
 
                                 <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
                                     <div className="flex justify-between items-center text-sm mb-1">
-                                        <span className="text-gray-300">Ihre Credits:</span>
+                                        <span className="text-gray-300">{t.templatemodal672}</span>
                                         <span className="text-white font-bold">{currentUser?.credits || 0}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm mb-1">
-                                        <span className="text-gray-300">Benötigt:</span>
+                                        <span className="text-gray-300">{t.templatemodal676}</span>
                                         <span className="text-yellow-400 font-bold">50</span>
                                     </div>
                                     <hr className="border-gray-700 my-1" />
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-300">Danach:</span>
+                                        <span className="text-gray-300">{t.templatemodal681}</span>
                                         <span className={`font-bold ${(currentUser?.credits || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                                             {(currentUser?.credits || 0) >= 50 ? (currentUser?.credits || 0) - 50 : `${50 - (currentUser?.credits || 0)} fehlen`}
                                         </span>
@@ -688,7 +688,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 {(currentUser?.credits || 0) < 50 && (
                                     <div className="bg-red-900/20 border border-red-700 rounded-lg p-2">
                                         <p className="text-red-300 text-xs">
-                                            Sie benötigen <strong>{50 - (currentUser?.credits || 0)} weitere Credits</strong>.
+                                            {t.templatemodal691}<strong>{50 - (currentUser?.credits || 0)}{t.templatemodal691_2}</strong>.
                                         </p>
                                     </div>
                                 )}
@@ -700,7 +700,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             onClick={handlePrivateUnlockConfirm}
                                             className="flex-1 p-button-success p-button-sm"
                                             icon="pi pi-unlock"
-                                            label="Freischalten (50 Credits)"
+                                            label={t.templatemodal703}
                                         />
                                     ) : (
                                         <Button
@@ -708,7 +708,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                             onClick={handleBuyCredits}
                                             className="flex-1 p-button-warning p-button-sm"
                                             icon="pi pi-shopping-cart"
-                                            label="Credits kaufen"
+                                            label={t.templatemodal711}
                                         />
                                     )}
                                     <Button
@@ -720,7 +720,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         }}
                                         className="p-button-secondary p-button-sm"
                                         icon="pi pi-globe"
-                                        label="Öffentlich"
+                                        label={t.templatemodal723}
                                     />
                                 </div>
                             </>
@@ -728,17 +728,17 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
                                 <p className="text-green-300 text-sm flex items-center gap-2">
                                     <i className="pi pi-check-circle"></i>
-                                    <strong>Freigeschaltet!</strong> 50 Credits werden beim Speichern abgezogen.
+                                    <strong>{t.templatemodal731}</strong>{t.templatemodal731_2}
                                 </p>
                             </div>
                         ) : hasCheckedSubscription && availableSlots > 0 ? (
                             <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
                                 <p className="text-green-300 text-sm flex items-center gap-2">
                                     <i className="pi pi-check-circle"></i>
-                                    <strong>Slot verfügbar!</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
+                                    <strong>{t.templatemodal738}</strong>{t.templatemodal738_2}{availableSlots} freie{availableSlots === 1 ? 'n' : ''}{t.templatemodal738_3}{availableSlots === 1 ? '' : 's'}.
                                 </p>
                                 <p className="text-gray-400 text-xs mt-1">
-                                    Keine zusätzlichen Credits erforderlich.
+                                    {t.templatemodal741}
                                 </p>
                             </div>
                         ) : null}
@@ -751,14 +751,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-3">
                             <p className="text-purple-300 text-sm mb-2">
                                 <i className="pi pi-shopping-cart mr-2"></i>
-                                <strong>Store Template - Verkaufe dein Template!</strong>
+                                <strong>{t.templatemodal754}</strong>
                             </p>
                             <p className="text-gray-300 text-xs mb-2">
-                                Dein Template wird im Store angezeigt, sobald es von einem Admin freigegeben wurde oder 5+ positive Reviews hat.
+                                {t.templatemodal757}
                             </p>
                             <p className="text-gray-400 text-xs">
                                 <i className="pi pi-info-circle mr-1"></i>
-                                Preiseinstellung und Media-Upload sind nach dem Speichern im <strong>Store-Tab</strong> des Template Managements verfügbar.
+                                {t.templatemodal761}<strong>{t.templatemodal761_2}</strong>{t.templatemodal761_3}
                             </p>
                         </div>
                     </div>
@@ -996,7 +996,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
                 {/* Protected Files Section */}
                 <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>Protected Files</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>{t.templatemodal999}</h3>
                     <ProtectedFilesEditor
                         files={protectedFiles}
                         onChange={setProtectedFiles}
@@ -1005,7 +1005,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
                 {/* Deployment Scripts Section */}
                 <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>Deployment Scripts</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>{t.templatemodal1008}</h3>
                     <DeploymentScriptsEditor
                         installScript={installScript}
                         updateScript={updateScript}

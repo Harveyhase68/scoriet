@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ihre Abonnements - Scoriet</title>
+    <title>{{__('subscription-expiry-bundledbladephp6')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -210,11 +210,11 @@
         <div class="header">
             <div class="logo">Scoriet</div>
             @if($urgencyLevel === 'expired')
-                <h1 class="title" style="color: #dc2626;">Abonnements abgelaufen</h1>
+                <h1 class="title" style="color: #dc2626;">{{__('subscription-expiry-bundledbladephp213')}}</h1>
             @elseif($urgencyLevel === 'final')
-                <h1 class="title" style="color: #ea580c;">Dringende Erinnerung</h1>
+                <h1 class="title" style="color: #ea580c;">{{__('subscription-expiry-bundledbladephp215')}}</h1>
             @else
-                <h1 class="title">Ihre Abonnements laufen bald ab</h1>
+                <h1 class="title">{{__('subscription-expiry-bundledbladephp217')}}</h1>
             @endif
         </div>
 
@@ -222,9 +222,9 @@
 
         <p>
             @if($totalCount === 1)
-                eines Ihrer Abonnements benötigt Ihre Aufmerksamkeit:
+                {{__('subscription-expiry-bundledbladephp225')}}
             @else
-                {{ $totalCount }} Ihrer Abonnements benötigen Ihre Aufmerksamkeit:
+                {{ $totalCount }}{{__('subscription-expiry-bundledbladephp227')}}
             @endif
         </p>
 
@@ -233,17 +233,17 @@
             <div class="section section-expired">
                 <div class="section-header">
                     <span style="font-size: 20px;">&#x26A0;</span>
-                    Abgelaufen ({{ count($expiredSubscriptions) }})
+                    {{__('subscription-expiry-bundledbladephp236')}}({{ count($expiredSubscriptions) }})
                 </div>
                 <div class="section-content">
                     @foreach($expiredSubscriptions as $sub)
                         <div class="subscription-item">
                             <div class="subscription-name">
                                 {{ $sub['displayName'] }}
-                                <span class="subscription-days days-expired">Abgelaufen</span>
+                                <span class="subscription-days days-expired">{{__('subscription-expiry-bundledbladephp243')}}</span>
                             </div>
                             <div class="subscription-details">
-                                Abgelaufen am: {{ $sub['expiredAt'] }}
+                                {{__('subscription-expiry-bundledbladephp246')}}{{ $sub['expiredAt'] }}
                             </div>
                         </div>
                     @endforeach
@@ -256,17 +256,17 @@
             <div class="section section-final">
                 <div class="section-header">
                     <span style="font-size: 20px;">&#x23F0;</span>
-                    Läuft in Kürze ab ({{ count($finalSubscriptions) }})
+                    {{__('subscription-expiry-bundledbladephp259')}}({{ count($finalSubscriptions) }})
                 </div>
                 <div class="section-content">
                     @foreach($finalSubscriptions as $sub)
                         <div class="subscription-item">
                             <div class="subscription-name">
                                 {{ $sub['displayName'] }}
-                                <span class="subscription-days days-urgent">{{ $sub['daysUntilExpiry'] }} {{ $sub['daysUntilExpiry'] == 1 ? 'Tag' : 'Tage' }}</span>
+                                <span class="subscription-days days-urgent">{{ $sub['daysUntilExpiry'] }} {{ $sub['daysUntilExpiry'] == 1 ? __('subscription-expiry-bundledbladephp266') : __('subscription-expiry-bundledbladephp266_2') }}</span>
                             </div>
                             <div class="subscription-details">
-                                Läuft ab am: {{ $sub['expiresAt'] }}
+                                {{__('subscription-expiry-bundledbladephp269')}}{{ $sub['expiresAt'] }}
                             </div>
                         </div>
                     @endforeach
@@ -279,17 +279,17 @@
             <div class="section section-warning">
                 <div class="section-header">
                     <span style="font-size: 20px;">&#x1F514;</span>
-                    Läuft bald ab ({{ count($warningSubscriptions) }})
+                    {{__('subscription-expiry-bundledbladephp282')}}({{ count($warningSubscriptions) }})
                 </div>
                 <div class="section-content">
                     @foreach($warningSubscriptions as $sub)
                         <div class="subscription-item">
                             <div class="subscription-name">
                                 {{ $sub['displayName'] }}
-                                <span class="subscription-days days-warning">{{ $sub['daysUntilExpiry'] }} Tage</span>
+                                <span class="subscription-days days-warning">{{ $sub['daysUntilExpiry'] }}{{__('subscription-expiry-bundledbladephp289')}}</span>
                             </div>
                             <div class="subscription-details">
-                                Läuft ab am: {{ $sub['expiresAt'] }}
+                                {{__('subscription-expiry-bundledbladephp292')}}{{ $sub['expiresAt'] }}
                             </div>
                         </div>
                     @endforeach
@@ -301,24 +301,24 @@
         @if(count($warningSubscriptions) > 0 || count($finalSubscriptions) > 0)
             <div class="bonus-box">
                 <div class="bonus-title">Frühbucher-Bonus</div>
-                <p style="margin: 5px 0; color: #047857; font-size: 14px;">Verlängern Sie jetzt und erhalten Sie zusätzlich:</p>
-                <div class="bonus-days">+{{ $bonusDays }} Tage GRATIS!</div>
-                <p class="bonus-note">Das entspricht einem ganzen Monat extra!</p>
+                <p style="margin: 5px 0; color: #047857; font-size: 14px;">{{__('subscription-expiry-bundledbladephp304')}}</p>
+                <div class="bonus-days">+{{ $bonusDays }}{{__('subscription-expiry-bundledbladephp305')}}</div>
+                <p class="bonus-note">{{__('subscription-expiry-bundledbladephp306')}}</p>
             </div>
         @endif
 
         <div class="actions">
-            <a href="{{ $renewUrl }}" class="btn btn-primary">Jetzt verlängern</a>
+            <a href="{{ $renewUrl }}" class="btn btn-primary">{{__('subscription-expiry-bundledbladephp311')}}</a>
         </div>
 
         <p class="cost-info">
-            Die Verlängerung kostet nur <strong>50 Credits</strong> pro Abonnement für ein weiteres Jahr.
+            {{__('subscription-expiry-bundledbladephp315')}}<strong>{{__('subscription-expiry-bundledbladephp315_2')}}</strong>{{__('subscription-expiry-bundledbladephp315_3')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil {{ $totalCount === 1 ? 'ein Abonnement' : 'mehrere Abonnements' }} Ihre Aufmerksamkeit {{ $totalCount === 1 ? 'benötigt' : 'benötigen' }}.
+                {{__('subscription-expiry-bundledbladephp320')}}<strong>Scoriet</strong>.<br>
+                {{__('subscription-expiry-bundledbladephp321')}}{{ $totalCount === 1 ? __('subscription-expiry-bundledbladephp321_2') : __('subscription-expiry-bundledbladephp321_3') }}{{__('subscription-expiry-bundledbladephp321_4')}}{{ $totalCount === 1 ? __('subscription-expiry-bundledbladephp321_5') : __('subscription-expiry-bundledbladephp321_6') }}.
             </p>
         </div>
     </div>

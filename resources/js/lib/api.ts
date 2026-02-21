@@ -7,6 +7,7 @@ interface SchemaTable {
   filekeyname?: string;
   file_name_renamed?: string;
   file_name_short?: string;
+  schema_version_id?: number;
   fields: SchemaField[];
   constraints: SchemaConstraint[];
 }
@@ -15,14 +16,22 @@ interface SchemaField {
   id: number;
   field_name: string;
   field_type: string;
+  field_length?: number | null;
   is_nullable: boolean;
   is_auto_increment: boolean;
+  is_unsigned?: boolean;
   is_primary_key?: boolean;
   is_index?: boolean;
   is_unique?: boolean;
   default_value?: string;
   comment?: string;
   extra?: string;
+  control_type?: string;
+  link_table?: string;
+  link_field?: string;
+  link_display_field?: string;
+  link_order_field?: string;
+  link_order_direction?: string;
 }
 
 interface SchemaConstraint {

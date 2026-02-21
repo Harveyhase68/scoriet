@@ -13,6 +13,7 @@ import { Message } from 'primereact/message';
 import { SupportedLanguage, supportedLanguages, getStoredLanguage, setStoredLanguage, useTranslation } from '@/i18n';
 import CSSFlag from '@/Components/CSSFlag';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { isPushSupported, getPushPermission, subscribeToPush, unsubscribeFromPush, hasPushSubscription } from '@/lib/pushNotifications';
 import TwoFactorSection from '@/Components/AuthModals/TwoFactorSection';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
@@ -138,10 +139,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
   // Theme options for dropdown
   const themeOptions: { label: string; value: ThemeMode; icon: string; description: string }[] = [
-    { label: 'Dunkel', value: 'dark', icon: 'pi pi-moon', description: 'Dunkles Design' },
-    { label: 'Hell', value: 'light', icon: 'pi pi-sun', description: 'Helles Design' },
-    { label: 'Grün', value: 'green', icon: 'pi pi-palette', description: 'Grünes Design' },
-    { label: 'Automatisch', value: 'auto', icon: 'pi pi-clock', description: '6-18 Uhr hell, sonst dunkel' },
+    { label: t.profilemodal141, value: 'dark', icon: 'pi pi-moon', description: t.profilemodal141_2 },
+    { label: t.profilemodal142, value: 'light', icon: 'pi pi-sun', description: t.profilemodal142_2 },
+    { label: t.profilemodal143, value: 'green', icon: 'pi pi-palette', description: t.profilemodal143_2 },
+    { label: t.profilemodal144, value: 'auto', icon: 'pi pi-clock', description: t.profilemodal144_2 },
   ];
 
   // Helper function to darken/lighten a hex color
@@ -257,6 +258,17 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     confirmText: ''
   });
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushSupported] = useState(() => isPushSupported());
+
+  // Check push subscription status on mount
+  useEffect(() => {
+    if (pushSupported) {
+      hasPushSubscription().then(setPushEnabled);
+    }
+  }, [pushSupported]);
+
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
   const [profileError, setProfileError] = useState<string>('');
@@ -344,47 +356,47 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
   // Country options for dropdown
   const countries = [
-    { label: t.profilemodal347 || 'Österreich', value: 'AT' },
-    { label: t.profilemodal348 || 'Deutschland', value: 'DE' },
-    { label: t.profilemodal349 || 'Schweiz', value: 'CH' },
-    { label: t.profilemodal350 || 'Frankreich', value: 'FR' },
-    { label: t.profilemodal351 || 'Italien', value: 'IT' },
-    { label: t.profilemodal352 || 'Spanien', value: 'ES' },
-    { label: t.profilemodal353 || 'Niederlande', value: 'NL' },
-    { label: t.profilemodal354 || 'Belgien', value: 'BE' },
-    { label: t.profilemodal355 || 'Polen', value: 'PL' },
-    { label: t.profilemodal356 || 'Tschechien', value: 'CZ' },
-    { label: t.profilemodal357 || 'Ungarn', value: 'HU' },
-    { label: t.profilemodal358 || 'Slowakei', value: 'SK' },
-    { label: t.profilemodal359 || 'Slowenien', value: 'SI' },
-    { label: t.profilemodal360 || 'Kroatien', value: 'HR' },
-    { label: t.profilemodal361 || 'Rumänien', value: 'RO' },
-    { label: t.profilemodal362 || 'Bulgarien', value: 'BG' },
-    { label: t.profilemodal363 || 'Griechenland', value: 'GR' },
-    { label: t.profilemodal364 || 'Portugal', value: 'PT' },
-    { label: t.profilemodal365 || 'Schweden', value: 'SE' },
-    { label: t.profilemodal366 || 'Dänemark', value: 'DK' },
-    { label: t.profilemodal367 || 'Finnland', value: 'FI' },
-    { label: t.profilemodal368 || 'Irland', value: 'IE' },
-    { label: t.profilemodal369 || 'Luxemburg', value: 'LU' },
-    { label: t.profilemodal370 || 'Malta', value: 'MT' },
-    { label: t.profilemodal371 || 'Zypern', value: 'CY' },
-    { label: t.profilemodal372 || 'Estland', value: 'EE' },
-    { label: t.profilemodal373 || 'Lettland', value: 'LV' },
-    { label: t.profilemodal374 || 'Litauen', value: 'LT' },
-    { label: t.profilemodal375 || '--- Nicht-EU ---', value: '', disabled: true },
-    { label: 'USA', value: 'US' },
-    { label: 'Kanada', value: 'CA' },
-    { label: t.profilemodal378 || 'Großbritannien', value: 'GB' },
-    { label: t.profilemodal379 || 'Australien', value: 'AU' },
-    { label: t.profilemodal380 || 'Japan', value: 'JP' },
-    { label: 'Indien', value: 'IN' },
-    { label: t.profilemodal382 || 'Brasilien', value: 'BR' },
-    { label: t.profilemodal383 || 'Sonstiges', value: 'XX' },
+    { label: t.profilemodal347, value: 'AT' },
+    { label: t.profilemodal348, value: 'DE' },
+    { label: t.profilemodal349, value: 'CH' },
+    { label: t.profilemodal350, value: 'FR' },
+    { label: t.profilemodal351, value: 'IT' },
+    { label: t.profilemodal352, value: 'ES' },
+    { label: t.profilemodal353, value: 'NL' },
+    { label: t.profilemodal354, value: 'BE' },
+    { label: t.profilemodal355, value: 'PL' },
+    { label: t.profilemodal356, value: 'CZ' },
+    { label: t.profilemodal357, value: 'HU' },
+    { label: t.profilemodal358, value: 'SK' },
+    { label: t.profilemodal359, value: 'SI' },
+    { label: t.profilemodal360, value: 'HR' },
+    { label: t.profilemodal361, value: 'RO' },
+    { label: t.profilemodal362, value: 'BG' },
+    { label: t.profilemodal363, value: 'GR' },
+    { label: t.profilemodal364, value: 'PT' },
+    { label: t.profilemodal365, value: 'SE' },
+    { label: t.profilemodal366, value: 'DK' },
+    { label: t.profilemodal367, value: 'FI' },
+    { label: t.profilemodal368, value: 'IE' },
+    { label: t.profilemodal369, value: 'LU' },
+    { label: t.profilemodal370, value: 'MT' },
+    { label: t.profilemodal371, value: 'CY' },
+    { label: t.profilemodal372, value: 'EE' },
+    { label: t.profilemodal373, value: 'LV' },
+    { label: t.profilemodal374, value: 'LT' },
+    { label: t.profilemodal375, value: '', disabled: true },
+    { label: t.profilemodal376, value: 'US' },
+    { label: t.profilemodal377, value: 'CA' },
+    { label: t.profilemodal378, value: 'GB' },
+    { label: t.profilemodal379, value: 'AU' },
+    { label: t.profilemodal380, value: 'JP' },
+    { label: t.profilemodal381, value: 'IN' },
+    { label: t.profilemodal382, value: 'BR' },
+    { label: t.profilemodal383, value: 'XX' },
   ];
 
   const payoutMethods = [
-    { label: t.profilemodal387 || 'Banküberweisung (SEPA)', value: 'bank_transfer' },
+    { label: t.profilemodal387, value: 'bank_transfer' },
     { label: 'PayPal', value: 'paypal' },
   ];
 
@@ -475,7 +487,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setCliStatus(data);
       }
     } catch (err) {
-      console.error('Error loading CLI status:', err);
+      console.error(t.profilemodal478, err);
     }
   }, []);
 
@@ -498,7 +510,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setAllSubscriptions(data.subscriptions || []);
       }
     } catch (err) {
-      console.error('Error loading subscriptions:', err);
+      console.error(t.profilemodal501, err);
     } finally {
       setLoadingSubscriptions(false);
     }
@@ -523,7 +535,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setAllFeatures(data.features || []);
       }
     } catch (err) {
-      console.error('Error loading features:', err);
+      console.error(t.profilemodal526, err);
     } finally {
       setLoadingFeatures(false);
     }
@@ -547,7 +559,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setStorageStatus(data.storage || null);
       }
     } catch (err) {
-      console.error('Error loading storage status:', err);
+      console.error(t.profilemodal550, err);
     }
   }, []);
 
@@ -569,7 +581,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         setBundleDiscountInfo(data);
       }
     } catch (err) {
-      console.error('Error loading bundle discount:', err);
+      console.error(t.profilemodal572, err);
     }
   }, []);
 
@@ -597,11 +609,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         loadAllSubscriptions();
         loadCliStatus();
       } else {
-        alert(data.error || 'Verlängerung fehlgeschlagen');
+        alert(data.error || t.profilemodal600);
       }
     } catch (err) {
-      console.error('Error renewing subscription:', err);
-      alert('Verlängerung fehlgeschlagen');
+      console.error(t.profilemodal603, err);
+      alert(t.profilemodal604);
     } finally {
       setRenewingSubscription(null);
     }
@@ -635,7 +647,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Fehler beim Freischalten');
+        throw new Error(data.error || t.profilemodal638);
       }
 
       // Reload status
@@ -646,7 +658,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
     } catch (err) {
       console.error('Unlock error:', err);
-      alert(err instanceof Error ? err.message : 'Fehler beim Freischalten');
+      alert(err instanceof Error ? err.message : t.profilemodal649);
     } finally {
       setUnlocking(null);
     }
@@ -674,7 +686,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       const endpoint = endpointMap[featureType];
       if (!endpoint) {
-        throw new Error('Unbekannter Feature-Typ');
+        throw new Error(t.profilemodal677);
       }
 
       const response = await fetch(endpoint, {
@@ -689,7 +701,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Fehler beim Freischalten');
+        throw new Error(data.message || data.error || t.profilemodal692);
       }
 
       // Reload all data
@@ -699,8 +711,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       loadGitProviders();
 
     } catch (err) {
-      console.error('Feature unlock error:', err);
-      alert(err instanceof Error ? err.message : 'Fehler beim Freischalten');
+      console.error(t.profilemodal702, err);
+      alert(err instanceof Error ? err.message : t.profilemodal703);
     } finally {
       setUnlocking(null);
     }
@@ -751,10 +763,10 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Fehler beim Speichern der Verkäufer-Daten');
+        throw new Error(data.message || t.profilemodal754);
       }
 
-      setSellerSuccess('Verkäufer-Profil erfolgreich gespeichert');
+      setSellerSuccess(t.profilemodal757);
       loadUserData();
 
     } catch (err) {
@@ -780,7 +792,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         }
       }
     } catch (err) {
-      console.error('Error loading pricing:', err);
+      console.error(t.profilemodal783, err);
     }
   }, []);
 
@@ -807,7 +819,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         }
       }
     } catch (err) {
-      console.error('Error loading git providers:', err);
+      console.error(t.profilemodal810, err);
     } finally {
       setLoadingGitProviders(false);
     }
@@ -838,11 +850,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         loadCliStatus();
       } else {
         const error = await response.json();
-        alert(error.message || 'Freischaltung fehlgeschlagen');
+        alert(error.message || t.profilemodal841);
       }
     } catch (err) {
-      console.error('Error unlocking git integration:', err);
-      alert('Freischaltung fehlgeschlagen');
+      console.error(t.profilemodal844, err);
+      alert(t.profilemodal845);
     } finally {
       setUnlockingGit(false);
     }
@@ -855,7 +867,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.profilemodal858);
       }
 
       const response = await fetch(`/api/git/authorize/${provider}`, {
@@ -868,7 +880,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get authorization URL');
+        throw new Error(data.error || t.profilemodal871);
       }
 
       // Open popup window for OAuth
@@ -908,16 +920,16 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       if (!response.ok) {
         // Check for expired state error - prompt user to try again
         if (data.error && data.error.includes('expired state')) {
-          alert('Die Verbindungsanfrage ist abgelaufen. Bitte klicken Sie erneut auf "Verbinden".');
+          alert(t.profilemodal911);
         } else {
-          alert(data.error || 'Verbindung fehlgeschlagen');
+          alert(data.error || t.profilemodal913);
         }
-        throw new Error(data.error || 'Failed to complete connection');
+        throw new Error(data.error || t.profilemodal915);
       }
 
       loadGitProviders();
     } catch (err) {
-      console.error('OAuth completion error:', err);
+      console.error(t.profilemodal920, err);
     } finally {
       setConnectingProvider(null);
     }
@@ -925,7 +937,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
   // Disconnect a Git Provider
   const disconnectGitProvider = async (provider: string) => {
-    if (!confirm(`Möchten Sie die Verbindung zu ${provider === 'github' ? 'GitHub' : provider === 'gitlab' ? 'GitLab' : provider} wirklich trennen?`)) {
+    if (!confirm(`${t.profilemodal928}${provider === 'github' ? 'GitHub' : provider === 'gitlab' ? 'GitLab' : provider}${t.profilemodal928_2}`)) {
       return;
     }
 
@@ -934,7 +946,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.profilemodal937);
       }
 
       const response = await fetch(`/api/git/disconnect/${provider}`, {
@@ -947,7 +959,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to disconnect');
+        throw new Error(data.error || t.profilemodal950);
       }
 
       loadGitProviders();
@@ -967,7 +979,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       const { provider, code, state, error } = event.data;
 
       if (error) {
-        console.error(`${provider} connection failed:`, event.data.errorDescription || error);
+        console.error(`${provider}${t.profilemodal970}`, event.data.errorDescription || error);
         setConnectingProvider(null);
         return;
       }
@@ -1148,7 +1160,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
     // Check confirmation text
     if (deleteData.confirmText !== t.profilemodal305) {
-      setDeleteError(t.profilemodal1151 || 'Sie müssen "DELETE" eingeben, um Ihren Account zu löschen');
+      setDeleteError(t.profilemodal1151 || t.profilemodal1151+'"DELETE"'+t.profilemodal1151_2);
       setLoadingDelete(false);
       return;
     }
@@ -1249,7 +1261,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <div className="field">
               <label htmlFor="profile-userid" className="block text-sm font-medium mb-2">
-                User ID
+                {t.profilemodal1252}
               </label>
               <InputText
                 id="profile-userid"
@@ -1264,7 +1276,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             <div className="field">
               <label htmlFor="profile-username" className="block text-sm font-medium mb-2">
-                Username
+                {t.profilemodal1267}
               </label>
               <InputText
                 id="profile-username"
@@ -1341,7 +1353,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 }}
                 valueTemplate={(selectedOption: any) => {
                   if (!selectedOption) {
-                    return <span className="text-sm" style={{ color: colors.textMuted }}>Select Language</span>;
+                    return <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1344}</span>;
                   }
                   const languageCode = selectedOption.value || selectedOption;
                   const lang = supportedLanguages.find(l => l.code === languageCode);
@@ -1353,7 +1365,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>{lang.nativeName}</span>
                     </div>
                   ) : (
-                    <span className="text-sm" style={{ color: colors.textMuted }}>Select Language</span>
+                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal1356}</span>
                   );
                 }}
               />
@@ -1366,7 +1378,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             <div className="field profile-themed-dropdown">
               <label htmlFor="profile-theme" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-palette mr-2" style={{ color: colors.accent }}></i>
-                Design / Theme
+                {t.profilemodal1369}
               </label>
               <Dropdown
                 id="profile-theme"
@@ -1509,6 +1521,54 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               </div>
             </div>
 
+            {/* Push Notification Settings */}
+            <div className="field mt-4">
+              <label className="block text-sm font-medium mb-3" style={{ color: colors.textPrimary }}>
+                <i className="pi pi-bell mr-2" style={{ color: colors.accent }}></i>
+                {t.pushNotifications}
+              </label>
+              <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
+                      {t.pushNotificationsToggle}
+                    </span>
+                    <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                      {!pushSupported
+                        ? t.pushNotSupported
+                        : getPushPermission() === 'denied'
+                          ? t.pushBlocked
+                          : t.pushNotificationsDesc}
+                    </p>
+                  </div>
+                  <InputSwitch
+                    checked={pushEnabled}
+                    onChange={async (e) => {
+                      setPushLoading(true);
+                      try {
+                        if (e.value) {
+                          const success = await subscribeToPush();
+                          setPushEnabled(success);
+                        } else {
+                          const success = await unsubscribeFromPush();
+                          if (success) setPushEnabled(false);
+                        }
+                      } finally {
+                        setPushLoading(false);
+                      }
+                    }}
+                    disabled={!pushSupported || getPushPermission() === 'denied' || pushLoading}
+                  />
+                </div>
+                {pushEnabled && (
+                  <div className="flex items-center gap-2 text-xs" style={{ color: colors.successText }}>
+                    <i className="pi pi-check-circle"></i>
+                    {t.pushActive}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <Button
               type="submit"
               label={loadingProfile ? t.updating : t.updateProfile}
@@ -1601,11 +1661,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
 
-        <TabPanel header="Security" leftIcon="pi pi-shield">
+        <TabPanel header={t.profilemodal1604} leftIcon="pi pi-shield">
           <TwoFactorSection />
         </TabPanel>
 
-        <TabPanel header="Subscriptions" leftIcon="pi pi-unlock">
+        <TabPanel header={t.profilemodal1608} leftIcon="pi pi-unlock">
           <div className="space-y-6">
             {/* Credits Display */}
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
@@ -1619,7 +1679,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   onClick={handleBuyCredits}
                   className="p-button-sm p-button-outlined"
                   icon="pi pi-shopping-cart"
-                  label="Credits kaufen"
+                  label={t.profilemodal1622}
                 />
               </div>
             </div>
@@ -1657,7 +1717,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     }}
                   >
                     {storageStatus.is_unlimited
-                      ? 'Unbegrenzt'
+                      ? t.profilemodal1660
                       : `${storageStatus.used_formatted} / ${storageStatus.limit_formatted}`
                     }
                   </span>
@@ -1766,8 +1826,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               {/* Expiry Info */}
                               {feature.unlocked && !feature.is_patron && feature.expires_at && (
                                 <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                                  {t.profilemodal1769}{new Date(feature.expires_at).toLocaleDateString('de-DE')}
-                                  {feature.days_remaining !== null && ` (${feature.days_remaining} Tage)`}
+                                  {t.profilemodal1769}{new Date(feature.expires_at).toLocaleDateString(currentLanguage)}
+                                  {feature.days_remaining !== null && ` (${feature.days_remaining}${t.profilemodal1770})`}
                                 </p>
                               )}
                             </div>
@@ -1777,7 +1837,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               {feature.unlocked ? (
                                 <>
                                   <span className="px-3 py-1 rounded-full text-sm flex items-center gap-1" style={{ backgroundColor: colors.buttonSuccess, color: colors.textInverse }}>
-                                    <i className="pi pi-check"></i> Aktiv
+                                    <i className="pi pi-check"></i>{t.profilemodal1780}
                                   </span>
                                   {/* Extend button for already unlocked features (not for patron) */}
                                   {!feature.is_patron && !feature.requiresEntity && (
@@ -1798,7 +1858,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                       disabled={unlocking !== null || (cliStatus?.credits || 0) < feature.cost}
                                       className="p-button-sm p-button-outlined mt-1"
                                       icon="pi pi-plus"
-                                      label={`+1 Jahr (${feature.cost} Cr)`}
+                                      label={`${t.profilemodal1801}(${feature.cost} Cr)`}
                                     />
                                   )}
                                 </>
@@ -1824,7 +1884,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                           onClick={() => setShowBundleOptions(true)}
                                           className="p-button-success p-button-sm mt-2"
                                           icon="pi pi-unlock"
-                                          label={`Bundle Optionen`}
+                                          label={t.profilemodal1827}
                                         />
                                       ) : (
                                         <Button
@@ -1887,7 +1947,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                             color: colors.textInverse
                                           }}
                                         >
-                                          {child.covered_by_bundle ? 'Im Bundle' : 'Aktiv'}
+                                          {child.covered_by_bundle ? t.profilemodal1890 : t.profilemodal1890_2}
                                         </span>
                                       )}
                                     </div>
@@ -1902,7 +1962,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                           disabled={unlocking !== null || (cliStatus?.credits || 0) < child.cost}
                                           className="p-button-sm p-button-outlined"
                                           icon="pi pi-plus"
-                                          label={`+1 Jahr`}
+                                          label={t.profilemodal1905}
                                         />
                                       )}
                                       {!child.unlocked && !child.is_patron && (
@@ -1922,7 +1982,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                   {child.unlocked && !child.is_patron && child.expires_at && (
                                     <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                       {child.covered_by_bundle ? t.profilemodal1924 : t.profilemodal1924_2}
-                                      {new Date(child.expires_at).toLocaleDateString('de-DE')}
+                                      {new Date(child.expires_at).toLocaleDateString(currentLanguage)}
                                     </p>
                                   )}
                                 </div>
@@ -2007,7 +2067,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                             )}
                             {sub.is_patron && (
                               <span className="px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>
-                                Patron
+                                {t.profilemodal2010}
                               </span>
                             )}
                           </div>
@@ -2018,7 +2078,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                               {sub.is_expired || sub.is_soft_locked ? (
                                 <span className="flex items-center gap-1" style={{ color: colors.errorText }}>
                                   <i className="pi pi-exclamation-circle"></i>
-                                  Abgelaufen am {sub.expires_at_formatted}
+                                  {t.profilemodal2021}
                                 </span>
                               ) : sub.days_until_expiry !== null && sub.days_until_expiry <= 3 ? (
                                 <span className="flex items-center gap-1" style={{ color: colors.errorText }}>
@@ -2032,13 +2092,13 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                 </span>
                               ) : (
                                 <span style={{ color: colors.textMuted }}>
-                                  Gültig bis {sub.expires_at_formatted}
-                                  {sub.days_until_expiry !== null && ` (${sub.days_until_expiry} Tage)`}
+                                  {t.profilemodal2035}{sub.expires_at_formatted}
+                                  {sub.days_until_expiry !== null && ` (${sub.days_until_expiry}${t.profilemodal2036})`}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-sm" style={{ color: colors.successText }}>Unbegrenzt gültig</span>
+                            <span className="text-sm" style={{ color: colors.successText }}>{t.profilemodal2041}</span>
                           )}
 
                           {/* Early Renewal Bonus */}
@@ -2065,7 +2125,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                                 : 'p-button-outlined'
                             }`}
                             icon={sub.is_expired ? 'pi pi-refresh' : 'pi pi-sync'}
-                            label={`${sub.is_expired ? 'Reaktivieren' : 'Verlängern'} (${sub.renewal_cost} Cr)`}
+                            label={`${sub.is_expired ? t.profilemodal2068 : t.profilemodal2068_2} (${sub.renewal_cost} Cr)`}
                           />
                         )}
                       </div>
@@ -2078,7 +2138,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
             {/* Bundle Options Dialog */}
             <Dialog
-              header="Bundle Optionen"
+              header={t.profilemodal2081}
               visible={showBundleOptions}
               onHide={() => setShowBundleOptions(false)}
               style={{ width: '500px' }}
@@ -2106,12 +2166,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                       {option.price < 0 ? (
                         <span className="text-lg font-bold flex items-center gap-1" style={{ color: colors.successText }}>
                           <i className="pi pi-plus-circle"></i>
-                          +{Math.abs(option.price)} Credits
+                          +{Math.abs(option.price)}{t.profilemodal2109}
                         </span>
                       ) : option.price === 0 ? (
-                        <span className="text-lg font-bold" style={{ color: colors.warningText }}>Kostenlos!</span>
+                        <span className="text-lg font-bold" style={{ color: colors.warningText }}>{t.profilemodal2112}</span>
                       ) : (
-                        <span className="text-lg font-bold" style={{ color: colors.accent }}>{option.price} Credits</span>
+                        <span className="text-lg font-bold" style={{ color: colors.accent }}>{option.price}{t.profilemodal2114}</span>
                       )}
                     </div>
                     <p className="text-sm" style={{ color: colors.textMuted }}>{option.description}</p>
@@ -2124,7 +2184,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     {option.discount && option.discount > 0 && option.price >= 0 && (
                       <div className="mt-2 text-sm flex items-center gap-1" style={{ color: colors.warningText }}>
                         <i className="pi pi-tag"></i>
-                        Sie sparen {option.discount} Credits!
+                        {t.profilemodal2127}{option.discount}{t.profilemodal2127_2}
                       </div>
                     )}
                   </div>
@@ -2512,7 +2572,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <i className="pi pi-link" style={{ color: colors.accent }}></i>
                 {t.profilemodal2513}
                 {gitIntegrationAccess?.has_access && gitIntegrationAccess.is_patron && (
-                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>Patron</span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.accent, color: colors.textInverse }}>{t.profilemodal2515}</span>
                 )}
                 {gitIntegrationAccess?.has_access && !gitIntegrationAccess.is_patron && gitIntegrationAccess.days_remaining !== undefined && (
                   <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: colors.infoBorder, color: colors.textInverse }}>
@@ -2540,7 +2600,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold mb-1" style={{ color: colors.infoText }}>
-                      {gitIntegrationAccess.unlock_cost} Credits
+                      {gitIntegrationAccess.unlock_cost}{t.profilemodal2543}
                     </div>
                     <div className="text-xs mb-2" style={{ color: colors.textMuted }}>{t.profilemodal2545}</div>
                     <Button
@@ -2637,7 +2697,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                             {t.profilemodal2637}@{gitProviders.find(p => p.provider === 'gitlab')?.username}
                           </p>
                         ) : (
-                          <p className="text-sm" style={{ color: colors.textMuted }}>Nicht verbunden</p>
+                          <p className="text-sm" style={{ color: colors.textMuted }}>{t.profilemodal2640}</p>
                         )}
                       </div>
                     </div>

@@ -873,7 +873,7 @@ const FileModal: React.FC<FileModalProps> = ({
             }));
 
             setManagedFiles(extractedFiles);
-            toast.showSuccess(`${extractedFiles.length} ${extractedFiles.length === 1 ? 'Datei' : 'Dateien'} aus Archiv geladen`);
+            toast.showSuccess(`${extractedFiles.length} ${extractedFiles.length === 1 ? t.filemodal876 : t.filemodal876_2}${t.filemodal876_3}`);
         } catch (error: any) {
             console.error(t.filemodal832, error);
             toast.showError(`${t.filemodal833}${error.message}`);
@@ -908,7 +908,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             />
                             <Button
                                 icon="pi pi-upload"
-                                label="Re-Upload"
+                                label={t.filemodal911}
                                 size="small"
                                 severity="secondary"
                                 text
@@ -919,7 +919,7 @@ const FileModal: React.FC<FileModalProps> = ({
                             {templateId && !serviceEditActive && (
                                 <Button
                                     icon="pi pi-desktop"
-                                    label="Via Service"
+                                    label={t.filemodal922}
                                     size="small"
                                     severity="info"
                                     text
@@ -1177,7 +1177,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                         <div className="space-y-0.5">
                                             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-600">
                                                 <span className="text-gray-400 text-sm font-semibold">
-                                                    {zipFileList.length} {zipFileList.length === 1 ? 'Datei' : 'Dateien'}
+                                                    {zipFileList.length} {zipFileList.length === 1 ? t.filemodal1180 : t.filemodal1180_2}
                                                 </span>
                                                 <span className="text-gray-400 text-sm">
                                                     {t.filemodal1137}{(zipFileList.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB

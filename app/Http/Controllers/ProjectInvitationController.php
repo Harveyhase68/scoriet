@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use App\Mail\ProjectInvitationMail;
+use App\Jobs\SendPushNotificationJob;
 
 class ProjectInvitationController extends Controller
 {
@@ -34,7 +35,7 @@ class ProjectInvitationController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('projectinvitationcontrollerphp37'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -47,7 +48,7 @@ class ProjectInvitationController extends Controller
         $existingUser = User::where('email', $email)->first();
         if ($existingUser && $project->hasMember($existingUser)) {
             return response()->json([
-                'message' => 'User is already a member of this project'
+                'message' => __('projectinvitationcontrollerphp50')
             ], 422);
         }
 
@@ -58,7 +59,7 @@ class ProjectInvitationController extends Controller
 
         if ($existingInvitation) {
             return response()->json([
-                'message' => 'An invitation has already been sent to this email address'
+                'message' => __('projectinvitationcontrollerphp61')
             ], 422);
         }
 
@@ -77,11 +78,22 @@ class ProjectInvitationController extends Controller
             Mail::to($email)->send(new ProjectInvitationMail($invitation));
         } catch (\Exception $e) {
             // Log the error but don't fail the invitation creation
-            \Log::error('Failed to send project invitation email', [
+            \Log::error(__('projectinvitationcontrollerphp80'), [
                 'invitation_id' => $invitation->id,
                 'email' => $email,
                 'error' => $e->getMessage()
             ]);
+        }
+
+        // Send push notification if the invited user already exists
+        if ($existingUser) {
+            SendPushNotificationJob::dispatch(
+                [$existingUser->id],
+                __('push.project_invitation'),
+                $project->name,
+                '/',
+                'invitation'
+            );
         }
 
         return response()->json([
@@ -100,19 +112,19 @@ class ProjectInvitationController extends Controller
             ->first();
 
         if (!$invitation) {
-            return response()->json(['message' => 'Invalid invitation token'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp103')], 404);
         }
 
         if ($invitation->isExpired()) {
-            return response()->json(['message' => 'This invitation has expired'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp107')], 422);
         }
 
         if ($invitation->status !== 'pending') {
             $statusMessage = match($invitation->status) {
-                'accepted' => 'This invitation has already been accepted',
-                'declined' => 'This invitation has already been declined',
-                'expired' => 'This invitation has expired',
-                default => 'This invitation is no longer valid'
+                'accepted' => __('projectinvitationcontrollerphp112'),
+                'declined' => __('projectinvitationcontrollerphp113'),
+                'expired' => __('projectinvitationcontrollerphp114'),
+                default => __('projectinvitationcontrollerphp115')
             };
             
             return response()->json(['message' => $statusMessage], 422);
@@ -135,23 +147,23 @@ class ProjectInvitationController extends Controller
         $invitation = ProjectInvitation::where('token', $token)->first();
 
         if (!$invitation) {
-            return response()->json(['message' => 'Invalid invitation token'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp138')], 404);
         }
 
         if (!$invitation->isPending()) {
             return response()->json([
-                'message' => $invitation->isExpired() ? 'Invitation has expired' : 'Invitation is no longer valid'
+                'message' => $invitation->isExpired() ? __('projectinvitationcontrollerphp143') : __('projectinvitationcontrollerphp143_2')
             ], 422);
         }
 
         $success = $invitation->accept();
 
         if (!$success) {
-            return response()->json(['message' => 'Failed to accept invitation'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp150')], 422);
         }
 
         return response()->json([
-            'message' => 'Invitation accepted successfully',
+            'message' => __('projectinvitationcontrollerphp154'),
             'project' => $invitation->project
         ]);
     }
@@ -164,19 +176,19 @@ class ProjectInvitationController extends Controller
         $invitation = ProjectInvitation::where('token', $token)->first();
 
         if (!$invitation) {
-            return response()->json(['message' => 'Invalid invitation token'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp167')], 404);
         }
 
         if (!$invitation->isPending()) {
             return response()->json([
-                'message' => 'Invitation is no longer valid'
+                'message' => __('projectinvitationcontrollerphp172')
             ], 422);
         }
 
         $success = $invitation->decline();
 
         if (!$success) {
-            return response()->json(['message' => 'Failed to decline invitation'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp179')], 422);
         }
 
         // Send notification email to the inviter
@@ -184,14 +196,14 @@ class ProjectInvitationController extends Controller
             $inviterEmail = $invitation->inviter->email;
             // TODO: Send decline notification email
         } catch (\Exception $e) {
-            \Log::error('Failed to send decline notification email', [
+            \Log::error(__('projectinvitationcontrollerphp187'), [
                 'invitation_id' => $invitation->id,
                 'error' => $e->getMessage()
             ]);
         }
 
         return response()->json([
-            'message' => 'Invitation declined successfully'
+            'message' => __('projectinvitationcontrollerphp194')
         ]);
     }
 
@@ -238,7 +250,7 @@ class ProjectInvitationController extends Controller
         $user = Auth::user();
 
         if (!$project->userCanManage($user)) {
-            \Log::warning('Cancel invitation: Unauthorized', [
+            \Log::warning(__('projectinvitationcontrollerphp241'), [
                 'user_id' => $user->id,
                 'project_id' => $project->id,
             ]);
@@ -250,19 +262,19 @@ class ProjectInvitationController extends Controller
                 'invitation_project_id' => $invitation->project_id,
                 'requested_project_id' => $project->id,
             ]);
-            return response()->json(['message' => 'Invitation does not belong to this project'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp253')], 422);
         }
 
         if ($invitation->status !== 'pending') {
-            \Log::warning('Cancel invitation: Not pending', [
+            \Log::warning(__('projectinvitationcontrollerphp257'), [
                 'status' => $invitation->status,
             ]);
-            return response()->json(['message' => 'Can only cancel pending invitations'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp260')], 422);
         }
 
         $invitation->update(['status' => 'expired']);
 
-        return response()->json(['message' => 'Invitation cancelled successfully']);
+        return response()->json(['message' => __('projectinvitationcontrollerphp265')]);
     }
 
     /**
@@ -273,7 +285,7 @@ class ProjectInvitationController extends Controller
         $user = Auth::user();
         
         if (!$user->hasPendingInvitation()) {
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp276')], 404);
         }
 
         $invitation = $user->pendingProjectInvitation()
@@ -283,7 +295,7 @@ class ProjectInvitationController extends Controller
         if (!$invitation) {
             // Clean up if invitation was deleted
             $user->clearPendingInvitation();
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp286')], 404);
         }
 
         return response()->json($invitation);
@@ -297,27 +309,27 @@ class ProjectInvitationController extends Controller
         $user = Auth::user();
         
         if (!$user->hasPendingInvitation()) {
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp300')], 404);
         }
 
         $invitation = $user->pendingProjectInvitation;
         if (!$invitation) {
             $user->clearPendingInvitation();
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp306')], 404);
         }
 
         // Accept the invitation
         $success = $invitation->accept();
         
         if (!$success) {
-            return response()->json(['message' => 'Failed to accept invitation'], 422);
+            return response()->json(['message' => __('projectinvitationcontrollerphp313')], 422);
         }
 
         // Clear pending invitation from user
         $user->clearPendingInvitation();
 
         return response()->json([
-            'message' => 'Invitation accepted successfully',
+            'message' => __('projectinvitationcontrollerphp320'),
             'project' => $invitation->project
         ]);
     }
@@ -330,13 +342,13 @@ class ProjectInvitationController extends Controller
         $user = Auth::user();
         
         if (!$user->hasPendingInvitation()) {
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp333')], 404);
         }
 
         $invitation = $user->pendingProjectInvitation;
         if (!$invitation) {
             $user->clearPendingInvitation();
-            return response()->json(['message' => 'No pending invitation'], 404);
+            return response()->json(['message' => __('projectinvitationcontrollerphp339')], 404);
         }
 
         // Decline the invitation
@@ -345,6 +357,6 @@ class ProjectInvitationController extends Controller
         // Clear pending invitation from user
         $user->clearPendingInvitation();
 
-        return response()->json(['message' => 'Invitation declined']);
+        return response()->json(['message' => __('projectinvitationcontrollerphp348')]);
     }
 }

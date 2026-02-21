@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ihr Konto wurde deaktiviert</title>
+    <title>{{__('account-deactivatedbladephp6')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -103,57 +103,57 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">Konto deaktiviert</h1>
+            <h1 class="title">{{__('account-deactivatedbladephp106')}}</h1>
         </div>
 
         <p>Hallo {{ $user->name }},</p>
 
         <p>
-            Ihr Scoriet-Konto wurde wegen Inaktivität deaktiviert.
-            Ihr letzter Login war am <strong>{{ $lastLoginAt }}</strong> - das ist über 4 Monate her.
+            {{__('account-deactivatedbladephp112')}}
+            {{__('account-deactivatedbladephp113')}}<strong>{{ $lastLoginAt }}</strong>{{__('account-deactivatedbladephp113_2')}}
         </p>
 
         <div class="info-banner">
             <div class="info-title">
-                Was bedeutet das?
+                {{__('account-deactivatedbladephp118')}}
             </div>
             <ul style="margin: 0; padding-left: 20px; color: #374151;">
-                <li>Ihr Konto ist vorübergehend gesperrt</li>
-                <li>Alle Ihre Daten sind weiterhin sicher gespeichert</li>
-                <li>Sie können sich jederzeit wieder einloggen</li>
+                <li>{{__('account-deactivatedbladephp121')}}</li>
+                <li>{{__('account-deactivatedbladephp122')}}</li>
+                <li>{{__('account-deactivatedbladephp123')}}</li>
             </ul>
         </div>
 
         <div class="reactivation-box">
             <div class="reactivation-title">Konto reaktivieren?</div>
             <p style="margin: 5px 0; color: #047857;">
-                Loggen Sie sich einfach wieder ein und Ihr Konto wird <strong>sofort</strong> reaktiviert!
-                Alle Ihre Projekte, Templates und Einstellungen sind weiterhin vorhanden.
+                {{__('account-deactivatedbladephp130')}}<strong>{{__('account-deactivatedbladephp130_2')}}</strong>{{__('account-deactivatedbladephp130_3')}}
+                {{__('account-deactivatedbladephp131')}}
             </p>
         </div>
 
         <div class="actions">
-            <a href="{{ $loginUrl }}" class="btn btn-primary">Jetzt reaktivieren</a>
+            <a href="{{ $loginUrl }}" class="btn btn-primary">{{__('account-deactivatedbladephp136')}}</a>
         </div>
 
         <div class="info-box">
             <div class="info-box-title">Gut zu wissen:</div>
             <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
-                <li>Die Reaktivierung ist kostenlos</li>
-                <li>Ihre Credits und Abonnements bleiben erhalten</li>
-                <li>Team-Mitgliedschaften werden wiederhergestellt</li>
-                <li>Nach dem Login erhalten Sie wie gewohnt Ihre monatlichen Gratis-Credits</li>
+                <li>{{__('account-deactivatedbladephp142')}}</li>
+                <li>{{__('account-deactivatedbladephp143')}}</li>
+                <li>{{__('account-deactivatedbladephp144')}}</li>
+                <li>{{__('account-deactivatedbladephp145')}}</li>
             </ul>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Wir freuen uns, wenn Sie zurückkommen!
+            {{__('account-deactivatedbladephp150')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Ihr Konto wurde wegen 4-monatiger Inaktivität deaktiviert.
+                {{__('account-deactivatedbladephp155')}}<strong>Scoriet</strong>.<br>
+                {{__('account-deactivatedbladephp156')}}
             </p>
         </div>
     </div>

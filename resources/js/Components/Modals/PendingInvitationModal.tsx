@@ -203,7 +203,7 @@ export default function PendingInvitationModal({
         {loading && (
           <div className="text-center py-8">
             <ProgressSpinner />
-            <p className="text-gray-500 mt-2">Loading invitation...</p>
+            <p className="text-gray-500 mt-2">{t.pendinginvitationmodal206}</p>
           </div>
         )}
 

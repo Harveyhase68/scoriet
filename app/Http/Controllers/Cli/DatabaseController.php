@@ -67,7 +67,7 @@ class DatabaseController extends Controller
         if (!$this->userHasProjectAccess($project, $request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('databasecontrollerphp70'),
             ], 403);
         }
 
@@ -83,7 +83,7 @@ class DatabaseController extends Controller
             if ($existingSchema) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Schema with this name already exists',
+                    'message' => __('databasecontrollerphp86'),
                 ], 422);
             }
 
@@ -103,7 +103,7 @@ class DatabaseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Database schema created successfully',
+                'message' => __('databasecontrollerphp106'),
                 'schema' => [
                     'id' => $schema->id,
                     'name' => $schema->name,
@@ -116,7 +116,7 @@ class DatabaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create schema',
+                'message' => __('databasecontrollerphp119'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -144,7 +144,7 @@ class DatabaseController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('databasecontrollerphp147'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -155,14 +155,14 @@ class DatabaseController extends Controller
         if ((string)$schema->owner_id !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this schema',
+                'message' => __('databasecontrollerphp158'),
             ], 403);
         }
 
         try {
             $sqlContent = $request->input('sql_content');
             $clientIp = $request->ip();
-            $description = $request->input('description', "CLI Import from IP: {$clientIp}");
+            $description = $request->input('description', __('databasecontrollerphp165')."{$clientIp}");
             $requestedVersion = $request->input('schema_version');
 
             // Parse SQL using MySQLParser
@@ -181,7 +181,7 @@ class DatabaseController extends Controller
                 if (!$schemaVersion) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Version {$requestedVersion} not found for this schema",
+                        'message' => __('databasecontrollerphp184')."{$requestedVersion}".__('databasecontrollerphp184_2'),
                     ], 404);
                 }
 
@@ -198,7 +198,7 @@ class DatabaseController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'SQL imported into existing version successfully',
+                    'message' => __('databasecontrollerphp201'),
                     'schema' => [
                         'id' => $schema->id,
                         'name' => $schema->name,
@@ -229,7 +229,7 @@ class DatabaseController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'SQL imported as new version successfully',
+                    'message' => __('databasecontrollerphp232'),
                     'schema' => [
                         'id' => $schema->id,
                         'name' => $schema->name,
@@ -243,7 +243,7 @@ class DatabaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'SQL import failed',
+                'message' => __('databasecontrollerphp246'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -268,7 +268,7 @@ class DatabaseController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('databasecontrollerphp271'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -279,14 +279,14 @@ class DatabaseController extends Controller
         if ((string)$schema->owner_id !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this schema',
+                'message' => __('databasecontrollerphp282'),
             ], 403);
         }
 
         try {
             $fromVersionNumber = $request->input('from_version');
             $clientIp = $request->ip();
-            $description = $request->input('description', "Version copied from CLI IP: {$clientIp}");
+            $description = $request->input('description', __('databasecontrollerphp289')."{$clientIp}");
 
             // Get source version (latest if not specified)
             if ($fromVersionNumber) {
@@ -297,7 +297,7 @@ class DatabaseController extends Controller
                 if (!$sourceVersion) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Source version {$fromVersionNumber} not found",
+                        'message' => __('databasecontrollerphp300')."{$fromVersionNumber}".__('databasecontrollerphp300_2'),
                     ], 404);
                 }
             } else {
@@ -306,7 +306,7 @@ class DatabaseController extends Controller
                 if (!$sourceVersion) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'No versions found to copy from',
+                        'message' => __('databasecontrollerphp309'),
                     ], 404);
                 }
             }
@@ -445,7 +445,7 @@ class DatabaseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Version copied successfully',
+                'message' => __('databasecontrollerphp448'),
                 'schema' => [
                     'id' => $schema->id,
                     'name' => $schema->name,
@@ -458,7 +458,7 @@ class DatabaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to copy version',
+                'message' => __('databasecontrollerphp461'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -508,7 +508,7 @@ class DatabaseController extends Controller
             if ((string)$schema->owner_id !== (string)$request->user()->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied to this schema',
+                    'message' => __('databasecontrollerphp511'),
                 ], 403);
             }
 
@@ -523,7 +523,7 @@ class DatabaseController extends Controller
             if (!$version) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No schema version found',
+                    'message' => __('databasecontrollerphp526'),
                 ], 404);
             }
 
@@ -662,7 +662,7 @@ class DatabaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Database export failed',
+                'message' => __('databasecontrollerphp665'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -696,7 +696,7 @@ class DatabaseController extends Controller
         if (!$this->userHasProjectAccess($project, $request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('databasecontrollerphp699'),
             ], 403);
         }
 
@@ -766,7 +766,7 @@ class DatabaseController extends Controller
         if (!$hasAccess) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this schema',
+                'message' => __('databasecontrollerphp769'),
             ], 403);
         }
 
@@ -775,7 +775,7 @@ class DatabaseController extends Controller
         if (!$latestVersion) {
             return response()->json([
                 'success' => false,
-                'message' => 'No version found',
+                'message' => __('databasecontrollerphp778'),
             ], 404);
         }
 
@@ -874,7 +874,7 @@ class DatabaseController extends Controller
         if (!$schema) {
             return response()->json([
                 'success' => false,
-                'message' => 'Schema not found',
+                'message' => __('databasecontrollerphp877'),
             ], 404);
         }
 
@@ -898,7 +898,7 @@ class DatabaseController extends Controller
         if (!$hasAccess) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this schema',
+                'message' => __('databasecontrollerphp901'),
             ], 403);
         }
 
@@ -943,7 +943,7 @@ class DatabaseController extends Controller
         if (!$schema) {
             return response()->json([
                 'success' => false,
-                'message' => 'Schema not found',
+                'message' => __('databasecontrollerphp946'),
             ], 404);
         }
 
@@ -951,7 +951,7 @@ class DatabaseController extends Controller
         if ((string)$schema->owner_id !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only schema owner can delete schema',
+                'message' => __('databasecontrollerphp954'),
             ], 403);
         }
 
@@ -962,13 +962,13 @@ class DatabaseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Schema deleted successfully',
+                'message' => __('databasecontrollerphp965'),
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete schema',
+                'message' => __('databasecontrollerphp971'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -991,7 +991,7 @@ class DatabaseController extends Controller
         if (!$schema) {
             return response()->json([
                 'success' => false,
-                'message' => 'Schema not found',
+                'message' => __('databasecontrollerphp994'),
             ], 404);
         }
 
@@ -999,7 +999,7 @@ class DatabaseController extends Controller
         if ((string)$schema->owner_id !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only schema owner can delete versions',
+                'message' => __('databasecontrollerphp1002'),
             ], 403);
         }
 
@@ -1020,7 +1020,7 @@ class DatabaseController extends Controller
         if (!$version) {
             return response()->json([
                 'success' => false,
-                'message' => 'Version not found',
+                'message' => __('databasecontrollerphp1023'),
             ], 404);
         }
 
@@ -1029,7 +1029,7 @@ class DatabaseController extends Controller
         if ($versionCount <= 1) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete the only version. Delete the schema instead.',
+                'message' => __('databasecontrollerphp1032'),
             ], 422);
         }
 
@@ -1040,13 +1040,13 @@ class DatabaseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Schema version deleted successfully',
+                'message' => __('databasecontrollerphp1043'),
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete version',
+                'message' => __('databasecontrollerphp1049'),
                 'error' => $e->getMessage(),
             ], 500);
         }

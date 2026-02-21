@@ -17,7 +17,7 @@ class GitProviderService
         return match ($provider) {
             'github' => $this->getGitHubAuthUrl($state),
             'gitlab' => $this->getGitLabAuthUrl($state),
-            default => throw new \InvalidArgumentException("Unknown provider: {$provider}"),
+            default => throw new \InvalidArgumentException(__('gitproviderservicephp20')."{$provider}"),
         };
     }
 
@@ -61,7 +61,7 @@ class GitProviderService
         return match ($provider) {
             'github' => $this->exchangeGitHubCode($code),
             'gitlab' => $this->exchangeGitLabCode($code),
-            default => throw new \InvalidArgumentException("Unknown provider: {$provider}"),
+            default => throw new \InvalidArgumentException(__('gitproviderservicephp64')."{$provider}"),
         };
     }
 
@@ -82,7 +82,7 @@ class GitProviderService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to exchange GitHub code for token');
+            throw new \Exception(__('gitproviderservicephp85'));
         }
 
         $data = $response->json();
@@ -119,7 +119,7 @@ class GitProviderService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to exchange GitLab code for token');
+            throw new \Exception(__('gitproviderservicephp122'));
         }
 
         $data = $response->json();
@@ -161,7 +161,7 @@ class GitProviderService
             ]);
 
         if ($response->failed()) {
-            \Log::error('GitLab token refresh failed', [
+            \Log::error(__('gitproviderservicephp164'), [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -171,7 +171,7 @@ class GitProviderService
         $data = $response->json();
 
         if (isset($data['error'])) {
-            \Log::error('GitLab token refresh error', ['error' => $data]);
+            \Log::error(__('gitproviderservicephp174'), ['error' => $data]);
             return false;
         }
 
@@ -202,7 +202,7 @@ class GitProviderService
         // Check if GitLab token is expired or about to expire (within 5 minutes)
         if ($gitProvider->token_expires_at && $gitProvider->token_expires_at->subMinutes(5)->isPast()) {
             if (!$this->refreshGitLabToken($gitProvider)) {
-                throw new \Exception('Failed to refresh GitLab token. Please reconnect your GitLab account.');
+                throw new \Exception(__('gitproviderservicephp205'));
             }
             // Reload to get the new token
             $gitProvider->refresh();
@@ -231,7 +231,7 @@ class GitProviderService
         $response = Http::withToken($accessToken)->withoutVerifying()->get('https://api.github.com/user');
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitHub user info');
+            throw new \Exception(__('gitproviderservicephp234'));
         }
 
         $user = $response->json();
@@ -264,7 +264,7 @@ class GitProviderService
         $response = Http::withToken($accessToken)->withoutVerifying()->get("{$baseUrl}/api/v4/user");
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitLab user info');
+            throw new \Exception(__('gitproviderservicephp267'));
         }
 
         $user = $response->json();
@@ -345,7 +345,7 @@ class GitProviderService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitHub repositories');
+            throw new \Exception(__('gitproviderservicephp348'));
         }
 
         return collect($response->json())->map(fn($repo) => [
@@ -378,7 +378,7 @@ class GitProviderService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitLab repositories');
+            throw new \Exception(__('gitproviderservicephp381'));
         }
 
         return collect($response->json())->map(fn($repo) => [
@@ -401,7 +401,7 @@ class GitProviderService
         return match ($gitProvider->provider) {
             'github' => $this->createGitHubRepository($gitProvider, $name, $description, $private),
             'gitlab' => $this->createGitLabRepository($gitProvider, $name, $description, $private),
-            default => throw new \InvalidArgumentException("Unknown provider: {$gitProvider->provider}"),
+            default => throw new \InvalidArgumentException(__('gitproviderservicephp404')."{$gitProvider->provider}"),
         };
     }
 
@@ -421,7 +421,7 @@ class GitProviderService
 
         if ($response->failed()) {
             $error = $response->json();
-            throw new \Exception($error['message'] ?? 'Failed to create GitHub repository');
+            throw new \Exception($error['message'] ?? __('gitproviderservicephp424'));
         }
 
         $repo = $response->json();
@@ -454,7 +454,7 @@ class GitProviderService
 
         if ($response->failed()) {
             $error = $response->json();
-            throw new \Exception($error['message'] ?? 'Failed to create GitLab repository');
+            throw new \Exception($error['message'] ?? __('gitproviderservicephp457'));
         }
 
         $repo = $response->json();
@@ -491,7 +491,7 @@ class GitProviderService
             ->get("https://api.github.com/repos/{$repoFullName}/branches");
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitHub branches');
+            throw new \Exception(__('gitproviderservicephp494'));
         }
 
         return collect($response->json())->map(fn($branch) => [
@@ -513,7 +513,7 @@ class GitProviderService
             ->get("{$baseUrl}/api/v4/projects/{$encodedPath}/repository/branches");
 
         if ($response->failed()) {
-            throw new \Exception('Failed to get GitLab branches');
+            throw new \Exception(__('gitproviderservicephp516'));
         }
 
         return collect($response->json())->map(fn($branch) => [
@@ -536,7 +536,7 @@ class GitProviderService
         return match ($gitProvider->provider) {
             'github' => $this->pushToGitHub($gitProvider, $repoFullName, $branch, $commitMessage, $files, $baseBranch),
             'gitlab' => $this->pushToGitLab($gitProvider, $repoFullName, $branch, $commitMessage, $files, $baseBranch),
-            default => throw new \InvalidArgumentException("Push not supported for provider: {$gitProvider->provider}"),
+            default => throw new \InvalidArgumentException(__('gitproviderservicephp539')."{$gitProvider->provider}"),
         };
     }
 
@@ -559,7 +559,7 @@ class GitProviderService
             ->get("{$baseUrl}/repos/{$repoFullName}/git/ref/heads/{$baseBranch}");
 
         if ($refResponse->failed()) {
-            throw new \Exception("Failed to get reference for branch {$baseBranch}");
+            throw new \Exception(__('gitproviderservicephp562')."{$baseBranch}");
         }
 
         $baseSha = $refResponse->json()['object']['sha'];
@@ -586,7 +586,7 @@ class GitProviderService
                 ]);
 
             if ($blobResponse->failed()) {
-                throw new \Exception("Failed to create blob for file: {$path}");
+                throw new \Exception(__('gitproviderservicephp589')."{$path}");
             }
 
             $treeItems[] = [
@@ -606,7 +606,7 @@ class GitProviderService
             ]);
 
         if ($treeResponse->failed()) {
-            throw new \Exception('Failed to create tree');
+            throw new \Exception(__('gitproviderservicephp609'));
         }
 
         $newTreeSha = $treeResponse->json()['sha'];
@@ -621,7 +621,7 @@ class GitProviderService
             ]);
 
         if ($newCommitResponse->failed()) {
-            throw new \Exception('Failed to create commit');
+            throw new \Exception(__('gitproviderservicephp624'));
         }
 
         $newCommitSha = $newCommitResponse->json()['sha'];
@@ -654,7 +654,7 @@ class GitProviderService
                 ]);
 
             if ($createRefResponse->failed()) {
-                throw new \Exception('Failed to create branch reference');
+                throw new \Exception(__('gitproviderservicephp657'));
             }
         }
 
@@ -751,7 +751,7 @@ class GitProviderService
         return match ($gitProvider->provider) {
             'github' => $this->createGitHubPullRequest($gitProvider, $repoFullName, $title, $description, $headBranch, $baseBranch),
             'gitlab' => $this->createGitLabMergeRequest($gitProvider, $repoFullName, $title, $description, $headBranch, $baseBranch),
-            default => throw new \InvalidArgumentException("Pull requests not supported for provider: {$gitProvider->provider}"),
+            default => throw new \InvalidArgumentException(__('gitproviderservicephp754')."{$gitProvider->provider}"),
         };
     }
 
@@ -777,7 +777,7 @@ class GitProviderService
 
         if ($response->failed()) {
             $error = $response->json();
-            throw new \Exception($error['message'] ?? 'Failed to create pull request');
+            throw new \Exception($error['message'] ?? __('gitproviderservicephp780'));
         }
 
         $pr = $response->json();
@@ -814,7 +814,7 @@ class GitProviderService
 
         if ($response->failed()) {
             $error = $response->json();
-            throw new \Exception($error['message'] ?? 'Failed to create merge request');
+            throw new \Exception($error['message'] ?? __('gitproviderservicephp817'));
         }
 
         $mr = $response->json();
@@ -925,7 +925,7 @@ class GitProviderService
 
             // Check if MR is closed or in error state
             if ($state !== 'opened') {
-                throw new \Exception("Merge request is not open (state: {$state})");
+                throw new \Exception(__('gitproviderservicephp928')."{$state})");
             }
 
             // Check if ready to merge
@@ -964,7 +964,7 @@ class GitProviderService
         if ($response->failed()) {
             $error = $response->json();
             $statusCode = $response->status();
-            $message = $error['message'] ?? "Failed to merge (HTTP {$statusCode})";
+            $message = $error['message'] ??__('gitproviderservicephp967')."{$statusCode})";
 
             \Log::error('GitLab merge failed', [
                 'status' => $statusCode,
@@ -974,7 +974,7 @@ class GitProviderService
 
             // Provide helpful error messages
             if ($statusCode === 405 || $statusCode === 406 || $statusCode === 422) {
-                $message = "Cannot merge: {$mergeStatus}. The merge request may have conflicts or require pipeline to pass.";
+                $message = __('gitproviderservicephp977')."{$mergeStatus}.".__('gitproviderservicephp977_2');
             }
 
             throw new \Exception($message);
@@ -1152,7 +1152,7 @@ class GitProviderService
             }
         }
 
-        throw new \Exception("Could not decode file content: {$filePath}");
+        throw new \Exception(__('gitproviderservicephp1155')."{$filePath}");
     }
 
     /**
@@ -1230,9 +1230,9 @@ class GitProviderService
                 // Re-throw rate limit errors so user sees them
                 $message = $e->getMessage();
                 if (str_contains($message, 'rate limit') || str_contains($message, '403') || str_contains($message, '429')) {
-                    throw new \Exception("GitHub/GitLab API Rate Limit erreicht. Bitte warten Sie einige Minuten oder verwenden Sie ein kleineres Repository. (Fehler: {$message})");
+                    throw new \Exception(__('gitproviderservicephp1233')."{$message})");
                 }
-                \Log::warning("Failed to fetch file content: {$file['path']}", [
+                \Log::warning(__('gitproviderservicephp1235')."{$file['path']}", [
                     'error' => $message,
                 ]);
             }
