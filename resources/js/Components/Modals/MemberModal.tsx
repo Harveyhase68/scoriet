@@ -408,7 +408,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
   const roleBodyTemplate = (member: any) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-    const isTeamOwner = team?.project_owner_id === currentUserId;
+    const isTeamOwner = Number(team?.project_owner_id) === currentUserId;
 
     // For project members not in team, show t.membermodal479
     if (!member.isInTeam) {
@@ -449,7 +449,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
   const actionsBodyTemplate = (member: any) => {
     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-    const isTeamOwner = team?.project_owner_id === currentUserId;
+    const isTeamOwner = Number(team?.project_owner_id) === currentUserId;
 
 
     if (!isTeamOwner) {
