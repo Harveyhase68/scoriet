@@ -1532,9 +1532,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 <p className="text-xs" style={{ color: colors.textMuted }}>
                   {!pushSupported
                     ? t.pushNotSupported
-                    : getPushPermission() === 'denied'
-                      ? t.pushBlocked
-                      : t.pushNotificationsDesc}
+                    : t.pushNotificationsDesc}
                 </p>
                 <Button
                   label={pushLoading
@@ -1555,18 +1553,24 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                     padding: '0.75rem 1rem',
                     fontSize: '0.95rem',
                   }}
-                  disabled={!pushSupported || getPushPermission() === 'denied' || pushLoading}
+                  disabled={!pushSupported || pushLoading}
                   onClick={async () => {
                     setPushLoading(true);
                     setPushError('');
                     try {
                       if (!pushEnabled) {
+                        // Always attempt to subscribe — this triggers the browser permission prompt
+                        // On Android, if permission was previously denied at OS level,
+                        // subscribeToPush() will fail and we show a helpful message
                         const success = await subscribeToPush();
                         setPushEnabled(success);
                         if (!success) {
-                          setPushError(getPushPermission() === 'denied'
-                            ? t.pushBlocked
-                            : t.pushSubscribeFailed || 'Push subscription failed. Check browser console (F12) for details.');
+                          const currentPermission = getPushPermission();
+                          if (currentPermission === 'denied') {
+                            setPushError(t.pushBlocked || 'Push notifications are blocked. Please enable them in your browser/device settings and try again.');
+                          } else {
+                            setPushError(t.pushSubscribeFailed || 'Push subscription failed. Check browser console (F12) for details.');
+                          }
                         }
                       } else {
                         const success = await unsubscribeFromPush();
