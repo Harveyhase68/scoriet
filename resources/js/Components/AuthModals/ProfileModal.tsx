@@ -260,14 +260,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [pushError, setPushError] = useState('');
   const [pushSupported] = useState(() => isPushSupported());
 
-  // Check push subscription status on mount
+  // Check push subscription status whenever modal opens
   useEffect(() => {
-    if (pushSupported) {
+    if (visible && pushSupported) {
       hasPushSubscription().then(setPushEnabled);
     }
-  }, [pushSupported]);
+  }, [visible, pushSupported]);
 
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
@@ -1528,42 +1529,68 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 {t.pushNotifications}
               </label>
               <div className="space-y-3 rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <span className="text-sm font-medium" style={{ color: colors.textPrimary }}>
-                      {t.pushNotificationsToggle}
-                    </span>
-                    <p className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                      {!pushSupported
-                        ? t.pushNotSupported
-                        : getPushPermission() === 'denied'
-                          ? t.pushBlocked
-                          : t.pushNotificationsDesc}
-                    </p>
-                  </div>
-                  <InputSwitch
-                    checked={pushEnabled}
-                    onChange={async (e) => {
-                      setPushLoading(true);
-                      try {
-                        if (e.value) {
-                          const success = await subscribeToPush();
-                          setPushEnabled(success);
-                        } else {
-                          const success = await unsubscribeFromPush();
-                          if (success) setPushEnabled(false);
+                <p className="text-xs" style={{ color: colors.textMuted }}>
+                  {!pushSupported
+                    ? t.pushNotSupported
+                    : getPushPermission() === 'denied'
+                      ? t.pushBlocked
+                      : t.pushNotificationsDesc}
+                </p>
+                <Button
+                  label={pushLoading
+                    ? (t.pushLoading || 'Loading...')
+                    : pushEnabled
+                      ? (t.pushDeactivate || 'Deactivate Push Notifications')
+                      : (t.pushActivate || 'Activate Push Notifications')}
+                  icon={pushLoading
+                    ? 'pi pi-spinner pi-spin'
+                    : pushEnabled
+                      ? 'pi pi-bell-slash'
+                      : 'pi pi-bell'}
+                  className="w-full"
+                  style={{
+                    backgroundColor: pushEnabled ? colors.errorText : colors.accent,
+                    color: colors.textInverse,
+                    border: 'none',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.95rem',
+                  }}
+                  disabled={!pushSupported || getPushPermission() === 'denied' || pushLoading}
+                  onClick={async () => {
+                    setPushLoading(true);
+                    setPushError('');
+                    try {
+                      if (!pushEnabled) {
+                        const success = await subscribeToPush();
+                        setPushEnabled(success);
+                        if (!success) {
+                          setPushError(getPushPermission() === 'denied'
+                            ? t.pushBlocked
+                            : t.pushSubscribeFailed || 'Push subscription failed. Check browser console (F12) for details.');
                         }
-                      } finally {
-                        setPushLoading(false);
+                      } else {
+                        const success = await unsubscribeFromPush();
+                        if (success) setPushEnabled(false);
                       }
-                    }}
-                    disabled={!pushSupported || getPushPermission() === 'denied' || pushLoading}
-                  />
-                </div>
+                    } catch (err: unknown) {
+                      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+                      setPushError(errorMsg);
+                      console.error('Push toggle error:', err);
+                    } finally {
+                      setPushLoading(false);
+                    }
+                  }}
+                />
                 {pushEnabled && (
                   <div className="flex items-center gap-2 text-xs" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
                     {t.pushActive}
+                  </div>
+                )}
+                {pushError && (
+                  <div className="flex items-center gap-2 text-xs mt-2" style={{ color: colors.errorText }}>
+                    <i className="pi pi-exclamation-triangle"></i>
+                    {pushError}
                   </div>
                 )}
               </div>
