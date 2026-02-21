@@ -554,7 +554,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     // Validation for each step
     if (currentStep === 1) {
       if (!projectName.trim()) {
-        setError('Project name is required');
+        setError(t.projectwizardmodal557);
         return;
       }
       // Check snake_case format
@@ -865,10 +865,10 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           const userData = await userCheckResponse.json();
           if (userData.credits < totalCreditsNeeded) {
             const parts = [];
-            if (reservedCreditsForProject > 0) parts.push(`${reservedCreditsForProject} für Projekt`);
-            if (reservedCreditsForDatabase > 0) parts.push(`${reservedCreditsForDatabase} für Datenbank`);
-            if (reservedCreditsForTeam > 0) parts.push(`${reservedCreditsForTeam} für Team`);
-            setError(`${t.projectwizardmodal871}${totalCreditsNeeded} Credits (${parts.join(' + ')})${t.projectwizardmodal871_2}${userData.credits}.`);
+            if (reservedCreditsForProject > 0) parts.push(`${reservedCreditsForProject}${t.projectwizardmodal868}`);
+            if (reservedCreditsForDatabase > 0) parts.push(`${reservedCreditsForDatabase}${t.projectwizardmodal869}`);
+            if (reservedCreditsForTeam > 0) parts.push(`${reservedCreditsForTeam}${t.projectwizardmodal870}`);
+            setError(`${t.projectwizardmodal871}${totalCreditsNeeded}${t.projectwizardmodal871}(${parts.join(' + ')})${t.projectwizardmodal871_2}${userData.credits}.`);
             setLoading(false);
             setPlanModalInitialTab(1);
             setShowPlanModal(true);
@@ -1253,7 +1253,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 <strong>{t.projectwizardmodal1253}</strong>
               </p>
               <p className="text-sm" style={{ color: colors.textPrimary }}>
-                {t.projectwizardmodal1256}<strong>{maxAllowed} project{maxAllowed > 1 ? 's' : ''}</strong> (1 free{activeSubscriptions > 0 ? ` + ${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''}` : ''})
+                {t.projectwizardmodal1256}<strong>{maxAllowed}{maxAllowed > 1 ? t.projectwizardmodal1256_5 : t.projectwizardmodal1256_6}</strong> ({t.projectwizardmodal1256_2}{activeSubscriptions > 0 ? ` + ${activeSubscriptions}${activeSubscriptions > 1 ? t.projectwizardmodal1256_4 : t.projectwizardmodal1256_3}` : ''})
               </p>
               <p className="text-sm" style={{ color: colors.textPrimary }}>
                 {t.projectwizardmodal1259}<strong>{currentProjects}</strong>
@@ -1265,18 +1265,18 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Your Credits:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1268}</span>
                 <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
               </div>
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Required Credits:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1272}</span>
                 <span className="font-bold text-lg" style={{ color: colors.warningText }}>50</span>
               </div>
               <hr className="my-2" style={{ borderColor: colors.borderSecondary }} />
               <div className="flex justify-between items-center">
-                <span style={{ color: colors.textSecondary }}>After Unlock:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1277}</span>
                 <span className="font-bold text-lg" style={{ color: hasEnoughCreditsForProject ? colors.successText : colors.errorText }}>
-                  {hasEnoughCreditsForProject ? (currentUser?.credits || 0) - 50 : `Need ${creditsNeededForProject} more`}
+                  {hasEnoughCreditsForProject ? (currentUser?.credits || 0) - 50 : `${t.projectwizardmodal1279}${creditsNeededForProject}${t.projectwizardmodal1279_2}`}
                 </span>
               </div>
             </div>
@@ -1328,7 +1328,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       case 1:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Project Information</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1331}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 {t.projectwizardmodal1334}
@@ -1365,7 +1365,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   </small>
                 )}
               </div>
-              <small className="block mt-1" style={{ color: colors.textMuted }}>Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed</small>
+              <small className="block mt-1" style={{ color: colors.textMuted }}>{t.projectwizardmodal1368}</small>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
@@ -1386,7 +1386,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   checked={isPublic}
                   onChange={(e) => setIsPublic(e.checked || false)}
                 />
-                <label htmlFor="is_public" className="ml-2" style={{ color: colors.textSecondary }}>Public Project</label>
+                <label htmlFor="is_public" className="ml-2" style={{ color: colors.textSecondary }}>{t.projectwizardmodal1389}</label>
               </div>
               <div className="flex items-center">
                 <Checkbox
@@ -1394,7 +1394,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   checked={allowJoinRequests}
                   onChange={(e) => setAllowJoinRequests(e.checked || false)}
                 />
-                <label htmlFor="allow_join" className="ml-2" style={{ color: colors.textSecondary }}>Allow Join Requests</label>
+                <label htmlFor="allow_join" className="ml-2" style={{ color: colors.textSecondary }}>{t.projectwizardmodal1397}</label>
               </div>
             </div>
           </div>
@@ -1403,7 +1403,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       case 2:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Project Properties</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1406}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 {t.projectwizardmodal1409}
@@ -1461,7 +1461,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       case 3:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Database Connection</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1464}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 {t.projectwizardmodal1467}
@@ -1492,7 +1492,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Port
+                  {t.projectwizardmodal1495}
                 </label>
                 <InputText
                   value={databasePort}
@@ -1568,7 +1568,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       case 5:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Database/Schema Selection</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1571}</h3>
             <div className="space-y-2">
               <div className="flex items-center">
                 <input
@@ -1578,7 +1578,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   onChange={() => setDatabaseOption('new')}
                   className="mr-2"
                 />
-                <label htmlFor="new_db" style={{ color: colors.textSecondary }}>Create new database</label>
+                <label htmlFor="new_db" style={{ color: colors.textSecondary }}>{t.projectwizardmodal1581}</label>
               </div>
               <div className="flex items-center">
                 <input
@@ -1588,7 +1588,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   onChange={() => setDatabaseOption('existing')}
                   className="mr-2"
                 />
-                <label htmlFor="existing_db" style={{ color: colors.textSecondary }}>Use existing database</label>
+                <label htmlFor="existing_db" style={{ color: colors.textSecondary }}>{t.projectwizardmodal1591}</label>
               </div>
             </div>
 
@@ -1659,7 +1659,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               <div className="flex justify-between items-center">
                 <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1659}</span>
                 <span className="font-bold text-lg" style={{ color: hasEnoughCreditsForDb ? colors.successText : colors.errorText }}>
-                  {hasEnoughCreditsForDb ? availableCreditsForDb - 50 : `Need ${creditsNeededForDb} more`}
+                  {hasEnoughCreditsForDb ? availableCreditsForDb - 50 : `${t.projectwizardmodal1662}${creditsNeededForDb}${t.projectwizardmodal1662_2}`}
                 </span>
               </div>
             </div>
@@ -1675,7 +1675,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <div className="flex gap-3">
               {hasEnoughCreditsForDb ? (
                 <Button
-                  label="Unlock Database (50 Credits)"
+                  label={t.projectwizardmodal1678}
                   icon="pi pi-unlock"
                   onClick={handleStep6UnlockConfirm}
                   className="flex-1"
@@ -1683,7 +1683,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 />
               ) : (
                 <Button
-                  label="Buy Credits"
+                  label={t.projectwizardmodal1686}
                   icon="pi pi-shopping-cart"
                   onClick={handleBuyCredits}
                   className="flex-1"
@@ -1693,16 +1693,16 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
 
             <p className="text-xs text-center" style={{ color: colors.textMuted }}>
-              Or upgrade to{' '}
+              {t.projectwizardmodal1696}{' '}
               <button
                 type="button"
                 onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
                 className="underline font-semibold"
                 style={{ color: colors.warningText }}
               >
-                Patron Monthly
+                {t.projectwizardmodal1703}
               </button>
-              {' '}for unlimited databases!
+              {' '}{t.projectwizardmodal1705}
             </p>
           </div>
         );
@@ -1712,14 +1712,18 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Step 7: Database Details (only shown when creating new database)
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>New Database Details</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1715}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Database Name *
+                {t.projectwizardmodal1718}
               </label>
               <InputText
                 value={schemaName}
-                onChange={(e) => setSchemaName(e.target.value)}
+                onChange={(e) => {
+                  // Sanitize: only allow lowercase letters, numbers, and underscores
+                  const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                  setSchemaName(sanitized);
+                }}
                 placeholder="my_database"
                 className={`w-full ${schemaNameExists ? 'border-red-500' : ''}`}
               />
@@ -1727,45 +1731,45 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 {checkingSchemaName && schemaName.trim() && (
                   <small className="flex items-center gap-1" style={{ color: colors.accent }}>
                     <i className="pi pi-spin pi-spinner"></i>
-                    Checking availability...
+                    {t.projectwizardmodal1730}
                   </small>
                 )}
                 {!checkingSchemaName && schemaName.trim() && schemaNameExists && (
                   <small className="flex items-center gap-1" style={{ color: colors.errorText }}>
                     <i className="pi pi-times-circle"></i>
-                    Database name already exists
+                    {t.projectwizardmodal1736}
                   </small>
                 )}
                 {!checkingSchemaName && schemaName.trim() && !schemaNameExists && (
                   <small className="flex items-center gap-1" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    Available
+                    {t.projectwizardmodal1742}
                   </small>
                 )}
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Description
+                {t.projectwizardmodal1749}
               </label>
               <InputTextarea
                 value={schemaDescription}
                 onChange={(e) => setSchemaDescription(e.target.value)}
                 rows={3}
-                placeholder="Database description..."
+                placeholder={t.projectwizardmodal1755}
                 className="w-full"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Visibility
+                {t.projectwizardmodal1761}
               </label>
               <Dropdown
                 value={schemaVisibility}
                 onChange={(e) => setSchemaVisibility(e.value)}
                 options={[
-                  { label: 'Public', value: 'public' },
-                  { label: 'Private', value: 'private' },
+                  { label: t.projectwizardmodal1767, value: 'public' },
+                  { label: t.projectwizardmodal1768, value: 'private' },
                 ]}
                 className="w-full"
               />
@@ -1777,9 +1781,9 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Step 8: SQL Import (only shown when creating new database)
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Import SQL (Optional)</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1780}</h3>
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              You can import your SQL script now or skip and import later from the Database Designer.
+              {t.projectwizardmodal1782}
             </p>
 
             {/* Skip SQL Import Checkbox */}
@@ -1795,7 +1799,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 }}
               />
               <label htmlFor="skip_sql_import" className="ml-2" style={{ color: colors.textSecondary }}>
-                Skip SQL import (I'll import later)
+                {t.projectwizardmodal1798}
               </label>
             </div>
 
@@ -1804,7 +1808,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 {/* File Upload */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Upload SQL File
+                    {t.projectwizardmodal1807}
                   </label>
                   <input
                     ref={fileInputRef}
@@ -1821,7 +1825,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                       style={{ backgroundColor: colors.accent, color: colors.textInverse }}
                     >
                       <i className="pi pi-upload"></i>
-                      <span>Choose SQL File</span>
+                      <span>{t.projectwizardmodal1824}</span>
                     </button>
                     {sqlScript && (
                       <button
@@ -1835,13 +1839,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                         className="px-4 py-2 rounded transition-colors"
                         style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                       >
-                        Clear
+                        {t.projectwizardmodal1838}
                       </button>
                     )}
                   </div>
                   {sqlScript && (
                     <p className="text-sm mt-2" style={{ color: colors.successText }}>
-                      ✓ SQL loaded ({sqlScript.length} characters)
+                      {t.projectwizardmodal1844}({sqlScript.length}{t.projectwizardmodal1844_2})
                     </p>
                   )}
                 </div>
@@ -1849,29 +1853,29 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 {/* Paste SQL */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Or Paste SQL Script
+                    {t.projectwizardmodal1852}
                   </label>
                   <textarea
                     value={sqlScript}
                     onChange={(e) => setSqlScript(e.target.value)}
                     rows={10}
-                    placeholder="CREATE TABLE users (...);"
+                    placeholder={t.projectwizardmodal1858}
                     className="w-full px-3 py-2 rounded font-mono text-sm"
                     style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderSecondary}`, color: colors.textPrimary }}
                   />
                   <small style={{ color: colors.textMuted }}>
-                    The SQL script should contain at least one CREATE TABLE statement
+                    {t.projectwizardmodal1863}
                   </small>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Import Description (optional)
+                    {t.projectwizardmodal1869}
                   </label>
                   <InputText
                     value={importDescription}
                     onChange={(e) => setImportDescription(e.target.value)}
-                    placeholder="Initial database structure"
+                    placeholder={t.projectwizardmodal1874}
                     className="w-full"
                   />
                 </div>
@@ -1884,9 +1888,9 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Step 9: Team Selection (new/existing/skip)
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Team Assignment (Optional)</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1887}</h3>
             <p className="text-sm" style={{ color: colors.textMuted }}>
-              Teams allow multiple users to collaborate on this project. You can skip this step and create teams later.
+              {t.projectwizardmodal1889}
             </p>
 
             <div className="space-y-3">
@@ -1899,8 +1903,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   className="mr-3"
                 />
                 <label htmlFor="team_skip" className="cursor-pointer flex-1" style={{ color: colors.textSecondary }}>
-                  <span className="font-medium" style={{ color: colors.textPrimary }}>Skip team creation</span>
-                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>I'll manage teams later from the Teams panel</p>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1902}</span>
+                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{t.projectwizardmodal1903}</p>
                 </label>
               </div>
 
@@ -1913,8 +1917,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                   className="mr-3"
                 />
                 <label htmlFor="team_new" className="cursor-pointer flex-1" style={{ color: colors.textSecondary }}>
-                  <span className="font-medium" style={{ color: colors.textPrimary }}>Create a new team</span>
-                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>Create a new team and assign it to this project</p>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1916}</span>
+                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{t.projectwizardmodal1917}</p>
                 </label>
               </div>
 
@@ -1928,8 +1932,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                     className="mr-3"
                   />
                   <label htmlFor="team_existing" className="cursor-pointer flex-1" style={{ color: colors.textSecondary }}>
-                    <span className="font-medium" style={{ color: colors.textPrimary }}>Use an existing team</span>
-                    <p className="text-xs mt-1" style={{ color: colors.textMuted }}>Assign an existing team to this project</p>
+                    <span className="font-medium" style={{ color: colors.textPrimary }}>{t.projectwizardmodal1931}</span>
+                    <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{t.projectwizardmodal1932}</p>
                   </label>
                 </div>
               )}
@@ -1938,13 +1942,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             {teamOption === 'existing' && (
               <div className="mt-4">
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Select Team
+                  {t.projectwizardmodal1941}
                 </label>
                 <Dropdown
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.value)}
                   options={existingTeams.map(t => ({ label: t.name, value: t.id }))}
-                  placeholder="Select a team..."
+                  placeholder={t.projectwizardmodal1947}
                   className="w-full"
                 />
               </div>
@@ -1965,56 +1969,56 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
-              🔓 Unlock Team Feature
+              {t.projectwizardmodal1968}
             </h3>
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningText}` }}>
               <p className="text-sm mb-2" style={{ color: colors.warningText }}>
-                <strong>Team Feature - Free Tier</strong>
+                <strong>{t.projectwizardmodal1973}</strong>
               </p>
               <p className="text-sm" style={{ color: colors.textSecondary }}>
-                Teams is an additional feature for free users. Each team costs <strong>50 credits per year</strong>.
+                {t.projectwizardmodal1976}<strong>{t.projectwizardmodal1976_2}</strong>.
               </p>
               {ownedTeams > 0 && (
                 <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-                  You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>
-                  {activeTeamSubscriptions > 0 && ` (${activeTeamSubscriptions} subscription${activeTeamSubscriptions > 1 ? 's' : ''})`}.
+                  {t.projectwizardmodal1980}<strong>{ownedTeams}{ownedTeams > 1 ? t.projectwizardmodal1980_1 : t.projectwizardmodal1980_2}</strong>
+                  {activeTeamSubscriptions > 0 && ` (${activeTeamSubscriptions}${activeTeamSubscriptions > 1 ? t.projectwizardmodal1981 : t.projectwizardmodal1981_2})`}.
                 </p>
               )}
             </div>
 
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Your Credits:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1988}</span>
                 <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
               </div>
               {(reservedCreditsForProject > 0 || reservedCreditsForDatabase > 0) && (
                 <>
                   {reservedCreditsForProject > 0 && (
                     <div className="flex justify-between items-center mb-2">
-                      <span style={{ color: colors.textSecondary }}>Reserved for Project:</span>
+                      <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal1995}</span>
                       <span className="font-bold text-lg" style={{ color: colors.warningText }}>-{reservedCreditsForProject}</span>
                     </div>
                   )}
                   {reservedCreditsForDatabase > 0 && (
                     <div className="flex justify-between items-center mb-2">
-                      <span style={{ color: colors.textSecondary }}>Reserved for Database:</span>
+                      <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal2001}</span>
                       <span className="font-bold text-lg" style={{ color: colors.warningText }}>-{reservedCreditsForDatabase}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center mb-2">
-                    <span style={{ color: colors.textSecondary }}>Available Credits:</span>
+                    <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal2006}</span>
                     <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{availableCreditsForTeam}</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between items-center mb-2">
-                <span style={{ color: colors.textSecondary }}>Required for Team:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal2012}</span>
                 <span className="font-bold text-lg" style={{ color: colors.warningText }}>50</span>
               </div>
               <hr className="my-2" style={{ borderColor: colors.borderSecondary }} />
               <div className="flex justify-between items-center">
-                <span style={{ color: colors.textSecondary }}>After Unlock:</span>
+                <span style={{ color: colors.textSecondary }}>{t.projectwizardmodal2017}</span>
                 <span className="font-bold text-lg" style={{ color: hasEnoughCreditsForTeam ? colors.successText : colors.errorText }}>
                   {hasEnoughCreditsForTeam ? availableCreditsForTeam - 50 : `Need ${creditsNeededForTeam} more`}
                 </span>
@@ -2024,7 +2028,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             {!hasEnoughCreditsForTeam && (
               <div className="rounded-lg p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}` }}>
                 <p className="text-sm" style={{ color: colors.errorText }}>
-                  ⚠️ You don't have enough credits. You need <strong>{creditsNeededForTeam} more credits</strong> to unlock the team feature.
+                  {t.projectwizardmodal2027_2}<strong>{creditsNeededForTeam}{t.projectwizardmodal2027}</strong>{t.projectwizardmodal2027_3}
                 </p>
               </div>
             )}
@@ -2032,7 +2036,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             <div className="flex gap-3">
               {hasEnoughCreditsForTeam ? (
                 <Button
-                  label="Unlock Team (50 Credits)"
+                  label={t.projectwizardmodal2035}
                   icon="pi pi-unlock"
                   onClick={handleStep10TeamUnlockConfirm}
                   className="flex-1"
@@ -2040,7 +2044,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 />
               ) : (
                 <Button
-                  label="Buy Credits"
+                  label={t.projectwizardmodal2043}
                   icon="pi pi-shopping-cart"
                   onClick={handleBuyCredits}
                   className="flex-1"
@@ -2050,16 +2054,16 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             </div>
 
             <p className="text-xs text-center" style={{ color: colors.textMuted }}>
-              Or upgrade to{' '}
+              {t.projectwizardmodal2053}{' '}
               <button
                 type="button"
                 onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
                 className="underline font-semibold"
                 style={{ color: colors.warningText }}
               >
-                Patron Monthly
+                {t.projectwizardmodal2060}
               </button>
-              {' '}for unlimited teams!
+              {' '}{t.projectwizardmodal2062}
             </p>
           </div>
         );
@@ -2069,14 +2073,18 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Step 11: Team Details (only shown when creating new team)
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>New Team Details</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal2072}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Team Name *
+                {t.projectwizardmodal2075}
               </label>
               <InputText
                 value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
+                onChange={(e) => {
+                  // Sanitize: only allow lowercase letters, numbers, and underscores
+                  const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                  setTeamName(sanitized);
+                }}
                 placeholder="my_team"
                 className={`w-full ${teamNameExists ? 'border-red-500' : ''}`}
               />
@@ -2084,33 +2092,33 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 {checkingTeamName && teamName.trim() && (
                   <small className="flex items-center gap-1" style={{ color: colors.accent }}>
                     <i className="pi pi-spin pi-spinner"></i>
-                    Checking availability...
+                    {t.projectwizardmodal2087}
                   </small>
                 )}
                 {!checkingTeamName && teamName.trim() && teamNameExists && (
                   <small className="flex items-center gap-1" style={{ color: colors.errorText }}>
                     <i className="pi pi-times-circle"></i>
-                    Team name already exists
+                    {t.projectwizardmodal2093}
                   </small>
                 )}
                 {!checkingTeamName && teamName.trim() && !teamNameExists && (
                   <small className="flex items-center gap-1" style={{ color: colors.successText }}>
                     <i className="pi pi-check-circle"></i>
-                    Available
+                    {t.projectwizardmodal2099}
                   </small>
                 )}
               </div>
-              <small className="block mt-1" style={{ color: colors.textMuted }}>Use lowercase letters, numbers, and underscores</small>
+              <small className="block mt-1" style={{ color: colors.textMuted }}>{t.projectwizardmodal2103}</small>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Team Description
+                {t.projectwizardmodal2107}
               </label>
               <InputTextarea
                 value={teamDescription}
                 onChange={(e) => setTeamDescription(e.target.value)}
                 rows={3}
-                placeholder="Team description..."
+                placeholder={t.projectwizardmodal2113}
                 className="w-full"
               />
             </div>
@@ -2129,19 +2137,19 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>Template Selection (Optional)</h3>
+            <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.projectwizardmodal2132}</h3>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                Filter Templates
+                {t.projectwizardmodal2135}
               </label>
               <Dropdown
                 value={templateFilter}
                 onChange={(e) => setTemplateFilter(e.value)}
                 options={[
-                  { label: 'All Templates', value: 'all' },
-                  { label: 'Private (My Templates)', value: 'private' },
-                  { label: 'Public (User Templates)', value: 'public' },
-                  { label: 'System (Scoriet Templates)', value: 'system' },
+                  { label: t.projectwizardmodal2141, value: 'all' },
+                  { label: t.projectwizardmodal2142, value: 'private' },
+                  { label: t.projectwizardmodal2143, value: 'public' },
+                  { label: t.projectwizardmodal2144, value: 'system' },
                 ]}
                 className="w-full"
               />
@@ -2149,7 +2157,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
             <div className="rounded p-4 max-h-96 overflow-y-auto" style={{ border: `1px solid ${colors.borderSecondary}` }}>
               {filteredTemplates.length === 0 ? (
-                <p className="text-center" style={{ color: colors.textMuted }}>No templates available</p>
+                <p className="text-center" style={{ color: colors.textMuted }}>{t.projectwizardmodal2152}</p>
               ) : (
                 <div className="space-y-2">
                   {filteredTemplates.map(template => (
@@ -2179,7 +2187,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               )}
             </div>
             <p className="text-xs" style={{ color: colors.textMuted }}>
-              Selected templates will be linked to your project. You can add more templates later.
+              {t.projectwizardmodal2182}
             </p>
           </div>
         );
@@ -2193,7 +2201,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   return (
     <>
     <Dialog
-      header={currentStep === 0 ? 'Project Setup Wizard - Unlock Project' : `Project Setup Wizard - Step ${currentStep} of ${totalSteps}`}
+      header={currentStep === 0 ? t.projectwizardmodal2196 : `${t.projectwizardmodal2196_2}${currentStep} of ${totalSteps}`}
       visible={showActualWizard}
       onHide={handleClose}
       style={{ width: '60vw', maxWidth: '900px' }}
@@ -2217,7 +2225,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-semibold" style={{ backgroundColor: colors.warningText, color: colors.textInverse }}>
                 🔓
               </div>
-              <span className="font-medium" style={{ color: colors.warningText }}>Unlock Project to Continue</span>
+              <span className="font-medium" style={{ color: colors.warningText }}>{t.projectwizardmodal2220}</span>
             </div>
           ) : (
             /* Steps 1-10: Normal progress bar */
@@ -2264,7 +2272,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         {/* Navigation Buttons */}
         <div className="flex justify-between items-center pt-4" style={{ borderTop: `1px solid ${colors.borderSecondary}` }}>
           <Button
-            label="Back"
+            label={t.projectwizardmodal2267}
             icon="pi pi-arrow-left"
             onClick={handleBack}
             disabled={currentStep === 0 || (currentStep === 1 && !needsProjectUnlock) || loading}
@@ -2283,13 +2291,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               }}
             />
             <label htmlFor="show_wizard_on_start" className="ml-2 text-sm" style={{ color: colors.textSecondary }}>
-              Open this wizard on app start
+              {t.projectwizardmodal2286}
             </label>
           </div>
 
           <div className="flex gap-2">
             <Button
-              label="Cancel"
+              label={t.projectwizardmodal2292}
               onClick={handleClose}
               disabled={loading}
               severity="secondary"
@@ -2297,7 +2305,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             />
             {currentStep < totalSteps ? (
               <Button
-                label="Next"
+                label={t.projectwizardmodal2300}
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 onClick={handleNext}
@@ -2311,7 +2319,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               />
             ) : (
               <Button
-                label="Create Project"
+                label={t.projectwizardmodal2314}
                 icon="pi pi-check"
                 onClick={handleFinish}
                 loading={loading}

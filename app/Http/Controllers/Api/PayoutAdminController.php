@@ -123,7 +123,7 @@ class PayoutAdminController extends Controller
         $seller = User::findOrFail($userId);
 
         if (!$seller->is_seller) {
-            return response()->json(['error' => 'User is not a seller'], 400);
+            return response()->json(['error' => __('payoutadmincontrollerphp126')], 400);
         }
 
         // Get all unpaid purchases for this seller
@@ -133,7 +133,7 @@ class PayoutAdminController extends Controller
             ->get();
 
         if ($purchases->isEmpty()) {
-            return response()->json(['error' => 'No unpaid sales found'], 404);
+            return response()->json(['error' => __('payoutadmincontrollerphp136')], 404);
         }
 
         $grossAmount = $purchases->sum('price_euros');
@@ -208,7 +208,7 @@ class PayoutAdminController extends Controller
                     // PayPal failed - rollback everything
                     DB::rollBack();
                     return response()->json([
-                        'error' => 'PayPal Auszahlung fehlgeschlagen: ' . ($paypalResult['error'] ?? 'Unbekannter Fehler'),
+                        'error' => __('payoutadmincontrollerphp211_2') . ($paypalResult['error'] ?? __('payoutadmincontrollerphp211')),
                     ], 500);
                 }
             } else {
@@ -237,7 +237,7 @@ class PayoutAdminController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'Fehler: ' . $e->getMessage()], 500);
+            return response()->json(['error' => __('payoutadmincontrollerphp240') . $e->getMessage()], 500);
         }
     }
 
@@ -390,7 +390,7 @@ class PayoutAdminController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'error' => 'PayPal Batch-Auszahlung fehlgeschlagen: ' . ($paypalResult['error'] ?? 'Unbekannter Fehler'),
+                    'error' => 'PayPal Batch-Auszahlung fehlgeschlagen: ' . ($paypalResult['error'] ?? __('payoutadmincontrollerphp393')),
                 ], 500);
             }
 
@@ -402,7 +402,7 @@ class PayoutAdminController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Fehler: ' . $e->getMessage(),
+                'error' => __('payoutadmincontrollerphp405') . $e->getMessage(),
             ], 500);
         }
     }
@@ -441,7 +441,7 @@ class PayoutAdminController extends Controller
 
         if (empty($bankTransferSellers)) {
             return response()->json([
-                'error' => 'Keine Bank-Überweisungen gefunden',
+                'error' => __('payoutadmincontrollerphp444'),
             ], 404);
         }
 
@@ -452,7 +452,7 @@ class PayoutAdminController extends Controller
 
         if (empty($companyIban)) {
             return response()->json([
-                'error' => 'SEPA_IBAN nicht konfiguriert in .env',
+                'error' => __('payoutadmincontrollerphp455'),
             ], 500);
         }
 
@@ -501,7 +501,7 @@ class PayoutAdminController extends Controller
 
         if (empty($bankTransferSellers)) {
             return response()->json([
-                'error' => 'Keine Bank-Überweisungen gefunden',
+                'error' => __('payoutadmincontrollerphp504'),
             ], 404);
         }
 
@@ -513,7 +513,7 @@ class PayoutAdminController extends Controller
             $iban = $seller['bank_iban'];
             $bic = $seller['bank_bic'] ?: '';
             $amount = number_format($seller['net_amount'], 2, ',', '');
-            $reference = $this->sanitizeForCsv("Scoriet Auszahlung {$from->format('d.m.Y')}-{$to->format('d.m.Y')}");
+            $reference = $this->sanitizeForCsv(__('payoutadmincontrollerphp516')."{$from->format('d.m.Y')}-{$to->format('d.m.Y')}");
 
             $csv .= "{$name};{$iban};{$bic};{$amount};EUR;{$reference}\n";
         }

@@ -33,7 +33,7 @@ class SvcController extends Controller
             return response()->json([
                 'success' => true,
                 'task' => null,
-                'message' => 'No pending tasks',
+                'message' => __('svccontrollerphp36'),
             ]);
         }
 
@@ -67,7 +67,7 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp70'),
             ], 404);
         }
 
@@ -76,7 +76,7 @@ class SvcController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Task marked as completed',
+            'message' => __('svccontrollerphp79'),
         ]);
     }
 
@@ -93,16 +93,16 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp96'),
             ], 404);
         }
 
-        $errorMessage = $request->input('error_message', 'Unknown error');
+        $errorMessage = $request->input('error_message', __('svccontrollerphp100'));
         $allowRetry = $request->input('allow_retry', true); // Default: allow retry
 
         $task->markAsFailed($errorMessage);
 
-        Log::warning('❌ [SVC] Task failed', [
+        Log::warning(__('svccontrollerphp105'), [
             'task_id' => $task->id,
             'type' => $task->task_type,
             'error' => $errorMessage,
@@ -118,7 +118,7 @@ class SvcController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Task marked as failed',
+            'message' => __('svccontrollerphp121'),
             'can_retry' => $allowRetry && $task->canRetry(),
         ]);
     }
@@ -136,7 +136,7 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp139'),
             ], 404);
         }
 
@@ -181,7 +181,7 @@ class SvcController extends Controller
             return response()->json([
                 'success' => true,
                 'task' => null,
-                'message' => 'No active tasks found',
+                'message' => __('svccontrollerphp184'),
             ]);
         }
 
@@ -215,7 +215,7 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp218'),
             ], 404);
         }
 
@@ -224,7 +224,7 @@ class SvcController extends Controller
         if ($task->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You do not have permission to cancel this task',
+                'message' => __('svccontrollerphp227'),
             ], 403);
         }
 
@@ -232,14 +232,14 @@ class SvcController extends Controller
         if ($task->status === CliTask::STATUS_COMPLETED) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot cancel a completed task',
+                'message' => __('svccontrollerphp235'),
             ], 400);
         }
 
         if ($task->status === CliTask::STATUS_FAILED) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot cancel a failed task',
+                'message' => __('svccontrollerphp242'),
             ], 400);
         }
 
@@ -248,7 +248,7 @@ class SvcController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Task cancelled successfully',
+            'message' => __('svccontrollerphp251'),
         ]);
     }
 
@@ -291,7 +291,7 @@ class SvcController extends Controller
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
-            'message' => 'Connection test task created.',
+            'message' => __('svccontrollerphp294'),
         ], 201);
     }
 
@@ -328,7 +328,7 @@ class SvcController extends Controller
         if (!$schema) {
             return response()->json([
                 'success' => false,
-                'message' => 'Target schema not found',
+                'message' => __('svccontrollerphp331'),
             ], 404);
         }
 
@@ -337,7 +337,7 @@ class SvcController extends Controller
         if (!$project) {
             return response()->json([
                 'success' => false,
-                'message' => 'Schema is not associated with any project',
+                'message' => __('svccontrollerphp340'),
             ], 400);
         }
 
@@ -362,7 +362,7 @@ class SvcController extends Controller
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
-            'message' => 'Database import task created. The service will process it shortly.',
+            'message' => __('svccontrollerphp365'),
         ], 201);
     }
 
@@ -411,7 +411,7 @@ class SvcController extends Controller
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
-            'message' => 'Database export task created. The service will process it shortly.',
+            'message' => __('svccontrollerphp414'),
         ], 201);
     }
 
@@ -449,7 +449,7 @@ class SvcController extends Controller
         return response()->json([
             'success' => true,
             'task_id' => $task->id,
-            'message' => 'Project download task created. The service will process it shortly.',
+            'message' => __('svccontrollerphp452'),
         ], 201);
     }
 
@@ -484,12 +484,12 @@ class SvcController extends Controller
 
         $targetSchemaId = $task->payload['target_schema_id'] ?? null;
         $schemaName = $task->payload['schema_name'];
-        $description = $task->payload['description'] ?? "Imported from local database via scoriet-svc";
+        $description = $task->payload['description'] ?? __('svccontrollerphp487');
 
         if (!$targetSchemaId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Target schema ID not found in task payload',
+                'message' => __('svccontrollerphp492'),
             ], 400);
         }
 
@@ -506,14 +506,14 @@ class SvcController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Schema imported and stored successfully',
+                'message' => __('svccontrollerphp509'),
                 'schema_version_id' => $schemaVersion->id,
                 'schema_id' => $schemaVersion->schema_id,
                 'tables_imported' => count($tables),
             ]);
 
         } catch (\Exception $e) {
-            Log::error('❌ [SVC] Failed to store schema', [
+            Log::error(__('svccontrollerphp516'), [
                 'task_id' => $taskId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -521,7 +521,7 @@ class SvcController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to store schema: ' . $e->getMessage(),
+                'message' => __('svccontrollerphp524') . $e->getMessage(),
             ], 500);
         }
     }
@@ -607,7 +607,7 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp610'),
             ], 404);
         }
 
@@ -630,7 +630,7 @@ class SvcController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Log appended successfully',
+            'message' => __('svccontrollerphp633'),
         ]);
     }
 
@@ -683,7 +683,7 @@ class SvcController extends Controller
             'success' => true,
             'task_id' => $task->id,
             'session_id' => $sessionId,
-            'message' => 'Template upload task created. The service will process it shortly.',
+            'message' => __('svccontrollerphp686'),
         ], 201);
     }
 
@@ -712,7 +712,7 @@ class SvcController extends Controller
         if (!is_array($files)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid files metadata',
+                'message' => __('svccontrollerphp715'),
             ], 400);
         }
 
@@ -721,7 +721,7 @@ class SvcController extends Controller
         if (!$task) {
             return response()->json([
                 'success' => false,
-                'message' => 'Task not found',
+                'message' => __('svccontrollerphp724'),
             ], 404);
         }
 
@@ -730,7 +730,7 @@ class SvcController extends Controller
         if (!is_dir($tempDir)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Session not found',
+                'message' => __('svccontrollerphp733'),
             ], 404);
         }
 
@@ -738,7 +738,7 @@ class SvcController extends Controller
         if ($sessionData['user_id'] !== $task->user_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Session user mismatch',
+                'message' => __('svccontrollerphp741'),
             ], 403);
         }
 
@@ -753,7 +753,7 @@ class SvcController extends Controller
 
             $zip = new ZipArchive();
             if ($zip->open($archivePath) !== true) {
-                throw new \Exception('Failed to open ZIP archive');
+                throw new \Exception(__('svccontrollerphp756'));
             }
             $zip->extractTo($extractDir);
             $zip->close();
@@ -782,11 +782,11 @@ class SvcController extends Controller
                 'session_id' => $sessionId,
                 'file_count' => count($allFiles),
                 'all_files' => $allFiles,
-                'message' => 'Template archive received and extracted',
+                'message' => __('svccontrollerphp785'),
             ]);
 
         } catch (\Exception $e) {
-            Log::error('❌ [SVC] Failed to process template upload', [
+            Log::error(__('svccontrollerphp789'), [
                 'task_id' => $taskId,
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -794,7 +794,7 @@ class SvcController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process upload: ' . $e->getMessage(),
+                'message' => __('svccontrollerphp797') . $e->getMessage(),
             ], 500);
         }
     }
@@ -845,7 +845,7 @@ class SvcController extends Controller
                 'task_status' => $taskStatus,
                 'logs' => $taskLogs,
                 'error' => $taskError,
-                'message' => 'Waiting for service to upload files',
+                'message' => __('svccontrollerphp848'),
             ]);
         }
 
@@ -1015,7 +1015,7 @@ class SvcController extends Controller
             'success' => true,
             'task_id' => $task->id,
             'session_id' => $sessionId,
-            'message' => 'File edit task created',
+            'message' => __('svccontrollerphp1018'),
         ], 201);
     }
 
@@ -1033,7 +1033,7 @@ class SvcController extends Controller
 
         $tempDir = storage_path("app/temp/file_edit_{$sessionId}");
         if (!is_dir($tempDir)) {
-            return response()->json(['success' => false, 'message' => 'Session not found'], 404);
+            return response()->json(['success' => false, 'message' => __('svccontrollerphp1036')], 404);
         }
 
         $sessionData = json_decode(file_get_contents($tempDir . '/session.json'), true);
@@ -1061,7 +1061,7 @@ class SvcController extends Controller
 
         $tempDir = storage_path("app/temp/file_edit_{$sessionId}");
         if (!is_dir($tempDir)) {
-            return response()->json(['success' => false, 'message' => 'Session not found'], 404);
+            return response()->json(['success' => false, 'message' => __('svccontrollerphp1064')], 404);
         }
 
         $sessionData = json_decode(file_get_contents($tempDir . '/session.json'), true);
@@ -1079,14 +1079,14 @@ class SvcController extends Controller
             $templateFile->save();
 
         } else {
-            Log::warning('📤 [SVC] TemplateFile not found for database save', [
+            Log::warning(__('svccontrollerphp1082'), [
                 'session_id' => $sessionId,
                 'template_id' => $sessionData['template_id'],
                 'file_id' => $sessionData['file_id'],
             ]);
         }
 
-        return response()->json(['success' => true, 'message' => 'Content updated']);
+        return response()->json(['success' => true, 'message' => __('svccontrollerphp1089')]);
     }
 
     /**
@@ -1128,7 +1128,7 @@ class SvcController extends Controller
         $sessionData = json_decode(file_get_contents($tempDir . '/session.json'), true);
 
         if ($sessionData['user_id'] !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            return response()->json(['success' => false, 'message' => __('svccontrollerphp1131')], 403);
         }
 
         // Check for task logs
@@ -1166,19 +1166,19 @@ class SvcController extends Controller
         $tempDir = storage_path("app/temp/file_edit_{$sessionId}");
 
         if (!is_dir($tempDir)) {
-            return response()->json(['success' => true, 'message' => 'Session not found']);
+            return response()->json(['success' => true, 'message' => __('svccontrollerphp1169')]);
         }
 
         $sessionData = json_decode(file_get_contents($tempDir . '/session.json'), true);
 
         if ($sessionData['user_id'] !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            return response()->json(['success' => false, 'message' => __('svccontrollerphp1175')], 403);
         }
 
         // Signal service to stop
         $sessionData['should_stop'] = true;
         file_put_contents($tempDir . '/session.json', json_encode($sessionData));
 
-        return response()->json(['success' => true, 'message' => 'Stop signal sent']);
+        return response()->json(['success' => true, 'message' => __('svccontrollerphp1182')]);
     }
 }

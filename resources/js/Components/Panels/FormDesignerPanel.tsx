@@ -348,6 +348,7 @@ interface WindowFrameNodeData {
 }
 
 const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
+  const { t } = useTranslation(getStoredLanguage());
   return (
     <div
       className="pointer-events-none"
@@ -371,7 +372,7 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
       >
         <span className="font-medium">
           <i className="pi pi-window-maximize mr-1"></i>
-          {data.windowName || data.windowTypeLabel || 'Fenster'}
+          {data.windowName || data.windowTypeLabel || t.formdesignerpanel374}
         </span>
         <span className="opacity-75">
           {data.defaultWidth} × {data.defaultHeight} px
@@ -528,9 +529,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const ELEMENT_TYPES = {
     containers: [
       { value: 'container', label: t.formdesignerpanel116, icon: 'pi-table' },
-      { value: 'tab_container', label: 'Tab-Container', icon: 'pi-folder' },
-      { value: 'tab_panel', label: 'Tab-Panel', icon: 'pi-file' },
-      { value: 'menu_container', label: 'Menu-Container', icon: 'pi-bars' },
+      { value: 'tab_container', label: t.formdesignerpanel531, icon: 'pi-folder' },
+      { value: 'tab_panel', label: t.formdesignerpanel532, icon: 'pi-file' },
+      { value: 'menu_container', label: t.formdesignerpanel533, icon: 'pi-bars' },
     ],
     navigation: [
       { value: 'button_nav_first', label: t.formdesignerpanel536, icon: 'pi-angle-double-left' },
@@ -1359,7 +1360,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   border: `1px solid ${accessStatus.days_remaining > 30 ? colors.successBorder :
                     accessStatus.days_remaining > 7 ? colors.warningBorder : colors.errorBorder}`
                 }}
-                title={`${t.formdesignerpanel1362}${accessStatus.expires_at ? new Date(accessStatus.expires_at).toLocaleDateString('de-DE') : t.formdesignerpanel1362_2}`}
+                title={`${t.formdesignerpanel1362}${accessStatus.expires_at ? new Date(accessStatus.expires_at).toLocaleDateString(currentLanguage) : t.formdesignerpanel1362_2}`}
               >
                 <i className="pi pi-clock mr-1"></i>
                 {accessStatus.days_remaining}{t.formdesignerpanel1365}
@@ -1403,7 +1404,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           {/* Element Toolbar (Left) */}
           <div className="w-48 overflow-y-auto" style={{ backgroundColor: colors.bgSecondary, borderRight: `1px solid ${colors.borderPrimary}` }}>
             <div className="p-2">
-              <h4 className="text-xs font-semibold uppercase mb-2" style={{ color: colors.textMuted }}>Container</h4>
+              <h4 className="text-xs font-semibold uppercase mb-2" style={{ color: colors.textMuted }}>{t.formdesignerpanel1407}</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.containers.map(elem => (
                   <button
@@ -1419,7 +1420,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Navigation</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>{t.formdesignerpanel1423}</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.navigation.map(elem => (
                   <button
@@ -1451,7 +1452,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>Layout</h4>
+              <h4 className="text-xs font-semibold uppercase mt-4 mb-2" style={{ color: colors.textMuted }}>{t.formdesignerpanel1455}</h4>
               <div className="space-y-1">
                 {ELEMENT_TYPES.layout.map(elem => (
                   <button
@@ -1589,7 +1590,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Typ</label>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1593}</label>
                         <InputText
                           value={selectedElement.element_type}
                           disabled
@@ -1641,7 +1642,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           {/* Button-Farben - kompaktes Layout mit Reset */}
                           <div className="flex gap-3">
                             <div>
-                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Hintergrund</label>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1645}</label>
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="color"
@@ -1704,7 +1705,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Schrift</label>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1708}</label>
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="color"
@@ -1740,7 +1741,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                   className="p-inputtext-sm"
                                   style={{ width: '60px' }}
                                   maxLength={7}
-                                  placeholder="Standard"
+                                  placeholder={t.formdesignerpanel1744}
                                 />
                                 {selectedElement.button_text_color && (
                                   <button
@@ -1772,7 +1773,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'container' && (
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Max. Felder (für Tabs)</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1776}</label>
                           <InputNumber
                             value={selectedElement.max_fields || null}
                             onChange={(e) => {
@@ -1789,7 +1790,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             }}
                             className="w-full"
                             min={0}
-                            placeholder="Alle Felder"
+                            placeholder={t.formdesignerpanel1793}
                           />
                         </div>
                       )}
@@ -2040,10 +2041,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {/* Window Sizes */}
                       <div className="border-t pt-3" style={{ borderColor: colors.borderPrimary }}>
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Standard-Größe (Default)</h5>
+                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2044}</h5>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Breite</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2047}</label>
                             <InputNumber
                               value={selectedWindow.default_width}
                               onChange={(e) => updateWindowProperty('default_width', e.value ?? 800)}
@@ -2605,7 +2606,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       <Dialog
         visible={unlockModalVisible}
         onHide={() => setUnlockModalVisible(false)}
-        header="Form Designer freischalten"
+        header={t.formdesignerpanel2609}
         style={{ width: '500px' }}
         modal
         className="form-designer-modal"
@@ -2626,7 +2627,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           {/* Pricing Info */}
           <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgSecondary }}>
             <div className="flex items-center justify-between mb-3">
-              <span style={{ color: colors.textMuted }}>Kosten:</span>
+              <span style={{ color: colors.textMuted }}>{t.formdesignerpanel2630}</span>
               <span className="text-xl font-bold text-blue-400">
                 {accessStatus?.unlock_cost || 50}{t.formdesignerpanel2631}
               </span>
@@ -2634,7 +2635,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             <div className="flex items-center justify-between">
               <span style={{ color: colors.textMuted }}>{t.formdesignerpanel2635}</span>
               <span className={`text-xl font-bold ${(accessStatus?.user_credits || 0) >= (accessStatus?.unlock_cost || 50) ? 'text-green-400' : 'text-red-400'}`}>
-                {accessStatus?.user_credits || 0} Credits
+                {accessStatus?.user_credits || 0}{t.formdesignerpanel2638}
               </span>
             </div>
           </div>
@@ -2643,7 +2644,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           {(accessStatus?.user_credits || 0) >= (accessStatus?.unlock_cost || 50) ? (
             <div className="space-y-3">
               <Button
-                label="Jetzt freischalten (50 Credits)"
+                label={t.formdesignerpanel2647}
                 icon="pi pi-unlock"
                 className="p-button-success w-full"
                 onClick={async () => {

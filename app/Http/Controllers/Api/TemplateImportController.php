@@ -80,7 +80,7 @@ class TemplateImportController extends Controller
 
         if (!in_array($extension, $allowedExtensions) && !in_array($fullExtension, ['tar.gz', 'tar.xz', 'tgz'])) {
             return response()->json([
-                'message' => 'Ungültiges Archivformat. Erlaubt: .zip, .tar.gz, .tar.xz',
+                'message' => __('templateimportcontrollerphp83'),
                 'error_code' => 'INVALID_FORMAT',
             ], 422);
         }
@@ -157,13 +157,13 @@ class TemplateImportController extends Controller
             // Cleanup on error
             $this->cleanupTempDir($tempDir);
 
-            \Log::error('Template import upload failed', [
+            \Log::error(__('templateimportcontrollerphp160'), [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
             ]);
 
             return response()->json([
-                'message' => 'Fehler beim Extrahieren des Archivs: ' . $e->getMessage(),
+                'message' => __('templateimportcontrollerphp166') . $e->getMessage(),
                 'error_code' => 'EXTRACTION_FAILED',
             ], 500);
         }
@@ -179,7 +179,7 @@ class TemplateImportController extends Controller
 
         if (!is_dir($tempDir)) {
             return response()->json([
-                'message' => 'Import-Session nicht gefunden oder abgelaufen',
+                'message' => __('templateimportcontrollerphp182'),
                 'error_code' => 'SESSION_NOT_FOUND',
             ], 404);
         }
@@ -188,7 +188,7 @@ class TemplateImportController extends Controller
 
         if ($sessionData['user_id'] !== $user->id) {
             return response()->json([
-                'message' => 'Keine Berechtigung für diese Import-Session',
+                'message' => __('templateimportcontrollerphp191'),
                 'error_code' => 'UNAUTHORIZED',
             ], 403);
         }
@@ -229,7 +229,7 @@ class TemplateImportController extends Controller
 
         if (!is_dir($tempDir)) {
             return response()->json([
-                'message' => 'Import-Session nicht gefunden',
+                'message' => __('templateimportcontrollerphp232'),
                 'error_code' => 'SESSION_NOT_FOUND',
             ], 404);
         }
@@ -249,14 +249,14 @@ class TemplateImportController extends Controller
 
         if (!$realPath || strpos($realPath, $realExtractDir) !== 0) {
             return response()->json([
-                'message' => 'Ungültiger Dateipfad',
+                'message' => __('templateimportcontrollerphp252'),
                 'error_code' => 'INVALID_PATH',
             ], 400);
         }
 
         if (!is_file($realPath)) {
             return response()->json([
-                'message' => 'Datei nicht gefunden',
+                'message' => __('templateimportcontrollerphp259'),
                 'error_code' => 'FILE_NOT_FOUND',
             ], 404);
         }
@@ -325,7 +325,7 @@ class TemplateImportController extends Controller
 
         if (!is_dir($tempDir)) {
             return response()->json([
-                'message' => 'Import-Session nicht gefunden oder abgelaufen',
+                'message' => __('templateimportcontrollerphp328'),
                 'error_code' => 'SESSION_NOT_FOUND',
             ], 404);
         }
@@ -344,7 +344,7 @@ class TemplateImportController extends Controller
 
         if ($existingTemplate && $importMode === 'new') {
             return response()->json([
-                'message' => 'Ein Template mit diesem Namen existiert bereits',
+                'message' => __('templateimportcontrollerphp347'),
                 'error_code' => 'DUPLICATE_NAME',
                 'existing_template_id' => $existingTemplate->id,
                 'existing_file_count' => $existingTemplate->files()->count(),
@@ -381,7 +381,7 @@ class TemplateImportController extends Controller
             if ($ownedPrivateTemplatesCount >= $activeSubscriptionsCount) {
                 if ($user->credits < $requiredCredits) {
                     return response()->json([
-                        'message' => "Nicht genug Credits für privates Template",
+                        'message' => __('templateimportcontrollerphp384'),
                         'error_code' => 'INSUFFICIENT_CREDITS',
                         'required_credits' => $requiredCredits,
                         'current_credits' => $user->credits,
@@ -442,7 +442,7 @@ class TemplateImportController extends Controller
                         'user_id' => $user->id,
                         'amount' => -$requiredCredits,
                         'type' => 'templates_unlock',
-                        'description' => "Private template slot (1 year) - imported: {$validated['name']}",
+                        'description' => __('templateimportcontrollerphp445')."{$validated['name']}",
                     ]);
                 }
 
@@ -487,8 +487,8 @@ class TemplateImportController extends Controller
                     ]);
                     $filesAdded++;
                 } else {
-                    $errors[] = "Template file not found: {$filePath} (resolved to: {$fullPath})";
-                    \Log::warning('Template import: File not found', [
+                    $errors[] = __('templateimportcontrollerphp490')."{$filePath}".__('templateimportcontrollerphp490_2')."{$fullPath})";
+                    \Log::warning(__('templateimportcontrollerphp491'), [
                         'relative_path' => $filePath,
                         'full_path' => $fullPath,
                     ]);
@@ -534,7 +534,7 @@ class TemplateImportController extends Controller
                         $filesAdded++;
                     } else {
                         $errors[] = "Static file not found: {$filePath} (resolved to: {$fullPath})";
-                        \Log::warning('Template import: Static file not found', [
+                        \Log::warning(__('templateimportcontrollerphp537'), [
                             'relative_path' => $filePath,
                             'full_path' => $fullPath,
                         ]);
@@ -591,7 +591,7 @@ class TemplateImportController extends Controller
 
             // Log any errors that occurred
             if (!empty($errors)) {
-                \Log::warning('Template import completed with errors', [
+                \Log::warning(__('templateimportcontrollerphp594'), [
                     'template_id' => $template->id,
                     'errors' => $errors,
                 ]);
@@ -618,14 +618,14 @@ class TemplateImportController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            \Log::error('Template import creation failed', [
+            \Log::error(__('templateimportcontrollerphp621'), [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
                 'session_id' => $sessionId,
             ]);
 
             return response()->json([
-                'message' => 'Fehler beim Erstellen des Templates: ' . $e->getMessage(),
+                'message' => __('templateimportcontrollerphp628') . $e->getMessage(),
                 'error_code' => 'CREATION_FAILED',
             ], 500);
         }
@@ -706,7 +706,7 @@ class TemplateImportController extends Controller
                 $zip->extractTo($extractDir);
                 $zip->close();
             } else {
-                throw new \Exception('Konnte ZIP-Archiv nicht öffnen');
+                throw new \Exception(__('templateimportcontrollerphp709'));
             }
         } elseif (in_array($extension, ['tar.gz', 'tar.xz', 'gz', 'xz'])) {
             // Handle tar.gz and tar.xz
@@ -731,20 +731,20 @@ class TemplateImportController extends Controller
                         // Use PHP's built-in if available, or shell command
                         exec("tar -xf \"{$archivePath}\" -C \"{$extractDir}\" 2>&1", $output, $returnCode);
                         if ($returnCode !== 0) {
-                            throw new \Exception('tar.xz extraction failed. Please use .zip or .tar.gz format.');
+                            throw new \Exception(__('templateimportcontrollerphp734'));
                         }
                     } else {
                         exec("tar -xJf \"{$archivePath}\" -C \"{$extractDir}\" 2>&1", $output, $returnCode);
                         if ($returnCode !== 0) {
-                            throw new \Exception('Failed to extract tar.xz archive');
+                            throw new \Exception(__('templateimportcontrollerphp739'));
                         }
                     }
                 }
             } catch (\Exception $e) {
-                throw new \Exception('Fehler beim Extrahieren: ' . $e->getMessage());
+                throw new \Exception(__('templateimportcontrollerphp744') . $e->getMessage());
             }
         } else {
-            throw new \Exception('Unbekanntes Archivformat');
+            throw new \Exception(__('templateimportcontrollerphp747'));
         }
 
         // Check if there's a single root directory - we'll handle the prefix in scanDirectory
@@ -966,7 +966,7 @@ class TemplateImportController extends Controller
         $zip = new ZipArchive();
 
         if ($zip->open($tempZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new \Exception('Konnte ZIP-Archiv nicht erstellen');
+            throw new \Exception(__('templateimportcontrollerphp969'));
         }
 
         foreach ($paths as $relativePath) {

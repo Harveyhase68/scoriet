@@ -27,6 +27,7 @@ use App\Services\SimpleFixedTemplateEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DiagramLayoutController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 
 // Manual OAuth token route for API with email verification check
 use App\Http\Controllers\CustomTokenController;
@@ -679,14 +680,15 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/schema-diff/compare', [SchemaDiffController::class, 'compare']);
 
 
+    // Push Notifications
+    Route::get('/push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe']);
+    Route::delete('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe']);
+
     // Team Invitations
     Route::post('/teams/{team}/invitations', [TeamInvitationController::class, 'store']);
     Route::get('/teams/{team}/invitations', [TeamInvitationController::class, 'teamInvitations']);
-    Route::get('/invitations/received', [TeamInvitationController::class, 'received']);
-    Route::post('/invitations/{token}/accept', [TeamInvitationController::class, 'accept']);
-    Route::post('/invitations/{token}/decline', [TeamInvitationController::class, 'decline']);
     Route::delete('/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'cancel']);
-    Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamInvitationController::class, 'resend']);
     
     // Project Applications & Join Codes
     Route::get('/join-code/{joinCode}', [ProjectApplicationController::class, 'getProjectByJoinCode']);
@@ -1568,7 +1570,8 @@ Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
                     'controltype' => $controltype,
                     'typecast' => $typecast,
                     'is_nullable' => $field->is_nullable,
-                    'order' => $field->field_order
+                    'order' => $field->field_order,
+                    'comment' => $field->comment ?? ''
                 ];
             })->toArray();
 
@@ -1601,6 +1604,7 @@ Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
                 'filenameshort' => substr($table->table_name, 0, 8), // 8 char limit
                 'fileid' => $table->table_name,
                 'filenamecc' => ucwords(str_replace('_', '', $table->table_name)), // CamelCase
+                'filerenamed' => $table->file_name_renamed ?? '',
                 'filegeneratemasterdetail' => false, // Default false
                 'filedetailfileid' => '',
                 'filedetailfilename' => '',
@@ -1704,7 +1708,8 @@ Route::get('/schemas/{schemaId}/gtree', function ($schemaId) {
                     'controltype' => $controltype,
                     'typecast' => $typecast,
                     'is_nullable' => $field->is_nullable,
-                    'order' => $field->field_order
+                    'order' => $field->field_order,
+                    'comment' => $field->comment ?? ''
                 ];
             })->toArray();
 
@@ -1731,6 +1736,7 @@ Route::get('/schemas/{schemaId}/gtree', function ($schemaId) {
                 'filenameshort' => substr($table->table_name, 0, 8),
                 'fileid' => $table->table_name,
                 'filenamecc' => ucwords(str_replace('_', '', $table->table_name)),
+                'filerenamed' => $table->file_name_renamed ?? '',
                 'filegeneratemasterdetail' => false,
                 'filedetailfileid' => '',
                 'filedetailfilename' => '',
@@ -2071,6 +2077,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                     'typecast' => $typecast,
                     'is_nullable' => $field->is_nullable,
                     'order' => $field->field_order,
+                    'comment' => $field->comment ?? '',
 
                     // Extended Scoriet template variables
                     'filename' => $table->table_name, // Table name for file reference
@@ -2117,6 +2124,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
                 'filenameshort' => substr($table->table_name, 0, 8), // 8 char limit
                 'fileid' => $table->table_name,
                 'filenamecc' => ucwords(str_replace('_', '', $table->table_name)), // CamelCase
+                'filerenamed' => $table->file_name_renamed ?? '',
                 'filegeneratemasterdetail' => false, // Default false
                 'filedetailfileid' => '',
                 'filedetailfilename' => '',
@@ -2312,6 +2320,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
 // Cache Management Routes
 Route::middleware('auth:api')->group(function () {
     Route::get('/cache/stats', [App\Http\Controllers\Api\CacheController::class, 'stats']);
+    Route::get('/cache/config', [App\Http\Controllers\Api\CacheController::class, 'config']);
     Route::post('/cache/clear', [App\Http\Controllers\Api\CacheController::class, 'clear']);
     Route::post('/cache/cleanup', [App\Http\Controllers\Api\CacheController::class, 'cleanup']);
     Route::post('/cache/test-generation', [App\Http\Controllers\Api\CacheController::class, 'testGeneration']);

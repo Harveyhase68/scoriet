@@ -30,24 +30,24 @@ class EnsureUserIsAdmin
 
         // Check if user is authenticated
         if (!$user) {
-            Log::warning('Admin access denied: User not authenticated');
+            Log::warning(__('ensureuserisadminphp33'));
 
             // For API or Inertia requests, return JSON error
             if ($request->expectsJson() || $request->header('X-Inertia')) {
                 return response()->json([
-                    'message' => 'Unauthenticated. Please login first.'
+                    'message' => __('ensureuserisadminphp38')
                 ], 401);
             }
 
             // For web requests, redirect to landing page
-            return redirect('/')->with('error', 'Bitte melden Sie sich an, um auf diesen Bereich zuzugreifen.');
+            return redirect('/')->with('error', __('ensureuserisadminphp43'));
         }
 
         // Check if user is admin or system user
         $isSystemAdmin = in_array($user->user_type, ['admin', 'system']);
 
         if (!$isSystemAdmin) {
-            Log::warning('Admin access denied: User is not admin/system', [
+            Log::warning(__('ensureuserisadminphp50'), [
                 'user_id' => $user->id,
                 'user_type' => $user->user_type,
             ]);
@@ -55,12 +55,12 @@ class EnsureUserIsAdmin
             // For API or Inertia requests, return JSON error
             if ($request->expectsJson() || $request->header('X-Inertia')) {
                 return response()->json([
-                    'message' => 'Forbidden. Administrator access required.'
+                    'message' => __('ensureuserisadminphp58')
                 ], 403);
             }
 
             // For web requests, redirect to app with error
-            return redirect('/app')->with('error', 'Zugriff verweigert. Nur System-Administratoren haben Zugang zu diesem Bereich.');
+            return redirect('/app')->with('error', __('ensureuserisadminphp63'));
         }
 
         return $next($request);

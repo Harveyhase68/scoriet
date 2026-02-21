@@ -80,8 +80,8 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
         <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-l-yellow-400">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-1">Your Current Balance</h3>
-              <p className="text-3xl font-bold text-yellow-400">{currentCredits} Credits</p>
+              <h3 className="text-lg font-semibold text-white mb-1">{t.creditpurchasemodal83}</h3>
+              <p className="text-3xl font-bold text-yellow-400">{currentCredits}{t.creditpurchasemodal84}</p>
             </div>
             <div className="text-sm text-gray-400">
               <p>≈ {Math.floor(currentCredits / 5)}{t.creditpurchasemodal87}</p>
@@ -119,7 +119,7 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
                   <h3 className="text-3xl font-bold text-white mb-1">
                     {pkg.credits.toLocaleString()}
                   </h3>
-                  <p className="text-sm text-gray-400">Credits</p>
+                  <p className="text-sm text-gray-400">{t.creditpurchasemodal122}</p>
                 </div>
 
                 <div className="text-4xl font-bold text-blue-400 mb-2">
@@ -136,12 +136,12 @@ export default function CreditPurchaseModal({ visible, onHide, currentCredits = 
                 <div className="bg-gray-900 rounded p-3 mb-6">
                   <p className="text-xs text-gray-400 mb-1">{t.creditpurchasemodal137}</p>
                   <p className="text-sm text-gray-300">
-                    ≈ <strong className="text-blue-400">{Math.floor(pkg.credits / 5)}</strong> code generations
+                    ≈ <strong className="text-blue-400">{Math.floor(pkg.credits / 5)}</strong>{t.creditpurchasemodal139}
                   </p>
                 </div>
 
                 <Button
-                  label="Buy Now"
+                  label={t.creditpurchasemodal144}
                   icon="pi pi-shopping-cart"
                   className={pkg.bestValue ? 'p-button-success w-full' : pkg.popular ? 'p-button-primary w-full' : 'p-button-outlined w-full'}
                   style={{ borderRadius: '8px', paddingTop: '12px', paddingBottom: '12px', fontSize: '16px' }}

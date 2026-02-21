@@ -582,7 +582,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
         setLoading(true);
         setError(null);
-        setServiceStatus('Erstelle Task...');
+        setServiceStatus(t.templateimportwizardpanel585);
         setServiceLogs('');
 
         try {
@@ -1020,7 +1020,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         ))}
                         <Button
                             icon="pi pi-plus"
-                            label="Neues Preset"
+                            label={t.templateimportwizardpanel1023}
                             size="small"
                             text
                             onClick={() => setShowNewPresetInput(true)}
@@ -1137,7 +1137,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         /* Default preset: Save as custom copy */
                                         <Button
                                             icon="pi pi-save"
-                                            label={`Als "${lastSelectedPreset} (Custom)" speichern`}
+                                            label={`${t.templateimportwizardpanel1140}"${lastSelectedPreset} (Custom)"${t.templateimportwizardpanel1140_2}`}
                                             size="small"
                                             severity="warning"
                                             onClick={() => {
@@ -1214,14 +1214,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 <div className="flex gap-2">
                     <Button
                         icon="pi pi-check-square"
-                        label="Dateien auswählen"
+                        label={t.templateimportwizardpanel1217}
                         size="small"
                         onClick={() => selectByExtensions(fileList, currentExtensions, currentExcludeDirs, selection, setSelection, true)}
                         disabled={currentExtensions.length === 0}
                     />
                     <Button
                         icon="pi pi-stop"
-                        label="Dateien abwählen"
+                        label={t.templateimportwizardpanel1224}
                         size="small"
                         severity="secondary"
                         onClick={() => selectByExtensions(fileList, currentExtensions, currentExcludeDirs, selection, setSelection, false)}
@@ -1234,13 +1234,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     {currentExtensions.length > 0 && (
                         <div>
                             <i className="pi pi-check text-green-500 mr-1" />
-                            Einschließen: {currentExtensions.map(e => `*.${e}`).join(', ')}
+                            {t.templateimportwizardpanel1237}{currentExtensions.map(e => `*.${e}`).join(', ')}
                         </div>
                     )}
                     {currentExcludeDirs.length > 0 && (
                         <div className="text-red-500">
                             <i className="pi pi-ban mr-1" />
-                            Ausschließen: {currentExcludeDirs.map(d => `${d}/`).join(', ')}
+                            {t.templateimportwizardpanel1243}{currentExcludeDirs.map(d => `${d}/`).join(', ')}
                         </div>
                     )}
                 </div>
@@ -1287,12 +1287,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         {showFilter && (
                             <Button
                                 icon={showExtensionPanel ? "pi pi-eye-slash" : "pi pi-filter"}
-                                label="Filter"
+                                label={t.templateimportwizardpanel1290}
                                 size="small"
                                 outlined
                                 severity={showExtensionPanel ? "info" : "secondary"}
                                 onClick={() => setShowExtensionPanel(!showExtensionPanel)}
-                                tooltip="Dateiendungen-Filter ein-/ausblenden"
+                                tooltip={t.templateimportwizardpanel1295}
                             />
                         )}
                         <Button
@@ -1444,7 +1444,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                                     {t.templateimportwizardpanel1430}
                                                 </p>
                                                 <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
-                                                    .zip, .tar.gz, .tar.xz (max 100MB)
+                                                    {t.templateimportwizardpanel1447}
                                                 </p>
                                             </div>
                                         }
@@ -1492,7 +1492,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         </div>
 
                                         <Button
-                                            label="Import starten"
+                                            label={t.templateimportwizardpanel1495}
                                             icon="pi pi-play"
                                             className="w-full"
                                             onClick={handleServiceImport}
@@ -1636,7 +1636,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         header={t.templateimportwizardpanel1622}
                                         body={(node) => {
                                             if (node.data.is_dir) {
-                                                return <Tag value="Ordner" severity="warning" />;
+                                                return <Tag value={t.templateimportwizardpanel1639} severity="warning" />;
                                             }
                                             return node.data.file_type ? fileTypeBadge(node.data.file_type) : <Tag value="-" severity="secondary" />;
                                         }}
@@ -1669,11 +1669,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                         {/* Summary */}
                         <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: colors.bgSecondary }}>
-                            <h4 className="font-medium mb-2" style={{ color: colors.textPrimary }}>Zusammenfassung</h4>
+                            <h4 className="font-medium mb-2" style={{ color: colors.textPrimary }}>{t.templateimportwizardpanel1672}</h4>
                             <ul className="text-sm space-y-1" style={{ color: colors.textSecondary }}>
-                                <li><i className="pi pi-file mr-2" />{templateFileCount} Template-Dateien</li>
-                                <li><i className="pi pi-image mr-2" />{staticFileCount} Statische Dateien</li>
-                                <li><i className="pi pi-folder mr-2" />{staticDirFileCount} Dateien in Static Directory ({staticDirectoryName}.zip)</li>
+                                <li><i className="pi pi-file mr-2" />{templateFileCount}{t.templateimportwizardpanel1674}</li>
+                                <li><i className="pi pi-image mr-2" />{staticFileCount}{t.templateimportwizardpanel1675}</li>
+                                <li><i className="pi pi-folder mr-2" />{staticDirFileCount}{t.templateimportwizardpanel1676}({staticDirectoryName}.zip)</li>
                             </ul>
                         </div>
 
@@ -1723,7 +1723,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     forceSelection={false}
                                 />
                                 <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                    Vorschläge: {templateCategories.slice(0, 5).join(', ')}...
+                                    {t.templateimportwizardpanel1726}{templateCategories.slice(0, 5).join(', ')}...
                                 </p>
                             </div>
 
@@ -1744,7 +1744,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     forceSelection={false}
                                 />
                                 <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                    Vorschläge: {templateLanguages.slice(0, 5).join(', ')}...
+                                    {t.templateimportwizardpanel1747}{templateLanguages.slice(0, 5).join(', ')}...
                                 </p>
                             </div>
 
@@ -1857,7 +1857,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             {(currentUser?.credits || 0) < 50 && (
                                                 <div className="bg-red-900/20 border border-red-700 rounded-lg p-2">
                                                     <p className="text-red-300 text-xs">
-                                                        Sie benötigen <strong>{50 - (currentUser?.credits || 0)} weitere Credits</strong>.
+                                                        {t.templateimportwizardpanel1860}<strong>{50 - (currentUser?.credits || 0)}{t.templateimportwizardpanel1860_2}</strong>.
                                                     </p>
                                                 </div>
                                             )}
@@ -1909,7 +1909,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
                                             <p className="text-green-300 text-sm flex items-center gap-2">
                                                 <i className="pi pi-check-circle"></i>
-                                                <strong>{t.templateimportwizardpanel1898}</strong> Sie haben noch {availableSlots} freie{availableSlots === 1 ? 'n' : ''} Private-Template-Slot{availableSlots === 1 ? '' : 's'}.
+                                                <strong>{t.templateimportwizardpanel1898}</strong>{t.templateimportwizardpanel1912}{availableSlots}{t.templateimportwizardpanel1912_2}{availableSlots === 1 ? 'n' : ''}{t.templateimportwizardpanel1912_3}{availableSlots === 1 ? '' : 's'}.
                                             </p>
                                             <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
                                                 {t.templateimportwizardpanel1901}

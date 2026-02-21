@@ -136,7 +136,7 @@ class SubscriptionController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'message' => 'Freischaltung fehlgeschlagen',
+                'message' => __('subscriptioncontrollerphp139'),
             ], 500);
         }
 
@@ -186,12 +186,12 @@ class SubscriptionController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'message' => 'Freischaltung fehlgeschlagen',
+                'message' => __('subscriptioncontrollerphp189'),
             ], 500);
         }
 
         return response()->json([
-            'message' => 'Datenbank Designer erfolgreich freigeschaltet!',
+            'message' => __('subscriptioncontrollerphp194'),
             'access_status' => $user->getDatabaseDesignerAccessStatus(),
             'credits_remaining' => $user->fresh()->credits,
         ]);

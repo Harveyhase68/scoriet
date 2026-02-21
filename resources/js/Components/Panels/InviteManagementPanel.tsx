@@ -117,12 +117,12 @@ export default function InviteManagementPanel() {
 
   const confirmDelete = (invite: Invite) => {
     confirmDialog({
-      message: `Are you sure you want to delete the invite for "${invite.email}"?`,
-      header: 'Confirm Delete',
+      message: `${t.invitemanagementpanel120}"${invite.email}"?`,
+      header: t.invitemanagementpanel121,
       icon: 'pi pi-exclamation-triangle',
       accept: () => handleDelete(invite),
-      acceptLabel: 'Yes, Delete',
-      rejectLabel: 'No',
+      acceptLabel: t.invitemanagementpanel124,
+      rejectLabel: t.invitemanagementpanel125,
       acceptClassName: 'p-button-danger'
     });
   };
@@ -130,20 +130,20 @@ export default function InviteManagementPanel() {
   const handleDelete = async (invite: Invite) => {
     try {
       await api.request(`/invites/${invite.id}`, { method: 'DELETE' });
-      toast.showSuccess('Invite deleted successfully');
+      toast.showSuccess(t.invitemanagementpanel133);
       fetchInvites();
     } catch (error: any) {
-      toast.showError('Failed to delete invite: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.invitemanagementpanel136 + (error.response?.data?.message || error.message));
     }
   };
 
   const handleResend = async (invite: Invite) => {
     try {
       await api.request(`/invites/${invite.id}/resend`, { method: 'POST' });
-      toast.showSuccess('Invite email sent successfully');
+      toast.showSuccess(t.invitemanagementpanel143);
       fetchInvites();
     } catch (error: any) {
-      toast.showError('Failed to resend invite: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.invitemanagementpanel146 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -151,10 +151,10 @@ export default function InviteManagementPanel() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedToken(inviteId);
-      toast.showSuccess('Link copied to clipboard');
+      toast.showSuccess(t.invitemanagementpanel154);
       setTimeout(() => setCopiedToken(null), 2000);
     } catch {
-      toast.showError('Failed to copy to clipboard');
+      toast.showError(t.invitemanagementpanel157);
     }
   };
 
@@ -164,11 +164,11 @@ export default function InviteManagementPanel() {
         method: 'POST',
         body: JSON.stringify(values)
       });
-      toast.showSuccess('Invite created successfully');
+      toast.showSuccess(t.invitemanagementpanel167);
       setModalVisible(false);
       fetchInvites();
     } catch (error: any) {
-      toast.showError('Failed to create invite: ' + (error.response?.data?.message || error.message));
+      toast.showError(t.invitemanagementpanel171 + (error.response?.data?.message || error.message));
     }
   };
 
@@ -231,7 +231,7 @@ export default function InviteManagementPanel() {
           size="small"
           severity={copiedToken === rowData.token ? "success" : "info"}
           onClick={() => copyToClipboard(rowData.registration_url, rowData.token)}
-          tooltip="Copy Registration Link"
+          tooltip={t.invitemanagementpanel234}
           tooltipOptions={{ position: 'top' }}
         />
 
@@ -244,7 +244,7 @@ export default function InviteManagementPanel() {
             size="small"
             severity="info"
             onClick={() => handleResend(rowData)}
-            tooltip="Resend Invite Email"
+            tooltip={t.invitemanagementpanel247}
             tooltipOptions={{ position: 'top' }}
           />
         )}
@@ -258,7 +258,7 @@ export default function InviteManagementPanel() {
             size="small"
             severity="danger"
             onClick={() => confirmDelete(rowData)}
-            tooltip="Delete Invite"
+            tooltip={t.invitemanagementpanel261}
             tooltipOptions={{ position: 'top' }}
           />
         )}
@@ -273,13 +273,13 @@ export default function InviteManagementPanel() {
         <div className="text-center max-w-md">
           <i className="pi pi-lock text-6xl mb-4" style={{ color: colors.errorText }}></i>
           <h3 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>
-            Access Denied
+            {t.invitemanagementpanel276}
           </h3>
           <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
-            Only system administrators can manage registration invites.
-            Please contact your administrator if you believe you should have access.
+            {t.invitemanagementpanel279}
+            {t.invitemanagementpanel280}
           </p>
-          <Tag value="Unauthorized" severity="danger" icon="pi pi-times-circle" />
+          <Tag value={t.invitemanagementpanel282} severity="danger" icon="pi pi-times-circle" />
         </div>
       </div>
     );
@@ -292,22 +292,22 @@ export default function InviteManagementPanel() {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-              Registration Invites
+              {t.invitemanagementpanel295}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Manage registration invites for new users (System Admin Only)
+              {t.invitemanagementpanel298}
             </p>
           </div>
           <div className="flex items-center gap-3">
             {/* Registration Status Badge */}
             <Tag
-              value={registrationOpen ? 'Registration Open' : 'Invite Only'}
+              value={registrationOpen ? t.invitemanagementpanel304 : t.invitemanagementpanel304_2}
               severity={registrationOpen ? 'success' : 'warning'}
               icon={registrationOpen ? 'pi pi-lock-open' : 'pi pi-lock'}
             />
             <Button
               icon="pi pi-plus"
-              label="New Invite"
+              label={t.invitemanagementpanel310}
               size="small"
               severity="info"
               onClick={handleCreate}
@@ -319,19 +319,19 @@ export default function InviteManagementPanel() {
         {stats && (
           <div className="flex gap-4 mt-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: colors.textSecondary }}>Total:</span>
+              <span className="text-sm" style={{ color: colors.textSecondary }}>{t.invitemanagementpanel322}</span>
               <Tag value={stats.total.toString()} severity="info" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: colors.textSecondary }}>Pending:</span>
+              <span className="text-sm" style={{ color: colors.textSecondary }}>{t.invitemanagementpanel326}</span>
               <Tag value={stats.pending.toString()} severity="warning" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: colors.textSecondary }}>Used:</span>
+              <span className="text-sm" style={{ color: colors.textSecondary }}>{t.invitemanagementpanel330}</span>
               <Tag value={stats.used.toString()} severity="success" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: colors.textSecondary }}>Expired:</span>
+              <span className="text-sm" style={{ color: colors.textSecondary }}>{t.invitemanagementpanel334}</span>
               <Tag value={stats.expired.toString()} severity="danger" />
             </div>
           </div>
@@ -348,29 +348,29 @@ export default function InviteManagementPanel() {
             rows={20}
             rowsPerPageOptions={[10, 20, 50]}
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-            currentPageReportTemplate="{first}-{last} of {total} invites"
+            currentPageReportTemplate={`{first}-{last}${t.invitemanagementpanel351}{totalRecords}${t.invitemanagementpanel351_2}`}
             size="small"
             stripedRows
             showGridlines
             scrollable
             scrollHeight="calc(100vh - 350px)"
-            emptyMessage="No invites found. Create your first invite!"
+            emptyMessage={t.invitemanagementpanel357}
           >
-            <Column field="email" header="Email / Name" body={emailBodyTemplate} sortable style={{ width: '200px' }} />
-            <Column header="Status" body={statusBodyTemplate} style={{ width: '100px' }} />
-            <Column header="Sent" body={(rowData) => dateBodyTemplate(rowData.sent_at)} sortable style={{ width: '150px' }} />
-            <Column header="Expires" body={(rowData) => dateBodyTemplate(rowData.expires_at)} sortable style={{ width: '150px' }} />
-            <Column header="Used By" body={usedByBodyTemplate} style={{ width: '150px' }} />
-            <Column header="Used At" body={(rowData) => dateBodyTemplate(rowData.used_at)} style={{ width: '150px' }} />
-            <Column field="note" header="Note" style={{ minWidth: '150px' }} />
-            <Column header="Actions" body={actionsBodyTemplate} style={{ width: '140px' }} />
+            <Column field="email" header={t.invitemanagementpanel359} body={emailBodyTemplate} sortable style={{ width: '200px' }} />
+            <Column header={t.invitemanagementpanel360} body={statusBodyTemplate} style={{ width: '100px' }} />
+            <Column header={t.invitemanagementpanel361} body={(rowData) => dateBodyTemplate(rowData.sent_at)} sortable style={{ width: '150px' }} />
+            <Column header={t.invitemanagementpanel362} body={(rowData) => dateBodyTemplate(rowData.expires_at)} sortable style={{ width: '150px' }} />
+            <Column header={t.invitemanagementpanel363} body={usedByBodyTemplate} style={{ width: '150px' }} />
+            <Column header={t.invitemanagementpanel364} body={(rowData) => dateBodyTemplate(rowData.used_at)} style={{ width: '150px' }} />
+            <Column field="note" header={t.invitemanagementpanel365} style={{ minWidth: '150px' }} />
+            <Column header={t.invitemanagementpanel366} body={actionsBodyTemplate} style={{ width: '140px' }} />
           </DataTable>
         </div>
       </div>
 
       {/* Create Invite Modal */}
       <Dialog
-        header="Create New Invite"
+        header={t.invitemanagementpanel373}
         visible={modalVisible}
         onHide={() => setModalVisible(false)}
         style={{ width: '500px' }}
@@ -385,7 +385,7 @@ export default function InviteManagementPanel() {
           <div className="flex justify-end gap-2">
             <Button
               type="button"
-              label="Cancel"
+              label={t.invitemanagementpanel388}
               icon="pi pi-times"
               severity="info"
               outlined
@@ -393,7 +393,7 @@ export default function InviteManagementPanel() {
             />
             <Button
               type="button"
-              label="Create Invite"
+              label={t.invitemanagementpanel396}
               icon="pi pi-check"
               severity="success"
               onClick={handleSubmit(onSubmit)}
@@ -405,23 +405,23 @@ export default function InviteManagementPanel() {
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Email Address *
+              {t.invitemanagementpanel408}
             </label>
             <Controller
               name="email"
               control={control}
               rules={{
-                required: 'Email is required',
+                required: t.invitemanagementpanel414,
                 pattern: {
                   value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: 'Please enter a valid email address'
+                  message: t.invitemanagementpanel417
                 }
               }}
               render={({ field }) => (
                 <InputText
                   id="email"
                   {...field}
-                  placeholder="user@example.com"
+                  placeholder={t.invitemanagementpanel424}
                   className="w-full"
                 />
               )}
@@ -434,19 +434,19 @@ export default function InviteManagementPanel() {
           {/* Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Name (optional)
+              {t.invitemanagementpanel437}
             </label>
             <Controller
               name="name"
               control={control}
               rules={{
-                maxLength: { value: 255, message: 'Name must be 255 characters or less' }
+                maxLength: { value: 255, message: t.invitemanagementpanel443 }
               }}
               render={({ field }) => (
                 <InputText
                   id="name"
                   {...field}
-                  placeholder="John Doe"
+                  placeholder={t.invitemanagementpanel449}
                   className="w-full"
                 />
               )}
@@ -459,20 +459,20 @@ export default function InviteManagementPanel() {
           {/* Note */}
           <div>
             <label htmlFor="note" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Internal Note (optional)
+              {t.invitemanagementpanel462}
             </label>
             <Controller
               name="note"
               control={control}
               rules={{
-                maxLength: { value: 1000, message: 'Note must be 1000 characters or less' }
+                maxLength: { value: 1000, message: t.invitemanagementpanel468 }
               }}
               render={({ field }) => (
                 <InputTextarea
                   id="note"
                   {...field}
                   rows={3}
-                  placeholder="Any notes about this invite..."
+                  placeholder={t.invitemanagementpanel475}
                   className="w-full"
                 />
               )}
@@ -485,15 +485,15 @@ export default function InviteManagementPanel() {
           {/* Expires Days */}
           <div>
             <label htmlFor="expires_days" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Valid for (days) *
+              {t.invitemanagementpanel488}
             </label>
             <Controller
               name="expires_days"
               control={control}
               rules={{
-                required: 'Expiry days required',
-                min: { value: 1, message: 'Minimum 1 day' },
-                max: { value: 30, message: 'Maximum 30 days' }
+                required: t.invitemanagementpanel494,
+                min: { value: 1, message: t.invitemanagementpanel495 },
+                max: { value: 30, message: t.invitemanagementpanel496 }
               }}
               render={({ field }) => (
                 <InputNumber
@@ -502,7 +502,7 @@ export default function InviteManagementPanel() {
                   onValueChange={(e) => field.onChange(e.value)}
                   min={1}
                   max={30}
-                  suffix=" days"
+                  suffix={t.invitemanagementpanel505_2}
                   inputStyle={{ width: '120px' }}
                 />
               )}
@@ -526,7 +526,7 @@ export default function InviteManagementPanel() {
               )}
             />
             <label htmlFor="send_email" className="text-sm font-medium cursor-pointer" style={{ color: colors.textPrimary }}>
-              Send invitation email immediately
+              {t.invitemanagementpanel529}
             </label>
           </div>
         </form>

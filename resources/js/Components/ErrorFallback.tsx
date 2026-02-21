@@ -81,7 +81,7 @@ export default function ErrorFallback({ error, resetError }: ErrorFallbackProps)
 
           <div className="text-xs max-w-md" style={{ color: colors.textMuted }}>
             <p className="mb-2">
-              <strong style={{ color: colors.warningText }}>{t.errorfallback75}</strong> Der "{t.errorfallback65}" {t.errorfallback65_2}
+              <strong style={{ color: colors.warningText }}>{t.errorfallback75}</strong>{t.errorfallback84}"{t.errorfallback65}" {t.errorfallback65_2}
             </p>
             <p>
               {t.errorfallback77}

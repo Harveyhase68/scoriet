@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { Checkbox } from 'primereact/checkbox';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface TwoFactorVerifyDialogProps {
   visible: boolean;
@@ -61,6 +62,9 @@ export default function TwoFactorVerifyDialog({
   const [error, setError] = useState<string | null>(null);
   const [showRecoveryHint, setShowRecoveryHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   // Focus input when dialog opens
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function TwoFactorVerifyDialog({
     e.preventDefault();
 
     if (!code.trim()) {
-      setError('Bitte geben Sie einen Code ein.');
+      setError(t.twofactorverifydialog85);
       return;
     }
 
@@ -105,10 +109,10 @@ export default function TwoFactorVerifyDialog({
 
       if (!response.ok) {
         if (response.status === 401) {
-          setError('Session abgelaufen. Bitte erneut einloggen.');
+          setError(t.twofactorverifydialog112);
           setTimeout(() => onHide(), 2000);
         } else {
-          setError(data.message || 'Ungültiger Code.');
+          setError(data.message || t.twofactorverifydialog115);
           // Show recovery hint after failed attempt
           setShowRecoveryHint(true);
         }
@@ -118,7 +122,7 @@ export default function TwoFactorVerifyDialog({
       // Success!
       onSuccess(data);
     } catch (_err) {
-      setError('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+      setError(t.twofactorverifydialog125);
     } finally {
       setLoading(false);
     }
@@ -136,7 +140,7 @@ export default function TwoFactorVerifyDialog({
       header={
         <div className="flex items-center gap-2">
           <i className="pi pi-shield" style={{ color: '#22c55e' }} />
-          <span>Zwei-Faktor-Authentifizierung</span>
+          <span>{t.twofactorverifydialog143}</span>
         </div>
       }
       visible={visible}
@@ -150,13 +154,13 @@ export default function TwoFactorVerifyDialog({
         {needsReverification && (
           <Message
             severity="info"
-            text="Ihre monatliche 2FA-Verifizierung ist erforderlich."
+            text={t.twofactorverifydialog157}
             className="w-full"
           />
         )}
 
         <p style={{ color: colors.textSecondary }}>
-          Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.
+          {t.twofactorverifydialog163}
         </p>
 
         <div className="field">
@@ -183,7 +187,7 @@ export default function TwoFactorVerifyDialog({
           >
             <i className="pi pi-info-circle mr-2" style={{ color: colors.textSecondary }} />
             <span style={{ color: colors.textSecondary }}>
-              Kein Zugriff auf Ihre App? Sie können auch einen 10-stelligen Backup-Code verwenden.
+              {t.twofactorverifydialog190}
             </span>
           </div>
         )}
@@ -197,25 +201,25 @@ export default function TwoFactorVerifyDialog({
               disabled={loading}
             />
             <label htmlFor="trust-device" className="cursor-pointer" style={{ color: colors.textPrimary }}>
-              Diesem Gerät 30 Tage vertrauen
+              {t.twofactorverifydialog204}
             </label>
           </div>
           <p className="text-xs mt-1 ml-6" style={{ color: colors.textSecondary }}>
-            Sie werden auf diesem Gerät nicht erneut nach dem 2FA-Code gefragt.
+            {t.twofactorverifydialog208}
           </p>
         </div>
 
         <div className="flex gap-2">
           <Button
             type="button"
-            label="Abbrechen"
+            label={t.twofactorverifydialog215}
             className="p-button-text flex-1"
             onClick={onHide}
             disabled={loading}
           />
           <Button
             type="submit"
-            label={loading ? 'Prüfe...' : 'Verifizieren'}
+            label={loading ? t.twofactorverifydialog222 : t.twofactorverifydialog222_2}
             icon={loading ? 'pi pi-spinner pi-spin' : 'pi pi-check'}
             className="flex-1"
             disabled={loading || code.length < 6}

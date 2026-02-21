@@ -161,7 +161,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -279,7 +279,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
         <Toast ref={toast} position="top-right" />
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
-          <p style={{ color: colors.textSecondary }}>Loading public projects...</p>
+          <p style={{ color: colors.textSecondary }}>{t.publicprojectspanel282}</p>
         </div>
       </div>
     );
@@ -292,7 +292,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <i className="pi pi-globe text-2xl" style={{ color: colors.successText }}></i>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Public Projects</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.publicprojectspanel295}</h1>
         </div>
         <div className="flex space-x-2">
           <Button
@@ -337,7 +337,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
           <div className="text-center py-8">
             <i className="pi pi-search text-6xl mb-4" style={{ color: colors.textMuted }}></i>
             <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>
-              {searchTerm ? 'No matching projects' : t.publicprojectspanel266}
+              {searchTerm ? t.publicprojectspanel340 : t.publicprojectspanel266}
             </h3>
             <p className="mb-4" style={{ color: colors.textMuted }}>
               {searchTerm
@@ -424,7 +424,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                       />
                     ) : (
                       <Button
-                        label={cloning === project.id ? "Cloning..." : t.publicprojectspanel346}
+                        label={cloning === project.id ? t.publicprojectspanel427 : t.publicprojectspanel346}
                         icon={cloning === project.id ? "pi pi-spinner pi-spin" : "pi pi-copy"}
                         className="w-full p-button-success"
                         onClick={() => openCloneModal(project)}
@@ -450,13 +450,13 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
             <div className="text-2xl font-bold" style={{ color: colors.successText }}>
               {projects.filter(p => p.can_join).length}
             </div>
-            <div className="text-sm" style={{ color: colors.textMuted }}>Accepting Members</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>{t.publicprojectspanel453}</div>
           </div>
           <div>
             <div className="text-2xl font-bold" style={{ color: '#a855f7' }}>
               {filteredProjects.length}
             </div>
-            <div className="text-sm" style={{ color: colors.textMuted }}>Showing</div>
+            <div className="text-sm" style={{ color: colors.textMuted }}>{t.publicprojectspanel459}</div>
           </div>
         </div>
       </div>
@@ -480,7 +480,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
       {/* Clone Project Modal */}
       <Dialog
-        header={`Clone Project - ${projectToClone?.name || ''}`}
+        header={`${t.publicprojectspanel483}${projectToClone?.name || ''}`}
         visible={showCloneModal}
         onHide={handleCloneModalHide}
         style={{ width: '500px' }}
@@ -499,7 +499,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
           <div className="field">
             <label htmlFor="clone-name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Project Name *
+              {t.publicprojectspanel502}
             </label>
             <InputText
               id="clone-name"
@@ -515,7 +515,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
           <div className="field">
             <label htmlFor="clone-description" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Description
+              {t.publicprojectspanel518}
             </label>
             <InputTextarea
               id="clone-description"
@@ -553,7 +553,7 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
                 <div className="font-medium mb-1" style={{ color: colors.textSecondary }}>{t.publicprojectspanel553}</div>
                 <div style={{ color: colors.textPrimary }}>{projectToClone.name}</div>
                 <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                  by {projectToClone.owner.name}
+                  {t.publicprojectspanel556}{projectToClone.owner.name}
                 </div>
                 <div className="flex gap-4 mt-2 text-xs">
                   <span style={{ color: colors.accent }}>

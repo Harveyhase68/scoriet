@@ -68,7 +68,6 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="application-name" content="Scoriet">
 
-        <?php echo app('Tighten\Ziggy\BladeRouteGenerator')->generate(); ?>
         <?php if(app()->environment('local')): ?>
             <?php echo app('Illuminate\Foundation\Vite')->reactRefresh(); ?>
         <?php endif; ?>

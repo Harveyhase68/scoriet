@@ -12,6 +12,7 @@ import { Divider } from 'primereact/divider';
 import { apiClient as api } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface SellerPayout {
   user_id: number;
@@ -44,6 +45,9 @@ interface PayoutSummary {
 export default function PayoutAdminPanel() {
   const toast = useToast();
   const { colors } = useTheme();
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   // Date range state
   const [dateFrom, setDateFrom] = useState<Date | null>(() => {
@@ -102,7 +106,7 @@ export default function PayoutAdminPanel() {
       setSellers(response.sellers || []);
       setSummary(response.summary || null);
     } catch (error: any) {
-      toast.showError('Fehler beim Laden: ' + (error.message || 'Unbekannter Fehler'));
+      toast.showError(t.payoutadminpanel105 + (error.message || t.payoutadminpanel105_2));
     } finally {
       setLoading(false);
     }
@@ -123,10 +127,10 @@ export default function PayoutAdminPanel() {
           to: dateTo?.toISOString().split('T')[0],
         }),
       });
-      toast.showSuccess(`Auszahlung an ${seller.name} erfolgreich verarbeitet`);
+      toast.showSuccess(`${t.payoutadminpanel126}${seller.name}${t.payoutadminpanel126_2}`);
       loadPendingPayouts();
     } catch (error: any) {
-      toast.showError('Fehler: ' + (error.message || 'Unbekannter Fehler'));
+      toast.showError(t.payoutadminpanel129 + (error.message || t.payoutadminpanel129_2));
     } finally {
       setProcessingPayout(null);
       setConfirmDialog({ visible: false, type: 'single' });
@@ -144,10 +148,10 @@ export default function PayoutAdminPanel() {
           to: dateTo?.toISOString().split('T')[0],
         }),
       });
-      toast.showSuccess(`${paypalSellers.length} PayPal-Auszahlungen erfolgreich verarbeitet`);
+      toast.showSuccess(`${paypalSellers.length}${t.payoutadminpanel147}`);
       loadPendingPayouts();
     } catch (error: any) {
-      toast.showError('Fehler: ' + (error.message || 'Unbekannter Fehler'));
+      toast.showError(t.payoutadminpanel150 + (error.message || t.payoutadminpanel150_2));
     } finally {
       setProcessingAllPaypal(false);
       setConfirmDialog({ visible: false, type: 'all_paypal' });
@@ -176,9 +180,9 @@ export default function PayoutAdminPanel() {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const error = await response.json();
-          throw new Error(error.error || 'Export fehlgeschlagen');
+          throw new Error(error.error || t.payoutadminpanel179);
         }
-        throw new Error(`Export fehlgeschlagen (${response.status})`);
+        throw new Error(`${t.payoutadminpanel181}(${response.status})`);
       }
 
       // Download the file
@@ -192,9 +196,9 @@ export default function PayoutAdminPanel() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.showSuccess('SEPA XML exportiert');
+      toast.showSuccess(t.payoutadminpanel195);
     } catch (error: any) {
-      toast.showError('Export-Fehler: ' + (error.message || 'Unbekannter Fehler'));
+      toast.showError(t.payoutadminpanel197 + (error.message || t.payoutadminpanel197_2));
     }
   };
 
@@ -220,9 +224,9 @@ export default function PayoutAdminPanel() {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const error = await response.json();
-          throw new Error(error.error || 'Export fehlgeschlagen');
+          throw new Error(error.error || t.payoutadminpanel223);
         }
-        throw new Error(`Export fehlgeschlagen (${response.status})`);
+        throw new Error(`${t.payoutadminpanel225}(${response.status})`);
       }
 
       // Download the file
@@ -236,9 +240,9 @@ export default function PayoutAdminPanel() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.showSuccess('CSV exportiert');
+      toast.showSuccess(t.payoutadminpanel239);
     } catch (error: any) {
-      toast.showError('Export-Fehler: ' + (error.message || 'Unbekannter Fehler'));
+      toast.showError(t.payoutadminpanel241 + (error.message || t.payoutadminpanel241_2));
     }
   };
 
@@ -253,11 +257,11 @@ export default function PayoutAdminPanel() {
   // Seller type badge
   const sellerTypeBadge = (type: string) => {
     const typeMap: Record<string, { label: string; severity: 'success' | 'info' | 'warning' | 'danger' }> = {
-      'at_business': { label: 'AT Unternehmen', severity: 'success' },
-      'eu_vat': { label: 'EU + UID', severity: 'info' },
-      'eu_private': { label: 'EU Privat', severity: 'warning' },
-      'non_eu_business': { label: 'Non-EU Business', severity: 'info' },
-      'non_eu_private': { label: 'Non-EU Privat', severity: 'danger' },
+      'at_business': { label: t.payoutadminpanel256, severity: 'success' },
+      'eu_vat': { label: t.payoutadminpanel257, severity: 'info' },
+      'eu_private': { label: t.payoutadminpanel258, severity: 'warning' },
+      'non_eu_business': { label: t.payoutadminpanel259, severity: 'info' },
+      'non_eu_private': { label: t.payoutadminpanel260, severity: 'danger' },
     };
     const config = typeMap[type] || { label: type, severity: 'info' as const };
     return <Tag value={config.label} severity={config.severity} />;
@@ -274,7 +278,7 @@ export default function PayoutAdminPanel() {
     return (
       <Button
         icon="pi pi-send"
-        label="Auszahlen"
+        label={t.payoutadminpanel277}
         size="small"
         severity={rowData.payout_method === 'paypal' ? 'info' : 'success'}
         loading={processingPayout === rowData.user_id}
@@ -305,14 +309,14 @@ export default function PayoutAdminPanel() {
     <div className="p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: colors.textPrimary }}>
         <i className="pi pi-wallet" style={{ color: colors.successText }}></i>
-        Auszahlungen verwalten
+        {t.payoutadminpanel308}
       </h1>
 
       {/* Date Range Filter */}
       <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Von</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.payoutadminpanel315}</label>
             <Calendar
               value={dateFrom}
               onChange={(e) => handleDateFromChange(e.value as Date)}
@@ -322,7 +326,7 @@ export default function PayoutAdminPanel() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Bis</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.payoutadminpanel325}</label>
             <Calendar
               value={dateTo}
               onChange={(e) => setDateTo(e.value as Date)}
@@ -333,7 +337,7 @@ export default function PayoutAdminPanel() {
           </div>
           <Button
             icon="pi pi-refresh"
-            label="Aktualisieren"
+            label={t.payoutadminpanel336}
             onClick={loadPendingPayouts}
             loading={loading}
           />
@@ -345,25 +349,25 @@ export default function PayoutAdminPanel() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-sm" style={{ color: colors.textSecondary }}>Brutto-Umsatz</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>{t.payoutadminpanel348}</p>
               <p className="text-2xl font-bold" style={{ color: colors.infoText }}>{formatCurrency(summary.total_gross)}</p>
             </div>
           </Card>
           <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-sm" style={{ color: colors.textSecondary }}>Platform Fee (20%)</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>{t.payoutadminpanel354}</p>
               <p className="text-2xl font-bold" style={{ color: colors.accent }}>{formatCurrency(summary.total_platform_fee)}</p>
             </div>
           </Card>
           <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-sm" style={{ color: colors.textSecondary }}>MwSt abgezogen</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>{t.payoutadminpanel360}</p>
               <p className="text-2xl font-bold" style={{ color: colors.warningText }}>{formatCurrency(summary.total_vat)}</p>
             </div>
           </Card>
           <Card style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="text-center">
-              <p className="text-sm" style={{ color: colors.textSecondary }}>Auszuzahlen</p>
+              <p className="text-sm" style={{ color: colors.textSecondary }}>{t.payoutadminpanel366}</p>
               <p className="text-2xl font-bold" style={{ color: colors.successText }}>{formatCurrency(summary.total_net)}</p>
             </div>
           </Card>
@@ -375,7 +379,7 @@ export default function PayoutAdminPanel() {
         <Message
           severity="info"
           className="w-full mb-4"
-          text={`Kontrolle: Brutto ${formatCurrency(summary.total_gross)} - Platform ${formatCurrency(summary.total_platform_fee)} - MwSt ${formatCurrency(summary.total_vat)} = ${formatCurrency(summary.total_net)} (Bank: ${formatCurrency(summary.bank_transfer_total)} + PayPal: ${formatCurrency(summary.paypal_total)})`}
+          text={`${t.payoutadminpanel378}${formatCurrency(summary.total_gross)}${t.payoutadminpanel378_2}${formatCurrency(summary.total_platform_fee)}${t.payoutadminpanel378_4}${formatCurrency(summary.total_vat)} = ${formatCurrency(summary.total_net)} (${t.payoutadminpanel378_5}${formatCurrency(summary.bank_transfer_total)} + PayPal: ${formatCurrency(summary.paypal_total)})`}
         />
       )}
 
@@ -386,7 +390,7 @@ export default function PayoutAdminPanel() {
       ) : sellers.length === 0 ? (
         <Message
           severity="info"
-          text="Keine ausstehenden Auszahlungen im gewählten Zeitraum."
+          text={t.payoutadminpanel389}
           className="w-full"
         />
       ) : (
@@ -398,7 +402,7 @@ export default function PayoutAdminPanel() {
               <div className="flex items-center justify-between" style={{ color: colors.textPrimary }}>
                 <span className="flex items-center gap-2">
                   <i className="pi pi-building" style={{ color: colors.successText }}></i>
-                  Banküberweisung ({bankTransferSellers.length})
+                  {t.payoutadminpanel401}({bankTransferSellers.length})
                 </span>
                 <Tag
                   value={formatCurrency(summary?.bank_transfer_total || 0)}
@@ -408,7 +412,7 @@ export default function PayoutAdminPanel() {
             }
           >
             {bankTransferSellers.length === 0 ? (
-              <p className="text-center py-4" style={{ color: colors.textSecondary }}>Keine Überweisungs-Kunden</p>
+              <p className="text-center py-4" style={{ color: colors.textSecondary }}>{t.payoutadminpanel411}</p>
             ) : (
               <>
                 <DataTable
@@ -417,10 +421,10 @@ export default function PayoutAdminPanel() {
                   stripedRows
                   className="text-sm"
                 >
-                  <Column field="name" header="Name" />
-                  <Column field="company_name" header="Firma" />
+                  <Column field="name" header={t.payoutadminpanel420} />
+                  <Column field="company_name" header={t.payoutadminpanel421} />
                   <Column
-                    header="Typ"
+                    header={t.payoutadminpanel427}
                     body={(row) => sellerTypeBadge(row.seller_type)}
                   />
                   <Column
@@ -428,7 +432,7 @@ export default function PayoutAdminPanel() {
                     body={destinationTemplate}
                   />
                   <Column
-                    header="Betrag"
+                    header={t.payoutadminpanel431}
                     body={(row) => amountTemplate(row, 'net_amount')}
                     style={{ textAlign: 'right' }}
                   />
@@ -447,7 +451,7 @@ export default function PayoutAdminPanel() {
                     severity="success"
                     size="small"
                     onClick={exportSepaXml}
-                    tooltip="SEPA XML für ELBA Business exportieren"
+                    tooltip={t.payoutadminpanel450}
                   />
                   <Button
                     icon="pi pi-file"
@@ -455,7 +459,7 @@ export default function PayoutAdminPanel() {
                     severity="secondary"
                     size="small"
                     onClick={exportCsv}
-                    tooltip="CSV für manuellen Import exportieren"
+                    tooltip={t.payoutadminpanel458}
                   />
                 </div>
               </>
@@ -482,7 +486,7 @@ export default function PayoutAdminPanel() {
               <div className="mb-4">
                 <Button
                   icon="pi pi-send"
-                  label={`Alle ${paypalSellers.length} PayPal-Auszahlungen`}
+                  label={`${t.payoutadminpanel489}${paypalSellers.length}${t.payoutadminpanel485}`}
                   severity="info"
                   className="w-full"
                   loading={processingAllPaypal}
@@ -491,7 +495,7 @@ export default function PayoutAdminPanel() {
               </div>
             )}
             {paypalSellers.length === 0 ? (
-              <p className="text-center py-4" style={{ color: colors.textSecondary }}>Keine PayPal-Kunden</p>
+              <p className="text-center py-4" style={{ color: colors.textSecondary }}>{t.payoutadminpanel494}</p>
             ) : (
               <DataTable
                 value={paypalSellers}
@@ -499,9 +503,9 @@ export default function PayoutAdminPanel() {
                 stripedRows
                 className="text-sm"
               >
-                <Column field="name" header="Name" />
+                <Column field="name" header={t.payoutadminpanel506} />
                 <Column
-                  header="Typ"
+                  header={t.payoutadminpanel504}
                   body={(row) => sellerTypeBadge(row.seller_type)}
                 />
                 <Column
@@ -509,7 +513,7 @@ export default function PayoutAdminPanel() {
                   body={destinationTemplate}
                 />
                 <Column
-                  header="Betrag"
+                  header={t.payoutadminpanel512}
                   body={(row) => amountTemplate(row, 'net_amount')}
                   style={{ textAlign: 'right' }}
                 />
@@ -526,7 +530,7 @@ export default function PayoutAdminPanel() {
 
       {/* Confirmation Dialog */}
       <Dialog
-        header="Auszahlung bestätigen"
+        header={t.payoutadminpanel529}
         visible={confirmDialog.visible}
         onHide={() => setConfirmDialog({ visible: false, type: 'single' })}
         style={{ width: '450px' }}
@@ -536,13 +540,13 @@ export default function PayoutAdminPanel() {
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              label="Abbrechen"
+              label={t.payoutadminpanel539}
               icon="pi pi-times"
               severity="secondary"
               onClick={() => setConfirmDialog({ visible: false, type: 'single' })}
             />
             <Button
-              label="Auszahlen"
+              label={t.payoutadminpanel545}
               icon="pi pi-check"
               severity="success"
               loading={processingPayout !== null || processingAllPaypal}
@@ -559,25 +563,25 @@ export default function PayoutAdminPanel() {
       >
         {confirmDialog.type === 'single' && confirmDialog.seller && (
           <div className="space-y-4">
-            <p style={{ color: colors.textPrimary }}>Möchten Sie die Auszahlung an <strong>{confirmDialog.seller.name}</strong> durchführen?</p>
+            <p style={{ color: colors.textPrimary }}>{t.payoutadminpanel562}<strong>{confirmDialog.seller.name}</strong>{t.payoutadminpanel562_2}</p>
             <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span style={{ color: colors.textSecondary }}>Methode:</span>
-                <span style={{ color: colors.textPrimary }}>{confirmDialog.seller.payout_method === 'paypal' ? 'PayPal' : 'Überweisung'}</span>
-                <span style={{ color: colors.textSecondary }}>Ziel:</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel565}</span>
+                <span style={{ color: colors.textPrimary }}>{confirmDialog.seller.payout_method === 'paypal' ? 'PayPal' : t.payoutadminpanel566}</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel567}</span>
                 <span className="font-mono" style={{ color: colors.textPrimary }}>{confirmDialog.seller.payout_destination}</span>
-                <span style={{ color: colors.textSecondary }}>Brutto:</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel569}</span>
                 <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.gross_amount)}</span>
-                <span style={{ color: colors.textSecondary }}>Platform Fee:</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel571}</span>
                 <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.platform_fee)}</span>
                 {confirmDialog.seller.vat_amount > 0 && (
                   <>
-                    <span style={{ color: colors.textSecondary }}>MwSt:</span>
+                    <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel575}</span>
                     <span style={{ color: colors.textPrimary }}>{formatCurrency(confirmDialog.seller.vat_amount)}</span>
                   </>
                 )}
                 <Divider className="col-span-2 my-2" />
-                <span className="font-bold" style={{ color: colors.textSecondary }}>Auszahlung:</span>
+                <span className="font-bold" style={{ color: colors.textSecondary }}>{t.payoutadminpanel580}</span>
                 <span className="font-bold" style={{ color: colors.successText }}>{formatCurrency(confirmDialog.seller.net_amount)}</span>
               </div>
             </div>
@@ -585,18 +589,18 @@ export default function PayoutAdminPanel() {
         )}
         {confirmDialog.type === 'all_paypal' && (
           <div className="space-y-4">
-            <p style={{ color: colors.textPrimary }}>Möchten Sie <strong>alle {paypalSellers.length} PayPal-Auszahlungen</strong> durchführen?</p>
+            <p style={{ color: colors.textPrimary }}>{t.payoutadminpanel588_3}<strong>alle {paypalSellers.length}{t.payoutadminpanel588}</strong>{t.payoutadminpanel588_2}</p>
             <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span style={{ color: colors.textSecondary }}>Anzahl Empfänger:</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel591}</span>
                 <span style={{ color: colors.textPrimary }}>{paypalSellers.length}</span>
-                <span style={{ color: colors.textSecondary }}>Gesamtbetrag:</span>
+                <span style={{ color: colors.textSecondary }}>{t.payoutadminpanel593}</span>
                 <span className="font-bold" style={{ color: colors.successText }}>{formatCurrency(summary?.paypal_total || 0)}</span>
               </div>
             </div>
             <Message
               severity="warn"
-              text="PayPal Batch-Auszahlung wird gestartet. Dies kann nicht rückgängig gemacht werden."
+              text={t.payoutadminpanel599}
             />
           </div>
         )}

@@ -5,6 +5,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
+import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -45,10 +46,9 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
-
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
@@ -83,15 +83,15 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       const data = await response.json();
       setApplications(data.applications || []);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : t.applicationsmodal85);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.applicationsmodal85);
     } finally {
       setLoading(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -133,7 +133,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       <div>
         <div className="font-medium" style={{ color: colors.textPrimary }}>{application.project.name}</div>
         <div className="text-sm" style={{ color: colors.textMuted }}>
-          by {application.project.owner.name}
+          {t.myapplicationspanel137}{application.project.owner.name}
           {application.project.owner.username && ` (@${application.project.owner.username})`}
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
   const messageTemplate = (application: Application) => {
     if (!application.message) {
-      return <span className="italic" style={{ color: colors.textMuted }}>No message</span>;
+      return <span className="italic" style={{ color: colors.textMuted }}>{t.myapplicationspanel146}</span>;
     }
 
     const shortMessage = application.message.length > 40 
@@ -205,7 +205,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
-          <p style={{ color: colors.textSecondary }}>Loading applications...</p>
+          <p style={{ color: colors.textSecondary }}>{t.myapplicationspanel209}</p>
         </div>
       </div>
     );
@@ -217,7 +217,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <i className="pi pi-send text-2xl" style={{ color: colors.accent }}></i>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>My Applications</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.myapplicationspanel220}</h1>
         </div>
         <Button
           icon="pi pi-refresh"
@@ -236,8 +236,8 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
         {applications.length === 0 ? (
           <div className="text-center py-8">
             <i className="pi pi-inbox text-6xl mb-4" style={{ color: colors.textMuted }}></i>
-            <h3 className="text-lg font-medium mb-2" style={{ color: colors.textSecondary }}>No Applications</h3>
-            <p className="mb-4" style={{ color: colors.textMuted }}>You haven't applied to any projects yet.</p>
+            <h3 className="text-lg font-medium mb-2" style={{ color: colors.textSecondary }}>{t.myapplicationspanel239}</h3>
+            <p className="mb-4" style={{ color: colors.textMuted }}>{t.myapplicationspanel240}</p>
           </div>
         ) : (
           <DataTable
@@ -332,19 +332,19 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="font-medium text-gray-700">Status:</span>
+                    <span className="font-medium text-gray-700">{t.myapplicationspanel335}</span>
                     <div className="mt-1">
                       {statusTemplate(selectedApplication)}
                     </div>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Applied:</span>
+                    <span className="font-medium text-gray-700">{t.myapplicationspanel341}</span>
                     <div className="mt-1 text-sm">{formatDate(selectedApplication.created_at)}</div>
                   </div>
                 </div>
 
                 <div>
-                  <span className="font-medium text-gray-700">Join Code:</span>
+                  <span className="font-medium text-gray-700">{t.myapplicationspanel347}</span>
                   <div className="mt-1">
                     <code className="px-2 py-1 bg-gray-100 rounded text-sm font-mono">
                       {selectedApplication.join_code}
@@ -354,7 +354,7 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
 
                 {selectedApplication.message && (
                   <div>
-                    <span className="font-medium text-gray-700">Your Message:</span>
+                    <span className="font-medium text-gray-700">{t.myapplicationspanel357}</span>
                     <div className="mt-1 p-3 bg-gray-50 rounded text-sm">
                       {selectedApplication.message}
                     </div>
@@ -364,18 +364,18 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
                 {selectedApplication.status !== 'pending' && (
                   <div>
                     <span className="font-medium text-gray-700">
-                      {selectedApplication.status === 'approved' ? 'Approval' : t.myapplicationspanel358} Details:
+                      {selectedApplication.status === 'approved' ? 'Approval' : t.myapplicationspanel358}{t.myapplicationspanel367}
                     </span>
                     <div className="mt-1 space-y-2">
                       <div className="text-sm">
-                        <span className="font-medium">Reviewed by:</span> {selectedApplication.reviewer?.name || t.testprojectschemas50}
+                        <span className="font-medium">{t.myapplicationspanel371}</span> {selectedApplication.reviewer?.name || t.testprojectschemas50}
                       </div>
                       <div className="text-sm">
-                        <span className="font-medium">Date:</span> {selectedApplication.reviewed_at ? formatDate(selectedApplication.reviewed_at) : t.testprojectschemas50}
+                        <span className="font-medium">{t.myapplicationspanel374}</span> {selectedApplication.reviewed_at ? formatDate(selectedApplication.reviewed_at) : t.testprojectschemas50}
                       </div>
                       {selectedApplication.review_notes && (
                         <div className="p-3 bg-gray-50 rounded text-sm">
-                          <span className="font-medium">Response:</span>
+                          <span className="font-medium">{t.myapplicationspanel378}</span>
                           <p className="mt-1">{selectedApplication.review_notes}</p>
                         </div>
                       )}

@@ -296,6 +296,23 @@ class CacheController extends Controller
             // Store last activity timestamp
             Cache::put("user_online_{$userId}", now(), now()->addMinutes(10));
 
+            // Update visitor log: mark anonymous visitor as authenticated
+            // The TrackVisitor middleware runs on web routes before auth is available,
+            // so the heartbeat (called every minute with auth) updates the record
+            try {
+                $ip = $request->ip();
+                $today = now()->toDateString();
+                \App\Models\VisitorLog::where('ip_address', $ip)
+                    ->where('visited_date', $today)
+                    ->where('is_authenticated', false)
+                    ->update([
+                        'user_id' => $userId,
+                        'is_authenticated' => true,
+                    ]);
+            } catch (\Exception $e) {
+                // Never let visitor tracking break the heartbeat
+            }
+
             return response()->json([
                 'success' => true,
                 'timestamp' => now()->toDateTimeString(),
@@ -371,6 +388,166 @@ class CacheController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to inspect cache',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get cache environment configuration for diagnostics
+     * Shows all relevant .env values, defaults, and Redis connectivity
+     */
+    public function config()
+    {
+        try {
+            // Helper to check if an env var is explicitly set (not just default)
+            $envIsSet = function (string $key): bool {
+                return env($key) !== null;
+            };
+
+            // Template Cache settings
+            $templateCacheEnabled = config('scoriet.template_cache.enabled', false);
+            $templateCacheTtl = config('scoriet.template_cache.ttl_hours', 24);
+            $templateAutoPrecompile = config('scoriet.template_cache.auto_precompile', false);
+            $templatePrecompileBatch = config('scoriet.template_cache.precompile_batch_size', 10);
+
+            // Cache Store settings
+            $cacheStore = config('cache.default');
+            $cachePrefix = config('cache.prefix');
+
+            // Redis settings
+            $redisClient = config('database.redis.client', 'phpredis');
+            $redisHost = config('database.redis.default.host', '127.0.0.1');
+            $redisPort = config('database.redis.default.port', '6379');
+            $redisPassword = config('database.redis.default.password');
+            $redisDbDefault = config('database.redis.default.database', '0');
+            $redisDbCache = config('database.redis.cache.database', '1');
+
+            // Redis connectivity test
+            $redisStatus = 'unknown';
+            $redisPingMs = null;
+            $redisError = null;
+            $redisVersion = null;
+            $redisMemory = null;
+            $redisUptime = null;
+
+            try {
+                $pingStart = microtime(true);
+                $pong = Redis::connection('cache')->ping();
+                $pingEnd = microtime(true);
+                $redisPingMs = round(($pingEnd - $pingStart) * 1000, 2);
+                // predis returns a Status object, phpredis returns true or string
+                $pongStr = is_object($pong) ? (string)$pong : $pong;
+                $redisStatus = ($pongStr === true || $pongStr === 'PONG' || $pongStr === '+PONG') ? 'connected' : 'unexpected_response';
+
+                // Get Redis server info
+                $info = Redis::connection('cache')->executeRaw(['INFO', 'server']);
+                if (is_string($info)) {
+                    // Parse redis_version
+                    if (preg_match('/redis_version:(\S+)/', $info, $m)) {
+                        $redisVersion = $m[1];
+                    }
+                    // Parse uptime_in_seconds
+                    if (preg_match('/uptime_in_seconds:(\d+)/', $info, $m)) {
+                        $uptime = (int)$m[1];
+                        $days = floor($uptime / 86400);
+                        $hours = floor(($uptime % 86400) / 3600);
+                        $redisUptime = "{$days}d {$hours}h";
+                    }
+                }
+
+                $memInfo = Redis::connection('cache')->executeRaw(['INFO', 'memory']);
+                if (is_string($memInfo) && preg_match('/used_memory_human:(\S+)/', $memInfo, $m)) {
+                    $redisMemory = $m[1];
+                }
+            } catch (\Exception $e) {
+                $redisStatus = 'error';
+                $redisError = $e->getMessage();
+            }
+
+            // Cache write/read test
+            $cacheWriteRead = 'untested';
+            $cacheTestError = null;
+            try {
+                $testKey = '_scoriet_cache_diagnostic_' . time();
+                Cache::put($testKey, 'test_value', now()->addSeconds(10));
+                $readBack = Cache::get($testKey);
+                Cache::forget($testKey);
+                $cacheWriteRead = ($readBack === 'test_value') ? 'ok' : 'write_ok_read_failed';
+            } catch (\Exception $e) {
+                $cacheWriteRead = 'error';
+                $cacheTestError = $e->getMessage();
+            }
+
+            return response()->json([
+                'template_cache' => [
+                    'enabled' => [
+                        'value' => $templateCacheEnabled,
+                        'is_set' => $envIsSet('TEMPLATE_CACHE_ENABLED'),
+                        'env_key' => 'TEMPLATE_CACHE_ENABLED',
+                        'default' => false,
+                    ],
+                    'ttl_hours' => [
+                        'value' => $templateCacheTtl,
+                        'is_set' => $envIsSet('TEMPLATE_CACHE_TTL_HOURS'),
+                        'env_key' => 'TEMPLATE_CACHE_TTL_HOURS',
+                        'default' => 24,
+                    ],
+                    'auto_precompile' => [
+                        'value' => $templateAutoPrecompile,
+                        'is_set' => $envIsSet('TEMPLATE_AUTO_PRECOMPILE'),
+                        'env_key' => 'TEMPLATE_AUTO_PRECOMPILE',
+                        'default' => false,
+                    ],
+                    'precompile_batch_size' => [
+                        'value' => $templatePrecompileBatch,
+                        'is_set' => $envIsSet('TEMPLATE_PRECOMPILE_BATCH_SIZE'),
+                        'env_key' => 'TEMPLATE_PRECOMPILE_BATCH_SIZE',
+                        'default' => 10,
+                    ],
+                ],
+                'cache_store' => [
+                    'driver' => [
+                        'value' => $cacheStore,
+                        'is_set' => $envIsSet('CACHE_STORE'),
+                        'env_key' => 'CACHE_STORE',
+                        'default' => 'file',
+                    ],
+                    'prefix' => [
+                        'value' => $cachePrefix,
+                        'is_set' => $envIsSet('CACHE_PREFIX'),
+                        'env_key' => 'CACHE_PREFIX',
+                    ],
+                    'write_read_test' => $cacheWriteRead,
+                    'write_read_error' => $cacheTestError,
+                ],
+                'redis' => [
+                    'client' => [
+                        'value' => $redisClient,
+                        'env_key' => 'REDIS_CLIENT',
+                    ],
+                    'host' => [
+                        'value' => $redisHost,
+                        'env_key' => 'REDIS_HOST',
+                    ],
+                    'port' => [
+                        'value' => $redisPort,
+                        'env_key' => 'REDIS_PORT',
+                    ],
+                    'password_set' => !empty($redisPassword),
+                    'database_default' => $redisDbDefault,
+                    'database_cache' => $redisDbCache,
+                    'status' => $redisStatus,
+                    'ping_ms' => $redisPingMs,
+                    'error' => $redisError,
+                    'version' => $redisVersion,
+                    'memory_used' => $redisMemory,
+                    'uptime' => $redisUptime,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to get cache config',
                 'message' => $e->getMessage(),
             ], 500);
         }

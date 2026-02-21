@@ -289,7 +289,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     const handleDelete = (attachment: Attachment) => {
         confirmDialog({
             message: `${t.projectattachmentspanel268}"${attachment.original_filename}"${t.projectattachmentspanel268_2}`,
-            header: 'Anhang löschen',
+            header: t.projectattachmentspanel292,
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
             accept: async () => {
@@ -333,7 +333,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 <span className="text-xs" style={{ color: colors.textMuted }}>{rowData.formatted_size}</span>
             </div>
             {rowData.is_pinned && (
-                <i className="pi pi-bookmark-fill text-yellow-400 ml-2" title="Angeheftet"></i>
+                <i className="pi pi-bookmark-fill text-yellow-400 ml-2" title={t.projectattachmentspanel336}></i>
             )}
         </div>
     );
@@ -348,7 +348,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
     const dateTemplate = (rowData: Attachment) => (
         <span className="text-sm" style={{ color: colors.textMuted }}>
-            {new Date(rowData.created_at).toLocaleDateString('de-DE', {
+            {new Date(rowData.created_at).toLocaleDateString(currentLanguage, {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -430,7 +430,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm" style={{ color: colors.textMuted }}>
-                        {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
+                        {attachments.length} {attachments.length === 1 ? t.projectattachmentspanel433 : t.projectattachmentspanel433_2}
                     </span>
                 </div>
             </div>
@@ -565,7 +565,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
             {/* Edit Dialog */}
             <Dialog
-                header="Anhang bearbeiten"
+                header={t.projectattachmentspanel568}
                 visible={editDialogVisible}
                 onHide={() => setEditDialogVisible(false)}
                 style={{ width: '500px' }}
@@ -584,7 +584,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Kategorie</label>
+                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.projectattachmentspanel587}</label>
                             <Dropdown
                                 value={editForm.category}
                                 options={Object.entries(categories).map(([value, label]) => ({ label, value }))}
@@ -594,7 +594,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Beschreibung</label>
+                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.projectattachmentspanel597}</label>
                             <InputTextarea
                                 value={editForm.description}
                                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}

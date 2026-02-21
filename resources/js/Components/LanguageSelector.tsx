@@ -97,7 +97,7 @@ export default function LanguageSelector({
             className="text-xs font-semibold uppercase tracking-wide mb-2 px-2"
             style={{ color: colors.textPrimary }}
           >
-            Choose Language
+            {t.languageselector100}
           </div>
           {supportedLanguages.map((lang: LanguageOption) => (
             <button

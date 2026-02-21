@@ -210,11 +210,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         updateAuthStatus();
       } else {
         const data = await response.json();
-        alert(data.message || 'Freischaltung fehlgeschlagen');
+        alert(data.message || t.newnavigationpanel213);
       }
     } catch (error) {
-      console.error('Error unlocking form designer:', error);
-      alert('Fehler beim Freischalten');
+      console.error(t.newnavigationpanel216, error);
+      alert(t.newnavigationpanel217);
     } finally {
       setFormPaywallLoading(false);
     }
@@ -332,7 +332,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       command: () => onOpenPanel('home')
     },
     {
-      label: 'Project Setup Wizard',
+      label: t.newnavigationpanel335,
       icon: 'pi pi-sparkles',
       command: () => setShowWizard(true)
     },
@@ -387,11 +387,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: t.navAgileMethod || 'Agile Methods',
+          label: t.navAgileMethod || t.newnavigationpanel390,
           icon: 'pi pi-chart-line',
           items: [
             {
-              label: t.newnavigationpanel357 || 'Kanban Board',
+              label: t.newnavigationpanel357 || t.newnavigationpanel394,
               icon: 'pi pi-th-large',
               command: () => onOpenPanel('kanban-board')
             },
@@ -422,13 +422,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('template-management')
         },
         {
-          label: 'Template Store',
+          label: t.newnavigationpanel425,
           icon: 'pi pi-shopping-cart',
           command: () => onOpenPanel('template-store')
         },
         // Only show Template Review for Inner Core members
         ...(isInnerCore ? [{
-          label: 'Template Review',
+          label: t.newnavigationpanel431,
           icon: 'pi pi-star-fill',
           command: () => onOpenPanel('template-review')
         }] : []),
@@ -443,16 +443,16 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       ]
     },
     {
-      label: 'Formulare',
+      label: t.newnavigationpanel446,
       icon: 'pi pi-window-maximize',
       items: [
         {
-          label: 'Formular Management 💰',
+          label: t.newnavigationpanel450,
           icon: 'pi pi-list',
           command: () => checkFormDesignerAccess('formset-management')
         },
         {
-          label: 'Formular Editor 💰',
+          label: t.newnavigationpanel455,
           icon: 'pi pi-pencil',
           command: () => checkFormDesignerAccess('form-designer')
         }
@@ -517,7 +517,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           separator: true
         },
         {
-          label: 'Code Anpassungen 💰',
+          label: t.newnavigationpanel520,
           icon: 'pi pi-sliders-h',
           command: () => onOpenPanel('code-adjustments')
         },
@@ -526,7 +526,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             separator: true
           },
           {
-            label: 'Cache Debug',
+            label: t.newnavigationpanel529,
             icon: 'pi pi-server',
             command: () => onOpenPanel('cache-debug')
           }
@@ -549,18 +549,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             command: () => onOpenPanel('language-management')
           },
           {
-            label: 'Auszahlungen',
+            label: t.newnavigationpanel552,
             icon: 'pi pi-wallet',
             command: () => onOpenPanel('payout-admin')
           },
           {
-            label: 'Performance',
+            label: t.newnavigationpanel557,
             icon: 'pi pi-chart-line',
             command: () => onOpenPanel('performance-metrics')
           },
           // Show Invite Management only for system user when registration is closed
           ...(userType === 'system' && !registrationOpen ? [{
-            label: 'Registration Invites',
+            label: t.newnavigationpanel563,
             icon: 'pi pi-user-plus',
             command: () => onOpenPanel('invite-management')
           }] : []),
@@ -673,7 +673,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 rounded transition-colors w-full flex justify-center nav-hover-btn"
-          title={isCollapsed ? 'Expand Menu' : t.panelsewnavigationpanel384}
+          title={isCollapsed ? t.newnavigationpanel676 : t.panelsewnavigationpanel384}
         >
           <i className={`pi ${isCollapsed ? 'pi-angle-right' : 'pi-angle-left'}`} style={{ color: colors.textMuted }}></i>
         </button>
@@ -683,7 +683,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       <div className="flex-1 p-4">
         {!isCollapsed ? (
           <div className="mb-4">
-            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>Navigation</div>
+            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>{t.newnavigationpanel686}</div>
             <TieredMenu
               model={navigationItems}
               style={{ 
@@ -720,7 +720,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               <button
                 onClick={() => setShowWizard(true)}
                 className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors"
-                title="Project Setup Wizard"
+                title={t.newnavigationpanel723}
               >
                 <i className="pi pi-sparkles" style={{ color: colors.textSecondary }}></i>
               </button>
@@ -767,7 +767,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <div className="relative group/teams">
                     <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-users"></i>
-                      <span>Teams</span>
+                      <span>{t.newnavigationpanel770}</span>
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Teams */}
@@ -775,7 +775,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="p-2">
                         <button onClick={() => onOpenPanel('team-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-cog"></i>
-                          <span>Team Management 💰</span>
+                          <span>{t.newnavigationpanel778}</span>
                         </button>
                       </div>
                     </div>
@@ -827,13 +827,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </button>
                   <button onClick={() => onOpenPanel('template-store')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-shopping-cart"></i>
-                    <span>Template Store</span>
+                    <span>{t.newnavigationpanel830}</span>
                   </button>
                   {/* Only show Template Review for Inner Core members */}
                   {isInnerCore && (
                     <button onClick={() => onOpenPanel('template-review')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-star-fill text-yellow-400"></i>
-                      <span>Template Review</span>
+                      <span>{t.newnavigationpanel836}</span>
                     </button>
                   )}
                   <div className="border-t nav-separator my-2"></div>
@@ -848,18 +848,18 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             {/* Formulare - Top Level */}
             <div className="relative group">
               <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
-                <i className="pi pi-window-maximize nav-icon-color" title="Formulare"></i>
+                <i className="pi pi-window-maximize nav-icon-color" title={t.newnavigationpanel851}></i>
               </button>
               {/* Popup submenu for Formulare */}
               <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <button onClick={() => checkFormDesignerAccess('formset-management')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-list"></i>
-                    <span>Formular Management 💰</span>
+                    <span>{t.newnavigationpanel858}</span>
                   </button>
                   <button onClick={() => checkFormDesignerAccess('form-designer')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-pencil"></i>
-                    <span>Formular Editor 💰</span>
+                    <span>{t.newnavigationpanel862}</span>
                   </button>
                 </div>
               </div>
@@ -910,7 +910,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 <div className="p-2">
                   <button onClick={() => onOpenPanel('debug-manual-generator')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-wrench"></i>
-                    <span>Debug Manual Generator</span>
+                    <span>{t.newnavigationpanel913}</span>
                   </button>
                   <button onClick={() => onOpenPanel('code-generation')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-play"></i>
@@ -982,7 +982,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       <div className="p-4 border-t nav-separator">
         {!isCollapsed ? (
           <>
-            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>Account</div>
+            <div className="text-xs uppercase tracking-wide mb-2" style={{ color: colors.textMuted }}>{t.newnavigationpanel985}</div>
 
             {/* Credits Display */}
             {isLoggedIn && (
@@ -990,7 +990,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <i className="pi pi-wallet" style={{ color: colors.warningText }}></i>
-                    <span className="text-sm" style={{ color: colors.textSecondary }}>Credits</span>
+                    <span className="text-sm" style={{ color: colors.textSecondary }}>{t.newnavigationpanel993}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold" style={{ color: colors.warningText }}>{userCredits}</span>
@@ -999,7 +999,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                         onClick={() => onOpenModal?.('plan')}
                         className="text-xs px-2 py-1 rounded transition-colors"
                         style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
-                        title="Buy Credits"
+                        title={t.newnavigationpanel1002}
                       >
                         <i className="pi pi-plus"></i>
                       </button>
@@ -1011,7 +1011,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <div className="flex items-center space-x-1">
                       <i className="pi pi-star-fill text-xs" style={{ color: colors.accent }}></i>
                       <span className="text-xs font-semibold" style={{ color: colors.accent }}>
-                        Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
+                        Patron {patronType === 'monthly' ? t.newnavigationpanel1014 : t.newnavigationpanel1014_2}
                       </span>
                     </div>
                   </div>
@@ -1040,7 +1040,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 {/* Popup for credits */}
                 <div className="absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible transition-all duration-200 z-50">
                   <div className="p-3">
-                    <div className="text-xs mb-1" style={{ color: colors.textMuted }}>Your Credits</div>
+                    <div className="text-xs mb-1" style={{ color: colors.textMuted }}>{t.newnavigationpanel1043}</div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-2xl font-bold" style={{ color: colors.warningText }}>{userCredits}</span>
                       {!isDemoMode && (
@@ -1049,7 +1049,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           className="text-xs px-2 py-1 rounded"
                           style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
                         >
-                          Buy
+                          {t.newnavigationpanel1052}
                         </button>
                       )}
                     </div>
@@ -1057,7 +1057,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <div className="flex items-center space-x-1 mt-2 pt-2 border-t nav-separator">
                         <i className="pi pi-star-fill text-xs" style={{ color: colors.accent }}></i>
                         <span className="text-xs" style={{ color: colors.accent }}>
-                          Patron {patronType === 'monthly' ? 'Monthly' : 'Annual'}
+                          Patron {patronType === 'monthly' ? t.newnavigationpanel1060 : t.newnavigationpanel1060_2}
                         </span>
                       </div>
                     )}
@@ -1133,13 +1133,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <>
                       <button onClick={() => onOpenModal?.('login')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                         <i className="pi pi-sign-in"></i>
-                        <span>Login</span>
+                        <span>{t.newnavigationpanel1136}</span>
                       </button>
                       {/* 🎯 Hide "Register" button in DEMO mode */}
                       {!isDemoMode && (
                         <button onClick={() => onOpenModal?.('register')} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-user-plus"></i>
-                          <span>Register</span>
+                          <span>{t.newnavigationpanel1142}</span>
                         </button>
                       )}
                     </>
@@ -1178,7 +1178,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 localStorage.setItem('scoriet_selected_project_id', createdProjectId.toString());
               }
             } catch (err) {
-              console.error('Error loading new project:', err);
+              console.error(t.newnavigationpanel1181, err);
             }
           }
         }}
@@ -1194,7 +1194,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         header={
           <div className="flex items-center gap-2">
             <i className="pi pi-lock text-yellow-500"></i>
-            <span>Formular Designer - Premium Feature 💰</span>
+            <span>{t.newnavigationpanel1197}</span>
           </div>
         }
         style={{ width: '450px' }}
@@ -1204,10 +1204,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         <div className="space-y-4">
           <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4">
             <p className="text-yellow-800 text-sm mb-2">
-              <strong>Der Formular Designer ist ein Premium Feature.</strong>
+              <strong>{t.newnavigationpanel1207}</strong>
             </p>
             <p className="text-gray-600 text-sm">
-              Schalte den Formular Designer für <strong>50 Credits einmalig</strong> frei und nutze ihn unbegrenzt!
+              {t.newnavigationpanel1210}<strong>{t.newnavigationpanel1210_2}</strong>{t.newnavigationpanel1210_3}
             </p>
           </div>
 
@@ -1227,7 +1227,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 <span className={`font-bold ${formAccessInfo.credits >= formAccessInfo.requiredCredits ? 'text-green-600' : 'text-red-600'}`}>
                   {formAccessInfo.credits >= formAccessInfo.requiredCredits
                     ? formAccessInfo.credits - formAccessInfo.requiredCredits
-                    : `${formAccessInfo.requiredCredits - formAccessInfo.credits} fehlen`}
+                    : `${formAccessInfo.requiredCredits - formAccessInfo.credits}${t.newnavigationpanel1230}`}
                 </span>
               </div>
             </div>

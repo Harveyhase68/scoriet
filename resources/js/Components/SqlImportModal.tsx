@@ -121,7 +121,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   const handleCancelTask = async () => {
     if (!serviceTaskId) return;
 
-    const confirmed = window.confirm('Do you want to cancel this import task? This cannot be undone.');
+    const confirmed = window.confirm(t.sqlimportmodal124);
     if (!confirmed) return;
 
     try {
@@ -137,11 +137,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         },
       });
 
-      setServiceLog(prev => [...prev, '', '🚫 Import task cancelled by user']);
+      setServiceLog(prev => [...prev, '', t.sqlimportmodal140]);
       setServicePolling(false);
       resetServiceState();
     } catch (err) {
-      setServiceLog(prev => [...prev, `❌ Failed to cancel task: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+      setServiceLog(prev => [...prev, `${t.sqlimportmodal144}${err instanceof Error ? err.message : t.sqlimportmodal144_2}`]);
     }
   };
 
@@ -270,25 +270,25 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           if (status === 'pending' || status === 'processing') {
             // Task is still running, resume polling
             if (!servicePolling) {
-              setServiceLog(prev => [...prev, '', '🔄 Resuming import monitoring...']);
+              setServiceLog(prev => [...prev, '', t.sqlimportmodal273]);
               setServicePolling(true);
               startPolling(serviceTaskId, token);
             }
           } else if (status === 'completed') {
-            if (!serviceLog.some(log => log.includes('Import was completed while modal was closed'))) {
-              setServiceLog(prev => [...prev, '', '✅ Import was completed while modal was closed!']);
+            if (!serviceLog.some(log => log.includes(t.sqlimportmodal278))) {
+              setServiceLog(prev => [...prev, '', t.sqlimportmodal279]);
             }
             setServiceTaskId(null); // Clear so user can start new import
           } else if (status === 'failed') {
-            if (!serviceLog.some(log => log.includes('Import failed'))) {
-              setServiceLog(prev => [...prev, '', `❌ Import failed: ${result.task.error_message || 'Unknown error'}`, '', '💡 You can start a new import now.']);
+            if (!serviceLog.some(log => log.includes(t.sqlimportmodal283))) {
+              setServiceLog(prev => [...prev, '', `${t.sqlimportmodal284}${result.task.error_message || t.sqlimportmodal284_2}`, '', t.sqlimportmodal284_3]);
             }
             setServiceTaskId(null); // Clear so button becomes active again
           }
         }
       })
       .catch(err => {
-        console.error('Failed to check task status:', err);
+        console.error(t.sqlimportmodal291, err);
       });
     } else {
       // No task ID yet - check if there's any pending/processing task for this user
@@ -305,9 +305,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           const task = result.task;
           setServiceTaskId(task.id);
           setServiceLog([
-            '🔄 Found active import task from previous session',
-            `📋 Task ID: ${task.id}`,
-            `📊 Status: ${task.status}`,
+            t.sqlimportmodal308,
+            `${t.sqlimportmodal309}${task.id}`,
+            `${t.sqlimportmodal310}${task.status}`,
             '',
           ]);
 
@@ -315,14 +315,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             setServicePolling(true);
             startPolling(task.id, token);
           } else if (task.status === 'completed') {
-            setServiceLog(prev => [...prev, '✅ Task completed successfully!']);
+            setServiceLog(prev => [...prev, t.sqlimportmodal318]);
           } else if (task.status === 'failed') {
-            setServiceLog(prev => [...prev, `❌ Task failed: ${task.error_message || 'Unknown error'}`]);
+            setServiceLog(prev => [...prev, `${t.sqlimportmodal320}${task.error_message || t.sqlimportmodal320_2}`]);
           }
         }
       })
       .catch(err => {
-        console.error('Failed to check for active tasks:', err);
+        console.error(t.sqlimportmodal325, err);
       });
     }
   }, [isOpen, selectedProject]);
@@ -387,7 +387,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        setError(result.error || 'Validation failed');
+        setError(result.error || t.sqlimportmodal390);
         return false;
       }
 
@@ -412,8 +412,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
       return true; // All good, proceed with import
     } catch (err) {
-      console.error('FK validation error:', err);
-      setError(err instanceof Error ? err.message : 'Validation failed');
+      console.error(t.sqlimportmodal415, err);
+      setError(err instanceof Error ? err.message : t.sqlimportmodal416);
       return false;
     } finally {
       setValidating(false);
@@ -458,8 +458,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       } catch {
         // If JSON parsing fails, get text response for debugging
         const textResponse = await response.text();
-        console.error('SQL Import Error - Response:', textResponse);
-        throw new Error(`Server Error (${response.status}): ${response.statusText}\n\nResponse: ${textResponse.substring(0, 500)}${textResponse.length > 500 ? '...' : ''}`);
+        console.error(t.sqlimportmodal461, textResponse);
+        throw new Error(`${t.sqlimportmodal462}(${response.status}): ${response.statusText}\n\n${t.sqlimportmodal462}${textResponse.substring(0, 500)}${textResponse.length > 500 ? '...' : ''}`);
       }
 
       if (!response.ok || !result.success) {
@@ -471,19 +471,19 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         }
 
         if (result.suggestion) {
-          errorMessage += `\n\nSuggestion: ${result.suggestion}`;
+          errorMessage += `\n\n${t.sqlimportmodal474}${result.suggestion}`;
         }
 
         if (result.sql_location) {
-          errorMessage += `\n\nSQL Location: ${result.sql_location}`;
+          errorMessage += `\n\n${t.sqlimportmodal478}${result.sql_location}`;
         }
 
         if (result.debug_file && result.debug_line) {
-          errorMessage += `\n\nDebug Info: ${result.debug_file}:${result.debug_line}`;
+          errorMessage += `\n\n${t.sqlimportmodal482}${result.debug_file}:${result.debug_line}`;
         }
 
         // Add full result for debugging
-        console.error('SQL Import Error - Full Response:', result);
+        console.error(t.sqlimportmodal486, result);
 
         throw new Error(errorMessage);
       }
@@ -505,7 +505,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       }
 
       // Use a simple alert-style success state (reuse error display with different styling)
-      setSuccessMessage(`🎉 Import successful! ${tableCount} table(s) imported. You can close this window or import more.`);
+      setSuccessMessage(`${t.sqlimportmodal508}${tableCount}${t.sqlimportmodal508_2}`);
 
       // Reload schemas to show updated version numbers
       await loadEditableSchemas();
@@ -555,12 +555,12 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     setTestingConnection(true);
     setError(null);
     setConnectionTestResult(null);
-    setServiceLog(['🔌 Testing database connection...']);
+    setServiceLog([t.sqlimportmodal558]);
 
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.sqlimportmodal563);
       }
 
       // Create connection test task
@@ -588,10 +588,10 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to create connection test task');
+        throw new Error(result.message || t.sqlimportmodal591);
       }
 
-      setServiceLog(prev => [...prev, `✅ Test task created (ID: ${result.task_id})`, '⏳ Waiting for service...']);
+      setServiceLog(prev => [...prev, `${t.sqlimportmodal594}${result.task_id})`, t.sqlimportmodal594_2]);
 
       // Poll for result
       const taskId = result.task_id;
@@ -633,10 +633,10 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
               setServiceLog(prev => [
                 ...prev,
-                `✅ Connection successful!`,
-                `📊 Server: ${taskResult.server_version || 'Unknown'}`,
-                `📁 Found ${dbCount} database(s)`,
-                ...(schemaCount > 0 ? [`📋 Found ${schemaCount} schema(s)`] : []),
+                `${t.sqlimportmodal636}`,
+                `${t.sqlimportmodal637}${taskResult.server_version || t.sqlimportmodal637_2}`,
+                `${t.sqlimportmodal638}${dbCount}${t.sqlimportmodal638_2}`,
+                ...(schemaCount > 0 ? [`${t.sqlimportmodal639}${schemaCount}${t.sqlimportmodal639_2}`] : []),
               ]);
 
               // Auto-select database if only one available
@@ -655,61 +655,61 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             } else {
               setConnectionTestResult({
                 success: false,
-                error: taskResult.error || 'Connection failed',
+                error: taskResult.error || t.sqlimportmodal658,
               });
-              setServiceLog(prev => [...prev, `❌ ${taskResult.error || 'Connection failed'}`]);
-              setError(taskResult.error || 'Connection failed');
+              setServiceLog(prev => [...prev, `❌ ${taskResult.error || t.sqlimportmodal660}`]);
+              setError(taskResult.error || t.sqlimportmodal661);
             }
           } else if (taskData.status === 'failed') {
             clearInterval(pollInterval);
             setTestingConnection(false);
             setConnectionTestResult({
               success: false,
-              error: taskData.error_message || 'Connection test failed',
+              error: taskData.error_message || t.sqlimportmodal668,
             });
-            setServiceLog(prev => [...prev, `❌ ${taskData.error_message || 'Connection test failed'}`]);
-            setError(taskData.error_message || 'Connection test failed');
+            setServiceLog(prev => [...prev, `❌ ${taskData.error_message || t.sqlimportmodal670}`]);
+            setError(taskData.error_message || t.sqlimportmodal671);
           } else if (pollCount >= maxPolls) {
             clearInterval(pollInterval);
             setTestingConnection(false);
-            setServiceLog(prev => [...prev, '⏱️ Timeout: Service did not respond in 30 seconds']);
-            setError('Connection test timeout - service may be offline');
+            setServiceLog(prev => [...prev, t.sqlimportmodal675]);
+            setError(t.sqlimportmodal676);
           }
         } catch (err) {
           clearInterval(pollInterval);
           setTestingConnection(false);
-          setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-          setError(err instanceof Error ? err.message : 'Failed to check test status');
+          setServiceLog(prev => [...prev, `${t.sqlimportmodal681}${err instanceof Error ? err.message : t.sqlimportmodal681_2}`]);
+          setError(err instanceof Error ? err.message : t.sqlimportmodal682);
         }
       }, 1000); // Poll every second for quick feedback
 
     } catch (err) {
       setTestingConnection(false);
-      setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-      setError(err instanceof Error ? err.message : 'Failed to start connection test');
+      setServiceLog(prev => [...prev, `${t.sqlimportmodal688}${err instanceof Error ? err.message : t.sqlimportmodal688_2}`]);
+      setError(err instanceof Error ? err.message : t.sqlimportmodal689);
     }
   };
 
   const handleServiceImport = async () => {
     if (!selectedSchemaId || !serviceDatabase) {
-      setError('Please fill in all required fields (Database and Target Schema)');
+      setError(t.sqlimportmodal695);
       return;
     }
 
     // Check if there's already a running task
     if (serviceTaskId) {
-      setError('An import task is already running. Please cancel it first or wait for it to complete.');
+      setError(t.sqlimportmodal701);
       return;
     }
 
     try {
       setError(null);
       setServicePolling(true);
-      setServiceLog(['🚀 Starting database import...']);
+      setServiceLog([t.sqlimportmodal708]);
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error(t.sqlimportmodal712);
       }
 
       // Create task
@@ -741,19 +741,19 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to create import task');
+        throw new Error(result.message || t.sqlimportmodal744);
       }
 
       setServiceTaskId(result.task_id);
-      setServiceLog(prev => [...prev, `✅ Task created (ID: ${result.task_id})`, '⏳ Waiting for service to pick up task...']);
+      setServiceLog(prev => [...prev, `${t.sqlimportmodal748}${result.task_id})`, t.sqlimportmodal748_2]);
 
       // Start polling
       startPolling(result.task_id, token);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start import');
+      setError(err instanceof Error ? err.message : t.sqlimportmodal754);
       setServicePolling(false);
-      setServiceLog(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+      setServiceLog(prev => [...prev, `${t.sqlimportmodal756}${err instanceof Error ? err.message : t.sqlimportmodal756_2}`]);
     }
   };
 
@@ -781,7 +781,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch task status');
+          throw new Error(result.message || t.sqlimportmodal784);
         }
 
         const taskData = result.task;
@@ -789,13 +789,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         // Update log based on status
         if (taskData.status === 'processing') {
           setServiceLog(prev => {
-            if (!prev.some(log => log.includes('Service picked up task'))) {
-              return [...prev, '📡 Service picked up task', '🔌 Service connecting to database...', '✅ Database connected successfully', '📊 Reading database schema...'];
+            if (!prev.some(log => log.includes(t.sqlimportmodal792))) {
+              return [...prev, t.sqlimportmodal793, t.sqlimportmodal793_2, t.sqlimportmodal793_3, t.sqlimportmodal793_4];
             }
             return prev;
           });
         } else if (taskData.status === 'completed') {
-          setServiceLog(prev => [...prev, '✅ Schema read successfully', '📤 Sending schema to Scoriet.dev...', '✅ Schema imported and stored!', '', '🎉 Import completed successfully! You can close this window.']);
+          setServiceLog(prev => [...prev, t.sqlimportmodal798, t.sqlimportmodal798_2, t.sqlimportmodal798_3, '', t.sqlimportmodal798_4]);
           setServicePolling(false);
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -805,8 +805,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           // Call onSuccess but keep modal open
           onSuccess(result);
         } else if (taskData.status === 'failed') {
-          const errorMsg = taskData.error_message || 'Unknown error occurred';
-          setServiceLog(prev => [...prev, `❌ Import failed: ${errorMsg}`, '', '💡 You can start a new import now.']);
+          const errorMsg = taskData.error_message || t.sqlimportmodal808;
+          setServiceLog(prev => [...prev, `${t.sqlimportmodal809}${errorMsg}`, '', t.sqlimportmodal809_2]);
           setError(`Import failed: ${errorMsg}`);
           setServicePolling(false);
           setServiceTaskId(null); // Clear task ID so button becomes active again
@@ -819,8 +819,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         // Timeout check
         if (pollCount >= maxPolls) {
           setServiceLog(prev => [...prev,
-            '⏱️ Timeout: Service did not respond in time (5 minutes)',
-            '❌ Marking task as failed...',
+            t.sqlimportmodal822,
+            t.sqlimportmodal823,
           ]);
 
           // Mark task as failed on backend (no retry for timeout!)
@@ -832,18 +832,18 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
               'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
-              error_message: 'Timeout: Service did not respond within 5 minutes',
+              error_message: t.sqlimportmodal835,
               allow_retry: false, // Don't auto-retry timeouts
             }),
           })
           .then(() => {
-            setServiceLog(prev => [...prev, '✅ Task marked as failed due to timeout', '', '💡 You can start a new import now.']);
+            setServiceLog(prev => [...prev, t.sqlimportmodal840, '', t.sqlimportmodal840_2]);
           })
           .catch(() => {
-            setServiceLog(prev => [...prev, '⚠️ Failed to mark task as failed (already failed?)']);
+            setServiceLog(prev => [...prev, t.sqlimportmodal843]);
           });
 
-          setError('Import timeout - task marked as failed. Service may be offline.');
+          setError(t.sqlimportmodal846);
           setServicePolling(false);
           setServiceTaskId(null); // Clear task ID so button becomes active again
           if (pollIntervalRef.current) {
@@ -853,8 +853,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         }
 
       } catch (err) {
-        setServiceLog(prev => [...prev, `❌ Polling error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-        setError(err instanceof Error ? err.message : 'Failed to check task status');
+        setServiceLog(prev => [...prev, `${t.sqlimportmodal856}${err instanceof Error ? err.message : t.sqlimportmodal856_2}`]);
+        setError(err instanceof Error ? err.message : t.sqlimportmodal857);
         setServicePolling(false);
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
@@ -892,7 +892,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       }}
     >
       <div className="h-full" style={{ backgroundColor: colors.bgSecondary }}>
-        <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>Import database schema from SQL script</p>
+        <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>{t.sqlimportmodal895}</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           {/* Tabs */}
@@ -907,7 +907,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 backgroundColor: activeTab === 'paste' ? colors.bgTertiary : 'transparent'
               }}
             >
-              📝 Paste SQL
+              {t.sqlimportmodal910}
             </button>
             <button
               type="button"
@@ -919,7 +919,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 backgroundColor: activeTab === 'upload' ? colors.bgTertiary : 'transparent'
               }}
             >
-              📁 Upload File
+              {t.sqlimportmodal922}
             </button>
             <button
               type="button"
@@ -931,7 +931,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 backgroundColor: activeTab === 'service' ? colors.bgTertiary : 'transparent'
               }}
             >
-              🔌 Lokaler Import (Service)
+              {t.sqlimportmodal934}
             </button>
           </div>
 
@@ -970,10 +970,10 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   <span className="text-2xl">⚠️</span>
                   <div className="flex-1">
                     <h4 className="font-semibold mb-2" style={{ color: colors.warningText }}>
-                      Missing Foreign Key References
+                      {t.sqlimportmodal973}
                     </h4>
                     <p className="text-sm mb-3" style={{ color: colors.warningText }}>
-                      The imported table(s) reference the following tables which don't exist in the schema:
+                      {t.sqlimportmodal976}
                     </p>
                     <div className="rounded p-3 mb-3" style={{ backgroundColor: colors.bgPrimary }}>
                       <ul className="list-disc list-inside space-y-1" style={{ color: colors.warningText }}>
@@ -984,7 +984,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     </div>
                     {fkDetails.length > 0 && (
                       <div className="text-xs mb-3" style={{ color: colors.textMuted }}>
-                        <p className="mb-1">FK Details:</p>
+                        <p className="mb-1">{t.sqlimportmodal987}</p>
                         {fkDetails.map((fk, index) => (
                           <p key={index} className="font-mono ml-2">
                             {fk.from_table}.{fk.columns.join(', ')} → {fk.to_table}.{fk.references_columns.join(', ')}
@@ -993,8 +993,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       </div>
                     )}
                     <p className="text-sm" style={{ color: colors.warningText }}>
-                      These foreign key constraints will be <strong>skipped</strong> during import.
-                      The table will be imported but without these FK relationships.
+                      {t.sqlimportmodal996}
+                      {t.sqlimportmodal997}
                     </p>
                     <div className="mt-4 flex gap-3">
                       <button
@@ -1002,7 +1002,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
                         style={{ backgroundColor: colors.warningBorder }}
                       >
-                        Import Anyway
+                        {t.sqlimportmodal1005}
                       </button>
                       <button
                         type="button"
@@ -1014,7 +1014,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         className="px-4 py-2 text-white rounded transition-colors hover:opacity-90"
                         style={{ backgroundColor: colors.bgTertiary }}
                       >
-                        Cancel
+                        {t.sqlimportmodal1017}
                       </button>
                     </div>
                   </div>
@@ -1026,18 +1026,18 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Target Schema
+                  {t.sqlimportmodal1029}
                 </label>
                 {preselectedSchemaId ? (
                   <div
                     className="w-full px-3 py-2 rounded"
                     style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textSecondary }}
                   >
-                    {schemas.find(schema => schema.id === preselectedSchemaId)?.name || `Schema ${preselectedSchemaId}`} (v{schemas.find(schema => schema.id === preselectedSchemaId)?.last_version ? schemas.find(schema => schema.id === preselectedSchemaId)!.last_version + 1 : '?'})
+                    {schemas.find(schema => schema.id === preselectedSchemaId)?.name || `${t.sqlimportmodal1036}${preselectedSchemaId}`} (v{schemas.find(schema => schema.id === preselectedSchemaId)?.last_version ? schemas.find(schema => schema.id === preselectedSchemaId)!.last_version + 1 : '?'})
                     <span className="text-xs ml-2" style={{ color: colors.textMuted }}>(pre-selected)</span>
                   </div>
                 ) : loadingSchemas ? (
-                  <div className="text-sm" style={{ color: colors.textMuted }}>Loading schemas...</div>
+                  <div className="text-sm" style={{ color: colors.textMuted }}>{t.sqlimportmodal1040}</div>
                 ) : schemas.length > 0 ? (
                   <select
                     value={selectedSchemaId || ''}
@@ -1059,7 +1059,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Description (optional)
+                  {t.sqlimportmodal1062}
                 </label>
                 <input
                   type="text"
@@ -1074,7 +1074,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
             {/* Import Options */}
             <div className="mb-4 p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
-              <div className="text-sm font-medium mb-3" style={{ color: colors.textSecondary }}>Import Options</div>
+              <div className="text-sm font-medium mb-3" style={{ color: colors.textSecondary }}>{t.sqlimportmodal1077}</div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1084,7 +1084,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     className="w-4 h-4 rounded"
                   />
                   <span className="text-sm" style={{ color: colors.textSecondary }}>
-                    Append to current version (don't create new version)
+                    {t.sqlimportmodal1087}
                   </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -1095,12 +1095,12 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     className="w-4 h-4 rounded"
                   />
                   <span className="text-sm" style={{ color: colors.textSecondary }}>
-                    Skip breaking change check (allow completely new structure)
+                    {t.sqlimportmodal1098}
                   </span>
                 </label>
               </div>
               <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
-                ⚠️ Use these options carefully - they bypass safety checks designed to protect your schema history.
+                {t.sqlimportmodal1103}
               </div>
             </div>
 
@@ -1108,7 +1108,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             {activeTab === 'paste' ? (
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  SQL Script
+                  {t.sqlimportmodal1111}
                 </label>
                 <textarea
                   value={sqlScript}
@@ -1119,8 +1119,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
                 <div className="mt-2 text-xs" style={{ color: colors.textMuted }}>
-                  Supports MySQL and PostgreSQL CREATE TABLE, ALTER TABLE statements and constraints.
-                  Parser is selected based on project database settings.
+                  {t.sqlimportmodal1122}
+                  {t.sqlimportmodal1123}
                 </div>
               </div>
             ) : activeTab === 'service' ? (
@@ -1129,7 +1129,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Connection Type
+                      {t.sqlimportmodal1132}
                     </label>
                     <select
                       value={serviceConnectionType}
@@ -1163,7 +1163,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Host
+                      {t.sqlimportmodal1166}
                     </label>
                     <input
                       type="text"
@@ -1177,7 +1177,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Port
+                      {t.sqlimportmodal1180}
                     </label>
                     <input
                       type="text"
@@ -1191,7 +1191,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Username
+                      {t.sqlimportmodal1194}
                     </label>
                     <input
                       type="text"
@@ -1205,7 +1205,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Password
+                      {t.sqlimportmodal1208}
                     </label>
                     <input
                       type="password"
@@ -1228,7 +1228,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         color: (testingConnection || servicePolling || !serviceHost || !serviceUsername) ? colors.textMuted : 'white'
                       }}
                     >
-                      {testingConnection ? '⏳ Testing...' : '🔌 Test Connection'}
+                      {testingConnection ? t.sqlimportmodal1231 : t.sqlimportmodal1231_2}
                     </button>
                   </div>
                 </div>
@@ -1245,14 +1245,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     {connectionTestResult.success ? (
                       <div>
                         <div className="flex items-center gap-2 font-medium mb-2" style={{ color: colors.successText }}>
-                          <span>✅</span> Connection successful
+                          <span>✅</span>{t.sqlimportmodal1248}
                           {connectionTestResult.server_version && (
                             <span className="text-xs" style={{ color: colors.successText }}>({connectionTestResult.server_version})</span>
                           )}
                         </div>
                         {availableDatabases.length > 0 && (
                           <div className="text-sm" style={{ color: colors.successText }}>
-                            Found {availableDatabases.length} database(s)
+                            {t.sqlimportmodal1255}{availableDatabases.length}{t.sqlimportmodal1255_2}
                           </div>
                         )}
                       </div>
@@ -1268,7 +1268,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Database {availableDatabases.length > 0 && <span className="text-xs" style={{ color: colors.successText }}>({availableDatabases.length} available)</span>}
+                      {t.sqlimportmodal1271}{availableDatabases.length > 0 && <span className="text-xs" style={{ color: colors.successText }}>({availableDatabases.length}{t.sqlimportmodal1271_2})</span>}
                     </label>
                     {availableDatabases.length > 0 ? (
                       <select
@@ -1280,7 +1280,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                           // For PostgreSQL: Re-test connection with selected database to get schemas
                           if (serviceConnectionType === 'postgresql' && selectedDb) {
                             setAvailableSchemas([]);
-                            setServiceLog(prev => [...prev, `📋 Loading schemas for database '${selectedDb}'...`]);
+                            setServiceLog(prev => [...prev, `${t.sqlimportmodal1283}'${selectedDb}'...`]);
 
                             try {
                               const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -1331,7 +1331,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                                   const taskResult = statusResult.task.result || {};
                                   if (taskResult.schemas && taskResult.schemas.length > 0) {
                                     setAvailableSchemas(taskResult.schemas);
-                                    setServiceLog(prev => [...prev, `📋 Found ${taskResult.schemas.length} schema(s): ${taskResult.schemas.join(', ')}`]);
+                                    setServiceLog(prev => [...prev, `${t.sqlimportmodal1334}${taskResult.schemas.length}${t.sqlimportmodal1334_2}${taskResult.schemas.join(', ')}`]);
 
                                     // Auto-select 'public' if available, otherwise first schema
                                     if (taskResult.schemas.includes('public')) {
@@ -1340,13 +1340,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                                       setServiceSchemaName(taskResult.schemas[0]);
                                     }
                                   } else {
-                                    setServiceLog(prev => [...prev, `📋 No schemas found, using 'public'`]);
+                                    setServiceLog(prev => [...prev, `${t.sqlimportmodal1343}`]);
                                     setServiceSchemaName('public');
                                   }
                                 }
                               }, 1000);
                             } catch (err) {
-                              console.error('Failed to load schemas:', err);
+                              console.error(t.sqlimportmodal1349, err);
                             }
                           }
                         }}
@@ -1354,7 +1354,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       >
-                        <option value="">-- Select Database --</option>
+                        <option value="">{t.sqlimportmodal1357}</option>
                         {availableDatabases.map(db => (
                           <option key={db} value={db}>{db}</option>
                         ))}
@@ -1373,12 +1373,12 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Schema Name
+                      {t.sqlimportmodal1376}
                       {serviceConnectionType === 'postgresql' && (
-                        <span className="text-xs ml-1" style={{ color: colors.accent }}>(required for PostgreSQL)</span>
+                        <span className="text-xs ml-1" style={{ color: colors.accent }}>{t.sqlimportmodal1378}</span>
                       )}
                       {serviceConnectionType !== 'postgresql' && (
-                        <span className="text-xs ml-1" style={{ color: colors.textMuted }}>(optional)</span>
+                        <span className="text-xs ml-1" style={{ color: colors.textMuted }}>{t.sqlimportmodal1381}</span>
                       )}
                     </label>
                     {availableSchemas.length > 0 ? (
@@ -1389,7 +1389,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
                       >
-                        <option value="">-- Select Schema --</option>
+                        <option value="">{t.sqlimportmodal1392}</option>
                         {availableSchemas.map(schema => (
                           <option key={schema} value={schema}>{schema}</option>
                         ))}
@@ -1399,7 +1399,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         type="text"
                         value={serviceSchemaName}
                         onChange={(e) => setServiceSchemaName(e.target.value)}
-                        placeholder={serviceConnectionType === 'postgresql' ? 'public' : 'Leave empty to use database name'}
+                        placeholder={serviceConnectionType === 'postgresql' ? 'public' : t.sqlimportmodal1402}
                         className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
                         style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
@@ -1419,9 +1419,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       backgroundColor: (serviceTaskId !== null || testingConnection || !serviceDatabase || !selectedSchemaId || (serviceConnectionType === 'postgresql' && !serviceSchemaName)) ? colors.bgTertiary : colors.accent,
                       color: (serviceTaskId !== null || testingConnection || !serviceDatabase || !selectedSchemaId || (serviceConnectionType === 'postgresql' && !serviceSchemaName)) ? colors.textMuted : 'white'
                     }}
-                    title={serviceTaskId ? 'An import task is already running' : (serviceConnectionType === 'postgresql' && !serviceSchemaName) ? 'Schema name is required for PostgreSQL' : ''}
+                    title={serviceTaskId ? 'An import task is already running' : (serviceConnectionType === 'postgresql' && !serviceSchemaName) ? t.sqlimportmodal1422 : ''}
                   >
-                    {servicePolling ? '⏳ Processing...' : serviceTaskId ? '⏸️ Task Running' : '🚀 Start Import'}
+                    {servicePolling ? t.sqlimportmodal1424 : serviceTaskId ? t.sqlimportmodal1424_2 : t.sqlimportmodal1424_3}
                   </button>
                 </div>
 
@@ -1429,7 +1429,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {serviceLog.length > 0 && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Log
+                      {t.sqlimportmodal1432}
                     </label>
                     <div
                       className="rounded p-4 max-h-48 overflow-y-scroll font-mono text-xs"
@@ -1448,7 +1448,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             ) : (
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Upload SQL File
+                  {t.sqlimportmodal1451}
                 </label>
                 <div
                   className="border-2 border-dashed rounded-lg p-8 text-center"
@@ -1465,9 +1465,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   {sqlScript ? (
                     <div style={{ color: colors.successText }}>
                       <div className="text-2xl mb-2">✅</div>
-                      <p className="font-medium">File loaded successfully!</p>
+                      <p className="font-medium">{t.sqlimportmodal1468}</p>
                       <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                        {sqlScript.length} characters loaded
+                        {sqlScript.length}{t.sqlimportmodal1470}
                       </p>
                       <button
                         type="button"
@@ -1475,15 +1475,15 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         className="mt-3 px-4 py-2 text-white rounded text-sm transition-colors hover:opacity-90"
                         style={{ backgroundColor: colors.accent }}
                       >
-                        Choose Different File
+                        {t.sqlimportmodal1478}
                       </button>
                     </div>
                   ) : (
                     <div style={{ color: colors.textMuted }}>
                       <div className="text-4xl mb-3">📁</div>
-                      <p className="font-medium mb-2">Click to select SQL file</p>
+                      <p className="font-medium mb-2">{t.sqlimportmodal1484}</p>
                       <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                        Supports .sql and .txt files
+                        {t.sqlimportmodal1486}
                       </p>
                       <button
                         type="button"
@@ -1491,7 +1491,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         className="px-6 py-2 text-white rounded transition-colors hover:opacity-90"
                         style={{ backgroundColor: colors.accent }}
                       >
-                        Choose File
+                        {t.sqlimportmodal1494}
                       </button>
                     </div>
                   )}
@@ -1500,7 +1500,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {sqlScript && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Preview (first 500 characters)
+                      {t.sqlimportmodal1503}
                     </label>
                     <div
                       className="rounded p-3 text-xs font-mono max-h-32 overflow-y-auto"
@@ -1528,7 +1528,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 className="px-4 py-2 rounded transition-colors hover:opacity-80"
                 style={{ backgroundColor: colors.buttonPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textInverse }}
               >
-                Cancel
+                {t.sqlimportmodal1531}
               </button>
               {!showFkWarning && (
                 <button
@@ -1543,12 +1543,12 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   {validating ? (
                     <div className="flex items-center">
                       <div className="animate-spin mr-2">⚪</div>
-                      Validating...
+                      {t.sqlimportmodal1546}
                     </div>
                   ) : loading ? (
                     <div className="flex items-center">
                       <div className="animate-spin mr-2">⚪</div>
-                      Importing...
+                      {t.sqlimportmodal1551}
                     </div>
                   ) : (
                     t.sqlimportmodal423
@@ -1569,7 +1569,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
                     style={{ backgroundColor: colors.errorBg }}
                   >
-                    🚫 Cancel Import
+                    {t.sqlimportmodal1572}
                   </button>
                 )}
                 {serviceTaskId && !servicePolling && (
@@ -1579,7 +1579,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     className="px-4 py-2 text-white rounded font-medium transition-colors hover:opacity-90"
                     style={{ backgroundColor: colors.accent }}
                   >
-                    ➕ New Import
+                    {t.sqlimportmodal1582}
                   </button>
                 )}
               </div>

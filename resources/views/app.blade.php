@@ -68,7 +68,6 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="application-name" content="Scoriet">
 
-        @routes
         @if(app()->environment('local'))
             @viteReactRefresh
         @endif

@@ -377,7 +377,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // Update tab title with forceProjectName (when set from Quick Actions or tree view - fixed title with project name)
   useEffect(() => {
     if (filterByProject && updateTabTitle && forceProjectName) {
-      updateTabTitle(`Database Management: ${forceProjectName}`);
+      updateTabTitle(`${t.databasemanagementpanel380}${forceProjectName}`);
     }
   }, [filterByProject, updateTabTitle, forceProjectName]);
 
@@ -507,7 +507,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       const result = await response.json();
       setShowImportDialog(false);
-      setSuccess(`Successfully imported ${result.imported_count} translations (${result.updated_count} updated, ${result.created_count} created)`);
+      setSuccess(`${t.databasemanagementpanel510}${result.imported_count}${t.databasemanagementpanel510_2}(${result.updated_count}${t.databasemanagementpanel510_3}${result.created_count}${t.databasemanagementpanel510_4})`);
     } catch (error) {
       setError(error instanceof Error ? error.message : t.databasemanagementpanel301);
     } finally {
@@ -518,7 +518,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // Pre-check before opening create schema modal
   const handleCreateSchemaClick = async () => {
     if (!currentUser) {
-      setError('Bitte melden Sie sich an, um Datenbanken zu erstellen');
+      setError(t.databasemanagementpanel521);
       return;
     }
 
@@ -578,7 +578,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // Unlock an expired schema subscription (renew for 50 credits)
   const handleUnlockExpiredSchema = async (schema: FloatingSchema) => {
     if (!schema.subscription?.id) {
-      setError('Keine Subscription gefunden für diese Datenbank');
+      setError(t.databasemanagementpanel581);
       return;
     }
 
@@ -607,11 +607,11 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       if (!response.ok) {
         // If not enough credits, show the plan modal
         if (data.required_credits) {
-          setError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
+          setError(`${t.databasemanagementpanel610}${data.required_credits}${t.databasemanagementpanel610_2}${data.current_credits}`);
           setPlanModalInitialTab(1);
           setShowPlanModal(true);
         } else {
-          throw new Error(data.error || data.message || 'Fehler beim Entsperren der Datenbank');
+          throw new Error(data.error || data.message || t.databasemanagementpanel614);
         }
         return;
       }
@@ -633,9 +633,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadMySchemas();
       await loadCommunitySchemas();
 
-      setSuccess(`Datenbank "${schema.name}" wurde erfolgreich entsperrt! (${data.bonus_days || 0} Bonus-Tage erhalten)`);
+      setSuccess(`${t.databasemanagementpanel636}"${schema.name}"${t.databasemanagementpanel636_2}(${data.bonus_days || 0}${t.databasemanagementpanel636_3})`);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Fehler beim Entsperren');
+      setError(error instanceof Error ? error.message : t.databasemanagementpanel638);
     } finally {
       setUnlockingSchema(false);
       setSchemaToUnlock(null);
@@ -668,7 +668,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setError(`${t.databasemanagementpanel671}${errorData.required_credits}${t.databasemanagementpanel671_2}${errorData.current_credits}.`);
           setShowCreateModal(false);
           setCreating(false);
 
@@ -810,7 +810,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setAssociatingSchema(null);
       await loadMySchemas(); // Reload schemas to update the UI
       await loadCommunitySchemas();
-      setSuccess(`Schema successfully ${associationType} to project`);
+      setSuccess(`${t.databasemanagementpanel813}${associationType}${t.databasemanagementpanel813_2}`);
 
     } catch (error) {
       setError(error instanceof Error ? error.message : t.databasemanagementpanel447);
@@ -820,7 +820,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -846,7 +846,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       return (
         <div className="flex items-center gap-1">
           <i className="pi pi-lock text-red-500" />
-          <Tag value="Gesperrt" severity="danger" />
+          <Tag value={t.databasemanagementpanel849} severity="danger" />
         </div>
       );
     }
@@ -854,13 +854,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       return (
         <div className="flex items-center gap-1">
           <i className="pi pi-exclamation-triangle text-yellow-500" />
-          <Tag value={`${schema.subscription.days_remaining} Tage`} severity="warning" />
+          <Tag value={`${schema.subscription.days_remaining}${t.databasemanagementpanel857}`} severity="warning" />
         </div>
       );
     }
     // Only show "Aktiv" if schema has a subscription (not for first free schema)
     if (schema.subscription) {
-      return <Tag value="Aktiv" severity="success" />;
+      return <Tag value={t.databasemanagementpanel863} severity="success" />;
     }
     return null;
   };
@@ -870,7 +870,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     if (schema.is_system_schema) {
       return (
         <Tag
-          value="System"
+          value={t.databasemanagementpanel873}
           severity="info"
         />
       );
@@ -897,7 +897,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     const projects = schema.projects || [];
 
     if (projects.length === 0) {
-      return <span className="text-gray-500 text-sm">Not assigned</span>;
+      return <span className="text-gray-500 text-sm">{t.databasemanagementpanel900}</span>;
     }
 
     // Build tooltip content with all project names
@@ -907,7 +907,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       <div title={tooltipContent}>
         <Tag
           icon="pi pi-link"
-          value={`${projects.length} ${projects.length === 1 ? 'Project' : 'Projects'}`}
+          value={`${projects.length} ${projects.length === 1 ? t.databasemanagementpanel910 : t.databasemanagementpanel910_2}`}
           severity="info"
           className="cursor-help"
         />
@@ -939,7 +939,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       await loadMySchemas();
       await loadCommunitySchemas();
-      setSuccess(`Schema removed from project successfully`);
+      setSuccess(t.databasemanagementpanel942);
 
     } catch (error) {
       setError(error instanceof Error ? error.message : t.databasemanagementpanel536);
@@ -998,7 +998,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setCopyingSchema(null);
       await loadMySchemas();
       await loadCommunitySchemas();
-      setSuccess(`Schema "${copyingSchema.name}" copied successfully as "${copyName}"`);
+      setSuccess(`${t.databasemanagementpanel1001}"${copyingSchema.name}"${t.databasemanagementpanel1001_2}"${copyName}"`);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t.databasemanagementpanel594;
@@ -1013,7 +1013,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
     // Require DELETE confirmation
     if (deleteConfirmText !== 'DELETE') {
-      setError('You must type DELETE to confirm deletion');
+      setError(t.databasemanagementpanel1016+'"DELETE"'+t.databasemanagementpanel1016_2);
       return;
     }
 
@@ -1044,7 +1044,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         result = await response.json();
       } catch {
         const textResult = await response.text();
-        throw new Error(`Server returned invalid JSON. Status: ${response.status}, Text: ${textResult.substring(0, 200)}`);
+        throw new Error(`${t.databasemanagementpanel1047}${response.status},${t.databasemanagementpanel1047_2}${textResult.substring(0, 200)}`);
       }
 
       // If requires force confirmation, show the details and ask for force delete
@@ -1074,7 +1074,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           result = await response.json();
         } catch {
           const textResult = await response.text();
-          throw new Error(`Server returned invalid JSON on force delete. Status: ${response.status}, Text: ${textResult.substring(0, 200)}`);
+          throw new Error(`${t.databasemanagementpanel1077}${response.status},${t.databasemanagementpanel1077_2}${textResult.substring(0, 200)}`);
         }
       }
 
@@ -1089,7 +1089,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setDeleteInfo(null);
       await loadMySchemas();
       await loadCommunitySchemas();
-      setSuccess(`Schema "${deletingSchema.name}" and all related data deleted successfully`);
+      setSuccess(`${t.databasemanagementpanel1092}"${deletingSchema.name}"${t.databasemanagementpanel1092_2}`);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t.databasemanagementpanel683;
@@ -1118,7 +1118,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load projects');
+        throw new Error(t.databasemanagementpanel1121);
       }
 
       const data = await response.json();
@@ -1129,8 +1129,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setLinkedProjectIds(linkedIds);
 
     } catch (error) {
-      console.error('Error loading projects:', error);
-      setError('Fehler beim Laden der Projekte');
+      console.error(t.databasemanagementpanel1132, error);
+      setError(t.databasemanagementpanel1133);
       setAllProjects([]);
       setLinkedProjectIds([]);
     } finally {
@@ -1165,15 +1165,15 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Fehler beim Aktualisieren der Verknüpfungen');
+        throw new Error(errorData.message || t.databasemanagementpanel1168);
       }
 
-      setSuccess('Schema-Verknüpfungen erfolgreich aktualisiert');
+      setSuccess(t.databasemanagementpanel1171);
       setLinkModalVisible(false);
       await loadMySchemas();
       await loadCommunitySchemas();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Fehler beim Aktualisieren der Verknüpfungen';
+      const errorMessage = error instanceof Error ? error.message : t.databasemanagementpanel1176;
       setError(errorMessage);
     }
   };
@@ -1196,13 +1196,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     if (schema.is_soft_locked) {
       return (
         <div className="flex items-center space-x-2">
-          <i className="pi pi-lock text-red-500" title="Datenbank gesperrt" />
+          <i className="pi pi-lock text-red-500" title={t.databasemanagementpanel1199} />
           <Button
             icon={unlockingSchema && schemaToUnlock?.id === schema.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
-            label="50 Credits"
+            label={t.databasemanagementpanel1202}
             className="p-button-rounded p-button-sm"
             style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-            tooltip="Datenbank entsperren (50 Credits)"
+            tooltip={t.databasemanagementpanel1205}
             onClick={() => handleUnlockExpiredSchema(schema)}
             disabled={unlockingSchema}
           />
@@ -1217,7 +1217,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           isLinkedToCurrentProject && currentProjectLink ? (
             <button
               className="inline-flex items-center justify-center w-10 h-10 text-white bg-red-600 hover:bg-red-700 rounded-full text-base font-medium transition-colors duration-200 border border-red-600 hover:border-red-700 shadow-sm hover:shadow-md"
-              title={`Remove from project`}
+              title={t.databasemanagementpanel1220}
               onClick={() => handleRemoveFromProject(schema, currentProjectLink.id)}
             >
               <i className="pi pi-times text-base"></i>
@@ -1353,10 +1353,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
                 { label: t.databasemanagementpanel1353, value: 'all' },
                 { label: t.databasemanagementpanel1354, value: 'private' },
                 { label: t.databasemanagementpanel1355, value: 'public' },
-                ...(isSystemUser ? [{ label: 'System', value: 'system' }] : [])
+                ...(isSystemUser ? [{ label: t.databasemanagementpanel1356, value: 'system' }] : [])
               ]}
               onChange={(e) => setMyTypeFilter(e.value)}
-              placeholder="Type"
+              placeholder={t.databasemanagementpanel1359}
               className="w-32"
               panelClassName="database-dropdown-panel"
             />
@@ -1623,7 +1623,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               filter
               showClear
               maxSelectedLabels={3}
-              selectedItemsLabel="{0} projects selected"
+              selectedItemsLabel={`{0}${t.databasemanagementpanel1626}`}
               panelClassName="database-multiselect-panel"
             />
             <small style={{ color: colors.textMuted }}>
@@ -1842,7 +1842,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={associating}
             />
             <Button
-              label={associating ? "Linking..." : t.databasemanagementpanel1138}
+              label={associating ? t.databasemanagementpanel1845 : t.databasemanagementpanel1138}
               icon={associating ? "pi pi-spinner pi-spin" : "pi pi-link"}
               onClick={handleConfirmAssociation}
               disabled={associating || !selectedProjectForAssociation}
@@ -1872,7 +1872,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               <h4 className="font-bold" style={{ color: colors.errorText }}>{t.databasemanagementpanel1163}</h4>
             </div>
             <p className="text-sm mb-3" style={{ color: colors.errorText }}>
-              This action will permanently delete the schema and <strong>ALL</strong> related data:
+              {t.databasemanagementpanel1875}<strong>{t.databasemanagementpanel1875_2}</strong>{t.databasemanagementpanel1875_3}
             </p>
 
             {deleteInfo && (
@@ -1994,7 +1994,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={exporting}
             />
             <Button
-              label={exporting ? "Exporting..." : t.databasemanagementpanel1280}
+              label={exporting ? t.databasemanagementpanel1997 : t.databasemanagementpanel1280}
               icon={exporting ? "pi pi-spinner pi-spin" : "pi pi-download"}
               onClick={handleExportTranslations}
               disabled={exporting || selectedLanguages.length === 0}
@@ -2120,7 +2120,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={copying}
             />
             <Button
-              label={copying ? "Copying..." : t.databasemanagementpanel1402}
+              label={copying ? t.databasemanagementpanel2123 : t.databasemanagementpanel1402}
               icon={copying ? "pi pi-spinner pi-spin" : "pi pi-copy"}
               onClick={handleConfirmCopy}
               disabled={copying || !copyName.trim()}

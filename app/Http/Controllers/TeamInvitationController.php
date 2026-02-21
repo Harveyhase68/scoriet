@@ -23,7 +23,7 @@ class TeamInvitationController extends Controller
 
         // Check permissions - only owners and admins can invite
         if (!in_array($userRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teaminvitationcontrollerphp26')], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -43,7 +43,7 @@ class TeamInvitationController extends Controller
         // Check if user is already a member
         $existingUser = User::where('username', $request->invited_user_id)->first();
         if ($existingUser && $team->hasUser($existingUser)) {
-            return response()->json(['message' => 'User is already a team member'], 400);
+            return response()->json(['message' => __('teaminvitationcontrollerphp46')], 400);
         }
 
         // Check if there's already a pending invitation
@@ -53,7 +53,7 @@ class TeamInvitationController extends Controller
                                           ->first();
 
         if ($existingInvitation && !$existingInvitation->isExpired()) {
-            return response()->json(['message' => 'User already has a pending invitation'], 400);
+            return response()->json(['message' => __('teaminvitationcontrollerphp56')], 400);
         }
 
         // Create invitation
@@ -67,30 +67,9 @@ class TeamInvitationController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Invitation sent successfully',
+            'message' => __('teaminvitationcontrollerphp70'),
             'invitation' => $invitation->load(['team', 'inviter'])
         ], 201);
-    }
-
-    /**
-     * Get user's received invitations
-     */
-    public function received(): JsonResponse
-    {
-        $user = Auth::user();
-        $username = $user->username ?? $user->name;
-
-        $invitations = TeamInvitation::where('invited_user_id', $username)
-                                   ->where('status', 'pending')
-                                   ->with(['team.owner', 'inviter'])
-                                   ->get()
-                                   ->filter(function($invitation) {
-                                       return !$invitation->isExpired();
-                                   });
-
-        return response()->json([
-            'invitations' => $invitations->values()
-        ]);
     }
 
     /**
@@ -103,7 +82,7 @@ class TeamInvitationController extends Controller
 
         // Check permissions
         if (!in_array($userRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teaminvitationcontrollerphp106')], 403);
         }
 
         $invitations = $team->invitations()->with('inviter')->get();
@@ -111,64 +90,6 @@ class TeamInvitationController extends Controller
         return response()->json([
             'invitations' => $invitations
         ]);
-    }
-
-    /**
-     * Accept invitation
-     */
-    public function accept(string $token): JsonResponse
-    {
-        $invitation = TeamInvitation::where('token', $token)->first();
-
-        if (!$invitation) {
-            return response()->json(['message' => 'Invalid invitation token'], 404);
-        }
-
-        $user = Auth::user();
-        $username = $user->username ?? $user->name;
-
-        // Check if this invitation is for the current user
-        if ($invitation->invited_user_id !== $username) {
-            return response()->json(['message' => 'This invitation is not for you'], 403);
-        }
-
-        if (!$invitation->accept()) {
-            if ($invitation->isExpired()) {
-                return response()->json(['message' => 'Invitation has expired'], 400);
-            }
-            return response()->json(['message' => 'Unable to accept invitation'], 400);
-        }
-
-        return response()->json([
-            'message' => 'Invitation accepted successfully',
-            'team' => $invitation->team->load(['members.user'])
-        ]);
-    }
-
-    /**
-     * Decline invitation
-     */
-    public function decline(string $token): JsonResponse
-    {
-        $invitation = TeamInvitation::where('token', $token)->first();
-
-        if (!$invitation) {
-            return response()->json(['message' => 'Invalid invitation token'], 404);
-        }
-
-        $user = Auth::user();
-        $username = $user->username ?? $user->name;
-
-        // Check if this invitation is for the current user
-        if ($invitation->invited_user_id !== $username) {
-            return response()->json(['message' => 'This invitation is not for you'], 403);
-        }
-
-        if (!$invitation->decline()) {
-            return response()->json(['message' => 'Unable to decline invitation'], 400);
-        }
-
-        return response()->json(['message' => 'Invitation declined']);
     }
 
     /**
@@ -181,46 +102,16 @@ class TeamInvitationController extends Controller
 
         // Check permissions and ownership
         if (!in_array($userRole, ['owner', 'admin']) || $invitation->team_id !== $team->id) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teaminvitationcontrollerphp105')], 403);
         }
 
         if ($invitation->status !== 'pending') {
-            return response()->json(['message' => 'Can only cancel pending invitations'], 400);
+            return response()->json(['message' => __('teaminvitationcontrollerphp109')], 400);
         }
 
         $invitation->update(['status' => 'expired']);
 
-        return response()->json(['message' => 'Invitation cancelled']);
+        return response()->json(['message' => __('teaminvitationcontrollerphp114')]);
     }
 
-    /**
-     * Resend invitation
-     */
-    public function resend(Team $team, TeamInvitation $invitation): JsonResponse
-    {
-        $user = Auth::user();
-        $userRole = $team->getUserRole($user);
-
-        // Check permissions and ownership
-        if (!in_array($userRole, ['owner', 'admin']) || $invitation->team_id !== $team->id) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
-        }
-
-        if ($invitation->status !== 'pending' && $invitation->status !== 'expired') {
-            return response()->json(['message' => 'Can only resend pending or expired invitations'], 400);
-        }
-
-        // Update invitation with new token and expiry
-        $invitation->update([
-            'status' => 'pending',
-            'token' => \Illuminate\Support\Str::random(64),
-            'expires_at' => now()->addDays(7),
-            'updated_at' => now()
-        ]);
-
-        return response()->json([
-            'message' => 'Invitation resent successfully',
-            'invitation' => $invitation->load(['team', 'inviter'])
-        ]);
-    }
 }

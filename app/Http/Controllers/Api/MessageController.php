@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Jobs\SendPushNotificationJob;
 
 class MessageController extends Controller
 {
@@ -71,7 +72,7 @@ class MessageController extends Controller
                 ->map(function ($p) {
                     return [
                         'id' => $p->user->id ?? 0,
-                        'name' => $p->user->name ?? 'Unbekannt',
+                        'name' => $p->user->name ?? __('messagecontrollerphp74'),
                         'username' => $p->user->username ?? null,
                     ];
                 });
@@ -216,13 +217,22 @@ class MessageController extends Controller
                 try {
                     Mail::to($recipient->email)->queue(new NewMessageMail($message, $recipient));
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send message notification email: ' . $e->getMessage());
+                    \Log::error(__('messagecontrollerphp219') . $e->getMessage());
                 }
             }
         }
 
+        // Send push notification to recipients
+        SendPushNotificationJob::dispatch(
+            $validated['recipient_ids'],
+            __('push.new_message'),
+            mb_substr($validated['subject'] ?? $validated['body'], 0, 100),
+            '/',
+            'message'
+        );
+
         return response()->json([
-            'message' => 'Nachricht gesendet',
+            'message' => __('messagecontrollerphp225'),
             'thread' => $thread->load([
                 'messages.sender:id,name,username',
                 'messages.attachments',
@@ -300,13 +310,25 @@ class MessageController extends Controller
                 try {
                     Mail::to($participant->user->email)->queue(new NewMessageMail($message, $participant->user));
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send message notification email: ' . $e->getMessage());
+                    \Log::error(__('messagecontrollerphp303') . $e->getMessage());
                 }
             }
         }
 
+        // Send push notification to other participants
+        $recipientIds = $otherParticipants->pluck('user_id')->toArray();
+        if (!empty($recipientIds)) {
+            SendPushNotificationJob::dispatch(
+                $recipientIds,
+                __('push.new_reply'),
+                mb_substr($validated['body'], 0, 100),
+                '/',
+                'message'
+            );
+        }
+
         return response()->json([
-            'message' => 'Antwort gesendet',
+            'message' => __('messagecontrollerphp309'),
             'reply' => $message,
         ]);
     }
@@ -329,7 +351,7 @@ class MessageController extends Controller
         $thread->removeParticipant($user->id);
 
         return response()->json([
-            'message' => 'Konversation gelöscht',
+            'message' => __('messagecontrollerphp332'),
         ]);
     }
 
@@ -351,7 +373,7 @@ class MessageController extends Controller
             ->update(['last_read_at' => now()]);
 
         return response()->json([
-            'message' => 'Als gelesen markiert',
+            'message' => __('messagecontrollerphp354'),
         ]);
     }
 
@@ -412,7 +434,7 @@ class MessageController extends Controller
 
         if (empty($recipientIds)) {
             return response()->json([
-                'message' => 'Keine Empfänger gefunden',
+                'message' => __('messagecontrollerphp415'),
             ], 400);
         }
 
@@ -447,7 +469,7 @@ class MessageController extends Controller
             ->update(['last_read_at' => now()]);
 
         return response()->json([
-            'message' => 'Broadcast gesendet an ' . count($recipientIds) . ' Benutzer',
+            'message' => __('messagecontrollerphp450_2') . count($recipientIds) . __('messagecontrollerphp450'),
             'recipient_count' => count($recipientIds),
         ]);
     }
@@ -595,7 +617,7 @@ class MessageController extends Controller
 
         foreach ($previousContacts as $contactId) {
             $userIds->push($contactId);
-            $userContext[$contactId] = ['Frühere Konversation'];
+            $userContext[$contactId] = [__('messagecontrollerphp598')];
         }
 
         // 2. Get project members from projects where user is owner
@@ -611,7 +633,7 @@ class MessageController extends Controller
                         if (!isset($userContext[$member->user_id])) {
                             $userContext[$member->user_id] = [];
                         }
-                        $userContext[$member->user_id][] = "Projekt: {$project->name}";
+                        $userContext[$member->user_id][] = __('messagecontrollerphp614')."{$project->name}";
                     }
                 }
             }
@@ -631,7 +653,7 @@ class MessageController extends Controller
                         if (!isset($userContext[$member->user_id])) {
                             $userContext[$member->user_id] = [];
                         }
-                        $teamContext = "Team: {$team->name}";
+                        $teamContext = __('messagecontrollerphp634')."{$team->name}";
                         $userContext[$member->user_id][] = $teamContext;
                     }
                 }
@@ -647,7 +669,7 @@ class MessageController extends Controller
                     if (!isset($userContext[$project->owner_id])) {
                         $userContext[$project->owner_id] = [];
                     }
-                    $userContext[$project->owner_id][] = "Projekt-Besitzer: {$project->name}";
+                    $userContext[$project->owner_id][] = __('messagecontrollerphp650')."{$project->name}";
                 }
             }
         }
@@ -753,7 +775,7 @@ class MessageController extends Controller
 
         if (empty($recipientIds)) {
             return response()->json([
-                'message' => 'Keine Empfänger im Projekt gefunden',
+                'message' => __('messagecontrollerphp756'),
             ], 400);
         }
 
@@ -778,13 +800,13 @@ class MessageController extends Controller
                 try {
                     Mail::to($recipient->email)->queue(new NewMessageMail($thread->messages()->first(), $recipient));
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send message notification: ' . $e->getMessage());
+                    \Log::error(__('messagecontrollerphp781') . $e->getMessage());
                 }
             }
         }
 
         return response()->json([
-            'message' => 'Nachricht an ' . count($recipientIds) . ' Projekt-Mitglieder gesendet',
+            'message' => __('messagecontrollerphp787') . count($recipientIds) . __('messagecontrollerphp787_2'),
             'thread' => $thread->load(['messages.sender:id,name,username', 'participants.user:id,name,username']),
         ]);
     }
@@ -847,7 +869,7 @@ class MessageController extends Controller
 
         if (empty($recipientIds)) {
             return response()->json([
-                'message' => 'Keine anderen Mitglieder im Team gefunden',
+                'message' => __('messagecontrollerphp850'),
             ], 400);
         }
 
@@ -881,7 +903,7 @@ class MessageController extends Controller
         }
 
         return response()->json([
-            'message' => 'Nachricht an ' . count($recipientIds) . __('messagecontrollerphp884'),
+            'message' => __('messagecontrollerphp884') . count($recipientIds) . __('messagecontrollerphp884'),
             'thread' => $thread->load(['messages.sender:id,name,username', 'participants.user:id,name,username']),
         ]);
     }
@@ -917,7 +939,7 @@ class MessageController extends Controller
         // Check credits
         if ($user->credits < Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST) {
             return response()->json([
-                'message' => 'Nicht genügend Credits. Benötigt: ' . Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
+                'message' => __('messagecontrollerphp920') . Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
                 'required' => Subscription::MESSAGE_ATTACHMENTS_UNLOCK_COST,
                 'available' => $user->credits,
             ], 400);

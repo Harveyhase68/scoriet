@@ -3,6 +3,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
+import { Message } from 'primereact/message';
 import { Steps } from 'primereact/steps';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
@@ -60,8 +61,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
       setSuccess(t.forgotpasswordpanel55);
       setCurrentStep(1);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : t.profilemodal346);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.profilemodal346);
     } finally {
       setLoading(false);
     }
@@ -110,8 +111,8 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
         }
       }, 3000);
 
-    } catch {
-      setError(_ instanceof Error ? _.message : t.profilemodal346);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.profilemodal346);
     } finally {
       setLoading(false);
     }
@@ -167,13 +168,13 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
           <form onSubmit={handleRequestReset} className="space-y-4">
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-4">
-                Enter your email address to receive a link to reset your password.
+                {t.forgotpasswordpanel171}
               </p>
             </div>
 
             <div className="field">
               <label htmlFor="email" className="block text-sm font-medium mb-2">
-                E-Mail
+                {t.forgotpasswordpanel177}
               </label>
               <InputText
                 id="email"
@@ -212,13 +213,13 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
           <form onSubmit={handlePasswordReset} className="space-y-4">
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-4">
-                Enter the reset code from the email and your new password.
+                {t.forgotpasswordpanel216}
               </p>
             </div>
 
             <div className="field">
               <label htmlFor="token" className="block text-sm font-medium mb-2">
-                Reset-Code
+                {t.forgotpasswordpanel222}
               </label>
               <InputText
                 id="token"
@@ -233,7 +234,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
 
             <div className="field">
               <label htmlFor="password" className="block text-sm font-medium mb-2">
-                Neues Passwort
+                {t.forgotpasswordpanel237}
               </label>
               <Password
                 id="password"
@@ -255,7 +256,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
 
             <div className="field">
               <label htmlFor="password_confirmation" className="block text-sm font-medium mb-2">
-                Passwort bestätigen
+                {t.forgotpasswordpanel259}
               </label>
               <Password
                 id="password_confirmation"
@@ -282,7 +283,7 @@ export default function ForgotPasswordPanel({ onSwitchPanel }: ForgotPasswordPan
               />
               <Button
                 type="submit"
-                label={loading ? "Zurücksetzen..." : t.authmodalsesetpasswordmodal319}
+                label={loading ? t.forgotpasswordpanel286 : t.authmodalsesetpasswordmodal319}
                 icon={loading ? "pi pi-spinner pi-spin" : "pi pi-check"}
                 className="flex-1"
                 disabled={loading}

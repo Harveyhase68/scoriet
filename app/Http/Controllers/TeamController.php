@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Routing\Controller;
+use App\Jobs\SendPushNotificationJob;
 
 class TeamController extends Controller
 {
@@ -26,7 +27,7 @@ class TeamController extends Controller
             $subscription->checkAndApplySoftLock();
             if ($subscription->is_soft_locked) {
                 return response()->json([
-                    'message' => 'Team ist gesperrt. Bitte erneuern Sie die Subscription um diese Aktion durchzuführen.',
+                    'message' => __('teamcontrollerphp29'),
                     'error_code' => 'TEAM_LOCKED',
                 ], 403);
             }
@@ -200,6 +201,7 @@ class TeamController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9_]+$/',
                 Rule::unique('teams')->where(function ($query) use ($user) {
                     return $query->where('project_owner_id', $user->id);
                 })
@@ -211,7 +213,7 @@ class TeamController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('teamcontrollerphp214'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -295,7 +297,7 @@ class TeamController extends Controller
                         'user_id' => $user->id,
                         'amount' => -$requiredCredits,
                         'type' => 'teams_unlock',
-                        'description' => "Team slot (1 year) - created team: {$request->name}",
+                        'description' => __('teamcontrollerphp298')."{$request->name}",
                     ]);
                 }
 
@@ -303,7 +305,7 @@ class TeamController extends Controller
             });
 
             return response()->json([
-                'message' => 'Team created successfully',
+                'message' => __('teamcontrollerphp306'),
                 'team' => $result->load(['members.user', 'projects']),
                 'credits_deducted' => $needsPayment ? $requiredCredits : 0,
                 'new_credits_balance' => $user->fresh()->credits,
@@ -311,7 +313,7 @@ class TeamController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to create team: ' . $e->getMessage(),
+                'message' => __('teamcontrollerphp314') . $e->getMessage(),
                 'error_code' => 'TRANSACTION_FAILED',
             ], 500);
         }
@@ -344,7 +346,7 @@ class TeamController extends Controller
 
         // Only owners and admins can update team info
         if (!in_array($userRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teamcontrollerphp347')], 403);
         }
 
         // Check if team is soft-locked (subscription expired)
@@ -358,6 +360,7 @@ class TeamController extends Controller
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[a-z0-9_]+$/',
                 Rule::unique('teams')->ignore($team->id)->where(function ($query) use ($team) {
                     return $query->where('project_owner_id', $team->project_owner_id);
                 })
@@ -369,7 +372,7 @@ class TeamController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('teamcontrollerphp372'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -391,7 +394,7 @@ class TeamController extends Controller
         }
 
         return response()->json([
-            'message' => 'Team updated successfully',
+            'message' => __('teamcontrollerphp394'),
             'team' => $team->load(['members.user', 'projects'])
         ]);
     }
@@ -405,12 +408,12 @@ class TeamController extends Controller
 
         // Only team owner can delete the team (using type-safe comparison)
         if ((string)$team->project_owner_id !== (string)$user->id) {
-            return response()->json(['message' => 'Only team owner can delete the team'], 403);
+            return response()->json(['message' => __('teamcontrollerphp408')], 403);
         }
 
         $team->delete();
 
-        return response()->json(['message' => 'Team deleted successfully']);
+        return response()->json(['message' => __('teamcontrollerphp413')]);
     }
 
     /**
@@ -423,7 +426,7 @@ class TeamController extends Controller
 
         // Check permissions
         if (!in_array($userRole, ['owner', 'admin']) && $user->id !== $userId) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teamcontrollerphp426')], 403);
         }
 
         // Check if team is soft-locked (subscription expired)
@@ -436,17 +439,26 @@ class TeamController extends Controller
                            ->first();
 
         if (!$member) {
-            return response()->json(['message' => 'Member not found'], 404);
+            return response()->json(['message' => __('teamcontrollerphp439')], 404);
         }
 
         // Can't remove the team owner
         if ($member->role === 'owner') {
-            return response()->json(['message' => 'Cannot remove team owner'], 400);
+            return response()->json(['message' => __('teamcontrollerphp444')], 400);
         }
 
         $member->delete();
 
-        return response()->json(['message' => 'Member removed successfully']);
+        // Send push notification to the removed user
+        SendPushNotificationJob::dispatch(
+            [$userId],
+            __('push.team_removed'),
+            $team->name,
+            '/',
+            'team'
+        );
+
+        return response()->json(['message' => __('teamcontrollerphp449')]);
     }
 
     /**
@@ -459,7 +471,7 @@ class TeamController extends Controller
 
         // Only owners and admins can change roles
         if (!in_array($userRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Insufficient permissions'], 403);
+            return response()->json(['message' => __('teamcontrollerphp462')], 403);
         }
 
         // Check if team is soft-locked (subscription expired)
@@ -483,18 +495,18 @@ class TeamController extends Controller
                            ->first();
 
         if (!$member) {
-            return response()->json(['message' => 'Member not found'], 404);
+            return response()->json(['message' => __('teamcontrollerphp486')], 404);
         }
 
         // Can't change the owner's role
         if ($member->role === 'owner') {
-            return response()->json(['message' => 'Cannot change owner role'], 400);
+            return response()->json(['message' => __('teamcontrollerphp491')], 400);
         }
 
         $member->update(['role' => $request->role]);
 
         return response()->json([
-            'message' => 'Member role updated successfully',
+            'message' => __('teamcontrollerphp497'),
             'member' => $member->load('user')
         ]);
     }
@@ -508,7 +520,7 @@ class TeamController extends Controller
 
         // Check if user is team owner (using type-safe comparison)
         if ((string)$team->project_owner_id !== (string)$user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('teamcontrollerphp511')], 403);
         }
 
         // Check if team is soft-locked (subscription expired)
@@ -532,7 +544,7 @@ class TeamController extends Controller
         $existingMember = $team->members()->where('user_id', $request->user_id)->first();
         if ($existingMember) {
             return response()->json([
-                'message' => 'User is already a member of this team'
+                'message' => __('teamcontrollerphp535')
             ], 409);
         }
 
@@ -544,8 +556,17 @@ class TeamController extends Controller
             'joined_at' => now(),
         ]);
 
+        // Send push notification to the added user
+        SendPushNotificationJob::dispatch(
+            [$request->user_id],
+            __('push.team_assigned'),
+            $team->name,
+            '/',
+            'team'
+        );
+
         return response()->json([
-            'message' => 'Member added to team successfully',
+            'message' => __('teamcontrollerphp548'),
             'member' => $member->load('user')
         ], 201);
     }
@@ -559,7 +580,7 @@ class TeamController extends Controller
 
         // Check if user has access to this team (using type-safe comparison)
         if (!$team->hasUser($user) && (string)$team->project_owner_id !== (string)$user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('teamcontrollerphp562')], 403);
         }
 
         $members = $team->members()
@@ -601,7 +622,7 @@ class TeamController extends Controller
 
         // Only team owner can transfer
         if ((string)$team->project_owner_id !== (string)$owner->id) {
-            return response()->json(['message' => 'Nur der Team-Owner kann das Team übertragen'], 403);
+            return response()->json(['message' => __('teamcontrollerphp604')], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -611,7 +632,7 @@ class TeamController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('teamcontrollerphp614'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -621,12 +642,12 @@ class TeamController extends Controller
 
         // Cannot transfer to self
         if ((string)$newOwnerId === (string)$owner->id) {
-            return response()->json(['message' => 'Sie können das Team nicht an sich selbst übertragen'], 400);
+            return response()->json(['message' => __('teamcontrollerphp624')], 400);
         }
 
         $newOwner = \App\Models\User::find($newOwnerId);
         if (!$newOwner) {
-            return response()->json(['message' => 'Benutzer nicht gefunden'], 404);
+            return response()->json(['message' => __('teamcontrollerphp629')], 404);
         }
 
         // Check recipient's status
@@ -658,7 +679,7 @@ class TeamController extends Controller
 
             if (!$ownerSlot) {
                 return response()->json([
-                    'message' => 'Sie haben keinen Team-Slot zum Übertragen',
+                    'message' => __('teamcontrollerphp661'),
                     'error_code' => 'NO_SLOT_TO_TRANSFER',
                 ], 400);
             }
@@ -758,7 +779,7 @@ class TeamController extends Controller
                 ];
             });
 
-            $message = 'Team erfolgreich übertragen';
+            $message = __('teamcontrollerphp761');
             if ($result['team_locked']) {
                 $message .= __('teamcontrollerphp781');
             } elseif ($result['slot_transferred']) {
@@ -819,7 +840,7 @@ class TeamController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'message' => __('teamcontrollerphp822'),
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -899,7 +920,7 @@ class TeamController extends Controller
                     'name' => $project->name,
                     'is_public' => false,
                     'reason' => 'private_owned_by_you',
-                    'hint' => 'Sie können dieses Projekt vorher an den neuen Owner übertragen, um die Verknüpfung zu behalten.',
+                    'hint' => __('teamcontrollerphp902'),
                 ];
             } else {
                 // Unlink: private projects owned by someone else (edge case)
@@ -1014,7 +1035,7 @@ class TeamController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Team-Verknüpfungen erfolgreich aktualisiert'
+            'message' => __('teamcontrollerphp1017')
         ]);
     }
 
@@ -1031,7 +1052,7 @@ class TeamController extends Controller
         $userRole = $team->getUserRole($user);
         if (!in_array($userRole, ['owner', 'admin'])) {
             return response()->json([
-                'message' => 'Nur Team-Owner oder Admins können das Team entsperren',
+                'message' => __('teamcontrollerphp1034'),
                 'error_code' => 'INSUFFICIENT_PERMISSIONS',
             ], 403);
         }
@@ -1039,7 +1060,7 @@ class TeamController extends Controller
         // Patron users don't need to unlock (their teams are never locked)
         if ($user->user_type === 'patron') {
             return response()->json([
-                'message' => 'Patron-User benötigen keine Team-Subscription',
+                'message' => __('teamcontrollerphp1042'),
                 'error_code' => 'NOT_REQUIRED',
             ], 400);
         }
@@ -1049,7 +1070,7 @@ class TeamController extends Controller
         // Check if user has enough credits
         if ($user->credits < $requiredCredits) {
             return response()->json([
-                'message' => 'Nicht genügend Credits',
+                'message' => __('teamcontrollerphp1052'),
                 'error_code' => 'INSUFFICIENT_CREDITS',
                 'required_credits' => $requiredCredits,
                 'current_credits' => $user->credits,
@@ -1091,14 +1112,14 @@ class TeamController extends Controller
                     'user_id' => $user->id,
                     'amount' => -$requiredCredits,
                     'type' => 'teams_unlock',
-                    'description' => "Team slot (1 year) - unlocked team: {$team->name}",
+                    'description' => __('teamcontrollerphp1094')."{$team->name}",
                 ]);
 
                 return $subscription;
             });
 
             return response()->json([
-                'message' => 'Team erfolgreich entsperrt',
+                'message' => __('teamcontrollerphp1101'),
                 'subscription' => $result,
                 'credits_deducted' => $requiredCredits,
                 'new_credits_balance' => $user->fresh()->credits,
@@ -1113,7 +1134,7 @@ class TeamController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Fehler beim Entsperren des Teams: ' . $e->getMessage(),
+                'message' => __('teamcontrollerphp1116') . $e->getMessage(),
                 'error_code' => 'UNLOCK_FAILED',
             ], 500);
         }

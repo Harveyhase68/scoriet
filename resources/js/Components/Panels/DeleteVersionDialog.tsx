@@ -71,7 +71,7 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
     // Prepare version options for dropdown (show all versions)
     const versionOptions = versions
         .map(v => ({
-            label: `v${v.version_number} - ${v.tables_count || 0} tables${v.imported_at ? ` (${new Date(v.imported_at).toLocaleDateString('de-DE')})` : ''}`,
+            label: `v${v.version_number} - ${v.tables_count || 0}${t.deleteversiondialog74}${v.imported_at ? ` (${new Date(v.imported_at).toLocaleDateString(currentLanguage)})` : ''}`,
             value: v.id
         }));
 
@@ -123,7 +123,7 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                     <div className="text-sm" style={{ color: colors.textMuted }}>{t.deleteversiondialog123}</div>
                     <div className="font-semibold" style={{ color: colors.textPrimary }}>{schemaName}</div>
                     <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                        {versions.length} {versions.length === 1 ? t.deleteversiondialog126 : t.deleteversiondialog126_2} vorhanden
+                        {versions.length} {versions.length === 1 ? t.deleteversiondialog126 : t.deleteversiondialog126_2}{t.deleteversiondialog126}
                     </div>
                 </div>
 
@@ -150,7 +150,7 @@ const DeleteVersionDialog: React.FC<DeleteVersionDialogProps> = ({
                                 <div className="text-sm mt-1" style={{ color: colors.textMuted }}>
                                     {latestVersion.tables_count || 0}{t.deleteversiondialog151}
                                     {latestVersion.imported_at && (
-                                        <> · {t.deleteversiondialog153}{new Date(latestVersion.imported_at).toLocaleDateString('de-DE', {
+                                        <> · {t.deleteversiondialog153}{new Date(latestVersion.imported_at).toLocaleDateString(currentLanguage, {
                                             day: '2-digit',
                                             month: '2-digit',
                                             year: 'numeric',

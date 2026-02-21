@@ -109,12 +109,12 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md p-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">E-Mail-Bestätigung</h2>
+          <h2 className="text-2xl font-bold mb-4">{t.emailverification112}</h2>
           
           {status === 'loading' && (
             <div className="space-y-4">
               <ProgressSpinner />
-              <p>E-Mail wird bestätigt...</p>
+              <p>{t.emailverification117}</p>
             </div>
           )}
 
@@ -130,15 +130,15 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
               {(status === 'success' || status === 'already_verified') && (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-300">
-                    You are now logged in and will be redirected to the app automatically.
+                    {t.emailverification133}
                   </p>
                   {invitationAccepted && projectName && (
                     <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
                       <p className="text-green-800 font-semibold text-base">
-                        🎉 You've been added to {projectName}!
+                        {t.emailverification138}{projectName}!
                       </p>
                       <p className="text-green-700 text-sm mt-1">
-                        You can now start collaborating with your team.
+                        {t.emailverification141}
                       </p>
                     </div>
                   )}
@@ -154,7 +154,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
               {status === 'error' && (
                 <div className="space-y-2">
                   <p className="text-sm text-gray-300">
-                    Falls Sie weiterhin Probleme haben, kontaktieren Sie bitte den Support.
+                    {t.emailverification157}
                   </p>
                   <Button
                     label={t.emailverification155}

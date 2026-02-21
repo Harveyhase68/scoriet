@@ -108,7 +108,7 @@ class RegistrationInviteController extends Controller
 
         if ($existingInvite) {
             return response()->json([
-                'error' => 'A valid invite already exists for this email address.',
+                'error' => __('registrationinvitecontrollerphp111'),
                 'existing_invite' => [
                     'id' => $existingInvite->id,
                     'expires_at' => $existingInvite->expires_at->toISOString(),
@@ -120,7 +120,7 @@ class RegistrationInviteController extends Controller
         $existingUser = User::where('email', $validated['email'])->first();
         if ($existingUser) {
             return response()->json([
-                'error' => 'A user with this email is already registered.',
+                'error' => __('registrationinvitecontrollerphp123'),
             ], 422);
         }
 
@@ -140,7 +140,7 @@ class RegistrationInviteController extends Controller
                 $this->sendInviteEmail($invite);
                 $invite->markAsSent();
             } catch (\Exception $e) {
-                Log::error('Failed to send invite email', [
+                Log::error(__('registrationinvitecontrollerphp143'), [
                     'invite_id' => $invite->id,
                     'email' => $invite->email,
                     'error' => $e->getMessage(),
@@ -151,7 +151,7 @@ class RegistrationInviteController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Invite created successfully',
+            'message' => __('registrationinvitecontrollerphp154'),
             'invite' => [
                 'id' => $invite->id,
                 'email' => $invite->email,
@@ -175,11 +175,11 @@ class RegistrationInviteController extends Controller
         }
 
         if ($invite->isUsed()) {
-            return response()->json(['error' => 'This invite has already been used.'], 422);
+            return response()->json(['error' => __('registrationinvitecontrollerphp178')], 422);
         }
 
         if ($invite->isExpired()) {
-            return response()->json(['error' => 'This invite has expired. Please create a new one.'], 422);
+            return response()->json(['error' => __('registrationinvitecontrollerphp182')], 422);
         }
 
         try {
@@ -188,17 +188,17 @@ class RegistrationInviteController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Invite email sent successfully',
+                'message' => __('registrationinvitecontrollerphp191'),
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to resend invite email', [
+            Log::error(__('registrationinvitecontrollerphp194'), [
                 'invite_id' => $invite->id,
                 'email' => $invite->email,
                 'error' => $e->getMessage(),
             ]);
 
             return response()->json([
-                'error' => 'Failed to send email: ' . $e->getMessage(),
+                'error' => __('registrationinvitecontrollerphp201') . $e->getMessage(),
             ], 500);
         }
     }
@@ -213,14 +213,14 @@ class RegistrationInviteController extends Controller
         }
 
         if ($invite->isUsed()) {
-            return response()->json(['error' => 'Cannot delete an invite that has been used.'], 422);
+            return response()->json(['error' => __('registrationinvitecontrollerphp216')], 422);
         }
 
         $invite->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Invite deleted successfully',
+            'message' => __('registrationinvitecontrollerphp223'),
         ]);
     }
 
@@ -234,7 +234,7 @@ class RegistrationInviteController extends Controller
         if (!$token) {
             return response()->json([
                 'valid' => false,
-                'error' => 'No token provided',
+                'error' => __('registrationinvitecontrollerphp237'),
             ], 400);
         }
 
@@ -243,21 +243,21 @@ class RegistrationInviteController extends Controller
         if (!$invite) {
             return response()->json([
                 'valid' => false,
-                'error' => 'Invalid invite token',
+                'error' => __('registrationinvitecontrollerphp246'),
             ]);
         }
 
         if ($invite->isUsed()) {
             return response()->json([
                 'valid' => false,
-                'error' => 'This invite has already been used',
+                'error' => __('registrationinvitecontrollerphp253'),
             ]);
         }
 
         if ($invite->isExpired()) {
             return response()->json([
                 'valid' => false,
-                'error' => 'This invite has expired',
+                'error' => __('registrationinvitecontrollerphp260'),
             ]);
         }
 
@@ -280,7 +280,7 @@ class RegistrationInviteController extends Controller
 
         Mail::send([], [], function ($message) use ($invite, $appName, $registrationUrl, $expiresAt) {
             $message->to($invite->email, $invite->name)
-                ->subject("You're invited to join {$appName}!")
+                ->subject(__('registrationinvitecontrollerphp283') . $appName . '!')
                 ->html($this->getInviteEmailHtml($invite, $appName, $registrationUrl, $expiresAt));
         });
     }
@@ -291,6 +291,18 @@ class RegistrationInviteController extends Controller
     private function getInviteEmailHtml(RegistrationInvite $invite, string $appName, string $registrationUrl, string $expiresAt): string
     {
         $name = $invite->name ? htmlspecialchars($invite->name) : 'there';
+        $inviteText1 = __('registrationinvitecontrollerphp311');
+        $inviteText2 = __('registrationinvitecontrollerphp311_2');
+        $clickText = __('registrationinvitecontrollerphp313');
+        $createAccountBtn = __('registrationinvitecontrollerphp316');
+        $copyLinkText = __('registrationinvitecontrollerphp319');
+        $noteLabel = __('registrationinvitecontrollerphp324_note');
+        $expiresText = __('registrationinvitecontrollerphp324');
+        $ignoreText = __('registrationinvitecontrollerphp330');
+        $rightsText = __('registrationinvitecontrollerphp331');
+        $titleText = __('registrationinvitecontrollerphp310');
+        $welcomeText = __('registrationinvitecontrollerphp314');
+        $hiText = __('registrationinvitecontrollerphp318');
 
         return <<<HTML
 <!DOCTYPE html>
@@ -298,37 +310,37 @@ class RegistrationInviteController extends Controller
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>You're invited to {$appName}</title>
+    <title>{$titleText} {$appName}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to {$appName}!</h1>
+        <h1 style="color: white; margin: 0; font-size: 28px;">{$welcomeText} {$appName}!</h1>
     </div>
 
     <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-        <p style="font-size: 16px;">Hi {$name},</p>
+        <p style="font-size: 16px;">{$hiText} {$name},</p>
 
-        <p style="font-size: 16px;">You've been invited to join <strong>{$appName}</strong> - the Enterprise Code Generator that automates code generation through intelligent templating.</p>
+        <p style="font-size: 16px;">{$inviteText1}<strong>{$appName}</strong>{$inviteText2}</p>
 
-        <p style="font-size: 16px;">Click the button below to create your account:</p>
+        <p style="font-size: 16px;">{$clickText}</p>
 
         <div style="text-align: center; margin: 30px 0;">
-            <a href="{$registrationUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">Create Your Account</a>
+            <a href="{$registrationUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">{$createAccountBtn}</a>
         </div>
 
-        <p style="font-size: 14px; color: #666;">Or copy this link into your browser:</p>
+        <p style="font-size: 14px; color: #666;">{$copyLinkText}</p>
         <p style="font-size: 12px; background: #f5f5f5; padding: 10px; border-radius: 5px; word-break: break-all;">{$registrationUrl}</p>
 
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
             <p style="font-size: 14px; color: #888; margin: 0;">
-                <strong>Note:</strong> This invitation expires on <strong>{$expiresAt}</strong>.
+                <strong>{$noteLabel}</strong> {$expiresText} <strong>{$expiresAt}</strong>.
             </p>
         </div>
     </div>
 
     <div style="text-align: center; margin-top: 20px; color: #888; font-size: 12px;">
-        <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-        <p>&copy; 2026 {$appName}. All rights reserved.</p>
+        <p>{$ignoreText}</p>
+        <p>&copy; 2026 {$appName}. {$rightsText}</p>
     </div>
 </body>
 </html>

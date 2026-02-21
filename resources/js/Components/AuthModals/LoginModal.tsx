@@ -202,8 +202,8 @@ export default function LoginModal({
           detail: {
             count: tokenData.revoked_session_count,
             message: currentLanguage === 'de'
-              ? 'Sie wurden auf anderen Geräten abgemeldet.'
-              : 'You have been logged out from other devices.'
+              ? t.loginmodal205
+              : t.loginmodal206
           }
         }));
       }
@@ -336,7 +336,7 @@ export default function LoginModal({
         }
       }
     } catch (err) {
-      console.error('Failed to fetch user data after 2FA:', err);
+      console.error(t.loginmodal339, err);
     }
 
     // Show notification if recovery code was used
@@ -345,8 +345,8 @@ export default function LoginModal({
         new CustomEvent('showToast', {
           detail: {
             severity: 'warn',
-            summary: 'Backup-Code verwendet',
-            detail: `Sie haben noch ${tokenData.recovery_codes_remaining} Backup-Codes übrig.`,
+            summary: t.loginmodal348,
+            detail: `${t.loginmodal349}${tokenData.recovery_codes_remaining}${t.loginmodal349_2}`,
           },
         })
       );
@@ -360,8 +360,8 @@ export default function LoginModal({
             count: tokenData.revoked_session_count,
             message:
               currentLanguage === 'de'
-                ? 'Sie wurden auf anderen Geräten abgemeldet.'
-                : 'You have been logged out from other devices.',
+                ? t.loginmodal363
+                : t.loginmodal364,
           },
         })
       );
@@ -405,7 +405,7 @@ export default function LoginModal({
         {(!isDemoMode || showLoginFields) && showResendVerification && (
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-700 mb-2">
-              Ihre E-Mail-Adresse ist noch nicht bestätigt.
+              {t.loginmodal408}
             </p>
             <Button
               type="button"

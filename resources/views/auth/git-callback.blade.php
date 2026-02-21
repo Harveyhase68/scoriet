@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connecting to {{ ucfirst($provider) }}...</title>
+    <title>{{__('git-callbackbladephp6')}}{{ ucfirst($provider) }}...</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -44,13 +44,13 @@
     <div class="container">
         @if($error)
             <div class="error">
-                <h2>Connection Failed</h2>
+                <h2>{{__('git-callbackbladephp47')}}</h2>
                 <p>{{ $errorDescription ?? $error }}</p>
-                <p>This window will close automatically...</p>
+                <p>{{__('git-callbackbladephp49')}}</p>
             </div>
         @else
             <div class="spinner"></div>
-            <p>Connecting to {{ ucfirst($provider) }}...</p>
+            <p>{{__('git-callbackbladephp53')}}{{ ucfirst($provider) }}...</p>
         @endif
     </div>
 
@@ -74,7 +74,7 @@
                     }, window.location.origin);
                     messageSent = true;
                 } catch (e) {
-                    console.error('Failed to send message to opener:', e);
+                    console.error('Failed to send OAuth message to parent window:', e);
                 }
             }
 
@@ -82,9 +82,9 @@
             if (!messageSent && !data.error) {
                 document.querySelector('.container').innerHTML = `
                     <div class="error">
-                        <h2>Verbindung fehlgeschlagen</h2>
-                        <p>Das Hauptfenster konnte nicht erreicht werden.</p>
-                        <p>Bitte schließen Sie dieses Fenster und versuchen Sie es erneut.</p>
+                        <h2>{{__('git-callbackbladephp85')}}</h2>
+                        <p>{{__('git-callbackbladephp86')}}</p>
+                        <p>{{__('git-callbackbladephp87')}}</p>
                     </div>
                 `;
                 return; // Don't auto-close

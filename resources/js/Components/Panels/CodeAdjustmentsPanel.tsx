@@ -245,7 +245,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setCodeAdjustmentsAccess(data.access_status);
         toast.current?.show({
           severity: 'success',
-          summary: 'Erfolg',
+          summary: t.codeadjustmentspanel248,
           detail: data.message || t.codeadjustmentspanel249,
         });
       } else {
@@ -453,7 +453,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         setAnalysisFilename(data.data.file_path);
         toast.current?.show({
           severity: 'success',
-          summary: 'Geladen',
+          summary: t.codeadjustmentspanel456,
           detail: `"${data.data.file_path}"${t.codeadjustmentspanel457}`,
         });
       } else {
@@ -517,7 +517,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       if (data.success) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Success',
+          summary: t.codeadjustmentspanel520,
           detail: isNew ? t.codeadjustmentspanel521 : t.codeadjustmentspanel521_2,
         });
         setShowAdjustmentDialog(false);
@@ -656,7 +656,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!selectedAdjustment?.id || !selectedProject?.id) return;
 
     confirmDialog({
-      message: 'Delete this insertion?',
+      message: t.codeadjustmentspanel659,
       header: t.codeadjustmentspanel660,
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
@@ -720,7 +720,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
       console.error(t.codeadjustmentspanel720, error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Error',
+        summary: t.codeadjustmentspanel723,
         detail: t.codeadjustmentspanel724,
       });
     } finally {
@@ -1471,7 +1471,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
           <Tag value={selectedProject.name} severity="info" />
           {/* Access Status Badge */}
           {codeAdjustmentsAccess?.is_patron ? (
-            <Tag value="Patron" severity="warning" className="ml-2" />
+            <Tag value={t.codeadjustmentspanel1474} severity="warning" className="ml-2" />
           ) : codeAdjustmentsAccess?.days_remaining !== undefined ? (
             <Tag value={`${codeAdjustmentsAccess.days_remaining}${t.codeadjustmentspanel1476}`} severity="info" className="ml-2" />
           ) : null}
@@ -1586,7 +1586,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                     <Column field="name" header="Name" sortable />
                     <Column
                       field="file_pattern"
-                      header="Datei-Pattern"
+                      header={t.codeadjustmentspanel1589}
                       style={{ maxWidth: '150px' }}
                       body={(row: CodeAdjustment) => (
                         <span className="text-xs font-mono" style={{ color: colors.textMuted }}>{row.file_pattern}</span>
@@ -1755,7 +1755,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         </TabPanel>
 
         {/* Tab 2: Einzelcode Vergleich */}
-        <TabPanel header="Einzelcode Vergleich" leftIcon="pi pi-file mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={t.codeadjustmentspanel1758} leftIcon="pi pi-file mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
           <div className="p-4">
             {/* Hidden file inputs */}
             <input
@@ -1786,7 +1786,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                     <Dropdown
                       value={selectedGenerationId}
                       options={generations.map(g => ({
-                        label: `#${g.generation_number} - ${new Date(g.created_at).toLocaleDateString('de-DE')}`,
+                        label: `#${g.generation_number} - ${new Date(g.created_at).toLocaleDateString(currentLanguage)}`,
                         value: g.id,
                       }))}
                       onChange={(e) => {
@@ -1810,7 +1810,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                       placeholder={t.codeadjustmentspanel1810}
                       className="w-full text-sm font-mono"
                       filter
-                      filterPlaceholder="Suchen..."
+                      filterPlaceholder={t.codeadjustmentspanel1813}
                       loading={loadingFiles}
                       disabled={!selectedGenerationId}
                     />
@@ -2403,7 +2403,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Typ</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2406}</label>
               <Dropdown
                 value={editingInsertion.insertion_type}
                 options={insertionTypeOptions}
@@ -2417,7 +2417,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Zeilen-Offset</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2420}</label>
               <InputNumber
                 value={editingInsertion.line_offset || 0}
                 onValueChange={(e) => setEditingInsertion({ ...editingInsertion, line_offset: e.value || 0 })}
@@ -2425,7 +2425,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Reihenfolge</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2428}</label>
               <InputNumber
                 value={editingInsertion.insertion_order || 0}
                 onValueChange={(e) => setEditingInsertion({ ...editingInsertion, insertion_order: e.value || 0 })}

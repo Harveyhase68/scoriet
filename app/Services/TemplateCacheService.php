@@ -18,6 +18,35 @@ use Illuminate\Support\Facades\Log;
  */
 class TemplateCacheService
 {
+    /** @var int Number of cache hits in current request */
+    private int $cacheHits = 0;
+
+    /** @var int Number of cache misses in current request */
+    private int $cacheMisses = 0;
+
+    /**
+     * Get cache hit/miss statistics for current request
+     */
+    public function getHitStats(): array
+    {
+        $total = $this->cacheHits + $this->cacheMisses;
+        return [
+            'hits' => $this->cacheHits,
+            'misses' => $this->cacheMisses,
+            'total' => $total,
+            'hit_rate' => $total > 0 ? round(($this->cacheHits / $total) * 100, 1) : 0,
+        ];
+    }
+
+    /**
+     * Reset hit/miss counters (call before a new generation batch)
+     */
+    public function resetHitStats(): void
+    {
+        $this->cacheHits = 0;
+        $this->cacheMisses = 0;
+    }
+
     /**
      * Build cache key for a compiled template file
      *
@@ -82,18 +111,39 @@ class TemplateCacheService
             $includeSource
         );
 
-        // Try cache with tags for easier invalidation
+        // Try cache first, track hit/miss
         $ttl = now()->addHours(24);
 
         if (config('cache.default') === 'redis') {
-            // Redis supports tags - use them for bulk invalidation
-            return Cache::tags([
+            $cached = Cache::tags([
                 "template:{$templateId}",
                 "template_file:{$fileId}"
-            ])->remember($cacheKey, $ttl, $compileCallback);
+            ])->get($cacheKey);
+
+            if ($cached !== null) {
+                $this->cacheHits++;
+                return $cached;
+            }
+
+            $this->cacheMisses++;
+            $result = $compileCallback();
+            Cache::tags([
+                "template:{$templateId}",
+                "template_file:{$fileId}"
+            ])->put($cacheKey, $result, $ttl);
+            return $result;
         } else {
-            // File cache doesn't support tags - use simple key
-            return Cache::remember($cacheKey, $ttl, $compileCallback);
+            $cached = Cache::get($cacheKey);
+
+            if ($cached !== null) {
+                $this->cacheHits++;
+                return $cached;
+            }
+
+            $this->cacheMisses++;
+            $result = $compileCallback();
+            Cache::put($cacheKey, $result, $ttl);
+            return $result;
         }
     }
 

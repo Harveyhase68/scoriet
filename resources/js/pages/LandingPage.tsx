@@ -451,7 +451,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <Head title={isCMSPage ? `${cmsTitle} - Scoriet` : 'Scoriet - Enterprise Code Generator'} />
+      <Head title={isCMSPage ? `${cmsTitle} - Scoriet` : t.landingpage454} />
 
       {/* Toast Notification Component */}
       <Toast
@@ -499,14 +499,14 @@ export default function LandingPage() {
                     className="h-8 w-auto hover:opacity-80 transition-opacity"
                   />
                 </a>
-                <Badge value="BETA" severity="info" className="ml-2" />
+                <Badge value={t.landingpage502} severity="info" className="ml-2" />
               </div>
               
               <div className="flex items-center gap-2">
                 {/* Home Button - only shown on CMS pages */}
                 {isCMSPage && (
                   <Button
-                    label="Home"
+                    label={t.landingpage509}
                     icon="pi pi-home"
                     className="p-button-outlined p-button-info"
                     style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
@@ -587,7 +587,7 @@ export default function LandingPage() {
               {userData?.user_type === 'system' && cmsPageId && (
                 <div className="flex justify-end mb-4">
                   <Button
-                    label={'Bearbeiten'}
+                    label={t.landingpage590}
                     icon="pi pi-pencil"
                     className="p-button-warning p-button-sm"
                     style={{ borderRadius: '8px' }}
@@ -812,7 +812,7 @@ export default function LandingPage() {
                         <span style={{ color: colors.textMuted }}>{tier.period}</span>
                         {tier.yearlyPrice && (
                           <div className="text-sm mt-1" style={{ color: colors.successText }}>
-                            Save 17%: {tier.yearlyPrice}
+                            {t.landingpage815}{tier.yearlyPrice}
                           </div>
                         )}
                       </div>
@@ -829,7 +829,7 @@ export default function LandingPage() {
                       </ul>
 
                       <Button
-                        label={tier.name === 'Free' ? tier.buttonText : t.registerFirst || 'Registrieren & Plan wählen'}
+                        label={tier.name === 'Free' ? tier.buttonText : t.registerFirst || t.landingpage832}
                         className={`${tier.buttonClass} w-full`}
                         onClick={() => {
                           // All buttons open registration for non-authenticated users
@@ -1016,7 +1016,7 @@ export default function LandingPage() {
               <div className="flex space-x-6">
                 <a href="https://scoriet.com/pages/datenschutz.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
                 <a href="https://scoriet.com/pages/agb.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
-                <a href="https://scoriet.com/pages/impressum.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>Impressum</a>
+                <a href="https://scoriet.com/pages/impressum.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.landingpage1019}</a>
               </div>
             </div>
           </div>
@@ -1028,7 +1028,7 @@ export default function LandingPage() {
         visible={showVideoModal}
         onHide={handleCloseVideoModal}
         modal
-        header="Scoriet Demo"
+        header={t.landingpage1031}
         style={{ width: '90vw', maxWidth: '1200px' }}
         contentStyle={{ padding: 0 }}
         headerStyle={{ backgroundColor: '#1f2937', color: 'white', border: 'none' }}
@@ -1071,7 +1071,7 @@ export default function LandingPage() {
             if (toast.current) {
               toast.current.show({
                 severity: 'success',
-                summary: 'Registration Successful',
+                summary: t.landingpage1074,
                 detail: message,
                 life: 8000, // 8 seconds
                 closable: true

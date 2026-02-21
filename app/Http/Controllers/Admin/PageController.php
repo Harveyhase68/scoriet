@@ -51,7 +51,7 @@ class PageController extends Controller
                      ->exists();
 
         if ($exists) {
-            return response()->json(['error' => 'A page with this slug already exists for the selected language.'], 422);
+            return response()->json(['error' => __('pagecontrollerphp54')], 422);
         }
 
         $page = Page::create($validated);

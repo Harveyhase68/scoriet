@@ -36,7 +36,7 @@ class TemplateStoreService
         if (!$template->isStoreTemplate()) {
             return [
                 'success' => false,
-                'message' => 'This template is not available in the store.',
+                'message' => __('templatestoreservicephp39'),
                 'purchase' => null,
             ];
         }
@@ -44,7 +44,7 @@ class TemplateStoreService
         if (!$template->acceptsCredits()) {
             return [
                 'success' => false,
-                'message' => 'This template does not accept credit payments.',
+                'message' => __('templatestoreservicephp47'),
                 'purchase' => null,
             ];
         }
@@ -52,7 +52,7 @@ class TemplateStoreService
         if (!$template->canBePurchasedBy($buyer)) {
             return [
                 'success' => false,
-                'message' => 'You cannot purchase this template (already owned or is your own).',
+                'message' => __('templatestoreservicephp55'),
                 'purchase' => null,
             ];
         }
@@ -61,7 +61,7 @@ class TemplateStoreService
         if ($buyer->credits < $price) {
             return [
                 'success' => false,
-                'message' => "Not enough credits. Required: {$price}, Available: {$buyer->credits}",
+                'message' => __('templatestoreservicephp64'). "{$price}".__('templatestoreservicephp64_2')."{$buyer->credits}",
                 'purchase' => null,
             ];
         }
@@ -70,7 +70,7 @@ class TemplateStoreService
         if (!$seller) {
             return [
                 'success' => false,
-                'message' => 'Template seller not found.',
+                'message' => __('templatestoreservicephp73'),
                 'purchase' => null,
             ];
         }
@@ -84,12 +84,12 @@ class TemplateStoreService
                 // Refresh to prevent race conditions
                 $buyer->refresh();
                 if ($buyer->credits < $price) {
-                    throw new \Exception('Not enough credits');
+                    throw new \Exception(__('templatestoreservicephp87'));
                 }
 
                 // Check double purchase
                 if (TemplatePurchase::hasPurchased($buyer->id, $template->id)) {
-                    throw new \Exception('Template already purchased');
+                    throw new \Exception(__('templatestoreservicephp92'));
                 }
 
                 // Deduct credits from buyer
@@ -103,7 +103,7 @@ class TemplateStoreService
                     'user_id' => $buyer->id,
                     'amount' => -$price,
                     'type' => 'template_purchase',
-                    'description' => "Purchased template: {$template->name}",
+                    'description' => __('templatestoreservicephp106')."{$template->name}",
                     'reference_type' => 'template',
                     'reference_id' => $template->id,
                 ]);
@@ -113,7 +113,7 @@ class TemplateStoreService
                     'user_id' => $seller->id,
                     'amount' => $sellerCredits,
                     'type' => 'template_sale',
-                    'description' => "Sold template: {$template->name} (80% of {$price} credits)",
+                    'description' => __('templatestoreservicephp116')."{$template->name}".__('templatestoreservicephp116_2')."{$price}".__('templatestoreservicephp116_3').")",
                     'reference_type' => 'template',
                     'reference_id' => $template->id,
                 ]);
@@ -138,12 +138,12 @@ class TemplateStoreService
 
             return [
                 'success' => true,
-                'message' => "Successfully purchased '{$template->name}' for {$price} credits.",
+                'message' => __('templatestoreservicephp141')."'{$template->name}'".__('templatestoreservicephp141_2')."{$price}".__('templatestoreservicephp141_3'),
                 'purchase' => $purchase,
             ];
 
         } catch (\Exception $e) {
-            Log::error("Template purchase failed", [
+            Log::error(__('templatestoreservicephp146'), [
                 'buyer_id' => $buyer->id,
                 'template_id' => $template->id,
                 'error' => $e->getMessage(),
@@ -172,28 +172,28 @@ class TemplateStoreService
         if (!$template->isStoreTemplate()) {
             return [
                 'success' => false,
-                'message' => 'This template is not available in the store.',
+                'message' => __('templatestoreservicephp175'),
             ];
         }
 
         if (!$template->acceptsEuros()) {
             return [
                 'success' => false,
-                'message' => 'This template does not accept euro payments.',
+                'message' => __('templatestoreservicephp182'),
             ];
         }
 
         if (!$template->canBePurchasedBy($buyer)) {
             return [
                 'success' => false,
-                'message' => 'You cannot purchase this template.',
+                'message' => __('templatestoreservicephp189'),
             ];
         }
 
         if (!in_array($paymentMethod, ['stripe', 'paypal'])) {
             return [
                 'success' => false,
-                'message' => 'Invalid payment method.',
+                'message' => __('templatestoreservicephp196'),
             ];
         }
 
@@ -236,7 +236,7 @@ class TemplateStoreService
         if (TemplatePurchase::hasPurchased($buyer->id, $template->id)) {
             return [
                 'success' => false,
-                'message' => 'Template already purchased.',
+                'message' => __('templatestoreservicephp239'),
                 'purchase' => null,
             ];
         }
@@ -245,7 +245,7 @@ class TemplateStoreService
         if (!$seller) {
             return [
                 'success' => false,
-                'message' => 'Template seller not found.',
+                'message' => __('templatestoreservicephp248'),
                 'purchase' => null,
             ];
         }
@@ -260,7 +260,7 @@ class TemplateStoreService
             ) {
                 // Double-check not purchased
                 if (TemplatePurchase::hasPurchased($buyer->id, $template->id)) {
-                    throw new \Exception('Template already purchased');
+                    throw new \Exception(__('templatestoreservicephp263'));
                 }
 
                 // Create purchase record
@@ -290,12 +290,12 @@ class TemplateStoreService
 
             return [
                 'success' => true,
-                'message' => "Successfully purchased '{$template->name}' for {$price} EUR.",
+                'message' => __('templatestoreservicephp293')."'{$template->name}'".__('templatestoreservicephp293_2')."{$price}".__('templatestoreservicephp293_3'),
                 'purchase' => $purchase,
             ];
 
         } catch (\Exception $e) {
-            Log::error("Template euro purchase completion failed", [
+            Log::error(__('templatestoreservicephp298'), [
                 'buyer_id' => $buyer->id,
                 'template_id' => $template->id,
                 'payment_id' => $paymentId,
@@ -352,7 +352,7 @@ class TemplateStoreService
 
         return [
             'can_sell' => false,
-            'reason' => 'You need at least one admin-approved template or a template with 5+ positive reviews to sell in the store.',
+            'reason' => __('templatestoreservicephp355'),
         ];
     }
 

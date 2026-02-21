@@ -29,7 +29,7 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp32')], 403);
         }
 
         // Build query with optional filters
@@ -76,7 +76,7 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp79')], 403);
         }
 
         // Validate request
@@ -116,7 +116,7 @@ class ProjectAttachmentController extends Controller
         $attachment->category_label = $attachment->getCategoryLabel();
 
         return response()->json([
-            'message' => 'Anhang erfolgreich hochgeladen',
+            'message' => __('projectattachmentcontrollerphp119'),
             'attachment' => $attachment,
         ], 201);
     }
@@ -131,7 +131,7 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp134')], 403);
         }
 
         $attachment = ProjectAttachment::where('project_id', $projectId)
@@ -155,14 +155,14 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp158')], 403);
         }
 
         $attachment = ProjectAttachment::where('project_id', $projectId)->findOrFail($attachmentId);
 
         // Only owner or uploader can edit
         if ($project->owner_id !== $user->id && $attachment->uploaded_by !== $user->id) {
-            return response()->json(['message' => 'Nur der Projekt-Eigentümer oder der Uploader kann diesen Anhang bearbeiten'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp165')], 403);
         }
 
         // Validate request
@@ -205,21 +205,21 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp208')], 403);
         }
 
         $attachment = ProjectAttachment::where('project_id', $projectId)->findOrFail($attachmentId);
 
         // Only owner or uploader can delete
         if ($project->owner_id !== $user->id && $attachment->uploaded_by !== $user->id) {
-            return response()->json(['message' => 'Nur der Projekt-Eigentümer oder der Uploader kann diesen Anhang löschen'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp215')], 403);
         }
 
         // Delete (file will be deleted via boot method)
         $attachment->delete();
 
         return response()->json([
-            'message' => 'Anhang erfolgreich gelöscht',
+            'message' => __('projectattachmentcontrollerphp222'),
         ]);
     }
 
@@ -233,7 +233,7 @@ class ProjectAttachmentController extends Controller
 
         // Check if user has access to this project
         if (!$project->userCanAccess($user)) {
-            return response()->json(['message' => 'Zugriff verweigert'], 403);
+            return response()->json(['message' => __('projectattachmentcontrollerphp236')], 403);
         }
 
         $attachment = ProjectAttachment::where('project_id', $projectId)->findOrFail($attachmentId);
@@ -241,7 +241,7 @@ class ProjectAttachmentController extends Controller
         // Check if file exists
         $disk = Storage::disk('local');
         if (!$disk->exists($attachment->path)) {
-            return response()->json(['message' => 'Datei nicht gefunden'], 404);
+            return response()->json(['message' => __('projectattachmentcontrollerphp244')], 404);
         }
 
         // Increment download counter

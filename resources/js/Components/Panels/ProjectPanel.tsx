@@ -422,7 +422,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           setPlanModalInitialTab(1);
           setShowPlanModal(true);
         } else {
-          throw new Error(data.error || data.message || t.projectpanel424 || 'Fehler beim Entsperren des Projekts');
+          throw new Error(data.error || data.message || t.projectpanel424 || t.projectpanel425);
         }
         return;
       }
@@ -687,7 +687,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -865,11 +865,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       const preview = await response.json();
       setExportPreview(preview);
     } catch (err) {
-      console.error('Export preview error:', err);
+      console.error(t.projectpanel868, err);
       toast.current?.show({
         severity: 'error',
         summary: t.projectpanel935 || t.messageError,
-        detail: t.projectpanel871 || 'Export-Vorschau konnte nicht geladen werden',
+        detail: t.projectpanel871 || t.projectpanel872,
         life: 3000
       });
     } finally {
@@ -897,7 +897,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Export failed');
+        throw new Error(errorData.message || t.projectpanel900);
       }
 
       // Get the filename from Content-Disposition header
@@ -923,14 +923,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
       toast.current?.show({
         severity: 'success',
-        summary: t.projectpanel925 || 'Erfolg',
-        detail: t.projectpanel926 || 'Projekt wurde erfolgreich exportiert',
+        summary: t.projectpanel925 || t.projectpanel926,
+        detail: t.projectpanel926 || t.projectpanel927,
         life: 3000
       });
 
       setShowExportDialog(false);
     } catch (err) {
-      console.error('Export error:', err);
+      console.error(t.projectpanel933, err);
       toast.current?.show({
         severity: 'error',
         summary: t.projectpanel935 || t.messageError,
@@ -1005,7 +1005,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           />
           <Button
             icon={unlockingProject && projectToUnlock?.id === project.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
-            label="50 Credits"
+            label={t.projectpanel1008}
             className="p-button-rounded p-button-sm"
             tooltip={t.projectpanel1009}
             onClick={() => handleUnlockExpiredProject(project)}
@@ -1064,7 +1064,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         <Toast ref={toast} position="top-right" />
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
-          <p style={{ color: colors.textMuted }}>Loading projects...</p>
+          <p style={{ color: colors.textMuted }}>{t.projectpanel1067}</p>
         </div>
       </div>
     );
@@ -1181,7 +1181,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   <div className="p-3 rounded-lg" style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderSecondary}` }}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Join Code</div>
+                        <div className="text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>{t.projectpanel1184}</div>
                         <div className="flex items-center space-x-2">
                           <code className="px-2 py-1 rounded font-mono text-sm" style={{ backgroundColor: colors.bgTertiary, color: colors.accent }}>
                             {currentProject.join_code}
@@ -1311,7 +1311,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 onClick={() => {
                   if (currentProject) {
                     onOpenPanel?.('kanban-board', {
-                      title: `Kanban - ${currentProject.name}`,
+                      title: `${t.projectpanel1314}${currentProject.name}`,
                       projectId: currentProject.id
                     });
                   }
@@ -1338,7 +1338,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 label={t.panelsewnavigationpanel223}
                 icon="pi pi-database"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('database-management', { title: `Database - ${currentProject?.name}`, filterByProject: true })}
+                onClick={() => onOpenPanel?.('database-management', { title: `${t.projectpanel1341}${currentProject?.name}`, filterByProject: true })}
                 disabled={!currentProject || !onOpenPanel}
               />
               <Button
@@ -1353,7 +1353,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 label={t.projectImport}
                 icon="pi pi-upload"
                 className="p-button-outlined flex-col h-14"
-                onClick={() => onOpenPanel?.('project-import', { title: t.projectpanel1353 || 'Projekt importieren' })}
+                onClick={() => onOpenPanel?.('project-import', { title: t.projectpanel1353 || t.projectpanel1356 })}
                 disabled={!onOpenPanel}
                 title={t.projectpanel1353}
               />
@@ -1541,7 +1541,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               <div className="grid grid-cols-2 gap-4">
                 <div className="field">
                   <label htmlFor="create-db-server" className="block text-sm font-medium text-white mb-2">
-                    Server
+                    {t.projectpanel1544}
                   </label>
                   <InputText
                     id="create-db-server"
@@ -1555,7 +1555,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
                 <div className="field">
                   <label htmlFor="create-db-port" className="block text-sm font-medium text-white mb-2">
-                    Port
+                    {t.projectpanel1558}
                   </label>
                   <InputText
                     id="create-db-port"
@@ -1570,7 +1570,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
               <div className="field">
                 <label htmlFor="create-db-username" className="block text-sm font-medium text-white mb-2">
-                  Username
+                  {t.projectpanel1573}
                 </label>
                 <InputText
                   id="create-db-username"
@@ -1584,7 +1584,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
               <div className="field">
                 <label htmlFor="create-db-password" className="block text-sm font-medium text-white mb-2">
-                  Password
+                  {t.projectpanel1587}
                 </label>
                 <InputText
                   id="create-db-password"
@@ -1929,7 +1929,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         onApplicationSent={(projectName, ownerName) => {
           toast.current?.show({
             severity: 'success',
-            summary: t.projectpanel1929 || 'Bewerbung gesendet',
+            summary: t.projectpanel1929 || t.projectpanel1932,
             detail: `${t.projectpanel1930} ${ownerName} ${t.projectpanel1930_2}`,
             life: 6000,
           });
@@ -2100,7 +2100,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               {loadingTemplatesData ? (
                 <div className="flex items-center justify-center p-4">
                   <i className="pi pi-spin pi-spinner text-purple-400 mr-2"></i>
-                  <span className="text-purple-300">Loading templates...</span>
+                  <span className="text-purple-300">{t.projectpanel2103}</span>
                 </div>
               ) : projectTemplatesTree.length > 0 ? (
                 <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
@@ -2169,7 +2169,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                                 document.body.removeChild(a);
                               }
                             } catch (err) {
-                              console.error('Download failed:', err);
+                              console.error(t.projectpanel2172, err);
                             }
                           }}
                         />
@@ -2340,12 +2340,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             {/* Project Info */}
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
               <h4 className="text-lg font-semibold mb-2">{exportPreview.project?.name}</h4>
-              <p className="text-gray-400 text-sm">{exportPreview.project?.description || 'Keine Beschreibung'}</p>
+              <p className="text-gray-400 text-sm">{exportPreview.project?.description || t.projectpanel2343}</p>
             </div>
 
             {/* Export Contents */}
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-sm font-semibold mb-3 text-gray-300">Enthaltene Daten:</h4>
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2348}</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">{t.projectpanel2348}</span>
@@ -2383,7 +2383,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     <div key={idx} className="flex items-center justify-between text-sm">
                       <span className="text-gray-300">{schema.name}</span>
                       <span className="text-gray-500">
-                        {schema.table_count} Tabellen, {schema.version_count} Version(en)
+                        {schema.table_count}{t.projectpanel2386}{schema.version_count}{t.projectpanel2386_2}
                       </span>
                     </div>
                   ))}
@@ -2400,7 +2400,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                     <div key={idx} className="flex items-center justify-between text-sm">
                       <span className="text-gray-300">{template.name}</span>
                       <span className="text-gray-500">
-                        {template.file_count} Dateien ({template.usage_type})
+                        {template.file_count}{t.projectpanel2403}({template.usage_type})
                       </span>
                     </div>
                   ))}

@@ -30,6 +30,15 @@ class DemoReset extends Command
      */
     protected string $snapshotPath;
 
+    /**
+     * Tables that should be preserved across demo resets.
+     * Their data is backed up before reset and restored after.
+     */
+    protected array $preserveTables = [
+        'visitor_logs',
+        'performance_metrics',
+    ];
+
     public function __construct()
     {
         parent::__construct();
@@ -46,6 +55,8 @@ class DemoReset extends Command
             return 1;
         }
 
+        $this->info('');
+        $this->info('=== Demo Reset: ' . now()->format('Y-m-d H:i:s') . ' ===');
         $this->info('Starting Demo Database Reset...');
 
         // Check if snapshot exists
@@ -66,13 +77,21 @@ class DemoReset extends Command
             $this->createBackup();
         }
 
+        // Preserve analytics data before reset
+        $preservedData = $this->preserveTableData();
+
         // Restore from snapshot
         $result = $this->restoreFromSnapshot();
 
-        // Clear countdown cache flag
-        Cache::forget('demo_reset_at');
-
         if ($result === 0) {
+            // Restore preserved analytics data
+            $this->restoreTableData($preservedData);
+            // Flush all caches (application cache, Redis, etc.)
+            $this->info('Clearing all caches...');
+            $this->callSilently('cache:clear');
+            $this->callSilently('optimize:clear');
+            Cache::flush();
+
             $this->info('Demo database has been reset successfully!');
             $this->info('Demo user available: demo-user / demo1234');
         }
@@ -164,6 +183,63 @@ class DemoReset extends Command
 
         $this->info('Snapshot restored successfully.');
         return 0;
+    }
+
+    /**
+     * Preserve data from tables that should survive the reset.
+     *
+     * @return array<string, array> Table name => rows
+     */
+    private function preserveTableData(): array
+    {
+        $preserved = [];
+
+        foreach ($this->preserveTables as $table) {
+            try {
+                $rows = DB::table($table)->get()->map(fn ($row) => (array) $row)->all();
+                $count = count($rows);
+                if ($count > 0) {
+                    $preserved[$table] = $rows;
+                    $this->info("Preserved {$count} rows from {$table}.");
+                }
+            } catch (\Exception $e) {
+                $this->warn("Could not preserve {$table}: {$e->getMessage()}");
+            }
+        }
+
+        return $preserved;
+    }
+
+    /**
+     * Restore previously preserved table data after reset.
+     *
+     * @param array<string, array> $preservedData
+     */
+    private function restoreTableData(array $preservedData): void
+    {
+        if (empty($preservedData)) {
+            return;
+        }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+        foreach ($preservedData as $table => $rows) {
+            try {
+                // Clear any data the snapshot may have inserted
+                DB::table($table)->truncate();
+
+                // Insert in chunks to avoid memory issues with large datasets
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    DB::table($table)->insert($chunk);
+                }
+
+                $this->info("Restored " . count($rows) . " rows to {$table}.");
+            } catch (\Exception $e) {
+                $this->warn("Could not restore {$table}: {$e->getMessage()}");
+            }
+        }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 
     /**

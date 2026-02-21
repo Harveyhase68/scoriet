@@ -63,7 +63,7 @@ class DbSchemaController extends Controller
             if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('dbschemacontrollerphp66'),
                 ], 403);
             }
 
@@ -74,7 +74,7 @@ class DbSchemaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Schema not found',
+                'error' => __('dbschemacontrollerphp77'),
             ], 404);
         }
     }
@@ -92,7 +92,7 @@ class DbSchemaController extends Controller
             if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('dbschemacontrollerphp95'),
                 ], 403);
             }
 
@@ -108,7 +108,7 @@ class DbSchemaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Schema not found',
+                'error' => __('dbschemacontrollerphp111'),
             ], 404);
         }
     }
@@ -126,7 +126,7 @@ class DbSchemaController extends Controller
             if ($schema->owner_id !== $user->id && $schema->visibility !== 'public') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Access denied to this schema',
+                    'error' => __('dbschemacontrollerphp129'),
                 ], 403);
             }
 
@@ -142,7 +142,7 @@ class DbSchemaController extends Controller
             if (!$template->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You cannot edit this template',
+                    'error' => __('dbschemacontrollerphp145'),
                 ], 403);
             }
 
@@ -154,7 +154,7 @@ class DbSchemaController extends Controller
             if ($existingDependency) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Template is already linked to this DB schema',
+                    'error' => __('dbschemacontrollerphp157'),
                 ], 409);
             }
 
@@ -168,7 +168,7 @@ class DbSchemaController extends Controller
             return response()->json([
                 'success' => true,
                 'dependency' => $dependency->load(['template', 'dbSchema']),
-                'message' => 'Template linked to DB schema successfully',
+                'message' => __('dbschemacontrollerphp171'),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -192,7 +192,7 @@ class DbSchemaController extends Controller
             if (!$template->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You cannot edit this template',
+                    'error' => __('dbschemacontrollerphp195'),
                 ], 403);
             }
 
@@ -204,12 +204,12 @@ class DbSchemaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template unlinked from DB schema successfully',
+                'message' => __('dbschemacontrollerphp207'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Dependency not found',
+                'error' => __('dbschemacontrollerphp212'),
             ], 404);
         }
     }
@@ -253,7 +253,7 @@ class DbSchemaController extends Controller
             if (!$sourceSchema->canBeEditedBy($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You can only copy your own schemas',
+                    'error' => __('dbschemacontrollerphp256'),
                 ], 403);
             }
 
@@ -261,7 +261,7 @@ class DbSchemaController extends Controller
             if (!$sourceSchema->last_version || $sourceSchema->last_version === 0) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Cannot copy an empty schema. The source schema must have at least one version with tables.',
+                    'error' => __('dbschemacontrollerphp264'),
                 ], 422);
             }
 
@@ -278,7 +278,7 @@ class DbSchemaController extends Controller
             if ($existingSchema) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'You already have a schema with this name. Please choose a different name.',
+                    'error' => __('dbschemacontrollerphp281'),
                 ], 409);
             }
 
@@ -302,7 +302,7 @@ class DbSchemaController extends Controller
                 $newSchema->delete();
                 return response()->json([
                     'success' => false,
-                    'error' => 'Source schema has no valid versions to copy',
+                    'error' => __('dbschemacontrollerphp305'),
                 ], 422);
             }
 
@@ -457,7 +457,7 @@ class DbSchemaController extends Controller
             return response()->json([
                 'success' => true,
                 'schema' => $newSchema->load('owner'),
-                'message' => 'Database schema copied successfully',
+                'message' => __('dbschemacontrollerphp460'),
             ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {

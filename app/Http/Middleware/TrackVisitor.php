@@ -42,11 +42,19 @@ class TrackVisitor
             }
 
             // Check if this IP was already logged today
-            $alreadyLogged = VisitorLog::where('ip_address', $ip)
+            $existingLog = VisitorLog::where('ip_address', $ip)
                 ->where('visited_date', $today)
-                ->exists();
+                ->first();
 
-            if ($alreadyLogged) {
+            if ($existingLog) {
+                // If previously logged as anonymous but user is now authenticated,
+                // update the record to reflect the authenticated status
+                if ($user && !$existingLog->is_authenticated) {
+                    $existingLog->update([
+                        'user_id' => $user->id,
+                        'is_authenticated' => true,
+                    ]);
+                }
                 return;
             }
 

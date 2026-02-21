@@ -206,7 +206,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
     // Check if any characters were removed (invalid input)
     if (value !== sanitized) {
-      setNameError('Only lowercase letters, numbers, and underscores are allowed');
+      setNameError(t.teammodal209);
     } else {
       setNameError(null);
     }
@@ -273,7 +273,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setError(`${t.teammodal276}${errorData.required_credits}${t.teammodal276_2}${errorData.current_credits}.`);
           // Re-show unlock screen
           setNeedsUnlock(true);
           setUnlockConfirmed(false);
@@ -312,7 +312,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   return (
     <>
     <Dialog
-      header={team ? t.teammanagementpanel394 : (needsUnlock ? 'Unlock Team Feature' : t.teammodal155)}
+      header={team ? t.teammanagementpanel394 : (needsUnlock ? t.teammodal315 : t.teammodal155)}
       visible={visible}
       onHide={onHide}
       style={{ width: '500px' }}
@@ -325,7 +325,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       {checkingSubscription && !team && (
         <div className="py-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: colors.accent }}></div>
-          <p style={{ color: colors.textMuted }}>Checking subscription...</p>
+          <p style={{ color: colors.textMuted }}>{t.teammodal328}</p>
         </div>
       )}
 
@@ -337,7 +337,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               <strong>Team Feature - Free Tier</strong>
             </p>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              Teams is an additional feature for free users. Each team costs <strong>50 credits per year</strong>.
+              {t.teammodal340}<strong>{t.teammodal340_2}</strong>.
             </p>
             {ownedTeams > 0 && (
               <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
@@ -349,16 +349,16 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
           <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
             <div className="flex justify-between items-center mb-2">
-              <span style={{ color: colors.textSecondary }}>Your Credits:</span>
+              <span style={{ color: colors.textSecondary }}>{t.teammodal352}</span>
               <span className="font-bold text-lg" style={{ color: colors.textPrimary }}>{currentUser?.credits || 0}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span style={{ color: colors.textSecondary }}>Required Credits:</span>
+              <span style={{ color: colors.textSecondary }}>{t.teammodal356}</span>
               <span className="font-bold text-lg" style={{ color: colors.warningText }}>50</span>
             </div>
             <hr className="my-2" style={{ borderColor: colors.borderPrimary }} />
             <div className="flex justify-between items-center">
-              <span style={{ color: colors.textSecondary }}>After Unlock:</span>
+              <span style={{ color: colors.textSecondary }}>{t.teammodal361}</span>
               <span className="font-bold text-lg" style={{ color: hasEnoughCredits ? colors.successText : colors.errorText }}>
                 {hasEnoughCredits ? (currentUser?.credits || 0) - 50 : `Need ${creditsNeeded} more`}
               </span>
@@ -368,7 +368,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           {!hasEnoughCredits && (
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
               <p className="text-sm" style={{ color: colors.errorText }}>
-                You don't have enough credits. You need <strong>{creditsNeeded} more credits</strong> to unlock the team feature.
+                {t.teammodal371}<strong>{creditsNeeded}{t.teammodal371_2}</strong>{t.teammodal371_3}
               </p>
             </div>
           )}
@@ -380,7 +380,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
                 onClick={handleUnlockConfirm}
                 className="flex-1 p-button-success"
                 icon="pi pi-unlock"
-                label="Unlock Team (50 Credits)"
+                label={t.teammodal315}
               />
             ) : (
               <Button
@@ -388,22 +388,22 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
                 onClick={handleBuyCredits}
                 className="flex-1 p-button-warning"
                 icon="pi pi-shopping-cart"
-                label="Buy Credits"
+                label={t.teammodal391}
               />
             )}
           </div>
 
           <p className="text-xs text-center" style={{ color: colors.textMuted }}>
-            Or upgrade to{' '}
+            {t.teammodal397}{' '}
             <button
               type="button"
               onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
               className="underline font-semibold"
               style={{ color: colors.warningText }}
             >
-              Patron Monthly
+              {t.teammodal404}
             </button>
-            {' '}for unlimited teams!
+            {' '}{t.teammodal406}
           </p>
         </div>
       )}
@@ -418,7 +418,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
           <div className="field">
             <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Team Name *
+              {t.teammodal421}
             </label>
             <InputText
               id="name"
@@ -429,7 +429,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               className={nameError ? 'p-invalid' : ''}
             />
             <small className="text-xs mt-1 block" style={{ color: colors.textMuted }}>
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.teammodal432}
             </small>
             {nameError && (
               <small className="text-xs mt-1 block" style={{ color: colors.errorText }}>{nameError}</small>
@@ -451,7 +451,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
 
           <div className="field">
             <label htmlFor="project_ids" className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-              Projects
+              {t.teammodal454}
             </label>
             <MultiSelect
               id="project_ids"
@@ -467,7 +467,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               panelClassName="team-modal-multiselect-panel"
             />
             <small className="text-xs mt-1 block" style={{ color: colors.textMuted }}>
-              Select one or more projects for this team
+              {t.teammodal470}
             </small>
           </div>
 
@@ -479,7 +479,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
                 onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.checked || false }))}
               />
               <label htmlFor="is_active" className="text-sm" style={{ color: colors.textPrimary }}>
-                Team is active
+                {t.teammodal482}
               </label>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           />
           <Button
             type="submit"
-            label={team ? 'Update' : t.teammodal240}
+            label={team ? t.teammodal499 : t.teammodal240}
             icon={team ? 'pi pi-check' : 'pi pi-plus'}
             loading={loading}
           />

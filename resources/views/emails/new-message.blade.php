@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neue Nachricht - {{ $thread->subject }}</title>
+    <title>{{__('new-messagebladephp6')}}{{ $thread->subject }}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -174,7 +174,7 @@
         <div class="header">
             <div class="logo">Scoriet</div>
             @if($thread->is_broadcast)
-                <span class="broadcast-badge">SYSTEM-NACHRICHT</span>
+                <span class="broadcast-badge">{{__('new-messagebladephp177')}}</span>
             @endif
             <h1 class="title">{{__('new-messagebladephp179')}}</h1>
         </div>
@@ -200,7 +200,7 @@
         @if($attachments && count($attachments) > 0)
         <div class="attachments">
             <div class="attachments-title">
-                📎 {{ count($attachments) }} {{ count($attachments) === 1 ? 'Anhang' : 'Anhänge' }}
+                📎 {{ count($attachments) }} {{ count($attachments) === 1 ? __('new-messagebladephp203') : __('new-messagebladephp203_2') }}
             </div>
             @foreach($attachments as $attachment)
             <div class="attachment-item">
@@ -218,32 +218,32 @@
                     </div>
                     <div class="attachment-info">
                         <div class="attachment-name">{{ $attachment->original_filename }}</div>
-                        <div class="attachment-size">{{ $attachment->getFormattedSize() }} - Klicken zum Herunterladen</div>
+                        <div class="attachment-size">{{ $attachment->getFormattedSize() }}{{__('new-messagebladephp221')}}</div>
                     </div>
                 </a>
             </div>
             @endforeach
             <div style="margin-top: 10px; font-size: 12px; color: #6b7280;">
-                Die Download-Links sind 7 Tage gültig.
+                {{__('new-messagebladephp227')}}
             </div>
         </div>
         @endif
 
         <div class="timestamp">
-            Gesendet am {{ $userMessage->created_at->format('d.m.Y \u\m H:i') }} Uhr
+            {{__('new-messagebladephp233')}}{{ $userMessage->created_at->format('d.m.Y \u\m H:i') }}{{__('new-messagebladephp233_2')}}
         </div>
 
         <div class="actions">
-            <a href="{{ $viewUrl }}" class="btn">Nachricht lesen</a>
+            <a href="{{ $viewUrl }}" class="btn">{{__('new-messagebladephp237')}}</a>
         </div>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Benachrichtigung von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil Ihnen jemand eine Nachricht gesendet hat.
+                {{__('new-messagebladephp242')}}<strong>Scoriet</strong>.<br>
+                {{__('new-messagebladephp243')}}
             </p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
-                Thread ID: {{ $thread->id }}
+                {{__('new-messagebladephp246')}}{{ $thread->id }}
             </p>
         </div>
     </div>

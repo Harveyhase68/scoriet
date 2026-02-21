@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abo läuft bald ab - {{ $displayName }}</title>
+    <title>{{__('subscription-expiry-warningbladephp6')}}{{ $displayName }}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -133,54 +133,54 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">Ihr Abo läuft bald ab</h1>
+            <h1 class="title">{{__('subscription-expiry-warningbladephp136')}}</h1>
         </div>
 
         <p>Hallo {{ $user->name }},</p>
 
         <div class="warning-banner">
             <div class="warning-title">
-                Ihr Abonnement läuft bald ab!
+                {{__('subscription-expiry-warningbladephp143')}}
             </div>
             <p style="margin: 0; color: #92400e;">
-                Verlängern Sie jetzt und sichern Sie sich einen Bonus von <strong>{{ $bonusDays }} Tagen</strong> gratis!
+                {{__('subscription-expiry-warningbladephp146')}}<strong>{{ $bonusDays }}{{__('subscription-expiry-warningbladephp146_2')}}</strong>{{__('subscription-expiry-warningbladephp146_3')}}
             </p>
         </div>
 
         <div class="countdown">{{ $daysUntilExpiry }}</div>
-        <div class="countdown-label">Tage verbleibend</div>
+        <div class="countdown-label">{{__('subscription-expiry-warningbladephp151')}}</div>
 
         <div class="subscription-info">
             <div class="subscription-name">{{ $displayName }}</div>
             <p class="subscription-expiry">
-                Läuft ab am: {{ $expiresAt }}
+                {{__('subscription-expiry-warningbladephp156')}}{{ $expiresAt }}
             </p>
         </div>
 
         <div class="bonus-box">
-            <div class="bonus-title">Frühbucher-Bonus</div>
-            <p style="margin: 5px 0; color: #047857;">Verlängern Sie jetzt und erhalten Sie zusätzlich:</p>
+            <div class="bonus-title">{__('subscription-expiry-warningbladephp161')}}</div>
+            <p style="margin: 5px 0; color: #047857;">{{__('subscription-expiry-warningbladephp162')}}</p>
             <div class="bonus-days">+{{ $bonusDays }} Tage GRATIS!</div>
             <p style="margin: 10px 0 0; font-size: 14px; color: #059669;">
-                Das entspricht einem ganzen Monat extra!
+                {{__('subscription-expiry-warningbladephp165')}}
             </p>
         </div>
 
         <div class="actions">
-            <a href="{{ $renewUrl }}" class="btn btn-primary">Jetzt verlängern</a>
+            <a href="{{ $renewUrl }}" class="btn btn-primary">{{__('subscription-expiry-warningbladephp170')}}</a>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Die Verlängerung kostet nur <strong>50 Credits</strong> für ein weiteres Jahr.
+            {{__('subscription-expiry-warningbladephp174')}}<strong>{{__('subscription-expiry-warningbladephp174_2')}}</strong>{{__('subscription-expiry-warningbladephp174_3')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil Ihr Abonnement in Kürze abläuft.
+                {{__('subscription-expiry-warningbladephp179')}}<strong>Scoriet</strong>.<br>
+                {{__('subscription-expiry-warningbladephp180')}}
             </p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
-                Subscription ID: {{ $subscription->id }}
+                {{__('subscription-expiry-warningbladephp183')}}{{ $subscription->id }}
             </p>
         </div>
     </div>

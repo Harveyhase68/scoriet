@@ -137,7 +137,7 @@ interface ImportOptions {
 
 export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }: TabPanelProps) {
   const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage);
+  const { t: t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
   const toast = useRef<Toast>(null);
   const fileUploadRef = useRef<FileUpload>(null);
@@ -162,7 +162,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
 
       const token = getAuthToken();
       if (!token) {
-        throw new Error('Nicht angemeldet');
+        throw new Error(t.projectimportpanel165);
       }
 
       const response = await fetch('/api/projects/import/analyze', {
@@ -186,19 +186,19 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
         setStep('configure');
         toast.current?.show({
           severity: 'success',
-          summary: 'Analyse erfolgreich',
-          detail: 'ZIP-Datei wurde analysiert',
+          summary: t.projectimportpanel189,
+          detail: t.projectimportpanel190,
           life: 3000,
         });
       } else {
-        throw new Error(data.error || 'Analyse fehlgeschlagen');
+        throw new Error(data.error || t.projectimportpanel194);
       }
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error(t.projectimportpanel197, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: error.message || 'Upload fehlgeschlagen',
+        detail: error.message || t.projectimportpanel201,
         life: 5000,
       });
     } finally {
@@ -265,19 +265,19 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
         setStep('complete');
         toast.current?.show({
           severity: 'success',
-          summary: 'Import erfolgreich',
-          detail: `Projekt "${data.project?.name}" wurde importiert`,
+          summary: t.projectimportpanel268,
+          detail: `${t.projectimportpanel269_2}"${data.project?.name}"${t.projectimportpanel269_3}`,
           life: 5000,
         });
       } else {
-        throw new Error(data.error || 'Import fehlgeschlagen');
+        throw new Error(data.error || t.projectimportpanel273);
       }
     } catch (error: any) {
       console.error('Import error:', error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: error.message || 'Import fehlgeschlagen',
+        detail: error.message || t.projectimportpanel280,
         life: 5000,
       });
       setStep('configure');
@@ -323,9 +323,9 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
     <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
       <div className="text-center p-6">
         <i className="pi pi-upload text-6xl mb-4" style={{ color: colors.accent }} />
-        <h3 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>Projekt importieren</h3>
+        <h3 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>{t.projectimportpanel326}</h3>
         <p className="mb-6" style={{ color: colors.textMuted }}>
-          Wählen Sie eine Scoriet-Export-Datei (.zip) aus, um ein Projekt zu importieren.
+          {t.projectimportpanel328}
         </p>
 
         <FileUpload
@@ -336,7 +336,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
           customUpload
           uploadHandler={handleUpload}
           auto
-          chooseLabel="ZIP-Datei auswählen"
+          chooseLabel={t.projectimportpanel339}
           className="p-button-lg"
           disabled={loading}
         />
@@ -344,7 +344,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
         {loading && (
           <div className="mt-4 flex items-center justify-center gap-2">
             <ProgressSpinner style={{ width: '24px', height: '24px' }} />
-            <span style={{ color: colors.textPrimary }}>Analysiere ZIP-Datei...</span>
+            <span style={{ color: colors.textPrimary }}>{t.projectimportpanel347}</span>
           </div>
         )}
       </div>
@@ -362,12 +362,12 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
           <div className="flex items-center gap-4">
             <i className="pi pi-info-circle text-2xl" style={{ color: colors.infoText }} />
             <div>
-              <p className="font-semibold" style={{ color: colors.textPrimary }}>Export-Info</p>
+              <p className="font-semibold" style={{ color: colors.textPrimary }}>{t.projectimportpanel365}</p>
               <p className="text-sm" style={{ color: colors.textMuted }}>
-                Exportiert am:{' '}
-                {new Date(analysis.export_info.exported_at).toLocaleString('de-DE')}
+                {t.projectimportpanel367}{' '}
+                {new Date(analysis.export_info.exported_at).toLocaleString(currentLanguage)}
                 {' | '}
-                Scoriet Version: {analysis.export_info.scoriet_version}
+                {t.projectimportpanel370}{analysis.export_info.scoriet_version}
               </p>
             </div>
           </div>
@@ -379,8 +379,8 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
             header={
               <div className="flex items-center gap-2">
                 <i className="pi pi-folder" style={{ color: colors.textPrimary }} />
-                <span style={{ color: colors.textPrimary }}>Projekt</span>
-                {analysis.project.exists && <Tag severity="warning" value="Existiert" />}
+                <span style={{ color: colors.textPrimary }}>{t.projectimportpanel382}</span>
+                {analysis.project.exists && <Tag severity="warning" value={t.projectimportpanel383} />}
               </div>
             }
             pt={{
@@ -390,7 +390,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
           >
             <div className="space-y-4" style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}>
               <div className="flex items-center gap-4 mb-4">
-                <span className="font-semibold min-w-32" style={{ color: colors.textPrimary }}>Original-Name:</span>
+                <span className="font-semibold min-w-32" style={{ color: colors.textPrimary }}>{t.projectimportpanel393}</span>
                 <span style={{ color: colors.textSecondary }}>{analysis.project.name}</span>
               </div>
 
@@ -415,13 +415,13 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                     }
                   />
                   <label htmlFor="project_create" className="ml-2" style={{ color: colors.textPrimary }}>
-                    Neues Projekt anlegen
+                    {t.projectimportpanel418}
                   </label>
                 </div>
 
                 {options.project.action === 'create' && (
                   <div className="ml-6 flex items-center gap-2">
-                    <span style={{ color: colors.textPrimary }}>Name:</span>
+                    <span style={{ color: colors.textPrimary }}>{t.projectimportpanel424}</span>
                     <InputText
                       value={options.project.name}
                       onChange={(e) =>
@@ -454,7 +454,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                       }
                     />
                     <label htmlFor="project_merge" className="ml-2" style={{ color: colors.textPrimary }}>
-                      In bestehendes Projekt "{analysis.project.name}" importieren (Merge)
+                      {t.projectimportpanel457}"{analysis.project.name}"{t.projectimportpanel457_2}
                     </label>
                   </div>
                 )}
@@ -468,10 +468,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
               header={
                 <div className="flex items-center gap-2">
                   <i className="pi pi-database" style={{ color: colors.textPrimary }} />
-                  <span style={{ color: colors.textPrimary }}>Datenbanken</span>
+                  <span style={{ color: colors.textPrimary }}>{t.projectimportpanel471}</span>
                   <Badge value={analysis.schemas.length} />
                   {analysis.schemas.some((s) => s.exists) && (
-                    <Tag severity="warning" value="Konflikte" />
+                    <Tag severity="warning" value={t.projectimportpanel474} />
                   )}
                 </div>
               }
@@ -487,10 +487,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                       <div>
                         <span className="font-semibold" style={{ color: colors.textPrimary }}>{schema.name}</span>
                         <span className="ml-2" style={{ color: colors.textMuted }}>
-                          ({schema.versions_count} Version(en), {schema.database_type})
+                          ({schema.versions_count}{t.projectimportpanel490}{schema.database_type})
                         </span>
                       </div>
-                      {schema.exists && <Tag severity="warning" value="Existiert" />}
+                      {schema.exists && <Tag severity="warning" value={t.projectimportpanel493} />}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -511,13 +511,13 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`schema_${index}_create`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Neu anlegen
+                          {t.projectimportpanel514}
                         </label>
                       </div>
 
                       {options.schemas[index].action === 'create' && (
                         <div className="ml-6 flex items-center gap-2">
-                          <span style={{ color: colors.textPrimary }}>Name:</span>
+                          <span style={{ color: colors.textPrimary }}>{t.projectimportpanel520}</span>
                           <InputText
                             value={options.schemas[index].name}
                             onChange={(e) => {
@@ -548,7 +548,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                             }}
                           />
                           <label htmlFor={`schema_${index}_existing`} className="ml-2" style={{ color: colors.textPrimary }}>
-                            Existierende verwenden
+                            {t.projectimportpanel551}
                           </label>
                         </div>
                       )}
@@ -566,7 +566,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`schema_${index}_skip`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Überspringen
+                          {t.projectimportpanel569}
                         </label>
                       </div>
                     </div>
@@ -582,10 +582,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
               header={
                 <div className="flex items-center gap-2">
                   <i className="pi pi-file" style={{ color: colors.textPrimary }} />
-                  <span style={{ color: colors.textPrimary }}>Templates</span>
+                  <span style={{ color: colors.textPrimary }}>{t.projectimportpanel585}</span>
                   <Badge value={analysis.templates.length} />
                   {analysis.templates.some((t) => t.exists) && (
-                    <Tag severity="warning" value="Konflikte" />
+                    <Tag severity="warning" value={t.projectimportpanel588} />
                   )}
                 </div>
               }
@@ -601,10 +601,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                       <div>
                         <span className="font-semibold" style={{ color: colors.textPrimary }}>{template.name}</span>
                         <span className="ml-2" style={{ color: colors.textMuted }}>
-                          ({template.files_count} Dateien, {template.category || 'Allgemein'})
+                          ({template.files_count} Dateien, {template.category || t.projectimportpanel604})
                         </span>
                       </div>
-                      {template.exists && <Tag severity="warning" value="Existiert" />}
+                      {template.exists && <Tag severity="warning" value={t.projectimportpanel607} />}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -625,7 +625,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`template_${index}_create`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Neu anlegen
+                          {t.projectimportpanel628}
                         </label>
                       </div>
 
@@ -662,7 +662,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                             }}
                           />
                           <label htmlFor={`template_${index}_existing`} className="ml-2" style={{ color: colors.textPrimary }}>
-                            Existierendes verwenden
+                            {t.projectimportpanel665}
                           </label>
                         </div>
                       )}
@@ -680,7 +680,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`template_${index}_skip`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Überspringen
+                          {t.projectimportpanel683}
                         </label>
                       </div>
                     </div>
@@ -696,10 +696,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
               header={
                 <div className="flex items-center gap-2">
                   <i className="pi pi-window-maximize" style={{ color: colors.textPrimary }} />
-                  <span style={{ color: colors.textPrimary }}>FormSets</span>
+                  <span style={{ color: colors.textPrimary }}>{t.projectimportpanel699}</span>
                   <Badge value={analysis.form_sets.length} />
                   {analysis.form_sets.some((f) => f.exists) && (
-                    <Tag severity="warning" value="Konflikte" />
+                    <Tag severity="warning" value={t.projectimportpanel702} />
                   )}
                 </div>
               }
@@ -715,10 +715,10 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                       <div>
                         <span className="font-semibold" style={{ color: colors.textPrimary }}>{formSet.name}</span>
                         <span className="ml-2" style={{ color: colors.textMuted }}>
-                          ({formSet.windows_count} Fenster)
+                          ({formSet.windows_count}{t.projectimportpanel718})
                         </span>
                       </div>
-                      {formSet.exists && <Tag severity="warning" value="Existiert" />}
+                      {formSet.exists && <Tag severity="warning" value={t.projectimportpanel721} />}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -739,13 +739,13 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`formset_${index}_create`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Neu anlegen
+                          {t.projectimportpanel742}
                         </label>
                       </div>
 
                       {options.form_sets[index].action === 'create' && (
                         <div className="ml-6 flex items-center gap-2">
-                          <span style={{ color: colors.textPrimary }}>Name:</span>
+                          <span style={{ color: colors.textPrimary }}>{t.projectimportpanel748}</span>
                           <InputText
                             value={options.form_sets[index].name}
                             onChange={(e) => {
@@ -776,7 +776,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                             }}
                           />
                           <label htmlFor={`formset_${index}_existing`} className="ml-2" style={{ color: colors.textPrimary }}>
-                            Existierendes verwenden
+                            {t.projectimportpanel779}
                           </label>
                         </div>
                       )}
@@ -794,7 +794,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                           }}
                         />
                         <label htmlFor={`formset_${index}_skip`} className="ml-2" style={{ color: colors.textPrimary }}>
-                          Überspringen
+                          {t.projectimportpanel797}
                         </label>
                       </div>
                     </div>
@@ -809,7 +809,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
             header={
               <div className="flex items-center gap-2">
                 <i className="pi pi-cog" style={{ color: colors.textPrimary }} />
-                <span style={{ color: colors.textPrimary }}>Weitere Optionen</span>
+                <span style={{ color: colors.textPrimary }}>{t.projectimportpanel812}</span>
               </div>
             }
             pt={{
@@ -827,7 +827,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                   }
                 />
                 <label htmlFor="import_code_adjustments" className="ml-2" style={{ color: colors.textPrimary }}>
-                  Code Adjustments importieren
+                  {t.projectimportpanel830}
                   <span className="ml-2" style={{ color: colors.textMuted }}>({analysis.counts.code_adjustments})</span>
                 </label>
               </div>
@@ -841,7 +841,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                   }
                 />
                 <label htmlFor="import_attachments" className="ml-2" style={{ color: colors.textPrimary }}>
-                  Attachments importieren
+                  {t.projectimportpanel844}
                   <span className="ml-2" style={{ color: colors.textMuted }}>({analysis.counts.attachments})</span>
                 </label>
               </div>
@@ -855,7 +855,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
                   }
                 />
                 <label htmlFor="import_translations" className="ml-2" style={{ color: colors.textPrimary }}>
-                  Übersetzungen importieren
+                  {t.projectimportpanel858}
                   <span className="ml-2" style={{ color: colors.textMuted }}>({analysis.counts.translations})</span>
                 </label>
               </div>
@@ -863,7 +863,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
               {analysis.counts.template_variable_values > 0 && (
                 <Message
                   severity="info"
-                  text={`${analysis.counts.template_variable_values} Template-Variablenwerte werden automatisch importiert`}
+                  text={`${analysis.counts.template_variable_values}${t.projectimportpanel866}`}
                 />
               )}
             </div>
@@ -873,14 +873,14 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mt-6">
           <Button
-            label="Abbrechen"
+            label={t.projectimportpanel876}
             icon="pi pi-times"
             severity="secondary"
             onClick={handleCancel}
             disabled={loading}
           />
           <Button
-            label="Importieren"
+            label={t.projectimportpanel883}
             icon="pi pi-download"
             onClick={handleImport}
             disabled={loading}
@@ -895,9 +895,9 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
     <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
       <div className="text-center p-6">
         <ProgressSpinner style={{ width: '64px', height: '64px' }} />
-        <h3 className="text-xl font-semibold mt-4 mb-2" style={{ color: colors.textPrimary }}>Import läuft...</h3>
+        <h3 className="text-xl font-semibold mt-4 mb-2" style={{ color: colors.textPrimary }}>{t.projectimportpanel898}</h3>
         <p style={{ color: colors.textMuted }}>
-          Bitte warten Sie, während das Projekt importiert wird.
+          {t.projectimportpanel900}
         </p>
       </div>
     </Card>
@@ -911,12 +911,11 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
       <Card className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
         <div className="text-center p-6">
           <i className="pi pi-check-circle text-6xl mb-4" style={{ color: colors.successText }} />
-          <h3 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>Import erfolgreich!</h3>
+          <h3 className="text-xl font-semibold mb-2" style={{ color: colors.textPrimary }}>{t.projectimportpanel914}</h3>
 
           {importResult.project && (
             <p className="text-lg mb-4" style={{ color: colors.textPrimary }}>
-              Projekt "<span className="font-semibold">{importResult.project.name}</span>" wurde
-              erstellt.
+              {t.projectimportpanel918_2}"<span className="font-semibold">{importResult.project.name}</span>"{t.projectimportpanel918}
             </p>
           )}
 
@@ -926,44 +925,44 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
               <div className="text-2xl font-bold" style={{ color: colors.infoText }}>
                 {importResult.imported.schemas}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>Datenbanken</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel928}</div>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="text-2xl font-bold" style={{ color: colors.successText }}>
                 {importResult.imported.templates}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>Templates</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel934}</div>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="text-2xl font-bold" style={{ color: colors.accent }}>
                 {importResult.imported.form_sets}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>FormSets</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel940}</div>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="text-2xl font-bold" style={{ color: colors.warningText }}>
                 {importResult.imported.code_adjustments}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>Code Adj.</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel946}</div>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="text-2xl font-bold" style={{ color: colors.errorText }}>
                 {importResult.imported.attachments}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>Anhänge</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel952}</div>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="text-2xl font-bold" style={{ color: colors.infoText }}>
                 {importResult.imported.translations}
               </div>
-              <div className="text-sm" style={{ color: colors.textMuted }}>Übersetz.</div>
+              <div className="text-sm" style={{ color: colors.textMuted }}>{t.projectimportpanel958}</div>
             </div>
           </div>
 
           {/* Warnings */}
           {importResult.warnings && importResult.warnings.length > 0 && (
             <div className="mb-4">
-              <h4 className="font-semibold mb-2" style={{ color: colors.warningText }}>Warnungen:</h4>
+              <h4 className="font-semibold mb-2" style={{ color: colors.warningText }}>{t.projectimportpanel965}</h4>
               <div className="text-left max-w-lg mx-auto">
                 {importResult.warnings.map((warning: string, index: number) => (
                   <Message
@@ -980,7 +979,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
           {/* Errors */}
           {importResult.errors && importResult.errors.length > 0 && (
             <div className="mb-4">
-              <h4 className="font-semibold mb-2" style={{ color: colors.errorText }}>Fehler:</h4>
+              <h4 className="font-semibold mb-2" style={{ color: colors.errorText }}>{t.projectimportpanel982}</h4>
               <div className="text-left max-w-lg mx-auto">
                 {importResult.errors.map((error: string, index: number) => (
                   <Message key={index} severity="error" text={error} className="mb-1 w-full" />
@@ -992,14 +991,14 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
           {/* Action Buttons */}
           <div className="flex justify-center gap-3">
             <Button
-              label="Neuer Import"
+              label={t.projectimportpanel994}
               icon="pi pi-plus"
               severity="secondary"
               onClick={handleCancel}
             />
             {importResult.project && (
               <Button
-                label="Projekt öffnen"
+                label={t.projectimportpanel1001}
                 icon="pi pi-folder-open"
                 onClick={handleOpenProject}
               />
@@ -1017,7 +1016,7 @@ export default function ProjectImportPanel({ isActive: _isActive, onOpenPanel }:
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <i className="pi pi-download text-2xl" style={{ color: colors.accent }} />
-        <h2 className="text-xl font-semibold" style={{ color: colors.textPrimary }}>Projekt importieren</h2>
+        <h2 className="text-xl font-semibold" style={{ color: colors.textPrimary }}>{t.projectimportpanel1019}</h2>
       </div>
 
       {/* Steps */}

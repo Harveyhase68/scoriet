@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dringend: Ihr Konto wird bald deaktiviert</title>
+    <title>{{__('inactivity-warning-2bladephp6')}}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -104,48 +104,48 @@
             <h1 class="title">Zweite Erinnerung</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('inactivity-warning-2bladephp107')}}{{ $user->name }},</p>
 
         <p>
-            Wir haben Ihnen vor 2 Wochen eine Nachricht geschickt, aber Sie haben sich immer noch nicht eingeloggt.
-            Ihr letzter Login war am <strong>{{ $lastLoginAt }}</strong>.
+            {{__('inactivity-warning-2bladephp110')}}
+            {{__('inactivity-warning-2bladephp111')}}<strong>{{ $lastLoginAt }}</strong>.
         </p>
 
         <div class="warning-banner">
             <div class="warning-title">
-                Ihr Konto wird bald deaktiviert!
+                {{__('inactivity-warning-2bladephp116')}}
             </div>
             <p style="margin: 0; color: #92400e;">
-                Bitte loggen Sie sich jetzt ein, um Ihr Konto und alle Ihre Daten zu behalten.
-                Nach der Deaktivierung können Sie sich weiterhin einloggen - Ihr Konto wird dann automatisch reaktiviert.
+                {{__('inactivity-warning-2bladephp119')}}
+                {{__('inactivity-warning-2bladephp120')}}
             </p>
         </div>
 
         <div class="countdown">{{ $daysRemaining }}</div>
-        <div class="countdown-label">Tage bis zur automatischen Deaktivierung</div>
+        <div class="countdown-label">{{__('inactivity-warning-2bladephp125')}}</div>
 
         <div class="info-box">
-            <div class="info-title">Was passiert bei der Deaktivierung?</div>
+            <div class="info-title">{{__('inactivity-warning-2bladephp128')}}</div>
             <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
-                <li>Ihr Konto wird vorübergehend gesperrt</li>
-                <li>Ihre Daten bleiben erhalten</li>
-                <li>Ein erneuter Login reaktiviert Ihr Konto sofort</li>
-                <li>Sie verpassen bis dahin Ihre monatlichen Gratis-Credits</li>
+                <li>{{__('inactivity-warning-2bladephp130')}}</li>
+                <li>{{__('inactivity-warning-2bladephp131')}}</li>
+                <li>{{__('inactivity-warning-2bladephp132')}}</li>
+                <li>{{__('inactivity-warning-2bladephp133')}}</li>
             </ul>
         </div>
 
         <div class="actions">
-            <a href="{{ $loginUrl }}" class="btn btn-warning">Jetzt einloggen</a>
+            <a href="{{ $loginUrl }}" class="btn btn-warning">{{__('inactivity-warning-2bladephp138')}}</a>
         </div>
 
         <p style="text-align: center; color: #6b7280; font-size: 14px;">
-            Ein einziger Login genügt, um Ihr Konto aktiv zu halten!
+            {{__('inactivity-warning-2bladephp142')}}
         </p>
 
         <div class="footer">
             <p>
-                Dies ist eine automatische Nachricht von <strong>Scoriet</strong>.<br>
-                Sie erhalten diese E-Mail, weil Ihr Konto seit über 3 Monaten inaktiv ist.
+                {{__('inactivity-warning-2bladephp147')}}<strong>Scoriet</strong>.<br>
+                {{__('inactivity-warning-2bladephp148')}}
             </p>
         </div>
     </div>

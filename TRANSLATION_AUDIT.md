@@ -958,7 +958,7 @@ All German, no translation system.
 - Line 1486: `"GTree successfully imported!..."` (alert)
 - Line 1493: `"Import error:..."` (alert)
 - Line 1543: `'Unbenannt'` (fallback)
-- Line 1601: `"Debug Manual Generator"` (heading)
+- Line 1601: `"Template Tester & Debug"` (heading)
 - Line 1603: `"Template development and code debugging..."` (JSX text)
 - Line 1660-1707: Schema/version dropdowns (German)
 - Line 1737: `"Projekt wahlen"` (placeholder)

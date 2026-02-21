@@ -367,7 +367,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
     // Date renderer
     const dateBodyTemplate = (formSet: FormSet) => {
-        return new Date(formSet.created_at).toLocaleDateString('de-DE');
+        return new Date(formSet.created_at).toLocaleDateString(currentLanguage);
     };
 
     // Creator renderer
@@ -391,7 +391,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                 { label: t.formsetmanagementpanel391, value: 'public' },
                             ]}
                             onChange={(e) => setMyVisibilityFilter(e.value)}
-                            placeholder="Sichtbarkeit"
+                            placeholder={t.formsetmanagementpanel394}
                             className="w-40"
                             panelClassName="formset-dropdown-panel"
                         />
@@ -406,7 +406,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         label={t.formsetmanagementpanel406}
                         icon="pi pi-plus"
                         className="p-button-success"
-                        onClick={() => onOpenPanel?.('form-designer', { title: 'Form Designer' })}
+                        onClick={() => onOpenPanel?.('form-designer', { title: t.formsetmanagementpanel409 })}
                     />
                 </div>
 
@@ -520,7 +520,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             <Dialog
                 visible={linkModalVisible}
                 onHide={() => setLinkModalVisible(false)}
-                header={`"${formSetToLink?.name}" mit Projekten verknüpfen`}
+                header={`"${formSetToLink?.name}"${t.formsetmanagementpanel523}`}
                 style={{ width: '500px' }}
                 modal
                 contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}

@@ -16,15 +16,15 @@ class CheckInactiveUsers extends Command
      * @var string
      */
     protected $signature = 'users:check-inactive
-                            {--dry-run : Run without sending emails or updating database}
-                            {--force : Force re-send notifications even if already sent}';
+                            {--dry-run : Only simulate, do not send emails or deactivate}
+                            {--force : Skip already-notified check and resend warnings}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Check for inactive free users and send warning emails before deactivation';
+    protected $description = 'Check for inactive users and send warning emails or deactivate accounts';
 
     // Inactivity thresholds (days since last login)
     private const DAYS_WARNING_1 = 90;     // First warning: 3 months
@@ -45,10 +45,10 @@ class CheckInactiveUsers extends Command
         $dryRun = $this->option('dry-run');
         $force = $this->option('force');
 
-        $this->info('Checking for inactive users...');
+        $this->info(__('checkinactiveusersphp48'));
 
         if ($dryRun) {
-            $this->warn('DRY RUN MODE - No emails will be sent and no database changes will be made.');
+            $this->warn(__('checkinactiveusersphp51'));
         }
 
         $stats = [
@@ -71,7 +71,7 @@ class CheckInactiveUsers extends Command
             })
             ->get();
 
-        $this->info("Found {$users->count()} active free users to check.");
+        $this->info(__('checkinactiveusersphp74')."{$users->count()}".__('checkinactiveusersphp74_2'));
 
         foreach ($users as $user) {
             // Double-check: skip patrons (in case user_type changed)
@@ -87,7 +87,7 @@ class CheckInactiveUsers extends Command
                 continue;
             }
 
-            $this->line("User {$user->email}: {$daysSinceLogin} days since last login");
+            $this->line(__('checkinactiveusersphp90')."{$user->email}: {$daysSinceLogin}".__('checkinactiveusersphp90_2'));
 
             // Check which action to take based on inactivity period
             if ($daysSinceLogin >= self::DAYS_DEACTIVATE) {
@@ -110,13 +110,13 @@ class CheckInactiveUsers extends Command
         $this->table(
             ['Action', 'Count'],
             [
-                ['First warnings sent (90 days)', $stats['warning_1_sent']],
-                ['Second warnings sent (105 days)', $stats['warning_2_sent']],
-                ['Final warnings sent (117 days)', $stats['warning_final_sent']],
-                ['Users deactivated (120 days)', $stats['deactivated']],
-                ['Skipped (patron users)', $stats['skipped_patron']],
-                ['Skipped (already notified)', $stats['skipped_already_notified']],
-                ['Skipped (never logged in)', $stats['skipped_no_login']],
+                [__('checkinactiveusersphp113'), $stats['warning_1_sent']],
+                [__('checkinactiveusersphp114'), $stats['warning_2_sent']],
+                [__('checkinactiveusersphp115'), $stats['warning_final_sent']],
+                [__('checkinactiveusersphp116'), $stats['deactivated']],
+                [__('checkinactiveusersphp117'), $stats['skipped_patron']],
+                [__('checkinactiveusersphp118'), $stats['skipped_already_notified']],
+                [__('checkinactiveusersphp119'), $stats['skipped_no_login']],
             ]
         );
 
@@ -130,14 +130,14 @@ class CheckInactiveUsers extends Command
     {
         // Check if already sent and still valid
         if (!$force && $this->isWarningValid($user->inactivity_warning_1_sent_at, self::WARNING_1_MAX_AGE_DAYS)) {
-            $this->line("  - Already received first warning, skipping.");
+            $this->line(__('checkinactiveusersphp133'));
             $stats['skipped_already_notified']++;
             return;
         }
 
         $daysRemaining = self::DAYS_DEACTIVATE - $user->getDaysSinceLastLogin();
 
-        $this->info("  - Sending first inactivity warning ({$daysRemaining} days remaining)");
+        $this->info(__('checkinactiveusersphp140')."({$daysRemaining}".__('checkinactiveusersphp140_2'));
 
         if (!$dryRun) {
             $this->sendWarningEmail($user, 1, $daysRemaining);
@@ -154,14 +154,14 @@ class CheckInactiveUsers extends Command
     {
         // Check if already sent and still valid
         if (!$force && $this->isWarningValid($user->inactivity_warning_2_sent_at, self::WARNING_2_MAX_AGE_DAYS)) {
-            $this->line("  - Already received second warning, skipping.");
+            $this->line(__('checkinactiveusersphp157'));
             $stats['skipped_already_notified']++;
             return;
         }
 
         $daysRemaining = self::DAYS_DEACTIVATE - $user->getDaysSinceLastLogin();
 
-        $this->info("  - Sending second inactivity warning ({$daysRemaining} days remaining)");
+        $this->info(__('checkinactiveusersphp164')."({$daysRemaining}".__('checkinactiveusersphp164_2'));
 
         if (!$dryRun) {
             $this->sendWarningEmail($user, 2, $daysRemaining);
@@ -178,14 +178,14 @@ class CheckInactiveUsers extends Command
     {
         // Check if already sent and still valid
         if (!$force && $this->isWarningValid($user->inactivity_warning_final_sent_at, self::WARNING_FINAL_MAX_AGE_DAYS)) {
-            $this->line("  - Already received final warning, skipping.");
+            $this->line(__('checkinactiveusersphp181'));
             $stats['skipped_already_notified']++;
             return;
         }
 
         $daysRemaining = self::DAYS_DEACTIVATE - $user->getDaysSinceLastLogin();
 
-        $this->warn("  - Sending FINAL inactivity warning ({$daysRemaining} days remaining!)");
+        $this->warn(__('checkinactiveusersphp188')."({$daysRemaining}".__('checkinactiveusersphp188_2').")");
 
         if (!$dryRun) {
             $this->sendWarningEmail($user, 'final', $daysRemaining);
@@ -200,13 +200,13 @@ class CheckInactiveUsers extends Command
      */
     private function handleDeactivation(User $user, bool $dryRun, array &$stats): void
     {
-        $this->error("  - DEACTIVATING user due to inactivity!");
+        $this->error(__('checkinactiveusersphp203'));
 
         if (!$dryRun) {
             $user->deactivateDueToInactivity();
             $this->sendDeactivationEmail($user);
 
-            Log::warning('User deactivated due to inactivity', [
+            Log::warning(__('checkinactiveusersphp209'), [
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'last_login_at' => $user->last_login_at,
@@ -242,10 +242,10 @@ class CheckInactiveUsers extends Command
         };
 
         $subject = match ($warningLevel) {
-            1 => 'Wir vermissen Sie! - Inaktivitätswarnung',
-            2 => 'Dringend: Ihr Konto wird bald deaktiviert',
-            'final' => "LETZTE WARNUNG: Konto wird in {$daysRemaining} Tagen deaktiviert!",
-            default => 'Inaktivitätswarnung',
+            1 => __('checkinactiveusersphp245'),
+            2 => __('checkinactiveusersphp246'),
+            'final' => __('checkinactiveusersphp247')."{$daysRemaining}".__('checkinactiveusersphp247_2'),
+            default => __('checkinactiveusersphp248'),
         };
 
         try {
@@ -262,7 +262,7 @@ class CheckInactiveUsers extends Command
 
         } catch (\Exception $e) {
             $this->error(" Failed to send email: {$e->getMessage()}");
-            Log::error('Failed to send inactivity warning email', [
+            Log::error(__('checkinactiveusersphp265'), [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
@@ -281,12 +281,12 @@ class CheckInactiveUsers extends Command
                 'loginUrl' => config('app.url'),
             ], function ($message) use ($user) {
                 $message->to($user->email, $user->name)
-                    ->subject('Ihr Konto wurde wegen Inaktivität deaktiviert');
+                    ->subject(__('checkinactiveusersphp284'));
             });
 
         } catch (\Exception $e) {
-            $this->error(" Failed to send deactivation email: {$e->getMessage()}");
-            Log::error('Failed to send deactivation email', [
+            $this->error(__('checkinactiveusersphp288')."{$e->getMessage()}");
+            Log::error(__('checkinactiveusersphp289'), [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);

@@ -246,7 +246,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
       >
         <div className="flex items-center space-x-2">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-          <span className="text-white">Loading team...</span>
+          <span className="text-white">{t.manageteammodal249}</span>
         </div>
       </div>
     </div>
@@ -269,7 +269,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
           <div>
             <h2 className="flex items-center">
               <i className="pi pi-cog mr-2"></i>
-              Manage Team: {team.name}
+              {t.manageteammodal272}{team.name}
             </h2>
             <p className="text-gray-300 text-sm mt-1">
               {team.members?.length || 0} members • Project: {team.project_name}
@@ -286,8 +286,8 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
         <div className="flex border-b border-gray-700">
           {[
             { key: 'overview', label: t.manageteammodal283, icon: 'pi-info-circle' },
-            { key: 'members', label: `Members (${team.members?.length || 0})`, icon: 'pi-users' },
-            { key: 'invitations', label: `Invitations (${teamInvitations.filter(i => i.status === 'pending').length})`, icon: 'pi-envelope' }
+            { key: 'members', label: `${t.manageteammodal289}(${team.members?.length || 0})`, icon: 'pi-users' },
+            { key: 'invitations', label: `${t.manageteammodal290}(${teamInvitations.filter(i => i.status === 'pending').length})`, icon: 'pi-envelope' }
           ].map(tab => (
             <button
               key={tab.key}
@@ -310,23 +310,23 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-white mb-4">Team Information</h3>
+                <h3 className="text-lg font-medium text-white mb-4">{t.manageteammodal313}</h3>
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Team Name</label>
+                      <label className="block text-sm text-gray-400 mb-1">{t.manageteammodal317}</label>
                       <p className="text-white">{team.name}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Project</label>
+                      <label className="block text-sm text-gray-400 mb-1">{t.manageteammodal321}</label>
                       <p className="text-white">{team.project_name}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Owner</label>
+                      <label className="block text-sm text-gray-400 mb-1">{t.manageteammodal325}</label>
                       <p className="text-white">{team.owner?.username || team.owner?.name || t.testprojectschemas50}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Status</label>
+                      <label className="block text-sm text-gray-400 mb-1">{t.manageteammodal329}</label>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         team.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
@@ -336,7 +336,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                   </div>
                   {team.description && (
                     <div className="mt-4">
-                      <label className="block text-sm text-gray-400 mb-1">Description</label>
+                      <label className="block text-sm text-gray-400 mb-1">{t.manageteammodal339}</label>
                       <p className="text-white">{team.description}</p>
                     </div>
                   )}
@@ -349,14 +349,14 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
           {activeTab === 'members' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-white">Team Members</h3>
+                <h3 className="text-lg font-medium text-white">{t.manageteammodal352}</h3>
                 {isAdmin && (
                   <button
                     onClick={() => setShowInviteForm(!showInviteForm)}
                     className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm flex items-center space-x-2 transition-colors"
                   >
                     <i className="pi pi-plus"></i>
-                    <span>Invite Member</span>
+                    <span>{t.manageteammodal359}</span>
                   </button>
                 )}
               </div>
@@ -364,22 +364,22 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
               {/* Invite Form */}
               {showInviteForm && isAdmin && (
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h4 className="font-medium text-white mb-4">Invite New Member</h4>
+                  <h4 className="font-medium text-white mb-4">{t.manageteammodal367}</h4>
                   <form onSubmit={handleInviteUser} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm text-gray-300 mb-2">Username (required) *</label>
+                        <label className="block text-sm text-gray-300 mb-2">{t.manageteammodal371}</label>
                         <input
                           type="text"
                           required
                           value={inviteForm.invited_user_id}
                           onChange={(e) => setInviteForm({ ...inviteForm, invited_user_id: e.target.value })}
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="e.g., Harveyhase68"
+                          placeholder={t.manageteammodal378}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-300 mb-2">Email (optional)</label>
+                        <label className="block text-sm text-gray-300 mb-2">{t.manageteammodal382}</label>
                         <input
                           type="email"
                           value={inviteForm.invited_email}
@@ -390,18 +390,18 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-300 mb-2">Role</label>
+                      <label className="block text-sm text-gray-300 mb-2">{t.manageteammodal393}</label>
                       <select
                         value={inviteForm.role}
                         onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as 'admin' | 'member' })}
                         className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
+                        <option value="member">{t.manageteammodal399}</option>
+                        <option value="admin">{t.manageteammodal400}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-300 mb-2">Message (optional)</label>
+                      <label className="block text-sm text-gray-300 mb-2">{t.manageteammodal404}</label>
                       <textarea
                         value={inviteForm.message}
                         onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
@@ -424,7 +424,7 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                         }}
                         className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                       >
-                        Cancel
+                        {t.manageteammodal427}
                       </button>
                       <button
                         type="submit"
@@ -434,12 +434,12 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                         {loading ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            <span>Sending...</span>
+                            <span>{t.manageteammodal437}</span>
                           </>
                         ) : (
                           <>
                             <i className="pi pi-send"></i>
-                            <span>Send Invitation</span>
+                            <span>{t.manageteammodal442}</span>
                           </>
                         )}
                       </button>
@@ -503,11 +503,11 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
           {/* Invitations Tab */}
           {activeTab === 'invitations' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
+              <h3 className="text-lg font-medium text-white">{t.manageteammodal506}</h3>
               {teamInvitations.filter(inv => inv.status === 'pending').length === 0 ? (
                 <div className="text-center py-8">
                   <i className="pi pi-envelope text-4xl text-gray-600 mb-4"></i>
-                  <p className="text-gray-400">No pending invitations</p>
+                  <p className="text-gray-400">{t.manageteammodal510}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -525,8 +525,8 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                             <p className="text-gray-400 text-sm">{invitation.invited_email}</p>
                           )}
                           <p className="text-gray-400 text-sm">
-                            Invited by {invitation.inviter.username || invitation.inviter.name} • 
-                            Expires: {new Date(invitation.expires_at).toLocaleDateString()}
+                            {t.manageteammodal528}{invitation.inviter.username || invitation.inviter.name} • 
+                            t.manageteammodal529{new Date(invitation.expires_at).toLocaleDateString()}
                           </p>
                           {invitation.message && (
                             <p className="text-gray-300 text-sm italic mt-2">"{invitation.message}"</p>

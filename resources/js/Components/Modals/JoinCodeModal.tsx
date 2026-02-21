@@ -154,7 +154,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -234,7 +234,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-300">Owner:</span>
+                    <span className="font-medium text-gray-300">{t.joincodemodal237}</span>
                     <div className="flex items-center space-x-1 mt-1">
                       <i className="pi pi-user text-blue-500"></i>
                       <span>{project.owner.name}</span>
@@ -245,7 +245,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
                   </div>
 
                   <div>
-                    <span className="font-medium text-gray-300">Created:</span>
+                    <span className="font-medium text-gray-300">{t.joincodemodal248}</span>
                     <div className="mt-1">{formatDate(project.created_at)}</div>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
                     <div className="text-xl font-bold text-blue-600">
                       {project.teams_count || 0}
                     </div>
-                    <div className="text-xs text-gray-500">Teams</div>
+                    <div className="text-xs text-gray-500">{t.joincodemodal258}</div>
                   </div>
                 </div>
               </div>
@@ -263,20 +263,20 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
 
             <div className="field">
               <label htmlFor="application-message" className="block text-sm font-medium text-gray-300 mb-2">
-                Application Message (Optional)
+                {t.joincodemodal266}
               </label>
               <InputTextarea
                 id="application-message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Tell the project owner why you'd like to join this project..."
+                placeholder={t.joincodemodal272}
                 className="w-full"
                 rows={4}
                 disabled={applying}
                 maxLength={500}
               />
               <p className="text-xs text-gray-500 mt-1">
-                {message.length}/500 characters
+                {message.length}{t.joincodemodal279}
               </p>
             </div>
           </>
@@ -285,10 +285,10 @@ export default function JoinCodeModal({ visible, onHide, onSuccess, onApplicatio
         {step === 'applied' && (
           <div className="text-center py-6">
             <i className="pi pi-check-circle text-6xl text-green-500 mb-4"></i>
-            <h3 className="text-lg font-medium text-gray-300 mb-2">Application Sent!</h3>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">{t.joincodemodal288}</h3>
             <p className="text-gray-300">
-              Your application has been submitted to <strong>{project?.name}</strong>.
-              The project owner will review your request and notify you of their decision.
+              {t.joincodemodal290}<strong>{project?.name}</strong>.
+              {t.joincodemodal291}
             </p>
           </div>
         )}

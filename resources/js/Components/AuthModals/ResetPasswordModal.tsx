@@ -158,7 +158,7 @@ export default function ResetPasswordModal({
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Reset Password
+              {t.resetpasswordmodal161}
             </h2>
             <button
               onClick={onHide}
@@ -193,10 +193,10 @@ export default function ResetPasswordModal({
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Reset link is being validated...
+                {t.resetpasswordmodal196}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                One moment please...
+                {t.resetpasswordmodal199}
               </p>
             </div>
           ) : success ? (
@@ -207,10 +207,10 @@ export default function ResetPasswordModal({
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Password reset successfully!
+                {t.resetpasswordmodal210}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                You will be automatically redirected to login...
+                {t.resetpasswordmodal213}
               </p>
             </div>
           ) : !tokenValidated && resetError ? (
@@ -221,7 +221,7 @@ export default function ResetPasswordModal({
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Reset link invalid
+                {t.resetpasswordmodal224}
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 {resetError}
@@ -236,7 +236,7 @@ export default function ResetPasswordModal({
                   To Login
                 </button>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Request a new reset link if you want to reset your password.
+                  {t.resetpasswordmodal239}
                 </p>
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function ResetPasswordModal({
               {/* Email Field (readonly) */}
               <div>
                 <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  E-Mail
+                  {t.resetpasswordmodal248}
                 </label>
                 <input
                   id="reset-email"
@@ -261,7 +261,7 @@ export default function ResetPasswordModal({
               {/* New Password */}
               <div>
                 <label htmlFor="reset-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  New Password
+                  {t.resetpasswordmodal264}
                 </label>
                 <input
                   id="reset-password"
@@ -283,7 +283,7 @@ export default function ResetPasswordModal({
               {/* Confirm Password */}
               <div>
                 <label htmlFor="reset-password-confirm" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Confirm Password
+                  {t.resetpasswordmodal286}
                 </label>
                 <input
                   id="reset-password-confirm"
@@ -317,7 +317,7 @@ export default function ResetPasswordModal({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Resetting...
+                    {t.resetpasswordmodal320}
                   </span>
                 ) : (
                   t.authmodalsesetpasswordmodal319
@@ -334,7 +334,7 @@ export default function ResetPasswordModal({
                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                            transition-colors duration-200"
                 >
-                  Continue to Login
+                  {t.resetpasswordmodal337}
                 </button>
               )}
             </form>
@@ -347,14 +347,14 @@ export default function ResetPasswordModal({
             {resetError ? (
               <div className="space-y-2">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  The reset link is invalid or expired.
+                  {t.resetpasswordmodal350}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   <button
                     onClick={onSwitchToLogin}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
                   >
-                    To Login
+                    {t.resetpasswordmodal357}
                   </button>
                   {' '}or request a{' '}
                   <button
@@ -364,19 +364,19 @@ export default function ResetPasswordModal({
                     }}
                     className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
                   >
-                    new reset link
+                    {t.resetpasswordmodal367}
                   </button>
                   {' '}.
                 </p>
               </div>
             ) : (
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Back to{' '}
+                {t.resetpasswordmodal374}{' '}
                 <button
                   onClick={onSwitchToLogin}
                   className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
                 >
-                  Login
+                  {t.resetpasswordmodal379}
                 </button>
               </p>
             )}

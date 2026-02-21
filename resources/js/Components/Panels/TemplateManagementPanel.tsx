@@ -590,7 +590,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
                 if (!response.ok) {
                     if (data.required_credits) {
-                        toast.showError(`Nicht genug Credits! Benötigt: ${data.required_credits}, Vorhanden: ${data.current_credits}`);
+                        toast.showError(`${t.templatemanagementpanel593}${data.required_credits}${t.templatemanagementpanel593_2}${data.current_credits}`);
                     } else {
                         throw new Error(data.error || data.message || t.templatemanagementpanel595);
                     }
@@ -899,8 +899,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         if (!templateForStoreSettings) return;
 
         confirmDialog({
-            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? 'Bild' : 'Video'}$({t.templatemanagementpanel902})`,
-            header: 'Löschen bestätigen',
+            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? t.templatemanagementpanel902 : t.templatemanagementpanel902_2}$({t.templatemanagementpanel902})`,
+            header: t.templatemanagementpanel903,
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
             accept: async () => {
@@ -1608,7 +1608,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         ]
                                 }
                                 onChange={(e) => setMyTypeFilter(e.value)}
-                                placeholder="Typ"
+                                placeholder={t.templatemanagementpanel1611}
                                 className="w-32"
                             />
                             <Dropdown
@@ -1701,7 +1701,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 const visibilityConfig: Record<string, { bg: string; label: string }> = {
                                     'public': { bg: 'bg-blue-500', label: t.databasemanagementpanel772 },
                                     'private': { bg: 'bg-red-500', label: t.databasemanagementpanel771 },
-                                    'store': { bg: 'bg-purple-500', label: 'Store' }
+                                    'store': { bg: 'bg-purple-500', label: t.templatemanagementpanel1704 }
                                 };
                                 const config = visibilityConfig[template.visibility] || visibilityConfig['public'];
                                 return (
@@ -1741,7 +1741,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                         className="px-2 py-1 bg-cyan-500 text-white rounded text-xs cursor-help"
                                         title={tooltipText}
                                     >
-                                        {count} {count === 1 ? 'Projekt' : 'Projekte'}
+                                        {count} {count === 1 ? t.templatemanagementpanel1744 : t.templatemanagementpanel1744_2}
                                     </span>
                                 );
                             }}
@@ -1755,7 +1755,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     return (
                                         <div className="flex items-center gap-1">
                                             <i className="pi pi-lock text-red-500" />
-                                            <Tag value="Gesperrt" severity="danger" />
+                                            <Tag value={t.templatemanagementpanel1758} severity="danger" />
                                         </div>
                                     );
                                 }
@@ -1782,7 +1782,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             field="created_at"
                             header={t.databasemanagementpanel861}
-                            body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
+                            body={(template) => new Date(template.created_at).toLocaleDateString(currentLanguage)}
                         />
                         <Column
                             header={t.applicationsmodal354}
@@ -1801,7 +1801,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             />
                                             <Button
                                                 icon={unlockingTemplate && templateToUnlock?.id === template.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
-                                                label="50 Credits"
+                                                label={t.templatemanagementpanel1804}
                                                 className="p-button-rounded p-button-sm"
                                                 style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
                                                 tooltip={t.templatemanagementpanel1807}
@@ -1938,7 +1938,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     { label: t.templatemanagementpanel1938, value: 'store' }
                                 ]}
                                 onChange={(e) => setCommunityTypeFilter(e.value)}
-                                placeholder="Typ"
+                                placeholder={t.templatemanagementpanel1941}
                                 className="w-32"
                             />
                             <Dropdown
@@ -2009,12 +2009,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     const priceText = template.price_type === 'euros' && template.price_euros != null
                                         ? `${Number(template.price_euros).toFixed(2)} €`
                                         : template.price_type === 'credits' && template.price_credits != null
-                                            ? `${template.price_credits} Credits`
+                                            ? `${template.price_credits}${t.templatemanagementpanel2012}`
                                             : t.templatemanagementpanel2013;
                                     return (
                                         <div className="flex flex-col gap-0.5">
                                             <span className="px-2 py-1 bg-orange-500 text-white rounded text-xs">
-                                                Store
+                                                {t.templatemanagementpanel2017}
                                             </span>
                                             <span className="text-xs" style={{ color: colors.textMuted }}>{priceText}</span>
                                         </div>
@@ -2060,7 +2060,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             }}
                         />
                         <Column
-                            header="Status"
+                            header={t.templatemanagementpanel2063}
                             body={(template) => {
                                 // System templates don't need review scores
                                 if (template.is_system_template) {
@@ -2106,7 +2106,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Column
                             field="created_at"
                             header={t.databasemanagementpanel861}
-                            body={(template) => new Date(template.created_at).toLocaleDateString('de-DE')}
+                            body={(template) => new Date(template.created_at).toLocaleDateString(currentLanguage)}
                         />
                         <Column
                             header={t.applicationsmodal354}
@@ -2446,8 +2446,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     )}
 
                     <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.bgSecondary }}>
-                        <strong style={{ color: colors.textSecondary }}>Quelle:</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.name}</span><br/>
-                        <strong style={{ color: colors.textSecondary }}>Typ:</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.is_system_template ? t.ultimatetemplatecontroller301 : templateToClone?.visibility}</span>
+                        <strong style={{ color: colors.textSecondary }}>{t.templatemanagementpanel2449}</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.name}</span><br/>
+                        <strong style={{ color: colors.textSecondary }}>{t.templatemanagementpanel2450}</strong> <span style={{ color: colors.textPrimary }}>{templateToClone?.is_system_template ? t.ultimatetemplatecontroller301 : templateToClone?.visibility}</span>
                     </div>
                 </div>
             </Dialog>
@@ -2725,7 +2725,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             onChange={() => setStorePriceType('credits')}
                                             className="w-4 h-4"
                                         />
-                                        <span>Credits</span>
+                                        <span>{t.templatemanagementpanel2728}</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
@@ -2804,7 +2804,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     </TabPanel>
 
                     {/* Tab 2: Media */}
-                    <TabPanel header="Media" leftIcon="pi pi-images mr-2">
+                    <TabPanel header={t.templatemanagementpanel2807} leftIcon="pi pi-images mr-2">
                         <div className="space-y-6">
                             {/* Logo Section */}
                             <div>

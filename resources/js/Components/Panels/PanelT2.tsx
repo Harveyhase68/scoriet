@@ -32,8 +32,7 @@ import { TabContentProps } from '@/types';
 import { SchemaTable } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
 import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
-import CreateTableModal from '@/Components/Modals/CreateTableModal';
-import EditTableModal from '@/Components/Modals/EditTableModal';
+import TableModal from '@/Components/Modals/TableModal';
 import DeleteVersionDialog from '@/Components/Panels/DeleteVersionDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -191,7 +190,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
                 }}
                 className="px-2 py-1 text-white text-xs rounded transition-colors hover:opacity-80"
                 style={{ backgroundColor: colors.accent }}
-                title="Copy Table"
+                title={t.panelt2194}
               >
                 📋
               </button>
@@ -232,7 +231,7 @@ const DatabaseNode: React.FC<DatabaseNodeProps> = ({ data, selected }) => {
             ))}
           </div>
         ) : (
-          <div className="text-xs text-center" style={{ color: colors.textMuted }}>No fields</div>
+          <div className="text-xs text-center" style={{ color: colors.textMuted }}>{t.panelt2235}</div>
         )}
       </div>
 
@@ -461,8 +460,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const [showImportModal, setShowImportModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showDeleteVersionDialog, setShowDeleteVersionDialog] = useState(false);
-  const [showCreateTableModal, setShowCreateTableModal] = useState(false);
-  const [showEditTableModal, setShowEditTableModal] = useState(false);
+  const [tableModalMode, setTableModalMode] = useState<'create' | 'edit' | null>(null);
   const [pendingDeleteTable, setPendingDeleteTable] = useState<SchemaTable | null>(null);
   const [pendingEditTable, setPendingEditTable] = useState<SchemaTable | null>(null);
   const [pendingAction, setPendingAction] = useState<'delete' | 'create' | 'edit' | null>(null);
@@ -535,7 +533,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         if (response.status === 401) {
           throw new Error(t.panelt2405);
         }
-        throw new Error(`Failed to load schemas: ${response.statusText}`);
+        throw new Error(`${t.panelt2538}${response.statusText}`);
       }
 
       const schemas = await response.json();
@@ -674,7 +672,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to load schema versions: ${response.statusText}`);
+        throw new Error(`${t.panelt2677}${response.statusText}`);
       }
 
       const versions: SchemaVersionExtended[] = await response.json();
@@ -720,7 +718,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to load schema version tables: ${response.statusText}`);
+        throw new Error(`${t.panelt2723}${response.statusText}`);
       }
 
       const tables = await response.json();
@@ -780,7 +778,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           setDatabaseDesignerAccess(data);
         }
       } catch (error) {
-        console.error('Failed to load database designer access:', error);
+        console.error(t.panelt2783, error);
       } finally {
         setLoadingAccess(false);
       }
@@ -810,11 +808,11 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         setDatabaseDesignerAccess(data.access_status);
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Freischaltung fehlgeschlagen');
+        alert(errorData.message || t.panelt2813);
       }
     } catch (err) {
-      console.error('Error unlocking database designer:', err);
-      alert('Freischaltung fehlgeschlagen');
+      console.error(t.panelt2816, err);
+      alert(t.panelt2817);
     } finally {
       setUnlocking(false);
     }
@@ -944,8 +942,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     // Case 1: No versions exist yet - create initial version first
     if (!selectedVersion) {
       confirmDialog({
-        message: 'No version exists yet. Do you want to create the initial version 1?',
-        header: 'Create Initial Version',
+        message: t.panelt2947,
+        header: t.panelt2948,
         icon: 'pi pi-exclamation-triangle',
         accept: async () => {
           try {
@@ -961,13 +959,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               body: JSON.stringify({ description: 'Initial version' }),
             });
 
-            if (!response.ok) throw new Error('Failed to create initial version');
+            if (!response.ok) throw new Error(t.panelt2964);
 
             // Reload versions and then open create table modal
             await loadSchemaVersions(selectedSchema!);
-            setTimeout(() => setShowCreateTableModal(true), 300);
+            setTimeout(() => setTableModalMode('create'), 300);
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create initial version');
+            setError(err instanceof Error ? err.message : t.panelt2970);
           } finally {
             setLoading(false);
           }
@@ -978,7 +976,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     // Case 2: Version exists but has unsaved changes - open modal directly
     if (selectedVersion.has_unsaved_changes === true) {
-      setShowCreateTableModal(true);
+      setTableModalMode('create');
       return;
     }
 
@@ -989,7 +987,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [selectedProject, selectedVersion, selectedSchema, loadSchemaVersions]);
 
   // Create a new table with modal data
-  const handleCreateTable = useCallback(async (tableName: string, fileKeyName: string, fileNameRenamed: string, fileNameShort: string, fields: any[]) => {
+  const handleCreateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id) {
       setError(t.panelt2704);
       return;
@@ -1039,7 +1037,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       }
 
       // Close modal and refresh the schema to show the new table
-      setShowCreateTableModal(false);
+      setTableModalMode(null);
       if (selectedSchema) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
       }
@@ -1102,7 +1100,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       }
 
       // Close modal and refresh the schema to show the updated table
-      setShowEditTableModal(false);
+      setTableModalMode(null);
       setPendingEditTable(null);
       if (selectedSchema) {
         await loadSchemaVersionWithSchema(selectedSchema, selectedVersion);
@@ -1140,7 +1138,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       await loadFloatingSchemas(selectedSchema.id);
 
       // Open the table edit modal
-      setShowEditTableModal(true);
+      setTableModalMode('edit');
 
     } catch (err) {
       // Error creating new version
@@ -1176,7 +1174,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       await loadFloatingSchemas(selectedSchema.id);
 
       // Open the table creation modal
-      setShowCreateTableModal(true);
+      setTableModalMode('create');
 
     } catch (err) {
       // Error creating new version
@@ -1208,7 +1206,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
 
       // Open the table edit modal
-      setShowEditTableModal(true);
+      setTableModalMode('edit');
 
     } catch (err) {
       // Error marking unsaved changes
@@ -1240,7 +1238,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
 
       // Open the table creation modal
-      setShowCreateTableModal(true);
+      setTableModalMode('create');
 
     } catch (err) {
       // Error marking unsaved changes
@@ -1275,7 +1273,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setShowVersionModal(true);
     } else {
       // Directly open edit modal if already marked as having changes
-      setShowEditTableModal(true);
+      setTableModalMode('edit');
     }
 
   }, []); // Dependencies would cause infinite re-renders
@@ -1309,8 +1307,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       // Table copied successfully
     } catch (err) {
-      console.error('Failed to copy table to clipboard:', err);
-      setError('Failed to copy table to clipboard. Please check browser permissions.');
+      console.error(t.panelt21312, err);
+      setError(t.panelt21313);
     }
   }, []);
 
@@ -1373,7 +1371,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || result.error || 'Failed to paste table');
+        throw new Error(result.message || result.error || t.panelt21376);
       }
 
       // Close modal and reset state
@@ -1399,7 +1397,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to paste table');
+      setError(err instanceof Error ? err.message : t.panelt21402);
     } finally {
       setLoading(false);
     }
@@ -1482,16 +1480,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       if (result.deleted_fks && result.deleted_fks > 0) {
         toast.current?.show({
           severity: 'info',
-          summary: 'FK-Constraints bereinigt',
-          detail: `${result.deleted_fks} Foreign Key(s) die auf die gelöschte Tabelle "${table.table_name}" verwiesen haben, wurden ebenfalls gelöscht.`,
+          summary: t.panelt21485,
+          detail: `${result.deleted_fks}${t.panelt21486}"${table.table_name}"${t.panelt21486_2}`,
           life: 5000,
         });
       } else {
         // Success message for normal deletion
         toast.current?.show({
           severity: 'success',
-          summary: 'Tabelle gelöscht',
-          detail: `Die Tabelle "${table.table_name}" wurde erfolgreich gelöscht.`,
+          summary: t.panelt21493,
+          detail: `${t.panelt21494}"${table.table_name}"${t.panelt21494_2}`,
           life: 3000,
         });
       }
@@ -1527,7 +1525,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       }
 
       // SAFETY CHECK: Double confirm which table we're about to delete
-      const confirmMessage = `Sie sind dabei die Tabelle "${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id}) zu löschen. Ist das korrekt?`;
+      const confirmMessage = `${t.panelt21530}"${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id})${t.panelt21530_2}`;
       if (!confirm(confirmMessage)) {
         return;
       }
@@ -1556,16 +1554,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           if (result.deleted_fks && result.deleted_fks > 0) {
             toast.current?.show({
               severity: 'info',
-              summary: 'FK-Constraints bereinigt',
-              detail: `${result.deleted_fks} Foreign Key(s) die auf die gelöschte Tabelle "${pendingDeleteTable.table_name}" verwiesen haben, wurden ebenfalls gelöscht.`,
+              summary: t.panelt21559,
+              detail: `${result.deleted_fks}${t.panelt21560}"${pendingDeleteTable.table_name}"${t.panelt21560_2}`,
               life: 5000,
             });
           } else {
             // Success message for normal deletion
             toast.current?.show({
               severity: 'success',
-              summary: 'Tabelle gelöscht',
-              detail: `Die Tabelle "${pendingDeleteTable.table_name}" wurde in der neuen Version erfolgreich gelöscht.`,
+              summary: t.panelt21567,
+              detail: `${t.panelt21568}"${pendingDeleteTable.table_name}"${t.panelt21568_2}`,
               life: 3000,
             });
           }
@@ -1653,8 +1651,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     // Different message for initial version vs new version
     const message = currentVersion === 0
-      ? `Do you want to create the initial version 1 for this schema?`
-      : `Do you want to create a new version ${newVersionNumber} from version ${currentVersion}?`;
+      ? `${t.panelt21656}`
+      : `${t.panelt21657}${newVersionNumber}${t.panelt21657_2}${currentVersion}?`;
 
     // Show confirmation dialog
     confirmDialog({
@@ -1679,7 +1677,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               'Accept': 'application/json',
             },
             body: JSON.stringify({
-              description: `New version created manually`
+              description: `${t.panelt21682}`
             }),
           });
 
@@ -1739,7 +1737,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
   const handleDeleteVersion = useCallback(async (versionId: number) => {
     if (!selectedSchema) {
-      setError('No schema selected');
+      setError(t.panelt21740);
       return;
     }
 
@@ -1749,7 +1747,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error(t.panelt21752);
       }
 
       const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions/${versionId}`, {
@@ -1762,7 +1760,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Failed to delete version');
+        throw new Error(errorData.message || errorData.error || t.panelt21765);
       }
 
       const result = await response.json();
@@ -1799,7 +1797,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete version');
+      setError(err instanceof Error ? err.message : t.panelt21802);
     } finally {
       setLoading(false);
     }
@@ -1888,7 +1886,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || result.error || 'Failed to update foreign key');
+        throw new Error(result.message || result.error || t.panelt21891);
       }
 
       // Close modal
@@ -1914,7 +1912,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update foreign key');
+      setError(err instanceof Error ? err.message : t.panelt21917);
     } finally {
       setLoading(false);
     }
@@ -1940,7 +1938,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         );
 
       if (!sourceTable) {
-        throw new Error('Source table not found');
+        throw new Error(t.panelt21943);
       }
 
       const response = await fetch(`/api/tables/${sourceTable.id}/foreign-key`, {
@@ -1966,7 +1964,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         if (result.error_type === 'incompatible_types' || result.error_type === 'set_null_on_not_null') {
           throw new Error(result.message);
         }
-        throw new Error(result.message || result.error || 'Failed to create foreign key');
+        throw new Error(result.message || result.error || t.panelt21969);
       }
 
       // Show warnings if any (after successful creation)
@@ -1974,7 +1972,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         // Show index/performance recommendations after successful creation
         const warningText = result.warnings.join('\n\n');
         setTimeout(() => {
-          alert('✅ Foreign Key erfolgreich erstellt!\n\n📋 Empfehlungen zur Optimierung:\n\n' + warningText);
+          alert(t.panelt21977 + '\n\n' + t.panelt21977_2 + '\n\n' + warningText);
         }, 100);
       }
 
@@ -2006,7 +2004,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create foreign key');
+      setError(err instanceof Error ? err.message : t.panelt22009);
     } finally {
       setLoading(false);
     }
@@ -2045,13 +2043,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to load FK suggestions');
+        throw new Error(result.message || t.panelt22048);
       }
 
       setFkSuggestions(result.suggestions || []);
       setShowFKSuggestionsModal(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load FK suggestions');
+      setError(err instanceof Error ? err.message : t.panelt22054);
     } finally {
       setLoadingFKSuggestions(false);
     }
@@ -2078,15 +2076,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const tableData = JSON.parse(clipboardText);
 
       if (!tableData._scoriet_table_copy) {
-        setError('Clipboard does not contain a valid Scoriet table. Please copy a table first.');
+        setError(t.panelt22081);
         return;
       }
 
       // If no version exists, create initial version first
       if (!selectedVersion) {
         confirmDialog({
-          message: 'No version exists yet. Do you want to create the initial version 1 and paste the table?',
-          header: 'Create Initial Version',
+          message: t.panelt22088,
+          header: t.panelt22089,
           icon: 'pi pi-exclamation-triangle',
           accept: async () => {
             try {
@@ -2099,10 +2097,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   'Authorization': `Bearer ${token}`,
                   'Accept': 'application/json',
                 },
-                body: JSON.stringify({ description: 'Initial version' }),
+                body: JSON.stringify({ description: t.panelt22102 }),
               });
 
-              if (!response.ok) throw new Error('Failed to create initial version');
+              if (!response.ok) throw new Error(t.panelt22105);
 
               // Reload versions
               await loadSchemaVersions(selectedSchema!);
@@ -2120,7 +2118,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               setPasteTableData(tableData);
               setTimeout(() => setShowPasteModal(true), 300);
             } catch (err) {
-              setError(err instanceof Error ? err.message : 'Failed to create initial version');
+              setError(err instanceof Error ? err.message : t.panelt22123);
             } finally {
               setLoading(false);
             }
@@ -2142,7 +2140,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setPasteTableData(tableData);
       setShowPasteModal(true);
     } catch {
-      setError('No valid table found in clipboard. Please copy a table first.');
+      setError(t.panelt22145);
     }
   }
   const handleShowImportModal = () => {
@@ -2151,12 +2149,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
   const handleSortDiagram = useCallback(async () => {
     if (!selectedSchema || !selectedVersion || nodes.length === 0) {
-      setError('No schema, version, or tables available for sorting');
+      setError(t.panelt22154);
       return;
     }
 
     if (!selectedProject) {
-      setError('No project selected');
+      setError(t.panelt22159);
       return;
     }
 
@@ -2195,7 +2193,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       const layoutData = await response.json();
 
       if (!response.ok) {
-        throw new Error(`Failed to sort diagram: ${response.statusText}`);
+        throw new Error(`${t.panelt22198}${response.statusText}`);
       }
 
       if (layoutData && layoutData.nodes) {
@@ -2246,7 +2244,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sort diagram');
+      setError(err instanceof Error ? err.message : t.panelt22249);
     } finally {
       setLoading(false);
     }
@@ -2276,7 +2274,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <div className="flex items-center gap-3">
               <div>
                 <h3 className="text-lg font-bold" style={{ color: colors.accent }}>{t.panelt21282}</h3>
-                <p className="text-sm" style={{ color: colors.textMuted }}>Premium Feature</p>
+                <p className="text-sm" style={{ color: colors.textMuted }}>{t.panelt22279}</p>
               </div>
             </div>
           </div>
@@ -2287,18 +2285,18 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               <div className="rounded-lg p-6 text-center" style={{ backgroundColor: 'rgba(147, 51, 234, 0.15)', border: '2px solid rgb(147, 51, 234)' }}>
                 <div className="text-4xl mb-4">🔒</div>
                 <h3 className="text-xl font-semibold mb-2" style={{ color: 'rgb(216, 180, 254)' }}>
-                  Datenbank Designer ist ein Premium-Feature
+                  {t.panelt22290}
                 </h3>
                 <p className="mb-4" style={{ color: colors.textMuted }}>
-                  Mit dem Datenbank Designer können Sie Ihre Datenbank visuell bearbeiten, neue Tabellen erstellen und Beziehungen verwalten.
+                  {t.panelt22293}
                 </p>
 
                 <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: colors.bgSecondary }}>
                   <div className="text-2xl font-bold mb-1" style={{ color: 'rgb(196, 181, 253)' }}>
-                    {databaseDesignerAccess?.unlock_cost || 50} Credits / Jahr
+                    {databaseDesignerAccess?.unlock_cost || 50}{t.panelt22298}
                   </div>
                   <div className="text-sm" style={{ color: colors.textMuted }}>
-                    Einmalige Freischaltung für 12 Monate
+                    {t.panelt22301_2}
                   </div>
                 </div>
 
@@ -2310,32 +2308,32 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
                   }}
                 >
-                  {unlocking ? 'Wird freigeschaltet...' : '🔓 Freischalten'}
+                  {unlocking ? t.panelt22313 : t.panelt22313_2}
                 </button>
 
                 <div className="mt-4 text-sm" style={{ color: colors.textMuted }}>
                   <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>Enthaltene Funktionen:</p>
                   <ul className="text-left space-y-1">
                     <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
-                      <span>📊</span> Visuelle Datenbank-Ansicht
+                      <span>📊</span>{t.panelt22320}
                     </li>
                     <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
-                      <span>➕</span> Neue Tabellen erstellen
+                      <span>➕</span>{t.panelt22323}
                     </li>
                     <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
-                      <span>✏️</span> Tabellen bearbeiten
+                      <span>✏️</span>{t.panelt22326}
                     </li>
                     <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
-                      <span>🔗</span> Fremdschlüssel verwalten
+                      <span>🔗</span>{t.panelt22329}
                     </li>
                     <li className="flex items-center gap-2 opacity-60" style={{ color: colors.textMuted }}>
-                      <span>📥</span> SQL Import
+                      <span>📥</span>{t.panelt22332}
                     </li>
                   </ul>
                 </div>
 
                 <p className="mt-4 text-xs" style={{ color: colors.textMuted, opacity: 0.7 }}>
-                  Hinweis: Import/Export über das Menü ist weiterhin kostenlos verfügbar.
+                  {t.panelt22338}
                 </p>
               </div>
             </div>
@@ -2415,7 +2413,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               >
                 {schemaVersions.map(version => {
                   const displayText = version.version_number && version.imported_at
-                    ? `v${version.version_number} - ${new Date(version.imported_at).toLocaleDateString('de-DE')}`
+                    ? `v${version.version_number} - ${new Date(version.imported_at).toLocaleDateString(currentLanguage)}`
                     : version.version_name;
                   return (
                     <option key={version.id} value={version.id}>
@@ -2436,7 +2434,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedProject}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title="Refresh"
+              title={t.panelt22439}
             >
               <i className="pi pi-refresh"></i>
             </button>
@@ -2446,7 +2444,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : (t.panelt21358)}
+              title={effectiveReadOnly ? t.panelt22449 : (t.panelt21358)}
             >
               <i className="pi pi-plus"></i>
             </button>
@@ -2456,7 +2454,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || schemaVersions.length <= 1 || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.errorText }}
-              title={effectiveReadOnly ? "Read-only mode" : "Delete Version"}
+              title={effectiveReadOnly ? t.panelt22459 : t.panelt22459_2}
             >
               <i className="pi pi-times"></i>
             </button>
@@ -2466,7 +2464,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedProject || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : "Import SQL"}
+              title={effectiveReadOnly ? t.panelt22469 : t.panelt22469_2}
             >
               <i className="pi pi-upload"></i>
             </button>
@@ -2476,7 +2474,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || !selectedVersion || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : "Add Foreign Key (Select 2 tables with Ctrl)"}
+              title={effectiveReadOnly ? t.panelt22479 : t.panelt22479_2}
             >
               <i className="pi pi-link"></i>
             </button>
@@ -2496,7 +2494,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : "Paste Table from Clipboard"}
+              title={effectiveReadOnly ? t.panelt22499 : t.panelt22499_2}
             >
               <i className="pi pi-clipboard"></i>
             </button>
@@ -2506,7 +2504,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedProject || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : "Create New Table"}
+              title={effectiveReadOnly ? t.panelt22509 : t.panelt22509_2}
             >
               <i className="pi pi-table"></i>
             </button>
@@ -2516,7 +2514,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0 || effectiveReadOnly}
               className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: colors.textPrimary }}
-              title={effectiveReadOnly ? "Read-only mode" : "Sort the diagram"}
+              title={effectiveReadOnly ? t.panelt22519 : t.panelt22519_2}
             >
               <i className="pi pi-sync"></i>
             </button>
@@ -2546,7 +2544,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.bgSecondary, borderBottom: `1px solid ${colors.borderPrimary}`, color: colors.textMuted }}>
             <div className="flex items-center">
               <div className="animate-spin mr-2">⚪</div>
-              <span>Loading schema...</span>
+              <span>{t.panelt22549}</span>
             </div>
           </div>
         )}
@@ -2713,17 +2711,17 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   // Authentication Error State
                   <>
                     <div className="text-6xl mb-4">🔐</div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.warningText }}>Authentication Required</h3>
-                    <p className="text-sm mb-4" style={{ color: colors.textPrimary }}>Your session has expired. Please login to access schema data.</p>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.warningText }}>{t.panelt22716}</h3>
+                    <p className="text-sm mb-4" style={{ color: colors.textPrimary }}>{t.panelt22717}</p>
                     <p className="text-xs" style={{ color: colors.textMuted }}>
-                      Use the navigation menu to log in again
+                      {t.panelt22719}
                     </p>
                   </>
                 ) : (
                   // No Data State
                   <>
                     <div className="text-6xl mb-4">📊</div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>No Schema Data</h3>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.textPrimary }}>{t.panelt22726}</h3>
                     <p className="text-sm" style={{ color: colors.textMuted }}>
                       {!selectedProject
                         ? t.panelt21528
@@ -2734,7 +2732,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                     </p>
                     {selectedProject && floatingSchemas.length === 0 && !loading && !error && (
                       <p className="text-xs mt-2" style={{ color: colors.textMuted }}>
-                        Import a SQL script or associate an existing schema
+                        {t.panelt22737}
                       </p>
                     )}
                   </>
@@ -2749,22 +2747,22 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           const nodeData = selectedNode.data as { tableName: string; fields?: { isPrimary: boolean }[]; constraints?: unknown[] };
           return (
           <div className="p-4 flex-shrink-0" style={{ backgroundColor: colors.bgTertiary, borderTop: `1px solid ${colors.borderPrimary}` }}>
-            <h5 className="font-medium mb-2" style={{ color: colors.accent }}>🔍 Table Details</h5>
+            <h5 className="font-medium mb-2" style={{ color: colors.accent }}>{t.panelt22752}</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span style={{ color: colors.textMuted }}>Table:</span>
+                <span style={{ color: colors.textMuted }}>{t.panelt22755}</span>
                 <span className="ml-2 font-mono" style={{ color: colors.textPrimary }}>{nodeData.tableName}</span>
               </div>
               <div>
-                <span style={{ color: colors.textMuted }}>Fields:</span>
+                <span style={{ color: colors.textMuted }}>{t.panelt22759}</span>
                 <span className="ml-2" style={{ color: colors.textPrimary }}>{nodeData.fields?.length || 0}</span>
               </div>
               <div>
-                <span style={{ color: colors.textMuted }}>Constraints:</span>
+                <span style={{ color: colors.textMuted }}>{t.panelt22763}</span>
                 <span className="ml-2" style={{ color: colors.textPrimary }}>{nodeData.constraints?.length || 0}</span>
               </div>
               <div>
-                <span style={{ color: colors.textMuted }}>Primary Keys:</span>
+                <span style={{ color: colors.textMuted }}>{t.panelt22767}</span>
                 <span className="ml-2" style={{ color: colors.warningText }}>
                   {nodeData.fields?.filter((f) => f.isPrimary).length || 0}
                 </span>
@@ -2798,49 +2796,42 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           pendingAction === 'create'
             ? t.panelt21595
             : pendingAction === 'edit'
-              ? `die Tabelle "${pendingEditTable?.table_name}" bearbeiten`
-              : `die Tabelle "${pendingDeleteTable?.table_name}" löschen`
+              ? `${t.panelt22801}"${pendingEditTable?.table_name}"${t.panelt22801_2}`
+              : `${t.panelt22802}"${pendingDeleteTable?.table_name}"${t.panelt22802_2}`
         }
-        currentVersion={selectedVersion?.version_name || 'Current'}
+        currentVersion={selectedVersion?.version_name || t.panelt22804}
         tableName={pendingDeleteTable?.table_name}
       />
 
-      {/* Create Table Modal */}
-      <CreateTableModal
-        isOpen={showCreateTableModal}
-        onClose={() => setShowCreateTableModal(false)}
-        onTableCreated={handleCreateTable}
-        loading={loading}
-        schemaVersionId={selectedVersion?.id}
-      />
-
-      {/* Edit Table Modal */}
-      <EditTableModal
-        isOpen={showEditTableModal}
+      {/* Create / Edit Table Modal */}
+      <TableModal
+        mode={tableModalMode || 'create'}
+        isOpen={tableModalMode !== null}
         onClose={() => {
-          setShowEditTableModal(false);
+          setTableModalMode(null);
           setPendingEditTable(null);
         }}
-        onTableUpdated={handleUpdateTable}
-        table={pendingEditTable}
+        onSave={tableModalMode === 'edit' ? handleUpdateTable : handleCreateTable}
+        table={tableModalMode === 'edit' ? pendingEditTable : undefined}
         loading={loading}
+        schemaVersionId={selectedVersion?.id}
       />
 
       {/* FK Action Menu */}
       {showFKActionMenu && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="rounded-lg p-6 max-w-sm w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-            <h3 className="text-lg font-bold mb-4" style={{ color: colors.textPrimary }}>Foreign Key Actions</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ color: colors.textPrimary }}>{t.panelt22833}</h3>
 
             <div className="mb-6">
               <div className="p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="text-sm space-y-1">
                   <div>
-                    <span style={{ color: colors.textMuted }}>From:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22839}</span>{' '}
                     <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span style={{ color: colors.textMuted }}>To:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22843}</span>{' '}
                     <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
                   <div className="text-xs mt-2" style={{ color: colors.textMuted }}>
@@ -2860,7 +2851,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 className="w-full px-4 py-2 text-white rounded transition-colors flex items-center justify-center gap-2 hover:opacity-90"
                 style={{ backgroundColor: colors.accent }}
               >
-                ✏️ Edit Foreign Key
+                {t.panelt22863}
               </button>
 
               <button
@@ -2871,7 +2862,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 className="w-full px-4 py-2 text-white rounded transition-colors flex items-center justify-center gap-2 hover:opacity-90"
                 style={{ backgroundColor: colors.errorText }}
               >
-                🗑️ Delete Foreign Key
+                {t.panelt22874}
               </button>
 
               <button
@@ -2882,7 +2873,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 className="w-full px-4 py-2 rounded transition-colors hover:opacity-90"
                 style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
               >
-                Cancel
+                {t.panelt22885}
               </button>
             </div>
           </div>
@@ -2893,25 +2884,25 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {showDeleteFKModal && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="rounded-lg p-6 max-w-md w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Delete Foreign Key</h3>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.panelt22896}</h3>
 
             <div className="mb-6">
               <p className="mb-4" style={{ color: colors.textSecondary }}>
-                Are you sure you want to delete this foreign key constraint?
+                {t.panelt22900}
               </p>
 
               <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span style={{ color: colors.textMuted }}>Constraint:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22906}</span>{' '}
                     <span className="font-mono" style={{ color: colors.textPrimary }}>{selectedFK.constraintName}</span>
                   </div>
                   <div>
-                    <span style={{ color: colors.textMuted }}>From:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22910}</span>{' '}
                     <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span style={{ color: colors.textMuted }}>To:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22914}</span>{' '}
                     <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
                 </div>
@@ -2919,7 +2910,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
-                  ⚠️ A new version will be created for this change.
+                  {t.panelt22922}
                 </div>
               ) : null}
             </div>
@@ -2934,7 +2925,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
-                Cancel
+                {t.panelt22937}
               </button>
               <button
                 onClick={handleDeleteFK}
@@ -2953,18 +2944,18 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       {showEditFKModal && selectedFK && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="rounded-lg p-6 max-w-lg w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Edit Foreign Key</h3>
+            <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.panelt22956}</h3>
 
             <div className="mb-6">
               {/* FK Info Display */}
               <div className="p-4 rounded mb-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span style={{ color: colors.textMuted }}>From Table:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22963}</span>{' '}
                     <span className="font-mono" style={{ color: colors.accent }}>{selectedFK.sourceTable}</span>
                   </div>
                   <div>
-                    <span style={{ color: colors.textMuted }}>To Table:</span>{' '}
+                    <span style={{ color: colors.textMuted }}>{t.panelt22967}</span>{' '}
                     <span className="font-mono" style={{ color: colors.successText }}>{selectedFK.targetTable}</span>
                   </div>
                 </div>
@@ -2973,7 +2964,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               {/* FK Name Input */}
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  Constraint Name *
+                  {t.panelt22976}
                 </label>
                 <input
                   type="text"
@@ -3029,7 +3020,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
-                  ⚠️ A new version will be created for this change.
+                  {t.panelt23032}
                 </div>
               ) : null}
             </div>
@@ -3045,7 +3036,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
-                Cancel
+                {t.panelt23048}
               </button>
               <button
                 onClick={handleEditFK}
@@ -3053,7 +3044,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 style={{ backgroundColor: colors.accent }}
                 disabled={loading || !editFKName.trim()}
               >
-                {loading ? t.saving : 'Save Changes'}
+                {loading ? t.saving : t.panelt23056}
               </button>
             </div>
           </div>
@@ -3081,19 +3072,19 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             {fkSuggestions.length === 0 ? (
               <div className="text-center py-8" style={{ color: colors.textMuted }}>
                 <i className="pi pi-check-circle text-4xl mb-4" style={{ color: colors.successText }}></i>
-                <p>Keine FK-Vorschläge gefunden.</p>
-                <p className="text-sm mt-2">Alle möglichen Foreign Key Beziehungen scheinen bereits definiert zu sein.</p>
+                <p>{t.panelt23084}</p>
+                <p className="text-sm mt-2">{t.panelt23085}</p>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
                 <table className="w-full">
                   <thead>
                     <tr style={{ backgroundColor: colors.bgTertiary }}>
-                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>Quelle</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>{t.panelt23083}</th>
                       <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}></th>
-                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>Ziel</th>
-                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>Score</th>
-                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>Aktion</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium" style={{ color: colors.textSecondary }}>{t.panelt23085}</th>
+                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>{t.panelt23086_2}</th>
+                      <th className="px-3 py-2 text-center text-sm font-medium" style={{ color: colors.textSecondary }}>{t.panelt23087}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3150,12 +3141,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                               title={suggestion.compatibility_warning || 'FK erstellen'}
                             >
                               <i className="pi pi-plus mr-1"></i>
-                              Erstellen
+                              {t.panelt23153}
                             </button>
                           ) : (
                             <span className="text-xs" style={{ color: colors.errorText }}>
                               <i className="pi pi-times-circle mr-1"></i>
-                              Inkompatibel
+                              {t.panelt23158}
                             </span>
                           )}
                         </td>
@@ -3172,7 +3163,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 className="px-4 py-2 rounded hover:opacity-80"
                 style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
               >
-                Schließen
+                {t.panelt23175}
               </button>
             </div>
           </div>
@@ -3205,14 +3196,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         return (
           <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
             <div className="rounded-lg p-6 max-w-2xl w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-              <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>Create Foreign Key</h3>
+              <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.panelt23199}</h3>
 
               <div className="space-y-4">
                 {/* Source Table and Field */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Source Table
+                      {t.panelt23215}
                     </label>
                     <select
                       value={createFKSourceTableId || ''}
@@ -3224,7 +3215,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
-                      <option value="">Select table...</option>
+                      <option value="">{t.panelt23227}</option>
                       {availableTables.map(table => (
                         <option key={table.id} value={table.id}>{table.table_name}</option>
                       ))}
@@ -3233,7 +3224,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Source Field
+                      {t.panelt23236}
                     </label>
                     <select
                       value={createFKSourceFieldId || ''}
@@ -3253,7 +3244,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
-                      <option value="">Select field...</option>
+                      <option value="">{t.panelt23256}</option>
                       {sourceTableFields.map(field => (
                         <option key={field.id} value={field.id}>
                           {field.field_name} ({field.field_type}) {!field.is_nullable ? '[NOT NULL]' : ''}
@@ -3267,7 +3258,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Target Table (Referenced)
+                      {t.panelt23270}
                     </label>
                     <select
                       value={createFKTargetTableId || ''}
@@ -3279,7 +3270,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
-                      <option value="">Select table...</option>
+                      <option value="">{t.panelt23282}</option>
                       {availableTables.map(table => (
                         <option key={table.id} value={table.id}>{table.table_name}</option>
                       ))}
@@ -3288,7 +3279,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      Target Field (Referenced)
+                      {t.panelt23291}
                     </label>
                     <select
                       value={createFKTargetFieldId || ''}
@@ -3297,7 +3288,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     >
-                      <option value="">Select field...</option>
+                      <option value="">{t.panelt23291}</option>
                       {targetTableFields.map(field => (
                         <option key={field.id} value={field.id}>
                           {field.field_name} ({field.field_type})
@@ -3310,14 +3301,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 {/* Constraint Name */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    Constraint Name (optional)
+                    {t.panelt23313}
                   </label>
                   <input
                     type="text"
                     value={createFKName}
                     onChange={(e) => setCreateFKName(e.target.value)}
                     disabled={loading}
-                    placeholder="Auto-generated if empty"
+                    placeholder={t.panelt23311}
                     className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                     style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                   />
@@ -3340,7 +3331,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       <option value="CASCADE">CASCADE</option>
                       <option value="RESTRICT">RESTRICT</option>
                       <option value="SET NULL" disabled={sourceFieldIsNotNull}>
-                        SET NULL {sourceFieldIsNotNull ? '(Quellfeld ist NOT NULL)' : ''}
+                        SET NULL {sourceFieldIsNotNull ? '(' + t.panelt23334 + 'NOT NULL)' : ''}
                       </option>
                       <option value="SET DEFAULT">SET DEFAULT</option>
                     </select>
@@ -3371,13 +3362,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 {/* Warning if source field is NOT NULL */}
                 {sourceFieldIsNotNull && (
                   <div className="p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
-                    ℹ️ Das Quellfeld "{selectedSourceField?.field_name}" ist NOT NULL. SET NULL Aktionen sind daher nicht verfügbar.
+                    {t.panelt23374}"{selectedSourceField?.field_name}"{t.panelt23374_2}NOT NULL. SET NULL{t.panelt23365}
                   </div>
                 )}
 
                 {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
                   <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
-                    ⚠️ A new version will be created for this change.
+                    {t.panelt23380}
                   </div>
                 ) : null}
               </div>
@@ -3398,7 +3389,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                   disabled={loading}
                 >
-                  Cancel
+                  {t.panelt23401}
                 </button>
                 <button
                   onClick={handleCreateFK}
@@ -3406,7 +3397,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   style={{ backgroundColor: colors.accent }}
                   disabled={loading || !createFKSourceFieldId || !createFKTargetFieldId}
                 >
-                  {loading ? t.saving : 'Create Foreign Key'}
+                  {loading ? t.saving : t.panelt23409}
                 </button>
               </div>
             </div>
@@ -3424,14 +3415,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               {/* New Table Name */}
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  New Table Name
+                  {t.panelt23427}
                 </label>
                 <input
                   type="text"
                   value={pasteTableName}
                   onChange={(e) => setPasteTableName(e.target.value)}
                   disabled={loading}
-                  placeholder="Enter new table name"
+                  placeholder={t.panelt23425}
                   className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                   style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
@@ -3439,19 +3430,19 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
               {/* Preview of what will be copied */}
               <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
-                <h4 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>What will be pasted:</h4>
+                <h4 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.panelt23442}</h4>
                 <ul className="text-sm space-y-1" style={{ color: colors.textMuted }}>
                   <li>✅ {pasteTableData.fields?.length || 0} Fields</li>
-                  <li>✅ Primary Key</li>
-                  <li>✅ Unique Constraints</li>
-                  <li>✅ Indexes</li>
-                  <li>❌ Foreign Keys (add manually after)</li>
+                  <li>{t.panelt23445}</li>
+                  <li>{t.panelt23446}</li>
+                  <li>{t.panelt23447}</li>
+                  <li>{t.panelt23448}</li>
                 </ul>
               </div>
 
               {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
-                  ⚠️ A new version will be created for this change.
+                  {t.panelt23454}
                 </div>
               ) : null}
             </div>
@@ -3467,7 +3458,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
                 disabled={loading}
               >
-                Cancel
+                {t.panelt23470}
               </button>
               <button
                 onClick={handlePasteTable}
@@ -3475,7 +3466,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 style={{ backgroundColor: colors.successBg }}
                 disabled={loading || !pasteTableName.trim()}
               >
-                {loading ? t.saving : 'Paste Table'}
+                {loading ? t.saving : t.panelt23478}
               </button>
             </div>
           </div>

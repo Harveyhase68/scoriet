@@ -92,7 +92,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp95'),
             ], 404);
         }
 
@@ -106,7 +106,7 @@ class TemplateController extends Controller
         if (!$hasAccess) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this template',
+                'message' => __('templatecontrollerphp109'),
             ], 403);
         }
 
@@ -157,13 +157,13 @@ class TemplateController extends Controller
             'new_name' => 'nullable|string|max:255|regex:/^[a-z0-9_]+$/',
             'visibility' => 'nullable|in:public,private',
         ], [
-            'new_name.regex' => 'Template name must contain only lowercase letters, numbers, and underscores',
+            'new_name.regex' => __('templatecontrollerphp160'),
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('templatecontrollerphp166'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -173,7 +173,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp176'),
             ], 404);
         }
 
@@ -183,7 +183,7 @@ class TemplateController extends Controller
         if (!$template->canBeClonedBy($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'You do not have permission to clone this template',
+                'message' => __('templatecontrollerphp186'),
             ], 403);
         }
 
@@ -193,7 +193,7 @@ class TemplateController extends Controller
         if (!$this->userHasProjectAccess($project, $user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('templatecontrollerphp196'),
             ], 403);
         }
 
@@ -233,7 +233,7 @@ class TemplateController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to clone template',
+                'message' => __('templatecontrollerphp236'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -257,7 +257,7 @@ class TemplateController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('templatecontrollerphp260'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -267,7 +267,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp270'),
             ], 404);
         }
 
@@ -277,7 +277,7 @@ class TemplateController extends Controller
         if (!$this->userHasProjectAccess($project, $request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('templatecontrollerphp280'),
             ], 403);
         }
 
@@ -286,7 +286,7 @@ class TemplateController extends Controller
             if ($project->templates()->where('templates.id', $template->id)->exists()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Template already linked to project',
+                    'message' => __('templatecontrollerphp289'),
                 ], 200);
             }
 
@@ -299,7 +299,7 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template linked to project successfully',
+                'message' => __('templatecontrollerphp302'),
                 'template' => [
                     'id' => $template->id,
                     'name' => $template->name,
@@ -313,7 +313,7 @@ class TemplateController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to link template',
+                'message' => __('templatecontrollerphp316'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -337,7 +337,7 @@ class TemplateController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('templatecontrollerphp340'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -347,7 +347,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp350'),
             ], 404);
         }
 
@@ -357,7 +357,7 @@ class TemplateController extends Controller
         if (!$this->userHasProjectAccess($project, $request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('templatecontrollerphp360'),
             ], 403);
         }
 
@@ -367,13 +367,13 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template unlinked from project successfully',
+                'message' => __('templatecontrollerphp370'),
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to unlink template',
+                'message' => __('templatecontrollerphp376'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -396,13 +396,13 @@ class TemplateController extends Controller
             'language' => 'required|string|max:100',
             'visibility' => 'nullable|in:public,private',
         ], [
-            'name.regex' => 'Template name must contain only lowercase letters, numbers, and underscores',
+            'name.regex' => __('templatecontrollerphp399'),
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('templatecontrollerphp405'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -418,8 +418,8 @@ class TemplateController extends Controller
         if ($existingTemplate) {
             return response()->json([
                 'success' => false,
-                'message' => 'A template with this name already exists',
-                'error' => 'Template name must be unique',
+                'message' => __('templatecontrollerphp421'),
+                'error' => __('templatecontrollerphp422'),
             ], 409); // 409 Conflict
         }
 
@@ -439,7 +439,7 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template created successfully',
+                'message' => __('templatecontrollerphp442'),
                 'template' => [
                     'id' => $template->id,
                     'name' => $template->name,
@@ -454,7 +454,7 @@ class TemplateController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template creation failed',
+                'message' => __('templatecontrollerphp457'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -476,7 +476,7 @@ class TemplateController extends Controller
         if (!$template) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template not found',
+                'message' => __('templatecontrollerphp479'),
             ], 404);
         }
 
@@ -486,7 +486,7 @@ class TemplateController extends Controller
         if ((string)$template->creator_user_id !== (string)$user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied - only template creator can delete',
+                'message' => __('templatecontrollerphp489'),
             ], 403);
         }
 
@@ -494,7 +494,7 @@ class TemplateController extends Controller
         if ($template->is_system_template) {
             return response()->json([
                 'success' => false,
-                'message' => 'System templates cannot be deleted',
+                'message' => __('templatecontrollerphp497'),
             ], 403);
         }
 
@@ -504,13 +504,13 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template deleted successfully',
+                'message' => __('templatecontrollerphp507'),
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete template',
+                'message' => __('templatecontrollerphp513'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -542,7 +542,7 @@ class TemplateController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => __('templatecontrollerphp545'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -568,7 +568,7 @@ class TemplateController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Template imported successfully',
+                'message' => __('templatecontrollerphp571'),
                 'template' => [
                     'id' => $template->id,
                     'name' => $template->name,
@@ -579,7 +579,7 @@ class TemplateController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Template import failed',
+                'message' => __('templatecontrollerphp582'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -601,7 +601,7 @@ class TemplateController extends Controller
         if (!$project) {
             return response()->json([
                 'success' => false,
-                'message' => 'Project not found',
+                'message' => __('templatecontrollerphp604'),
             ], 404);
         }
 
@@ -609,7 +609,7 @@ class TemplateController extends Controller
         if (!$this->userHasProjectAccess($project, $request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied to this project',
+                'message' => __('templatecontrollerphp612'),
             ], 403);
         }
 

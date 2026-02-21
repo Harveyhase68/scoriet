@@ -384,15 +384,15 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
       toast.current?.show({
         severity: 'success',
-        summary: 'Erfolg',
-        detail: `Team "${team.name}" wurde erfolgreich entsperrt!`,
+        summary: t.teammanagementpanel387,
+        detail: `${t.teammanagementpanel388}"${team.name}"${t.teammanagementpanel388_2}`,
         life: 5000
       });
     } catch (error) {
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: error instanceof Error ? error.message : 'Fehler beim Entsperren',
+        detail: error instanceof Error ? error.message : t.teammanagementpanel395,
         life: 3000
       });
     } finally {
@@ -422,8 +422,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       const linkedProjects = team.projects?.map(p => Number(p.id)) || [];
       setLinkedProjectIds(linkedProjects);
     } catch (error) {
-      console.error('Error loading projects:', error);
-      toast.current?.show({ severity: 'error', summary: t.messageError, detail: 'Fehler beim Laden der Projekte' });
+      console.error(t.teammanagementpanel425, error);
+      toast.current?.show({ severity: 'error', summary: t.messageError, detail: t.teammanagementpanel426 });
       setAllProjects([]);
       setLinkedProjectIds([]);
     } finally {
@@ -466,7 +466,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         setTeamMembersForTransfer(eligibleMembers);
       }
     } catch (error) {
-      console.error('Error loading team members:', error);
+      console.error(t.teammanagementpanel469, error);
       setTeamMembersForTransfer([]);
     }
   };
@@ -503,7 +503,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || 'Fehler beim Prüfen der Übertragung',
+          detail: data.message || t.teammanagementpanel506,
           life: 3000,
         });
       }
@@ -511,7 +511,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: 'Netzwerkfehler beim Prüfen der Übertragung',
+        detail: t.teammanagementpanel514,
         life: 3000,
       });
     } finally {
@@ -545,7 +545,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       if (response.ok) {
         toast.current?.show({
           severity: 'success',
-          summary: 'Erfolg',
+          summary: t.teammanagementpanel548,
           detail: data.message || t.teammanagementpanel548,
           life: 5000,
         });
@@ -592,7 +592,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(responseData.error || responseData.message || 'Failed to update team links');
+        throw new Error(responseData.error || responseData.message || t.teammanagementpanel595);
       }
 
       toast.current?.show({ severity: 'success', summary: t.teammanagementpanel597, detail: t.teammanagementpanel597_2 });
@@ -673,7 +673,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       return (
         <div className="flex items-center gap-1">
           <i className="pi pi-lock text-red-500" />
-          <Badge value="Gesperrt" severity="danger" />
+          <Badge value={t.teammanagementpanel676} severity="danger" />
         </div>
       );
     }
@@ -685,7 +685,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       return (
         <div className="flex items-center gap-1">
           <i className="pi pi-exclamation-triangle text-yellow-500" />
-          <Badge value={`${team.subscription_data.days_remaining} Tage`} severity="warning" />
+          <Badge value={`${team.subscription_data.days_remaining}${t.teammanagementpanel688}`} severity="warning" />
         </div>
       );
     }
@@ -719,14 +719,14 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       return (
         <div className="flex items-center gap-2">
           <i className="pi pi-briefcase text-gray-500"></i>
-          <span>No Projects</span>
+          <span>{t.teammanagementpanel722}</span>
         </div>
       );
     }
   };
 
   const createdBodyTemplate = (team: Team) => {
-    return new Date(team.created_at).toLocaleDateString('de-DE', {
+    return new Date(team.created_at).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -776,7 +776,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
           {canUnlock && (
             <Button
               icon={unlockingTeam && teamToUnlock?.id === team.id ? "pi pi-spinner pi-spin" : "pi pi-unlock"}
-              label="50 Credits"
+              label={t.teammanagementpanel779}
               className="p-button-rounded p-button-sm"
               style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' }}
               tooltip={t.teammanagementpanel781}
@@ -1195,7 +1195,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
                           </div>
                           <div className="text-sm" style={{ color: colors.textMuted }}>
                             {t.teammanagementpanel1196}{' '}
-                            {new Date(transferEligibility.owner.slot_expiry).toLocaleDateString('de-DE')}).
+                            {new Date(transferEligibility.owner.slot_expiry).toLocaleDateString(currentLanguage)}).
                             <span className="ml-1" style={{ color: colors.successText }}>{t.teammanagementpanel1198}</span>
                           </div>
                         </div>

@@ -48,7 +48,7 @@ class GitProviderController extends Controller
         // Check if already has access
         if ($user->hasGitIntegrationAccess()) {
             return response()->json([
-                'message' => 'Git Integration ist bereits freigeschaltet',
+                'message' => __('gitprovidercontrollerphp51'),
                 'access_status' => $user->getGitIntegrationAccessStatus(),
             ]);
         }
@@ -57,7 +57,7 @@ class GitProviderController extends Controller
         $cost = \App\Models\Subscription::GIT_INTEGRATION_UNLOCK_COST;
         if ($user->credits < $cost) {
             return response()->json([
-                'message' => "Nicht genügend Credits. Benötigt: {$cost}, Vorhanden: {$user->credits}",
+                'message' => __('gitprovidercontrollerphp60')."{$cost}".__('gitprovidercontrollerphp60_2')."{$user->credits}",
                 'required_credits' => $cost,
                 'current_credits' => $user->credits,
             ], 400);
@@ -68,12 +68,12 @@ class GitProviderController extends Controller
 
         if (!$subscription) {
             return response()->json([
-                'message' => 'Freischaltung fehlgeschlagen',
+                'message' => __('gitprovidercontrollerphp71'),
             ], 500);
         }
 
         return response()->json([
-            'message' => 'Git Integration erfolgreich freigeschaltet!',
+            'message' => __('gitprovidercontrollerphp76'),
             'access_status' => $user->getGitIntegrationAccessStatus(),
             'credits_remaining' => $user->fresh()->credits,
         ]);
@@ -89,7 +89,7 @@ class GitProviderController extends Controller
         // Check Git Integration access
         if (!$user->hasGitIntegrationAccess()) {
             return response()->json([
-                'error' => 'Git Integration subscription required',
+                'error' => __('gitprovidercontrollerphp92'),
                 'requires_subscription' => true,
                 'unlock_cost' => \App\Models\Subscription::GIT_INTEGRATION_UNLOCK_COST,
             ], 403);
@@ -98,7 +98,7 @@ class GitProviderController extends Controller
         $validProviders = ['github', 'gitlab', 'bitbucket'];
 
         if (!in_array($provider, $validProviders)) {
-            return response()->json(['error' => 'Invalid provider'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp101')], 400);
         }
 
         // Generate state and store in cache (since API routes don't use sessions)
@@ -128,14 +128,14 @@ class GitProviderController extends Controller
         $validProviders = ['github', 'gitlab', 'bitbucket'];
 
         if (!in_array($provider, $validProviders)) {
-            return response()->json(['error' => 'Invalid provider'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp131')], 400);
         }
 
         $state = $request->input('state');
         $code = $request->input('code');
 
         if (!$state || !$code) {
-            return response()->json(['error' => 'Missing state or code parameter'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp138')], 400);
         }
 
         // Verify state from cache
@@ -147,7 +147,7 @@ class GitProviderController extends Controller
                 'provider' => $provider,
                 'state_prefix' => substr($state, 0, 10) . '...',
             ]);
-            return response()->json(['error' => 'Invalid or expired state parameter. Please click "Verbinden" again.'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp150')], 400);
         }
 
         if ($storedData['provider'] !== $provider) {
@@ -155,7 +155,7 @@ class GitProviderController extends Controller
                 'expected' => $storedData['provider'],
                 'received' => $provider,
             ]);
-            return response()->json(['error' => 'Provider mismatch'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp158')], 400);
         }
 
         // Clear cache
@@ -164,13 +164,13 @@ class GitProviderController extends Controller
         try {
             $user = \App\Models\User::find($storedData['user_id']);
             if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
+                return response()->json(['error' => __('gitprovidercontrollerphp167')], 404);
             }
 
             $gitProvider = $this->gitProviderService->connectProvider($user, $provider, $code);
 
             return response()->json([
-                'message' => 'Successfully connected to ' . $gitProvider->getProviderDisplayName(),
+                'message' => __('gitprovidercontrollerphp173') . $gitProvider->getProviderDisplayName(),
                 'provider' => [
                     'id' => $gitProvider->id,
                     'provider' => $gitProvider->provider,
@@ -182,7 +182,7 @@ class GitProviderController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Git OAuth callback error', [
+            \Log::error(__('gitprovidercontrollerphp185'), [
                 'provider' => $provider,
                 'error' => $e->getMessage(),
             ]);
@@ -200,10 +200,10 @@ class GitProviderController extends Controller
         $deleted = $this->gitProviderService->disconnectProvider($user, $provider);
 
         if ($deleted) {
-            return response()->json(['message' => 'Provider disconnected successfully']);
+            return response()->json(['message' => __('gitprovidercontrollerphp203')]);
         }
 
-        return response()->json(['error' => 'Provider not found'], 404);
+        return response()->json(['error' => __('gitprovidercontrollerphp206')], 404);
     }
 
     /**
@@ -215,7 +215,7 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp218')], 404);
         }
 
         try {
@@ -245,12 +245,12 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp248')], 404);
         }
 
         $repoFullName = $request->input('repo');
         if (!$repoFullName) {
-            return response()->json(['error' => 'Repository name required'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp253')], 400);
         }
 
         try {
@@ -276,7 +276,7 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp279')], 404);
         }
 
         try {
@@ -308,7 +308,7 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp311')], 404);
         }
 
         try {
@@ -323,7 +323,7 @@ class GitProviderController extends Controller
             );
 
             return response()->json([
-                'message' => 'Repository created successfully',
+                'message' => __('gitprovidercontrollerphp326'),
                 'repository' => $repository,
             ], 201);
         } catch (\Exception $e) {
@@ -357,7 +357,7 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp360')], 404);
         }
 
         try {
@@ -371,15 +371,15 @@ class GitProviderController extends Controller
         $project = \App\Models\Project::find($request->input('project_id'));
 
         if (!$project || !$project->userCanAccess($user)) {
-            return response()->json(['error' => 'Project not found or access denied'], 403);
+            return response()->json(['error' => __('gitprovidercontrollerphp374')], 403);
         }
 
         if (!$project->hasGitIntegration()) {
-            return response()->json(['error' => 'Git integration not configured for this project'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp378')], 400);
         }
 
         if ($project->git_provider_id !== $gitProvider->id) {
-            return response()->json(['error' => 'Provider mismatch with project settings'], 400);
+            return response()->json(['error' => __('gitprovidercontrollerphp382')], 400);
         }
 
         try {
@@ -389,7 +389,7 @@ class GitProviderController extends Controller
 
             $zip = new \ZipArchive();
             if ($zip->open($zipFile->getRealPath()) !== true) {
-                return response()->json(['error' => 'Failed to open archive'], 400);
+                return response()->json(['error' => __('gitprovidercontrollerphp392')], 400);
             }
 
             $files = [];
@@ -414,7 +414,7 @@ class GitProviderController extends Controller
             $zip->close();
 
             if (empty($files)) {
-                return response()->json(['error' => 'Archive contains no files'], 400);
+                return response()->json(['error' => __('gitprovidercontrollerphp417')], 400);
             }
 
             // Push files to repository
@@ -508,7 +508,7 @@ class GitProviderController extends Controller
         // Check Git Integration access
         if (!$user->hasGitIntegrationAccess()) {
             return response()->json([
-                'error' => 'Git Integration subscription required',
+                'error' => __('gitprovidercontrollerphp511'),
                 'requires_subscription' => true,
                 'unlock_cost' => \App\Models\Subscription::GIT_INTEGRATION_UNLOCK_COST,
             ], 403);
@@ -517,7 +517,7 @@ class GitProviderController extends Controller
         $gitProvider = $user->getGitProvider($provider);
 
         if (!$gitProvider) {
-            return response()->json(['error' => 'Provider not connected'], 404);
+            return response()->json(['error' => __('gitprovidercontrollerphp520')], 404);
         }
 
         try {
@@ -530,7 +530,7 @@ class GitProviderController extends Controller
             $repository = $request->input('repository');
 
             if (empty($files)) {
-                return response()->json(['error' => 'No files provided'], 400);
+                return response()->json(['error' => __('gitprovidercontrollerphp533')], 400);
             }
 
             // Push files to repository
@@ -551,7 +551,7 @@ class GitProviderController extends Controller
 
             // Create PR if requested
             if ($request->boolean('create_pr', false)) {
-                $prTitle = $request->input('pr_title', 'Code Generation');
+                $prTitle = $request->input('pr_title', __('gitprovidercontrollerphp554'));
                 $prDescription = $request->input('pr_description', '');
 
                 // Replace placeholders in PR title and description
@@ -595,7 +595,7 @@ class GitProviderController extends Controller
             return response()->json($result);
 
         } catch (\Exception $e) {
-            \Log::error('Git push direct failed', [
+            \Log::error(__('gitprovidercontrollerphp598'), [
                 'provider' => $provider,
                 'repository' => $request->input('repository'),
                 'error' => $e->getMessage(),

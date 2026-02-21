@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 //import { useTranslation } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProtectedFilesEditorProps {
   files: string[];
@@ -18,6 +19,9 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
   //const { t } = useTranslation('en');
   const { colors } = useTheme();
   const [newFile, setNewFile] = useState('');
+  // i18n setup
+  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
+  const { t } = useTranslation(currentLanguage);
 
   const handleAdd = () => {
     if (newFile.trim() && !files.includes(newFile.trim())) {
@@ -42,8 +46,8 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
       {title && <h3 className="text-lg font-semibold mb-3 theme-text-primary">{title}</h3>}
 
       <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
-        <strong>Info:</strong> These files will not be overwritten during updates.
-        They are typically configuration files like <code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">.env</code>, <code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">config.toml</code>, or database files.
+        <strong>{t.protectedfileseditor49}</strong>{t.protectedfileseditor49_2}
+        {t.protectedfileseditor50}<code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">.env</code>, <code style={{ backgroundColor: colors.bgTertiary }} className="px-1 rounded">config.toml</code>{t.protectedfileseditor50_2}
       </div>
 
       {!readOnly && (
@@ -53,7 +57,7 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
             value={newFile}
             onChange={(e) => setNewFile(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="e.g., .env, config.toml, data/local.db"
+            placeholder={`${t.protectedfileseditor60}.env, config.toml, data/local.db`}
             className="flex-1 px-3 py-2 border rounded focus:outline-none"
             style={{
               backgroundColor: colors.bgSecondary,
@@ -76,7 +80,7 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
             style={{ backgroundColor: colors.buttonPrimary, color: colors.textInverse }}
             disabled={!newFile.trim()}
           >
-            Add File
+            {t.protectedfileseditor83}
           </button>
         </div>
       )}
@@ -84,7 +88,7 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
       <div className="space-y-2">
         {files.length === 0 ? (
           <div className="italic p-3 text-center border border-dashed rounded theme-text-muted theme-border-primary">
-            No protected files defined
+            {t.protectedfileseditor91}
           </div>
         ) : (
           files.map((file, index) => (
@@ -105,7 +109,7 @@ export const ProtectedFilesEditor: React.FC<ProtectedFilesEditorProps> = ({
                   onClick={() => handleRemove(index)}
                   className="font-bold"
                   style={{ color: colors.buttonDanger }}
-                  title="Remove"
+                  title={t.protectedfileseditor112}
                 >
                   ✕
                 </button>

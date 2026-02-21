@@ -561,6 +561,9 @@ class SimpleFixedTemplateEngine
             $processedLine = str_replace('{:fileid:}', $table['fileid'] ?? $table['tablename'] ?? 'Unknown', $processedLine);
             $processedLine = str_replace('{:filenamecc:}', $table['filenamecc'] ?? ucwords(str_replace('_', '', $table['tablename'] ?? '')), $processedLine);
 
+            // Renamed file name variable
+            $processedLine = str_replace('{:filerenamed:}', $table['filerenamed'] ?? '', $processedLine);
+
             // Master-Detail FILE variables
             $processedLine = str_replace('{:filegeneratemasterdetail:}', $table['filegeneratemasterdetail'] ? 'true' : 'false', $processedLine);
             $processedLine = str_replace('{:filedetailfileid:}', $table['filedetailfileid'] ?? '', $processedLine);
@@ -584,6 +587,7 @@ class SimpleFixedTemplateEngine
             $processedLine = str_replace('{:item.name:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].name + '", $processedLine);
             $processedLine = str_replace('{:item.type:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].type + '", $processedLine);
             $processedLine = str_replace('{:item.controltype:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].controltype + '", $processedLine);
+            $processedLine = str_replace('{:item.comment:}', "' + gtree[0].project[0].tables[{$this->currentTableIndex}].fields[i].comment + '", $processedLine);
         }
 
         return $processedLine;

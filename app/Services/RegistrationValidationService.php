@@ -242,10 +242,10 @@ class RegistrationValidationService
 
         // Check against Tor exit nodes
         if ($this->isTorExitNode($ip)) {
-            \Log::warning('Registration blocked: Tor exit node detected', ['ip' => $ip]);
+            \Log::warning(__('registrationvalidationservicephp245'), ['ip' => $ip]);
             return [
                 'valid' => false,
-                'message' => 'Registrierung über Tor ist nicht erlaubt. Bitte deaktivieren Sie Tor und versuchen Sie es erneut.',
+                'message' => __('registrationvalidationservicephp248'),
             ];
         }
 
@@ -299,17 +299,17 @@ class RegistrationValidationService
     {
         $parts = explode('@', $email);
         if (count($parts) !== 2) {
-            return ['valid' => false, 'message' => 'Ungültige E-Mail-Adresse.'];
+            return ['valid' => false, 'message' => __('registrationvalidationservicephp302')];
         }
 
         $localPart = strtolower($parts[0]);
 
         // Check if local part contains "scoriet"
         if (str_contains($localPart, 'scoriet')) {
-            \Log::warning('Registration blocked: scoriet in email name', ['email' => $email]);
+            \Log::warning(__('registrationvalidationservicephp309'), ['email' => $email]);
             return [
                 'valid' => false,
-                'message' => 'E-Mail-Adressen mit "scoriet" im Namen sind nicht erlaubt.',
+                'message' => __('registrationvalidationservicephp312'),
             ];
         }
 
@@ -323,7 +323,7 @@ class RegistrationValidationService
     {
         $parts = explode('@', $email);
         if (count($parts) !== 2) {
-            return ['valid' => false, 'message' => 'Ungültige E-Mail-Adresse.'];
+            return ['valid' => false, 'message' => __('registrationvalidationservicephp326')];
         }
 
         $domain = strtolower($parts[1]);
@@ -333,10 +333,10 @@ class RegistrationValidationService
 
         // Check against known disposable domains
         if (in_array($domain, $allDisposableDomains)) {
-            \Log::warning('Registration blocked: disposable email', ['email' => $email, 'domain' => $domain]);
+            \Log::warning(__('registrationvalidationservicephp336'), ['email' => $email, 'domain' => $domain]);
             return [
                 'valid' => false,
-                'message' => 'Wegwerf-E-Mail-Adressen sind nicht erlaubt. Bitte verwenden Sie eine permanente E-Mail-Adresse.',
+                'message' => __('registrationvalidationservicephp339'),
             ];
         }
 
@@ -423,7 +423,7 @@ class RegistrationValidationService
     {
         $parts = explode('@', $email);
         if (count($parts) !== 2) {
-            return ['valid' => false, 'message' => 'Ungültige E-Mail-Adresse.'];
+            return ['valid' => false, 'message' => __('registrationvalidationservicephp426')];
         }
 
         $domain = $parts[1];
@@ -437,10 +437,10 @@ class RegistrationValidationService
             $aRecord = gethostbyname($domain);
             if ($aRecord === $domain) {
                 // No A record found either
-                \Log::warning('Registration blocked: no MX records', ['email' => $email, 'domain' => $domain]);
+                \Log::warning(__('registrationvalidationservicephp440'), ['email' => $email, 'domain' => $domain]);
                 return [
                     'valid' => false,
-                    'message' => 'Die E-Mail-Domain scheint nicht zu existieren oder kann keine E-Mails empfangen.',
+                    'message' => __('registrationvalidationservicephp443'),
                 ];
             }
         }
@@ -458,7 +458,7 @@ class RegistrationValidationService
             $content = file_get_contents($url);
 
             if (!$content) {
-                \Log::error('Failed to fetch Tor exit nodes');
+                \Log::error(__('registrationvalidationservicephp461'));
                 return 0;
             }
 
@@ -483,7 +483,7 @@ class RegistrationValidationService
 
             return count($nodes);
         } catch (\Exception $e) {
-            \Log::error('Failed to update Tor exit nodes: ' . $e->getMessage());
+            \Log::error(__('registrationvalidationservicephp486') . $e->getMessage());
             return 0;
         }
     }

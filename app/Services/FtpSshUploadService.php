@@ -38,7 +38,7 @@ class FtpSshUploadService
             if (!function_exists('ftp_connect')) {
                 return [
                     'success' => false,
-                    'message' => "FTP-Extension ist nicht installiert. Bitte aktivieren Sie php_ftp in der php.ini.",
+                    'message' => __('ftpsshuploadservicephp41'),
                 ];
             }
 
@@ -52,7 +52,7 @@ class FtpSshUploadService
             if (!$connection) {
                 return [
                     'success' => false,
-                    'message' => "Verbindung zu {$host}:{$port} fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp55')."{$host}:{$port}".__('ftpsshuploadservicephp55_2'),
                 ];
             }
 
@@ -63,7 +63,7 @@ class FtpSshUploadService
                 \ftp_close($connection);
                 return [
                     'success' => false,
-                    'message' => "Anmeldung fehlgeschlagen für Benutzer '{$username}'",
+                    'message' => __('ftpsshuploadservicephp66')."'{$username}'",
                 ];
             }
 
@@ -84,7 +84,7 @@ class FtpSshUploadService
             if (!$dirExists) {
                 return [
                     'success' => true,
-                    'message' => "Verbindung erfolgreich! Verzeichnis '{$targetDir}' existiert nicht, wird beim Upload erstellt.",
+                    'message' => __('ftpsshuploadservicephp87')."'{$targetDir}'".__('ftpsshuploadservicephp87_2'),
                     'current_directory' => $currentDir,
                     'target_exists' => false,
                 ];
@@ -92,7 +92,7 @@ class FtpSshUploadService
 
             return [
                 'success' => true,
-                'message' => "Verbindung erfolgreich!",
+                'message' => __('ftpsshuploadservicephp95'),
                 'current_directory' => $currentDir,
                 'target_exists' => true,
             ];
@@ -121,7 +121,7 @@ class FtpSshUploadService
             if (!function_exists('ssh2_connect')) {
                 return [
                     'success' => false,
-                    'message' => "SSH2-Extension ist nicht installiert. Bitte aktivieren Sie php_ssh2 in der php.ini.",
+                    'message' => __('ftpsshuploadservicephp124'),
                 ];
             }
 
@@ -131,7 +131,7 @@ class FtpSshUploadService
             if (!$connection) {
                 return [
                     'success' => false,
-                    'message' => "Verbindung zu {$host}:{$port} fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp134')."{$host}:{$port}".__('ftpsshuploadservicephp134_2'),
                 ];
             }
 
@@ -141,7 +141,7 @@ class FtpSshUploadService
             if (!$authResult) {
                 return [
                     'success' => false,
-                    'message' => "Anmeldung fehlgeschlagen für Benutzer '{$username}'",
+                    'message' => __('ftpsshuploadservicephp144')."'{$username}'",
                 ];
             }
 
@@ -151,7 +151,7 @@ class FtpSshUploadService
             if (!$sftp) {
                 return [
                     'success' => false,
-                    'message' => "SFTP-Subsystem konnte nicht initialisiert werden",
+                    'message' => __('ftpsshuploadservicephp154'),
                 ];
             }
 
@@ -162,15 +162,15 @@ class FtpSshUploadService
 
             return [
                 'success' => true,
-                'message' => "SFTP-Verbindung erfolgreich!",
+                'message' => __('ftpsshuploadservicephp165'),
                 'target_exists' => $dirExists,
             ];
 
         } catch (\Exception $e) {
-            Log::error("SFTP connection test failed: " . $e->getMessage());
+            Log::error(__('ftpsshuploadservicephp170') . $e->getMessage());
             return [
                 'success' => false,
-                'message' => "Fehler: " . $e->getMessage(),
+                'message' => __('ftpsshuploadservicephp173') . $e->getMessage(),
             ];
         }
     }
@@ -209,8 +209,8 @@ class FtpSshUploadService
             if (!function_exists('ftp_connect')) {
                 return [
                     'success' => false,
-                    'message' => "FTP-Extension ist nicht installiert",
-                    'logs' => ["❌ FTP-Extension ist nicht installiert. Bitte aktivieren Sie php_ftp in der php.ini."],
+                    'message' => __('ftpsshuploadservicephp212'),
+                    'logs' => [__('ftpsshuploadservicephp213')],
                 ];
             }
 
@@ -226,7 +226,7 @@ class FtpSshUploadService
             if (!$connection) {
                 return [
                     'success' => false,
-                    'message' => "Verbindung fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp229'),
                     'logs' => $logs,
                 ];
             }
@@ -238,7 +238,7 @@ class FtpSshUploadService
                 \ftp_close($connection);
                 return [
                     'success' => false,
-                    'message' => "Anmeldung fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp241'),
                     'logs' => $logs,
                 ];
             }
@@ -248,11 +248,11 @@ class FtpSshUploadService
             // Set passive mode
             if ($project->ftp_passive) {
                 \ftp_pasv($connection, true);
-                $logs[] = "📡 Passiver Modus aktiviert";
+                $logs[] = __('ftpsshuploadservicephp251');
             }
 
             // Extract ZIP locally first
-            $logs[] = "📦 Entpacke ZIP-Archiv...";
+            $logs[] = __('ftpsshuploadservicephp255');
 
             $tempDir = sys_get_temp_dir() . '/ftp_upload_' . uniqid();
             mkdir($tempDir, 0755, true);
@@ -261,7 +261,7 @@ class FtpSshUploadService
             if ($zip->open($zipPath) !== true) {
                 return [
                     'success' => false,
-                    'message' => "ZIP-Archiv konnte nicht geöffnet werden",
+                    'message' => __('ftpsshuploadservicephp264'),
                     'logs' => $logs,
                 ];
             }
@@ -269,13 +269,13 @@ class FtpSshUploadService
             $zip->extractTo($tempDir);
             $zip->close();
 
-            $logs[] = "✅ ZIP entpackt";
+            $logs[] = __('ftpsshuploadservicephp272');
 
             // Create target directory if needed
             $this->ftpMkdirRecursive($connection, $targetDir);
             @\ftp_chdir($connection, $targetDir);
 
-            $logs[] = "📤 Lade Dateien hoch nach {$targetDir}...";
+            $logs[] = __('ftpsshuploadservicephp278')."{$targetDir}...";
 
             // Upload all files
             $uploadedFiles = $this->ftpUploadDirectory($connection, $tempDir, $targetDir, $logs);
@@ -285,7 +285,7 @@ class FtpSshUploadService
 
             \ftp_close($connection);
 
-            $logs[] = "✅ Upload abgeschlossen - {$uploadedFiles} Dateien übertragen";
+            $logs[] = __('ftpsshuploadservicephp288')."{$uploadedFiles}".__('ftpsshuploadservicephp288_2');
 
             return [
                 'success' => true,
@@ -295,8 +295,8 @@ class FtpSshUploadService
             ];
 
         } catch (\Exception $e) {
-            Log::error("FTP upload failed: " . $e->getMessage());
-            $logs[] = "❌ Fehler: " . $e->getMessage();
+            Log::error(__('ftpsshuploadservicephp298') . $e->getMessage());
+            $logs[] = __('ftpsshuploadservicephp299') . $e->getMessage();
 
             return [
                 'success' => false,
@@ -321,14 +321,14 @@ class FtpSshUploadService
         $uploadedFiles = 0;
 
         try {
-            $logs[] = "📡 Verbinde zu SFTP-Server {$host}:{$port}...";
+            $logs[] = __('ftpsshuploadservicephp324')."{$host}:{$port}...";
 
             // Check SSH2 extension
             if (!function_exists('ssh2_connect')) {
                 return [
                     'success' => false,
-                    'message' => "SSH2-Extension nicht installiert",
-                    'logs' => ["❌ SSH2-Extension ist nicht installiert. Bitte aktivieren Sie php_ssh2 in der php.ini."],
+                    'message' => __('ftpsshuploadservicephp330'),
+                    'logs' => [__('ftpsshuploadservicephp331')],
                 ];
             }
 
@@ -338,7 +338,7 @@ class FtpSshUploadService
             if (!$connection) {
                 return [
                     'success' => false,
-                    'message' => "Verbindung fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp341'),
                     'logs' => $logs,
                 ];
             }
@@ -349,12 +349,12 @@ class FtpSshUploadService
             if (!@\ssh2_auth_password($connection, $username, $password)) {
                 return [
                     'success' => false,
-                    'message' => "Anmeldung fehlgeschlagen",
+                    'message' => __('ftpsshuploadservicephp352'),
                     'logs' => $logs,
                 ];
             }
 
-            $logs[] = "✅ Angemeldet als {$username}";
+            $logs[] = __('ftpsshuploadservicephp357')."{$username}";
 
             // Initialize SFTP
             $sftp = @\ssh2_sftp($connection);
@@ -362,15 +362,15 @@ class FtpSshUploadService
             if (!$sftp) {
                 return [
                     'success' => false,
-                    'message' => "SFTP-Subsystem konnte nicht initialisiert werden",
+                    'message' => __('ftpsshuploadservicephp365'),
                     'logs' => $logs,
                 ];
             }
 
-            $logs[] = "📡 SFTP-Subsystem initialisiert";
+            $logs[] = __('ftpsshuploadservicephp370');
 
             // Extract ZIP locally
-            $logs[] = "📦 Entpacke ZIP-Archiv...";
+            $logs[] = __('ftpsshuploadservicephp373');
 
             $tempDir = sys_get_temp_dir() . '/sftp_upload_' . uniqid();
             mkdir($tempDir, 0755, true);
@@ -379,7 +379,7 @@ class FtpSshUploadService
             if ($zip->open($zipPath) !== true) {
                 return [
                     'success' => false,
-                    'message' => "ZIP-Archiv konnte nicht geöffnet werden",
+                    'message' => __('ftpsshuploadservicephp382'),
                     'logs' => $logs,
                 ];
             }
@@ -387,13 +387,13 @@ class FtpSshUploadService
             $zip->extractTo($tempDir);
             $zip->close();
 
-            $logs[] = "✅ ZIP entpackt";
+            $logs[] = __('ftpsshuploadservicephp390');
 
             // Create target directory if needed
             $sftpIntval = intval($sftp);
             $this->sftpMkdirRecursive($sftpIntval, $targetDir);
 
-            $logs[] = "📤 Lade Dateien hoch nach {$targetDir}...";
+            $logs[] = __('ftpsshuploadservicephp396')."{$targetDir}...";
 
             // Upload all files
             $uploadedFiles = $this->sftpUploadDirectory($sftpIntval, $tempDir, $targetDir, $logs);
@@ -401,18 +401,18 @@ class FtpSshUploadService
             // Cleanup temp directory
             $this->deleteDirectory($tempDir);
 
-            $logs[] = "✅ Upload abgeschlossen - {$uploadedFiles} Dateien übertragen";
+            $logs[] = __('ftpsshuploadservicephp404_3')."{$uploadedFiles}".__('ftpsshuploadservicephp404_2');
 
             return [
                 'success' => true,
-                'message' => "Upload erfolgreich",
+                'message' => __('ftpsshuploadservicephp408'),
                 'files_uploaded' => $uploadedFiles,
                 'logs' => $logs,
             ];
 
         } catch (\Exception $e) {
-            Log::error("SFTP upload failed: " . $e->getMessage());
-            $logs[] = "❌ Fehler: " . $e->getMessage();
+            Log::error(__('ftpsshuploadservicephp414') . $e->getMessage());
+            $logs[] = __('ftpsshuploadservicephp415') . $e->getMessage();
 
             return [
                 'success' => false,
@@ -470,7 +470,7 @@ class FtpSshUploadService
                 if (@\ftp_put($connection, $remotePath, $localPath, FTP_BINARY)) {
                     $count++;
                 } else {
-                    $logs[] = "⚠️ Fehler beim Upload: {$relativePath}";
+                    $logs[] = __('ftpsshuploadservicephp473')."{$relativePath}";
                 }
             }
         }
@@ -529,7 +529,7 @@ class FtpSshUploadService
                 if (@file_put_contents($sftpPath, $content) !== false) {
                     $count++;
                 } else {
-                    $logs[] = "⚠️ Fehler beim Upload: {$relativePath}";
+                    $logs[] = __('ftpsshuploadservicephp532')."{$relativePath}";
                 }
             }
         }

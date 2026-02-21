@@ -10,8 +10,6 @@ import { Toast } from 'primereact/toast';
 import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
-import { de } from '@/i18n/locales/de';
-import { en } from '@/i18n/locales/en';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Global window interface for tab data
@@ -161,15 +159,18 @@ const initialLayout: any = {
   }
 };
 
-// Loading spinner component
-const PanelLoader = () => (
-  <div className="flex items-center justify-center h-64 theme-bg-secondary theme-text-primary">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-      <p className="text-sm theme-text-muted">Loading panel...</p>
+// Loading spinner component - uses own useTranslation() to stay independent of parent scope
+const PanelLoader = () => {
+  const { t } = useTranslation(getStoredLanguage());
+  return (
+    <div className="flex items-center justify-center h-64 theme-bg-secondary theme-text-primary">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+        <p className="text-sm theme-text-muted">{t.index169}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Helper function to find the first existing tabset
 function findFirstTabset(layout: any): any {
@@ -267,7 +268,6 @@ const loadTab = (
   handleOpenDesigner?: (schemaId: number) => void,
   openPanelFn?: (panelId: string, data?: any) => void,
   updateTitleCallback?: (newTitle: string) => void,
-  tFallback?: any
 ) => {
   const { id } = data;
 
@@ -275,7 +275,7 @@ const loadTab = (
   if (id.startsWith('team-management-team-')) {
     return {
       id,
-      title: data.title || 'Team Management',
+      title: data.title || t.index278,
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TeamManagementPanel filterByProject={false} />
@@ -308,7 +308,7 @@ const loadTab = (
 
     return {
       id,
-      title: data.title || 'Team Verwaltung',
+      title: data.title || t.index311,
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
@@ -323,7 +323,7 @@ const loadTab = (
   if (id.startsWith('template-management-template-')) {
     return {
       id,
-      title: data.title || 'Template Management',
+      title: data.title || t.index326,
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TemplateManagementPanel filterByProject={false} />
@@ -358,7 +358,7 @@ const loadTab = (
 
     return {
       id,
-      title: data.title || templateStoredData.title || 'A Template Verwaltung',
+      title: data.title || templateStoredData.title || t.index361,
       content: (
         <Suspense fallback={<PanelLoader />}>
           <TemplateManagementPanel
@@ -397,7 +397,7 @@ const loadTab = (
     const databaseActualUpdateTitleCallback = databaseStoredData.updateTitleCallback || updateTitleCallback;
 
     // Determine title: use forceProjectName if available, otherwise fallback
-    const dbTitle = t?.index625 || tFallback?.index625 || 'Database Management';
+    const dbTitle = t?.index625;
     const databaseTitle = data.title ||
                          databaseStoredData.title ||
                          (databaseShouldShowProjectFilter && databaseForceProjectName
@@ -444,7 +444,7 @@ const loadTab = (
     const schemaPreSelectedSchemaId = schemaStoredData.preSelectedSchemaId as number | undefined;
     const schemaActualUpdateTitleCallback = schemaStoredData.updateTitleCallback || updateTitleCallback;
 
-    const dbTitle = t?.index625 || tFallback?.index625 || 'Database Management';
+    const dbTitle = t?.index625;
     const schemaTitle = data.title || schemaStoredData.title || dbTitle;
 
     return {
@@ -493,7 +493,7 @@ const loadTab = (
 
     return {
       id,
-      title: data.title || debugStoredData.title || 'Debug Manual Generator',
+      title: data.title || debugStoredData.title || 'Template Tester & Debug',
       content: (
         <Suspense fallback={<PanelLoader />}>
           <DebugManualGeneratorPanel
@@ -515,7 +515,7 @@ const loadTab = (
     case 'landing':
       return {
         id: 'home',
-        title: data.title || t?.index400 || tFallback?.index400 || 'Welcome',
+        title: data.title || t?.index400 || 'Welcome',
         content: (
           <Suspense fallback={<PanelLoader />}>
             <LandingPage />
@@ -528,7 +528,7 @@ const loadTab = (
     case 't2':
       return {
         id,
-        title: data.title || t?.index413 || tFallback?.index413 || 'Database Designer',
+        title: data.title || t?.index413,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <PanelT2 preSelectedSchemaId={data.preSelectedSchemaId} />
@@ -554,7 +554,7 @@ const loadTab = (
     case 'project':
       return {
         id,
-        title: data.title || 'Project Management',
+        title: data.title || t.index557,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ProjectPanel isActive={true} onOpenPanel={openPanelFn} />
@@ -650,7 +650,7 @@ const loadTab = (
     case 'template-review':
       return {
         id,
-        title: 'Template Review Queue',
+        title: t.index653,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateReviewPanel />
@@ -663,7 +663,7 @@ const loadTab = (
     case 'template-store':
       return {
         id,
-        title: 'Template Store',
+        title: t.index666,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateStorePanel />
@@ -697,7 +697,7 @@ const loadTab = (
 
       return {
         id,
-        title: data.title || t?.index625 || tFallback?.index625 || 'Database Management',
+        title: data.title || t?.index625,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <DatabaseManagementPanel isActive={true} onOpenDesigner={handleOpenDesigner} filterByProject={dbShouldShowProjectFilter} updateTabTitle={dbActualUpdateTitleCallback} />
@@ -734,7 +734,7 @@ const loadTab = (
 
       return {
         id,
-        title: data.title || 'Team Verwaltung',
+        title: data.title || t.index737,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TeamManagementPanel filterByProject={teamShouldShowProjectFilter} forceProjectId={teamForceProjectId} updateTabTitle={teamActualUpdateTitleCallback} />
@@ -1249,12 +1249,9 @@ export default function Index(props: IndexProps = {}) {
   const toast = useRef<Toast>(null);
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t } = useTranslation(currentLanguage);
+  const { t, isLoading: isTranslationsLoading } = useTranslation(currentLanguage);
   // Theme
   const { colors } = useTheme();
-
-  // Fallback translations if lazy loading hasn't completed yet
-  const tFallback = currentLanguage === 'de' ? de : en;
   
   // Project context
   const { projects, selectedProject, setSelectedProject } = useProject();
@@ -1295,6 +1292,15 @@ export default function Index(props: IndexProps = {}) {
   useEffect(() => {
     LayoutPersistenceService.saveLayout(layout, leftPanelWidth);
   }, [leftPanelWidth, layout]);
+
+  // After translations finish loading, refresh the layout so rc-dock re-calls loadTab
+  // with the now-available translation strings (fixes empty tab titles after F5 reload)
+  useEffect(() => {
+    if (!isTranslationsLoading && ref.current) {
+      const currentLayout = ref.current.saveLayout();
+      setLayout({ ...currentLayout });
+    }
+  }, [isTranslationsLoading]);
 
   // Clear layout and reset to default
   const clearLayout = useCallback(() => {
@@ -1391,7 +1397,7 @@ export default function Index(props: IndexProps = {}) {
             if (toast.current && demoMessage && !sessionStorage.getItem('demo_toast_shown')) {
               toast.current.show({
                 severity: 'success',
-                summary: 'Demo Mode',
+                summary: t.index1391,
                 detail: demoMessage,
                 life: 5000
               });
@@ -1749,7 +1755,7 @@ export default function Index(props: IndexProps = {}) {
       if (toast.current) {
         toast.current.show({
           severity: 'info',
-          summary: 'Session',
+          summary: t.index1749,
           detail: event.detail.message,
           life: 5000
         });
@@ -1803,6 +1809,35 @@ export default function Index(props: IndexProps = {}) {
     const tokenCheckInterval = setInterval(() => {
       checkAuthStatus();
     }, 30 * 1000);
+
+    // Heartbeat: update online status every 60 seconds (also marks visitor as authenticated)
+    const heartbeatInterval = setInterval(async () => {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+      try {
+        await fetch('/api/user/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+      } catch {
+        // Silently ignore heartbeat errors
+      }
+    }, 60 * 1000);
+
+    // Also fire heartbeat immediately on load if authenticated
+    const initToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (initToken) {
+      fetch('/api/user/heartbeat', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${initToken}`,
+          'Accept': 'application/json',
+        },
+      }).catch(() => {});
+    }
 
     // Demo reset countdown polling (only in demo mode, every 30 seconds)
     let demoCountdownShown5min = false;
@@ -1895,6 +1930,7 @@ export default function Index(props: IndexProps = {}) {
       window.removeEventListener('sessionRevoked', handleSessionRevoked as EventListener);
       window.removeEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
       clearInterval(tokenCheckInterval);
+      clearInterval(heartbeatInterval);
       if (demoCountdownInterval) clearInterval(demoCountdownInterval);
       localStorage.setItem = originalSetItem;
       localStorage.removeItem = originalRemoveItem;
@@ -2026,7 +2062,7 @@ export default function Index(props: IndexProps = {}) {
                   closeAllTabs();
                 }}
                 style={{ cursor: 'pointer', padding: '4px' }}
-                title="Close All Tabs"
+                title={t.index2056}
               >
                 {icons.closeAll}
               </span>
@@ -2091,7 +2127,7 @@ export default function Index(props: IndexProps = {}) {
           updateTabTitle(ref, setLayout, uniqueTabId, newTitle);
         };
 
-        const newTab = loadTab({ id: uniqueTabId, ...data }, t, handleOpenDesigner, openPanel, updateTitleCallback, tFallback);
+        const newTab = loadTab({ id: uniqueTabId, ...data }, t, handleOpenDesigner, openPanel, updateTitleCallback);
 
         if (newTab) {
           const currentLayout = ref.current.saveLayout();
@@ -2342,7 +2378,7 @@ useHotkeys('alt+p', () => {
   
   if (ref.current) {
     const timestamp = new Date().toLocaleTimeString();
-    const newTitle = `Main Tab - Updated ${timestamp}`;
+    const newTitle = `${t.index2372}${timestamp}`;
             
     // Important: Pass title in data so loadTab can use it
     ref.current.updateTab('t2', {
@@ -2392,7 +2428,7 @@ useHotkeys('alt+m', () => {
 
   // Clear saved layout with Alt+R (Reset)
   useHotkeys('alt+r', () => {
-    if (confirm('Clear saved layout and reset to default?')) {
+    if (confirm(t.index2422)) {
       clearLayout();
     }
   });
@@ -2404,7 +2440,7 @@ useHotkeys('alt+m', () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(layoutJson);
-        alert('Layout was copied to clipboard!');
+        alert(t.index2434);
       } else {
         const textarea = document.createElement('textarea');
         textarea.value = layoutJson;
@@ -2417,11 +2453,11 @@ useHotkeys('alt+m', () => {
         document.body.removeChild(textarea);
 
         if (successful) {
-          alert('Layout was copied to clipboard!');
+          alert(t.index2447);
         }
       }
     } catch {
-      alert('See console for manual copying.');
+      alert(t.index2451);
     }
   });
 
@@ -2489,7 +2525,7 @@ useHotkeys('alt+m', () => {
 
   const onLayoutChange = useCallback((newLayout: any, currentTabId?: string, direction?: string) => {
     if (currentTabId === 'protect1' && direction === 'remove') {
-      alert('Removal of this tab is rejected!');
+      alert(t.index2519);
     } else {
       updateLayout(newLayout);
     }
@@ -2561,7 +2597,7 @@ useHotkeys('alt+m', () => {
 
   return (
     <>
-      <Head title={resetToken ? "Reset Password - Scoriet" : "Scoriet - Enterprise Code Generator"} />
+      <Head title={resetToken ? t.index2591 : t.index2591_2} />
 
       {/* Toast Notification Component */}
       <Toast
@@ -2624,7 +2660,7 @@ useHotkeys('alt+m', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={(data: any) => loadTab(data, t, handleOpenDesigner, openPanel, undefined, tFallback)}
+                  loadTab={(data: any) => loadTab(data, t, handleOpenDesigner, openPanel, undefined)}
                   groups={groups}
                   style={{
                     position: 'absolute',
@@ -2642,7 +2678,7 @@ useHotkeys('alt+m', () => {
 
         {/* SQL IMPORT MODAL - Must be inside ProjectProvider */}
         {showSqlImportModal && (
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<div>{t.index2672}</div>}>
             <SqlImportModal
               isOpen={showSqlImportModal}
               onClose={handleCloseSqlImport}
@@ -2653,7 +2689,7 @@ useHotkeys('alt+m', () => {
 
         {/* DATABASE EXPORT MODAL - Must be inside ProjectProvider */}
         {showDatabaseExportModal && (
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<div>{t.index2683}</div>}>
             <DatabaseExportModal
               isOpen={showDatabaseExportModal}
               onClose={handleCloseDatabaseExport}
@@ -2768,7 +2804,7 @@ useHotkeys('alt+m', () => {
             if (toast.current) {
               toast.current.show({
                 severity: 'success',
-                summary: 'Registration Successful',
+                summary: t.index2798,
                 detail: message,
                 life: 8000, // 8 seconds
                 closable: true
@@ -2780,7 +2816,7 @@ useHotkeys('alt+m', () => {
 
       {/* PENDING INVITATION MODAL */}
       {showPendingInvitation && (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>{t.index2810}</div>}>
           <PendingInvitationModal
             visible={showPendingInvitation}
             onHide={() => setShowPendingInvitation(false)}

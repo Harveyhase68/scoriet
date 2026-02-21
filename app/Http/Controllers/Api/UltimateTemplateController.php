@@ -278,13 +278,13 @@ class UltimateTemplateController extends Controller
                     'macro_support' => true,
                     'template_compilation' => $compile,
                 ],
-                'performance' => [
+                'performance' => array_merge([
                     'execution_time_ms' => round($executionTime, 2),
                     'memory_usage' => memory_get_usage(true),
                     'peak_memory' => memory_get_peak_usage(true),
                     'files_processed' => count($processedFiles),
                     'variables_available' => count($gtreeData['gtree'][0]['project'][0]) - 1,
-                ],
+                ], $cacheService ? $cacheService->getHitStats() : []),
                 'timestamp' => now()->toISOString()
             ]);
 
@@ -2047,6 +2047,9 @@ class UltimateTemplateController extends Controller
                     $fieldsCount += count($table['fields'] ?? []);
                 }
 
+                // Get cache hit stats from cache service
+                $cacheStats = $cacheService ? $cacheService->getHitStats() : ['hits' => 0, 'misses' => 0, 'total' => 0, 'hit_rate' => 0];
+
                 PerformanceMetric::create([
                     'user_id' => $user?->id,
                     'operation' => PerformanceMetric::OP_GENERATION,
@@ -2055,12 +2058,15 @@ class UltimateTemplateController extends Controller
                     'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
                     'tables_count' => $tablesCount,
                     'fields_count' => $fieldsCount,
-                    'from_cache' => false,
+                    'from_cache' => $cacheStats['hits'] > 0,
                     'subscription_type' => $user?->subscription?->type ?? ($user?->isPatron() ? 'patron' : 'free'),
                     'metadata' => [
                         'template_count' => count($templates),
                         'files_generated' => count($generatedFiles),
                         'syntax_errors' => count($syntaxErrors),
+                        'cache_hits' => $cacheStats['hits'],
+                        'cache_misses' => $cacheStats['misses'],
+                        'cache_hit_rate' => $cacheStats['hit_rate'],
                     ],
                     'created_at' => now(),
                 ]);
@@ -2245,10 +2251,12 @@ JS;
             $gtreeData = null;
 
             // Try to get from cache first
+            $gtreeFromCache = false;
             if ($cacheService) {
                 $cachedGtree = \Cache::get($gtreeCacheKey);
                 if ($cachedGtree) {
                     $gtreeData = ['gtree' => $cachedGtree];
+                    $gtreeFromCache = true;
                 }
             }
 
@@ -2362,6 +2370,9 @@ JS;
 
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
+            // Get cache hit stats before cleanup
+            $cacheStats = $cacheService ? $cacheService->getHitStats() : ['hits' => 0, 'misses' => 0, 'total' => 0, 'hit_rate' => 0];
+
             // 🚀 Build response with optional gtree (MASSIVE BANDWIDTH SAVE!)
             $response = response()->json([
                 'success' => true,
@@ -2373,6 +2384,10 @@ JS;
                     'execution_time_ms' => $executionTime,
                     'tables_count' => count($tables),
                     'avg_time_per_table_ms' => count($tables) > 0 ? round($executionTime / count($tables), 2) : 0,
+                    'gtree_from_cache' => $gtreeFromCache,
+                    'cache_hits' => $cacheStats['hits'],
+                    'cache_misses' => $cacheStats['misses'],
+                    'cache_hit_rate' => $cacheStats['hit_rate'],
                 ]
             ]);
 

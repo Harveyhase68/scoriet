@@ -404,7 +404,7 @@ export default function ProjectSettingsPanel() {
         } catch {
             setFtpTestResult({
                 success: false,
-                message: 'Verbindungstest fehlgeschlagen',
+                message: t.projectsettingspanel407,
             });
         } finally {
             setTestingFtp(false);
@@ -430,13 +430,13 @@ export default function ProjectSettingsPanel() {
             });
 
             if (response.ok) {
-                toast.showSuccess('FTP/SSH-Einstellungen gespeichert');
+                toast.showSuccess(t.projectsettingspanel433);
                 loadFtpSettings();
             } else {
-                toast.showError('Fehler beim Speichern der FTP/SSH-Einstellungen');
+                toast.showError(t.projectsettingspanel436);
             }
         } catch {
-            toast.showError('Fehler beim Speichern der FTP/SSH-Einstellungen');
+            toast.showError(t.projectsettingspanel439);
         }
     };
 
@@ -457,7 +457,7 @@ export default function ProjectSettingsPanel() {
             });
 
             if (response.ok) {
-                toast.showSuccess('FTP/SSH-Einstellungen entfernt');
+                toast.showSuccess(t.projectsettingspanel460);
                 setFtpSettings({
                     deployment_type: '',
                     ftp_host: '',
@@ -471,10 +471,10 @@ export default function ProjectSettingsPanel() {
                 });
                 setFtpTestResult(null);
             } else {
-                toast.showError('Fehler beim Entfernen der FTP/SSH-Einstellungen');
+                toast.showError(t.projectsettingspanel474);
             }
         } catch {
-            toast.showError('Fehler beim Entfernen der FTP/SSH-Einstellungen');
+            toast.showError(t.projectsettingspanel477);
         }
     };
 
@@ -636,21 +636,21 @@ export default function ProjectSettingsPanel() {
             });
 
             if (response.ok) {
-                toast.showSuccess('Git-Einstellungen erfolgreich gespeichert');
+                toast.showSuccess(t.projectsettingspanel639);
             } else {
                 const data = await response.json();
-                toast.showError(data.error || 'Fehler beim Speichern der Git-Einstellungen');
+                toast.showError(data.error || t.projectsettingspanel642);
             }
         } catch (error) {
-            console.error('Error saving git settings:', error);
-            toast.showError('Fehler beim Speichern der Git-Einstellungen');
+            console.error(t.projectsettingspanel645, error);
+            toast.showError(t.projectsettingspanel646);
         }
     };
 
     const removeGitIntegration = async () => {
         if (!selectedProject) return;
 
-        if (!window.confirm('Möchten Sie die Git-Integration wirklich entfernen?')) {
+        if (!window.confirm(t.projectsettingspanel653)) {
             return;
         }
 
@@ -683,13 +683,13 @@ export default function ProjectSettingsPanel() {
                 });
                 setGitRepositories([]);
                 setGitBranches([]);
-                toast.showSuccess('Git-Integration erfolgreich entfernt');
+                toast.showSuccess(t.projectsettingspanel686);
             } else {
-                toast.showError('Fehler beim Entfernen der Git-Integration');
+                toast.showError(t.projectsettingspanel688);
             }
         } catch (error) {
-            console.error('Error removing git integration:', error);
-            toast.showError('Fehler beim Entfernen der Git-Integration');
+            console.error(t.projectsettingspanel691, error);
+            toast.showError(t.projectsettingspanel692);
         }
     };
 
@@ -801,8 +801,8 @@ export default function ProjectSettingsPanel() {
 
             setVariableValues(valuesMap);
         } catch (error) {
-            console.error('Error loading template variables:', error);
-            toast.showError('Fehler beim Laden der Template-Variablen');
+            console.error(t.projectsettingspanel804, error);
+            toast.showError(t.projectsettingspanel805);
         } finally {
             setLoadingVariables(false);
         }
@@ -831,7 +831,7 @@ export default function ProjectSettingsPanel() {
             const newOwner = projectMembers.find(m => Number(m.user_id) === Number(formData.new_owner_id));
             if (newOwner) {
                 const confirmed = window.confirm(
-                    `Möchten Sie die Eigentümerschaft wirklich an ${newOwner.user.name} (${newOwner.user.email}) übertragen?\n\nDiese Aktion kann nicht rückgängig gemacht werden und Sie verlieren Ihre Eigentümerrechte!`
+                    `${t.projectsettingspanel834}${newOwner.user.name} (${newOwner.user.email}){t.projectsettingspanel834_2}\n\n${t.projectsettingspanel834_3}`
                 );
                 if (!confirmed) return;
             }
@@ -887,7 +887,7 @@ export default function ProjectSettingsPanel() {
             // Success message includes template variables if they exist
             const hasTemplateVars = templatesWithVariables.length > 0;
             const successMsg = hasTemplateVars
-                ? 'Projekt-Einstellungen und Template-Variablen erfolgreich gespeichert'
+                ? t.projectsettingspanel890
                 : t.projectsettingspanel246;
             toast.showSuccess(successMsg);
 
@@ -955,7 +955,7 @@ export default function ProjectSettingsPanel() {
                 );
 
                 if (!response.ok) {
-                    throw new Error(`Fehler beim Speichern der Variablen für Template "${template.name}"`);
+                    throw new Error(`${t.projectsettingspanel958}"${template.name}"`);
                 }
             }
         }
@@ -964,7 +964,7 @@ export default function ProjectSettingsPanel() {
     // Future use: Save template variables
     const _handleSaveTemplateVariables = async () => {
         if (!selectedProject) {
-            toast.showError('Kein Projekt ausgewählt');
+            toast.showError(t.projectsettingspanel967);
             return;
         }
 
@@ -979,10 +979,10 @@ export default function ProjectSettingsPanel() {
 
             await saveTemplateVariablesInternal(token);
 
-            toast.showSuccess('Template-Variablen erfolgreich gespeichert');
+            toast.showSuccess(t.projectsettingspanel982);
         } catch (error) {
-            console.error('Error saving template variables:', error);
-            toast.showError(error instanceof Error ? error.message : 'Fehler beim Speichern der Template-Variablen');
+            console.error(t.projectsettingspanel984, error);
+            toast.showError(error instanceof Error ? error.message : t.projectsettingspanel985);
         } finally {
             setSavingVariables(false);
         }
@@ -1012,9 +1012,9 @@ export default function ProjectSettingsPanel() {
             <div className="h-full flex items-center justify-center theme-bg-secondary theme-text-secondary">
                 <div className="text-center">
                     <i className="pi pi-info-circle text-4xl mb-4"></i>
-                    <p>Bitte wählen Sie ein Projekt aus</p>
+                    <p>{t.projectsettingspanel1015}</p>
                     <p className="text-sm mt-2">selectedProject is null</p>
-                    <p className="text-xs mt-2 text-yellow-400">🔍 ProjectSettingsPanel loaded but no project selected</p>
+                    <p className="text-xs mt-2 text-yellow-400">{t.projectsettingspanel1017}</p>
                 </div>
             </div>
         );
@@ -1039,7 +1039,7 @@ export default function ProjectSettingsPanel() {
                         {t.newnavigationpanel142}
                     </h2>
                     <p className="mt-2" style={{ color: colors.textMuted }}>
-                        Projekt: <span className="font-semibold" style={{ color: colors.textSecondary }}>{selectedProject.name}</span>
+                        {t.projectsettingspanel1042}<span className="font-semibold" style={{ color: colors.textSecondary }}>{selectedProject.name}</span>
                     </p>
                 </div>
                 <Button
@@ -1132,7 +1132,7 @@ export default function ProjectSettingsPanel() {
                                             options={projectMembers
                                                 .filter(m => Number(m.user_id) !== Number(selectedProject.owner.id))
                                                 .map(member => ({
-                                                    label: `Übertragen an ${member.user.name} (${member.user.email}) - ${member.role}`,
+                                                    label: `${t.projectsettingspanel1135}${member.user.name} (${member.user.email}) - ${member.role}`,
                                                     value: member.user_id
                                                 }))}
                                             placeholder={`${t.projectsettingspanel639}: ${selectedProject.owner.name}`}
@@ -1180,7 +1180,7 @@ export default function ProjectSettingsPanel() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            Server
+                                            {t.projectsettingspanel1183}
                                         </label>
                                         <InputText
                                             value={formData.database_server}
@@ -1192,7 +1192,7 @@ export default function ProjectSettingsPanel() {
 
                                     <div>
                                         <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            Port
+                                            {t.projectsettingspanel1195}
                                         </label>
                                         <InputText
                                             value={formData.database_port}
@@ -1313,7 +1313,7 @@ export default function ProjectSettingsPanel() {
                                 <div className="mt-6 pt-6 border-t theme-border-secondary">
                                     <h4 className="text-md font-semibold theme-text-primary mb-4">
                                         <i className="pi pi-window-maximize mr-2"></i>
-                                        Form Designer Einstellungen
+                                        {t.projectsettingspanel1316}
                                     </h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="flex items-center gap-3">
@@ -1323,12 +1323,12 @@ export default function ProjectSettingsPanel() {
                                                 onChange={(e) => setFormData({ ...formData, form_designer_snap_to_grid: e.checked ?? true })}
                                             />
                                             <label htmlFor="form_designer_snap" className="text-sm theme-text-secondary cursor-pointer">
-                                                Snap to Grid (Raster)
+                                                {t.projectsettingspanel1326}
                                             </label>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                Rastergröße (px)
+                                                {t.projectsettingspanel1331}
                                             </label>
                                             <InputText
                                                 type="number"
@@ -1339,7 +1339,7 @@ export default function ProjectSettingsPanel() {
                                                 min={5}
                                                 max={100}
                                             />
-                                            <small className="theme-text-muted">Empfohlen: 10-30px</small>
+                                            <small className="theme-text-muted">{t.projectsettingspanel1342}</small>
                                         </div>
                                     </div>
                                 </div>
@@ -1430,9 +1430,9 @@ export default function ProjectSettingsPanel() {
                                         value={formData.archive_format}
                                         onChange={(e) => setFormData({ ...formData, archive_format: e.value })}
                                         options={[
-                                            { label: 'ZIP (Windows, Standard)', value: 'zip' },
-                                            { label: 'TAR.GZ (Linux, gute Kompression)', value: 'tar.gz' },
-                                            { label: 'TAR.XZ (Linux, beste Kompression)', value: 'tar.xz' }
+                                            { label: t.projectsettingspanel1433, value: 'zip' },
+                                            { label: t.projectsettingspanel1434, value: 'tar.gz' },
+                                            { label: t.projectsettingspanel1435, value: 'tar.xz' }
                                         ]}
                                         className="w-full"
                                     />
@@ -1679,7 +1679,7 @@ export default function ProjectSettingsPanel() {
                                             ]}
                                             className="w-full"
                                             filter
-                                            filterPlaceholder="Zeitzone suchen..."
+                                            filterPlaceholder={t.projectsettingspanel1682}
                                             showClear
                                         />
                                     </div>
@@ -1740,7 +1740,7 @@ export default function ProjectSettingsPanel() {
 
                                 <div className="mt-3 p-3 rounded text-sm" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                                     <p>
-                                        <strong>Ausgewählte Sprachen:</strong>{' '}
+                                        <strong>{t.projectsettingspanel1743}</strong>{' '}
                                         {selectedLanguages.length > 0
                                             ? selectedLanguages.join(', ')
                                             : t.projectsettingspanel742}
@@ -1782,7 +1782,7 @@ export default function ProjectSettingsPanel() {
                                                 label: `${lang.native_name} (${lang.name})`,
                                                 value: lang.code,
                                             }))}
-                                        placeholder="Sprache auswählen"
+                                        placeholder={t.projectsettingspanel1785}
                                         className="w-full max-w-md"
                                     />
                                 </div>
@@ -1813,7 +1813,7 @@ export default function ProjectSettingsPanel() {
                                                                     </span>
                                                                     {variable.is_required && (
                                                                         <span className="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">
-                                                                            Erforderlich
+                                                                            {t.projectsettingspanel1816}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1826,7 +1826,7 @@ export default function ProjectSettingsPanel() {
 
                                                                 {variable.default_value && (
                                                                     <p className="text-xs theme-text-muted mb-2">
-                                                                        Standard: <span className="text-blue-300">{variable.default_value}</span>
+                                                                        {t.projectsettingspanel1829}<span className="text-blue-300">{variable.default_value}</span>
                                                                     </p>
                                                                 )}
 
@@ -1838,7 +1838,7 @@ export default function ProjectSettingsPanel() {
                                                                         selectedVariableLanguage,
                                                                         e.target.value
                                                                     )}
-                                                                    placeholder={variable.default_value || `Wert für {${variable.variable_name}} eingeben`}
+                                                                    placeholder={variable.default_value || `${t.projectsettingspanel1841}{${variable.variable_name}}${t.projectsettingspanel1841_2}`}
                                                                     className="w-full"
                                                                 />
                                                             </div>
@@ -1853,7 +1853,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Info: Variables are saved by main "Save All" button */}
                                <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                                     <i className="pi pi-info-circle mr-2"></i>
-                                    Template-Variablen werden automatisch mit dem Button "Alle Änderungen speichern" oben gespeichert.
+                                    {t.projectsettingspanel1856}
                                 </div>
                             </>
                         )}
@@ -1861,7 +1861,7 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
 
                 {/* Protected Files Tab */}
-                <TabPanel header="Protected Files">
+                <TabPanel header={t.projectsettingspanel1864}>
                     <div className="p-4">
                         <ProjectProtectedFilesView
                             templates={linkedTemplates}
@@ -1872,7 +1872,7 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
 
                 {/* Deployment Scripts Tab */}
-                <TabPanel header="Deployment Scripts">
+                <TabPanel header={t.projectsettingspanel1875}>
                     <div className="p-4">
                         <DeploymentScriptsEditor
                             installScript={projectInstallScript}
@@ -1882,26 +1882,26 @@ export default function ProjectSettingsPanel() {
                         />
                         <div className="mt-3 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                             <i className="pi pi-info-circle mr-2"></i>
-                            Deployment scripts will be saved automatically with the "Save All" button above.
+                            {t.projectsettingspanel1885}
                         </div>
                     </div>
                 </TabPanel>
 
                 {/* Git Integration Tab */}
-                <TabPanel header={<span><i className="pi pi-github mr-2"></i>Git Integration</span>}>
+                <TabPanel header={<span><i className="pi pi-github mr-2"></i>{t.projectsettingspanel1891}</span>}>
                     <div className="space-y-6 max-w-3xl p-4">
                         <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             <i className="pi pi-info-circle mr-2"></i>
-                            Verbinden Sie ein Git-Repository, um generierten Code direkt zu pushen.
+                            {t.projectsettingspanel1895}
                         </div>
 
                         {availableGitProviders.length === 0 ? (
                             <div className="p-4 bg-yellow-900 border border-yellow-700 rounded text-yellow-100">
                                 <i className="pi pi-exclamation-triangle mr-2"></i>
-                                <strong>Keine Git-Provider verbunden.</strong>
+                                <strong>{t.projectsettingspanel1901}</strong>
                                 <p className="mt-2 text-sm">
-                                    Bitte verbinden Sie zuerst GitHub oder GitLab in Ihrem Profil,
-                                    bevor Sie Git-Integration für dieses Projekt einrichten können.
+                                    {t.projectsettingspanel1903}
+                                    {t.projectsettingspanel1904}
                                 </p>
                             </div>
                         ) : (
@@ -1909,17 +1909,17 @@ export default function ProjectSettingsPanel() {
                                 {/* Git Provider Selection */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-cloud mr-2"></i>Git Provider
+                                        <i className="pi pi-cloud mr-2"></i>{t.projectsettingspanel1912}
                                     </label>
                                     <Dropdown
                                         value={gitSettings.provider_id}
                                         onChange={(e) => handleGitProviderChange(e.value)}
                                         options={availableGitProviders.map(p => ({
-                                            label: `${p.provider_name} - @${p.username}${p.is_expired ? ' (Token abgelaufen)' : ''}`,
+                                            label: `${p.provider_name} - @${p.username}${p.is_expired ? ' (' + t.projectsettingspanel1918 + ')' : ''}`,
                                             value: p.id,
                                             disabled: p.is_expired,
                                         }))}
-                                        placeholder="Git Provider auswählen..."
+                                        placeholder={t.projectsettingspanel1922}
                                         className="w-full"
                                         showClear
                                     />
@@ -1929,7 +1929,7 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.provider_id && (
                                     <div>
                                         <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            <i className="pi pi-folder mr-2"></i>Repository
+                                            <i className="pi pi-folder mr-2"></i>{t.projectsettingspanel1932}
                                         </label>
                                         <Dropdown
                                             value={gitSettings.repository}
@@ -1938,16 +1938,16 @@ export default function ProjectSettingsPanel() {
                                                 label: `${r.full_name}${r.private ? ' (privat)' : ''}`,
                                                 value: r.full_name,
                                             }))}
-                                            placeholder={loadingGitRepos ? 'Laden...' : 'Repository auswählen...'}
+                                            placeholder={loadingGitRepos ? t.projectsettingspanel1941 : t.projectsettingspanel1941_2}
                                             className="w-full"
                                             filter
-                                            filterPlaceholder="Repository suchen..."
+                                            filterPlaceholder={t.projectsettingspanel1944}
                                             disabled={loadingGitRepos}
                                             showClear
                                         />
                                         {loadingGitRepos && (
                                             <div className="text-xs mt-1">
-                                                <i className="pi pi-spin pi-spinner mr-1"></i>Repositories werden geladen...
+                                                <i className="pi pi-spin pi-spinner mr-1"></i>{t.projectsettingspanel1950}
                                             </div>
                                         )}
                                     </div>
@@ -1958,27 +1958,27 @@ export default function ProjectSettingsPanel() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                <i className="pi pi-code-branch mr-2"></i>Push-Branch
+                                                <i className="pi pi-code-branch mr-2"></i>{t.projectsettingspanel1961}
                                             </label>
                                             <Dropdown
                                                 value={gitSettings.default_branch}
                                                 onChange={(e) => setGitSettings(prev => ({ ...prev, default_branch: e.value }))}
                                                 options={gitBranches.map(b => ({
-                                                    label: `${b.name}${b.protected ? ' (geschützt)' : ''}`,
+                                                    label: `${b.name}${b.protected ? ' (' + t.projectsettingspanel1967 + ')' : ''}`,
                                                     value: b.name,
                                                 }))}
-                                                placeholder={loadingGitBranches ? 'Laden...' : 'Branch auswählen...'}
+                                                placeholder={loadingGitBranches ? t.projectsettingspanel1970 : t.projectsettingspanel1970_2}
                                                 className="w-full"
                                                 disabled={loadingGitBranches}
                                                 editable
                                             />
                                             <div className="text-xs mt-1">
-                                                Branch für Code-Pushes (z.B. feature/scoriet-generated)
+                                                {t.projectsettingspanel1976}
                                             </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                <i className="pi pi-code-branch mr-2"></i>Main-Branch
+                                                <i className="pi pi-code-branch mr-2"></i>{t.projectsettingspanel1981}
                                             </label>
                                             <Dropdown
                                                 value={gitSettings.main_branch}
@@ -1987,12 +1987,12 @@ export default function ProjectSettingsPanel() {
                                                     label: b.name,
                                                     value: b.name,
                                                 }))}
-                                                placeholder={loadingGitBranches ? 'Laden...' : 'Branch auswählen...'}
+                                                placeholder={loadingGitBranches ? t.projectsettingspanel1990 : t.projectsettingspanel1990_2}
                                                 className="w-full"
                                                 disabled={loadingGitBranches}
                                             />
                                             <div className="text-xs mt-1">
-                                                Ziel-Branch für Pull Requests (z.B. main, master)
+                                                {t.projectsettingspanel1995}
                                             </div>
                                         </div>
                                     </div>
@@ -2002,16 +2002,16 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.repository && (
                                     <div>
                                         <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            <i className="pi pi-folder-open mr-2"></i>Zielverzeichnis (optional)
+                                            <i className="pi pi-folder-open mr-2"></i>{t.projectsettingspanel2005}
                                         </label>
                                         <InputText
                                             value={gitSettings.target_directory || ''}
                                             onChange={(e) => setGitSettings(prev => ({ ...prev, target_directory: e.target.value || null }))}
-                                            placeholder="z.B. src/generated oder leer für Root"
+                                            placeholder={t.projectsettingspanel2010}
                                             className="w-full"
                                         />
                                         <div className="text-xs mt-1">
-                                            Unterverzeichnis im Repository für generierten Code
+                                            {t.projectsettingspanel2014}
                                         </div>
                                     </div>
                                 )}
@@ -2020,22 +2020,22 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.repository && (
                                     <div>
                                         <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            <i className="pi pi-sitemap mr-2"></i>Workflow
+                                            <i className="pi pi-sitemap mr-2"></i>{t.projectsettingspanel2023}
                                         </label>
                                         <Dropdown
                                             value={gitSettings.workflow}
                                             onChange={(e) => setGitSettings(prev => ({ ...prev, workflow: e.value }))}
                                             options={[
-                                                { label: 'Nur Push (Branch, Commit, Push)', value: 'push_only' },
-                                                { label: 'Push + Pull Request erstellen', value: 'push_and_pr' },
-                                                { label: 'Push + PR + Auto-Merge (Vorsicht!)', value: 'push_pr_merge' },
+                                                { label: t.projectsettingspanel2029, value: 'push_only' },
+                                                { label: t.projectsettingspanel2030, value: 'push_and_pr' },
+                                                { label: t.projectsettingspanel2031, value: 'push_pr_merge' },
                                             ]}
                                             className="w-full"
                                         />
                                         {gitSettings.workflow === 'push_pr_merge' && (
                                             <div className="mt-2 p-2 bg-red-900 border border-red-700 rounded text-red-100 text-sm">
                                                 <i className="pi pi-exclamation-triangle mr-2"></i>
-                                                <strong>Warnung:</strong> Auto-Merge merged den PR automatisch in den Main-Branch!
+                                                <strong>{t.projectsettingspanel2038}</strong>{t.projectsettingspanel2038_2}
                                             </div>
                                         )}
                                     </div>
@@ -2046,23 +2046,23 @@ export default function ProjectSettingsPanel() {
                                     <>
                                         <div>
                                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                <i className="pi pi-file-edit mr-2"></i>PR Titel-Template
+                                                <i className="pi pi-file-edit mr-2"></i>{t.projectsettingspanel2049}
                                             </label>
                                             <InputText
                                                 value={gitSettings.pr_title_template || ''}
                                                 onChange={(e) => setGitSettings(prev => ({ ...prev, pr_title_template: e.target.value || null }))}
-                                                placeholder="[Scoriet] Code-Generierung {timestamp}"
+                                                placeholder="[Scoriet]${t.projectsettingspanel2054}{timestamp}"
                                                 className="w-full"
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                <i className="pi pi-align-left mr-2"></i>PR Beschreibung-Template
+                                                <i className="pi pi-align-left mr-2"></i>{t.projectsettingspanel2060}
                                             </label>
                                             <InputTextarea
                                                 value={gitSettings.pr_description_template || ''}
                                                 onChange={(e) => setGitSettings(prev => ({ ...prev, pr_description_template: e.target.value || null }))}
-                                                placeholder="Automatisch generierter Code von Scoriet.&#10;&#10;Generiert am: {timestamp}&#10;Projekt: {project_name}"
+                                                placeholder="{t.projectsettingspanel2065}Scoriet.&#10;&#10;{t.projectsettingspanel2065_2}{timestamp}&#10;{t.projectsettingspanel2065_4}{project_name}"
                                                 rows={4}
                                                 className="w-full"
                                             />
@@ -2074,7 +2074,7 @@ export default function ProjectSettingsPanel() {
                                                 onChange={(e) => setGitSettings(prev => ({ ...prev, auto_delete_branch: e.checked ?? true }))}
                                             />
                                             <label htmlFor="git_auto_delete_branch" className="text-sm theme-text-secondary cursor-pointer">
-                                                Branch nach Merge automatisch löschen
+                                                {t.projectsettingspanel2077}
                                             </label>
                                         </div>
                                     </>
@@ -2084,7 +2084,7 @@ export default function ProjectSettingsPanel() {
                                 <div className="flex gap-3 pt-4 border-t theme-border-secondary">
                                     <Button
                                         icon="pi pi-save"
-                                        label="Git-Einstellungen speichern"
+                                        label={t.projectsettingspanel2087}
                                         onClick={saveGitSettings}
                                         severity="success"
                                         disabled={!gitSettings.provider_id}
@@ -2092,7 +2092,7 @@ export default function ProjectSettingsPanel() {
                                     {gitSettings.is_configured && (
                                         <Button
                                             icon="pi pi-trash"
-                                            label="Git-Integration entfernen"
+                                            label={t.projectsettingspanel2095}
                                             onClick={removeGitIntegration}
                                             severity="danger"
                                             outlined
@@ -2104,17 +2104,17 @@ export default function ProjectSettingsPanel() {
                                 {gitSettings.is_configured && (
                                     <div className="mt-3 p-3 rounded text-sm"  style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
                                         <h4 className="font-semibold theme-text-primary mb-2">
-                                            <i className="pi pi-check-circle mr-2"></i><span style={{color: colors.successText }}>Aktive Git-Konfiguration</span>
+                                            <i className="pi pi-check-circle mr-2"></i><span style={{color: colors.successText }}>{t.projectsettingspanel2107}</span>
                                         </h4>
                                         <div className="text-sm text-green-100 space-y-1">
-                                            <div style={{color: colors.successText }}>• Provider: <span style={{color: colors.successText }}>{gitSettings.provider}</span></div>
-                                            <div style={{color: colors.successText }}>• Repository: <span  style={{color: colors.successText }}>{gitSettings.repository}</span></div>
-                                            <div style={{color: colors.successText }}>• Push-Branch: <span  style={{color: colors.successText }}>{gitSettings.default_branch}</span></div>
-                                            <div style={{color: colors.successText }}>• Main-Branch: <span style={{color: colors.successText }}>{gitSettings.main_branch}</span></div>
-                                            <div style={{color: colors.successText }}>• Workflow: <span style={{color: colors.successText }}>{
-                                                gitSettings.workflow === 'push_only' ? 'Nur Push' :
-                                                gitSettings.workflow === 'push_and_pr' ? 'Push + PR' :
-                                                'Push + PR + Auto-Merge'
+                                            <div style={{color: colors.successText }}>{t.projectsettingspanel2110}<span style={{color: colors.successText }}>{gitSettings.provider}</span></div>
+                                            <div style={{color: colors.successText }}>{t.projectsettingspanel2111}<span  style={{color: colors.successText }}>{gitSettings.repository}</span></div>
+                                            <div style={{color: colors.successText }}>{t.projectsettingspanel2112}<span  style={{color: colors.successText }}>{gitSettings.default_branch}</span></div>
+                                            <div style={{color: colors.successText }}>{t.projectsettingspanel2113}<span style={{color: colors.successText }}>{gitSettings.main_branch}</span></div>
+                                            <div style={{color: colors.successText }}>{t.projectsettingspanel2114}<span style={{color: colors.successText }}>{
+                                                gitSettings.workflow === 'push_only' ? t.projectsettingspanel2115 :
+                                                gitSettings.workflow === 'push_and_pr' ? t.projectsettingspanel2116 :
+                                                t.projectsettingspanel2117
                                             }</span></div>
                                         </div>
                                     </div>
@@ -2129,7 +2129,7 @@ export default function ProjectSettingsPanel() {
                     <div className="space-y-6 max-w-3xl p-4">
                         <div className="mb-4 p-3 rounded text-sm"  style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             <i className="pi pi-info-circle mr-2"></i>
-                            Konfigurieren Sie FTP oder SFTP-Zugangsdaten, um generierten Code direkt auf Ihren Server hochzuladen.
+                            {t.projectsettingspanel2132}
                         </div>
 
                         {/* Deployment Type Selection */}
@@ -2149,11 +2149,11 @@ export default function ProjectSettingsPanel() {
                                     setFtpTestResult(null);
                                 }}
                                 options={[
-                                    { label: 'Keine (deaktiviert)', value: '' },
+                                    { label: t.projectsettingspanel2152, value: '' },
                                     { label: 'FTP', value: 'ftp' },
                                     { label: 'SFTP (SSH)', value: 'sftp' },
                                 ]}
-                                placeholder="Deployment Typ auswählen..."
+                                placeholder={t.projectsettingspanel2156}
                                 className="w-full"
                             />
                         </div>
@@ -2164,12 +2164,12 @@ export default function ProjectSettingsPanel() {
                                 {/* Host */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-globe mr-2"></i>Host
+                                        <i className="pi pi-globe mr-2"></i>{t.projectsettingspanel2167}
                                     </label>
                                     <InputText
                                         value={ftpSettings.ftp_host}
                                         onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_host: e.target.value }))}
-                                        placeholder="ftp.example.com"
+                                        placeholder={t.projectsettingspanel2172}
                                         className="w-full"
                                     />
                                 </div>
@@ -2177,7 +2177,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Port */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-hashtag mr-2"></i>Port
+                                        <i className="pi pi-hashtag mr-2"></i>{t.projectsettingspanel2180}
                                     </label>
                                     <InputText
                                         value={ftpSettings.ftp_port.toString()}
@@ -2187,19 +2187,19 @@ export default function ProjectSettingsPanel() {
                                         keyfilter="int"
                                     />
                                     <span className="text-xs theme-text-muted ml-2">
-                                        Standard: {ftpSettings.deployment_type === 'sftp' ? '22' : '21'}
+                                        {t.projectsettingspanel2190}{ftpSettings.deployment_type === 'sftp' ? '22' : '21'}
                                     </span>
                                 </div>
 
                                 {/* Username */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-user mr-2"></i>Benutzername
+                                        <i className="pi pi-user mr-2"></i>{t.projectsettingspanel2197}
                                     </label>
                                     <InputText
                                         value={ftpSettings.ftp_username}
                                         onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_username: e.target.value }))}
-                                        placeholder="username"
+                                        placeholder={t.projectsettingspanel2202}
                                         className="w-full"
                                     />
                                 </div>
@@ -2207,7 +2207,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Password */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-lock mr-2"></i>Passwort
+                                        <i className="pi pi-lock mr-2"></i>{t.projectsettingspanel2210}
                                     </label>
                                     <PrimePassword
                                         value={ftpSettings.ftp_password}
@@ -2220,7 +2220,7 @@ export default function ProjectSettingsPanel() {
                                     {ftpSettings.has_credentials && ftpSettings.ftp_password === '********' && (
                                         <span className="text-xs mt-1 block">
                                             <i className="pi pi-info-circle mr-1"></i>
-                                            Passwort ist gespeichert. Leer lassen, um beizubehalten.
+                                            {t.projectsettingspanel2223}
                                         </span>
                                     )}
                                 </div>
@@ -2228,7 +2228,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Remote Directory */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        <i className="pi pi-folder mr-2"></i>Remote-Verzeichnis
+                                        <i className="pi pi-folder mr-2"></i>{t.projectsettingspanel2231}
                                     </label>
                                     <InputText
                                         value={ftpSettings.ftp_directory}
@@ -2237,7 +2237,7 @@ export default function ProjectSettingsPanel() {
                                         className="w-full"
                                     />
                                     <span className="text-xs mt-1 block">
-                                        Zielverzeichnis auf dem Server. Leer lassen für Root-Verzeichnis.
+                                        {t.projectsettingspanel2240}
                                     </span>
                                 </div>
 
@@ -2252,7 +2252,7 @@ export default function ProjectSettingsPanel() {
                                                 onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_passive: e.checked ?? true }))}
                                             />
                                             <label htmlFor="ftp_passive" className="ml-2 text-sm theme-text-secondary cursor-pointer">
-                                                Passiver Modus (empfohlen)
+                                                {t.projectsettingspanel2255}
                                             </label>
                                         </div>
                                         <div className="flex items-center">
@@ -2262,7 +2262,7 @@ export default function ProjectSettingsPanel() {
                                                 onChange={(e) => setFtpSettings(prev => ({ ...prev, ftp_ssl: e.checked ?? false }))}
                                             />
                                             <label htmlFor="ftp_ssl" className="ml-2 text-sm theme-text-secondary cursor-pointer">
-                                                SSL/TLS verwenden (FTPS)
+                                                {t.projectsettingspanel2265}
                                             </label>
                                         </div>
                                     </div>
@@ -2271,7 +2271,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Test Connection */}
                                 <div className="pt-4 border-t theme-border-primary">
                                     <Button
-                                        label={testingFtp ? 'Teste Verbindung...' : 'Verbindung testen'}
+                                        label={testingFtp ? t.projectsettingspanel2274 : t.projectsettingspanel2274_2}
                                         icon={testingFtp ? 'pi pi-spin pi-spinner' : 'pi pi-wifi'}
                                         onClick={testFtpConnection}
                                         disabled={testingFtp || !ftpSettings.ftp_host || !ftpSettings.ftp_username}
@@ -2294,7 +2294,7 @@ export default function ProjectSettingsPanel() {
                                 {/* Save / Remove Buttons */}
                                 <div className="flex gap-3 pt-4">
                                     <Button
-                                        label="FTP/SSH-Einstellungen speichern"
+                                        label={t.projectsettingspanel2297}
                                         icon="pi pi-save"
                                         onClick={saveFtpSettings}
                                         disabled={!ftpSettings.ftp_host || !ftpSettings.ftp_username}
@@ -2302,7 +2302,7 @@ export default function ProjectSettingsPanel() {
                                     />
                                     {ftpSettings.has_credentials && (
                                         <Button
-                                            label="Einstellungen entfernen"
+                                            label={t.projectsettingspanel2305}
                                             icon="pi pi-trash"
                                             onClick={removeFtpSettings}
                                             className="p-button-danger p-button-outlined"
@@ -2316,10 +2316,10 @@ export default function ProjectSettingsPanel() {
                         {ftpSettings.has_credentials && !ftpSettings.deployment_type && (
                             <div className="p-3 bg-green-900 border border-green-700 rounded">
                                 <h4 className="font-medium text-green-300 mb-2">
-                                    <i className="pi pi-check-circle mr-2"></i>Aktive FTP/SSH-Konfiguration
+                                    <i className="pi pi-check-circle mr-2"></i>{t.projectsettingspanel2319}
                                 </h4>
                                 <p className="text-sm text-green-100">
-                                    Sie haben eine FTP/SSH-Konfiguration gespeichert. Wählen Sie einen Deployment-Typ, um die Einstellungen zu bearbeiten.
+                                    {t.projectsettingspanel2322}
                                 </p>
                             </div>
                         )}
@@ -2328,14 +2328,14 @@ export default function ProjectSettingsPanel() {
                         {ftpSettings.has_credentials && ftpSettings.deployment_type && (
                             <div className="mt-4 p-3 bg-green-900 border border-green-700 rounded">
                                 <h4 className="font-medium text-green-300 mb-2">
-                                    <i className="pi pi-check-circle mr-2"></i>Aktive Konfiguration
+                                    <i className="pi pi-check-circle mr-2"></i>{t.projectsettingspanel2331}
                                 </h4>
                                 <div className="text-sm text-green-100 space-y-1">
-                                    <div>• Typ: <span className="text-white">{ftpSettings.deployment_type.toUpperCase()}</span></div>
-                                    <div>• Host: <span className="text-white">{ftpSettings.ftp_host}:{ftpSettings.ftp_port}</span></div>
-                                    <div>• Benutzer: <span className="text-white">{ftpSettings.ftp_username}</span></div>
+                                    <div>{t.projectsettingspanel2334}<span className="text-white">{ftpSettings.deployment_type.toUpperCase()}</span></div>
+                                    <div>{t.projectsettingspanel2335}<span className="text-white">{ftpSettings.ftp_host}:{ftpSettings.ftp_port}</span></div>
+                                    <div>{t.projectsettingspanel2336}<span className="text-white">{ftpSettings.ftp_username}</span></div>
                                     {ftpSettings.ftp_directory && (
-                                        <div>• Verzeichnis: <span className="text-white">{ftpSettings.ftp_directory}</span></div>
+                                        <div>{t.projectsettingspanel2338}<span className="text-white">{ftpSettings.ftp_directory}</span></div>
                                     )}
                                 </div>
                             </div>

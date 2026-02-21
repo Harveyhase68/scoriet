@@ -61,7 +61,7 @@ interface Purchase {
 
 const TemplateStorePanel: React.FC = () => {
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t: _t } = useTranslation(currentLanguage);
+  const { t: t } = useTranslation(currentLanguage);
   const toast = useToast();
   const { colors } = useTheme();
 
@@ -121,8 +121,8 @@ const TemplateStorePanel: React.FC = () => {
       setTemplates(response.data || []);
       setTotalRecords(response.total || 0);
     } catch (err: any) {
-      console.error('Error loading store templates:', err);
-      setError('Failed to load store templates');
+      console.error(t.templatestorepanel124, err);
+      setError(t.templatestorepanel125);
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ const TemplateStorePanel: React.FC = () => {
       setCategories(catResponse || []);
       setLanguages(langResponse || []);
     } catch (err) {
-      console.error('Error loading filters:', err);
+      console.error(t.templatestorepanel141, err);
     }
   };
 
@@ -149,7 +149,7 @@ const TemplateStorePanel: React.FC = () => {
       const response = await api.request('/store/my-purchases');
       setPurchases(response.data || []);
     } catch (err) {
-      console.error('Error loading purchases:', err);
+      console.error(t.templatestorepanel152, err);
     } finally {
       setPurchasesLoading(false);
     }
@@ -205,7 +205,7 @@ const TemplateStorePanel: React.FC = () => {
             window.location.href = stripeResponse.url;
             return;
           } else {
-            toast.showError(stripeResponse.error || 'Failed to initialize Stripe payment');
+            toast.showError(stripeResponse.error || t.templatestorepanel208);
             setPurchasing(false);
             return;
           }
@@ -222,7 +222,7 @@ const TemplateStorePanel: React.FC = () => {
             window.location.href = paypalResponse.url;
             return;
           } else {
-            toast.showError(paypalResponse.error || 'Failed to initialize PayPal payment');
+            toast.showError(paypalResponse.error || t.templatestorepanel225);
             setPurchasing(false);
             return;
           }
@@ -235,7 +235,7 @@ const TemplateStorePanel: React.FC = () => {
       });
 
       if (response.success) {
-        toast.showSuccess(response.message || 'Purchase successful');
+        toast.showSuccess(response.message || t.templatestorepanel238);
         setDetailModalVisible(false);
 
         if (response.credits_remaining !== undefined) {
@@ -246,12 +246,12 @@ const TemplateStorePanel: React.FC = () => {
         loadTemplates();
       } else if (response.requires_payment) {
         // Fallback for euro payments (shouldn't reach here now)
-        toast.showInfo('Redirecting to payment processor...');
+        toast.showInfo(t.templatestorepanel249);
       }
     } catch (err: any) {
       // Show specific backend error message if available
-      const errorMsg = err?.response?.data?.error || err?.response?.data?.message || err.message || 'Failed to purchase template';
-      console.error('Purchase error:', err);
+      const errorMsg = err?.response?.data?.error || err?.response?.data?.message || err.message || t.templatestorepanel253;
+      console.error(t.templatestorepanel254, err);
       toast.showError(errorMsg);
     } finally {
       setPurchasing(false);
@@ -265,7 +265,7 @@ const TemplateStorePanel: React.FC = () => {
       setSelectedTemplate(response);
       setDetailModalVisible(true);
     } catch (_err) {
-      toast.showError('Failed to load template details');
+      toast.showError(t.templatestorepanel268);
     }
   };
 
@@ -283,7 +283,7 @@ const TemplateStorePanel: React.FC = () => {
   // Format date
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -292,10 +292,10 @@ const TemplateStorePanel: React.FC = () => {
 
   // Sort options
   const sortOptions = [
-    { label: 'Best Selling', value: 'sales_count' },
-    { label: 'Highest Rated', value: 'review_score' },
-    { label: 'Newest', value: 'created_at' },
-    { label: 'Name', value: 'name' },
+    { label: t.templatestorepanel295, value: 'sales_count' },
+    { label: t.templatestorepanel296, value: 'review_score' },
+    { label: t.templatestorepanel297, value: 'created_at' },
+    { label: t.templatestorepanel298, value: 'name' },
   ];
 
   // Loading state
@@ -304,7 +304,7 @@ const TemplateStorePanel: React.FC = () => {
       <div className="flex items-center justify-center h-full" style={{ backgroundColor: colors.bgPrimary }}>
         <div className="text-center">
           <i className="pi pi-spinner pi-spin text-4xl mb-4" style={{ color: colors.accent }}></i>
-          <p style={{ color: colors.textMuted }}>Loading templates...</p>
+          <p style={{ color: colors.textMuted }}>{t.templatestorepanel307}</p>
         </div>
       </div>
     );
@@ -316,17 +316,17 @@ const TemplateStorePanel: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <i className="pi pi-shopping-cart text-2xl" style={{ color: colors.accent }}></i>
-          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>Template Store</h1>
+          <h1 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{t.templatestorepanel319}</h1>
         </div>
         <div className="flex items-center space-x-3">
           <Tag
-            value={`${currentCredits} Credits`}
+            value={`${currentCredits}${t.templatestorepanel323}`}
             severity="warning"
             icon="pi pi-wallet"
           />
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            label={t.templatestorepanel329}
             className="p-button-outlined p-button-sm"
             onClick={() => activeTab === 'browse' ? loadTemplates() : loadPurchases()}
             disabled={loading || purchasesLoading}
@@ -341,13 +341,13 @@ const TemplateStorePanel: React.FC = () => {
       {/* Tab Buttons */}
       <div className="flex space-x-2 mb-6">
         <Button
-          label="Browse Store"
+          label={t.templatestorepanel344}
           icon="pi pi-shopping-cart"
           className={`p-button-sm ${activeTab === 'browse' ? '' : 'p-button-outlined'}`}
           onClick={() => setActiveTab('browse')}
         />
         <Button
-          label="My Purchases"
+          label={t.templatestorepanel350}
           icon="pi pi-check-circle"
           className={`p-button-sm ${activeTab === 'purchases' ? '' : 'p-button-outlined'}`}
           onClick={() => setActiveTab('purchases')}
@@ -363,7 +363,7 @@ const TemplateStorePanel: React.FC = () => {
               <InputText
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search templates..."
+                placeholder={t.templatestorepanel366}
                 className="flex-1"
                 disabled={loading}
               />
@@ -371,11 +371,11 @@ const TemplateStorePanel: React.FC = () => {
             <Dropdown
               value={categoryFilter}
               options={[
-                { label: 'All Categories', value: '' },
+                { label: t.templatestorepanel374, value: '' },
                 ...categories.map(c => ({ label: `${c.category} (${c.count})`, value: c.category }))
               ]}
               onChange={(e) => setCategoryFilter(e.value)}
-              placeholder="Category"
+              placeholder={t.templatestorepanel378}
               className="p-dropdown-sm"
               panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '150px' }}
@@ -383,11 +383,11 @@ const TemplateStorePanel: React.FC = () => {
             <Dropdown
               value={languageFilter}
               options={[
-                { label: 'All Languages', value: '' },
+                { label: t.templatestorepanel386, value: '' },
                 ...languages.map(l => ({ label: `${l.language} (${l.count})`, value: l.language }))
               ]}
               onChange={(e) => setLanguageFilter(e.value)}
-              placeholder="Language"
+              placeholder={t.templatestorepanel390}
               className="p-dropdown-sm"
               panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '150px' }}
@@ -396,7 +396,7 @@ const TemplateStorePanel: React.FC = () => {
               value={sortBy}
               options={sortOptions}
               onChange={(e) => setSortBy(e.value)}
-              placeholder="Sort By"
+              placeholder={t.templatestorepanel399}
               className="p-dropdown-sm"
               panelClassName="template-store-dropdown-panel"
               style={{ minWidth: '140px' }}
@@ -408,9 +408,9 @@ const TemplateStorePanel: React.FC = () => {
             {templates.length === 0 ? (
               <div className="text-center py-12">
                 <i className="pi pi-inbox text-6xl mb-4" style={{ color: colors.textMuted }}></i>
-                <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>No templates found</h3>
+                <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>{t.templatestorepanel411}</h3>
                 <p style={{ color: colors.textMuted }}>
-                  {searchTerm ? 'Try adjusting your search or filters' : 'No templates available in the store yet'}
+                  {searchTerm ? t.templatestorepanel413 : t.templatestorepanel413_2}
                 </p>
               </div>
             ) : (
@@ -431,7 +431,7 @@ const TemplateStorePanel: React.FC = () => {
                             </h3>
                             <div className="flex items-center text-xs" style={{ color: colors.textMuted }}>
                               <i className="pi pi-user text-xs mr-1"></i>
-                              <span className="truncate">{template.creator?.username || 'Unknown'}</span>
+                              <span className="truncate">{template.creator?.username || t.templatestorepanel434}</span>
                             </div>
                           </div>
                           {/* Right: Price */}
@@ -440,9 +440,9 @@ const TemplateStorePanel: React.FC = () => {
                               {getPriceDisplay(template)}
                             </span>
                           ) : template.is_purchased ? (
-                            <Tag value="Purchased" severity="success" className="text-xs" />
+                            <Tag value={t.templatestorepanel443} severity="success" className="text-xs" />
                           ) : (
-                            <Tag value="Yours" severity="info" className="text-xs" />
+                            <Tag value={t.templatestorepanel445} severity="info" className="text-xs" />
                           )}
                         </div>
                       </div>
@@ -492,7 +492,7 @@ const TemplateStorePanel: React.FC = () => {
 
                       {/* Bottom: Description */}
                       <p className="text-xs line-clamp-1 pt-2" style={{ color: colors.textMuted, borderTop: `1px solid ${colors.borderPrimary}` }}>
-                        {template.description || 'No description available'}
+                        {template.description || t.templatestorepanel495}
                       </p>
                     </div>
                   </Card>
@@ -510,7 +510,7 @@ const TemplateStorePanel: React.FC = () => {
                   className="p-button-outlined p-button-sm"
                 />
                 <span style={{ color: colors.textMuted }}>
-                  Page {page} of {Math.ceil(totalRecords / rows)}
+                  {t.templatestorepanel513}{page}{t.templatestorepanel513_2}{Math.ceil(totalRecords / rows)}
                 </span>
                 <Button
                   icon="pi pi-chevron-right"
@@ -527,15 +527,15 @@ const TemplateStorePanel: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold" style={{ color: colors.accent }}>{totalRecords}</div>
-                <div className="text-sm" style={{ color: colors.textMuted }}>Templates</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>{t.templatestorepanel530}</div>
               </div>
               <div>
                 <div className="text-2xl font-bold" style={{ color: colors.infoText }}>{categories.length}</div>
-                <div className="text-sm" style={{ color: colors.textMuted }}>Categories</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>{t.templatestorepanel534}</div>
               </div>
               <div>
                 <div className="text-2xl font-bold" style={{ color: colors.successText }}>{templates.length}</div>
-                <div className="text-sm" style={{ color: colors.textMuted }}>Showing</div>
+                <div className="text-sm" style={{ color: colors.textMuted }}>{t.templatestorepanel538}</div>
               </div>
             </div>
           </div>
@@ -551,10 +551,10 @@ const TemplateStorePanel: React.FC = () => {
           ) : purchases.length === 0 ? (
             <div className="text-center py-12">
               <i className="pi pi-shopping-bag text-6xl mb-4" style={{ color: colors.textMuted }}></i>
-              <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>No purchases yet</h3>
-              <p className="mb-4" style={{ color: colors.textMuted }}>You haven't purchased any templates yet</p>
+              <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>{t.templatestorepanel554}</h3>
+              <p className="mb-4" style={{ color: colors.textMuted }}>{t.templatestorepanel555}</p>
               <Button
-                label="Browse Store"
+                label={t.templatestorepanel557}
                 icon="pi pi-shopping-cart"
                 onClick={() => setActiveTab('browse')}
               />
@@ -572,7 +572,7 @@ const TemplateStorePanel: React.FC = () => {
                         <h3 className="text-base font-semibold truncate" style={{ color: colors.textPrimary }}>
                           {purchase.template?.name}
                         </h3>
-                        <Tag value="Purchased" severity="success" className="text-xs" />
+                        <Tag value={t.templatestorepanel575} severity="success" className="text-xs" />
                       </div>
                     </div>
                   }
@@ -580,12 +580,12 @@ const TemplateStorePanel: React.FC = () => {
                   <div className="p-4 space-y-2" style={{ backgroundColor: colors.bgSecondary }}>
                     <div className="flex items-center text-sm" style={{ color: colors.textMuted }}>
                       <i className="pi pi-user mr-2"></i>
-                      <span>Sold by: {purchase.seller?.username}</span>
+                      <span>{t.templatestorepanel583}{purchase.seller?.username}</span>
                     </div>
                     <div className="flex items-center text-sm" style={{ color: colors.textMuted }}>
                       <i className="pi pi-wallet mr-2"></i>
                       <span>
-                        Paid: {purchase.payment_type === 'credits'
+                        {t.templatestorepanel588}{purchase.payment_type === 'credits'
                           ? `${purchase.price_credits || 0} Credits`
                           : `€${(typeof purchase.price_euros === 'string' ? parseFloat(purchase.price_euros) : (purchase.price_euros || 0)).toFixed(2)}`}
                       </span>
@@ -654,7 +654,7 @@ const TemplateStorePanel: React.FC = () => {
                       <h3 className="text-xl font-semibold m-0" style={{ color: colors.textPrimary }}>{selectedTemplate.name}</h3>
                       <p className="text-sm m-0" style={{ color: colors.textMuted }}>
                         <i className="pi pi-user mr-1"></i>
-                        by {selectedTemplate.creator?.username}
+                        {t.templatestorepanel657}{selectedTemplate.creator?.username}
                       </p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
@@ -667,7 +667,7 @@ const TemplateStorePanel: React.FC = () => {
                   <div className="flex gap-4 text-sm">
                     <div className="flex items-center gap-1" style={{ color: colors.textMuted }}>
                       <i className="pi pi-shopping-cart"></i>
-                      <span>{selectedTemplate.sales_count || 0} sales</span>
+                      <span>{selectedTemplate.sales_count || 0}{t.templatestorepanel670}</span>
                     </div>
                     <div className="flex items-center gap-1" style={{ color: colors.textMuted }}>
                       <i className="pi pi-star" style={{ color: colors.warningText }}></i>
@@ -687,23 +687,23 @@ const TemplateStorePanel: React.FC = () => {
             <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm" style={{ color: colors.textMuted }}>Price</span>
+                  <span className="text-sm" style={{ color: colors.textMuted }}>{t.templatestorepanel690}</span>
                   <div className="text-2xl font-bold" style={{ color: colors.warningText }}>{getPriceDisplay(selectedTemplate)}</div>
                 </div>
 
                 {selectedTemplate.is_purchased ? (
                   <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
                     <i className="pi pi-check-circle" style={{ color: colors.successText }}></i>
-                    <span className="font-medium" style={{ color: colors.successText }}>Already Purchased</span>
+                    <span className="font-medium" style={{ color: colors.successText }}>{t.templatestorepanel697}</span>
                   </div>
                 ) : selectedTemplate.is_own ? (
                   <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}` }}>
                     <i className="pi pi-user" style={{ color: colors.infoText }}></i>
-                    <span className="font-medium" style={{ color: colors.infoText }}>Your Template</span>
+                    <span className="font-medium" style={{ color: colors.infoText }}>{t.templatestorepanel702}</span>
                   </div>
                 ) : (
                   <Button
-                    label={purchasing ? 'Processing...' : 'Purchase Now'}
+                    label={purchasing ? t.templatestorepanel706 : t.templatestorepanel706_2}
                     icon={purchasing ? 'pi pi-spinner pi-spin' : 'pi pi-shopping-cart'}
                     onClick={handlePurchaseClick}
                     disabled={purchasing || !selectedTemplate.can_purchase}
@@ -721,7 +721,7 @@ const TemplateStorePanel: React.FC = () => {
                 <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
                   <i className="pi pi-exclamation-triangle" style={{ color: colors.errorText }}></i>
                   <span className="text-sm" style={{ color: colors.errorText }}>
-                    You need <strong>{selectedTemplate.price_credits}</strong> credits but only have <strong>{currentCredits}</strong>.
+                    {t.templatestorepanel724_2}<strong>{selectedTemplate.price_credits}</strong>{t.templatestorepanel724}<strong>{currentCredits}</strong>.
                   </span>
                 </div>
               )}
@@ -743,7 +743,7 @@ const TemplateStorePanel: React.FC = () => {
                 <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: colors.textMuted }}>
                     <i className="pi pi-images"></i>
-                    Media ({allMedia.length})
+                    {t.templatestorepanel746}({allMedia.length})
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {allMedia.map((item) => {
@@ -791,7 +791,7 @@ const TemplateStorePanel: React.FC = () => {
                           ) : (
                             <img
                               src={`/api/media/${item.id}/serve`}
-                              alt={item.title || 'Media'}
+                              alt={item.title || t.templatestorepanel794}
                               className="w-20 h-20 rounded-lg object-cover"
                               style={{ backgroundColor: colors.bgTertiary }}
                             />
@@ -814,7 +814,7 @@ const TemplateStorePanel: React.FC = () => {
           setLightboxVisible(false);
           setLightboxMedia(null);
         }}
-        header={lightboxMedia?.title || 'Media Preview'}
+        header={lightboxMedia?.title || t.templatestorepanel817}
         style={{ width: '90vw', maxWidth: '1200px' }}
         contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
         headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
@@ -862,7 +862,7 @@ const TemplateStorePanel: React.FC = () => {
         header={
           <div className="flex items-center gap-3">
             <i className="pi pi-credit-card" style={{ color: colors.successText }}></i>
-            <span>Payment Method</span>
+            <span>{t.templatestorepanel865}</span>
           </div>
         }
         style={{ width: '400px', maxWidth: '95vw' }}
@@ -874,7 +874,7 @@ const TemplateStorePanel: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-sm" style={{ color: colors.textSecondary }}>
-            Choose your preferred payment method for{' '}
+            {t.templatestorepanel877}{' '}
             <strong style={{ color: colors.textPrimary }}>{selectedTemplate?.name}</strong>
           </p>
 
@@ -900,8 +900,8 @@ const TemplateStorePanel: React.FC = () => {
                   <i className="pi pi-credit-card text-white text-lg"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-medium" style={{ color: colors.textPrimary }}>Credit Card</div>
-                  <div className="text-xs" style={{ color: colors.textMuted }}>Powered by Stripe</div>
+                  <div className="font-medium" style={{ color: colors.textPrimary }}>{t.templatestorepanel903}</div>
+                  <div className="text-xs" style={{ color: colors.textMuted }}>{t.templatestorepanel904}</div>
                 </div>
               </div>
               <i className="pi pi-chevron-right" style={{ color: colors.textMuted }}></i>
@@ -921,8 +921,8 @@ const TemplateStorePanel: React.FC = () => {
                   <i className="pi pi-paypal text-white text-lg"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-medium" style={{ color: colors.textPrimary }}>PayPal</div>
-                  <div className="text-xs" style={{ color: colors.textMuted }}>Pay with PayPal account</div>
+                  <div className="font-medium" style={{ color: colors.textPrimary }}>{t.templatestorepanel924}</div>
+                  <div className="text-xs" style={{ color: colors.textMuted }}>{t.templatestorepanel925}</div>
                 </div>
               </div>
               <i className="pi pi-chevron-right" style={{ color: colors.textMuted }}></i>
@@ -932,13 +932,13 @@ const TemplateStorePanel: React.FC = () => {
           {purchasing && (
             <div className="text-center py-2">
               <i className="pi pi-spinner pi-spin mr-2" style={{ color: colors.accent }}></i>
-              <span style={{ color: colors.textMuted }}>Initializing payment...</span>
+              <span style={{ color: colors.textMuted }}>{t.templatestorepanel935}</span>
             </div>
           )}
 
           <p className="text-xs text-center mt-4" style={{ color: colors.textMuted }}>
             <i className="pi pi-lock mr-1"></i>
-            Your payment is secure and encrypted
+            {t.templatestorepanel941}
           </p>
         </div>
       </Dialog>

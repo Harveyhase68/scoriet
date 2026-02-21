@@ -192,7 +192,7 @@ export default function TopBar() {
             className="h-8 w-auto"
             style={{ maxHeight: '32px', width: 'auto' }}
           />
-          <div className="text-xs" style={{ color: colors.textMuted }}>Enterprise Code Generator</div>
+          <div className="text-xs" style={{ color: colors.textMuted }}>{t.topbar195}</div>
         </div>
       </div>
 
@@ -249,10 +249,10 @@ export default function TopBar() {
               <div className="flex items-center justify-between w-full">
                 <span style={{ color: option.is_soft_locked ? colors.errorText : undefined }}>{option.name}</span>
                 {option.is_soft_locked && (
-                  <i className="pi pi-lock ml-2" style={{ color: colors.errorText }} title="Abo abgelaufen" />
+                  <i className="pi pi-lock ml-2" style={{ color: colors.errorText }} title={t.topbar252} />
                 )}
                 {option.subscription?.days_remaining !== null && option.subscription?.days_remaining <= 14 && !option.is_soft_locked && (
-                  <i className="pi pi-exclamation-triangle ml-2" style={{ color: colors.warningText }} title={`Läuft in ${option.subscription.days_remaining} Tagen ab`} />
+                  <i className="pi pi-exclamation-triangle ml-2" style={{ color: colors.warningText }} title={`${t.topbar255}${option.subscription.days_remaining}${t.topbar255_2}`} />
                 )}
               </div>
             )}
@@ -267,13 +267,13 @@ export default function TopBar() {
           />
           {selectedProject && !selectedProject.is_soft_locked && (
             <span className="text-xs" style={{ color: colors.textMuted }}>
-              by {selectedProject.owner.name}
+              {t.topbar270}{selectedProject.owner.name}
             </span>
           )}
           {selectedProject?.is_soft_locked && (
             <span className="text-xs flex items-center gap-1" style={{ color: colors.errorText }}>
               <i className="pi pi-lock" />
-              Abo abgelaufen!
+              {t.topbar276}
             </span>
           )}
         </div>
@@ -285,7 +285,7 @@ export default function TopBar() {
               icon="pi pi-bell"
               className="p-button-text p-button-sm topbar-icon-btn"
               style={{ padding: '4px', color: colors.textMuted }}
-              tooltip={`${pendingApplicationsCount} pending application${pendingApplicationsCount > 1 ? 's' : ''}`}
+              tooltip={`${pendingApplicationsCount}${pendingApplicationsCount > 1 ? t.topbar288_2 : t.topbar288}`}
               onClick={() => {
                 // Trigger opening Applications Modal via custom event
                 const event = new CustomEvent(t.topbar122, {

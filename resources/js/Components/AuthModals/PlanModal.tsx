@@ -79,7 +79,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   // Get display name for current plan
   const getCurrentPlanName = (): string => {
     if (userStatus.user_type === 'patron') {
-      return userStatus.patron_type === 'annual' ? 'Patron Annual' : 'Patron Monthly';
+      return userStatus.patron_type === 'annual' ? t.planmodal82 : t.planmodal82_2;
     }
     return 'Free';
   };
@@ -92,7 +92,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Bitte melden Sie sich an um Credits zu kaufen.');
+        setError(t.planmodal95);
         return;
       }
 
@@ -109,7 +109,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Fehler beim Erstellen der Checkout-Session');
+        throw new Error(data.error || t.planmodal112);
       }
 
       // Redirect to Stripe Checkout
@@ -118,7 +118,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       }
     } catch (err) {
       console.error('Stripe checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setError(err instanceof Error ? err.message : t.planmodal121);
     } finally {
       setLoading(null);
     }
@@ -132,7 +132,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Bitte melden Sie sich an um zu upgraden.');
+        setError(t.planmodal135);
         return;
       }
 
@@ -149,7 +149,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Fehler beim Erstellen der Checkout-Session');
+        throw new Error(data.error || t.planmodal152);
       }
 
       // Redirect to Stripe Checkout
@@ -157,8 +157,8 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         window.location.href = data.url;
       }
     } catch (err) {
-      console.error('Stripe patron checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      console.error(t.planmodal160, err);
+      setError(err instanceof Error ? err.message : t.planmodal161);
     } finally {
       setLoading(null);
     }
@@ -172,7 +172,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Bitte melden Sie sich an um Credits zu kaufen.');
+        setError(t.planmodal175);
         return;
       }
 
@@ -189,7 +189,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Fehler beim Erstellen der PayPal-Bestellung');
+        throw new Error(data.error || t.planmodal192);
       }
 
       // Redirect to PayPal
@@ -198,7 +198,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       }
     } catch (err) {
       console.error('PayPal checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setError(err instanceof Error ? err.message : t.planmodal201);
     } finally {
       setLoading(null);
     }
@@ -212,7 +212,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Bitte melden Sie sich an um zu upgraden.');
+        setError(t.planmodal215);
         return;
       }
 
@@ -229,7 +229,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Fehler beim Erstellen der PayPal-Bestellung');
+        throw new Error(data.error || t.planmodal232);
       }
 
       // Redirect to PayPal
@@ -237,8 +237,8 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         window.location.href = data.url;
       }
     } catch (err) {
-      console.error('PayPal patron checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      console.error(t.planmodal240, err);
+      setError(err instanceof Error ? err.message : t.planmodal241);
     } finally {
       setLoading(null);
     }
@@ -246,7 +246,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
 
   // Handle subscription cancellation
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Are you sure you want to cancel your subscription? You will remain a Patron until the end of your current billing period.')) {
+    if (!window.confirm(t.planmodal249)) {
       return;
     }
 
@@ -256,7 +256,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     try {
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
-        setError('Bitte melden Sie sich an.');
+        setError(t.planmodal259);
         return;
       }
 
@@ -272,17 +272,17 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Fehler beim Kündigen des Abonnements');
+        throw new Error(data.error || t.planmodal275);
       }
 
       // Show success message
-      alert('Your subscription has been cancelled. You will remain a Patron until the end of your current billing period.');
+      alert(t.planmodal279);
 
       // Reload user status
       window.location.reload();
     } catch (err) {
-      console.error('Cancel subscription error:', err);
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      console.error(t.planmodal284, err);
+      setError(err instanceof Error ? err.message : t.planmodal285);
     } finally {
       setLoading(null);
     }
@@ -320,7 +320,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   
   const pricingTiers = [
     {
-      name: t.freeLabel,
+      name: "Free",
       price: `${pricingData.currency} 0`,
       period: "/forever",
       description: t.planmodal326,

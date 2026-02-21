@@ -162,7 +162,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+    return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -204,7 +204,7 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
 
   const messageTemplate = (application: Application) => {
     if (!application.message) {
-      return <span className="italic" style={{ color: colors.textMuted }}>No message</span>;
+      return <span className="italic" style={{ color: colors.textMuted }}>{t.applicationsmodal207}</span>;
     }
 
     const shortMessage = application.message.length > 50 

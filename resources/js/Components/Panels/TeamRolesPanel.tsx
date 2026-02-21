@@ -103,7 +103,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   // Update tab title
   useEffect(() => {
     if (updateTabTitle) {
-      updateTabTitle(`Rollen: ${teamName}`);
+      updateTabTitle(`${t.teamrolespanel106}${teamName}`);
     }
   }, [teamName, updateTabTitle]);
 
@@ -226,7 +226,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
       toast.current?.show({
         severity: 'success',
-        summary: 'Erfolg',
+        summary: t.teamrolespanel229,
         detail: editingRole ? t.teamrolespanel230 : t.teamrolespanel230_2,
         life: 3000,
       });
@@ -277,7 +277,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
             throw new Error(data.message || t.teamrolespanel277);
           }
 
-          toast.current?.show({ severity: 'success', summary: 'Erfolg', detail: 'Rolle gelöscht', life: 3000 });
+          toast.current?.show({ severity: 'success', summary: t.teamrolespanel280, detail: t.teamrolespanel280_2, life: 3000 });
           setSelectedRole(null);
           loadData();
         } catch (error) {
@@ -505,7 +505,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
               {selectedRole.is_owner_role && <i className="pi pi-crown text-yellow-500" />}
               {selectedRole.name}
             </h3>
-            <p className="text-sm" style={{ color: colors.textMuted }}>{selectedRole.description || 'Keine Beschreibung'}</p>
+            <p className="text-sm" style={{ color: colors.textMuted }}>{selectedRole.description || t.teamrolespanel508}</p>
           </div>
           <div className="flex gap-2">
             {/* Edit button - all roles can be edited */}
@@ -536,7 +536,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
         {/* Permissions list (read-only view) */}
         <div className="rounded p-3" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
-          <h4 className="font-medium mb-3" style={{ color: colors.textPrimary }}>Berechtigungen</h4>
+          <h4 className="font-medium mb-3" style={{ color: colors.textPrimary }}>{t.teamrolespanel539}</h4>
           {selectedRole.slug === 'owner' ? (
             <div className="p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
               <p className="text-sm flex items-center gap-2" style={{ color: colors.successText }}>
@@ -713,7 +713,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         modal
         footer={
           <div style={{ backgroundColor: colors.bgTertiary, padding: '0.75rem 1rem', margin: '-1rem', marginTop: '0' }}>
-            <Button label="Abbrechen" onClick={() => setRoleModalVisible(false)} className="p-button-secondary" />
+            <Button label={t.teamrolespanel716} onClick={() => setRoleModalVisible(false)} className="p-button-secondary" />
             <Button
               label={saving ? t.teamrolespanel718_2 : t.teamrolespanel718}
               onClick={handleSaveRole}
@@ -727,11 +727,11 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
         <div className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Name *</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>{t.teamrolespanel730}</label>
             <InputText
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
-              placeholder="z.B. Senior Developer"
+              placeholder={t.teamrolespanel734}
               className="w-full"
               style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
             />
@@ -739,7 +739,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Beschreibung</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>{t.teamrolespanel742}</label>
             <InputTextarea
               value={roleDescription}
               onChange={(e) => setRoleDescription(e.target.value)}
@@ -753,7 +753,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
           {/* Copy from existing role */}
           {!editingRole && (
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>Berechtigungen kopieren von</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>{t.teamrolespanel756}</label>
               <Dropdown
                 value={copyFromRoleId}
                 options={roles.map(r => ({ label: r.name, value: r.id }))}
@@ -767,7 +767,7 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
           {/* Permissions */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>Berechtigungen</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.teamrolespanel770}</label>
             <div
               className="rounded overflow-hidden"
               style={{

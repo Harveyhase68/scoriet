@@ -1,9 +1,15 @@
+@php
+    $browserLang = substr(request()->server('HTTP_ACCEPT_LANGUAGE', 'en'), 0, 2);
+    $supported = ['de', 'en', 'fr', 'es', 'it'];
+    $lang = in_array($browserLang, $supported) ? $browserLang : 'en';
+    app()->setLocale($lang);
+@endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ $lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scoriet - Maintenance Mode</title>
+    <title>{{__('503bladephp6')}}</title>
     <style>
         * {
             margin: 0;
@@ -220,48 +226,48 @@
     <div class="container">
         <img src="/images/logos/scoriet-logo.png" alt="Scoriet Logo" class="logo">
         
-        <h1>We'll Be Right Back</h1>
-        <p class="subtitle">Upgrading Scoriet</p>
+        <h1>{{__('503bladephp223')}}</h1>
+        <p class="subtitle">{{__('503bladephp224')}}</p>
         
         <p class="message">
-            We're currently performing scheduled maintenance to bring you new features and improvements. 
-            Our Enterprise Code Generator will be back online shortly.
+            {{__('503bladephp227')}}
+            {{__('503bladephp228')}}
         </p>
         
         <div class="progress-container">
             <div class="progress-bar">
                 <div class="progress-fill"></div>
             </div>
-            <div class="status-text">Update in progress...</div>
+            <div class="status-text">{{__('503bladephp235')}}</div>
         </div>
         
         <div class="features">
             <div class="feature">
                 <div class="feature-icon">🚀</div>
-                <strong>Performance Boost</strong><br>
-                Faster code generation
+                <strong>{{__('503bladephp241')}}</strong><br>
+                {{__('503bladephp242')}}
             </div>
             <div class="feature">
                 <div class="feature-icon">✨</div>
-                <strong>New Features</strong><br>
-                Enhanced templates
+                <strong>{{__('503bladephp246')}}</strong><br>
+                {{__('503bladephp247')}}
             </div>
             <div class="feature">
                 <div class="feature-icon">🔧</div>
-                <strong>Bug Fixes</strong><br>
-                Improved stability
+                <strong>{{__('503bladephp251')}}</strong><br>
+                {{__('503bladephp252')}}
             </div>
         </div>
         
         <div class="eta">
-            <strong>Estimated downtime:</strong> 2-5 minutes<br>
-            <small>We appreciate your patience!</small>
+            <strong>{{__('503bladephp257')}}</strong>{{__('503bladephp257_2')}}<br>
+            <small>{{__('503bladephp258')}}</small>
         </div>
         
         <div class="social-links">
-            <a href="#" class="social-link" title="GitHub">⚡</a>
-            <a href="#" class="social-link" title="Discord">💬</a>
-            <a href="#" class="social-link" title="Twitter">🐦</a>
+            <a href="https://github.com/Harveyhase68/scoriet" class="social-link" title="GitHub">⚡</a>
+            <a href="https://discord.gg/safGsVZk" class="social-link" title="Discord">💬</a>
+            <a href="https://x.com/Harveyhase68" class="social-link" title="X">𝕏</a>
         </div>
     </div>
 </body>

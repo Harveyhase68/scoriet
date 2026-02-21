@@ -426,7 +426,7 @@ export default function TwoFactorSection() {
             {/* Status Info */}
             <div className="flex items-center gap-2 text-sm" style={{ color: colors.textSecondary }}>
               <i className="pi pi-check-circle" style={{ color: '#22c55e' }} />
-              <span>{t.twofactorsection429}{new Date(status.confirmed_at!).toLocaleDateString('de-DE')}</span>
+              <span>{t.twofactorsection429}{new Date(status.confirmed_at!).toLocaleDateString(currentLanguage)}</span>
             </div>
 
             <div className="flex items-center gap-2 text-sm" style={{ color: colors.textSecondary }}>
@@ -531,7 +531,7 @@ export default function TwoFactorSection() {
               {t.twofactorsection531}
             </p>
             <div className="field">
-              <label className="block text-sm font-medium mb-2">Passwort</label>
+              <label className="block text-sm font-medium mb-2">{t.twofactorsection534}</label>
               <Password
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -778,7 +778,7 @@ export default function TwoFactorSection() {
                     IP: {device.ip}
                   </div>
                   <div className="text-sm" style={{ color: colors.textSecondary }}>
-                    {t.twofactorsection781}{new Date(device.trusted_until).toLocaleDateString('de-DE')}
+                    {t.twofactorsection781}{new Date(device.trusted_until).toLocaleDateString(currentLanguage)}
                   </div>
                 </div>
                 <Button
@@ -803,7 +803,7 @@ export default function TwoFactorSection() {
 
       {/* Regenerate Codes Dialog */}
       <Dialog
-        header="Neue Backup-Codes generieren"
+        header={t.twofactorsection806}
         visible={showRegenerateCodes}
         onHide={() => {
           setShowRegenerateCodes(false);

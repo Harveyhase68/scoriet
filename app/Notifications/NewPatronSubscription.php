@@ -41,30 +41,29 @@ class NewPatronSubscription extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $subscriptionTime = now()->format('d.m.Y H:i:s');
+        $subscriptionTime = now()->format('Y-m-d H:i:s');
         $planName = $this->patronType === 'annual' ? 'Patron Annual' : 'Patron Monthly';
         $providerName = ucfirst($this->provider);
-        $emoji = $this->patronType === 'annual' ? '🎊' : '💎';
 
         return (new MailMessage)
-            ->subject("{$emoji} Neues Patron-Abo: {$planName} via {$providerName}")
-            ->greeting('Hallo!')
-            ->line("Ein Benutzer hat ein **{$planName}** Abo abgeschlossen!")
+            ->subject("New Patron Subscription: {$planName} via {$providerName}")
+            ->greeting('Hello!')
+            ->line("A user has subscribed to **{$planName}**!")
             ->line('')
-            ->line('**Abo-Details:**')
+            ->line('**Subscription Details:**')
             ->line("• **Plan:** {$planName}")
-            ->line("• **Zahlungsanbieter:** {$providerName}")
-            ->line("• **Abgeschlossen am:** {$subscriptionTime}")
+            ->line("• **Payment Provider:** {$providerName}")
+            ->line("• **Subscribed at:** {$subscriptionTime}")
             ->line('')
-            ->line('**Benutzerinformationen:**')
+            ->line('**User Information:**')
             ->line('• **Name:** ' . $this->user->name)
-            ->line('• **Username:** ' . ($this->user->username ?? 'Nicht angegeben'))
-            ->line('• **E-Mail:** ' . $this->user->email)
-            ->line('• **User-ID:** ' . $this->user->id)
+            ->line('• **Username:** ' . ($this->user->username ?? 'Not specified'))
+            ->line('• **Email:** ' . $this->user->email)
+            ->line('• **User ID:** ' . $this->user->id)
             ->line('')
-            ->action('Scoriet öffnen', config('app.url'))
-            ->line('Diese E-Mail wurde automatisch generiert.')
-            ->salutation('💰 Cha-Ching! Viele Grüße vom Scoriet-System');
+            ->action('Open Scoriet', config('app.url'))
+            ->line('This email was generated automatically.')
+            ->salutation('Best regards, Scoriet System');
     }
 
     /**
