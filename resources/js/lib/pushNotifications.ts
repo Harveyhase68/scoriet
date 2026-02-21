@@ -55,7 +55,7 @@ async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
 /**
  * Get the VAPID public key from the backend
  */
-async function getVapidKey(): Promise<string> {
+async function getVapidKey(): Promise<string | null> {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     const response = await fetch('/api/push/vapid-key', {
         headers: {
@@ -64,9 +64,14 @@ async function getVapidKey(): Promise<string> {
         },
     });
     if (!response.ok) {
-        throw new Error('Failed to fetch VAPID key');
+        console.error('[Push] VAPID key endpoint returned:', response.status, response.statusText);
+        return null;
     }
     const data = await response.json();
+    if (!data.public_key) {
+        console.error('[Push] Server returned empty VAPID public_key. Check VAPID_PUBLIC_KEY in .env');
+        return null;
+    }
     return data.public_key;
 }
 
@@ -76,33 +81,46 @@ async function getVapidKey(): Promise<string> {
  */
 export async function subscribeToPush(): Promise<boolean> {
     if (!isPushSupported()) {
+        console.warn('[Push] Not supported in this browser');
         return false;
     }
 
     // Request notification permission
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
+        console.warn('[Push] Permission not granted:', permission);
         return false;
     }
 
     try {
         // Register service worker
+        console.log('[Push] Registering service worker...');
         const registration = await registerPushServiceWorker();
+        console.log('[Push] Service worker registered:', registration.scope);
 
         // Get VAPID key
+        console.log('[Push] Fetching VAPID key...');
         const vapidKey = await getVapidKey();
+        if (!vapidKey || typeof vapidKey !== 'string' || vapidKey.trim().length === 0) {
+            console.error('[Push] VAPID key is missing or invalid! Check VAPID_PUBLIC_KEY in server .env file. Received:', vapidKey);
+            return false;
+        }
+        console.log('[Push] VAPID key received, length:', vapidKey.length);
         const applicationServerKey = urlBase64ToUint8Array(vapidKey);
 
         // Subscribe to push
+        console.log('[Push] Subscribing to PushManager...');
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey,
         });
+        console.log('[Push] Browser subscription created:', subscription.endpoint);
 
         // Send subscription to backend
         const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
         const subscriptionJson = subscription.toJSON();
 
+        console.log('[Push] Sending subscription to backend...');
         const response = await fetch('/api/push/subscribe', {
             method: 'POST',
             headers: {
@@ -119,9 +137,16 @@ export async function subscribeToPush(): Promise<boolean> {
             }),
         });
 
-        return response.ok;
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Push] Backend subscribe failed:', response.status, errorText);
+            return false;
+        }
+
+        console.log('[Push] Successfully subscribed!');
+        return true;
     } catch (error) {
-        console.error('Push subscription failed:', error);
+        console.error('[Push] Subscription failed:', error);
         return false;
     }
 }
