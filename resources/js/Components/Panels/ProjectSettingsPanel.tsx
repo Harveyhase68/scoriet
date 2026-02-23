@@ -1171,7 +1171,8 @@ export default function ProjectSettingsPanel() {
                                             { label: 'MySQL', value: 'MySQL' },
                                             { label: 'PostgreSQL', value: 'PostgreSQL' },
                                             { label: 'SQLite', value: 'SQLite' },
-                                            { label: 'SQL Server', value: 'MSSQL' }
+                                            { label: 'SQL Server', value: 'MSSQL' },
+                                            { label: 'Firebird', value: 'Firebird' }
                                         ]}
                                         className="w-full"
                                     />

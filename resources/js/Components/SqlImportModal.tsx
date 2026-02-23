@@ -53,7 +53,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   const modalContentRef = useRef<HTMLDivElement>(null);
 
   // Service import states
-  const [serviceConnectionType, setServiceConnectionType] = useState<'mysql' | 'postgresql' | 'sqlite' | 'mssql'>('mysql');
+  const [serviceConnectionType, setServiceConnectionType] = useState<'mysql' | 'postgresql' | 'sqlite' | 'mssql' | 'firebird'>('mysql');
   const [serviceHost, setServiceHost] = useState('localhost');
   const [servicePort, setServicePort] = useState('3306');
   const [serviceDatabase, setServiceDatabase] = useState('');
@@ -201,12 +201,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
       // Load database connection settings from project
       if (selectedProject.database_type) {
-        const dbTypeMap: Record<string, 'mysql' | 'postgresql' | 'sqlite' | 'mssql'> = {
+        const dbTypeMap: Record<string, 'mysql' | 'postgresql' | 'sqlite' | 'mssql' | 'firebird'> = {
           'MySQL': 'mysql',
           'PostgreSQL': 'postgresql',
           'SQLite': 'sqlite',
           'MSSQL': 'mssql',
-          'SQL Server': 'mssql'
+          'SQL Server': 'mssql',
+          'Firebird': 'firebird'
         };
         setServiceConnectionType(dbTypeMap[selectedProject.database_type] || 'mysql');
       }
@@ -351,7 +352,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       'PostgreSQL': 'postgresql',
       'SQLite': 'sqlite',
       'MSSQL': 'mssql',
-      'SQL Server': 'mssql'
+      'SQL Server': 'mssql',
+      'Firebird': 'firebird'
     };
     return databaseTypeMap[databaseType] || 'mysql';
   };
@@ -1134,12 +1136,13 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                     <select
                       value={serviceConnectionType}
                       onChange={(e) => {
-                        const type = e.target.value as 'mysql' | 'postgresql' | 'sqlite' | 'mssql';
+                        const type = e.target.value as 'mysql' | 'postgresql' | 'sqlite' | 'mssql' | 'firebird';
                         setServiceConnectionType(type);
                         // Auto-update port based on connection type
                         if (type === 'mysql') setServicePort('3306');
                         else if (type === 'postgresql') setServicePort('5432');
                         else if (type === 'mssql') setServicePort('1433');
+                        else if (type === 'firebird') setServicePort('3050');
                         // Reset connection test results when type changes
                         setConnectionTestResult(null);
                         setAvailableDatabases([]);
@@ -1159,6 +1162,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       <option value="postgresql">PostgreSQL</option>
                       <option value="mssql">MS SQL Server</option>
                       <option value="sqlite">SQLite</option>
+                      <option value="firebird">Firebird</option>
                     </select>
                   </div>
                   <div>

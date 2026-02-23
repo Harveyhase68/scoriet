@@ -43,7 +43,7 @@ return new class extends Migration
             $table->text('two_factor_trusted_devices')->nullable();
             $table->timestamp('two_factor_last_verified_at')->nullable();
             $table->string('username')->nullable()->unique();
-            $table->enum('user_type', ['free', 'patron', 'admin', 'system'])->default('free');
+            $table->enum('user_type', ['free', 'patron', 'system'])->default('free');
             $table->boolean('is_active')->default(true);
             $table->string('language', 5)->default('en');
             $table->string('kanban_initials', 3)->nullable();

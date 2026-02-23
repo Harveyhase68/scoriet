@@ -244,6 +244,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
   const handleDeleteTeam = (team: Team) => {
     confirmDialog({
+      group: 'team-management',
       message: `${t.teammanagementpanel247}"${team.name}"?${t.teammanagementpanel247_2}`,
       header: t.teammanagementpanel200,
       icon: 'pi pi-exclamation-triangle',
@@ -854,7 +855,7 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   return (
     <TabContent colors={colors}>
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog group="team-management" />
 
       <div className="h-full flex flex-col">
         {/* Header Card */}

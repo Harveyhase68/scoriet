@@ -567,7 +567,7 @@ class Template extends Model
         }
 
         // Admins and system users can view all templates
-        if (in_array($user->user_type, ['admin', 'system'])) {
+        if ($user->user_type === 'system') {
             return true;
         }
 
@@ -600,7 +600,7 @@ class Template extends Model
         $fullName = $project->name . '/' . $newTemplateName;
 
         // Check if user can create private templates
-        $canCreatePrivate = $project->owner && in_array($project->owner->user_type, ['premium', 'admin']);
+        $canCreatePrivate = $project->owner && in_array($project->owner->user_type, ['patron', 'system']);
         $finalVisibility = ($visibility === 'private' && $canCreatePrivate) ? 'private' : 'public';
 
         $clonedTemplate = Template::create([

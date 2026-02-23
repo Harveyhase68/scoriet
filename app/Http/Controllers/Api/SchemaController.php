@@ -198,7 +198,7 @@ class SchemaController extends Controller
 
         // Only system/admin users can create system schemas
         if (isset($validated['is_system_schema']) && $validated['is_system_schema']) {
-            if ($user->user_type !== 'system' && $user->user_type !== 'admin') {
+            if ($user->user_type !== 'system') {
                 $validated['is_system_schema'] = false;
             }
         } else {
@@ -345,7 +345,7 @@ class SchemaController extends Controller
 
         // Only system/admin users can change system schema status
         if (isset($validated['is_system_schema'])) {
-            if ($user->user_type !== 'system' && $user->user_type !== 'admin') {
+            if ($user->user_type !== 'system') {
                 $validated['is_system_schema'] = $schema->is_system_schema; // Keep original value
             }
         }

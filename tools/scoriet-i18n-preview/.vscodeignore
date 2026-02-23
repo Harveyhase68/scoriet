@@ -1,0 +1,7 @@
+.vscode/**
+node_modules/**
+build.bat
+install.bat
+generate-icon.js
+.vscodeignore
+.gitignore

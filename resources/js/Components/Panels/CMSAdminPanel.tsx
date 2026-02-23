@@ -248,6 +248,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
   const handleDelete = (page: Page) => {
     confirmDialog({
+      group: 'cms-admin',
       message: `${t.cmsadminpanel251}"${page.title}"?`,
       header: t.cmsadminpanel144,
       icon: 'pi pi-exclamation-triangle',
@@ -357,7 +358,7 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
 
   return (
     <div className="h-full flex flex-col overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
-      <ConfirmDialog />
+      <ConfirmDialog group="cms-admin" />
 
       {/* Header */}
       <div className="flex-shrink-0 p-6" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>

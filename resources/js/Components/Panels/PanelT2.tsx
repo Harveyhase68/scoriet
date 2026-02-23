@@ -942,6 +942,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     // Case 1: No versions exist yet - create initial version first
     if (!selectedVersion) {
       confirmDialog({
+        group: 'panelt2',
         message: t.panelt2947,
         header: t.panelt2948,
         icon: 'pi pi-exclamation-triangle',
@@ -1656,6 +1657,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     // Show confirmation dialog
     confirmDialog({
+      group: 'panelt2',
       message: message,
       header: t.panelt21144,
       icon: 'pi pi-exclamation-triangle',
@@ -2083,6 +2085,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // If no version exists, create initial version first
       if (!selectedVersion) {
         confirmDialog({
+          group: 'panelt2',
           message: t.panelt22088,
           header: t.panelt22089,
           icon: 'pi pi-exclamation-triangle',
@@ -3352,7 +3355,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                       <option value="CASCADE">CASCADE</option>
                       <option value="RESTRICT">RESTRICT</option>
                       <option value="SET NULL" disabled={sourceFieldIsNotNull}>
-                        SET NULL {sourceFieldIsNotNull ? '(Quellfeld ist NOT NULL)' : ''}
+                        SET NULL {sourceFieldIsNotNull ? t.panelt23358 : ''}
                       </option>
                       <option value="SET DEFAULT">SET DEFAULT</option>
                     </select>
@@ -3491,7 +3494,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       />
 
       {/* PrimeReact ConfirmDialog for version creation confirmation */}
-      <ConfirmDialog />
+      <ConfirmDialog group="panelt2" />
 
       {/* Theme-aware CSS styles */}
       <style>{`

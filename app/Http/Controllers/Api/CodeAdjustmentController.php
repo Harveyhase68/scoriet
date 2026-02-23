@@ -777,7 +777,7 @@ class CodeAdjustmentController extends Controller
             $hasAccess = $project->members()->where('user_id', $user->id)->exists()
                 || $project->teams()->whereHas('members', fn($q) => $q->where('user_id', $user->id))->exists();
 
-            if (!$hasAccess && !in_array($user->user_type, ['admin', 'system'])) {
+            if (!$hasAccess && $user->user_type !== 'system') {
                 abort(403, __('codeadjustmentcontrollerphp781'));
             }
         }

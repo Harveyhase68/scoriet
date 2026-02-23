@@ -164,7 +164,7 @@
             <h1 class="title">{{__('subscription-expiry-finalbladephp164')}}</h1>
         </div>
 
-        <p>{__('subscription-expiry-finalbladephp167')}}{{ $user->name }},</p>
+        <p>{{__('subscription-expiry-finalbladephp167')}}{{ $user->name }},</p>
 
         <div class="urgent-banner">
             <div class="urgent-title">{__('subscription-expiry-finalbladephp170')}}</div>

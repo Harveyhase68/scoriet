@@ -937,7 +937,7 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
         {/* Header - fixed height */}
         <div className="flex-shrink-0 flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold" style={{ color: 'var(--theme-accent)' }}>{t.panelt1939}</h3>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 items-center">
             <button
               onClick={expandAll}
               className="text-xs panel-btn px-2 py-1 rounded"
@@ -951,6 +951,14 @@ export default function PanelT1({ onOpenPanel }: NavigationPanelProps) {
               title={t.panelt1798}
             >
               ⬆️
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('closeTreePanel'))}
+              className="text-xs panel-btn px-2 py-1 rounded ml-1"
+              title={t.topbarToggleNav || 'Close Panel'}
+              style={{ color: 'var(--theme-text-muted)' }}
+            >
+              ✕
             </button>
           </div>
         </div>

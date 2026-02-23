@@ -123,6 +123,7 @@ export default function LanguageManagementPanel() {
 
   const confirmDelete = (language: Language) => {
     confirmDialog({
+      group: 'language-management',
       message: t.languagemanagementpanel120,
       header: t.languagemanagementpanel121,
       icon: 'pi pi-exclamation-triangle',
@@ -290,7 +291,7 @@ export default function LanguageManagementPanel() {
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
-      <ConfirmDialog />
+      <ConfirmDialog group="language-management" />
       <div className="flex-shrink-0 p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}>
         <div className="flex justify-between items-center">
           <div>

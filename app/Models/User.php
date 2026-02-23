@@ -248,7 +248,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdmin(): bool
     {
-        return $this->user_type === 'admin' || $this->user_type === 'system';
+        return $this->user_type === 'system';
     }
 
     /**
@@ -864,7 +864,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isSubjectToInactivityDeactivation(): bool
     {
-        return !$this->isPatron() && $this->user_type !== 'admin' && $this->user_type !== 'system';
+        return !$this->isPatron() && $this->user_type !== 'system';
     }
 
     /**

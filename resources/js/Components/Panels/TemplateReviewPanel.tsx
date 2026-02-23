@@ -99,7 +99,7 @@ const TemplateReviewPanel: React.FC = () => {
 
   // Check if current user is admin/system
   const userType = localStorage.getItem('user_type') || 'free';
-  const isAdmin = userType === 'admin' || userType === 'system';
+  const isAdmin = userType === 'system';
   const isInnerCore = localStorage.getItem('is_inner_core') === '1';
 
   useEffect(() => {

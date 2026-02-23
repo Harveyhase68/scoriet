@@ -132,7 +132,7 @@
         </div>
 
         <div class="reassurance-box">
-            <div class="reassurance-title">Keine Sorge!</div>
+            <div class="reassurance-title">{{__('inactivity-warning-finalbladephp135')}}</div>
             <p style="margin: 5px 0; color: #047857;">
                 {{__('inactivity-warning-finalbladephp137')}}
                 {{__('inactivity-warning-finalbladephp138')}}

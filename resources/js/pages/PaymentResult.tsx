@@ -4,6 +4,7 @@ import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PaymentResultProps {
   status: 'success' | 'cancelled' | 'pending_capture';
@@ -28,6 +29,7 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   useEffect(() => {
     const processPayment = async () => {
@@ -113,33 +115,33 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
     <>
       <Head title={paymentSuccess ? t.paymentresult114 : status === 'cancelled' ? t.paymentresult114_2 : t.paymentresult114_3} />
 
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg bg-gray-800 border border-gray-700">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: colors.bgPrimary }}>
+        <Card className="w-full max-w-lg border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
           <div className="text-center p-8">
             {loading ? (
               <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 mx-auto mb-2 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto mb-2 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.accent}20` }}>
                   <ProgressSpinner style={{ width: '40px', height: '40px' }} strokeWidth="4" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">
+                <h1 className="text-2xl font-bold mb-2" style={{ color: colors.textPrimary }}>
                   {t.paymentresult125}
                 </h1>
-                <p className="text-gray-300">
+                <p style={{ color: colors.textSecondary }}>
                   {provider === 'paypal' ? t.paymentresult128 : t.paymentresult128_2}
                 </p>
-                <p className="text-gray-500 text-sm mt-2">
+                <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
                   {t.paymentresult131}
                 </p>
               </div>
             ) : error ? (
               <>
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
-                  <i className="pi pi-times text-4xl text-red-400"></i>
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.errorText}20` }}>
+                  <i className="pi pi-times text-4xl" style={{ color: colors.errorText }}></i>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-4">
+                <h1 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>
                   {t.paymentresult140}
                 </h1>
-                <p className="text-gray-300 mb-6">
+                <p className="mb-6" style={{ color: colors.textSecondary }}>
                   {error}
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -159,20 +161,20 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
               </>
             ) : paymentSuccess ? (
               <>
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <i className={`pi ${isTemplatePurchase ? 'pi-shopping-cart' : 'pi-check'} text-4xl text-green-400`}></i>
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.successText}20` }}>
+                  <i className={`pi ${isTemplatePurchase ? 'pi-shopping-cart' : 'pi-check'} text-4xl`} style={{ color: colors.successText }}></i>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-4">
+                <h1 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>
                   {isSubscription ? t.paymentresult166 : isTemplatePurchase ? t.paymentresult166_2 : t.paymentresult166_3}
                 </h1>
-                <p className="text-gray-300 mb-2">
+                <p className="mb-2" style={{ color: colors.textSecondary }}>
                   {isSubscription
                     ? t.paymentresult170
                     : isTemplatePurchase
                     ? t.paymentresult172
                     : `${t.paymentresult173}${providerName}!`}
                 </p>
-                <p className="text-gray-400 mb-6">
+                <p className="mb-6" style={{ color: colors.textMuted }}>
                   {isSubscription
                     ? t.paymentresult177
                     : isTemplatePurchase
@@ -180,7 +182,7 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
                     : t.paymentresult180}
                 </p>
                 {paymentDetails?.customer_email && (
-                  <p className="text-gray-400 text-sm mb-6">
+                  <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
                     {t.paymentresult184}{paymentDetails.customer_email}{t.paymentresult184_2}
                   </p>
                 )}
@@ -193,13 +195,13 @@ export default function PaymentResult({ status, session_id, provider = 'stripe',
               </>
             ) : (
               <>
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                  <i className="pi pi-times text-4xl text-yellow-400"></i>
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.warningText}20` }}>
+                  <i className="pi pi-times text-4xl" style={{ color: colors.warningText }}></i>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-4">
+                <h1 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>
                   {t.paymentresult200}
                 </h1>
-                <p className="text-gray-300 mb-6">
+                <p className="mb-6" style={{ color: colors.textSecondary }}>
                   {t.paymentresult203}
                 </p>
                 <div className="flex gap-3 justify-center">

@@ -44,7 +44,7 @@ class EnsureUserIsAdmin
         }
 
         // Check if user is admin or system user
-        $isSystemAdmin = in_array($user->user_type, ['admin', 'system']);
+        $isSystemAdmin = $user->user_type === 'system';
 
         if (!$isSystemAdmin) {
             Log::warning(__('ensureuserisadminphp50'), [

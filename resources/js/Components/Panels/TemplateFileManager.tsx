@@ -138,6 +138,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
     const confirmDelete = (id: number) => {
         confirmDialog({
+            group: 'template-files',
             message: t.templatefilemanager137,
             header: t.templatefilemanager138,
             icon: 'pi pi-exclamation-triangle',
@@ -215,7 +216,7 @@ const TemplateFileManager: React.FC<TemplateFileManagerProps> = ({
 
     return (
         <div className="space-y-4">
-            <ConfirmDialog />
+            <ConfirmDialog group="template-files" />
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">{t.templatefilemanager220}</h3>
                 <div className="flex gap-2">

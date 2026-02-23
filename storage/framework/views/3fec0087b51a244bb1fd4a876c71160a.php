@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         
+        
         <script>
             (function() {
                 const appearance = '<?php echo e($appearance ?? "system"); ?>';
@@ -14,6 +15,14 @@
 
                     if (prefersDark) {
                         document.documentElement.classList.add('dark');
+                    }
+                }
+
+                // Mobile viewport: allow zooming out for better overview
+                if (window.screen.width <= 768) {
+                    var viewport = document.querySelector('meta[name="viewport"]');
+                    if (viewport) {
+                        viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, minimum-scale=0.1');
                     }
                 }
             })();
@@ -27,6 +36,14 @@
 
             html.dark {
                 background-color: oklch(0.145 0 0);
+            }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100%;
+                width: 100%;
             }
         </style>
 

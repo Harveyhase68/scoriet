@@ -1797,7 +1797,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             </div>
 
                             {/* System Template Checkbox - only for admins */}
-                            {currentUser?.user_type === 'admin' || currentUser?.user_type === 'system' ? (
+                            {currentUser?.user_type === 'system' ? (
                                 <div className="col-span-2">
                                     <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-300 rounded-lg">
                                         <Checkbox

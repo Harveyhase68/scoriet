@@ -179,7 +179,7 @@
             <h1 class="title">{{__('new-messagebladephp179')}}</h1>
         </div>
 
-        <p>Hallo {{ $recipient->name }},</p>
+        <p>{{__('new-messagebladephp182')}}{{ $recipient->name }},</p>
 
         <p>{{ __('new-messagebladephp184') }}</p>
 

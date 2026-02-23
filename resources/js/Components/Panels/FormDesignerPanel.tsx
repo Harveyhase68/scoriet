@@ -1019,6 +1019,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     if (!selectedElement || !selectedNodeId) return;
 
     confirmDialog({
+      group: 'form-designer',
       message: t.formdesignerpanel1021,
       header: t.formdesignerpanel1022,
       icon: 'pi pi-exclamation-triangle',
@@ -1056,6 +1057,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const handleFormSetChange = useCallback((newFormSet: FormSet) => {
     if (hasUnsavedChanges) {
       confirmDialog({
+        group: 'form-designer',
         message: t.formdesignerpanel1058,
         header: t.formdesignerpanel1059,
         icon: 'pi pi-exclamation-triangle',
@@ -1085,6 +1087,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     if (hasUnsavedChanges) {
       confirmDialog({
+        group: 'form-designer',
         message: t.formdesignerpanel1087,
         header: t.formdesignerpanel1088,
         icon: 'pi pi-exclamation-triangle',
@@ -1150,6 +1153,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     // Check for unsaved changes first
     if (hasUnsavedChanges) {
       confirmDialog({
+        group: 'form-designer',
         message: t.formdesignerpanel1152,
         header: t.formdesignerpanel1153,
         icon: 'pi pi-exclamation-triangle',
@@ -1292,7 +1296,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   return (
     <TabContent>
       <Toast ref={toastRef} />
-      <ConfirmDialog />
+      <ConfirmDialog group="form-designer" />
 
       {/* Main Layout */}
       <div className="flex flex-col h-full">
@@ -2523,6 +2527,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 className="p-button-danger p-button-outlined"
                 onClick={() => {
                   confirmDialog({
+                    group: 'form-designer',
                     message: `${t.formdesignerpanel2525}"${selectedFormSet.name}"${t.formdesignerpanel2525_2}`,
                     header: t.formdesignerpanel2526,
                     icon: 'pi pi-exclamation-triangle',

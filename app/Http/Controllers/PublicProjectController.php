@@ -19,7 +19,7 @@ class PublicProjectController extends Controller
         $user = User::where('username', $username)->first();
 
         if (!$user) {
-            abort(404, 'User not found');
+            abort(404, __('publicprojectcontrollerphp22'));
         }
 
         // Find project by name and owner
@@ -30,7 +30,7 @@ class PublicProjectController extends Controller
             ->first();
 
         if (!$project) {
-            abort(404, 'Project not found or is not public');
+            abort(404, __('publicprojectcontrollerphp33'));
         }
 
         // Load related data (without sensitive information)
@@ -126,7 +126,7 @@ class PublicProjectController extends Controller
         $user = User::where('username', $username)->first();
 
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            return response()->json(['error' => __('publicprojectcontrollerphp129')], 404);
         }
 
         // Find project by name and owner
@@ -137,7 +137,7 @@ class PublicProjectController extends Controller
             ->first();
 
         if (!$project) {
-            return response()->json(['error' => 'Project not found or is not public'], 404);
+            return response()->json(['error' => __('publicprojectcontrollerphp140')], 404);
         }
 
         // Return basic public data

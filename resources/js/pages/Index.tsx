@@ -1269,6 +1269,25 @@ export default function Index(props: IndexProps = {}) {
   });
   const [isResizing, setIsResizing] = useState(false);
 
+  // Navigation panel visibility (hide/show for mobile) — persisted in localStorage
+  const [navPanelVisible, setNavPanelVisible] = useState(() => {
+    const saved = localStorage.getItem('nav_panel_visible');
+    return saved !== null ? saved === 'true' : true;
+  });
+  // Tree panel (PanelT1) visibility — persisted in localStorage
+  const [treePanelVisible, setTreePanelVisible] = useState(() => {
+    const saved = localStorage.getItem('tree_panel_visible');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Persist panel visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem('nav_panel_visible', String(navPanelVisible));
+  }, [navPanelVisible]);
+  useEffect(() => {
+    localStorage.setItem('tree_panel_visible', String(treePanelVisible));
+  }, [treePanelVisible]);
+
   // Forced logout message state (for single-session enforcement)
   const [forcedLogoutMessage, setForcedLogoutMessage] = useState<string | null>(null);
 
@@ -1784,6 +1803,22 @@ export default function Index(props: IndexProps = {}) {
     };
     window.addEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
 
+    // Navigation panel toggle events
+    const handleToggleNavPanel = () => setNavPanelVisible(prev => !prev);
+    const handleCloseNavPanel = () => setNavPanelVisible(false);
+    const handleOpenNavPanel = () => setNavPanelVisible(true);
+    window.addEventListener('toggleNavPanel', handleToggleNavPanel);
+    window.addEventListener('closeNavPanel', handleCloseNavPanel);
+    window.addEventListener('openNavPanel', handleOpenNavPanel);
+
+    // Tree panel (PanelT1) toggle events
+    const handleToggleTreePanel = () => setTreePanelVisible(prev => !prev);
+    const handleCloseTreePanel = () => setTreePanelVisible(false);
+    const handleOpenTreePanel = () => setTreePanelVisible(true);
+    window.addEventListener('toggleTreePanel', handleToggleTreePanel);
+    window.addEventListener('closeTreePanel', handleCloseTreePanel);
+    window.addEventListener('openTreePanel', handleOpenTreePanel);
+
     // Check for forced logout message on mount (after page reload)
     const forcedLogoutReason = localStorage.getItem('forced_logout_reason');
     const forcedLogoutTime = localStorage.getItem('forced_logout_time');
@@ -1929,6 +1964,12 @@ export default function Index(props: IndexProps = {}) {
       window.removeEventListener('auth-modal-switch', handleAuthModalSwitch as EventListener);
       window.removeEventListener('sessionRevoked', handleSessionRevoked as EventListener);
       window.removeEventListener('sessionForciblyEnded', handleSessionForciblyEnded as EventListener);
+      window.removeEventListener('toggleNavPanel', handleToggleNavPanel);
+      window.removeEventListener('closeNavPanel', handleCloseNavPanel);
+      window.removeEventListener('openNavPanel', handleOpenNavPanel);
+      window.removeEventListener('toggleTreePanel', handleToggleTreePanel);
+      window.removeEventListener('closeTreePanel', handleCloseTreePanel);
+      window.removeEventListener('openTreePanel', handleOpenTreePanel);
       clearInterval(tokenCheckInterval);
       clearInterval(heartbeatInterval);
       if (demoCountdownInterval) clearInterval(demoCountdownInterval);
@@ -2612,10 +2653,11 @@ useHotkeys('alt+m', () => {
         <ProjectProvider>
         <div
           style={{
-            height: '100vh',
+            height: '100dvh',
             width: '100vw',
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden',
             backgroundColor: colors.bgPrimary
           }}
         >
@@ -2625,34 +2667,40 @@ useHotkeys('alt+m', () => {
           {/* HAUPTBEREICH */}
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: colors.bgPrimary }}>
             {/* NEUE NAVIGATION LINKS */}
-            <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} onOpenSqlImport={handleOpenSqlImport} onOpenDatabaseExport={handleOpenDatabaseExport} />
+            {navPanelVisible && (
+              <NewNavigationPanel onOpenPanel={openPanel} onOpenModal={handleOpenModal} onOpenSqlImport={handleOpenSqlImport} onOpenDatabaseExport={handleOpenDatabaseExport} />
+            )}
 
             {/* ARBEITSBEREICH MIT LINKEM PANEL UND MDI */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: colors.bgPrimary }}>
               {/* LINKES PANEL (Tree View) - Größe änderbar */}
-              <div
-                style={{
-                  width: `${leftPanelWidth}px`,
-                  flexShrink: 0,
-                  backgroundColor: colors.bgSecondary,
-                  borderRight: `1px solid ${colors.borderPrimary}`
-                }}
-              >
-                <PanelT1 onOpenPanel={openPanel} />
-              </div>
+              {treePanelVisible && (
+                <>
+                  <div
+                    style={{
+                      width: `${leftPanelWidth}px`,
+                      flexShrink: 0,
+                      backgroundColor: colors.bgSecondary,
+                      borderRight: `1px solid ${colors.borderPrimary}`
+                    }}
+                  >
+                    <PanelT1 onOpenPanel={openPanel} />
+                  </div>
 
-              {/* RESIZE HANDLE */}
-              <div
-                style={{
-                  width: '4px',
-                  backgroundColor: isResizing ? colors.accent : 'transparent',
-                  cursor: 'ew-resize',
-                  flexShrink: 0,
-                  borderLeft: `1px solid ${colors.borderPrimary}`,
-                  borderRight: `1px solid ${colors.borderPrimary}`
-                }}
-                onMouseDown={handleMouseDown}
-              />
+                  {/* RESIZE HANDLE */}
+                  <div
+                    style={{
+                      width: '4px',
+                      backgroundColor: isResizing ? colors.accent : 'transparent',
+                      cursor: 'ew-resize',
+                      flexShrink: 0,
+                      borderLeft: `1px solid ${colors.borderPrimary}`,
+                      borderRight: `1px solid ${colors.borderPrimary}`
+                    }}
+                    onMouseDown={handleMouseDown}
+                  />
+                </>
+              )}
 
               {/* RC-DOCK MDI AREA */}
               <div style={{ flex: 1, position: 'relative', backgroundColor: colors.bgPrimary }}>

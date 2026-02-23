@@ -1,0 +1,112 @@
+{
+  "name": "i18n-inline-preview",
+  "displayName": "i18n Inline Preview",
+  "description": "See translations inline while coding. Shows translated text next to i18n keys like t.key, __('key'), $t('key'). Cycle languages with Ctrl+Shift+L.",
+  "version": "1.0.0",
+  "publisher": "scoriet",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scoriet/i18n-inline-preview"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other", "Visualization"],
+  "keywords": ["i18n", "translation", "inline", "preview", "internationalization", "localization", "l10n", "intl"],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "i18n-inline-preview.togglePreview",
+        "title": "i18n Inline Preview: Toggle On/Off"
+      },
+      {
+        "command": "i18n-inline-preview.cycleLanguage",
+        "title": "i18n Inline Preview: Cycle Language"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "i18n-inline-preview.cycleLanguage",
+        "key": "ctrl+shift+l",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "i18n Inline Preview",
+      "properties": {
+        "i18nInlinePreview.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable inline translation previews"
+        },
+        "i18nInlinePreview.defaultLanguage": {
+          "type": "string",
+          "default": "en",
+          "description": "Default preview language (must match a code in the languages list)"
+        },
+        "i18nInlinePreview.maxPreviewLength": {
+          "type": "number",
+          "default": 60,
+          "description": "Maximum characters shown in inline preview (0 = unlimited)"
+        },
+        "i18nInlinePreview.languages": {
+          "type": "array",
+          "default": [
+            { "code": "en", "label": "EN" },
+            { "code": "de", "label": "DE" },
+            { "code": "fr", "label": "FR" },
+            { "code": "es", "label": "ES" },
+            { "code": "it", "label": "IT" }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "description": "Language code (used in file paths)" },
+              "label": { "type": "string", "description": "Display label (shown in status bar and hover)" }
+            },
+            "required": ["code", "label"]
+          },
+          "description": "Languages to cycle through. Each needs a code (for file paths) and a label (for display)."
+        },
+        "i18nInlinePreview.localeFiles": {
+          "type": "array",
+          "default": [
+            { "pattern": "src/locales/{lang}.json", "format": "json" },
+            { "pattern": "src/i18n/{lang}.json", "format": "json" },
+            { "pattern": "locales/{lang}.json", "format": "json" },
+            { "pattern": "lang/{lang}.json", "format": "json" },
+            { "pattern": "resources/js/i18n/locales/{lang}.ts", "format": "ts" },
+            { "pattern": "src/i18n/locales/{lang}.ts", "format": "ts" }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": { "type": "string", "description": "Relative path with {lang} placeholder" },
+              "format": { "type": "string", "enum": ["json", "ts", "js"], "description": "File format: json (flat or nested), ts/js (key: 'value' pairs)" }
+            },
+            "required": ["pattern", "format"]
+          },
+          "description": "Where to find translation files. Use {lang} as placeholder for the language code. Paths that don't exist are silently skipped."
+        },
+        "i18nInlinePreview.dotPatterns": {
+          "type": "array",
+          "default": ["t"],
+          "items": { "type": "string" },
+          "description": "Property access patterns to match. Default ['t'] matches t.keyName and data.t.keyName."
+        },
+        "i18nInlinePreview.functionPatterns": {
+          "type": "array",
+          "default": ["__", "$t"],
+          "items": { "type": "string" },
+          "description": "Function call patterns to match. Default ['__', '$t'] matches __('key') and $t('key')."
+        }
+      }
+    }
+  }
+}

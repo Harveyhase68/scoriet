@@ -21,8 +21,8 @@ class CheckSystemUser
         }
 
         $user = Auth::user();
-        if (!in_array($user->user_type, ['system', 'admin'])) {
-            abort(403, 'Access denied. System or Admin privileges required.');
+        if ($user->user_type !== 'system') {
+            abort(403, 'Access denied. System privileges required.');
         }
 
         return $next($request);

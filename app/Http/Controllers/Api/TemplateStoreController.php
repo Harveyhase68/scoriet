@@ -125,7 +125,7 @@ class TemplateStoreController extends Controller
     public function show(Template $template): JsonResponse
     {
         if (!$template->isStoreTemplate()) {
-            return response()->json(['message' => 'Template not found in store'], 404);
+            return response()->json(['message' => __('templatestorecontrollerphp128')], 404);
         }
 
         $template->load([
@@ -155,11 +155,11 @@ class TemplateStoreController extends Controller
         $user = Auth::user();
 
         if (!$template->isStoreTemplate()) {
-            return response()->json(['message' => 'Template not found in store'], 404);
+            return response()->json(['message' => __('templatestorecontrollerphp158')], 404);
         }
 
         if (!$template->canBePurchasedBy($user)) {
-            return response()->json(['message' => 'You cannot purchase this template'], 400);
+            return response()->json(['message' => __('templatestorecontrollerphp162')], 400);
         }
 
         // Handle credit payment
@@ -196,7 +196,7 @@ class TemplateStoreController extends Controller
             ]);
         }
 
-        return response()->json(['message' => 'Invalid template price configuration'], 400);
+        return response()->json(['message' => __('templatestorecontrollerphp199')], 400);
     }
 
     /**
@@ -325,12 +325,12 @@ class TemplateStoreController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Template cannot be submitted to store. Significant similarity detected with purchased templates.',
+                'message' => __('templatestorecontrollerphp328'),
                 'plagiarism_detected' => true,
                 'highest_similarity' => round($plagiarismCheck['highest_similarity'] * 100, 1),
                 'matched_templates' => $matchedTemplates,
-                'help' => 'Your template contains code that is too similar to templates you have purchased. ' .
-                          'Please ensure your template is original work and not a copy of purchased content.',
+                'help' => __('templatestorecontrollerphp332') .
+                          __('templatestorecontrollerphp333'),
             ], 422);
         }
 
@@ -348,7 +348,7 @@ class TemplateStoreController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Template submitted for store. It will be visible once approved or when it has 5+ positive reviews.',
+            'message' => __('templatestorecontrollerphp351'),
             'template' => $template->fresh(),
         ]);
     }
@@ -367,7 +367,7 @@ class TemplateStoreController extends Controller
 
         // Allow both store templates and templates being set to store
         if (!$template->isStoreTemplate()) {
-            return response()->json(['message' => 'Template is not in store. Change visibility to "store" first.'], 400);
+            return response()->json(['message' => __('templatestorecontrollerphp370')], 400);
         }
 
         $request->validate([
@@ -383,7 +383,7 @@ class TemplateStoreController extends Controller
         );
 
         if (!empty($priceErrors)) {
-            return response()->json(['message' => 'Invalid price', 'errors' => $priceErrors], 422);
+            return response()->json(['message' => __('templatestorecontrollerphp386'), 'errors' => $priceErrors], 422);
         }
 
         $template->update([
@@ -394,7 +394,7 @@ class TemplateStoreController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Price updated successfully.',
+            'message' => __('templatestorecontrollerphp397'),
             'template' => $template->fresh(),
         ]);
     }
@@ -420,7 +420,7 @@ class TemplateStoreController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Template removed from store.',
+            'message' => __('templatestorecontrollerphp423'),
         ]);
     }
 }

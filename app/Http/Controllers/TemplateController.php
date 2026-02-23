@@ -1022,14 +1022,14 @@ class TemplateController extends Controller
         $template = Template::with(['files', 'creator'])->find($templateId);
 
         if (!$template) {
-            return response()->json(['message' => 'Template not found.'], 404);
+            return response()->json(['message' => __('templatecontrollerphp1025')], 404);
         }
 
         // Check permissions
         if ($template->creator_user_id != $user->id &&
-            !in_array($user->user_type, ['admin', 'system']) &&
+            $user->user_type !== 'system' &&
             !$user->is_inner_core) {
-            return response()->json(['message' => 'Unauthorized to download this template.'], 403);
+            return response()->json(['message' => __('templatecontrollerphp1032')], 403);
         }
 
         // Create temporary directory
@@ -1090,7 +1090,7 @@ class TemplateController extends Controller
                 $zipPath = $archivePath . '.zip';
 
                 if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                    throw new \Exception('Failed to create ZIP archive');
+                    throw new \Exception(__('templatecontrollerphp1093'));
                 }
 
                 $this->addFilesToZipRecursive($zip, $tempDir, '');
@@ -1140,13 +1140,13 @@ class TemplateController extends Controller
                 ->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            \Log::error('Template archive download failed', [
+            \Log::error(__('templatecontrollerphp1143'), [
                 'error' => $e->getMessage(),
                 'template_id' => $templateId,
                 'format' => $format,
             ]);
 
-            return response()->json(['error' => 'Failed to create archive: ' . $e->getMessage()], 500);
+            return response()->json(['error' => __('templatecontrollerphp1149') . $e->getMessage()], 500);
 
         } finally {
             // Clean up temp directory

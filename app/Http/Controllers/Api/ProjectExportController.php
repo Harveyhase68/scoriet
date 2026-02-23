@@ -27,19 +27,19 @@ class ProjectExportController extends Controller
         $project = Project::find($projectId);
 
         if (!$project) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('projectexportcontrollerphp30')], 404);
         }
 
         // Only owner or admin/system can export
         if ((int) $project->owner_id !== (int) $user->id &&
-            !in_array($user->user_type, ['admin', 'system'])) {
-            return response()->json(['message' => 'Only the project owner can export'], 403);
+            $user->user_type !== 'system') {
+            return response()->json(['message' => __('projectexportcontrollerphp36')], 403);
         }
 
         // Validate format
         $format = $request->query('format', 'zip');
         if (!in_array($format, ['zip', 'tar.gz', 'tar.xz'])) {
-            return response()->json(['message' => 'Invalid format. Use: zip, tar.gz, or tar.xz'], 400);
+            return response()->json(['message' => __('projectexportcontrollerphp42')], 400);
         }
 
         try {
@@ -56,7 +56,7 @@ class ProjectExportController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Export failed',
+                'message' => __('projectexportcontrollerphp59'),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -74,13 +74,13 @@ class ProjectExportController extends Controller
         $project = Project::find($projectId);
 
         if (!$project) {
-            return response()->json(['message' => 'Project not found'], 404);
+            return response()->json(['message' => __('projectexportcontrollerphp77')], 404);
         }
 
         // Only owner or admin/system can see export preview
         if ((int) $project->owner_id !== (int) $user->id &&
-            !in_array($user->user_type, ['admin', 'system'])) {
-            return response()->json(['message' => 'Only the project owner can export'], 403);
+            $user->user_type !== 'system') {
+            return response()->json(['message' => __('projectexportcontrollerphp83')], 403);
         }
 
         // Collect statistics about what will be exported

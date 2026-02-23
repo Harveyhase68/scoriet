@@ -143,6 +143,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
 
   const confirmRemoveMember = (member: ProjectMember) => {
     confirmDialog({
+      group: 'project-members',
       message: `Are you sure you want to remove ${member.user.name} from this project?`,
       header: t.projectmembersmodal141,
       icon: 'pi pi-exclamation-triangle',
@@ -308,7 +309,7 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
         </div>
       </Dialog>
 
-      <ConfirmDialog />
+      <ConfirmDialog group="project-members" />
     </>
   );
 }

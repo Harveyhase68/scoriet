@@ -365,7 +365,7 @@ class Project extends Model
      */
     public function canCreatePrivate($user): bool
     {
-        return $user && in_array($user->user_type, ['patron', 'admin', 'system']);
+        return $user && in_array($user->user_type, ['patron', 'system']);
     }
 
     /**

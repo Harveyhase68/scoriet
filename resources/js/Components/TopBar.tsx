@@ -183,8 +183,26 @@ export default function TopBar() {
         borderBottom: `1px solid ${colors.borderPrimary}`
       }}
     >
-      {/* Left: Logo and Brand */}
+      {/* Left: Nav Toggle + Tree Toggle + Logo and Brand */}
       <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggleNavPanel'))}
+            className="p-2 rounded transition-colors hover:opacity-80"
+            style={{ color: colors.textMuted }}
+            title={t.topbarToggleNav || 'Toggle Navigation'}
+          >
+            <i className="pi pi-bars text-lg"></i>
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggleTreePanel'))}
+            className="p-2 rounded transition-colors hover:opacity-80"
+            style={{ color: colors.textMuted }}
+            title={t.topbarToggleTree || 'Toggle Tree Panel'}
+          >
+            <i className="pi pi-sitemap text-lg"></i>
+          </button>
+        </div>
         <div className="flex items-center space-x-3">
           <img
             src="/images/logos/scoriet-logo.png"
@@ -192,7 +210,7 @@ export default function TopBar() {
             className="h-8 w-auto"
             style={{ maxHeight: '32px', width: 'auto' }}
           />
-          <div className="text-xs" style={{ color: colors.textMuted }}>{t.topbar195}</div>
+          <div className="text-xs hidden sm:block" style={{ color: colors.textMuted }}>{t.topbar195}</div>
         </div>
       </div>
 

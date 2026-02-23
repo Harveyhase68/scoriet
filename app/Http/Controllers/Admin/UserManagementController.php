@@ -16,10 +16,10 @@ class UserManagementController extends Controller
     {
         $user = $request->user();
 
-        // Check if user is admin or system
-        if (!in_array($user->user_type, ['admin', 'system'])) {
+        // Check if user is system
+        if ($user->user_type !== 'system') {
             return response()->json([
-                'message' => 'Unauthorized. Admin access required.',
+                'message' => 'Unauthorized. System access required.',
             ], 403);
         }
 
@@ -57,10 +57,10 @@ class UserManagementController extends Controller
     {
         $admin = $request->user();
 
-        // Check if user is admin or system
-        if (!in_array($admin->user_type, ['admin', 'system'])) {
+        // Check if user is system
+        if ($admin->user_type !== 'system') {
             return response()->json([
-                'message' => 'Unauthorized. Admin access required.',
+                'message' => 'Unauthorized. System access required.',
             ], 403);
         }
 
@@ -111,17 +111,17 @@ class UserManagementController extends Controller
     {
         $admin = $request->user();
 
-        // Check if user is admin or system
-        if (!in_array($admin->user_type, ['admin', 'system'])) {
+        // Check if user is system
+        if ($admin->user_type !== 'system') {
             return response()->json([
-                'message' => 'Unauthorized. Admin access required.',
+                'message' => 'Unauthorized. System access required.',
             ], 403);
         }
 
         $totalUsers = User::count();
         $innerCoreCount = User::where('is_inner_core', true)->count();
         $verifiedUsers = User::whereNotNull('email_verified_at')->count();
-        $adminCount = User::where('user_type', 'admin')->count();
+        $adminCount = User::where('user_type', 'system')->count();
 
         $innerCoreUsers = User::where('is_inner_core', true)
             ->select('id', 'name', 'email', 'created_at')

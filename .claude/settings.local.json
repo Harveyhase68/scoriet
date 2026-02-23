@@ -148,7 +148,11 @@
       "Bash(cmd /c del:*)",
       "Bash(cmd /c \"magick --version 2>nul || convert --version 2>nul || echo NO_IMAGEMAGICK\")",
       "Bash(TOKEN=\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIwMTljMzJhZS05NzMwLTcwNjYtYjgzOS03OTgzMjk5NmFlYTkiLCJqdGkiOiI4MGViNjkwNDY2MGI2ZjRkYmM5NzVhZmJmNzA1ODExMzg4MjY5YTIxMjE4NTE1OWRmMjhmYTFiZjA5ZDI3ODkwZjA3MzFlZmNiZmExZGQ3OCIsImlhdCI6MTc3MTI2MDU2Ni4wMzgwNjEsIm5iZiI6MTc3MTI2MDU2Ni4wMzgwNjMsImV4cCI6MTc3MTI2Nzc2Ni4wMjU3MzQsInN1YiI6IjIiLCJzY29wZXMiOltdfQ.b9PBlt2_XxRJTrefkGGTvPhsU98I_yNOFncFTVZC7yHX8g32MQ7BEzEmlqcYXSDTOZdNOe6RTW5Rh6x6c7S9Kuw3NTqm0wIacK3Q_WD6K-TZJFmhmRusyeWZ8fDKbhq5KUwDYFrHr0_168G0oc1dPhLeUfsb5s_fuyAgR0yI1Eq_GbfydIpdSjwNy3BUoYH89TlmP4bjxyeUL9UmqkqIxo2DX_nOwaWOgj3Tj3HXB_n25uH-2KFNZNn4J4HhNeZrsKCoGr4vpwIpVyHlJVoaAUPmPVMRJdlz9ov6QZzok7cRI8PeM_FwpVe3TG_iVb9o-11rEu0JMC13C0X7Pi9OBskApEH3UjHjSmvn76aa_4ObxnYLhLSewYgok6t8vG0TzIO4785-4zgFDR7jxTZErGT1Op3Inr-fW_ejHYNAQU2jdvJFDCm5rar6faejHinGbgycHvGioNtPPH9-TK_L1fWV9cNdAgXmDFBGpRhyxmcla0vr93vLMxo5sq-uxC0nEVaSDrSlO96dYl34x_f0NqamN1trnF9aLdpZB-89HwBVH18AaXMLvh_wytKFHJJgP7_VYXLiRDPQ45X0QF2zhX4QNZCKXFMKw5RcHIB569U6yXp2t8wn2D0NJwujNVUA6Io32i0pfKwz92C_kfFZOvztQZd3tg_uviP8SY_Kjpw\")",
-      "Bash(composer remove:*)"
+      "Bash(composer remove:*)",
+      "Bash(netsh advfirewall firewall show rule:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(node generate-icon.js:*)",
+      "Bash(comm:*)"
     ],
     "deny": [],
     "ask": []
