@@ -199,7 +199,7 @@ class TeamRoleController extends Controller
         }
 
         // Can only edit roles belonging to this team
-        if ($role->team_id !== $teamId) {
+        if ((int) $role->team_id !== $teamId) {
             return response()->json(['message' => __('teamrolecontrollerphp203')], 403);
         }
 
@@ -275,7 +275,7 @@ class TeamRoleController extends Controller
         }
 
         // Can only delete roles belonging to this team
-        if ($role->team_id !== $teamId) {
+        if ((int) $role->team_id !== $teamId) {
             return response()->json(['message' => __('teamrolecontrollerphp279')], 403);
         }
 
@@ -341,7 +341,7 @@ class TeamRoleController extends Controller
             }
 
             // Verify role is valid for this team (team-specific or system default)
-            if ($role->team_id !== null && $role->team_id !== $teamId) {
+            if ($role->team_id !== null && (int) $role->team_id !== $teamId) {
                 return response()->json(['message' => __('teamrolecontrollerphp345')], 422);
             }
         }
@@ -431,7 +431,7 @@ class TeamRoleController extends Controller
         }
 
         // Can only copy roles from this team
-        if ($sourceRole->team_id !== $teamId && $sourceRole->team_id !== null) {
+        if ($sourceRole->team_id !== null && (int) $sourceRole->team_id !== $teamId) {
             return response()->json(['message' => __('teamrolecontrollerphp435')], 422);
         }
 

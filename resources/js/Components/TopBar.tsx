@@ -207,8 +207,9 @@ export default function TopBar() {
           <img
             src="/images/logos/scoriet-logo.png"
             alt={t.topbar71}
-            className="h-8 w-auto"
+            className="h-8 w-auto cursor-pointer"
             style={{ maxHeight: '32px', width: 'auto' }}
+            title={`Scoriet v${import.meta.env.VITE_APP_VERSION || 'dev'}\n\nEnterprise Code Generator\nMySQL | PostgreSQL | SQLite | MS-SQL | Firebird`}
           />
           <div className="text-xs hidden sm:block" style={{ color: colors.textMuted }}>{t.topbar195}</div>
         </div>
