@@ -129,7 +129,7 @@
             <h1 class="title">{{__('subscription-expiredbladephp129')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('subscription-expiredbladephp132')}}{{ $user->name }},</p>
 
         <div class="expired-banner">
             <div class="expired-icon">⏰</div>

@@ -94,12 +94,12 @@ class LanguageController extends Controller
         $this->checkSystemAdmin();
 
         if ($language->is_default) {
-            return response()->json(['error' => 'Cannot delete the default language.'], 422);
+            return response()->json(['error' => __('languagecontrollerphp97')], 422);
         }
 
         $language->delete();
 
-        return response()->json(['message' => 'Language deleted successfully.']);
+        return response()->json(['message' => __('languagecontrollerphp102')]);
     }
 
     public function setDefault(Language $language): JsonResponse
@@ -107,7 +107,7 @@ class LanguageController extends Controller
         $this->checkSystemAdmin();
 
         if (!$language->is_active) {
-            return response()->json(['error' => 'Cannot set inactive language as default.'], 422);
+            return response()->json(['error' => __('languagecontrollerphp110')], 422);
         }
 
         Language::setDefault($language->id);
@@ -122,7 +122,7 @@ class LanguageController extends Controller
         $this->checkSystemAdmin();
 
         if ($language->is_default && $language->is_active) {
-            return response()->json(['error' => 'Cannot deactivate the default language.'], 422);
+            return response()->json(['error' => __('languagecontrollerphp125')], 422);
         }
 
         $language->update(['is_active' => !$language->is_active]);

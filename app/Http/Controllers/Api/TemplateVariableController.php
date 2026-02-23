@@ -68,7 +68,7 @@ class TemplateVariableController extends Controller
 
         if ($exists) {
             return response()->json([
-                'error' => 'Variable already exists for this template'
+                'error' => __('templatevariablecontrollerphp71')
             ], 422);
         }
 
@@ -111,7 +111,7 @@ class TemplateVariableController extends Controller
 
             if ($exists) {
                 return response()->json([
-                    'error' => 'Variable name already exists for this template'
+                    'error' => __('templatevariablecontrollerphp114')
                 ], 422);
             }
         }
@@ -138,6 +138,6 @@ class TemplateVariableController extends Controller
 
         $variable->delete();
 
-        return response()->json(['message' => 'Variable deleted successfully']);
+        return response()->json(['message' => __('templatevariablecontrollerphp141')]);
     }
 }

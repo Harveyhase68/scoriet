@@ -94,15 +94,32 @@ class DiagramLayoutController extends Controller
 
         $levels = [];
         $levelIndex = 0;
-        $currentLevelQueue = [];
+        $placed = [];
 
-        while (!empty($queue) || !empty($currentLevelQueue)) {
-            if (empty($currentLevelQueue)) {
-                $currentLevelQueue = $queue;
-                $queue = [];
+        while (count($placed) < count($tables)) {
+            // Collect all nodes with in-degree 0 that haven't been placed yet
+            if (empty($queue)) {
+                // No nodes with in-degree 0 — we have a cycle.
+                // Break the cycle by collecting ALL unplaced nodes with the lowest in-degree
+                // and placing them together on the same level.
+                $minDeg = PHP_INT_MAX;
+                foreach ($inDegree as $node => $deg) {
+                    if (!isset($placed[$node]) && $deg < $minDeg) {
+                        $minDeg = $deg;
+                    }
+                }
+                if ($minDeg === PHP_INT_MAX) break; // Safety: should not happen
+                foreach ($inDegree as $node => $deg) {
+                    if (!isset($placed[$node]) && $deg === $minDeg) {
+                        $queue[] = $node;
+                        $inDegree[$node] = 0;
+                    }
+                }
             }
 
-            sort($currentLevelQueue);
+            sort($queue);
+            $currentLevelQueue = $queue;
+            $queue = [];
             $nextLevelQueue = [];
             $levels[$levelIndex] = [];
             $placedNodes = 0;
@@ -110,13 +127,16 @@ class DiagramLayoutController extends Controller
             while (!empty($currentLevelQueue)) {
                 $node = array_shift($currentLevelQueue);
 
+                if (isset($placed[$node])) continue; // Skip already placed
+
                 if ($placedNodes < $maxNodesPerLevel) {
                     $levels[$levelIndex][] = $node;
+                    $placed[$node] = true;
                     $placedNodes++;
 
                     foreach ($graph[$node] as $neighbor) {
                         $inDegree[$neighbor]--;
-                        if ($inDegree[$neighbor] == 0) {
+                        if ($inDegree[$neighbor] == 0 && !isset($placed[$neighbor])) {
                             $queue[] = $neighbor;
                         }
                     }
@@ -126,11 +146,12 @@ class DiagramLayoutController extends Controller
             }
 
             $queue = array_merge($queue, $nextLevelQueue);
-
-            if (!empty($levels[$levelIndex]) || !empty($queue)) {
-                $levelIndex++;
-            }
+            $levelIndex++;
         }
+
+        // Remove empty trailing levels
+        $levels = array_filter($levels, fn($level) => !empty($level));
+        $levels = array_values($levels);
 
         // ---------------------------
         // 2. Kantenkreuzungsreduzierung (Barycenter Heuristik)

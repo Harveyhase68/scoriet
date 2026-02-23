@@ -541,6 +541,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
   const deleteAdjustment = async (adjustment: CodeAdjustment) => {
     confirmDialog({
+      group: 'code-adjustments',
       message: `${t.codeadjustmentspanel544}"${adjustment.name}"?`,
       header: t.codeadjustmentspanel545,
       icon: 'pi pi-exclamation-triangle',
@@ -656,6 +657,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!selectedAdjustment?.id || !selectedProject?.id) return;
 
     confirmDialog({
+      group: 'code-adjustments',
       message: t.codeadjustmentspanel659,
       header: t.codeadjustmentspanel660,
       icon: 'pi pi-exclamation-triangle',
@@ -1176,7 +1178,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         toast.current?.show({
           severity: 'success',
           summary: t.codeadjustmentspanel1178,
-          detail: `${successCount}${t.codeadjustmentspanel1179}${errorCount > 0 ? `, ${errorCount} Fehler` : ''}`,
+          detail: `${successCount}${t.codeadjustmentspanel1179}${errorCount > 0 ? `, ${errorCount}${t.codeadjustmentspanel1181}` : ''}`,
           life: 5000,
         });
         // Reload adjustments and switch to management tab
@@ -1461,7 +1463,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog group="code-adjustments" />
 
       {/* Header */}
       <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: colors.borderPrimary }}>

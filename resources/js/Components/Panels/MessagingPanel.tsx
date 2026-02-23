@@ -109,6 +109,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const [composeFiles, setComposeFiles] = useState<File[]>([]);
   const composeFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Mobile message detail modal
+  const [mobileMessageDetail, setMobileMessageDetail] = useState<Message | null>(null);
+
   // Pagination state for messages
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [oldestLoadedId, setOldestLoadedId] = useState<number | null>(null);
@@ -897,7 +900,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       <ConfirmDialog group="messaging" />
 
       <div
-        className="h-full overflow-hidden rounded-lg"
+        className="h-full flex flex-col overflow-hidden rounded-lg"
         style={{
           backgroundColor: colors.bgSecondary,
           border: `1px solid ${colors.borderPrimary}`,
@@ -905,14 +908,15 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         }}
       >
         <Toolbar
-          className="mb-3"
+          className="mb-3 flex-shrink-0"
           left={leftToolbarTemplate}
           style={{ backgroundColor: colors.bgSecondary, border: 'none' }}
         />
 
         <Splitter
           style={{
-            height: 'calc(100vh - 250px)',
+            flex: 1,
+            minHeight: 0,
             backgroundColor: colors.bgPrimary,
             ['--theme-bg-primary' as string]: colors.bgPrimary,
             ['--theme-bg-secondary' as string]: colors.bgSecondary,
@@ -973,7 +977,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             }}
           >
             {selectedThread ? (
-              <div className="flex flex-col h-full p-3 overflow-hidden" style={{ backgroundColor: colors.bgPrimary }}>
+              <div className="flex flex-col h-full min-h-0 p-3" style={{ backgroundColor: colors.bgPrimary }}>
                 {/* Thread Header */}
                 <div className="pb-3 mb-3" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
                   <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: colors.textPrimary }}>
@@ -991,7 +995,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                 <div
                   ref={messagesContainerRef}
                   onScroll={handleMessagesScroll}
-                  className="flex-1 overflow-auto mb-3 space-y-3"
+                  className="flex-1 min-h-0 overflow-auto mb-3 space-y-3"
                 >
                   {/* Load more indicator */}
                   {hasMoreOlder && (
@@ -1013,48 +1017,57 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
                       )}
                     </div>
                   )}
-                  {selectedThread.messages?.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="p-3 rounded-lg"
-                      style={{
-                        backgroundColor: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0')
-                          ? `${colors.accent}30`
-                          : colors.bgTertiary,
-                        marginLeft: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0') ? '2rem' : 0,
-                        marginRight: Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0') ? 0 : '2rem',
-                      }}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm" style={{ color: colors.textPrimary }}>
-                          {msg.sender?.name || msg.sender?.username || t.messagingpanel1030}
-                        </span>
-                        <span className="text-xs" style={{ color: colors.textMuted }}>
-                          {formatDate(msg.created_at)}
-                        </span>
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap" style={{ color: colors.textPrimary }}>{msg.body}</div>
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {msg.attachments.map((att: any) => (
-                            <button
-                              key={att.id}
-                              onClick={() => handleDownloadAttachment(att.id, att.original_filename)}
-                              className="flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer"
-                              style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}
-                            >
-                              <i className="pi pi-download" />
-                              {att.original_filename}
-                            </button>
-                          ))}
+                  {selectedThread.messages?.map((msg) => {
+                    const isOwnMessage = Number(msg.sender_id) === parseInt(localStorage.getItem('user_id') || '0');
+                    return (
+                      <div
+                        key={msg.id}
+                        className="p-3 rounded-lg cursor-pointer sm:cursor-default"
+                        onClick={() => {
+                          if (window.innerWidth <= 768) {
+                            setMobileMessageDetail(msg);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: isOwnMessage ? `${colors.accent}30` : colors.bgTertiary,
+                          marginLeft: isOwnMessage ? '2rem' : 0,
+                          marginRight: isOwnMessage ? 0 : '2rem',
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-semibold text-sm" style={{ color: colors.textPrimary }}>
+                            {msg.sender?.name || msg.sender?.username || t.messagingpanel1030}
+                          </span>
+                          <span className="text-xs" style={{ color: colors.textMuted }}>
+                            {formatDate(msg.created_at)}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div className="text-sm whitespace-pre-wrap" style={{ color: colors.textPrimary }}>{msg.body}</div>
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {msg.attachments.map((att: any) => (
+                              <button
+                                key={att.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadAttachment(att.id, att.original_filename);
+                                }}
+                                className="flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer"
+                                style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}
+                              >
+                                <i className="pi pi-download" />
+                                {att.original_filename}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Reply Box */}
-                <div className="pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                <div className="pt-3 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                   {/* Selected files display */}
                   {selectedFiles.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-2">
@@ -1452,6 +1465,72 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
             </span>
           </div>
         </div>
+      </Dialog>
+
+      {/* Mobile Message Detail Modal */}
+      <Dialog
+        visible={mobileMessageDetail !== null}
+        onHide={() => setMobileMessageDetail(null)}
+        header={
+          <div className="flex items-center gap-2">
+            <i className="pi pi-envelope" />
+            <span>{mobileMessageDetail?.sender?.name || mobileMessageDetail?.sender?.username || t.messagingpanel1030}</span>
+          </div>
+        }
+        style={{ width: '95vw', maxWidth: '500px' }}
+        modal
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
+        footer={
+          <div className="flex justify-end">
+            <Button
+              label={t.messagingpanel1340}
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setMobileMessageDetail(null)}
+            />
+          </div>
+        }
+      >
+        {mobileMessageDetail && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold" style={{ color: colors.textPrimary }}>
+                {mobileMessageDetail.sender?.name || mobileMessageDetail.sender?.username || t.messagingpanel1030}
+              </span>
+              <span className="text-xs" style={{ color: colors.textMuted }}>
+                {new Date(mobileMessageDetail.created_at).toLocaleString(currentLanguage)}
+              </span>
+            </div>
+            <div
+              className="whitespace-pre-wrap text-sm p-3 rounded-lg"
+              style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
+            >
+              {mobileMessageDetail.body}
+            </div>
+            {mobileMessageDetail.attachments && mobileMessageDetail.attachments.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                  {t.messagingpanel1294}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {mobileMessageDetail.attachments.map((att: any) => (
+                    <button
+                      key={att.id}
+                      onClick={() => handleDownloadAttachment(att.id, att.original_filename)}
+                      className="flex items-center gap-1 text-xs px-3 py-2 rounded cursor-pointer"
+                      style={{ backgroundColor: colors.bgTertiary, color: colors.textSecondary }}
+                    >
+                      <i className="pi pi-download" />
+                      {att.original_filename}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Dialog>
     </div>
   );

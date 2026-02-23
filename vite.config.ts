@@ -123,9 +123,9 @@ export default defineConfig({
         }),
     ],
     server: {
-        host: 'scoriet.local',
+        host: true,  // Listen on all network interfaces (0.0.0.0) — allows LAN access from phone
         port: 5173,
-        origin: 'http://scoriet.local:5173',
+        origin: 'http://10.0.0.8:5173',  // Use network IP so phone can load assets
         cors: true,
     },    
     esbuild: {

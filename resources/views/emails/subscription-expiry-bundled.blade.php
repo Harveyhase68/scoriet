@@ -218,7 +218,7 @@
             @endif
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('subscription-expiry-bundledbladephp221')}}{{ $user->name }},</p>
 
         <p>
             @if($totalCount === 1)
@@ -300,7 +300,7 @@
         {{-- Bonus Box only for non-expired --}}
         @if(count($warningSubscriptions) > 0 || count($finalSubscriptions) > 0)
             <div class="bonus-box">
-                <div class="bonus-title">Frühbucher-Bonus</div>
+                <div class="bonus-title">{{__('subscription-expiry-bundledbladephp303')}}</div>
                 <p style="margin: 5px 0; color: #047857; font-size: 14px;">{{__('subscription-expiry-bundledbladephp304')}}</p>
                 <div class="bonus-days">+{{ $bonusDays }}{{__('subscription-expiry-bundledbladephp305')}}</div>
                 <p class="bonus-note">{{__('subscription-expiry-bundledbladephp306')}}</p>

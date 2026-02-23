@@ -288,6 +288,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     // Handle delete
     const handleDelete = (attachment: Attachment) => {
         confirmDialog({
+            group: 'project-attachments',
             message: `${t.projectattachmentspanel268}"${attachment.original_filename}"${t.projectattachmentspanel268_2}`,
             header: t.projectattachmentspanel292,
             icon: 'pi pi-exclamation-triangle',
@@ -413,7 +414,7 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
 
     return (
         <div className="flex flex-col h-full p-4" style={{ backgroundColor: colors.bgPrimary }}>
-            <ConfirmDialog />
+            <ConfirmDialog group="project-attachments" />
 
             {/* Header */}
             <div className="flex items-center justify-between mb-4">

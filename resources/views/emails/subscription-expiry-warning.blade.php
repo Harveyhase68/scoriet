@@ -136,7 +136,7 @@
             <h1 class="title">{{__('subscription-expiry-warningbladephp136')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('subscription-expiry-warningbladephp139')}}{{ $user->name }},</p>
 
         <div class="warning-banner">
             <div class="warning-title">
@@ -160,7 +160,7 @@
         <div class="bonus-box">
             <div class="bonus-title">{__('subscription-expiry-warningbladephp161')}}</div>
             <p style="margin: 5px 0; color: #047857;">{{__('subscription-expiry-warningbladephp162')}}</p>
-            <div class="bonus-days">+{{ $bonusDays }} Tage GRATIS!</div>
+            <div class="bonus-days">+{{ $bonusDays }}{{__('subscription-expiry-warningbladephp163')}}</div>
             <p style="margin: 10px 0 0; font-size: 14px; color: #059669;">
                 {{__('subscription-expiry-warningbladephp165')}}
             </p>

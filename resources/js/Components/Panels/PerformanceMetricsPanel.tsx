@@ -408,7 +408,7 @@ export default function PerformanceMetricsPanel() {
         </div>
       ) : (
         <TabView>
-          <TabPanel header="Übersicht" leftIcon="pi pi-chart-bar mr-2">
+          <TabPanel header={t.performancemetricspanel411} leftIcon="pi pi-chart-bar mr-2">
             {renderTotalSummary()}
             {renderOverviewCards()}
 

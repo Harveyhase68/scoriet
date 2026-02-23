@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import LanguageSelector from '@/Components/LanguageSelector';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProjectData {
   id: number;
@@ -69,6 +70,7 @@ export default function PublicProjectPage({ project, username: _username, projec
     return getStoredLanguage() as SupportedLanguage || 'de';
   });
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const handleLanguageChange = (lang: SupportedLanguage) => {
     setCurrentLanguage(lang);
@@ -107,9 +109,9 @@ export default function PublicProjectPage({ project, username: _username, projec
     <>
       <Head title={`${project.name} - ${project.owner.name}`} />
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="min-h-screen" style={{ backgroundColor: colors.bgPrimary }}>
         {/* Header */}
-        <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-50">
+        <header className="backdrop-blur-sm sticky top-0 z-50" style={{ backgroundColor: `${colors.bgSecondary}cc`, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               {/* Logo */}
@@ -118,7 +120,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-sm">S</span>
                   </div>
-                  <span className="text-xl font-bold text-white">Scoriet</span>
+                  <span className="text-xl font-bold" style={{ color: colors.textPrimary }}>Scoriet</span>
                 </div>
               </div>
 
@@ -152,12 +154,12 @@ export default function PublicProjectPage({ project, username: _username, projec
 
               {/* Project Info */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-white mb-2">{project.name}</h1>
-                <p className="text-gray-400 mb-3">
-                  {t.publicProjectBy} <span className="text-blue-400 font-medium">@{project.owner.username}</span>
+                <h1 className="text-3xl font-bold mb-2" style={{ color: colors.textPrimary }}>{project.name}</h1>
+                <p className="mb-3" style={{ color: colors.textMuted }}>
+                  {t.publicProjectBy} <span className="font-medium" style={{ color: colors.accent }}>@{project.owner.username}</span>
                 </p>
                 {project.description && (
-                  <p className="text-gray-300 text-lg">{project.description}</p>
+                  <p className="text-lg" style={{ color: colors.textSecondary }}>{project.description}</p>
                 )}
               </div>
             </div>
@@ -165,38 +167,38 @@ export default function PublicProjectPage({ project, username: _username, projec
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card className="bg-gray-800/50 border border-gray-700">
+            <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                  <UserGroupIcon className="w-6 h-6 text-blue-400" />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colors.accent}20` }}>
+                  <UserGroupIcon className="w-6 h-6" style={{ color: colors.accent }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{project.stats.teams_count}</p>
-                  <p className="text-gray-400">{t.teams}</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{project.stats.teams_count}</p>
+                  <p style={{ color: colors.textMuted }}>{t.teams}</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-gray-800/50 border border-gray-700">
+            <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
-                  <DocumentTextIcon className="w-6 h-6 text-green-400" />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colors.successText}20` }}>
+                  <DocumentTextIcon className="w-6 h-6" style={{ color: colors.successText }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{project.stats.templates_count}</p>
-                  <p className="text-gray-400">{t.templates}</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{project.stats.templates_count}</p>
+                  <p style={{ color: colors.textMuted }}>{t.templates}</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-gray-800/50 border border-gray-700">
+            <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                  <CircleStackIcon className="w-6 h-6 text-purple-400" />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#a855f720' }}>
+                  <CircleStackIcon className="w-6 h-6" style={{ color: '#a855f7' }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{project.stats.schemas_count}</p>
-                  <p className="text-gray-400">{t.databases}</p>
+                  <p className="text-2xl font-bold" style={{ color: colors.textPrimary }}>{project.stats.schemas_count}</p>
+                  <p style={{ color: colors.textMuted }}>{t.databases}</p>
                 </div>
               </div>
             </Card>
@@ -206,8 +208,8 @@ export default function PublicProjectPage({ project, username: _username, projec
             {/* Left Column */}
             <div className="space-y-6">
               {/* Project Settings */}
-              <Card className="bg-gray-800/50 border border-gray-700" title={
-                <div className="flex items-center gap-2 text-white">
+              <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }} title={
+                <div className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
                   <GlobeAltIcon className="w-5 h-5" />
                   <span>{t.projectSettings}</span>
                 </div>
@@ -216,7 +218,7 @@ export default function PublicProjectPage({ project, username: _username, projec
                   {/* Languages */}
                   {project.enabled_languages && project.enabled_languages.length > 0 && (
                     <div>
-                      <p className="text-gray-400 text-sm mb-2">{t.languages}</p>
+                      <p className="text-sm mb-2" style={{ color: colors.textMuted }}>{t.languages}</p>
                       <div className="flex flex-wrap gap-2">
                         {project.enabled_languages.map(lang => (
                           <Tag
@@ -235,30 +237,30 @@ export default function PublicProjectPage({ project, username: _username, projec
                   <div className="grid grid-cols-2 gap-4">
                     {project.date_format && (
                       <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.dateFormat}:</span>
-                        <span className="text-white text-sm">{project.date_format}</span>
+                        <CalendarIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
+                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.dateFormat}:</span>
+                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.date_format}</span>
                       </div>
                     )}
                     {project.time_format && (
                       <div className="flex items-center gap-2">
-                        <ClockIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.timeFormat}:</span>
-                        <span className="text-white text-sm">{project.time_format}</span>
+                        <ClockIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
+                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.timeFormat}:</span>
+                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.time_format}</span>
                       </div>
                     )}
                     {project.currency_symbol && (
                       <div className="flex items-center gap-2">
-                        <CurrencyDollarIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.currency}:</span>
-                        <span className="text-white text-sm">{project.currency_symbol}</span>
+                        <CurrencyDollarIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
+                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.currency}:</span>
+                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.currency_symbol}</span>
                       </div>
                     )}
                     {project.timezone && (
                       <div className="flex items-center gap-2">
-                        <MapPinIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-400 text-sm">{t.timezone}:</span>
-                        <span className="text-white text-sm">{project.timezone}</span>
+                        <MapPinIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
+                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.timezone}:</span>
+                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.timezone}</span>
                       </div>
                     )}
                   </div>
@@ -268,12 +270,13 @@ export default function PublicProjectPage({ project, username: _username, projec
                     <>
                       <Divider className="my-2" />
                       <div className="flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4 text-gray-500" />
+                        <LinkIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
                         <a
                           href={project.project_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 underline"
+                          className="underline"
+                          style={{ color: colors.accent }}
                         >
                           {project.project_url}
                         </a>
@@ -285,8 +288,8 @@ export default function PublicProjectPage({ project, username: _username, projec
 
               {/* Teams */}
               {project.teams.length > 0 && (
-                <Card className="bg-gray-800/50 border border-gray-700" title={
-                  <div className="flex items-center gap-2 text-white">
+                <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }} title={
+                  <div className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     <UserGroupIcon className="w-5 h-5" />
                     <span>{t.teams}</span>
                     <Tag value={project.teams.length.toString()} severity="info" />
@@ -294,10 +297,10 @@ export default function PublicProjectPage({ project, username: _username, projec
                 }>
                   <div className="space-y-3">
                     {project.teams.map(team => (
-                      <div key={team.id} className="p-3 bg-gray-700/50 rounded-lg">
-                        <p className="text-white font-medium">{team.name}</p>
+                      <div key={team.id} className="p-3 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
+                        <p className="font-medium" style={{ color: colors.textPrimary }}>{team.name}</p>
                         {team.description && (
-                          <p className="text-gray-400 text-sm mt-1">{team.description}</p>
+                          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>{team.description}</p>
                         )}
                       </div>
                     ))}
@@ -310,8 +313,8 @@ export default function PublicProjectPage({ project, username: _username, projec
             <div className="space-y-6">
               {/* Templates */}
               {project.templates.length > 0 && (
-                <Card className="bg-gray-800/50 border border-gray-700" title={
-                  <div className="flex items-center gap-2 text-white">
+                <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }} title={
+                  <div className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     <DocumentTextIcon className="w-5 h-5" />
                     <span>{t.templates}</span>
                     <Tag value={project.templates.length.toString()} severity="success" />
@@ -319,15 +322,15 @@ export default function PublicProjectPage({ project, username: _username, projec
                 }>
                   <div className="space-y-3">
                     {project.templates.map(template => (
-                      <div key={template.id} className="p-3 bg-gray-700/50 rounded-lg">
+                      <div key={template.id} className="p-3 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
                         <div className="flex items-center gap-2">
-                          <p className="text-white font-medium">{template.name}</p>
+                          <p className="font-medium" style={{ color: colors.textPrimary }}>{template.name}</p>
                           {template.is_system_template && (
                             <Tag value={t.publicprojectpage326} severity="warning" className="text-xs" />
                           )}
                         </div>
                         {template.description && (
-                          <p className="text-gray-400 text-sm mt-1">{template.description}</p>
+                          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>{template.description}</p>
                         )}
                       </div>
                     ))}
@@ -337,8 +340,8 @@ export default function PublicProjectPage({ project, username: _username, projec
 
               {/* Databases/Schemas */}
               {project.schemas.length > 0 && (
-                <Card className="bg-gray-800/50 border border-gray-700" title={
-                  <div className="flex items-center gap-2 text-white">
+                <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }} title={
+                  <div className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     <CircleStackIcon className="w-5 h-5" />
                     <span>{t.databases}</span>
                     <Tag value={project.schemas.length.toString()} severity="secondary" />
@@ -346,10 +349,10 @@ export default function PublicProjectPage({ project, username: _username, projec
                 }>
                   <div className="space-y-3">
                     {project.schemas.map(schema => (
-                      <div key={schema.id} className="p-3 bg-gray-700/50 rounded-lg">
-                        <p className="text-white font-medium">{schema.name}</p>
+                      <div key={schema.id} className="p-3 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
+                        <p className="font-medium" style={{ color: colors.textPrimary }}>{schema.name}</p>
                         {schema.description && (
-                          <p className="text-gray-400 text-sm mt-1">{schema.description}</p>
+                          <p className="text-sm mt-1" style={{ color: colors.textMuted }}>{schema.description}</p>
                         )}
                       </div>
                     ))}
@@ -359,8 +362,8 @@ export default function PublicProjectPage({ project, username: _username, projec
 
               {/* Attachments */}
               {project.attachments && project.attachments.length > 0 && (
-                <Card className="bg-gray-800/50 border border-gray-700" title={
-                  <div className="flex items-center gap-2 text-white">
+                <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }} title={
+                  <div className="flex items-center gap-2" style={{ color: colors.textPrimary }}>
                     <PaperClipIcon className="w-5 h-5" />
                     <span>{t.projectpanelAttachments}</span>
                     <Tag value={project.attachments.length.toString()} severity="warning" />
@@ -368,23 +371,23 @@ export default function PublicProjectPage({ project, username: _username, projec
                 }>
                   <div className="space-y-3">
                     {project.attachments.map(attachment => (
-                      <div key={attachment.id} className="p-3 bg-gray-700/50 rounded-lg">
+                      <div key={attachment.id} className="p-3 rounded-lg" style={{ backgroundColor: colors.bgTertiary }}>
                         <div className="flex items-center gap-3">
                           <i className={`text-lg ${
                             attachment.mime_type?.startsWith('image/') ? 'pi pi-image text-blue-400' :
                             attachment.mime_type === 'application/pdf' ? 'pi pi-file-pdf text-red-400' :
                             attachment.mime_type?.includes('word') ? 'pi pi-file-word text-blue-400' :
                             attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet') ? 'pi pi-file-excel text-green-400' :
-                            'pi pi-file text-gray-400'
-                          }`}></i>
+                            'pi pi-file'
+                          }`} style={!(attachment.mime_type?.startsWith('image/') || attachment.mime_type === 'application/pdf' || attachment.mime_type?.includes('word') || attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet')) ? { color: colors.textMuted } : undefined}></i>
                           <div className="flex-1">
-                            <p className="text-white font-medium flex items-center gap-2">
+                            <p className="font-medium flex items-center gap-2" style={{ color: colors.textPrimary }}>
                               {attachment.original_filename}
                               {attachment.is_pinned && (
                                 <i className="pi pi-bookmark-fill text-yellow-400 text-sm"></i>
                               )}
                             </p>
-                            <p className="text-gray-400 text-sm">
+                            <p className="text-sm" style={{ color: colors.textMuted }}>
                               {attachment.category_label} • {attachment.formatted_size}
                             </p>
                           </div>
@@ -396,15 +399,15 @@ export default function PublicProjectPage({ project, username: _username, projec
               )}
 
               {/* Meta Info */}
-              <Card className="bg-gray-800/50 border border-gray-700">
+              <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.created}:</span>
-                    <span className="text-white">{formatDate(project.created_at)}</span>
+                    <span style={{ color: colors.textMuted }}>{t.created}:</span>
+                    <span style={{ color: colors.textPrimary }}>{formatDate(project.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.lastUpdated}:</span>
-                    <span className="text-white">{formatDate(project.updated_at)}</span>
+                    <span style={{ color: colors.textMuted }}>{t.lastUpdated}:</span>
+                    <span style={{ color: colors.textPrimary }}>{formatDate(project.updated_at)}</span>
                   </div>
                 </div>
               </Card>
@@ -413,12 +416,12 @@ export default function PublicProjectPage({ project, username: _username, projec
         </main>
 
         {/* Footer */}
-        <footer className="mt-16 py-8 border-t border-gray-700">
+        <footer className="mt-16 py-8" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="text-gray-400 text-sm">
+              <div className="text-sm" style={{ color: colors.textMuted }}>
                 {t.publicProjectPoweredBy}{' '}
-                <a href="/" className="text-blue-400 hover:text-blue-300">Scoriet</a>
+                <a href="/" style={{ color: colors.accent }}>Scoriet</a>
                 {' '}- {t.publicProjectTagline}
               </div>
               <Button

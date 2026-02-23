@@ -240,7 +240,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             // Special handling for system users:
             // - System/Admin users: Show ALL their templates including system templates
             // - Normal users (free/patron): Show templates they created OR templates linked to their projects
-            const isSystemUser = userType === 'system' || userType === 'admin';
+            const isSystemUser = userType === 'system';
 
             // Filter: User's own templates (creator) OR templates linked to user's projects
             let filtered = allTemplates.filter((t: Template) => {
@@ -317,7 +317,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             });
 
             // Check if current user is a reviewer (system/admin/inner_core)
-            const isReviewer = userType === 'system' || userType === 'admin' || userType === 'review' || isInnerCore;
+            const isReviewer = userType === 'system' || userType === 'review' || isInnerCore;
 
             // Filter: System templates OR public templates OR store templates (from anyone, including user)
             let filtered = allTemplates.filter((t: Template) => {
@@ -899,6 +899,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         if (!templateForStoreSettings) return;
 
         confirmDialog({
+            group: 'template-management',
             message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? t.templatemanagementpanel902 : t.templatemanagementpanel902_2}$({t.templatemanagementpanel902})`,
             header: t.templatemanagementpanel903,
             icon: 'pi pi-exclamation-triangle',
@@ -1104,6 +1105,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 if (error.response?.status === 409) {
                     // Template already exists
                     confirmDialog({
+                        group: 'template-management',
                         message: t.templatemanagementpanel419,
                         header: t.templatemanagementpanel420,
                         icon: 'pi pi-exclamation-triangle',
@@ -1161,6 +1163,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             } else if (response.status === 409) {
                 // Template already exists - ask for overwrite
                 confirmDialog({
+                    group: 'template-management',
                     message: t.templatemanagementpanel1164,
                     header: t.templatemanagementpanel1165,
                     icon: 'pi pi-exclamation-triangle',
@@ -1593,7 +1596,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                             <Dropdown
                                 value={myTypeFilter}
                                 options={
-                                    userType === 'system' || userType === 'admin' || isInnerCore
+                                    userType === 'system' || isInnerCore
                                         ? [
                                             { label: t.templatemanagementpanel1598, value: 'all' },
                                             { label: t.templatemanagementpanel1599, value: 'private' },
@@ -2071,7 +2074,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                     );
                                 }
 
-                                const isReviewer = userType === 'system' || userType === 'admin' || isInnerCore;
+                                const isReviewer = userType === 'system' || isInnerCore;
                                 const score = template.review_score || 0;
                                 const maxScore = 5;
                                 const isApproved = template.visibility === 'store'
@@ -2985,7 +2988,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             </Dialog>
 
             {/* ConfirmDialog for import overwrite confirmation */}
-            <ConfirmDialog />
+            <ConfirmDialog group="template-management" />
 
             {/* Template Import Wizard */}
             <TemplateImportWizardPanel

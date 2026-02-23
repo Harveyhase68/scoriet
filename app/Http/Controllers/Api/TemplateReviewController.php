@@ -289,7 +289,7 @@ class TemplateReviewController extends Controller
         }
 
         // Check if user owns this review or is admin
-        if ($review->reviewer_user_id != $user->id && $user->user_type !== 'admin') {
+        if ($review->reviewer_user_id != $user->id && $user->user_type !== 'system') {
             return response()->json([
                 'message' => 'Unauthorized. You can only delete your own reviews.',
             ], 403);
@@ -339,9 +339,9 @@ class TemplateReviewController extends Controller
         $admin = $request->user();
 
         // Check if user is admin or system
-        if (!in_array($admin->user_type, ['admin', 'system'])) {
+        if ($admin->user_type !== 'system') {
             return response()->json([
-                'message' => 'Unauthorized. Admin access required.',
+                'message' => 'Unauthorized. System access required.',
             ], 403);
         }
 

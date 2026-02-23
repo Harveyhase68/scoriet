@@ -8,7 +8,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Message } from 'primereact/message';
-import { confirmDialog } from 'primereact/confirmdialog';
+import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProjectInvitationsModalProps {
@@ -192,6 +192,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
     if (!project) return;
 
     confirmDialog({
+      group: 'project-invitations',
       message: `${t.projectinvitationsmodal195}${invitation.invited_email}?`,
       header: t.manageteammodal534,
       icon: 'pi pi-exclamation-triangle',
@@ -231,6 +232,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
     if (!project) return;
 
     confirmDialog({
+      group: 'project-invitations',
       message: `${t.projectinvitationsmodal234}${invitation.invited_email}?`,
       header: t.projectinvitationsmodal243,
       icon: 'pi pi-send',
@@ -343,6 +345,7 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       footer={dialogFooter}
       className="p-fluid p-dialog-custom"
     >
+      <ConfirmDialog group="project-invitations" />
       <div className="space-y-6">
         {error && <Message severity="error" text={error} />}
         {success && <Message severity="success" text={success} />}

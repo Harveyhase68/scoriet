@@ -94,7 +94,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         }
       }
     } catch (err) {
-      console.error('Error checking team subscription:', err);
+      console.error(t.createteammodal97, err);
     } finally {
       setCheckingSubscription(false);
     }
@@ -118,7 +118,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         setCurrentUser(userData);
       }
     } catch (err) {
-      console.error('Error refreshing credits:', err);
+      console.error(t.createteammodal121, err);
     }
   }, []);
 
@@ -155,7 +155,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
 
     // Check if any characters were removed (invalid input)
     if (value !== sanitized) {
-      setNameError('Only lowercase letters, numbers, and underscores are allowed');
+      setNameError(t.createteammodal158);
     } else {
       setNameError(null);
     }
@@ -195,7 +195,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-          setError(`Nicht genug Credits! Sie benötigen ${errorData.required_credits} Credits, haben aber nur ${errorData.current_credits}.`);
+          setError(`${t.createteammodal198}${errorData.required_credits}${t.createteammodal198_2}${errorData.current_credits}.`);
           // Re-show unlock screen
           setNeedsUnlock(true);
           setUnlockConfirmed(false);
@@ -236,7 +236,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         <div className="portal-modal-header flex justify-between items-center">
           <h2 className="flex items-center">
             <i className="pi pi-users mr-2"></i>
-            {needsUnlock ? 'Unlock Team Feature' : 'Create New Team'}
+            {needsUnlock ? t.createteammodal239 :t.createteammodal239_2}
           </h2>
           <button
             onClick={onClose}
@@ -249,7 +249,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         {checkingSubscription && (
           <div className="py-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Checking subscription...</p>
+            <p className="text-gray-400">{t.createteammodal252}</p>
           </div>
         )}
 
@@ -258,10 +258,10 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
           <div className="space-y-4">
             <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
               <p className="text-yellow-300 text-sm mb-2">
-                <strong>Team Feature - Free Tier</strong>
+                <strong>{t.createteammodal261}</strong>
               </p>
               <p className="text-gray-300 text-sm">
-                Teams is an additional feature for free users. Each team costs <strong>50 credits per year</strong>.
+                {t.createteammodal264}<strong>{t.createteammodal264_2}</strong>.
               </p>
               {ownedTeams > 0 && (
                 <p className="text-gray-300 text-sm mt-2">
@@ -273,16 +273,16 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
 
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Your Credits:</span>
+                <span className="text-gray-300">{t.createteammodal276}</span>
                 <span className="text-white font-bold text-lg">{currentUser?.credits || 0}</span>
               </div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Required Credits:</span>
+                <span className="text-gray-300">{t.createteammodal280}</span>
                 <span className="text-yellow-400 font-bold text-lg">50</span>
               </div>
               <hr className="border-gray-700 my-2" />
               <div className="flex justify-between items-center">
-                <span className="text-gray-300">After Unlock:</span>
+                <span className="text-gray-300">{t.createteammodal285_2}</span>
                 <span className={`font-bold text-lg ${hasEnoughCredits ? 'text-green-400' : 'text-red-400'}`}>
                   {hasEnoughCredits ? (currentUser?.credits || 0) - 50 : `Need ${creditsNeeded} more`}
                 </span>
@@ -292,7 +292,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
             {!hasEnoughCredits && (
               <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
                 <p className="text-red-300 text-sm">
-                  You don't have enough credits. You need <strong>{creditsNeeded} more credits</strong> to unlock the team feature.
+                  {t.createteammodal295}<strong>{creditsNeeded}{t.createteammodal295_2}</strong>{t.createteammodal295_3}
                 </p>
               </div>
             )}
@@ -305,7 +305,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
                   className="flex-1 bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white transition-colors flex items-center justify-center gap-2"
                 >
                   <i className="pi pi-unlock"></i>
-                  Unlock Team (50 Credits)
+                  {t.createteammodal308}
                 </button>
               ) : (
                 <button
@@ -314,21 +314,21 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
                   className="flex-1 bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded text-white transition-colors flex items-center justify-center gap-2"
                 >
                   <i className="pi pi-shopping-cart"></i>
-                  Buy Credits
+                  {t.createteammodal317}
                 </button>
               )}
             </div>
 
             <p className="text-xs text-gray-400 text-center">
-              Or upgrade to{' '}
+              {t.createteammodal323}{' '}
               <button
                 type="button"
                 onClick={() => { setPlanModalInitialTab(0); setShowPlanModal(true); }}
                 className="text-yellow-400 hover:text-yellow-300 underline font-semibold"
               >
-                Patron Monthly
+                {t.createteammodal329}
               </button>
-              {' '}for unlimited teams!
+              {' '}{t.createteammodal331}
             </p>
           </div>
         )}
@@ -338,7 +338,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Team Name *
+              {t.createteammodal341}
             </label>
             <input
               type="text"
@@ -352,7 +352,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               maxLength={255}
             />
             <small className="text-gray-400 text-xs mt-1 block">
-              Only lowercase letters (a-z), numbers (0-9), and underscores (_) allowed
+              {t.createteammodal355}
             </small>
             {nameError && (
               <small className="text-red-400 text-xs mt-1 block">{nameError}</small>
@@ -361,7 +361,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description
+              {t.createteammodal364}
             </label>
             <textarea
               value={formData.description}
@@ -394,7 +394,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Select one or more projects for this team. Hold Ctrl/Cmd to select multiple.
+              {t.createteammodal397}
             </p>
           </div>
 
@@ -411,7 +411,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               disabled={loading}
               className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
             >
-              Cancel
+              {t.createteammodal414}
             </button>
             <button
               type="submit"
@@ -421,12 +421,12 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Creating...</span>
+                  <span>{t.createteammodal424}</span>
                 </>
               ) : (
                 <>
                   <i className="pi pi-check"></i>
-                  <span>Create Team{unlockConfirmed ? ' (50 Credits)' : ''}</span>
+                  <span>{t.createteammodal429}{unlockConfirmed ? t.createteammodal429_2 : ''}</span>
                 </>
               )}
             </button>

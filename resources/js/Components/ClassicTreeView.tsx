@@ -120,9 +120,9 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
           ) : node.type === 'table' ? (
             <i className="pi pi-table text-green-300 mr-2"></i>
           ) : node.type === 'template' ? (
-            <i className="pi pi-file-edit text-purple-400 mr-2"></i>
+            <i className="pi pi-file-edit text-purple-500 mr-2"></i>
           ) : node.type === 'template_file' ? (
-            <i className="pi pi-file text-purple-300 mr-2"></i>
+            <i className="pi pi-file text-purple-500 mr-2"></i>
           ) : (
             <i className={`mr-2 ${
               node.memberRole === 'owner' ? 'pi pi-crown text-yellow-400' :
@@ -137,8 +137,8 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             node.type === 'team' ? 'text-blue-300 font-medium' :
             node.type === 'schema' ? 'text-green-300 font-medium' :
             node.type === 'table' ? 'text-green-200' :
-            node.type === 'template' ? 'text-purple-300 font-medium' :
-            node.type === 'template_file' ? 'text-purple-200' :
+            node.type === 'template' ? 'text-purple-500 font-medium' :
+            node.type === 'template_file' ? 'text-purple-500' :
             'text-gray-200'
           }`}>
             {node.name}

@@ -771,7 +771,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       loadUserData();
 
     } catch (err) {
-      setSellerError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      setSellerError(err instanceof Error ? err.message : t.profilemodal774);
     } finally {
       setSavingSeller(false);
     }

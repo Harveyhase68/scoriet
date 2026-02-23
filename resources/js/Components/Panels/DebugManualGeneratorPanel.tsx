@@ -451,7 +451,7 @@ export default function DebugManualGeneratorPanel({
           setError(t.debugmanualgeneratorpanel352);
         }
       } else {
-        setError(`Fehler beim Laden der Templates: ${response.status}`);
+        setError(`${t.debugmanualgeneratorpanel454}${response.status}`);
       }
     } catch {
       setError(t.debugmanualgeneratorpanel358);

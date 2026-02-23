@@ -101,7 +101,7 @@
     <div class="container">
         <div class="header">
             <div class="logo">Scoriet</div>
-            <h1 class="title">Zweite Erinnerung</h1>
+            <h1 class="title">{{__('inactivity-warning-2bladephp104')}}</h1>
         </div>
 
         <p>{{__('inactivity-warning-2bladephp107')}}{{ $user->name }},</p>

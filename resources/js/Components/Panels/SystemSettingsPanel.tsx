@@ -512,7 +512,7 @@ export default function SystemSettingsPanel() {
                       body={(rowData) => (
                         <Tag
                           value={rowData.user_type}
-                          severity={rowData.user_type === 'admin' ? 'danger' : rowData.user_type === 'patron' ? 'warning' : 'info'}
+                          severity={rowData.user_type === 'system' ? 'danger' : rowData.user_type === 'patron' ? 'warning' : 'info'}
                         />
                       )}
                     />

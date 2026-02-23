@@ -1974,55 +1974,57 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         onHide={() => setShowProjectOverviewModal(false)}
         style={{ width: '800px' }}
         modal
-        className="p-fluid"
+        className="themed-dialog p-fluid"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
       >
         {selectedProjectForOverview && (
           <div className="space-y-6">
             {/* Project Properties */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">{t.editprojectmodal426}</h3>
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.editprojectmodal426}</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-medium text-gray-300">{t.projectpanel1443}</span>
-                  <span className="ml-2 text-white">{selectedProjectForOverview.name}</span>
+                  <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel1443}</span>
+                  <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedProjectForOverview.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">{t.projectpanel1447}</span>
-                  <span className="ml-2 text-white">{selectedProjectForOverview.owner.name}</span>
+                  <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel1447}</span>
+                  <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedProjectForOverview.owner.name}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">{t.projectpanel1451}</span>
-                  <span className="ml-2 text-white">{formatDate(selectedProjectForOverview.created_at)}</span>
+                  <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel1451}</span>
+                  <span className="ml-2" style={{ color: colors.textPrimary }}>{formatDate(selectedProjectForOverview.created_at)}</span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-300">{t.projectpanel1449}</span>
-                  <span className="ml-2 text-blue-400 font-mono">{selectedProjectForOverview.join_code || t.createtablemodal482}</span>
+                  <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel1449}</span>
+                  <span className="ml-2 font-mono" style={{ color: colors.accent }}>{selectedProjectForOverview.join_code || t.createtablemodal482}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="font-medium text-gray-300">{t.projectpanel1453}</span>
-                  <span className="ml-2 text-white">{selectedProjectForOverview.description || t.schemaexportcontroller226}</span>
+                  <span className="font-medium" style={{ color: colors.textSecondary }}>{t.projectpanel1453}</span>
+                  <span className="ml-2" style={{ color: colors.textPrimary }}>{selectedProjectForOverview.description || t.schemaexportcontroller226}</span>
                 </div>
               </div>
             </div>
 
             {/* Project Members Section */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1467}</h3>
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.projectpanel1467}</h3>
               {loadingMembersData ? (
                 <div className="flex items-center justify-center py-4">
-                  <i className="pi pi-spinner pi-spin text-indigo-400 mr-2"></i>
-                  <span className="text-indigo-300">{t.projectpanel1471}</span>
+                  <i className="pi pi-spinner pi-spin mr-2" style={{ color: colors.accent }}></i>
+                  <span style={{ color: colors.textSecondary }}>{t.projectpanel1471}</span>
                 </div>
               ) : projectMembers.length > 0 ? (
-                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '200px', overflow: 'auto' }}>
+                <div className="p-3 rounded border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, maxHeight: '200px', overflow: 'auto' }}>
                   <div className="space-y-2">
                     {projectMembers.map((member, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-600 rounded hover:bg-gray-500">
+                      <div key={index} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: colors.bgPrimary }}>
                         <div className="flex items-center space-x-3">
-                          <i className="pi pi-user text-indigo-400"></i>
+                          <i className="pi pi-user" style={{ color: colors.accent }}></i>
                           <div>
-                            <div className="font-medium text-white">{member.user?.name || t.panelt1103}</div>
-                            <div className="text-sm text-gray-300">{member.user?.email || t.projectpanel1482}</div>
+                            <div className="font-medium" style={{ color: colors.textPrimary }}>{member.user?.name || t.panelt1103}</div>
+                            <div className="text-sm" style={{ color: colors.textSecondary }}>{member.user?.email || t.projectpanel1482}</div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -2034,7 +2036,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                             {member.role || t.manageteammodal394}
                           </span>
                           {member.joined_at && (
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                               {t.projectpanel2035} {new Date(member.joined_at).toLocaleDateString()}
                             </div>
                           )}
@@ -2044,7 +2046,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-300 italic text-center p-4">
+                <div className="italic text-center p-4" style={{ color: colors.textSecondary }}>
                   <i className="pi pi-users mr-2"></i>
                   {t.projectpanel2046}
                 </div>
@@ -2052,21 +2054,21 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
 
             {/* Teams Section with TreeView */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1513}</h3>
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.projectpanel1513}</h3>
               {loadingTeamsData ? (
                 <div className="flex items-center justify-center py-4">
-                  <i className="pi pi-spinner pi-spin text-blue-400 mr-2"></i>
-                  <span className="text-blue-300">{t.projectpanel2057}</span>
+                  <i className="pi pi-spinner pi-spin mr-2" style={{ color: colors.accent }}></i>
+                  <span style={{ color: colors.textSecondary }}>{t.projectpanel2057}</span>
                 </div>
               ) : projectTeamsTree.length > 0 ? (
-                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="p-3 rounded border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectTeamsTree}
                   />
                 </div>
               ) : (
-                <div className="text-gray-300 italic">
+                <div className="italic" style={{ color: colors.textSecondary }}>
                   <i className="pi pi-info-circle mr-2"></i>
                   {t.projectpanel2068}
                 </div>
@@ -2074,76 +2076,76 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
 
             {/* Database Schemas Section */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1535}</h3>
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.projectpanel1535}</h3>
               {loadingSchemasData ? (
                 <div className="flex items-center justify-center p-4">
-                  <i className="pi pi-spin pi-spinner text-green-400 mr-2"></i>
-                  <span className="text-green-300">{t.projectpanel2079}</span>
+                  <i className="pi pi-spin pi-spinner mr-2" style={{ color: colors.accent }}></i>
+                  <span style={{ color: colors.textSecondary }}>{t.projectpanel2079}</span>
                 </div>
               ) : projectSchemasTree.length > 0 ? (
-                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="p-3 rounded border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectSchemasTree}
                   />
                 </div>
               ) : (
-                <div className="text-gray-300 italic text-center p-4">
+                <div className="italic text-center p-4" style={{ color: colors.textSecondary }}>
                   {t.projectpanel2089}
                 </div>
               )}
             </div>
 
             {/* Templates Section */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">{t.projectpanel1556}</h3>
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>{t.projectpanel1556}</h3>
               {loadingTemplatesData ? (
                 <div className="flex items-center justify-center p-4">
-                  <i className="pi pi-spin pi-spinner text-purple-400 mr-2"></i>
-                  <span className="text-purple-300">{t.projectpanel2103}</span>
+                  <i className="pi pi-spin pi-spinner mr-2" style={{ color: colors.accent }}></i>
+                  <span style={{ color: colors.textSecondary }}>{t.projectpanel2103}</span>
                 </div>
               ) : projectTemplatesTree.length > 0 ? (
-                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div className="p-3 rounded border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, maxHeight: '300px', overflow: 'auto' }}>
                   <ClassicTreeView
                     data={projectTemplatesTree}
                   />
                 </div>
               ) : (
-                <div className="text-gray-300 italic text-center p-4">
+                <div className="italic text-center p-4" style={{ color: colors.textSecondary }}>
                   {t.projectpanel2110}
                 </div>
               )}
             </div>
 
             {/* Attachments Section */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h3 className="text-lg font-semibold mb-3 text-white">
+            <div className="p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: colors.textPrimary }}>
                 <i className="pi pi-paperclip mr-2"></i>
                 {t.projectpanelAttachments}
               </h3>
               {loadingAttachmentsData ? (
                 <div className="flex items-center justify-center p-4">
-                  <i className="pi pi-spin pi-spinner text-orange-400 mr-2"></i>
-                  <span className="text-orange-300">{t.projectpanel2124}</span>
+                  <i className="pi pi-spin pi-spinner mr-2" style={{ color: colors.accent }}></i>
+                  <span style={{ color: colors.textSecondary }}>{t.projectpanel2124}</span>
                 </div>
               ) : projectAttachments.length > 0 ? (
-                <div className="bg-gray-700 p-3 rounded border border-gray-600" style={{ maxHeight: '250px', overflow: 'auto' }}>
+                <div className="p-3 rounded border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, maxHeight: '250px', overflow: 'auto' }}>
                   <div className="space-y-2">
                     {projectAttachments.map((attachment: any) => (
-                      <div key={attachment.id} className="flex items-center justify-between p-2 bg-gray-600 rounded hover:bg-gray-500">
+                      <div key={attachment.id} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: colors.bgPrimary }}>
                         <div className="flex items-center gap-3">
                           <i className={`${
-                            attachment.mime_type?.startsWith('image/') ? 'pi pi-image text-blue-400' :
-                            attachment.mime_type === 'application/pdf' ? 'pi pi-file-pdf text-red-400' :
-                            attachment.mime_type?.includes('word') ? 'pi pi-file-word text-blue-400' :
-                            attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet') ? 'pi pi-file-excel text-green-400' :
-                            'pi pi-file text-gray-400'
-                          }`}></i>
+                            attachment.mime_type?.startsWith('image/') ? 'pi pi-image' :
+                            attachment.mime_type === 'application/pdf' ? 'pi pi-file-pdf' :
+                            attachment.mime_type?.includes('word') ? 'pi pi-file-word' :
+                            attachment.mime_type?.includes('excel') || attachment.mime_type?.includes('spreadsheet') ? 'pi pi-file-excel' :
+                            'pi pi-file'
+                          }`} style={{ color: colors.accent }}></i>
                           <div>
-                            <div className="font-medium text-white">{attachment.original_filename}</div>
-                            <div className="text-xs text-gray-400">
+                            <div className="font-medium" style={{ color: colors.textPrimary }}>{attachment.original_filename}</div>
+                            <div className="text-xs" style={{ color: colors.textMuted }}>
                               {attachment.category_label} • {attachment.formatted_size}
-                              {attachment.is_pinned && <span className="ml-2 text-yellow-400"><i className="pi pi-bookmark-fill"></i></span>}
+                              {attachment.is_pinned && <span className="ml-2" style={{ color: colors.warningText }}><i className="pi pi-bookmark-fill"></i></span>}
                             </div>
                           </div>
                         </div>
@@ -2178,7 +2180,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-300 italic text-center p-4">
+                <div className="italic text-center p-4" style={{ color: colors.textSecondary }}>
                   <i className="pi pi-paperclip mr-2"></i>
                   {t.projectpanel2180}
                 </div>
@@ -2186,7 +2188,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-4 border-t border-gray-600">
+            <div className="flex justify-between items-center pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
               {/* Left side - Public Link */}
               <div>
                 {selectedProjectForOverview.is_public && selectedProjectForOverview.owner?.username && (
@@ -2204,7 +2206,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   />
                 )}
                 {!selectedProjectForOverview.is_public && (
-                  <span className="text-gray-400 text-sm italic">
+                  <span className="text-sm italic" style={{ color: colors.textMuted }}>
                     <i className="pi pi-lock mr-1"></i>
                     {t.projectNotPublic}
                   </span>
@@ -2245,25 +2247,28 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         modal
         closable={false}
         draggable={false}
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
       >
         <div className="space-y-4">
-          <div className="flex items-center gap-3 bg-green-900/30 border border-green-700 rounded-lg p-4">
-            <i className="pi pi-check-circle text-green-400 text-3xl"></i>
+          <div className="flex items-center gap-3 rounded-lg p-4" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}` }}>
+            <i className="pi pi-check-circle text-3xl" style={{ color: colors.successText }}></i>
             <div>
-              <div className="text-lg font-semibold">
+              <div className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
                 {newlyCreatedProject?.name}
               </div>
-              <div className="text-sm text-gray-300">
+              <div className="text-sm" style={{ color: colors.textSecondary }}>
                 {t.projectpanel2254}
               </div>
             </div>
           </div>
 
-          <div className="text-gray-200 text-center py-2">
+          <div className="text-center py-2" style={{ color: colors.textPrimary }}>
             {t.projectpanel2260}
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-600">
+          <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
             <Button
               label={t.projectpanel2265}
               icon="pi pi-times"
@@ -2305,13 +2310,16 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         onHide={() => setShowExportDialog(false)}
         header={
           <div className="flex items-center gap-2">
-            <i className="pi pi-download text-blue-400"></i>
+            <i className="pi pi-download" style={{ color: colors.accent }}></i>
             <span>{t.projectpanel2306}</span>
           </div>
         }
         style={{ width: '550px' }}
         modal
         closable={!exportLoading}
+        className="themed-dialog"
+        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
+        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -2333,56 +2341,56 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
       >
         {exportLoading && !exportPreview ? (
           <div className="flex items-center justify-center p-8">
-            <i className="pi pi-spin pi-spinner text-4xl text-blue-400"></i>
+            <i className="pi pi-spin pi-spinner text-4xl" style={{ color: colors.accent }}></i>
           </div>
         ) : exportPreview ? (
           <div className="space-y-4">
             {/* Project Info */}
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-lg font-semibold mb-2">{exportPreview.project?.name}</h4>
-              <p className="text-gray-400 text-sm">{exportPreview.project?.description || t.projectpanel2343}</p>
+            <div className="p-4 rounded-lg border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+              <h4 className="text-lg font-semibold mb-2" style={{ color: colors.textPrimary }}>{exportPreview.project?.name}</h4>
+              <p className="text-sm" style={{ color: colors.textMuted }}>{exportPreview.project?.description || t.projectpanel2343}</p>
             </div>
 
             {/* Export Contents */}
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2348}</h4>
+            <div className="p-4 rounded-lg border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>{t.projectpanel2348}</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2348}</span>
-                  <span className="font-medium">{exportPreview.counts?.attachments || 0}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2348}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.counts?.attachments || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2352}</span>
-                  <span className="font-medium">{exportPreview.attachment_size_formatted || '0 B'}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2352}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.attachment_size_formatted || '0 B'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2356}</span>
-                  <span className="font-medium">{exportPreview.counts?.schemas || 0}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2356}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.counts?.schemas || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2360}</span>
-                  <span className="font-medium">{exportPreview.counts?.templates || 0}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2360}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.counts?.templates || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2364}</span>
-                  <span className="font-medium">{exportPreview.counts?.code_adjustments || 0}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2364}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.counts?.code_adjustments || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{t.projectpanel2368}</span>
-                  <span className="font-medium">{exportPreview.counts?.form_sets || 0}</span>
+                  <span style={{ color: colors.textMuted }}>{t.projectpanel2368}</span>
+                  <span className="font-medium" style={{ color: colors.textPrimary }}>{exportPreview.counts?.form_sets || 0}</span>
                 </div>
               </div>
             </div>
 
             {/* Schema Details */}
             {exportPreview.schema_details && exportPreview.schema_details.length > 0 && (
-              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2377}</h4>
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                <h4 className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>{t.projectpanel2377}</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {exportPreview.schema_details.map((schema: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300">{schema.name}</span>
-                      <span className="text-gray-500">
+                      <span style={{ color: colors.textSecondary }}>{schema.name}</span>
+                      <span style={{ color: colors.textMuted }}>
                         {schema.table_count}{t.projectpanel2386}{schema.version_count}{t.projectpanel2386_2}
                       </span>
                     </div>
@@ -2393,13 +2401,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
 
             {/* Template Details */}
             {exportPreview.template_details && exportPreview.template_details.length > 0 && (
-              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2394}</h4>
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                <h4 className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>{t.projectpanel2394}</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {exportPreview.template_details.map((template: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300">{template.name}</span>
-                      <span className="text-gray-500">
+                      <span style={{ color: colors.textSecondary }}>{template.name}</span>
+                      <span style={{ color: colors.textMuted }}>
                         {template.file_count}{t.projectpanel2403}({template.usage_type})
                       </span>
                     </div>
@@ -2409,39 +2417,36 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             )}
 
             {/* Format Selection */}
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-sm font-semibold mb-3 text-gray-300">{t.projectpanel2410}</h4>
+            <div className="p-4 rounded-lg border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>{t.projectpanel2410}</h4>
               <div className="flex gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer" style={{ color: colors.textPrimary }}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="zip"
                     checked={exportFormat === 'zip'}
                     onChange={() => setExportFormat('zip')}
-                    className="text-blue-500"
                   />
                   <span className="text-sm">.zip</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer" style={{ color: colors.textPrimary }}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="tar.gz"
                     checked={exportFormat === 'tar.gz'}
                     onChange={() => setExportFormat('tar.gz')}
-                    className="text-blue-500"
                   />
                   <span className="text-sm">.tar.gz</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer" style={{ color: colors.textPrimary }}>
                   <input
                     type="radio"
                     name="exportFormat"
                     value="tar.xz"
                     checked={exportFormat === 'tar.xz'}
                     onChange={() => setExportFormat('tar.xz')}
-                    className="text-blue-500"
                   />
                   <span className="text-sm">.tar.xz</span>
                 </label>
@@ -2449,15 +2454,15 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
             </div>
 
             {/* Notice */}
-            <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-3">
-              <p className="text-sm text-blue-300">
+            <div className="rounded-lg p-3" style={{ backgroundColor: `${colors.accent}15`, border: `1px solid ${colors.accent}40` }}>
+              <p className="text-sm" style={{ color: colors.accent }}>
                 <i className="pi pi-info-circle mr-2"></i>
                 {t.projectpanel2452}
               </p>
             </div>
           </div>
         ) : (
-          <div className="text-center p-8 text-gray-400">
+          <div className="text-center p-8" style={{ color: colors.textMuted }}>
             {t.projectpanel2458}
           </div>
         )}

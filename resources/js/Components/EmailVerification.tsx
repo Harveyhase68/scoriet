@@ -4,6 +4,7 @@ import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface EmailVerificationProps {
   userId?: string;
@@ -14,6 +15,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
+  const { colors } = useTheme();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'already_verified'>('loading');
   const [message, setMessage] = useState<string>('');
@@ -106,38 +108,38 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md p-6">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colors.bgPrimary }}>
+      <Card className="w-full max-w-md p-6 border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">{t.emailverification112}</h2>
-          
+          <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.emailverification112}</h2>
+
           {status === 'loading' && (
             <div className="space-y-4">
               <ProgressSpinner />
-              <p>{t.emailverification117}</p>
+              <p style={{ color: colors.textSecondary }}>{t.emailverification117}</p>
             </div>
           )}
 
           {status !== 'loading' && (
             <div className="space-y-4">
-              <Message 
+              <Message
                 severity={getSeverity()}
                 text={message}
                 icon={getIcon()}
                 className="w-full"
               />
-              
+
               {(status === 'success' || status === 'already_verified') && (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm" style={{ color: colors.textSecondary }}>
                     {t.emailverification133}
                   </p>
                   {invitationAccepted && projectName && (
-                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                      <p className="text-green-800 font-semibold text-base">
+                    <div className="p-4 rounded" style={{ backgroundColor: colors.successBg, borderLeft: `4px solid ${colors.successBorder}` }}>
+                      <p className="font-semibold text-base" style={{ color: colors.successText }}>
                         {t.emailverification138}{projectName}!
                       </p>
-                      <p className="text-green-700 text-sm mt-1">
+                      <p className="text-sm mt-1" style={{ color: colors.successText }}>
                         {t.emailverification141}
                       </p>
                     </div>
@@ -153,7 +155,7 @@ export default function EmailVerification({ userId, hash }: EmailVerificationPro
 
               {status === 'error' && (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm" style={{ color: colors.textSecondary }}>
                     {t.emailverification157}
                   </p>
                   <Button

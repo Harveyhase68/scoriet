@@ -106,7 +106,7 @@
             <h1 class="title">{{__('account-deactivatedbladephp106')}}</h1>
         </div>
 
-        <p>Hallo {{ $user->name }},</p>
+        <p>{{__('account-deactivatedbladephp109')}}{{ $user->name }},</p>
 
         <p>
             {{__('account-deactivatedbladephp112')}}
@@ -125,7 +125,7 @@
         </div>
 
         <div class="reactivation-box">
-            <div class="reactivation-title">Konto reaktivieren?</div>
+            <div class="reactivation-title">{{__('account-deactivatedbladephp128')}}</div>
             <p style="margin: 5px 0; color: #047857;">
                 {{__('account-deactivatedbladephp130')}}<strong>{{__('account-deactivatedbladephp130_2')}}</strong>{{__('account-deactivatedbladephp130_3')}}
                 {{__('account-deactivatedbladephp131')}}
@@ -137,7 +137,7 @@
         </div>
 
         <div class="info-box">
-            <div class="info-box-title">Gut zu wissen:</div>
+            <div class="info-box-title">{{__('account-deactivatedbladephp140')}}</div>
             <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
                 <li>{{__('account-deactivatedbladephp142')}}</li>
                 <li>{{__('account-deactivatedbladephp143')}}</li>

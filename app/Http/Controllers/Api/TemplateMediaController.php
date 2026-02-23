@@ -34,7 +34,7 @@ class TemplateMediaController extends Controller
     public function serve(TemplateMedia $media): Response
     {
         if (!$media->file_data) {
-            abort(404, 'Media file not found');
+            abort(404, __('templatemediacontrollerphp37'));
         }
 
         $binaryData = base64_decode($media->file_data);
@@ -84,7 +84,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Logo uploaded successfully.',
+            'message' => __('templatemediacontrollerphp87'),
             'media' => $media,
         ]);
     }
@@ -131,7 +131,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => count($uploadedMedia) . ' image(s) uploaded successfully.',
+            'message' => count($uploadedMedia) . __('templatemediacontrollerphp134'),
             'media' => $uploadedMedia,
         ]);
     }
@@ -153,7 +153,7 @@ class TemplateMediaController extends Controller
 
         if (!TemplateMedia::isValidVideoUrl($videoUrl)) {
             return response()->json([
-                'message' => 'Invalid video URL. Only YouTube and Vimeo links are supported.',
+                'message' => __('templatemediacontrollerphp156'),
             ], 422);
         }
 
@@ -170,7 +170,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Video added successfully.',
+            'message' => __('templatemediacontrollerphp173'),
             'media' => $media,
         ]);
     }
@@ -183,7 +183,7 @@ class TemplateMediaController extends Controller
         $this->authorizeTemplateEdit($template);
 
         if ($media->template_id !== $template->id) {
-            return response()->json(['message' => 'Media does not belong to this template'], 404);
+            return response()->json(['message' => __('templatemediacontrollerphp186')], 404);
         }
 
         $request->validate([
@@ -198,7 +198,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Media updated successfully.',
+            'message' => __('templatemediacontrollerphp201'),
             'media' => $media,
         ]);
     }
@@ -211,7 +211,7 @@ class TemplateMediaController extends Controller
         $this->authorizeTemplateEdit($template);
 
         if ($media->template_id !== $template->id) {
-            return response()->json(['message' => 'Media does not belong to this template'], 404);
+            return response()->json(['message' => __('templatemediacontrollerphp214')], 404);
         }
 
         $request->validate([
@@ -224,7 +224,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Sort order updated.',
+            'message' => __('templatemediacontrollerphp227'),
             'media' => $media,
         ]);
     }
@@ -251,7 +251,7 @@ class TemplateMediaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Media reordered successfully.',
+            'message' => __('templatemediacontrollerphp254'),
         ]);
     }
 
@@ -263,14 +263,14 @@ class TemplateMediaController extends Controller
         $this->authorizeTemplateEdit($template);
 
         if ($media->template_id !== $template->id) {
-            return response()->json(['message' => 'Media does not belong to this template'], 404);
+            return response()->json(['message' => __('templatemediacontrollerphp266')], 404);
         }
 
         $media->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Media deleted successfully.',
+            'message' => __('templatemediacontrollerphp273'),
         ]);
     }
 
@@ -282,7 +282,7 @@ class TemplateMediaController extends Controller
         $user = Auth::user();
 
         if (!$template->canBeEditedBy($user)) {
-            abort(403, 'You are not authorized to edit this template.');
+            abort(403, __('templatemediacontrollerphp285'));
         }
     }
 }

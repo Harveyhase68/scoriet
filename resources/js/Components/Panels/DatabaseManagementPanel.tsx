@@ -87,7 +87,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   // Get current user type for system schema checkbox
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const userType = localStorage.getItem('user_type') || 'free';
-  const isSystemUser = userType === 'system' || userType === 'admin';
+  const isSystemUser = userType === 'system';
 
   const [mySchemas, setMySchemas] = useState<FloatingSchema[]>([]);
   const [communitySchemas, setCommunitySchemas] = useState<FloatingSchema[]>([]);

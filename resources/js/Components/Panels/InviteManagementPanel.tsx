@@ -117,6 +117,7 @@ export default function InviteManagementPanel() {
 
   const confirmDelete = (invite: Invite) => {
     confirmDialog({
+      group: 'invite-management',
       message: `${t.invitemanagementpanel120}"${invite.email}"?`,
       header: t.invitemanagementpanel121,
       icon: 'pi pi-exclamation-triangle',
@@ -287,7 +288,7 @@ export default function InviteManagementPanel() {
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
-      <ConfirmDialog />
+      <ConfirmDialog group="invite-management" />
       <div className="flex-shrink-0 p-4" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}>
         <div className="flex justify-between items-center">
           <div>

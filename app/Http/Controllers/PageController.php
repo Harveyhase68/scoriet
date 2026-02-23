@@ -46,7 +46,7 @@ class PageController extends Controller
             ->first();
 
         if (!$page) {
-            abort(404, "Help page not found for locale: {$locale}");
+            abort(404, __('pagecontrollerphp49')."{$locale}");
         }
 
         return Inertia::render('LandingPage', [
@@ -73,7 +73,7 @@ class PageController extends Controller
             ->first();
 
         if (!$page) {
-            abort(404, "Impressum page not found for locale: {$locale}");
+            abort(404, __('pagecontrollerphp76')."{$locale}");
         }
 
         return Inertia::render('LandingPage', [
@@ -100,7 +100,7 @@ class PageController extends Controller
             ->first();
 
         if (!$page) {
-            abort(404, "Contact page not found for locale: {$locale}");
+            abort(404, __('pagecontrollerphp103')."{$locale}");
         }
 
         return Inertia::render('LandingPage', [

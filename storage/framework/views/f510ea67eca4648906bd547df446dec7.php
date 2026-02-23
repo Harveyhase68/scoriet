@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo e(__('new-messagebladephp6')); ?><?php echo e($thread->subject); ?></title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #1f2937;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .sender-info {
+            background: #f3f4f6;
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .sender-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        .subject {
+            font-size: 16px;
+            color: #4b5563;
+            margin-bottom: 10px;
+        }
+        .message-preview {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #1f2937;
+            font-style: italic;
+        }
+        .broadcast-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: #2563eb;
+            color: white;
+        }
+        .btn:hover {
+            background: #1d4ed8;
+            color: white;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .timestamp {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .attachments {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+        .attachments-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dbeafe;
+        }
+        .attachment-item:last-child {
+            border-bottom: none;
+        }
+        .attachment-link {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .attachment-link:hover {
+            color: #2563eb;
+        }
+        .attachment-link:hover .attachment-name {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+        .attachment-icon {
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .attachment-info {
+            flex: 1;
+        }
+        .attachment-name {
+            font-weight: 500;
+            color: #1f2937;
+            word-break: break-word;
+        }
+        .attachment-size {
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Scoriet</div>
+            <?php if($thread->is_broadcast): ?>
+                <span class="broadcast-badge"><?php echo e(__('new-messagebladephp177')); ?></span>
+            <?php endif; ?>
+            <h1 class="title"><?php echo e(__('new-messagebladephp179')); ?></h1>
+        </div>
+
+        <p>Hallo <?php echo e($recipient->name); ?>,</p>
+
+        <p><?php echo e(__('new-messagebladephp184')); ?></p>
+
+        <div class="sender-info">
+            <div class="sender-name"><?php echo e(__('new-messagebladephp187')); ?><?php echo e($sender->name ?? 'Scoriet System'); ?></div>
+            <?php if($sender->username): ?>
+                <div style="color: #6b7280; font-size: 14px;">{{ $sender->username }}</div>
+            <?php endif; ?>
+            <div class="subject" style="margin-top: 15px;">
+                <strong><?php echo e(__('new-messagebladephp192')); ?></strong> <?php echo e($thread->subject); ?>
+
+            </div>
+        </div>
+
+        <div class="message-preview">
+            "<?php echo e($preview); ?>"
+        </div>
+
+        <?php if($attachments && count($attachments) > 0): ?>
+        <div class="attachments">
+            <div class="attachments-title">
+                📎 <?php echo e(count($attachments)); ?> <?php echo e(count($attachments) === 1 ? __('new-messagebladephp203') : __('new-messagebladephp203_2')); ?>
+
+            </div>
+            <?php $__currentLoopData = $attachments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $attachment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <div class="attachment-item">
+                <a href="<?php echo $attachment->getSignedDownloadUrl(); ?>" class="attachment-link" target="_blank">
+                    <div class="attachment-icon">
+                        <?php if($attachment->isImage()): ?>
+                            🖼
+                        <?php elseif($attachment->isPdf()): ?>
+                            📄
+                        <?php elseif($attachment->isDocument()): ?>
+                            📝
+                        <?php else: ?>
+                            📁
+                        <?php endif; ?>
+                    </div>
+                    <div class="attachment-info">
+                        <div class="attachment-name"><?php echo e($attachment->original_filename); ?></div>
+                        <div class="attachment-size"><?php echo e($attachment->getFormattedSize()); ?><?php echo e(__('new-messagebladephp221')); ?></div>
+                    </div>
+                </a>
+            </div>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            <div style="margin-top: 10px; font-size: 12px; color: #6b7280;">
+                <?php echo e(__('new-messagebladephp227')); ?>
+
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="timestamp">
+            <?php echo e(__('new-messagebladephp233')); ?><?php echo e($userMessage->created_at->format('d.m.Y \u\m H:i')); ?><?php echo e(__('new-messagebladephp233_2')); ?>
+
+        </div>
+
+        <div class="actions">
+            <a href="<?php echo e($viewUrl); ?>" class="btn"><?php echo e(__('new-messagebladephp237')); ?></a>
+        </div>
+
+        <div class="footer">
+            <p>
+                <?php echo e(__('new-messagebladephp242')); ?><strong>Scoriet</strong>.<br>
+                <?php echo e(__('new-messagebladephp243')); ?>
+
+            </p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+                <?php echo e(__('new-messagebladephp246')); ?><?php echo e($thread->id); ?>
+
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+<?php /**PATH C:\wamp\www\scoriet\resources\views/emails/new-message.blade.php ENDPATH**/ ?>

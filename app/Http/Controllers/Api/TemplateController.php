@@ -1640,7 +1640,7 @@ class TemplateController extends Controller
 
         // Check permissions (owner, inner core, or admin can export)
         if ($template->creator_user_id != $user->id &&
-            !in_array($user->user_type, ['admin', 'system']) &&
+            $user->user_type !== 'system' &&
             !$user->is_inner_core) {
             return response()->json([
                 'message' => __('templatecontrollerphp1646'),
@@ -1705,7 +1705,7 @@ class TemplateController extends Controller
 
         // Check permissions (owner, inner core, or admin can download)
         if ($template->creator_user_id != $user->id &&
-            !in_array($user->user_type, ['admin', 'system']) &&
+            $user->user_type !== 'system' &&
             !$user->is_inner_core) {
             return response()->json([
                 'message' => __('templatecontrollerphp1711'),
@@ -1793,7 +1793,7 @@ class TemplateController extends Controller
         }
 
         if ($template->creator_user_id != $user->id &&
-            !in_array($user->user_type, ['admin', 'system']) &&
+            $user->user_type !== 'system' &&
             !$user->is_inner_core) {
             return response()->json(['message' => __('templatecontrollerphp1798')], 403);
         }

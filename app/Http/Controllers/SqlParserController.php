@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\MySQLParser;
 use App\Services\PostgreSQLParser;
+use App\Services\SQLiteParser;
+use App\Services\MSSQLParser;
+use App\Services\FirebirdParser;
 use App\Services\SchemaStorageService;
 use App\Models\FloatingSchema;
 use App\Models\SchemaVersion;
@@ -30,6 +33,15 @@ class SqlParserController extends Controller
             case 'postgres':
             case 'pgsql':
                 return new PostgreSQLParser();
+            case 'sqlite':
+                return new SQLiteParser();
+            case 'mssql':
+            case 'sqlserver':
+            case 'sql_server':
+                return new MSSQLParser();
+            case 'firebird':
+            case 'interbase':
+                return new FirebirdParser();
             case 'mysql':
             case 'mariadb':
             default:

@@ -287,6 +287,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     }
 
     confirmDialog({
+      group: 'member-modal',
       message: `Remove ${member.user.name} from the team?`,
       header: t.manageteammodal485,
       icon: 'pi pi-exclamation-triangle',
@@ -492,7 +493,7 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
   return (
     <>
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog group="member-modal" />
       
       <Dialog
         header={`Manage Members - ${team?.name}`}
