@@ -59,6 +59,9 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
 - ✅ **MySQL & MariaDB Import**: Full support for MySQL and MariaDB SQL dumps and schema import
 - ✅ **PostgreSQL Import**: Full support for PostgreSQL SQL dumps and schema import
+- ✅ **SQLite Import**: Import support for SQLite SQL dumps and schema import
+- ✅ **MS-SQL/T-SQL Import**: Import support for MS-SQL/T-SQL SQL dumps and schema import
+- ✅ **Firebird Import**: Import support for Firebird SQL dumps and schema import
 - ✅ **Schema Versioning**: Automatic version tracking for database changes
 - ✅ **Schema Diff & Migration**: Compare schema versions and generate SQL migration scripts
 - ✅ **Copy Database**: Clone schemas with all tables, fields, and relationships
