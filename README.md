@@ -1,6 +1,6 @@
 <div align="center">
 
-# Scoriet
+# Scoriet V 1.0.0.1 Latest Changes from 24.2.2026
 
 ### Enterprise Code Generator with Intelligent Templating
 
@@ -11,11 +11,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Development Status](https://img.shields.io/badge/Status-🚧%20In%20Development-orange.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
+[![Development Status](https://img.shields.io/badge/Status-%20Ready%20For%20Testing-green.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
 
-[**🧪 Live Demo**](https://demo.scoriet.dev) • [**🚧 Alpha Preview**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
+[**🧪 Live Demo**](https://demo.scoriet.dev) • [** Application**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
 
-> **⚠️ Development Status**: Scoriet is currently in **active development**. The application is functional but features are being added regularly. Expect frequent updates and breaking changes. Not recommended for production use yet.
+** Development Status**: Scoriet is still under **development**. The application is functional, but changes may occur and restarts may happen during the day.
 
 </div>
 
@@ -25,11 +25,9 @@
 
 Scoriet is a modern enterprise code generator that revolutionizes development workflows through intelligent templating and automation. Built as a complete rewrite of the original WinDev application, it now leverages cutting-edge web technologies to provide a seamless, browser-based development experience.
 
-## 🚧 Current Development Status
+## Current Development Status
 
-**We're currently in active development!** Here's what's working and what's coming:
-
-### ✅ **Completed Features** (Alpha Ready)
+**We're still in development!** The feature list and what's coming (Roadmap):
 
 #### 🎨 **Core Platform**
 - ✅ **Theme System**: Dark/Light mode with dynamic color switching via `useTheme()` hook
@@ -59,9 +57,9 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
 - ✅ **MySQL & MariaDB Import**: Full support for MySQL and MariaDB SQL dumps and schema import
 - ✅ **PostgreSQL Import**: Full support for PostgreSQL SQL dumps and schema import
-- ✅ **SQLite Import**: Import support for SQLite SQL dumps and schema import
-- ✅ **MS-SQL/T-SQL Import**: Import support for MS-SQL/T-SQL SQL dumps and schema import
-- ✅ **Firebird Import**: Import support for Firebird SQL dumps and schema import
+- ✅ **SQLite Import**: Support for SQLite SQL schema import
+- ✅ **MS-SQL/T-SQL Import**: Support for MS-SQL/T-SQL schema import
+- ✅ **Firebird Import**: Support for Firebird SQL schema import
 - ✅ **Schema Versioning**: Automatic version tracking for database changes
 - ✅ **Schema Diff & Migration**: Compare schema versions and generate SQL migration scripts
 - ✅ **Copy Database**: Clone schemas with all tables, fields, and relationships
@@ -73,6 +71,9 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Full Code Generation**: Generate complete projects from multiple templates
 - ✅ **Multi-Template Support**: Stack multiple templates for complex applications
 - ✅ **Multi-Language Generation**: Generate code in multiple languages simultaneously
+- ✅ **Multi-Schema Generation**: Generate code in from multiple database schemas simultaneously
+- ✅ **Multi-Schema-Versioning (Migration) Generation**: Generate code in from multiple database schema versions simultaneously
+- ✅ **Reverse Engineering (Code Adjustments)**: Compare previous generations with your actual code, create code adjustments as needed
 - ✅ **ZIP/tar Template Upload**: Upload complete template structures as ZIP or tar files
 - ✅ **File Path Organization**: Automatic directory structure for generated code
 - ✅ **Template Variables**: Custom project-level variables with multi-language support
@@ -118,7 +119,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Payment Integration**: PayPal and Stripe subscription handling
 
 #### GitHub and GitLab Integration
-- ✅ **GitHub Integration**: Direct push to GitHub repositories
+- ✅ **Git Integration**: Direct push to GitHub and GitLab repositories
 
 #### API, CLI and local Service
 - ✅ **API Ecosystem**: Public API for third-party integrations
@@ -128,13 +129,12 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 
 ### 📅 **Planned Features** (Roadmap)
 - 📅 **AI Integration**: Claude API for enhanced code generation
-- 📅 **Multi-Database Support**: SQLite, SQL Server support (MySQL & PostgreSQL already supported)
 - 📅 **Plugin System**: Extensible architecture for custom generators
 - 📅 **Cloud Deployment**: One-click deployment to major cloud providers (cPanel integration???)
 
 ### 🧪 **Try It Now**
-- **Alpha Preview**: [scoriet.dev](https://scoriet.dev) - Latest development build
-- **Closed beta**: [Alexander Predl](mailto:office@predl.cc) - Please send me a email, for invitation?!
+- **Demo Beta**: [demo.scoriet.dev](https://demo.scoriet.dev) - Latest development build, reset every 24 hours!
+- **Beta**: [scoriet.dev](https://scoriet.dev) - You can start signing in and test!
 
 ### ✨ Key Features
 
@@ -209,7 +209,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - Laravel 12 with PHP 8.2+
 - Inertia.js for seamless SPA experience
 - Laravel Passport for API security
-- Multi-database support (MySQL, PostgreSQL, SQLite, SQL Server)
+- Multi-database support (MySQL, PostgreSQL, SQLite, SQL Server, Firebird)
 
 **Template System:**
 - Client-side JavaScript execution with full ES6+ support
@@ -227,7 +227,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **PHP** ≥ 8.2 with extensions: `mbstring`, `xml`, `bcmath`, `pdo`, `tokenizer`
 - **Composer** ≥ 2.0
 - **Node.js** ≥ 18.0 & npm ≥ 9.0
-- **Database**: MySQL 8.0+ / PostgreSQL 13+ / SQLite 3.8+ / SQL Server 2019+
+- **Database**: MySQL 8.0+ / MariaDB 10.3+ / PostgreSQL 12+ / SQLite 3.35.0+ / SQL Server 2017+
 - **Memory**: 512MB RAM minimum (2GB+ recommended)
 
 ## 🚀 Getting Started
@@ -622,7 +622,7 @@ Multi-language support for database schemas:
 
 - **Table Translations**: Translate table names and descriptions
 - **Field Translations**: Translate field labels and help text
-- **Language Support**: All 5 supported languages (EN, DE, FR, ES, IT)
+- **Language Support**: **Any** language is supported, the system administrator needs to fill the language table
 - **Fallback System**: Automatic fallback to default language
 - **Excel Import**: Bulk import translations from Excel files
 - **Template Integration**: Access translated names in code generation
@@ -658,6 +658,7 @@ Multi-language support for database schemas:
 
 #### Export & Usage
 - **Download SQL**: Export migration script as `.sql` file
+- **MySQL and PostgreSQL Support**: Dual database export support
 - **Copy to Clipboard**: Quick copy for immediate use
 - **Preview Changes**: Review changes before executing
 - **Statistics Dashboard**:

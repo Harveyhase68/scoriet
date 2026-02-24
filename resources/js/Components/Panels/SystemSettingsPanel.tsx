@@ -8,7 +8,6 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { InputNumber } from 'primereact/inputnumber';
-import { Password } from 'primereact/password';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { api, pricingUtils } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -215,13 +214,13 @@ export default function SystemSettingsPanel() {
                   name="global_google_translate_key"
                   control={control}
                   render={({ field }) => (
-                    <Password
+                    <input
                       id="global_google_translate_key"
+                      type="text"
                       {...field}
                       placeholder={t.systemsettingspanel117}
-                      className="w-full"
-                      toggleMask
-                      feedback={false}
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                     />
                   )}
                 />

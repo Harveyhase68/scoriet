@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import JSZip from 'jszip';
 import { Dropdown } from 'primereact/dropdown';
@@ -149,7 +149,7 @@ export default function CodeGenerationPanel() {
   const [selectedSchemaIds, setSelectedSchemaIds] = useState<Set<number>>(new Set());
   const [languages, setLanguages] = useState<Language[]>([]);
   const [selectedLanguageCodes, setSelectedLanguageCodes] = useState<Set<string>>(new Set());
-  const [migrationFromVersion, setMigrationFromVersion] = useState<number | null>(null);
+  const [migrationFromVersions, setMigrationFromVersions] = useState<Record<number, number | null>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<Warning[]>([]);
@@ -247,34 +247,16 @@ export default function CodeGenerationPanel() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(1); // Tab 1 = Buy Credits
 
-  // 📊 Migration version options based on selected schemas
-  const migrationVersionOptions = useMemo(() => {
-    if (selectedSchemaIds.size === 0) return [];
-
-    // Find the minimum last_version among selected schemas
-    // Migration can only go from version X to current, so we need the lowest common denominator
-    const selectedSchemas = schemas.filter(s => selectedSchemaIds.has(s.id));
-    const minVersion = Math.min(...selectedSchemas.map(s => s.last_version || 1));
-
-    // If minVersion is 1, we can't migrate (no previous version)
-    if (minVersion <= 1) return [];
-
-    // Generate options from (minVersion - 1) down to 1
+  // 📊 Per-schema migration version options
+  const getMigrationOptionsForSchema = (schema: Schema): { label: string; value: number }[] => {
+    const maxVersion = schema.last_version || 1;
+    if (maxVersion <= 1) return [];
     const options = [];
-    for (let v = minVersion - 1; v >= 1; v--) {
+    for (let v = maxVersion - 1; v >= 1; v--) {
       options.push({ label: `Version ${v}`, value: v });
     }
     return options;
-  }, [schemas, selectedSchemaIds]);
-
-  // Reset migration version when schemas change
-  useEffect(() => {
-    if (migrationVersionOptions.length === 0) {
-      setMigrationFromVersion(null);
-    } else if (migrationFromVersion !== null && !migrationVersionOptions.find(o => o.value === migrationFromVersion)) {
-      setMigrationFromVersion(null);
-    }
-  }, [migrationVersionOptions, migrationFromVersion]);
+  };
 
   // Auto-scroll deployment log to bottom
   useEffect(() => {
@@ -889,7 +871,11 @@ export default function CodeGenerationPanel() {
         })
       );
 
-      const schemasArray = schemasData.data || schemasData;
+      const schemasRaw = schemasData.data || schemasData;
+      // Only show schemas that are explicitly linked to this project (have an association_type)
+      const schemasArray = (Array.isArray(schemasRaw) ? schemasRaw : []).filter(
+        (s: any) => s.association_type !== null && s.association_type !== undefined
+      );
 
       // Filter languages to only show project-enabled languages
       const allLanguagesArray = allLanguagesData.data || allLanguagesData;
@@ -1028,6 +1014,12 @@ export default function CodeGenerationPanel() {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
+        // Remove migration version for this schema
+        setMigrationFromVersions(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
       } else {
         newSet.add(id);
       }
@@ -1040,6 +1032,7 @@ export default function CodeGenerationPanel() {
     const unlockedSchemas = schemas.filter(s => !s.is_soft_locked);
     if (selectedSchemaIds.size === unlockedSchemas.length) {
       setSelectedSchemaIds(new Set());
+      setMigrationFromVersions({});
     } else {
       setSelectedSchemaIds(new Set(unlockedSchemas.map(s => s.id)));
     }
@@ -1632,9 +1625,12 @@ export default function CodeGenerationPanel() {
               url.searchParams.set('language_code', langCode);
             }
 
-            // 📊 Add migration_from_version parameter if set
-            if (migrationFromVersion !== null) {
-              url.searchParams.set('migration_from_version', migrationFromVersion.toString());
+            // 📊 Add per-schema migration versions if any are set
+            const activeVersions = Object.fromEntries(
+              Object.entries(migrationFromVersions).filter(([, v]) => v !== null)
+            );
+            if (Object.keys(activeVersions).length > 0) {
+              url.searchParams.set('migration_from_versions', JSON.stringify(activeVersions));
             }
 
             const response = await fetch(url.toString(), {
@@ -1707,7 +1703,9 @@ export default function CodeGenerationPanel() {
                 compile: true,
                 include_source: false,
                 include_gtree: includeGtree, // 🚀 OPTIMIZATION: Only fetch gtree once!
-                migration_from_version: migrationFromVersion, // 📊 Migration version if set
+                migration_from_versions: Object.fromEntries(
+                  Object.entries(migrationFromVersions).filter(([, v]) => v !== null)
+                ), // 📊 Per-schema migration versions
               })
             });
 
@@ -2976,36 +2974,59 @@ export default function CodeGenerationPanel() {
                     <div className="space-y-2">
                       {schemas.map(schema => {
                         const isLocked = schema.is_soft_locked === true;
+                        const isSelected = selectedSchemaIds.has(schema.id);
+                        const migrationOptions = getMigrationOptionsForSchema(schema);
                         return (
-                          <label
+                          <div
                             key={schema.id}
-                            className={`flex items-center space-x-2 p-2 rounded ${
+                            className={`flex items-center justify-between p-2 rounded ${
                               isLocked
                                 ? 'cursor-not-allowed opacity-60'
-                                : 'cursor-pointer'
+                                : ''
                             }`}
                             style={{ color: colors.textPrimary }}
                             onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = colors.bgHover)}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             title={isLocked ? t.codegenerationpanel2990 : undefined}
                           >
-                            <input
-                              type="checkbox"
-                              checked={selectedSchemaIds.has(schema.id)}
-                              onChange={() => !isLocked && toggleSchema(schema.id)}
-                              disabled={isLocked}
-                              className={isLocked ? 'cursor-not-allowed' : ''}
-                            />
-                            {isLocked && (
-                              <i className="pi pi-lock text-red-500" />
+                            <label className={`flex items-center space-x-2 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => !isLocked && toggleSchema(schema.id)}
+                                disabled={isLocked}
+                                className={isLocked ? 'cursor-not-allowed' : ''}
+                              />
+                              {isLocked && (
+                                <i className="pi pi-lock text-red-500" />
+                              )}
+                              <span style={{ color: isLocked ? '#f87171' : colors.textPrimary }}>
+                                {schema.name}
+                              </span>
+                              {isLocked && (
+                                <span className="text-xs text-red-400">{t.codegenerationpanel3006}</span>
+                              )}
+                            </label>
+                            {isSelected && !isLocked && migrationOptions.length > 0 && (
+                              <select
+                                value={migrationFromVersions[schema.id] ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value ? Number(e.target.value) : null;
+                                  setMigrationFromVersions(prev => ({ ...prev, [schema.id]: val }));
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary, maxWidth: '180px' }}
+                              >
+                                <option value="">{t.codegenerationpanel3033}</option>
+                                {migrationOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}{t.codegenerationpanel3036}
+                                  </option>
+                                ))}
+                              </select>
                             )}
-                            <span style={{ color: isLocked ? '#f87171' : colors.textPrimary }}>
-                              {schema.name}
-                            </span>
-                            {isLocked && (
-                              <span className="text-xs text-red-400 ml-auto">{t.codegenerationpanel3006}</span>
-                            )}
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -3015,41 +3036,6 @@ export default function CodeGenerationPanel() {
                   {selectedSchemaIds.size}{t.codegenerationpanel3015}{schemas.length}{t.codegenerationpanel3015_2}
                 </div>
               </div>
-
-              {/* Migration Version Section - Only visible when schemas are selected */}
-              {selectedSchemaIds.size > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                    {t.codegenerationpanel3023}
-                  </label>
-                  {migrationVersionOptions.length > 0 ? (
-                    <>
-                      <select
-                        value={migrationFromVersion ?? ''}
-                        onChange={(e) => setMigrationFromVersion(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary }}
-                      >
-                        <option value="">{t.codegenerationpanel3033}</option>
-                        {migrationVersionOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}{t.codegenerationpanel3036}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="mt-1 text-xs" style={{ color: colors.textMuted }}>
-                        {migrationFromVersion
-                          ? `${t.codegenerationpanel3042_2}${migrationFromVersion}${t.codegenerationpanel3042}`
-                          : t.codegenerationpanel3043}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-sm rounded-lg p-3" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textMuted }}>
-                      {t.codegenerationpanel3048}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Languages Section */}
               <div className="mb-6">

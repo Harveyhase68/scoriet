@@ -2109,7 +2109,7 @@ button.landing-lang-selector .p-button-label {
 /* Placeholder text */
 .p-editor-container .p-editor-content .ql-editor.ql-blank::before,
 .p-editor-container .ql-container .ql-editor.ql-blank::before {
-  color: var(--theme-text-muted, #6b7280) !important;
+  color: var(--theme-text-muted, #dbdde0) !important;
 }
 
 /* Tooltip styling for toolbar */

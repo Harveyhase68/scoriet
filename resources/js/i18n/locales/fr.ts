@@ -3625,7 +3625,7 @@ export const fr: Translations = {
   messagingpanel1340: 'Annuler',
   messagingpanel1346: 'De votre part ',
   messagingpanel1346_2: '  Pièce jointe',
-  messagingpanel1346_3: 'De votre part',
+  messagingpanel1346_3: 'Envoyer',
   messagingpanel1367: 'Déverrouiller les pièces jointes',
   messagingpanel1376: 'Annuler',
   messagingpanel1382: 'Débloquer (50 crédits)',

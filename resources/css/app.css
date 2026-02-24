@@ -776,7 +776,9 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
     box-shadow: 0 0 0 1px var(--theme-accent) !important;
 }
 
-.p-inputtext::placeholder {
+.p-inputtext::placeholder,
+input::placeholder,
+textarea::placeholder {
     color: var(--theme-text-muted) !important;
 }
 
@@ -831,6 +833,10 @@ html body .p-dialog .p-dialog-header.p-dialog-header {
 }
 
 /* Password input */
+.p-password.w-full {
+    display: flex !important;
+    width: 100% !important;
+}
 .p-password .p-inputtext {
     background-color: var(--theme-bg-tertiary) !important;
     color: var(--theme-text-primary) !important;
